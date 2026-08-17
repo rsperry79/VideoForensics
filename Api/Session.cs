@@ -90,7 +90,7 @@ namespace KoenZomers.Ring.Api
         /// <summary>
         /// HttpUtility instance to make HTTP requests
         /// </summary>
-        private static readonly HttpUtility _httpUtility = new();
+        private readonly HttpUtility _httpUtility;
 
         #endregion
 
@@ -99,17 +99,23 @@ namespace KoenZomers.Ring.Api
         /// <summary>
         /// Initiates a new session to the Ring API
         /// </summary>
-        public Session(string username, string password)
+        /// <param name="username">Username for the Ring account</param>
+        /// <param name="password">Password for the Ring account</param>
+        /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
+        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null)
         {
             Username = username;
             Password = password;
+            _httpUtility = new HttpUtility(messageHandler: messageHandler);
         }
 
         /// <summary>
         /// Initiates a new session without username/password. Only to be used with the static method to create a session based on a RefreshToken.
         /// </summary>
-        private Session()
+        /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
+        private Session(System.Net.Http.HttpMessageHandler messageHandler = null)
         {
+            _httpUtility = new HttpUtility(messageHandler: messageHandler);
         }
 
         #endregion
@@ -120,14 +126,15 @@ namespace KoenZomers.Ring.Api
         /// Creates a new session to the Ring API using a RefreshToken received from a previous session
         /// </summary>
         /// <param name="refreshToken">RefreshToken received from the prior authentication</param>
+        /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
         /// <returns>Authenticated session based on the RefreshToken or NULL if the session could not be authenticated</returns>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public static async Task<Session> GetSessionByRefreshToken(string refreshToken)
+        public static async Task<Session> GetSessionByRefreshToken(string refreshToken, System.Net.Http.HttpMessageHandler messageHandler = null)
         {
-            var session = new Session();
+            var session = new Session(messageHandler);
             await session.RefreshSession(refreshToken);
             return session;
         }

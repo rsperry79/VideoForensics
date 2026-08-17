@@ -121,12 +121,18 @@ namespace KoenZomers.Ring.UnitTest
         /// Test the scenario where the authentication would fail
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(Api.Exceptions.AuthenticationFailedException))]
         public async Task AuthenticateFailTest()
         {
-            var session = new Api.Session("test@test.com", "someinvalidpassword");
-
-            await session.Authenticate();
+            try
+            {
+                var session = new Api.Session("test@test.com", "someinvalidpassword");
+                await session.Authenticate();
+                Assert.Fail("Should have thrown AuthenticationFailedException");
+            }
+            catch (Api.Exceptions.AuthenticationFailedException)
+            {
+                Assert.IsTrue(true, "Correctly threw AuthenticationFailedException");
+            }
         }
 
         /// <summary>
@@ -148,11 +154,18 @@ namespace KoenZomers.Ring.UnitTest
         /// Test the scenario where a refresh token is used to set up an authenticated session which fails
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(Api.Exceptions.AuthenticationFailedException))]
         public async Task AuthenticateWithRefreshTokenFailTest()
         {
-            // Request a new authenticated session based on a non existing RefreshToken
-            await Api.Session.GetSessionByRefreshToken("abcdefghijklmnopqrstuvwxyz");
+            try
+            {
+                // Request a new authenticated session based on a non existing RefreshToken
+                await Api.Session.GetSessionByRefreshToken("abcdefghijklmnopqrstuvwxyz");
+                Assert.Fail("Should have thrown AuthenticationFailedException");
+            }
+            catch (Api.Exceptions.AuthenticationFailedException)
+            {
+                Assert.IsTrue(true, "Correctly threw AuthenticationFailedException");
+            }
         }
 
         /// <summary>
@@ -173,11 +186,18 @@ namespace KoenZomers.Ring.UnitTest
         /// Test if the an SessionNotAuthenticatedException gets thrown when trying to retrieve the Ring devices without authenticating first
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(Api.Exceptions.SessionNotAuthenticatedException))]
         public async Task GetDevicesUnauthenticatedTest()
         {
-            var session = new Api.Session("", "");
-            await session.GetRingDevices();
+            try
+            {
+                var session = new Api.Session("", "");
+                await session.GetRingDevices();
+                Assert.Fail("Should have thrown SessionNotAuthenticatedException");
+            }
+            catch (Api.Exceptions.SessionNotAuthenticatedException)
+            {
+                Assert.IsTrue(true, "Correctly threw SessionNotAuthenticatedException");
+            }
         }
 
         /// <summary>
@@ -228,15 +248,22 @@ namespace KoenZomers.Ring.UnitTest
         /// Test if the result if doorbot history events are tried to be retrieved only for a specific doorbot which does not exist
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(Api.Exceptions.DeviceUnknownException))]
         public async Task GetDoorbotsHistoryForSpecificNonExistingDoorbotTest()
         {
             if (!IsSessionActive()) return;
 
             Assert.IsNotNull(session, "No active session available");
 
-            // Try getting the historical items for the a doorbot that does not exist
-            await session.GetDoorbotsHistory(doorbotId: 1234567);
+            try
+            {
+                // Try getting the historical items for the a doorbot that does not exist
+                await session.GetDoorbotsHistory(doorbotId: 1234567);
+                Assert.Fail("Should have thrown DeviceUnknownException");
+            }
+            catch (Api.Exceptions.DeviceUnknownException)
+            {
+                Assert.IsTrue(true, "Correctly threw DeviceUnknownException");
+            }
         }
 
         /// <summary>
@@ -389,6 +416,82 @@ namespace KoenZomers.Ring.UnitTest
 
             Assert.IsTrue(doorbotSnapshotTimestamps.Timestamp.Count > 0, "No timestamps were returned for the doorbot");
             Assert.IsTrue(doorbotSnapshotTimestamps.Timestamp[0].Timestamp.HasValue, "Unable to define the date and time for the last snapshot of the doorbot");
+        }
+
+        /// <summary>
+        /// Test FlexibleStringConverter is available for use
+        /// </summary>
+        [TestMethod]
+        public void FlexibleStringConverterTest()
+        {
+            // Verify the converter exists and can be instantiated
+            var converter = new KoenZomers.Ring.Api.Converters.FlexibleStringConverter();
+            Assert.IsNotNull(converter, "FlexibleStringConverter should be instantiable");
+
+            // Test that StickupCam with flexible LedStatus deserializes correctly
+            var jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
+            var cam1 = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.StickupCam>(jsonWithStringLedStatus);
+            Assert.IsNotNull(cam1, "StickupCam should deserialize with string led_status");
+            Assert.AreEqual("on", cam1.LedStatus, "LedStatus should be 'on'");
+
+            // Test with number LedStatus (the reason for FlexibleStringConverter)
+            var jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
+            var cam2 = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.StickupCam>(jsonWithNumberLedStatus);
+            Assert.IsNotNull(cam2, "StickupCam should deserialize with number led_status");
+            Assert.AreEqual("1", cam2.LedStatus, "LedStatus should convert number to string");
+        }
+
+        /// <summary>
+        /// Test GetLocations() returns expected structure
+        /// </summary>
+        [TestMethod]
+        public async Task GetLocationsTest()
+        {
+            if (!IsSessionActive()) return;
+
+            Assert.IsNotNull(session, "No active session available");
+
+            var locations = await session.GetLocations();
+
+            Assert.IsNotNull(locations, "GetLocations() should not return null");
+            Assert.IsTrue(locations is System.Collections.Generic.List<KoenZomers.Ring.Api.Entities.Location>, "Should return a list of Location objects");
+        }
+
+        /// <summary>
+        /// Test that LocationId property exists on Chime and Doorbot and deserializes correctly
+        /// </summary>
+        [TestMethod]
+        public void LocationIdDeserializationTest()
+        {
+            var chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
+            var chime = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.Chime>(chimeJson);
+
+            Assert.IsNotNull(chime, "Chime should deserialize");
+            Assert.AreEqual(new System.Guid("550e8400-e29b-41d4-a716-446655440000"), chime.LocationId, "LocationId should deserialize from JSON");
+
+            var doorbotJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440001", "description": "test"}""";
+            var doorbot = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.Doorbot>(doorbotJson);
+
+            Assert.IsNotNull(doorbot, "Doorbot should deserialize");
+            Assert.AreEqual(new System.Guid("550e8400-e29b-41d4-a716-446655440001"), doorbot.LocationId, "LocationId should deserialize from JSON");
+        }
+
+        /// <summary>
+        /// Test ApiRawLogger events are available for subscription
+        /// </summary>
+        [TestMethod]
+        public void ApiRawLoggerTest()
+        {
+            // Verify that the ApiRawLogger events exist and can be subscribed to
+            var eventFired = false;
+
+            KoenZomers.Ring.Api.ApiRawLogger.OnRawResponse += (call) => { eventFired = true; };
+            KoenZomers.Ring.Api.ApiRawLogger.OnEvent += (evt) => { eventFired = true; };
+            KoenZomers.Ring.Api.ApiRawLogger.OnRingEvents += (evt) => { eventFired = true; };
+
+            // The events will be raised internally by the API when making actual HTTP calls
+            // Subscriptions succeed without error
+            Assert.IsTrue(true, "ApiRawLogger subscriptions configured successfully");
         }
 
         /// <summary>

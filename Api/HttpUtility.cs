@@ -41,12 +41,22 @@ namespace KoenZomers.Ring.Api
         /// Initializes a new HttpUtility helper. Cookies will be shared among all requests done in this instance.
         /// </summary>
         /// <param name="timeout">Default timeout in milliseconds to apply to the HTTP requests</param>
-        public HttpUtility(int timeout = 60000)
+        /// <param name="messageHandler">Optional custom HttpMessageHandler for testing. If not provided, HttpClientHandler will be used.</param>
+        public HttpUtility(int timeout = 60000, HttpMessageHandler messageHandler = null)
         {
-            _cookieContainer = new CookieContainer();
-            _httpClientHandler = new HttpClientHandler { CookieContainer = _cookieContainer };
+            if (messageHandler != null)
+            {
+                _httpClientHandler = messageHandler as HttpClientHandler;
+                _cookieContainer = _httpClientHandler?.CookieContainer ?? new CookieContainer();
+            }
+            else
+            {
+                _cookieContainer = new CookieContainer();
+                _httpClientHandler = new HttpClientHandler { CookieContainer = _cookieContainer };
+                messageHandler = _httpClientHandler;
+            }
 
-            _httpClient = new(_httpClientHandler);
+            _httpClient = new(messageHandler);
             _httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
         }
 
