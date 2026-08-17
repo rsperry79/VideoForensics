@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Text.Json.Serialization;
 
 namespace KoenZomers.Ring.Api.Entities
 {
@@ -6,6 +7,10 @@ namespace KoenZomers.Ring.Api.Entities
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
+
+        [JsonPropertyName("location_id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Guid? LocationId { get; set; }
 
         [JsonPropertyName("description")]
         public string Description { get; set; }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,12 +7,43 @@ using System.Threading;
 using System.Text.Json;
 using KoenZomers.Ring.Api.Entities;
 using System.Collections.Specialized;
+using System.Reflection.Metadata.Ecma335;
 
 namespace KoenZomers.Ring.Api
 {
     public class Session
     {
         #region Properties
+
+        /// <summary>
+        /// Stable hardware ID generated for this machine to avoid duplicate auth entries.
+        /// Persisted to disk so it remains consistent across sessions.
+        /// </summary>
+        private static readonly string _hardwareId = GetOrCreateHardwareId();
+
+        private static string GetOrCreateHardwareId()
+        {
+            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RingVideosData");
+            var filePath = Path.Combine(folder, "hardware_id.txt");
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    var id = File.ReadAllText(filePath).Trim();
+                    if (!string.IsNullOrEmpty(id)) return id;
+                }
+            }
+            catch { }
+
+            var newId = Guid.NewGuid().ToString();
+            try
+            {
+                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+                File.WriteAllText(filePath, newId);
+            }
+            catch { }
+            return newId;
+        }
 
         /// <summary>
         /// Username to use to connect to the Ring API. Set by providing it in the constructor.
@@ -126,7 +157,7 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task<Entities.Session> Authenticate(   string operatingSystem = "windows", 
-                                                            string hardwareId = "unspecified", 
+                                                            string hardwareId = null, 
                                                             string appBrand = "ring", 
                                                             string deviceModel = "unspecified", 
                                                             string deviceName = "unspecified", 
@@ -147,7 +178,7 @@ namespace KoenZomers.Ring.Api
 
             if (string.IsNullOrEmpty(hardwareId))
             {
-                throw new ArgumentNullException("hardwareId", "HardwareId system is mandatory");
+                hardwareId = _hardwareId;
             }
 
             // Construct the Form POST fields to send along with the authentication request
@@ -163,16 +194,20 @@ namespace KoenZomers.Ring.Api
             // If a two factor auth code has been provided, add the code through the HTTP POST header
             var headerFields = new NameValueCollection(capacity: 3) 
             {
-                { "hardware_id", hardwareId }
+                { "hardware_id", hardwareId },
+                { "2fa-support", "true" }
             };
             if (twoFactorAuthCode != null)
             {
-                headerFields.Add("2fa-support", "true");
-                headerFields.Add("2fa-code", twoFactorAuthCode);
+                headerFields["2fa-code"] = twoFactorAuthCode;
             }
 
-            // Make the Form POST request to request an OAuth Token
-            var oAuthResponse = await _httpUtility.FormPost( RingApiOAuthUrl,
+            ApiRawLogger.LogEvent("Auth", twoFactorAuthCode != null
+                ? "Authenticating with username/password + two-factor code"
+                : "Authenticating with username/password");
+
+            // Make the OAuth POST request to request an OAuth Token
+            var oAuthResponse = await _httpUtility.OAuthPost( RingApiOAuthUrl,
                                                             oAuthformFields,
                                                             headerFields);
 
@@ -180,39 +215,43 @@ namespace KoenZomers.Ring.Api
             // Deserialize the JSON result into a typed object
             OAuthToken = JsonSerializer.Deserialize<OAutToken>(oAuthResponse);
 
-            // Construct the Form POST fields to send along with the session request
-            var sessionFormFields = new Dictionary<string, string>
+            // Create an API session using JSON (matching Ring's current API requirements)
+            await CreateSession();
+
+            ApiRawLogger.LogEvent("Auth", "Authenticated successfully");
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates an API session with Ring using the current OAuth token
+        /// </summary>
+        private async Task CreateSession()
+        {
+            var sessionData = new
             {
-                { "device[os]", System.Net.WebUtility.UrlEncode(operatingSystem) },
-                { "device[hardware_id]", System.Net.WebUtility.UrlEncode(hardwareId) }
+                device = new
+                {
+                    hardware_id = _hardwareId,
+                    metadata = new
+                    {
+                        api_version = "11",
+                        device_model = "ring-doorbell"
+                    },
+                    os = "android"
+                }
             };
 
-            // Add optional fields if they have been provided
-            if (!string.IsNullOrEmpty(appBrand)) sessionFormFields.Add("device[app_brand]", System.Net.WebUtility.UrlEncode(appBrand));
-            if (!string.IsNullOrEmpty(deviceModel)) sessionFormFields.Add("device[metadata][device_model]", System.Net.WebUtility.UrlEncode(deviceModel));
-            if (!string.IsNullOrEmpty(deviceName)) sessionFormFields.Add("device[metadata][device_name]", System.Net.WebUtility.UrlEncode(deviceName));
-            if (!string.IsNullOrEmpty(resolution)) sessionFormFields.Add("device[metadata][resolution]", System.Net.WebUtility.UrlEncode(resolution));
-            if (!string.IsNullOrEmpty(appVersion)) sessionFormFields.Add("device[metadata][app_version]", System.Net.WebUtility.UrlEncode(appVersion));
-            if (appInstallationDate.HasValue) sessionFormFields.Add("device[metadata][app_instalation_date]", string.Format("{0:yyyy-MM-dd}+{0:HH}%3A{0:mm}%3A{0:ss}Z", appInstallationDate.Value));
-            if (!string.IsNullOrEmpty(manufacturer)) sessionFormFields.Add("device[metadata][manufacturer]", System.Net.WebUtility.UrlEncode(manufacturer));
-            if (!string.IsNullOrEmpty(deviceType)) sessionFormFields.Add("device[metadata][device_type]", System.Net.WebUtility.UrlEncode(deviceType));
-            if (!string.IsNullOrEmpty(architecture)) sessionFormFields.Add("device[metadata][architecture]", System.Net.WebUtility.UrlEncode(architecture));
-            if (!string.IsNullOrEmpty(language)) sessionFormFields.Add("device[metadata][language]", System.Net.WebUtility.UrlEncode(language));
+            var json = JsonSerializer.Serialize(sessionData);
+            var headerFields = new NameValueCollection
+            {
+                { "Accept-Encoding", "gzip, deflate" },
+                { "X-API-LANG", "en" },
+                { "Authorization", $"Bearer {OAuthToken.AccessToken}" },
+                { "hardware_id", _hardwareId }
+            };
 
-            // Make the Form POST request to authenticate
-            var sessionResponse = await _httpUtility.FormPost(   new Uri(RingApiBaseUrl, "session"),
-                                                                sessionFormFields,
-                                                                new System.Collections.Specialized.NameValueCollection
-                                                                {
-                                                                    { "Accept-Encoding", "gzip, deflate" },
-                                                                    { "X-API-LANG", "en" },
-                                                                    { "Authorization", $"Bearer {OAuthToken.AccessToken}" }
-                                                                });
-
-            // Deserialize the JSON result into a typed object
-            var session = JsonSerializer.Deserialize<Entities.Session>(sessionResponse);
-
-            return session;
+            var response = await _httpUtility.JsonPostRaw(new Uri(RingApiBaseUrl, "session"), json, headerFields);
         }
 
         /// <summary>
@@ -244,32 +283,44 @@ namespace KoenZomers.Ring.Api
             var oAuthformFields = new Dictionary<string, string>
             {
                 { "grant_type", "refresh_token" },
-                { "refresh_token", refreshToken }
+                { "refresh_token", refreshToken },
+                { "client_id", "ring_official_android" },
+                { "scope", "client" }
             };
 
             var headerFields = new NameValueCollection()
             { 
-                { "hardware_id", "unspecified" }
+                { "hardware_id", _hardwareId },
+                { "2fa-support", "true" }
             };
-            // Make the Form POST request to request an OAuth Token
+            ApiRawLogger.LogEvent("Auth", "Refreshing session via refresh token");
+
+            // Make the OAuth POST request to request an OAuth Token
             try
             {
-                var oAuthResponse = await _httpUtility.FormPost(RingApiOAuthUrl,
+                var oAuthResponse = await _httpUtility.OAuthPost(RingApiOAuthUrl,
                                                                 oAuthformFields,
                                                                 headerFields);
 
 
                 // Deserialize the JSON result into a typed object
                 OAuthToken = JsonSerializer.Deserialize<OAutToken>(oAuthResponse);
+
+                // Create an API session after refreshing the OAuth token
+                await CreateSession();
+
+                ApiRawLogger.LogEvent("Auth", "Session refreshed successfully");
             }
             catch(System.Net.WebException e)
             {
                 // If a WebException gets thrown with Unauthorized it means that the refresh token was not valid, throw a custom exception to indicate this
                 if (e.Message.Contains("Unauthorized"))
                 {
+                    ApiRawLogger.LogEvent("Auth", "Refresh token rejected (unauthorized)");
                     throw new Exceptions.AuthenticationFailedException(e);
                 }
 
+                ApiRawLogger.LogEvent("Auth", $"Session refresh failed: {e.Message}");
                 throw;
             }
         }
@@ -319,14 +370,38 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public async Task<Devices> GetRingDevices()
+        public async Task<Devices> GetRingDevices(Guid? locationId = null)
         {
             await EnsureSessionValid();
 
-            var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"ring_devices"), AuthenticationToken);
-            
-            var devices = JsonSerializer.Deserialize<Devices>(response);
+            string query = locationId.HasValue
+                ? $"ring_devices?api_version=11&location_id={locationId:D}"
+                : "ring_devices?api_version=11";
+
+            var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, query), AuthenticationToken, _hardwareId);
+
+            var devices = JsonSerializer.Deserialize<Devices>(response) ?? new Devices();
+            ApiRawLogger.LogEvent("Devices", $"Retrieved {devices.Doorbots?.Count ?? 0} doorbots, {devices.AuthorizedDoorbots?.Count ?? 0} authorized doorbots, {devices.Chimes?.Count ?? 0} chimes, {devices.StickupCams?.Count ?? 0} stickup cams" + (locationId.HasValue ? $" (location {locationId})" : ""));
             return devices;
+        }
+
+        /// <summary>
+        /// Base Uri for the newer Ring devices API, which (unlike the legacy clients_api) exposes
+        /// a working locations endpoint.
+        /// </summary>
+        public Uri RingDevicesApiBaseUrl => new Uri("https://api.ring.com/devices/v1/");
+
+        /// <summary>
+        /// Returns the locations (with friendly names) visible to the current account.
+        /// </summary>
+        public async Task<List<Entities.Location>> GetLocations()
+        {
+            await EnsureSessionValid();
+
+            var response = await _httpUtility.GetContents(new Uri(RingDevicesApiBaseUrl, "locations"), AuthenticationToken, _hardwareId);
+
+            var parsed = JsonSerializer.Deserialize<Entities.UserLocationsResponse>(response);
+            return parsed?.UserLocations ?? new List<Entities.Location>();
         }
 
         /// <summary>
@@ -341,12 +416,12 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistory(int? doorbotId, int? limit = null)
+        public async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistory(long? doorbotId, int? limit = null)
         {
             await EnsureSessionValid();
 
             // Receive the first batch
-            var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history{(limit.HasValue ? $"?limit={limit}" : "")}"), AuthenticationToken);
+            var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history{(limit.HasValue ? $"?limit={limit}" : "")}"), AuthenticationToken, _hardwareId);
 
             // Parse the result
             var doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
@@ -366,7 +441,7 @@ namespace KoenZomers.Ring.Api
             do
             {
                 // Retrieve the next batch
-                response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={remainingItems}&older_than={allHistory.Last().Id}"), AuthenticationToken);
+                response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={remainingItems}&older_than={allHistory.Last().Id}"), AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
@@ -411,7 +486,7 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task<List<Entities.DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate, int? doorbotId = null)
+        public async Task<List<Entities.DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate, long? doorbotId = null)
         {
             await EnsureSessionValid();
 
@@ -426,7 +501,7 @@ namespace KoenZomers.Ring.Api
             do
             {
                 // Retrieve a batch with historical items
-                var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={batchWithItems}{(doorbotHistory.Count == 0 ? "" : "&older_than=" + doorbotHistory.Last().Id)}"), AuthenticationToken);
+                var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={batchWithItems}{(doorbotHistory.Count == 0 ? "" : "&older_than=" + doorbotHistory.Last().Id)}"), AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
@@ -441,6 +516,9 @@ namespace KoenZomers.Ring.Api
             }
             // Keep retrieving next batches until the last item in the retrieved batch does not fit within the request date span anymore
             while (doorbotHistory.Count > 0 && lastItemDateTime.HasValue && lastItemDateTime.Value > startDate);
+
+            ApiRawLogger.LogEvent("History", $"Retrieved {allHistory.Count} events" + (doorbotId.HasValue ? $" for doorbot {doorbotId}" : " for all doorbots") + $" between {startDate:o} and {(endDate.HasValue ? endDate.Value.ToString("o") : "now")}");
+            ApiRawLogger.LogRingEvents("History", $"{allHistory.Count} events" + (doorbotId.HasValue ? $" for doorbot {doorbotId}" : ""), JsonSerializer.Serialize(allHistory));
 
             return allHistory;
         }
@@ -489,7 +567,7 @@ namespace KoenZomers.Ring.Api
             for(var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
             {
                 // Request to download the recording
-                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken);
+                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 downloadResult = JsonSerializer.Deserialize<DownloadRecording>(response);
@@ -501,8 +579,8 @@ namespace KoenZomers.Ring.Api
                     break;
                 }
 
-                // Wait one second before requesting the recording again
-                Thread.Sleep(TimeSpan.FromSeconds(2));
+                // Wait two seconds before requesting the recording again
+                await Task.Delay(TimeSpan.FromSeconds(2));
             }
 
             // Ensure we ended with a valid URL to download the recording from
@@ -512,8 +590,8 @@ namespace KoenZomers.Ring.Api
             }
 
             // Request the file download from the returned URI
-            var stream = await _httpUtility.DownloadFile(downloadUri);
-            return stream;
+            var bytes = await _httpUtility.DownloadFile(downloadUri);
+            return new MemoryStream(bytes);
         }
 
 
@@ -554,10 +632,38 @@ namespace KoenZomers.Ring.Api
         {
             await EnsureSessionValid();
 
-            using var stream = await GetDoorbotHistoryRecording(dingId);
-            using var fileStream = File.Create(saveAs);
-            
-            await stream.CopyToAsync(fileStream);
+            // Construct the URL where to request downloading of a recording
+            var downloadRequestUri = new Uri(RingApiBaseUrl, $"dings/{dingId}/share/download?disable_redirect=true");
+
+            Entities.DownloadRecording downloadResult = null;
+            for (var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
+            {
+                // Request to download the recording
+                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
+
+                // Parse the result
+                downloadResult = JsonSerializer.Deserialize<DownloadRecording>(response);
+
+                // If the Ring API returns an empty URL property, it means it's still preparing the download on the server side. Just keep requesting the recording until it returns a URL.
+                if (!string.IsNullOrWhiteSpace(downloadResult.Url))
+                {
+                    // URL returned is not empty, start the download from the returned URL
+                    break;
+                }
+
+                // Wait two seconds before requesting the recording again
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+
+            // Ensure we ended with a valid URL to download the recording from
+            if (downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out Uri downloadUri))
+            {
+                throw new Exceptions.DownloadFailedException(downloadResult?.Url ?? "(no URL was created)");
+            }
+
+            // Request the file download from the returned URI and save to file
+            var bytes = await _httpUtility.DownloadFile(downloadUri);
+            await File.WriteAllBytesAsync(saveAs, bytes);
         }
 
         /// <summary>
@@ -605,7 +711,7 @@ namespace KoenZomers.Ring.Api
             for (var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
             {
                 // Request to share the recording
-                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken);
+                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 shareResult = JsonSerializer.Deserialize<SharedRecording>(response);
@@ -702,8 +808,8 @@ namespace KoenZomers.Ring.Api
             var downloadSnapshotUri = new Uri(RingApiBaseUrl, $"snapshots/image/{doorbotId}");
 
             // Request the snapshot
-            var stream = await _httpUtility.DownloadFile(downloadSnapshotUri, AuthenticationToken);
-            return stream;
+            var bytes = await _httpUtility.DownloadFile(downloadSnapshotUri, AuthenticationToken);
+            return new MemoryStream(bytes);
         }
 
         /// <summary>

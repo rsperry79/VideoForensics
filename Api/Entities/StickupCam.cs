@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using System;
+using KoenZomers.Ring.Api.Converters;
 
 namespace KoenZomers.Ring.Api.Entities
 {
@@ -108,8 +109,9 @@ namespace KoenZomers.Ring.Api.Entities
         public decimal? BatteryVoltage2 { get; set; }
 
         [JsonPropertyName("led_status")]
+        [JsonConverter(typeof(FlexibleStringConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public DeviceStatus LedStatus { get; set; }
+        public string LedStatus { get; set; }
 
         [JsonPropertyName("siren_status")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
