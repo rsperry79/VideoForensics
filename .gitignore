@@ -192,3 +192,18 @@ App.config
 /.vs/KoenZomers.Ring/v15/Server/sqlite3
 /.vs/KoenZomers.Ring/DesignTimeBuild
 .vs
+
+# Test and API tester output
+ApiTesterResults*/
+TestResults*/
+
+# Local environment files
+appsettings.local.json
+*.local.json
+
+# Generated code
+Generated/
+
+# IDE extensions
+.vscode/
+*.code-workspace
