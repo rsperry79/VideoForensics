@@ -13,8 +13,7 @@ namespace KoenZomers.Ring.ApiTester
     /// <summary>
     /// Finds credentials to authenticate with, in priority order:
     ///   1. Explicit --username/--password/--refresh-token CLI arguments
-    ///   2. RING_USERNAME/RING_PASSWORD/RING_REFRESH_TOKEN environment variables
-    ///   3. The encrypted auth.json at <see cref="AuthPath"/>, read via <see cref="CredentialStore"/>
+    ///   2. The encrypted auth.json at <see cref="AuthPath"/>, read via <see cref="CredentialStore"/>
     ///      (only decryptable on the same machine/user account that created it) - written by this
     ///      tool's own --auth flow, or by RingVideos
     /// No credential source is ever written to the output directory or the index doc. If none of
@@ -41,18 +40,6 @@ namespace KoenZomers.Ring.ApiTester
             if (!string.IsNullOrWhiteSpace(options.UserName) && !string.IsNullOrWhiteSpace(options.Password))
             {
                 return new ResolvedCredentials(options.UserName, options.Password, null, "cli-argument");
-            }
-
-            var envRefresh = Environment.GetEnvironmentVariable("RING_REFRESH_TOKEN");
-            var envUser = Environment.GetEnvironmentVariable("RING_USERNAME");
-            var envPassword = Environment.GetEnvironmentVariable("RING_PASSWORD");
-            if (!string.IsNullOrWhiteSpace(envRefresh))
-            {
-                return new ResolvedCredentials(envUser, null, envRefresh, "environment-variable");
-            }
-            if (!string.IsNullOrWhiteSpace(envUser) && !string.IsNullOrWhiteSpace(envPassword))
-            {
-                return new ResolvedCredentials(envUser, envPassword, null, "environment-variable");
             }
 
             var saved = CredentialStore.Load(AuthPath);

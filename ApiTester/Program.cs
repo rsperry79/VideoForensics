@@ -166,7 +166,7 @@ namespace KoenZomers.Ring.ApiTester
         {
             Console.Error.WriteLine("Error: no credentials found. Run 'dotnet run -- --auth' to authenticate interactively and");
             Console.Error.WriteLine("save a reusable refresh token (handles two-factor accounts too), or provide");
-            Console.Error.WriteLine("--username/--password, --refresh-token, or RING_USERNAME/RING_PASSWORD/RING_REFRESH_TOKEN.");
+            Console.Error.WriteLine("--username/--password or --refresh-token.");
             Console.Error.WriteLine(ReadmePointer);
         }
 
