@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using KoenZomers.Ring.Api;
+using KoenZomers.Ring.Api.ApiTester;
 
 namespace KoenZomers.Ring.ApiTester
 {
@@ -259,6 +261,29 @@ namespace KoenZomers.Ring.ApiTester
 
                 record.Success = true;
                 Narrate($"   ok ({raw.Sum(r => r.Body?.Length ?? 0)} bytes, {raw.Count} http call(s))");
+
+                // Validate response against declared entity schema
+                if (raw.Count > 0 && raw[0].Body != null && EndpointSchemaMap.TryGetExpectedType(descriptor.Key, out var expectedType) && expectedType != null)
+                {
+                    try
+                    {
+                        var jsonResponse = JsonDocument.Parse(raw[0].Body).RootElement;
+                        var validator = new JsonSchemaValidator();
+                        var issues = validator.ValidateAgainstSchema(jsonResponse, expectedType);
+                        record.SchemaIssues = issues.ConvertAll(i => new SchemaIssueRecord
+                        {
+                            Path = i.Path,
+                            IssueType = i.IssueType,
+                            Expected = i.Expected,
+                            Actual = i.Actual,
+                            Severity = i.Severity
+                        });
+                    }
+                    catch
+                    {
+                        // Schema validation is best-effort; don't fail the test if validation itself fails
+                    }
+                }
             }
             catch (Exception ex)
             {

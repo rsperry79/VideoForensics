@@ -8,8 +8,9 @@ namespace KoenZomers.Ring.Api
 {
     /// <summary>
     /// Unified event feed across a location's devices, as an alternative to per-doorbot
-    /// GetDoorbotsHistory(). Endpoint paths mirror ring-client-api's getCameraEvents()/getEvents()
-    /// - not confirmed against a live capture.
+    /// GetDoorbotsHistory(). Response shape confirmed via a live ApiTester run - see
+    /// LocationEventsResponse.cs for why this returns LocationEvent rather than the
+    /// doorbots/history-shaped DoorbotHistoryEvent it originally, incorrectly, reused.
     /// </summary>
     public partial class Session
     {
@@ -17,7 +18,7 @@ namespace KoenZomers.Ring.Api
         /// Returns recent events across every device at a location.
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve events for</param>
-        public async Task<List<DoorbotHistoryEvent>> GetLocationEvents(Guid locationId)
+        public async Task<List<LocationEvent>> GetLocationEvents(Guid locationId)
         {
             await EnsureSessionValid();
 
@@ -25,7 +26,7 @@ namespace KoenZomers.Ring.Api
             var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
-            return parsed?.Events ?? new List<DoorbotHistoryEvent>();
+            return parsed?.Events ?? new List<LocationEvent>();
         }
 
         /// <summary>
@@ -33,7 +34,7 @@ namespace KoenZomers.Ring.Api
         /// </summary>
         /// <param name="locationId">ID of the location the device belongs to</param>
         /// <param name="doorbotId">ID of the device to retrieve events for</param>
-        public async Task<List<DoorbotHistoryEvent>> GetDeviceEvents(Guid locationId, long doorbotId)
+        public async Task<List<LocationEvent>> GetDeviceEvents(Guid locationId, long doorbotId)
         {
             await EnsureSessionValid();
 
@@ -41,7 +42,7 @@ namespace KoenZomers.Ring.Api
             var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
-            return parsed?.Events ?? new List<DoorbotHistoryEvent>();
+            return parsed?.Events ?? new List<LocationEvent>();
         }
     }
 }

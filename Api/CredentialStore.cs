@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace KoenZomers.Ring.Api
 {
@@ -143,6 +144,54 @@ namespace KoenZomers.Ring.Api
                 cs.FlushFinalBlock();
             }
             return Encoding.UTF8.GetString(ms.ToArray());
+        }
+
+        /// <summary>
+        /// Convenience method to set credentials without callers hand-building RingCredentials.
+        /// </summary>
+        public static void SetCredentials(string path, string userName, string password = null, string refreshToken = null)
+        {
+            Save(path, new RingCredentials { UserName = userName, Password = password, RefreshToken = refreshToken });
+        }
+
+        /// <summary>
+        /// Scans <paramref name="filePath"/> for a top-level clear-text <paramref name="clearFieldName"/>
+        /// property. If found and non-empty, migrates it into the encrypted credential store at
+        /// <paramref name="authPath"/> (merging with whatever's already there) via Save, then removes the
+        /// clear-text property from the source file. Returns true if a migration happened.
+        /// </summary>
+        public static bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password")
+        {
+            if (!File.Exists(filePath))
+                return false;
+
+            try
+            {
+                var json = File.ReadAllText(filePath);
+                var obj = JsonNode.Parse(json) as JsonObject;
+                if (obj == null)
+                    return false;
+
+                if (!obj.TryGetPropertyValue(clearFieldName, out var clearValue) || clearValue == null)
+                    return false;
+
+                var clearText = clearValue.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(clearText))
+                    return false;
+
+                var existing = Load(authPath);
+                existing.Password = clearText;
+                Save(authPath, existing);
+
+                obj.Remove(clearFieldName);
+                File.WriteAllText(filePath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

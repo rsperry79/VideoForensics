@@ -1056,6 +1056,13 @@ namespace KoenZomers.Ring.UnitTest
             Assert.IsNotNull(results[0].CreatedAt);
         }
 
+        // Real shape confirmed via a live ApiTester run: this is NOT the same shape as
+        // doorbots/history's DoorbotHistoryEvent (which the code originally, incorrectly, reused
+        // here) - it has event_id/ding_id/owner_id instead of a single "id", a minimal nested
+        // doorbot object ({id, description, type} - not the full Doorbot entity), and top-level
+        // event_type/state/recorded/recording_status/is_e2ee fields DoorbotHistoryEvent has no
+        // equivalent for. Reusing DoorbotHistoryEvent silently dropped nearly the entire payload
+        // (no exception - System.Text.Json just leaves unmatched properties as their defaults).
         [TestMethod]
         public async Task MockSession_GetLocationEvents_ParsesEvents()
         {
@@ -1064,13 +1071,40 @@ namespace KoenZomers.Ring.UnitTest
             mockHandler.SetupResponse(
                 $"api.ring.com/clients_api/locations/{locationId:D}/events",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""events"": [ { ""id"": 2, ""kind"": ""ding"" } ] }");
+                @"{ ""events"": [ {
+                    ""event_id"": ""evt-abc"",
+                    ""source_id"": ""src-123"",
+                    ""event_type"": ""on_demand"",
+                    ""state"": ""complete"",
+                    ""favorite"": false,
+                    ""recorded"": true,
+                    ""recording_status"": ""ready"",
+                    ""is_e2ee"": false,
+                    ""created_at"": ""2026-08-18T19:18:16Z"",
+                    ""had_subscription"": true,
+                    ""owner_id"": ""168450658"",
+                    ""riid"": ""r-1"",
+                    ""doorbot_id"": 123456,
+                    ""ding_id"": 7664686868948500897,
+                    ""ding_id_str"": ""7664686868948500897"",
+                    ""kind"": ""ding"",
+                    ""doorbot"": { ""id"": 123456, ""description"": ""Front Door"", ""type"": ""lpd_v2"" },
+                    ""cv_properties"": { ""person_detected"": true, ""detection_type"": ""human"" }
+                } ], ""meta"": { ""pagination_key"": ""abc123"" } }");
             await _mockSession!.Authenticate();
 
             var events = await _mockSession!.GetLocationEvents(locationId);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual("ding", events[0].Kind);
+            Assert.AreEqual("evt-abc", events[0].EventId);
+            Assert.AreEqual(7664686868948500897, events[0].DingId);
+            Assert.AreEqual("7664686868948500897", events[0].DingIdString);
+            Assert.AreEqual(123456, events[0].DoorbotId);
+            Assert.AreEqual("168450658", events[0].OwnerId);
+            Assert.IsTrue(events[0].Recorded);
+            Assert.AreEqual("Front Door", events[0].Doorbot.Description);
+            Assert.AreEqual(true, events[0].CvProperties.PersonDetected);
         }
 
         [TestMethod]
@@ -1081,13 +1115,14 @@ namespace KoenZomers.Ring.UnitTest
             mockHandler.SetupResponse(
                 $"api.ring.com/clients_api/locations/{locationId:D}/devices/123456/events",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""events"": [ { ""id"": 3, ""kind"": ""motion"" } ] }");
+                @"{ ""events"": [ { ""event_id"": ""evt-xyz"", ""kind"": ""motion"", ""doorbot_id"": 123456 } ] }");
             await _mockSession!.Authenticate();
 
             var events = await _mockSession!.GetDeviceEvents(locationId, 123456);
 
             Assert.AreEqual(1, events.Count);
-            Assert.AreEqual(3, events[0].Id);
+            Assert.AreEqual("evt-xyz", events[0].EventId);
+            Assert.AreEqual(123456, events[0].DoorbotId);
         }
 
         // --- Phase 10: snapshot extras ---
@@ -1287,6 +1322,12 @@ namespace KoenZomers.Ring.UnitTest
 
         // --- Phase 13: profile, push registration, ringtones, Amazon Key ---
 
+        // Real shape confirmed via a live ApiTester run: the response is wrapped in a top-level
+        // "profile" key ({"profile": {...}}), not the bare object the code originally,
+        // incorrectly, deserialized into directly - which silently produced an all-null/default
+        // Profile every time (no exception, since "profile" just didn't match any Profile
+        // property). phone_number is also a plain JSON string, not the ambiguous "object" the
+        // entity previously declared it as.
         [TestMethod]
         public async Task MockSession_GetProfile_ParsesProfile()
         {
@@ -1294,13 +1335,14 @@ namespace KoenZomers.Ring.UnitTest
             mockHandler.SetupResponse(
                 "api.ring.com/clients_api/profile",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""id"": 42, ""email"": ""me@example.com"" }");
+                @"{ ""profile"": { ""id"": 42, ""email"": ""me@example.com"", ""phone_number"": ""+12065551234"" } }");
             await _mockSession!.Authenticate();
 
             var profile = await _mockSession!.GetProfile();
 
             Assert.AreEqual(42, profile.Id);
             Assert.AreEqual("me@example.com", profile.Email);
+            Assert.AreEqual("+12065551234", profile.PhoneNumber);
         }
 
         [TestMethod]
@@ -1317,6 +1359,11 @@ namespace KoenZomers.Ring.UnitTest
             Assert.AreEqual(System.Net.Http.HttpMethod.Patch, call.Method);
         }
 
+        // Real shape confirmed via a live ApiTester run: the list is under "audios", not
+        // "ringtones" as originally, incorrectly, assumed - so GetRingtones() always silently
+        // returned an empty list. Ids are also non-numeric strings, not the long? the entity
+        // previously declared (which would have thrown a JsonException once the wrapper key was
+        // fixed, since e.g. "chime_default_ding_2" doesn't parse as a number).
         [TestMethod]
         public async Task MockSession_GetRingtones_ParsesRingtones()
         {
@@ -1324,13 +1371,15 @@ namespace KoenZomers.Ring.UnitTest
             mockHandler.SetupResponse(
                 "api.ring.com/clients_api/ringtones",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""ringtones"": [ { ""id"": 1, ""description"": ""Default Ding"" } ] }");
+                @"{ ""audios"": [ { ""id"": ""chime_default_ding_2"", ""description"": ""Default Ding"", ""category"": ""ding"", ""available"": true } ] }");
             await _mockSession!.Authenticate();
 
             var ringtones = await _mockSession!.GetRingtones();
 
             Assert.AreEqual(1, ringtones.Count);
             Assert.AreEqual("Default Ding", ringtones[0].Description);
+            Assert.AreEqual("chime_default_ding_2", ringtones[0].Id);
+            Assert.AreEqual("ding", ringtones[0].Category);
         }
 
         [TestMethod]
@@ -1531,6 +1580,68 @@ namespace KoenZomers.Ring.UnitTest
             await ExpectNotAuthenticated(() => session.GetActiveDings());
             await ExpectNotAuthenticated(() => session.GetLocation(locationId));
             await ExpectNotAuthenticated(() => session.GetLinkedChimeDoorbots(789012));
+        }
+
+        // --- Phase 17: Doorbot location/health field parsing via GetRingDevices() ---
+        //
+        // Previously untested: no fixture exercising latitude/longitude/address/battery_life/health
+        // through GetRingDevices()'s real deserialization path. The existing DevicesWithDoorbot
+        // fixture uses the wrong field names entirely ("battery"/"firmware" instead of
+        // "battery_life"/"firmware_version") and no test ever authenticated before calling
+        // GetRingDevices(), so it always short-circuited on SessionNotAuthenticatedException without
+        // reaching the JSON at all. This exercises the real endpoint URL, authenticates first, and
+        // asserts the actual field values - shape (including battery_percentage as a JSON string)
+        // confirmed via a live ApiTester run.
+
+        [TestMethod]
+        public async Task MockSession_GetRingDevices_ParsesLocationAndHealthFields()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/ring_devices",
+                System.Net.HttpStatusCode.OK,
+                @"{
+                    ""doorbots"": [
+                        {
+                            ""id"": 704352492,
+                            ""description"": ""Front Door"",
+                            ""location_id"": ""684e7cdb-45e1-4b1f-ac6f-e3211592a5ad"",
+                            ""time_zone"": ""America/New_York"",
+                            ""subscribed"": true,
+                            ""subscribed_motions"": true,
+                            ""battery_life"": ""88"",
+                            ""external_connection"": false,
+                            ""firmware_version"": ""1.8.30"",
+                            ""kind"": ""lpd_v2"",
+                            ""latitude"": 40.7128,
+                            ""longitude"": -74.006,
+                            ""address"": ""123 Main St, Anytown, NY 10001"",
+                            ""owned"": true,
+                            ""stolen"": false,
+                            ""health"": { ""connected"": true, ""battery_percentage"": ""88"" }
+                        }
+                    ],
+                    ""authorized_doorbots"": [],
+                    ""stickup_cams"": [],
+                    ""base_stations"": [],
+                    ""chimes"": []
+                }");
+            await _mockSession!.Authenticate();
+
+            var devices = await _mockSession!.GetRingDevices();
+
+            Assert.AreEqual(1, devices.Doorbots.Count);
+            var doorbot = devices.Doorbots[0];
+            Assert.AreEqual(704352492, doorbot.Id);
+            Assert.AreEqual(Guid.Parse("684e7cdb-45e1-4b1f-ac6f-e3211592a5ad"), doorbot.LocationId);
+            Assert.AreEqual(40.7128, doorbot.Latitude);
+            Assert.AreEqual(-74.006, doorbot.Longitude);
+            Assert.AreEqual("123 Main St, Anytown, NY 10001", doorbot.Address);
+            Assert.AreEqual(88, doorbot.BatteryLife);
+            Assert.AreEqual("1.8.30", doorbot.FirmwareVersion);
+            Assert.IsNotNull(doorbot.Health);
+            Assert.AreEqual(true, doorbot.Health.Connected);
+            Assert.AreEqual(88, doorbot.Health.BatteryPercentage);
         }
     }
 }

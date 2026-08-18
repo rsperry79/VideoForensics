@@ -62,6 +62,17 @@ namespace KoenZomers.Ring.ApiTester
         public string? RestoreError { get; set; }
         /// <summary>Set when no original value could be captured, so restore was skipped by design rather than attempted and failed.</summary>
         public string? RestoreSkippedReason { get; set; }
+        /// <summary>Schema validation issues found when comparing the actual API response against the declared entity schema.</summary>
+        public List<SchemaIssueRecord> SchemaIssues { get; set; } = new();
+    }
+
+    internal sealed class SchemaIssueRecord
+    {
+        public string Path { get; set; } = "";
+        public string IssueType { get; set; } = ""; // "TypeMismatch", "MissingInSchema", "UnusedInSchema", "NullabilityMismatch"
+        public string? Expected { get; set; }
+        public string? Actual { get; set; }
+        public string Severity { get; set; } = ""; // "Error", "Warning", "Info"
     }
 
     /// <summary>

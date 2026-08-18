@@ -22,7 +22,11 @@ namespace KoenZomers.Ring.Api
             var uri = new Uri(RingApiBaseUrl, "profile");
             var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            return JsonSerializer.Deserialize<Profile>(response);
+            // Confirmed via a live ApiTester run: the response is wrapped in a top-level "profile"
+            // key. Deserializing straight into Profile (as this originally did) silently produced
+            // an all-null/default object every call, since "profile" doesn't match any Profile
+            // property and System.Text.Json doesn't error on unmatched properties.
+            return JsonSerializer.Deserialize<ProfileResponse>(response)?.Profile;
         }
 
         /// <summary>

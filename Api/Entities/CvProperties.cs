@@ -1,7 +1,22 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace KoenZomers.Ring.Api.Entities
 {
+    /// <summary>
+    /// A single classified detection within a CV-evaluated event, with the timestamps (epoch ms)
+    /// it was confirmed at. Confirmed via a live ApiTester run of video_search/history and
+    /// locations/{id}/events.
+    /// </summary>
+    public class CvDetectionType
+    {
+        [JsonPropertyName("detection_type")]
+        public string DetectionType { get; set; }
+
+        [JsonPropertyName("verified_timestamps")]
+        public List<long> VerifiedTimestamps { get; set; }
+    }
+
     /// <summary>
     /// Computer vision properties returned by the Ring API for a history event.
     /// Indicates whether the Ring backend detected a person (or other classified object) in the recording.
@@ -26,5 +41,12 @@ namespace KoenZomers.Ring.Api.Entities
         /// </summary>
         [JsonPropertyName("detection_type")]
         public string DetectionType { get; set; }
+
+        /// <summary>
+        /// The individual classified detections (each with its own confirmation timestamps) that
+        /// make up this event's overall <see cref="DetectionType"/>.
+        /// </summary>
+        [JsonPropertyName("detection_types")]
+        public List<CvDetectionType> DetectionTypes { get; set; }
     }
 }
