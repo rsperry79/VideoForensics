@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using KoenZomers.Ring.Api.Converters;
 
 namespace KoenZomers.Ring.Api.Entities
 {
@@ -28,9 +29,12 @@ namespace KoenZomers.Ring.Api.Entities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? BatteryPresent { get; set; }
 
+        // Ring returns this as a JSON string (e.g. "100") rather than a number - confirmed via a
+        // live ApiTester run (doorbot-health) after the naive long? deserialization threw.
         [JsonPropertyName("battery_percentage")]
+        [JsonConverter(typeof(BatteryLifeConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public long? BatteryPercentage { get; set; }
+        public int? BatteryPercentage { get; set; }
 
         [JsonPropertyName("battery_percentage_category")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

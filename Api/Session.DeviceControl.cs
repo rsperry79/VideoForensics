@@ -192,5 +192,37 @@ namespace KoenZomers.Ring.Api
             });
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken);
         }
+
+        /// <summary>
+        /// Returns the raw per-device settings object (motion zones, detection toggles, etc.) for a
+        /// device. Shape varies by device type, hence raw JsonElement rather than an invented type -
+        /// see SetMotionDetection/SetMotionZones for the specific sub-shapes this client already
+        /// knows how to write.
+        /// </summary>
+        /// <param name="doorbotId">ID of the device to retrieve settings for</param>
+        public async Task<System.Text.Json.JsonElement> GetDeviceSettings(long doorbotId)
+        {
+            await EnsureSessionValid();
+
+            var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+
+            return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
+        }
+
+        /// <summary>
+        /// Overwrites a chime's settings (e.g. description, assigned ringtones). Caller is
+        /// responsible for constructing a valid settings payload; body shape is not confirmed
+        /// against a live capture.
+        /// </summary>
+        /// <param name="chimeId">ID of the chime to update</param>
+        /// <param name="settingsJson">Raw JSON body describing the settings to apply</param>
+        public async Task UpdateChime(long chimeId, string settingsJson)
+        {
+            await EnsureSessionValid();
+
+            var uri = new Uri(RingApiBaseUrl, $"chimes/{chimeId}");
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, settingsJson, AuthenticationToken);
+        }
     }
 }

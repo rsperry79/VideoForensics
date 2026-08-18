@@ -142,6 +142,138 @@ namespace KoenZomers.Ring.ApiTester
                 Scope = EndpointScope.PerDoorbot,
                 Invoke = (session, target) => session.GetDoorbotSnapshotTimestamp((int)target.DoorbotId!.Value)
             },
+            new()
+            {
+                Key = "doorbot-health",
+                DisplayName = "Doorbot health",
+                Description = "Connectivity/battery telemetry for a single doorbot, fetched standalone rather than from the devices listing.",
+                SessionMethod = "Session.GetDoorbotHealth(doorbotId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/health",
+                Scope = EndpointScope.PerDoorbot,
+                Invoke = (session, target) => session.GetDoorbotHealth(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "chime-health",
+                DisplayName = "Chime health",
+                Description = "Connectivity telemetry for a single chime, fetched standalone rather than from the devices listing.",
+                SessionMethod = "Session.GetChimeHealth(chimeId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}/health",
+                Scope = EndpointScope.PerChime,
+                Invoke = (session, target) => session.GetChimeHealth(target.ChimeId!.Value)
+            },
+            new()
+            {
+                Key = "device-settings",
+                DisplayName = "Device settings",
+                Description = "Raw per-device settings object (motion zones, detection toggles, etc.) for a doorbot.",
+                SessionMethod = "Session.GetDeviceSettings(doorbotId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/devices/v1/devices/{doorbotId}/settings",
+                Scope = EndpointScope.PerDoorbot,
+                Invoke = (session, target) => session.GetDeviceSettings(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "video-search",
+                DisplayName = "Video search",
+                Description = "Date-range-filterable event search for a doorbot (called here with no date bounds - an alternative to doorbot-history).",
+                SessionMethod = "Session.VideoSearch(doorbotId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/video_search/history?doorbot_id={doorbotId}",
+                Scope = EndpointScope.PerDoorbot,
+                Invoke = (session, target) => session.VideoSearch(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "location-events",
+                DisplayName = "Location events",
+                Description = "Unified event feed across every device at a location, as an alternative to doorbot-history.",
+                SessionMethod = "Session.GetLocationEvents(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}/events",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetLocationEvents(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "location-mode-settings",
+                DisplayName = "Location mode settings",
+                Description = "Location Mode configuration (e.g. per-mode alert settings) for a location.",
+                SessionMethod = "Session.GetLocationModeSettings(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetLocationModeSettings(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "location-mode-sharing",
+                DisplayName = "Location mode sharing",
+                Description = "Location Mode sharing configuration for a location.",
+                SessionMethod = "Session.GetLocationModeSharing(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetLocationModeSharing(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "account-monitoring-status",
+                DisplayName = "Alarm monitoring status",
+                Description = "Alarm monitoring account status for a location.",
+                SessionMethod = "Session.GetAccountMonitoringStatus(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetAccountMonitoringStatus(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "location-history",
+                DisplayName = "Location history",
+                Description = "Raw location-wide history entries, distinct from doorbot-history/location-events.",
+                SessionMethod = "Session.GetLocationHistory(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/rs/history?locationId={locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetLocationHistory(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "profile",
+                DisplayName = "Account profile",
+                Description = "Profile of the currently authenticated account.",
+                SessionMethod = "Session.GetProfile()",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/profile",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => session.GetProfile()
+            },
+            new()
+            {
+                Key = "ringtones",
+                DisplayName = "Chime ringtones",
+                Description = "Ringtones available to assign to a chime via update-chime.",
+                SessionMethod = "Session.GetRingtones()",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/ringtones",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => session.GetRingtones()
+            },
+            new()
+            {
+                Key = "amazon-key-locks",
+                DisplayName = "Amazon Key lock associations",
+                Description = "Amazon Key integration's lock associations for this account.",
+                SessionMethod = "Session.FetchAmazonKeyLocks()",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/integrations/amazonkey/v2/devices/lock_associations",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => session.FetchAmazonKeyLocks()
+            },
 
             // ---- Destructive: mutate account/device state. Only run with --destructive. Each
             // one either restores what it changed (PrepareRestore) or documents why it can't
@@ -362,6 +494,172 @@ namespace KoenZomers.Ring.ApiTester
                     ? session.ShareRecording(DingId!)
                     : throw new InvalidOperationException("share-recording requires --ding-id <id>")
             },
+            new()
+            {
+                Key = "subscribe-ding-events",
+                DisplayName = "Subscribe to ding push events",
+                Description = "Subscribes this account to ding push notifications for a doorbot. Idempotent toggle.",
+                SessionMethod = "Session.SubscribeToDingEvents(doorbotId)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/subscribe",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                NoRestoreReason = "not applicable: idempotent toggle - rerun unsubscribe-ding-events if you need to revert.",
+                Invoke = (session, target) => session.SubscribeToDingEvents(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "unsubscribe-ding-events",
+                DisplayName = "Unsubscribe from ding push events",
+                Description = "Unsubscribes this account from ding push notifications for a doorbot. Idempotent toggle.",
+                SessionMethod = "Session.UnsubscribeFromDingEvents(doorbotId)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/unsubscribe",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                NoRestoreReason = "not applicable: idempotent toggle - rerun subscribe-ding-events if you need to revert.",
+                Invoke = (session, target) => session.UnsubscribeFromDingEvents(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "subscribe-motion-events",
+                DisplayName = "Subscribe to motion push events",
+                Description = "Subscribes this account to motion push notifications for a doorbot. Idempotent toggle.",
+                SessionMethod = "Session.SubscribeToMotionEvents(doorbotId)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/motions_subscribe",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                NoRestoreReason = "not applicable: idempotent toggle - rerun unsubscribe-motion-events if you need to revert.",
+                Invoke = (session, target) => session.SubscribeToMotionEvents(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "unsubscribe-motion-events",
+                DisplayName = "Unsubscribe from motion push events",
+                Description = "Unsubscribes this account from motion push notifications for a doorbot. Idempotent toggle.",
+                SessionMethod = "Session.UnsubscribeFromMotionEvents(doorbotId)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}/motions_unsubscribe",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                NoRestoreReason = "not applicable: idempotent toggle - rerun subscribe-motion-events if you need to revert.",
+                Invoke = (session, target) => session.UnsubscribeFromMotionEvents(target.DoorbotId!.Value)
+            },
+            new()
+            {
+                Key = "enable-location-modes",
+                DisplayName = "Enable Location Modes",
+                Description = "Enables Location Modes for a location that doesn't have them set up yet. Requires --destructive.",
+                SessionMethod = "Session.EnableLocationModes(locationId)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings/setup",
+                Scope = EndpointScope.PerLocation,
+                Destructive = true,
+                NoRestoreReason = "not applicable: one-time account setup action, not a toggle to revert - use disable-location-modes deliberately if you need to undo it.",
+                Invoke = (session, target) => session.EnableLocationModes(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "disable-location-modes",
+                DisplayName = "Disable Location Modes",
+                Description = "Would disable Location Modes for a location, discarding its per-mode configuration. Always refuses to run - no safe way to auto-restore what was disabled. Included for completeness/discoverability only.",
+                SessionMethod = "Session.DisableLocationModes(locationId)",
+                HttpMethod = "DELETE",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                Scope = EndpointScope.PerLocation,
+                Destructive = true,
+                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "disable-location-modes is not executable through ApiTester: it would discard the location's entire Location Mode configuration with no way for this tool to safely restore it afterward. Use KoenZomers.Ring.Api directly if you deliberately want this.")
+            },
+            new()
+            {
+                Key = "set-location-mode-settings",
+                DisplayName = "Set Location Mode settings",
+                Description = "Would overwrite a location's Location Mode settings. Requires a full settings payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
+                SessionMethod = "Session.SetLocationModeSettings(locationId, settingsJson)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                Scope = EndpointScope.PerLocation,
+                Destructive = true,
+                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "set-location-mode-settings is not executable through ApiTester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+            },
+            new()
+            {
+                Key = "set-location-mode-sharing",
+                DisplayName = "Set Location Mode sharing",
+                Description = "Would overwrite a location's Location Mode sharing configuration. Requires a full payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
+                SessionMethod = "Session.SetLocationModeSharing(locationId, sharingJson)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                Scope = EndpointScope.PerLocation,
+                Destructive = true,
+                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "set-location-mode-sharing is not executable through ApiTester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+            },
+            new()
+            {
+                Key = "update-chime",
+                DisplayName = "Update chime settings",
+                Description = "Would overwrite a chime's settings. Requires a full settings payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
+                SessionMethod = "Session.UpdateChime(chimeId, settingsJson)",
+                HttpMethod = "PUT",
+                ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}",
+                Scope = EndpointScope.PerChime,
+                Destructive = true,
+                NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
+                Invoke = (_, _) => throw new InvalidOperationException(
+                    "update-chime is not executable through ApiTester: it would overwrite the chime's settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+            },
+            new()
+            {
+                Key = "trigger-alarm",
+                DisplayName = "Trigger monitored-asset alarm",
+                Description = "Sounds a REAL panic/user alarm for a monitored asset. Requires --asset-uuid (discover via account-monitoring-status); skipped if not provided. Audibly/visibly triggers real security response.",
+                SessionMethod = "Session.TriggerAlarm(locationId, assetUuid)",
+                HttpMethod = "POST",
+                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}/assets/{assetUuid}/userAlarm",
+                Scope = EndpointScope.PerLocation,
+                Destructive = true,
+                Physical = true,
+                NoRestoreReason = "not applicable: triggers a momentary alarm event, doesn't change a persisted setting.",
+                Invoke = (session, target) => !string.IsNullOrWhiteSpace(AssetUuid)
+                    ? session.TriggerAlarm(target.LocationId!.Value, AssetUuid!)
+                    : throw new InvalidOperationException("trigger-alarm requires --asset-uuid <uuid>")
+            },
+            new()
+            {
+                Key = "register-push-receiver",
+                DisplayName = "Register push notification receiver",
+                Description = "Registers a push notification token for this account. Requires --push-token; skipped if not provided.",
+                SessionMethod = "Session.RegisterPushReceiver(deviceToken)",
+                HttpMethod = "PATCH",
+                ApiPath = "https://api.ring.com/clients_api/device",
+                Scope = EndpointScope.None,
+                Destructive = true,
+                NoRestoreReason = "not applicable: this client exposes no unregister call, and overwriting with a fresh token on every run is the normal usage pattern rather than a one-off change to revert.",
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(PushToken)
+                    ? session.RegisterPushReceiver(PushToken!)
+                    : throw new InvalidOperationException("register-push-receiver requires --push-token <token>")
+            },
+            new()
+            {
+                Key = "unlock-intercom",
+                DisplayName = "Unlock Intercom",
+                Description = "Unlocks a Ring Intercom device. Triggers a REAL, physical door unlock. Requires --doorbot-id (the Intercom's device id).",
+                SessionMethod = "Session.Unlock(deviceId)",
+                HttpMethod = "PUT",
+                ApiPath = "https://api.ring.com/devices/v1/devices/{deviceId}/device_rpc",
+                Scope = EndpointScope.PerDoorbot,
+                Destructive = true,
+                Physical = true,
+                NoRestoreReason = "not applicable: Ring Intercom auto re-locks after its own timeout; this client exposes no immediate re-lock command to call.",
+                Invoke = (session, target) => session.Unlock(target.DoorbotId!.Value)
+            },
         };
 
         // Ambient parameters threaded in by Program from CLI options before Runner.RunAsync runs -
@@ -375,6 +673,8 @@ namespace KoenZomers.Ring.ApiTester
         public static int DndSeconds { get; set; } = 60;
         public static string? LocationModeValue { get; set; }
         public static string? DingId { get; set; }
+        public static string? AssetUuid { get; set; }
+        public static string? PushToken { get; set; }
 
         // Original-value snapshots for restore. Doorbot settings are populated once by Runner from
         // the raw "devices" response before any destructive call runs; location mode is captured

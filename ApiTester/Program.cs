@@ -51,6 +51,8 @@ namespace KoenZomers.Ring.ApiTester
             EndpointRegistry.DndSeconds = options.DndSeconds;
             EndpointRegistry.LocationModeValue = options.LocationModeValue;
             EndpointRegistry.DingId = options.DingId;
+            EndpointRegistry.AssetUuid = options.AssetUuid;
+            EndpointRegistry.PushToken = options.PushToken;
 
             var credentials = CredentialResolver.Resolve(options);
             if (credentials == null)

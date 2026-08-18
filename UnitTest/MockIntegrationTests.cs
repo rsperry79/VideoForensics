@@ -910,5 +910,514 @@ namespace KoenZomers.Ring.UnitTest
             await ExpectNotAuthenticated(() => session.GetLocationMode(locationId));
             await ExpectNotAuthenticated(() => session.SetLocationMode(locationId, "home"));
         }
+
+        // --- Phase 6: device/chime health ---
+
+        [TestMethod]
+        public async Task MockSession_GetDoorbotHealth_ParsesHealth()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            // Ring returns battery_percentage as a JSON string, confirmed via a live ApiTester run.
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/doorbots/123456/health",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""device_health"": { ""connected"": true, ""battery_percentage"": ""88"" } }");
+            await _mockSession!.Authenticate();
+
+            var health = await _mockSession!.GetDoorbotHealth(123456);
+
+            Assert.IsNotNull(health?.DeviceHealth);
+            Assert.AreEqual(true, health.DeviceHealth.Connected);
+            Assert.AreEqual(88, health.DeviceHealth.BatteryPercentage);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetChimeHealth_ParsesHealth()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/chimes/789012/health",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""device_health"": { ""connected"": false } }");
+            await _mockSession!.Authenticate();
+
+            var health = await _mockSession!.GetChimeHealth(789012);
+
+            Assert.IsNotNull(health?.DeviceHealth);
+            Assert.AreEqual(false, health.DeviceHealth.Connected);
+        }
+
+        // --- Phase 7: ding/motion event push subscriptions ---
+
+        [TestMethod]
+        public async Task MockSession_SubscribeToDingEvents_CallsSubscribeEndpoint()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/subscribe", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.SubscribeToDingEvents(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456/subscribe"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_UnsubscribeFromDingEvents_CallsUnsubscribeEndpoint()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/unsubscribe", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.UnsubscribeFromDingEvents(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456/unsubscribe"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_SubscribeToMotionEvents_CallsMotionsSubscribeEndpoint()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_subscribe", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.SubscribeToMotionEvents(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456/motions_subscribe"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_UnsubscribeFromMotionEvents_CallsMotionsUnsubscribeEndpoint()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_unsubscribe", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.UnsubscribeFromMotionEvents(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456/motions_unsubscribe"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        // --- Phase 8: generic device settings getter ---
+
+        [TestMethod]
+        public async Task MockSession_GetDeviceSettings_CallsSettingsEndpointWithGet()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/devices/v1/devices/123456/settings",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""motion_settings"": { ""motion_detection_enabled"": true } }");
+            await _mockSession!.Authenticate();
+
+            var settings = await _mockSession!.GetDeviceSettings(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("devices/123456/settings"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Get, call.Method);
+            Assert.IsTrue(settings.GetProperty("motion_settings").GetProperty("motion_detection_enabled").GetBoolean());
+        }
+
+        // --- Phase 9: video search & unified location/device event feeds ---
+
+        [TestMethod]
+        public async Task MockSession_VideoSearch_ParsesResults()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/video_search/history",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""video_search"": [ { ""id"": 1, ""kind"": ""motion"" } ] }");
+            await _mockSession!.Authenticate();
+
+            var results = await _mockSession!.VideoSearch(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("video_search/history"));
+            Assert.IsNotNull(call.Url);
+            Assert.IsTrue(call.Url.Contains("doorbot_id=123456"));
+            // Ring returns HTTP 400 without date_from/date_to, confirmed via a live ApiTester run -
+            // so a default range is always sent even when the caller doesn't provide one.
+            Assert.IsTrue(call.Url.Contains("date_from="), $"Expected a default date_from, got: {call.Url}");
+            Assert.IsTrue(call.Url.Contains("date_to="), $"Expected a default date_to, got: {call.Url}");
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual("motion", results[0].Kind);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLocationEvents_ParsesEvents()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/clients_api/locations/{locationId:D}/events",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""events"": [ { ""id"": 2, ""kind"": ""ding"" } ] }");
+            await _mockSession!.Authenticate();
+
+            var events = await _mockSession!.GetLocationEvents(locationId);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual("ding", events[0].Kind);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetDeviceEvents_ParsesEvents()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/clients_api/locations/{locationId:D}/devices/123456/events",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""events"": [ { ""id"": 3, ""kind"": ""motion"" } ] }");
+            await _mockSession!.Authenticate();
+
+            var events = await _mockSession!.GetDeviceEvents(locationId, 123456);
+
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(3, events[0].Id);
+        }
+
+        // --- Phase 10: snapshot extras ---
+
+        [TestMethod]
+        public async Task MockSession_GetSnapshotByUuid_DownloadsBytes()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/snapshots/uuid", System.Net.HttpStatusCode.OK, "fake-image-bytes");
+            await _mockSession!.Authenticate();
+
+            using var stream = await _mockSession!.GetSnapshotByUuid("some-uuid");
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("snapshots/uuid"));
+            Assert.IsNotNull(call.Url);
+            Assert.IsTrue(call.Url.Contains("uuid=some-uuid"));
+            Assert.IsNotNull(stream);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetNextSnapshot_DownloadsFromAppSnapsHost()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("app-snaps.ring.com/snapshots/next/123456", System.Net.HttpStatusCode.OK, "fake-image-bytes");
+            await _mockSession!.Authenticate();
+
+            using var stream = await _mockSession!.GetNextSnapshot(123456);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("snapshots/next/123456"));
+            Assert.IsNotNull(call.Url);
+            Assert.IsTrue(call.Url.Contains("app-snaps.ring.com"));
+            Assert.IsNotNull(stream);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetPeriodicalFootage_ParsesUrl()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/recordings/public/footages/event123",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""url"": ""https://example.com/footage.mp4"" }");
+            await _mockSession!.Authenticate();
+
+            var footage = await _mockSession!.GetPeriodicalFootage("event123");
+
+            Assert.AreEqual("https://example.com/footage.mp4", footage.Url);
+        }
+
+        // --- Phase 11: location mode settings & sharing ---
+
+        [TestMethod]
+        public async Task MockSession_GetLocationModeSettings_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/rs/mode/location/{locationId:D}/settings",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""enabled"": true }");
+            await _mockSession!.Authenticate();
+
+            var settings = await _mockSession!.GetLocationModeSettings(locationId);
+
+            Assert.IsTrue(settings.GetProperty("enabled").GetBoolean());
+        }
+
+        [TestMethod]
+        public async Task MockSession_SetLocationModeSettings_CallsSettingsEndpointWithPost()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.SetLocationModeSettings(locationId, @"{ ""enabled"": false }");
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"mode/location/{locationId:D}/settings"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_EnableLocationModes_CallsSetupEndpointWithPost()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.EnableLocationModes(locationId);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("settings/setup"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_DisableLocationModes_CallsSettingsEndpointWithDelete()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.DisableLocationModes(locationId);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"mode/location/{locationId:D}/settings"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Delete, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLocationModeSharing_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/rs/mode/location/{locationId:D}/sharing",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""shareable"": true }");
+            await _mockSession!.Authenticate();
+
+            var sharing = await _mockSession!.GetLocationModeSharing(locationId);
+
+            Assert.IsTrue(sharing.GetProperty("shareable").GetBoolean());
+        }
+
+        [TestMethod]
+        public async Task MockSession_SetLocationModeSharing_CallsSharingEndpointWithPost()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.SetLocationModeSharing(locationId, @"{ ""shareable"": false }");
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"mode/location/{locationId:D}/sharing"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        // --- Phase 12: alarm monitoring status / trigger / location history ---
+
+        [TestMethod]
+        public async Task MockSession_GetAccountMonitoringStatus_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/rs/monitoring/accounts/{locationId:D}",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""active"": true }");
+            await _mockSession!.Authenticate();
+
+            var status = await _mockSession!.GetAccountMonitoringStatus(locationId);
+
+            Assert.IsTrue(status.GetProperty("active").GetBoolean());
+        }
+
+        [TestMethod]
+        public async Task MockSession_TriggerAlarm_CallsUserAlarmEndpointWithPost()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            var assetUuid = "asset-1";
+            mockHandler.SetupResponse(
+                $"api.ring.com/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
+                System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.TriggerAlarm(locationId, assetUuid);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("userAlarm"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLocationHistory_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                "api.ring.com/rs/history",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""items"": [] }");
+            await _mockSession!.Authenticate();
+
+            var history = await _mockSession!.GetLocationHistory(locationId);
+
+            Assert.IsTrue(history.TryGetProperty("items", out _));
+        }
+
+        // --- Phase 13: profile, push registration, ringtones, Amazon Key ---
+
+        [TestMethod]
+        public async Task MockSession_GetProfile_ParsesProfile()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/profile",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""id"": 42, ""email"": ""me@example.com"" }");
+            await _mockSession!.Authenticate();
+
+            var profile = await _mockSession!.GetProfile();
+
+            Assert.AreEqual(42, profile.Id);
+            Assert.AreEqual("me@example.com", profile.Email);
+        }
+
+        [TestMethod]
+        public async Task MockSession_RegisterPushReceiver_CallsDeviceEndpointWithPatch()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/device", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.RegisterPushReceiver("push-token-abc");
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("clients_api/device"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Patch, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetRingtones_ParsesRingtones()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/ringtones",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ringtones"": [ { ""id"": 1, ""description"": ""Default Ding"" } ] }");
+            await _mockSession!.Authenticate();
+
+            var ringtones = await _mockSession!.GetRingtones();
+
+            Assert.AreEqual(1, ringtones.Count);
+            Assert.AreEqual("Default Ding", ringtones[0].Description);
+        }
+
+        [TestMethod]
+        public async Task MockSession_FetchAmazonKeyLocks_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/integrations/amazonkey/v2/devices/lock_associations",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""locks"": [] }");
+            await _mockSession!.Authenticate();
+
+            var locks = await _mockSession!.FetchAmazonKeyLocks();
+
+            Assert.IsTrue(locks.TryGetProperty("locks", out _));
+        }
+
+        // --- Phase 14: chime update ---
+
+        [TestMethod]
+        public async Task MockSession_UpdateChime_CallsChimesEndpointWithPut()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.UpdateChime(789012, @"{ ""description"": ""Front Chime"" }");
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("chimes/789012"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Put, call.Method);
+        }
+
+        // --- Phase 15: intercom unlock ---
+
+        [TestMethod]
+        public async Task MockSession_UnlockIntercom_CallsDeviceRpcEndpointWithPut()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.Unlock(555);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("device_rpc"));
+            Assert.IsNotNull(call.Url);
+            Assert.AreEqual(System.Net.Http.HttpMethod.Put, call.Method);
+        }
+
+        // --- Phases 6-15: not-authenticated coverage ---
+
+        [TestMethod]
+        public async Task MockSession_Phase6To15Methods_ThrowWhenNotAuthenticated()
+        {
+            var session = _mockHelper!.CreateSessionWithMockHandler();
+            var locationId = Guid.NewGuid();
+
+            async Task ExpectNotAuthenticated(Func<Task> action)
+            {
+                try
+                {
+                    await action();
+                    Assert.Fail("Should have thrown SessionNotAuthenticatedException");
+                }
+                catch (Api.Exceptions.SessionNotAuthenticatedException) { }
+            }
+
+            await ExpectNotAuthenticated(() => session.GetDoorbotHealth(123456));
+            await ExpectNotAuthenticated(() => session.GetChimeHealth(789012));
+            await ExpectNotAuthenticated(() => session.SubscribeToDingEvents(123456));
+            await ExpectNotAuthenticated(() => session.UnsubscribeFromDingEvents(123456));
+            await ExpectNotAuthenticated(() => session.SubscribeToMotionEvents(123456));
+            await ExpectNotAuthenticated(() => session.UnsubscribeFromMotionEvents(123456));
+            await ExpectNotAuthenticated(() => session.GetDeviceSettings(123456));
+            await ExpectNotAuthenticated(() => session.VideoSearch(123456));
+            await ExpectNotAuthenticated(() => session.GetLocationEvents(locationId));
+            await ExpectNotAuthenticated(() => session.GetDeviceEvents(locationId, 123456));
+            await ExpectNotAuthenticated(() => session.GetSnapshotByUuid("uuid"));
+            await ExpectNotAuthenticated(() => session.GetNextSnapshot(123456));
+            await ExpectNotAuthenticated(() => session.GetPeriodicalFootage("event123"));
+            await ExpectNotAuthenticated(() => session.GetLocationModeSettings(locationId));
+            await ExpectNotAuthenticated(() => session.SetLocationModeSettings(locationId, "{}"));
+            await ExpectNotAuthenticated(() => session.EnableLocationModes(locationId));
+            await ExpectNotAuthenticated(() => session.DisableLocationModes(locationId));
+            await ExpectNotAuthenticated(() => session.GetLocationModeSharing(locationId));
+            await ExpectNotAuthenticated(() => session.SetLocationModeSharing(locationId, "{}"));
+            await ExpectNotAuthenticated(() => session.GetAccountMonitoringStatus(locationId));
+            await ExpectNotAuthenticated(() => session.TriggerAlarm(locationId, "asset-1"));
+            await ExpectNotAuthenticated(() => session.GetLocationHistory(locationId));
+            await ExpectNotAuthenticated(() => session.GetProfile());
+            await ExpectNotAuthenticated(() => session.RegisterPushReceiver("token"));
+            await ExpectNotAuthenticated(() => session.GetRingtones());
+            await ExpectNotAuthenticated(() => session.FetchAmazonKeyLocks());
+            await ExpectNotAuthenticated(() => session.UpdateChime(789012, "{}"));
+            await ExpectNotAuthenticated(() => session.Unlock(555));
+        }
     }
 }

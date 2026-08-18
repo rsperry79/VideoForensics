@@ -29,6 +29,8 @@ namespace KoenZomers.Ring.ApiTester
         public int DndSeconds = 60;
         public string? LocationModeValue;
         public string? DingId;
+        public string? AssetUuid;
+        public string? PushToken;
         public string? UserName;
         public string? Password;
         public string? RefreshToken;
@@ -141,6 +143,16 @@ namespace KoenZomers.Ring.ApiTester
                     case "--ding-id":
                         if (!TryTakeValue(args, ref i, arg, out var dingValue, out var dingErr)) return (null, dingErr);
                         o.DingId = dingValue;
+                        break;
+
+                    case "--asset-uuid":
+                        if (!TryTakeValue(args, ref i, arg, out var assetValue, out var assetErr)) return (null, assetErr);
+                        o.AssetUuid = assetValue;
+                        break;
+
+                    case "--push-token":
+                        if (!TryTakeValue(args, ref i, arg, out var pushValue, out var pushErr)) return (null, pushErr);
+                        o.PushToken = pushValue;
                         break;
 
                     case "--username":
@@ -260,6 +272,11 @@ namespace KoenZomers.Ring.ApiTester
                                           No default - this arms/disarms real security state.
           --ding-id <id>                 Required by share-recording: the doorbot history event id
                                           to create a public share link for. No default.
+          --asset-uuid <uuid>             Required by trigger-alarm: the monitored asset to sound a
+                                          real panic alarm for. No default - discover via
+                                          account-monitoring-status.
+          --push-token <token>            Required by register-push-receiver: the push notification
+                                          token to register for this account. No default.
 
         OUTPUT:
           --output-dir <path>       Directory to write index.json and result files into.
