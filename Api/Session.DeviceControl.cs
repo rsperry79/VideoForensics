@@ -224,5 +224,21 @@ namespace KoenZomers.Ring.Api
             var uri = new Uri(RingApiBaseUrl, $"chimes/{chimeId}");
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, settingsJson, AuthenticationToken);
         }
+
+        /// <summary>
+        /// Returns the doorbots linked to (chiming through) a given chime. Endpoint path confirmed
+        /// against python-ring-doorbell's const.py (LINKED_CHIMES_ENDPOINT); response shape not
+        /// confirmed, hence raw JsonElement rather than an invented type.
+        /// </summary>
+        /// <param name="chimeId">ID of the chime to retrieve linked doorbots for</param>
+        public async Task<System.Text.Json.JsonElement> GetLinkedChimeDoorbots(long chimeId)
+        {
+            await EnsureSessionValid();
+
+            var uri = new Uri(RingApiBaseUrl, $"chimes/{chimeId}/linked_doorbots");
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+
+            return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
+        }
     }
 }

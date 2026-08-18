@@ -1031,10 +1031,13 @@ namespace KoenZomers.Ring.UnitTest
         public async Task MockSession_VideoSearch_ParsesResults()
         {
             var mockHandler = _mockHelper!.GetMockHandler();
+            // Shape confirmed against a live account via ApiTester: created_at is epoch
+            // milliseconds (unlike doorbot-history's ISO string), and hq_url/lq_url are direct,
+            // pre-signed download links returned inline.
             mockHandler.SetupResponse(
                 "api.ring.com/clients_api/video_search/history",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""video_search"": [ { ""id"": 1, ""kind"": ""motion"" } ] }");
+                @"{ ""video_search"": [ { ""id"": 1, ""ding_id"": ""abc123"", ""kind"": ""motion"", ""created_at"": 1787074589441, ""duration"": 19, ""hq_url"": ""https://example.com/hq.mp4"", ""lq_url"": ""https://example.com/lq.mp4"" } ] }");
             await _mockSession!.Authenticate();
 
             var results = await _mockSession!.VideoSearch(123456);
@@ -1048,6 +1051,9 @@ namespace KoenZomers.Ring.UnitTest
             Assert.IsTrue(call.Url.Contains("date_to="), $"Expected a default date_to, got: {call.Url}");
             Assert.AreEqual(1, results.Count);
             Assert.AreEqual("motion", results[0].Kind);
+            Assert.AreEqual("https://example.com/hq.mp4", results[0].HqUrl);
+            Assert.AreEqual(19, results[0].Duration);
+            Assert.IsNotNull(results[0].CreatedAt);
         }
 
         [TestMethod]
@@ -1264,10 +1270,12 @@ namespace KoenZomers.Ring.UnitTest
         [TestMethod]
         public async Task MockSession_GetLocationHistory_ReturnsRawJson()
         {
+            // Path corrected in Phase 16 (evm/v2/history/locations, not rs/history) - see
+            // MockSession_GetLocationHistory_UsesEvmPath for the path-specific assertion.
             var mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                "api.ring.com/rs/history",
+                $"api.ring.com/evm/v2/history/locations/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""items"": [] }");
             await _mockSession!.Authenticate();
@@ -1361,8 +1369,10 @@ namespace KoenZomers.Ring.UnitTest
         [TestMethod]
         public async Task MockSession_UnlockIntercom_CallsDeviceRpcEndpointWithPut()
         {
+            // Path corrected in Phase 16 (commands/v1, not devices/v1) - see
+            // MockSession_UnlockIntercom_UsesCommandsV1Path for the path-specific assertion.
             var mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
             await _mockSession!.Authenticate();
 
             await _mockSession!.Unlock(555);
@@ -1418,6 +1428,109 @@ namespace KoenZomers.Ring.UnitTest
             await ExpectNotAuthenticated(() => session.FetchAmazonKeyLocks());
             await ExpectNotAuthenticated(() => session.UpdateChime(789012, "{}"));
             await ExpectNotAuthenticated(() => session.Unlock(555));
+        }
+
+        // --- Phase 16: endpoints confirmed via python-ring-doorbell's const.py (a second GitHub
+        // client library search) ---
+
+        [TestMethod]
+        public async Task MockSession_GetActiveDings_ParsesEvents()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/dings/active",
+                System.Net.HttpStatusCode.OK,
+                @"[ { ""id"": 1, ""kind"": ""motion"" } ]");
+            await _mockSession!.Authenticate();
+
+            var dings = await _mockSession!.GetActiveDings();
+
+            Assert.AreEqual(1, dings.Count);
+            Assert.AreEqual("motion", dings[0].Kind);
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLocation_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/clients_api/locations/{locationId:D}",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""name"": ""Home"" }");
+            await _mockSession!.Authenticate();
+
+            var location = await _mockSession!.GetLocation(locationId);
+
+            Assert.AreEqual("Home", location.GetProperty("name").GetString());
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLinkedChimeDoorbots_ReturnsRawJson()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/clients_api/chimes/789012/linked_doorbots",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""doorbot_ids"": [123456] }");
+            await _mockSession!.Authenticate();
+
+            var linked = await _mockSession!.GetLinkedChimeDoorbots(789012);
+
+            Assert.AreEqual(1, linked.GetProperty("doorbot_ids").GetArrayLength());
+        }
+
+        [TestMethod]
+        public async Task MockSession_GetLocationHistory_UsesEvmPath()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/evm/v2/history/locations/{locationId:D}",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""items"": [] }");
+            await _mockSession!.Authenticate();
+
+            var history = await _mockSession!.GetLocationHistory(locationId);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"evm/v2/history/locations/{locationId:D}"));
+            Assert.IsNotNull(call.Url, "Expected a request to the evm/v2/history/locations endpoint");
+            Assert.IsTrue(history.TryGetProperty("items", out _));
+        }
+
+        [TestMethod]
+        public async Task MockSession_UnlockIntercom_UsesCommandsV1Path()
+        {
+            var mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
+            await _mockSession!.Authenticate();
+
+            await _mockSession!.Unlock(555);
+
+            var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("commands/v1/devices/555/device_rpc"));
+            Assert.IsNotNull(call.Url, "Expected a request to the commands/v1 device_rpc endpoint");
+            Assert.AreEqual(System.Net.Http.HttpMethod.Put, call.Method);
+        }
+
+        [TestMethod]
+        public async Task MockSession_Phase16Methods_ThrowWhenNotAuthenticated()
+        {
+            var session = _mockHelper!.CreateSessionWithMockHandler();
+            var locationId = Guid.NewGuid();
+
+            async Task ExpectNotAuthenticated(Func<Task> action)
+            {
+                try
+                {
+                    await action();
+                    Assert.Fail("Should have thrown SessionNotAuthenticatedException");
+                }
+                catch (Api.Exceptions.SessionNotAuthenticatedException) { }
+            }
+
+            await ExpectNotAuthenticated(() => session.GetActiveDings());
+            await ExpectNotAuthenticated(() => session.GetLocation(locationId));
+            await ExpectNotAuthenticated(() => session.GetLinkedChimeDoorbots(789012));
         }
     }
 }

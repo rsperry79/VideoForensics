@@ -7,10 +7,17 @@ namespace KoenZomers.Ring.Api
     /// <summary>
     /// Ring Intercom door unlock. Triggers a REAL physical door unlock - only call with explicit
     /// user intent. Body shape mirrors ring-client-api's RingIntercom.unlock() (a device_rpc JSON-RPC
-    /// call) - not confirmed against a live capture.
+    /// call). Endpoint base path (commands/v1, not devices/v1) confirmed against
+    /// python-ring-doorbell's const.py (INTERCOM_OPEN_ENDPOINT) after devices/v1/.../device_rpc
+    /// 404'd in a live ApiTester run.
     /// </summary>
     public partial class Session
     {
+        /// <summary>
+        /// Base Uri for Ring's device command API, used for Intercom unlock.
+        /// </summary>
+        public Uri RingCommandsApiBaseUrl => new Uri("https://api.ring.com/commands/v1/");
+
         /// <summary>
         /// Unlocks a Ring Intercom device. This triggers a real, physical door unlock.
         /// </summary>
@@ -19,7 +26,7 @@ namespace KoenZomers.Ring.Api
         {
             await EnsureSessionValid();
 
-            var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{deviceId}/device_rpc");
+            var uri = new Uri(RingCommandsApiBaseUrl, $"devices/{deviceId}/device_rpc");
             var bodyContent = JsonSerializer.Serialize(new
             {
                 command_name = "device_rpc",

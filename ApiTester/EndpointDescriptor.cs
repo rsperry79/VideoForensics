@@ -237,7 +237,7 @@ namespace KoenZomers.Ring.ApiTester
                 Description = "Raw location-wide history entries, distinct from doorbot-history/location-events.",
                 SessionMethod = "Session.GetLocationHistory(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/history?locationId={locationId}",
+                ApiPath = "https://api.ring.com/evm/v2/history/locations/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationHistory(target.LocationId!.Value)
             },
@@ -273,6 +273,39 @@ namespace KoenZomers.Ring.ApiTester
                 ApiPath = "https://api.ring.com/integrations/amazonkey/v2/devices/lock_associations",
                 Scope = EndpointScope.None,
                 Invoke = (session, _) => session.FetchAmazonKeyLocks()
+            },
+            new()
+            {
+                Key = "active-dings",
+                DisplayName = "Active dings",
+                Description = "Dings (doorbell presses/motion events) currently active/in-progress across the account.",
+                SessionMethod = "Session.GetActiveDings()",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/active",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => session.GetActiveDings()
+            },
+            new()
+            {
+                Key = "location-details",
+                DisplayName = "Location details",
+                Description = "Single-location detail lookup under clients_api, distinct from the locations endpoint's devices/v1 listing.",
+                SessionMethod = "Session.GetLocation(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetLocation(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "linked-chime-doorbots",
+                DisplayName = "Linked chime doorbots",
+                Description = "Doorbots linked to (chiming through) a chime.",
+                SessionMethod = "Session.GetLinkedChimeDoorbots(chimeId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}/linked_doorbots",
+                Scope = EndpointScope.PerChime,
+                Invoke = (session, target) => session.GetLinkedChimeDoorbots(target.ChimeId!.Value)
             },
 
             // ---- Destructive: mutate account/device state. Only run with --destructive. Each
@@ -653,7 +686,7 @@ namespace KoenZomers.Ring.ApiTester
                 Description = "Unlocks a Ring Intercom device. Triggers a REAL, physical door unlock. Requires --doorbot-id (the Intercom's device id).",
                 SessionMethod = "Session.Unlock(deviceId)",
                 HttpMethod = "PUT",
-                ApiPath = "https://api.ring.com/devices/v1/devices/{deviceId}/device_rpc",
+                ApiPath = "https://api.ring.com/commands/v1/devices/{deviceId}/device_rpc",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Physical = true,

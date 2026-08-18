@@ -21,7 +21,7 @@ namespace KoenZomers.Ring.Api
         /// <param name="doorbotId">ID of the doorbot to search events for</param>
         /// <param name="dateFrom">Start of the date range (inclusive). Defaults to 30 days before dateTo/now.</param>
         /// <param name="dateTo">End of the date range (inclusive). Defaults to now.</param>
-        public async Task<List<DoorbotHistoryEvent>> VideoSearch(long doorbotId, DateTime? dateFrom = null, DateTime? dateTo = null)
+        public async Task<List<VideoSearchItem>> VideoSearch(long doorbotId, DateTime? dateFrom = null, DateTime? dateTo = null)
         {
             await EnsureSessionValid();
 
@@ -35,7 +35,7 @@ namespace KoenZomers.Ring.Api
             var response = await _httpUtility.GetContents(new Uri(RingApiBaseUrl, query), AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<VideoSearchResponse>(response);
-            return parsed?.VideoSearch ?? new List<DoorbotHistoryEvent>();
+            return parsed?.VideoSearch ?? new List<VideoSearchItem>();
         }
     }
 }

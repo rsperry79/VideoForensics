@@ -17,9 +17,12 @@ namespace KoenZomers.Ring.Api
         public Uri RingMonitoringApiBaseUrl => new Uri("https://api.ring.com/rs/monitoring/accounts/");
 
         /// <summary>
-        /// Base Uri for Ring's "rs" history API (location-wide, distinct from clients_api/doorbots/history).
+        /// Base Uri for Ring's event-manager history API (location-wide, distinct from
+        /// clients_api/doorbots/history). Confirmed against python-ring-doorbell's const.py
+        /// (LOCATIONS_HISTORY_ENDPOINT) after the originally-guessed rs/history?locationId= path
+        /// 404'd in a live ApiTester run.
         /// </summary>
-        public Uri RingRsApiBaseUrl => new Uri("https://api.ring.com/rs/");
+        public Uri RingEvmApiBaseUrl => new Uri("https://api.ring.com/evm/v2/history/locations/");
 
         /// <summary>
         /// Returns the alarm monitoring status for a location's account.
@@ -63,7 +66,7 @@ namespace KoenZomers.Ring.Api
         {
             await EnsureSessionValid();
 
-            var uri = new Uri(RingRsApiBaseUrl, $"history?locationId={locationId:D}");
+            var uri = new Uri(RingEvmApiBaseUrl, $"{locationId:D}");
             var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return JsonDocument.Parse(response).RootElement.Clone();

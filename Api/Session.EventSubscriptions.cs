@@ -5,8 +5,14 @@ namespace KoenZomers.Ring.Api
 {
     /// <summary>
     /// Push-notification subscription toggles for a doorbot's ding and motion events. Endpoint
-    /// paths mirror ring-client-api's subscribeToDingEvents/subscribeToMotionEvents family - not
-    /// confirmed against a live capture.
+    /// paths mirror ring-client-api's subscribeToDingEvents/subscribeToMotionEvents family.
+    /// CONFIRMED VIA LIVE APITESTER RUN: Ring rejects these with HTTP 422 "Client Device required"
+    /// for a session that has never registered a push receiver. Tried adding a device_id to the
+    /// body (matching this session's hardware_id) - made no difference, same error. This strongly
+    /// suggests Ring only accepts a subscribe/unsubscribe call once RegisterPushReceiver() has
+    /// successfully registered a real push token (APNs/FCM) for this session first - which a
+    /// headless/server-side client like this one has no real token to provide. Left unconfirmed
+    /// beyond that; revisit if RegisterPushReceiver() is ever exercised with a genuine token.
     /// </summary>
     public partial class Session
     {
