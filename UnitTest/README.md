@@ -81,16 +81,16 @@ dotnet test "UnitTest/Unit Test.csproj"
    dotnet test "UnitTest/Unit Test.csproj"
    ```
 
-### Option 2: Use SetupTestCredentials Utility
+### Option 2: Use ApiTester's --auth Flow
 
-1. **Run the setup utility:**
+1. **Run the interactive login:**
    ```powershell
-   dotnet run --project SetupTestCredentials -- "your-email@example.com" "your-password"
+   dotnet run --project ApiTester -- --auth
    ```
-   
-   Or (interactive):
+
+   Or non-interactively:
    ```powershell
-   dotnet run --project SetupTestCredentials
+   dotnet run --project ApiTester -- --auth --username "your-email@example.com" --password "your-password"
    ```
 
 2. **Tests automatically use the stored config:**
@@ -283,9 +283,9 @@ dotnet test --logger "console;verbosity=detailed"
 This is expected! The mock tests intentionally test unauthenticated scenarios.
 
 ### Real Tests Show "Inconclusive"
-Credentials are not configured. Run SetupTestCredentials utility:
+Credentials are not configured. Run ApiTester's auth flow:
 ```powershell
-dotnet run --project SetupTestCredentials -- "email@example.com" "password"
+dotnet run --project ApiTester -- --auth --username "email@example.com" --password "password"
 ```
 
 ### Coverage Report Won't Generate
@@ -325,7 +325,7 @@ env:
 
 Then set up credentials before test:
 ```bash
-dotnet run --project SetupTestCredentials -- "$RING_EMAIL" "$RING_PASSWORD"
+dotnet run --project ApiTester -- --auth --username "$RING_EMAIL" --password "$RING_PASSWORD"
 ```
 
 ---
@@ -378,7 +378,7 @@ Built to: bin/Debug/net8.0/ (debug builds for easier debugging)
 3. Run `.\coverage.ps1` to verify coverage improvements
 
 ### For Integration Testing
-1. Run SetupTestCredentials utility
+1. Run ApiTester's --auth flow
 2. Enable real integration tests
 3. Compare real vs mock behavior
 

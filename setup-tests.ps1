@@ -98,9 +98,8 @@ Write-Header "Ring API Test Setup"
 
 # Get current directory
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = Split-Path -Parent $ScriptDir
 $TestProject = Join-Path $ScriptDir "UnitTest\Unit Test.csproj"
-$SetupCredentialsProject = Join-Path $ProjectRoot "SetupTestCredentials\SetupTestCredentials.csproj"
+$ApiTesterProject = Join-Path $ScriptDir "ApiTester\ApiTester.csproj"
 
 # Verify test project exists
 if (-not (Test-Path $TestProject)) {
@@ -149,19 +148,19 @@ if ($BuildOnly) {
 if ($SetupCredentials) {
     Write-Header "Step 2: Setting Up Ring API Credentials"
 
-    if (-not (Test-Path $SetupCredentialsProject)) {
-        Write-Error-Custom "SetupTestCredentials project not found: $SetupCredentialsProject"
+    if (-not (Test-Path $ApiTesterProject)) {
+        Write-Error-Custom "ApiTester project not found: $ApiTesterProject"
         exit 1
     }
 
     # Check if email and password were provided
     if ([string]::IsNullOrWhiteSpace($Email) -or [string]::IsNullOrWhiteSpace($Password)) {
-        Write-Info "Running SetupTestCredentials in interactive mode..."
+        Write-Info "Running ApiTester --auth in interactive mode..."
         Write-Info "Enter your Ring API credentials when prompted"
         Write-Host ""
 
         try {
-            & dotnet run --project $SetupCredentialsProject
+            & dotnet run --project $ApiTesterProject -- --auth
             if ($LASTEXITCODE -ne 0) {
                 Write-Error-Custom "Credentials setup failed"
                 exit 1
@@ -175,7 +174,7 @@ if ($SetupCredentials) {
     else {
         Write-Info "Using provided credentials..."
         try {
-            & dotnet run --project $SetupCredentialsProject -- $Email $Password
+            & dotnet run --project $ApiTesterProject -- --auth --username $Email --password $Password
             if ($LASTEXITCODE -ne 0) {
                 Write-Error-Custom "Credentials setup failed"
                 exit 1
