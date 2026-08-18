@@ -239,7 +239,30 @@ var timestamps = await session.GetDoorbotSnapshotTimestamp(1111111);
 
 ### Unit Tests
 
-Check out the UnitTest project in this solution for full insight in the possibilities and working code samples. If you want to run the Unit Tests, just copy the App.sample.config file in the UnitTest project to App.config and fill in your Ring username and password and you're good to go to run all tests. They will not make any changes to your Ring devices or Ring profile, just retrieve information, so you can run it without any risk. If you're using text message or e-mail message two factor authentication on the Ring account you want to perform the unit tests with, just leave `TwoFactorAuthenticationToken` empty in the config file, run the unit tests, wait for the text or e-mail message to arrive, enter the code from the text or e-mail message in the `TwoFactorAuthenticationToken` appSetting in the config file and run the unit tests again. It should now succeed and update the `RingRefreshToken` appSetting with a valid refresh token it can use on subsequent runs so it no longer needs credentials or two factor authentication to run the unit tests.
+Check out the UnitTest project in this solution for full insight in the possibilities and working code samples. Mock-based tests (`ConverterTests`, `SessionTests`, `MockIntegrationTests`) need no credentials at all. `RealIntegrationTests` hits the live Ring API - see "Authenticating for local tooling" below for how to give it credentials; without them, those tests report `Inconclusive` rather than failing.
+
+Alternatively, App.config still works for RealIntegrationTests: copy App.sample.config to App.config and fill in your Ring username and password. If your account uses two factor authentication, leave `TwoFactorAuthenticationToken` empty, run the tests once to trigger the text/e-mail code, then fill in `TwoFactorAuthenticationToken` and run again - it fills in `RingRefreshToken` for you so subsequent runs don't need credentials or 2FA again.
+
+### Authenticating for local tooling
+
+ApiTester (this repo's non-destructive API smoke-test CLI - see `ApiTester/README.md`) and the `RealIntegrationTests` in UnitTest both authenticate through the same mechanism: `KoenZomers.Ring.Api.CredentialStore`, reading/writing one shared, encrypted credentials file at:
+
+```
+%AppData%\RingVideosData\auth.json
+```
+
+This is deliberately decoupled from RingVideos's own app code - neither ApiTester nor the tests depend on anything in the `RingVideos` project to authenticate. The file is encrypted with a key derived from the current machine and user account, so it's only usable where it was created, and safe to leave in AppData.
+
+**To generate or refresh it**, run ApiTester's interactive login once:
+
+```powershell
+cd external/RingApi/ApiTester
+dotnet run -- --auth
+```
+
+This prompts for your Ring username and password (password input is masked), and if your account requires two-factor authentication, prompts for the code Ring texts/e-mails you and completes the challenge automatically. On success it saves a reusable refresh token to `auth.json`. Every ApiTester run after that, and every `RealIntegrationTests` run, picks it up automatically - no further prompts, no re-entering 2FA codes.
+
+If a run reports "no credentials found" or "requires two-factor authentication", that's this step - run `--auth` and retry. The retry-with-2FA-code mechanics themselves live in `Api/InteractiveAuth.cs` (`KoenZomers.Ring.Api.InteractiveAuth`), independent of any console app, so anything in this repo can reuse them without shelling out to ApiTester.
 
 ## Available via NuGet
 

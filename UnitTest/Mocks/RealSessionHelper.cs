@@ -1,87 +1,81 @@
 using KoenZomers.Ring.Api;
 using System;
 using System.IO;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace KoenZomers.Ring.UnitTest.Mocks
 {
     /// <summary>
-    /// Helper class for creating real Ring API sessions for integration testing.
-    /// Uses the RingVideos application's AppData config for credentials.
+    /// Helper class for creating real Ring API sessions for integration testing. Reads the shared
+    /// credentials file (refresh token, or username/password) via <see cref="CredentialStore"/> -
+    /// the same file ApiTester's `--auth` flow writes to, and that RingVideos may also write to.
+    /// Never performs its own interactive/2FA authentication (tests aren't interactive) - if
+    /// credentials aren't available or don't work, callers get a clear error pointing at how to fix
+    /// it via ApiTester rather than this project's own auth code.
     ///
-    /// The RingVideos app stores encrypted credentials at:
-    /// %APPDATA%/RingVideosData/RingVideosConfig.json
-    ///
-    /// To use:
-    /// 1. Run RingVideos app and enter your Ring API credentials
-    /// 2. Credentials are automatically saved in AppData (encrypted)
-    /// 3. Tests will automatically use these credentials: var session = await RealSessionHelper.CreateAuthenticatedSessionAsync()
-    /// 4. Run tests with real API
+    /// To populate the credentials file:
+    ///   cd external/RingApi/ApiTester
+    ///   dotnet run -- --auth
+    /// See external/RingApi/README.md ("Authenticating for local tooling") for details.
     /// </summary>
     public class RealSessionHelper
     {
-        /// <summary>
-        /// RingVideos app config structure (mirrors RingVideos.Models.Config)
-        /// </summary>
-        private class RingVideosConfig
-        {
-            public Authentication? Authentication { get; set; }
-        }
-
-        /// <summary>
-        /// Authentication model (mirrors RingVideos.Models.Authentication)
-        /// </summary>
-        private class Authentication
-        {
-            public string? UserName { get; set; }
-            public string? Password { get; set; }
-            public string? RefreshToken { get; set; }
-            public string? EncryptionIV { get; set; }
-        }
-
         private static readonly string ConfigPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "RingVideosData",
-            "RingVideosConfig.json"
+            "auth.json"
         );
 
+        private const string SetupPointer =
+            "Run 'dotnet run -- --auth' from external/RingApi/ApiTester to authenticate (handles two-factor " +
+            "accounts too) and save a reusable refresh token. See external/RingApi/README.md " +
+            "(\"Authenticating for local tooling\") for details.";
+
         /// <summary>
-        /// Creates and authenticates a session using credentials from RingVideos AppData config.
-        /// Throws InvalidOperationException if credentials not found.
+        /// Creates and authenticates a session using the shared credentials file, preferring a
+        /// saved refresh token over username/password (matches ApiTester's own priority).
+        /// Throws InvalidOperationException, with setup instructions, if credentials are missing,
+        /// invalid, or the account requires an interactive two-factor challenge this helper cannot
+        /// complete.
         /// </summary>
         public static async Task<Api.Session> CreateAuthenticatedSessionAsync()
         {
             var auth = LoadAuthenticationFromAppData();
-            if (auth?.UserName == null || auth.Password == null)
+            if (auth == null)
             {
                 throw new InvalidOperationException(
-                    $"Ring API credentials not found in RingVideos config. " +
-                    $"Run the RingVideos application first and enter your Ring API credentials.\n" +
-                    $"Config location: {ConfigPath}\n\n" +
-                    GetSetupInstructions()
-                );
+                    $"Ring API credentials not found at {ConfigPath}.\n{SetupPointer}");
             }
-
-            var session = new Api.Session(auth.UserName, auth.Password);
 
             try
             {
+                if (!string.IsNullOrEmpty(auth.RefreshToken))
+                {
+                    return await Api.Session.GetSessionByRefreshToken(auth.RefreshToken);
+                }
+
+                var session = new Api.Session(auth.UserName, auth.Password);
                 await session.Authenticate();
                 return session;
+            }
+            catch (Api.Exceptions.TwoFactorAuthenticationRequiredException)
+            {
+                throw new InvalidOperationException(
+                    $"The saved credentials require two-factor authentication, which this test helper cannot complete " +
+                    $"interactively.\n{SetupPointer}");
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to authenticate with Ring API using RingVideos app credentials. " +
-                    $"Verify your Ring API email/password are correct in the app. Error: {ex.Message}", ex
-                );
+                    $"Failed to authenticate with the Ring API using the saved credentials at {ConfigPath}. " +
+                    $"They may be stale or invalid.\n{SetupPointer}\nUnderlying error: {ex.Message}", ex);
             }
         }
 
         /// <summary>
-        /// Creates a session without authenticating (for testing session creation only).
-        /// Uses credentials from RingVideos AppData config but doesn't call Authenticate().
+        /// Creates a session without authenticating (for testing session creation only). Requires
+        /// username/password in the saved credentials (a refresh-token-only credential set has no
+        /// password to construct an unauthenticated Session with).
         /// </summary>
         public static Api.Session CreateSessionWithoutAuth()
         {
@@ -89,76 +83,33 @@ namespace KoenZomers.Ring.UnitTest.Mocks
             if (auth?.UserName == null || auth.Password == null)
             {
                 throw new InvalidOperationException(
-                    $"Ring API credentials not found in RingVideos config. " +
-                    $"Run the RingVideos application first and enter your Ring API credentials."
-                );
+                    $"Ring API username/password not found at {ConfigPath}.\n{SetupPointer}");
             }
 
             return new Api.Session(auth.UserName, auth.Password);
         }
 
         /// <summary>
-        /// Checks if credentials are available for real integration testing.
+        /// Checks if credentials (a refresh token, or username/password) are available for real
+        /// integration testing.
         /// </summary>
-        public static bool CredentialsAvailable()
+        public static bool CredentialsAvailable() => LoadAuthenticationFromAppData() != null;
+
+        /// <summary>
+        /// Loads credentials from the shared credentials file, or null if none usable are present.
+        /// </summary>
+        private static RingCredentials? LoadAuthenticationFromAppData()
         {
-            try
-            {
-                var auth = LoadAuthenticationFromAppData();
-                return !string.IsNullOrEmpty(auth?.UserName) && !string.IsNullOrEmpty(auth?.Password);
-            }
-            catch
-            {
-                return false;
-            }
+            var creds = CredentialStore.Load(ConfigPath);
+            var hasRefreshToken = !string.IsNullOrEmpty(creds.RefreshToken);
+            var hasUserNameAndPassword = !string.IsNullOrEmpty(creds.UserName) && !string.IsNullOrEmpty(creds.Password);
+            return hasRefreshToken || hasUserNameAndPassword ? creds : null;
         }
 
         /// <summary>
-        /// Loads authentication from RingVideos AppData config
+        /// Gets a message explaining how to setup credentials, for tests that want to surface it directly.
         /// </summary>
-        private static Authentication? LoadAuthenticationFromAppData()
-        {
-            try
-            {
-                if (!File.Exists(ConfigPath))
-                {
-                    return null;
-                }
-
-                var json = File.ReadAllText(ConfigPath);
-                var config = JsonSerializer.Deserialize<RingVideosConfig>(json);
-                return config?.Authentication;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets a message explaining how to setup credentials
-        /// </summary>
-        public static string GetSetupInstructions()
-        {
-            return $@"
-To enable real integration tests:
-
-1. Run the RingVideos application:
-   dotnet run --project RingVideos/RingVideos.csproj
-
-2. Enter your Ring API email and password when prompted
-   The app will save encrypted credentials to AppData
-
-3. Credentials are automatically stored at:
-   {ConfigPath}
-
-4. Real integration tests will then use these credentials:
-   var session = await RealSessionHelper.CreateAuthenticatedSessionAsync();
-   var devices = await session.GetRingDevices();
-
-The Ring API credentials are encrypted and tied to this machine.
-They are safe to store in AppData.
-";
-        }
+        public static string GetSetupInstructions() =>
+            $"Ring API credentials not found or not usable at {ConfigPath}.\n{SetupPointer}";
     }
 }

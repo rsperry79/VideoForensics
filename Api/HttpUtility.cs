@@ -351,10 +351,10 @@ namespace KoenZomers.Ring.Api
         /// </summary>
         /// <param name="url">Url of the request to make</param>
         /// <param name="httpMethod">The HTTP method to use to call the provided Url</param>
-        /// <param name="expectedStatusCode">The expected HTTP status code to be replied by the Ring API. An exception will be thrown if the expectation was wrong. Leave NULL to not set an expectation.</param>
+        /// <param name="expectedStatusCode">The expected HTTP status code to be replied by the Ring API. An exception will be thrown if the expectation was wrong. Leave NULL to just require any success (2xx) status rather than an exact match.</param>
         /// <param name="bodyContent">Content to send along with the request in the body. Leave NULL to not send along any content.</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
-        /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the actual HTTP response is different from what was expected</exception>
+        /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the actual HTTP response is different from what was expected (or, with no specific expectation, wasn't a success)</exception>
         public async Task SendRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, HttpStatusCode? expectedStatusCode, string bodyContent = null, string bearerToken = null)
         {
             using var request = new HttpRequestMessage(httpMethod, url);
@@ -373,10 +373,31 @@ namespace KoenZomers.Ring.Api
             // Send the HTTP request
             var response = await _httpClient.SendAsync(request);
 
-            // Validate the resulting HTTP status against the expected status
-            if (expectedStatusCode.HasValue && response.StatusCode != expectedStatusCode.Value)
+            // Read the body up front (even on error responses) so it can be captured for diagnostics
+            // before we potentially throw below. This is the request-body counterpart of the
+            // response-body captured by GetContents/SendRequest - previously this method (used by
+            // every device-control/setter call: SetLight, SetSiren, SetVolume, SetMotionZones,
+            // SetGroupLights, SetLocationMode, UpdateSnapshot, etc.) never surfaced anything through
+            // ApiRawLogger, leaving a large blind spot in the raw traffic log.
+            var responseFromServer = await response.Content.ReadAsStringAsync();
+            ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode,
+                bodyContent == null ? responseFromServer : $"REQUEST: {bodyContent}\nRESPONSE: {responseFromServer}");
+
+            // Validate the resulting HTTP status against the expected status. A caller that didn't
+            // provide one still gets checked against "any success" - every call site using this
+            // method (SetLight, SetSiren, SetVolume, SetMotionDetection, SetChimeType,
+            // SetDoNotDisturb, SetNightMode, SetLocationMode) used to pass NULL and get no
+            // validation at all, silently treating a 404/422/500 error response as success.
+            if (expectedStatusCode.HasValue)
             {
-                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode, expectedStatusCode.Value);
+                if (response.StatusCode != expectedStatusCode.Value)
+                {
+                    throw new Exceptions.UnexpectedOutcomeException(response.StatusCode, expectedStatusCode.Value);
+                }
+            }
+            else if (!response.IsSuccessStatusCode)
+            {
+                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode);
             }
         }
 
