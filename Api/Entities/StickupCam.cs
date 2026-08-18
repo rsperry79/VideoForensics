@@ -120,5 +120,9 @@ namespace KoenZomers.Ring.Api.Entities
         [JsonPropertyName("night_mode")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? NightMode { get; set; }
+
+        [JsonPropertyName("health")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public DeviceHealth Health { get; set; }
     }
 }

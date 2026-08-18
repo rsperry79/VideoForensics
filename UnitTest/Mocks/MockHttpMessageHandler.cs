@@ -13,6 +13,12 @@ namespace KoenZomers.Ring.UnitTest.Mocks
     {
         private readonly Dictionary<string, (HttpStatusCode statusCode, string content)> _responses = new();
 
+        /// <summary>
+        /// Records every request made through this handler (method + full url) so tests can assert
+        /// which endpoint and HTTP verb a Session method actually called.
+        /// </summary>
+        public List<(HttpMethod Method, string Url)> RequestLog { get; } = new();
+
         public MockHttpMessageHandler()
         {
             // Setup default mock responses for authentication
@@ -91,6 +97,7 @@ namespace KoenZomers.Ring.UnitTest.Mocks
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var requestUrl = request.RequestUri?.ToString().ToLower() ?? string.Empty;
+            RequestLog.Add((request.Method, request.RequestUri?.ToString() ?? string.Empty));
 
             // Find matching response
             var matchingKey = _responses.Keys.FirstOrDefault(k => requestUrl.Contains(k.Replace("https://", "").Replace("http://", "")));

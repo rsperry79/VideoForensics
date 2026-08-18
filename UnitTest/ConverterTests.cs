@@ -15,7 +15,7 @@ namespace KoenZomers.Ring.UnitTest
         [TestInitialize]
         public void Setup()
         {
-            _options = new JsonSerializerOptions();
+            _options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _options.Converters.Add(new FlexibleStringConverter());
         }
 
@@ -74,7 +74,7 @@ namespace KoenZomers.Ring.UnitTest
         [TestInitialize]
         public void Setup()
         {
-            _options = new JsonSerializerOptions();
+            _options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _options.Converters.Add(new BooleanConverter());
         }
 

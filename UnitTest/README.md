@@ -103,7 +103,7 @@ dotnet test "UnitTest/Unit Test.csproj"
 
 Credentials are stored at:
 ```
-%APPDATA%/RingVideosData/RingVideosConfig.json
+%APPDATA%/RingVideosData/auth.json
 ```
 
 **Security**:

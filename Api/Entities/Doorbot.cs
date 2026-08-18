@@ -67,5 +67,9 @@ namespace KoenZomers.Ring.Api.Entities
 
         [JsonPropertyName("owner")]
         public Owner Owner { get; set; }
+
+        [JsonPropertyName("health")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public DeviceHealth Health { get; set; }
     }
 }

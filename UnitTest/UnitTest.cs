@@ -6,17 +6,38 @@ namespace KoenZomers.Ring.UnitTest
     public class UnitTest
     {
         /// <summary>
+        /// Credentials auto-discovered from the RingVideos app's saved config (if App.config doesn't
+        /// already provide a refresh token or username/password of its own).
+        /// </summary>
+        private static readonly Lazy<(string? UserName, string? Password, string? RefreshToken)> AutoDiscoveredCredentials = new(() =>
+        {
+            var hasAppConfigCredentials = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingRefreshToken"])
+                || (!string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"]) && !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"]));
+
+            if (!hasAppConfigCredentials && RingVideosCredentialLocator.TryLoad(out var userName, out var password, out var refreshToken))
+            {
+                return (userName, password, refreshToken);
+            }
+
+            return (null, null, null);
+        });
+
+        /// <summary>
         /// Username to use to connect to the Ring API
         /// </summary>
 #pragma warning disable CS8603 // Possible null reference return.
-        public static string Username => ConfigurationManager.AppSettings["RingUsername"];
+        public static string Username => string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"])
+            ? AutoDiscoveredCredentials.Value.UserName
+            : ConfigurationManager.AppSettings["RingUsername"];
 #pragma warning restore CS8603 // Possible null reference return.
 
         /// <summary>
         /// Password to use to connect to the Ring API
         /// </summary>
 #pragma warning disable CS8603 // Possible null reference return.
-        public static string Password => ConfigurationManager.AppSettings["RingPassword"];
+        public static string Password => string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"])
+            ? AutoDiscoveredCredentials.Value.Password
+            : ConfigurationManager.AppSettings["RingPassword"];
 #pragma warning restore CS8603 // Possible null reference return.
 
         /// <summary>
@@ -48,7 +69,11 @@ namespace KoenZomers.Ring.UnitTest
         public static string RefreshToken
         {
 #pragma warning disable CS8603 // Possible null reference return.
-            get { return ConfigurationManager.AppSettings["RingRefreshToken"]; }
+            get
+            {
+                var configured = ConfigurationManager.AppSettings["RingRefreshToken"];
+                return string.IsNullOrEmpty(configured) ? AutoDiscoveredCredentials.Value.RefreshToken : configured;
+            }
 #pragma warning restore CS8603 // Possible null reference return.
             set
             {

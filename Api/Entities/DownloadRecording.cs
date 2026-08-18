@@ -12,5 +12,11 @@ namespace KoenZomers.Ring.Api.Entities
         /// </summary>
         [JsonPropertyName("url")]
         public string Url{ get; set; }
+
+        /// <summary>
+        /// The size of the recording in bytes, if provided by the Ring service.
+        /// </summary>
+        [JsonPropertyName("size")]
+        public long? Size { get; set; }
     }
 }

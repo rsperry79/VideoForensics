@@ -11,7 +11,7 @@ using System.Reflection.Metadata.Ecma335;
 
 namespace KoenZomers.Ring.Api
 {
-    public class Session
+    public partial class Session
     {
         #region Properties
 
@@ -637,6 +637,47 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task GetDoorbotHistoryRecording(string dingId, string saveAs)
         {
+            var downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
+            await GetDoorbotHistoryRecording(downloadResult, saveAs);
+        }
+
+        /// <summary>
+        /// Requests the download URL (and any metadata, such as file size, the Ring service provides
+        /// alongside it) for the recording of the provided doorbot history event, without downloading
+        /// the file itself. Callers can use this to decide whether the file is worth downloading (e.g.
+        /// comparing against an already-downloaded file) before spending bandwidth on the actual bytes.
+        /// </summary>
+        /// <param name="doorbotHistoryEvent">The doorbot history event to retrieve the recording info for</param>
+        /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
+        /// <exception cref="Exceptions.DownloadFailedException">Thrown when a download URL could not be created.</exception>
+        /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
+        /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
+        /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
+        /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
+        /// <exception cref="ArgumentNullException">Thrown when no historyEvent provided or one provided without an Id</exception>
+        public async Task<Entities.DownloadRecording> GetDoorbotHistoryRecordingInfo(DoorbotHistoryEvent doorbotHistoryEvent)
+        {
+            if (doorbotHistoryEvent == null || !doorbotHistoryEvent.Id.HasValue)
+            {
+                throw new ArgumentNullException(nameof(doorbotHistoryEvent));
+            }
+
+            return await GetDoorbotHistoryRecordingInfo(doorbotHistoryEvent.Id.Value.ToString());
+        }
+
+        /// <summary>
+        /// Requests the download URL (and any metadata, such as file size, the Ring service provides
+        /// alongside it) for the recording of the provided Ding Id, without downloading the file itself.
+        /// </summary>
+        /// <param name="dingId">Id of the doorbot history event to retrieve the recording info for</param>
+        /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
+        /// <exception cref="Exceptions.DownloadFailedException">Thrown when a download URL could not be created.</exception>
+        /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
+        /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
+        /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
+        /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
+        public async Task<Entities.DownloadRecording> GetDoorbotHistoryRecordingInfo(string dingId)
+        {
             await EnsureSessionValid();
 
             // Construct the URL where to request downloading of a recording
@@ -663,9 +704,26 @@ namespace KoenZomers.Ring.Api
             }
 
             // Ensure we ended with a valid URL to download the recording from
-            if (downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out Uri downloadUri))
+            if (downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out _))
             {
                 throw new Exceptions.DownloadFailedException(downloadResult?.Url ?? "(no URL was created)");
+            }
+
+            return downloadResult;
+        }
+
+        /// <summary>
+        /// Downloads the recording bytes from a previously-obtained <see cref="Entities.DownloadRecording"/>
+        /// (see <see cref="GetDoorbotHistoryRecordingInfo(string)"/>) and saves them to the provided location.
+        /// </summary>
+        /// <param name="downloadInfo">The download info (URL, and any metadata) previously obtained for this recording</param>
+        /// <param name="saveAs">Full path including the filename where to save the recording</param>
+        /// <exception cref="Exceptions.DownloadFailedException">Thrown when the download info does not contain a valid URL.</exception>
+        public async Task GetDoorbotHistoryRecording(Entities.DownloadRecording downloadInfo, string saveAs)
+        {
+            if (downloadInfo == null || string.IsNullOrWhiteSpace(downloadInfo.Url) || !Uri.TryCreate(downloadInfo.Url, UriKind.Absolute, out Uri downloadUri))
+            {
+                throw new Exceptions.DownloadFailedException(downloadInfo?.Url ?? "(no URL was created)");
             }
 
             // Request the file download from the returned URI and save to file
