@@ -41,6 +41,14 @@ namespace KoenZomers.Ring.Api.Entities
         [JsonPropertyName("kind")]
         public string Kind { get; set; }
 
+        /// <summary>
+        /// Device type string (e.g. "doorbot", "stickupcam", "chime").
+        /// This appears in video search results and other responses where kind is also present.
+        /// </summary>
+        [JsonPropertyName("type")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Type { get; set; }
+
         [JsonPropertyName("latitude")]
         public double? Latitude { get; set; }
 
