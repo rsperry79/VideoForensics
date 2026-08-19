@@ -878,7 +878,7 @@ namespace KoenZomers.Ring.Api
                 LogEventJson(ding, date, time);
 
                 string msg = $"{index.ToString().PadLeft(3, '0')}) {locationName}/{ding.Doorbot.Description}/{shortFileName} | {ding.CreatedAtDateTime.Value.ToLocalTime().ToString("MM/dd/yyyy hh:mm:ss tt")} | {ding.Kind} :: ";
-                reporter.UpdateItem(item, msg);
+                reporter.WriteItem(item, msg);
                 reporter.UpdateItem(item, "Downloading");
 
                 int attempt = 1;

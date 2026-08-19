@@ -17,6 +17,9 @@ namespace KoenZomers.Ring.Api
 
         /// <summary>Reserves a persistent row for one in-flight item (e.g. a download) and returns an opaque handle for it.</summary>
         object BeginItem(string initialMessage);
+        /// <summary>Sets the item's prefix/label text (e.g. filename), distinct from its status - see <see cref="UpdateItem"/>.</summary>
+        void WriteItem(object item, string message);
+        /// <summary>Sets the item's status, shown after its prefix/label text set via <see cref="WriteItem"/>.</summary>
         void UpdateItem(object item, string message);
         void CompleteItem(object item, string message);
         void ErrorItem(object item, string message);
