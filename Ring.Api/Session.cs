@@ -92,6 +92,12 @@ namespace KoenZomers.Ring.Api
         /// </summary>
         private readonly HttpUtility _httpUtility;
 
+        /// <summary>
+        /// Downloads recording bytes from an already-resolved URL. Doesn't need authentication -
+        /// recording URLs from GetDoorbotHistoryRecordingInfo are pre-signed.
+        /// </summary>
+        private readonly IVideoDownloader _videoDownloader;
+
         #endregion
 
         #region Constructors
@@ -102,20 +108,24 @@ namespace KoenZomers.Ring.Api
         /// <param name="username">Username for the Ring account</param>
         /// <param name="password">Password for the Ring account</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
-        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null)
+        /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
+        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
         {
             Username = username;
             Password = password;
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
+            _videoDownloader = videoDownloader ?? new VideoDownloader();
         }
 
         /// <summary>
         /// Initiates a new session without username/password. Only to be used with the static method to create a session based on a RefreshToken.
         /// </summary>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
-        private Session(System.Net.Http.HttpMessageHandler messageHandler = null)
+        /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
+        private Session(System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
         {
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
+            _videoDownloader = videoDownloader ?? new VideoDownloader();
         }
 
         #endregion
@@ -565,40 +575,8 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task<Stream> GetDoorbotHistoryRecording(string dingId)
         {
-            await EnsureSessionValid();
-
-            // Construct the URL where to request downloading of a recording
-            var downloadRequestUri = new Uri(BaseUrl, $"dings/{dingId}/share/download?disable_redirect=true");
-
-            Entities.DownloadRecording downloadResult = null;
-            for (var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
-            {
-                // Request to download the recording
-                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
-
-                // Parse the result
-                downloadResult = JsonSerializer.Deserialize<DownloadRecording>(response);
-
-                // If the Ring API returns an empty URL property, it means its still preparing the download on the server side. Just keep requesting the recording until it returns an URL.
-                if (!string.IsNullOrWhiteSpace(downloadResult.Url))
-                {
-                    // URL returned is not empty, start the download from the returned URL
-                    break;
-                }
-
-                // Wait two seconds before requesting the recording again
-                await Task.Delay(TimeSpan.FromSeconds(2));
-            }
-
-            // Ensure we ended with a valid URL to download the recording from
-            if (downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out Uri downloadUri))
-            {
-                throw new Exceptions.DownloadFailedException(downloadResult?.Url ?? "(no URL was created)");
-            }
-
-            // Request the file download from the returned URI
-            var bytes = await _httpUtility.DownloadFile(downloadUri);
-            return new MemoryStream(bytes);
+            var downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
+            return await _videoDownloader.OpenStreamAsync(downloadResult.Url);
         }
 
 
@@ -721,14 +699,12 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.DownloadFailedException">Thrown when the download info does not contain a valid URL.</exception>
         public async Task GetDoorbotHistoryRecording(Entities.DownloadRecording downloadInfo, string saveAs)
         {
-            if (downloadInfo == null || string.IsNullOrWhiteSpace(downloadInfo.Url) || !Uri.TryCreate(downloadInfo.Url, UriKind.Absolute, out Uri downloadUri))
+            if (downloadInfo == null || string.IsNullOrWhiteSpace(downloadInfo.Url) || !Uri.TryCreate(downloadInfo.Url, UriKind.Absolute, out _))
             {
                 throw new Exceptions.DownloadFailedException(downloadInfo?.Url ?? "(no URL was created)");
             }
 
-            // Request the file download from the returned URI and save to file
-            var bytes = await _httpUtility.DownloadFile(downloadUri);
-            await File.WriteAllBytesAsync(saveAs, bytes);
+            await _videoDownloader.DownloadToFileAsync(downloadInfo.Url, saveAs);
         }
 
         /// <summary>
