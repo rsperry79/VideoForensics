@@ -312,7 +312,7 @@ namespace KoenZomers.Ring.Api
             }
         }
 
-        internal async Task<Session> Authenticate()
+        public async Task<Session> Authenticate()
         {
             Session session = null;
             try
@@ -377,7 +377,7 @@ namespace KoenZomers.Ring.Api
             return session;
         }
 
-        internal async Task<int> Run(CancellationToken ct)
+        public async Task<int> Run(CancellationToken ct)
         {
             try
             {
@@ -763,7 +763,7 @@ namespace KoenZomers.Ring.Api
             }
         }
 
-        internal async Task<bool> DownloadSnapshots(Filter filter)
+        public async Task<bool> DownloadSnapshots(Filter filter)
         {
             var expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
             DateTime est = DateTime.Now;
@@ -1286,7 +1286,7 @@ namespace KoenZomers.Ring.Api
             return existing;
         }
 
-        internal async Task<DeviceList> GetDevicesList(string username = "", string password = "")
+        public async Task<DeviceList> GetDevicesList(string username = "", string password = "")
         {
             if (this.ringSession == null)
             {
