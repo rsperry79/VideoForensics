@@ -8,16 +8,6 @@ using System.Text.Json.Nodes;
 namespace KoenZomers.Ring.Api
 {
     /// <summary>
-    /// Plaintext Ring account credentials, as loaded from or about to be saved to disk via <see cref="CredentialStore"/>.
-    /// </summary>
-    public class RingCredentials
-    {
-        public string UserName { get; set; }
-        public string Password { get; set; }
-        public string RefreshToken { get; set; }
-    }
-
-    /// <summary>
     /// On-disk (encrypted) representation of <see cref="RingCredentials"/>.
     /// </summary>
     internal class StoredCredentials
@@ -28,13 +18,8 @@ namespace KoenZomers.Ring.Api
         public string EncryptionIV { get; set; }
     }
 
-    /// <summary>
-    /// Reads and writes Ring account credentials (username, password, refresh token) to a JSON file
-    /// of the caller's choosing, encrypted with a key derived from the current machine and user
-    /// account so the file is only readable on the machine/account that wrote it. Callers only need
-    /// to supply a file path; this class owns the storage format and encryption.
-    /// </summary>
-    public static class CredentialStore
+    /// <inheritdoc cref="ICredentialStore"/>
+    public class CredentialStore : ICredentialStore
     {
         private const string KeySuffix = "453nfawehfaypg94#$#@%34wghvoawe[cwe45a3wtg";
         private const string Salt = "$2a$04$qdxi1jNcjqWBlsviWGilx.Xxw0oMm0gZYx8ZsLq5ntsy5s4GFq3kq";
@@ -49,11 +34,7 @@ namespace KoenZomers.Ring.Api
                 32);
         }
 
-        /// <summary>
-        /// Loads credentials from the given file path. Returns an empty <see cref="RingCredentials"/>
-        /// if the file doesn't exist or can't be decrypted (e.g. written on a different machine/account).
-        /// </summary>
-        public static RingCredentials Load(string path)
+        public RingCredentials Load(string path)
         {
             if (!File.Exists(path))
             {
@@ -63,11 +44,7 @@ namespace KoenZomers.Ring.Api
             return LoadFromJson(File.ReadAllText(path));
         }
 
-        /// <summary>
-        /// Decrypts credentials from a raw JSON string in the storage format written by <see cref="Save"/>.
-        /// Returns an empty <see cref="RingCredentials"/> if the JSON is malformed or can't be decrypted.
-        /// </summary>
-        public static RingCredentials LoadFromJson(string json)
+        public RingCredentials LoadFromJson(string json)
         {
             try
             {
@@ -95,10 +72,7 @@ namespace KoenZomers.Ring.Api
             }
         }
 
-        /// <summary>
-        /// Encrypts and saves credentials to the given file path, creating the parent directory if needed.
-        /// </summary>
-        public static void Save(string path, RingCredentials credentials)
+        public void Save(string path, RingCredentials credentials)
         {
             using var aes = Aes.Create();
             aes.GenerateIV();
@@ -146,21 +120,12 @@ namespace KoenZomers.Ring.Api
             return Encoding.UTF8.GetString(ms.ToArray());
         }
 
-        /// <summary>
-        /// Convenience method to set credentials without callers hand-building RingCredentials.
-        /// </summary>
-        public static void SetCredentials(string path, string userName, string password = null, string refreshToken = null)
+        public void SetCredentials(string path, string userName, string password = null, string refreshToken = null)
         {
             Save(path, new RingCredentials { UserName = userName, Password = password, RefreshToken = refreshToken });
         }
 
-        /// <summary>
-        /// Scans <paramref name="filePath"/> for a top-level clear-text <paramref name="clearFieldName"/>
-        /// property. If found and non-empty, migrates it into the encrypted credential store at
-        /// <paramref name="authPath"/> (merging with whatever's already there) via Save, then removes the
-        /// clear-text property from the source file. Returns true if a migration happened.
-        /// </summary>
-        public static bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password")
+        public bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password")
         {
             if (!File.Exists(filePath))
                 return false;

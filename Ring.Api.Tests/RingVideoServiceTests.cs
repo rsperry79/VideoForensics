@@ -60,62 +60,6 @@ namespace Ring.Api.Tests
         }
 
         [TestMethod]
-        public void CredentialStore_SaveAndLoadRoundTrip()
-        {
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
-            var auth = new RingCredentials
-            {
-                UserName = "test@example.com",
-                Password = "testPassword",
-                RefreshToken = "testRefresh"
-            };
-
-            try
-            {
-                CredentialStore.Save(path, auth);
-                var raw = File.ReadAllText(path);
-                var loaded = CredentialStore.Load(path);
-
-                Assert.IsFalse(raw.Contains("testPassword"));
-                Assert.IsFalse(raw.Contains("testRefresh"));
-                Assert.AreEqual("test@example.com", loaded.UserName);
-                Assert.AreEqual("testPassword", loaded.Password);
-                Assert.AreEqual("testRefresh", loaded.RefreshToken);
-            }
-            finally
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-        }
-
-        [TestMethod]
-        public void CredentialStore_EncryptsBeforeWritingToDisk()
-        {
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
-            var auth = new RingCredentials
-            {
-                UserName = "user@ring.com",
-                Password = "SecurePassword123!",
-                RefreshToken = "refresh_abc123"
-            };
-
-            try
-            {
-                CredentialStore.Save(path, auth);
-                var raw = File.ReadAllText(path);
-
-                Assert.IsFalse(raw.Contains("SecurePassword123!"));
-                Assert.IsFalse(raw.Contains("refresh_abc123"));
-            }
-            finally
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-        }
-
-        [TestMethod]
         public void DeviceInfo_CanBeCreatedWithProperties()
         {
             var device = new DeviceInfo

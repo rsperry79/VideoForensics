@@ -26,6 +26,7 @@ namespace KoenZomers.Ring.Api
     {
         private readonly ILogger log;
         private readonly IDownloadReporter reporter;
+        private readonly ICredentialStore credentialStore;
         private readonly IReadOnlyDictionary<string, string> configLocationNames;
         private readonly Filter defaultFilter;
         private Session ringSession;
@@ -51,12 +52,14 @@ namespace KoenZomers.Ring.Api
         public RingVideoService(
             ILogger<RingVideoService> logger,
             IDownloadReporter reporter,
+            ICredentialStore credentialStore,
             string dataDirectory,
             IReadOnlyDictionary<string, string> configLocationNames = null,
             Filter defaultFilter = null)
         {
             this.log = logger;
             this.reporter = reporter;
+            this.credentialStore = credentialStore;
             this.configLocationNames = configLocationNames;
             this.defaultFilter = defaultFilter;
             this.downloadHelper = new DownloadHelper();
@@ -90,13 +93,13 @@ namespace KoenZomers.Ring.Api
                 this.Filter = defaultFilter ?? new Filter();
             }
 
-            this.Auth = CredentialStore.Load(AuthFile);
+            this.Auth = credentialStore.Load(AuthFile);
             if (string.IsNullOrWhiteSpace(this.Auth.RefreshToken) && string.IsNullOrWhiteSpace(this.Auth.Password))
             {
                 MigrateLegacyAuth(contents);
             }
 
-            if (CredentialStore.SanitizeClearTextPassword(SavedSettingsFile, AuthFile))
+            if (credentialStore.SanitizeClearTextPassword(SavedSettingsFile, AuthFile))
             {
                 log.LogWarning("Found and encrypted a clear-text password in {file}", SavedSettingsFile);
             }
@@ -119,11 +122,11 @@ namespace KoenZomers.Ring.Api
                 if (!doc.RootElement.TryGetProperty("Authentication", out var authElement))
                     return;
 
-                var legacyAuth = CredentialStore.LoadFromJson(authElement.GetRawText());
+                var legacyAuth = credentialStore.LoadFromJson(authElement.GetRawText());
                 if (!string.IsNullOrWhiteSpace(legacyAuth.RefreshToken) || !string.IsNullOrWhiteSpace(legacyAuth.Password))
                 {
                     this.Auth = legacyAuth;
-                    CredentialStore.Save(AuthFile, this.Auth);
+                    credentialStore.Save(AuthFile, this.Auth);
                     log.LogInformation("Migrated saved credentials from {oldFile} to {authFile}", SavedSettingsFile, AuthFile);
                 }
             }
@@ -136,7 +139,7 @@ namespace KoenZomers.Ring.Api
         private void SaveSettings(DateTime? lastSuccessUtc, DateTime? lastFailureUtc)
         {
 
-            CredentialStore.Save(AuthFile, Auth);
+            credentialStore.Save(AuthFile, Auth);
             //Set "next dates" on filter
             if (lastFailureUtc.HasValue && !Filter.Snapshots)
             {

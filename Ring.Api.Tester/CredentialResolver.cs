@@ -43,7 +43,7 @@ namespace Ring.Api.Tester
                 return new ResolvedCredentials(options.UserName, options.Password, null, "cli-argument");
             }
 
-            var saved = CredentialStore.Load(AuthPath);
+            var saved = new CredentialStore().Load(AuthPath);
             if (!string.IsNullOrEmpty(saved.RefreshToken) || (!string.IsNullOrEmpty(saved.UserName) && !string.IsNullOrEmpty(saved.Password)))
             {
                 return new ResolvedCredentials(saved.UserName, saved.Password, saved.RefreshToken, $"auth-store:{AuthPath}");

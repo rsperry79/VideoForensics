@@ -101,7 +101,7 @@ namespace Ring.Api.Tests.Mocks
         /// </summary>
         private static RingCredentials? LoadAuthenticationFromAppData()
         {
-            var creds = CredentialStore.Load(ConfigPath);
+            var creds = new CredentialStore().Load(ConfigPath);
             var hasRefreshToken = !string.IsNullOrEmpty(creds.RefreshToken);
             var hasUserNameAndPassword = !string.IsNullOrEmpty(creds.UserName) && !string.IsNullOrEmpty(creds.Password);
             return hasRefreshToken || hasUserNameAndPassword ? creds : null;

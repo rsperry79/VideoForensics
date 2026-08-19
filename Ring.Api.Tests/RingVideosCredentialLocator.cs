@@ -18,7 +18,7 @@ namespace Ring.Api.Tests
 
         public static bool TryLoad(out string? userName, out string? password, out string? refreshToken)
         {
-            var saved = CredentialStore.Load(AuthPath);
+            var saved = new CredentialStore().Load(AuthPath);
             userName = saved.UserName;
             password = saved.Password;
             refreshToken = saved.RefreshToken;

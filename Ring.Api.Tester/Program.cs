@@ -11,6 +11,8 @@ namespace Ring.Api.Tester
 {
     internal static class Program
     {
+        private static readonly ICredentialStore credentialStore = new CredentialStore();
+
         private static readonly JsonSerializerOptions IndexJsonOptions = new()
         {
             WriteIndented = true,
@@ -147,13 +149,13 @@ namespace Ring.Api.Tester
                 return;
             }
 
-            var existing = CredentialStore.Load(CredentialResolver.AuthPath);
+            var existing = credentialStore.Load(CredentialResolver.AuthPath);
             if (existing.RefreshToken == newRefreshToken)
             {
                 return;
             }
 
-            CredentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
+            credentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
             {
                 UserName = usedThisRun.UserName ?? existing.UserName,
                 Password = usedThisRun.Password ?? existing.Password,
@@ -231,7 +233,7 @@ namespace Ring.Api.Tester
                 return 2;
             }
 
-            CredentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
+            credentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
             {
                 UserName = userName,
                 Password = password,
