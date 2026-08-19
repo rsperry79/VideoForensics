@@ -6,9 +6,12 @@ namespace KoenZomers.Ring.Api
 {
     /// <summary>
     /// Single-location detail lookup under clients_api, distinct from GetLocations() (which lists
-    /// every location via the newer devices/v1/locations endpoint). Endpoint path confirmed
-    /// against python-ring-doorbell's const.py (LOCATIONS_ENDPOINT); response shape not confirmed,
-    /// hence raw JsonElement rather than an invented type.
+    /// every location via the newer devices/v1/locations endpoint). Endpoint path matched
+    /// python-ring-doorbell's const.py (LOCATIONS_ENDPOINT) at the source level, but a live
+    /// ApiTester run (2026-08-19) got a 404 for every location on a real account - this endpoint
+    /// appears to have been removed from Ring's backend in favor of devices/v1/locations, which
+    /// already returns full Location objects (see GetLocations()) making this redundant even if it
+    /// worked. Not called anywhere in RingVideos; kept for completeness but likely dead.
     /// </summary>
     public partial class Session
     {

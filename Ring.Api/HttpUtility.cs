@@ -118,7 +118,7 @@ namespace KoenZomers.Ring.Api
                     throw new Exceptions.ThrottledException();
 
                 case HttpStatusCode.NotFound:
-                    throw new Exceptions.DeviceUnknownException();
+                    throw new Exceptions.DeviceUnknownException(url);
             }
 
             return responseFromServer;
