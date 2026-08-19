@@ -1,0 +1,38 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+using KoenZomers.Ring.Api.Entities;
+
+namespace KoenZomers.Ring.Api.Interfaces;
+
+/// <summary>
+/// Service for managing location settings and configurations.
+/// </summary>
+public interface ILocationManagementService
+{
+    /// <summary>
+    /// Gets the current mode (Home, Away, Disarmed) for a location.
+    /// </summary>
+    Task<LocationMode> GetLocationMode(Guid locationId);
+
+    /// <summary>
+    /// Sets the mode (Home, Away, Disarmed) for a location.
+    /// </summary>
+    Task<bool> SetLocationMode(Guid locationId, LocationMode mode);
+
+    /// <summary>
+    /// Gets all users who have access to a location.
+    /// </summary>
+    Task<List<SharedUser>> GetSharedUsers(Guid locationId);
+
+    /// <summary>
+    /// Gets all pending invitations for a location.
+    /// </summary>
+    Task<List<Invitation>> GetInvitations(Guid locationId);
+
+    /// <summary>
+    /// Gets detailed information about a location.
+    /// </summary>
+    Task<Location> GetLocationDetails(Guid locationId);
+}

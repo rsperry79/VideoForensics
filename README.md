@@ -3,17 +3,17 @@
 [![stars badge]][stars]
 [![forks badge]][forks]
 [![issues badge]][issues]
-[![Continuous Integration Build](https://github.com/KoenZomers/RingApi/actions/workflows/cibuild.yml/badge.svg)](https://github.com/KoenZomers/RingApi/actions/workflows/cibuild.yml)
+[![Continuous Integration Build](https://github.com/KoenZomers/Ring.Api/actions/workflows/cibuild.yml/badge.svg)](https://github.com/KoenZomers/Ring.Api/actions/workflows/cibuild.yml)
 
 [licence badge]:https://img.shields.io/badge/license-MIT-blue.svg
-[stars badge]:https://img.shields.io/github/stars/koenzomers/RingApi.svg
-[forks badge]:https://img.shields.io/github/forks/koenzomers/RingApi.svg
-[issues badge]:https://img.shields.io/github/issues/koenzomers/RingApi.svg
+[stars badge]:https://img.shields.io/github/stars/koenzomers/Ring.Api.svg
+[forks badge]:https://img.shields.io/github/forks/koenzomers/Ring.Api.svg
+[issues badge]:https://img.shields.io/github/issues/koenzomers/Ring.Api.svg
 
-[licence]:https://github.com/koenzomers/RingApi/blob/master/LICENSE.md
-[stars]:https://github.com/koenzomers/RingApi/stargazers
-[forks]:https://github.com/koenzomers/RingApi/network
-[issues]:https://github.com/koenzomers/RingApi/issues
+[licence]:https://github.com/koenzomers/Ring.Api/blob/master/LICENSE.md
+[stars]:https://github.com/koenzomers/Ring.Api/stargazers
+[forks]:https://github.com/koenzomers/Ring.Api/network
+[issues]:https://github.com/koenzomers/Ring.Api/issues
 
 This library for C# compiled against .NET 8 will allow you to easily communicate with the Ring API and retrieve details about your Ring doorbells and Ring chimes.
 
@@ -71,7 +71,7 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.4.2.2 - released March 16, 2020
 
-- Merged [PR # 13](https://github.com/KoenZomers/RingApi/pull/13) adding possible exceptions to each method call and doing some code efficiency improvements. Thanks to [ronwarner](https://github.com/ronwarner) for his contribution!
+- Merged [PR # 13](https://github.com/KoenZomers/Ring.Api/pull/13) adding possible exceptions to each method call and doing some code efficiency improvements. Thanks to [ronwarner](https://github.com/ronwarner) for his contribution!
 
 0.4.2.1 - released January 22, 2020
 
@@ -90,15 +90,15 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.4.0.3 - released December 24, 2019
 
-- Changed to less strict JSON result parsing as it turns out that the API responses may differ quite a bit between users. To avoid the slightest change not making possible to use the returned results, I followed [insane4sure](https://github.com/insane4sure)'s recommendation in [issue 4](https://github.com/KoenZomers/RingApi/issues/4) and applied this to all responses except for the authentication part.
+- Changed to less strict JSON result parsing as it turns out that the API responses may differ quite a bit between users. To avoid the slightest change not making possible to use the returned results, I followed [insane4sure](https://github.com/insane4sure)'s recommendation in [issue 4](https://github.com/KoenZomers/Ring.Api/issues/4) and applied this to all responses except for the authentication part.
 
 0.4.0.2 - released December 24, 2019
 
- - Added support for AuthorizedDoorbots in the devices response from Ring. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 6](https://github.com/KoenZomers/RingApi/issues/6).
+ - Added support for AuthorizedDoorbots in the devices response from Ring. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 6](https://github.com/KoenZomers/Ring.Api/issues/6).
 
 0.4.0.1 - released December 24, 2019
 
-- Fixed issue where having certain special characters such as a + in your e-mail or password used to log on would make the authentication fail. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 5](https://github.com/KoenZomers/RingApi/issues/5).
+- Fixed issue where having certain special characters such as a + in your e-mail or password used to log on would make the authentication fail. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 5](https://github.com/KoenZomers/Ring.Api/issues/5).
 
 0.4.0.0 - released December 23, 2019
 
@@ -125,7 +125,7 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.3.1.0 - released August 9, 2019
 
-- Changed the implementation of GetDoorbotsHistory(int limit) so that it will return as many items as you request, instead of just a maximum of 100 items, even if you would provide a higher number. Discussed in [issue #2](https://github.com/KoenZomers/RingApi/issues/2).
+- Changed the implementation of GetDoorbotsHistory(int limit) so that it will return as many items as you request, instead of just a maximum of 100 items, even if you would provide a higher number. Discussed in [issue #2](https://github.com/KoenZomers/Ring.Api/issues/2).
 
 0.3.0.1 - released March 2, 2019
 
@@ -167,7 +167,7 @@ This API is built using Microsoft .NET Standard 2.0 and is fully asynchronous
 
 ## Usage Instructions
 
-To communicate with the Ring API, [add the NuGet package](https://github.com/KoenZomers/RingApi#available-via-nuget) to your solution and add a using reference in your code:
+To communicate with the Ring API, [add the NuGet package](https://github.com/KoenZomers/Ring.Api#available-via-nuget) to your solution and add a using reference in your code:
 
 ```C#
 using KoenZomers.Ring.Api;
@@ -256,7 +256,7 @@ This is deliberately decoupled from RingVideos's own app code - neither ApiTeste
 **To generate or refresh it**, run ApiTester's interactive login once:
 
 ```powershell
-cd external/RingApi/ApiTester
+cd external/Ring.Api/ApiTester
 dotnet run -- --auth
 ```
 
@@ -285,4 +285,4 @@ With this API at its current state you can:
 
 ## Feedback
 
-Any kind of feedback is welcome! Feel free to drop me an e-mail at koen@zomers.eu or [create an issue](https://github.com/KoenZomers/RingApi/issues)
+Any kind of feedback is welcome! Feel free to drop me an e-mail at koen@zomers.eu or [create an issue](https://github.com/KoenZomers/Ring.Api/issues)
