@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using KoenZomers.Ring.Api.Converters;
 
@@ -83,5 +85,49 @@ namespace KoenZomers.Ring.Api.Entities
         [JsonPropertyName("last_update_time")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? LastUpdateTime { get; set; }
+
+        [JsonPropertyName("id")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? Id { get; set; }
+
+        [JsonPropertyName("latest_signal_strength")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? LatestSignalStrength { get; set; }
+
+        [JsonPropertyName("latest_signal_category")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string LatestSignalCategory { get; set; }
+
+        [JsonPropertyName("average_signal_strength")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? AverageSignalStrength { get; set; }
+
+        [JsonPropertyName("average_signal_category")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string AverageSignalCategory { get; set; }
+
+        [JsonPropertyName("firmware")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Firmware { get; set; }
+
+        [JsonPropertyName("updated_at")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string UpdatedAt { get; set; }
+
+        [JsonPropertyName("packet_loss_strength")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public double? PacketLossStrength { get; set; }
+
+        [JsonPropertyName("wifi_is_ring_network")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? WifiIsRingNetwork { get; set; }
+
+        [JsonPropertyName("ptz_connected")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? PtzConnected { get; set; }
+
+        [JsonPropertyName("supported_rpc_commands")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string> SupportedRpcCommands { get; set; }
     }
 }

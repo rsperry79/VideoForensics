@@ -1,8 +1,15 @@
 ﻿
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace KoenZomers.Ring.Api.Entities
 {
+    /// <summary>
+    /// Account feature flags indicating which Ring services/capabilities are enabled.
+    /// The API returns 1,300+ individual feature flags; this class captures the most common
+    /// ones as strongly-typed properties, with a catch-all dictionary for others.
+    /// </summary>
     public class SessionFeatures
     {
         [JsonPropertyName("remote_logging_format_storing")]
@@ -109,5 +116,12 @@ namespace KoenZomers.Ring.Api.Entities
 
         [JsonPropertyName("ring_cam_enabled")]
         public bool? RingCamEnabled { get; set; }
+
+        /// <summary>
+        /// Catch-all for feature flags not explicitly modeled above. The Ring API returns
+        /// 1,300+ feature flags; this captures any that don't have dedicated properties.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, object> AdditionalFeatures { get; set; } = new();
     }
 }
