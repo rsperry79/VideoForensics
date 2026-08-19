@@ -7,14 +7,24 @@ using System.Threading.Tasks;
 namespace KoenZomers.Ring.Api
 {
     /// <inheritdoc cref="IVideoDownloader"/>
-    public class VideoDownloader : IVideoDownloader
+    public class VideoDownloader : IVideoDownloader, IDisposable
     {
         private readonly HttpClient _httpClient;
+        private readonly bool _ownHttpClient;
 
         /// <param name="httpClient">Optional HttpClient to use for downloads. Leave out to have one created internally.</param>
         public VideoDownloader(HttpClient httpClient = null)
         {
-            _httpClient = httpClient ?? new HttpClient();
+            if (httpClient != null)
+            {
+                _httpClient = httpClient;
+                _ownHttpClient = false;
+            }
+            else
+            {
+                _httpClient = new HttpClient();
+                _ownHttpClient = true;
+            }
         }
 
         public async Task<Stream> OpenStreamAsync(string url)
@@ -42,6 +52,15 @@ namespace KoenZomers.Ring.Api
 
             using var response = await _httpClient.SendAsync(request);
             return await response.Content.ReadAsByteArrayAsync();
+        }
+
+        public void Dispose()
+        {
+            if (_ownHttpClient)
+            {
+                _httpClient?.Dispose();
+            }
+            GC.SuppressFinalize(this);
         }
     }
 }

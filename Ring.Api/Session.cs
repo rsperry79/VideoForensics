@@ -764,8 +764,8 @@ namespace KoenZomers.Ring.Api
                     break;
                 }
 
-                // Wait one second before requesting the sharing again
-                Thread.Sleep(TimeSpan.FromSeconds(2));
+                // Wait 2 seconds before requesting the sharing again
+                await Task.Delay(TimeSpan.FromSeconds(2));
             }
 
             // Ensure we ended with a valid URL to the shared recording

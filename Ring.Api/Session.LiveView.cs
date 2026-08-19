@@ -51,8 +51,12 @@ namespace KoenZomers.Ring.Api
 
             var dialogId = Guid.NewGuid().ToString();
             var clientId = $"ring_site-{Guid.NewGuid()}";
+
+            // Security Note: Token passed in URL is logged by proxies/servers. Future improvement:
+            // Pass token via WebSocket headers or first message after connection instead.
+            // ClientWebSocket.Options could be extended to support custom headers.
             var signalingUri = new Uri(
-                $"{SignalingServerBaseUri}?api_version=4.0&auth_type=ring_solutions&client_id={clientId}&token={ticketResponse.Ticket}");
+                $"{SignalingServerBaseUri}?api_version=4.0&auth_type=ring_solutions&client_id={clientId}&token={Uri.EscapeDataString(ticketResponse.Ticket)}");
 
             var signalingClient = new RingSignalingClient(transport, dialogId);
             await signalingClient.ConnectAsync(signalingUri);
