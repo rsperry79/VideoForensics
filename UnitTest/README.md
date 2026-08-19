@@ -346,7 +346,6 @@ UnitTest/
 │   ├── MockHttpMessageHandler.cs             HTTP interception
 │   ├── MockSessionHelper.cs                  Mock session factory
 │   ├── RealSessionHelper.cs                  Real session factory
-│   ├── AppDataCredentialManager.cs           Legacy credential manager
 │   └── TestFixtures.cs                       Sample API responses
 │
 └── README.md                                 This file
