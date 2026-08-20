@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Ring.Api.Tester
+namespace Ring.Api.SelfTester
 {
     /// <summary>
     /// Parsed command-line options. Kept as a plain hand-rolled parser (no external CLI
@@ -202,7 +202,7 @@ namespace Ring.Api.Tester
         }
 
         public const string HelpText = """
-        ApiTester - Ring API smoke test
+        Ring API SelfTester - API validation and smoke testing
 
         Calls Ring API endpoints through the KoenZomers.Ring.Api client, writes each raw HTTP
         response to its own file, and writes an index.json describing every call made (function
@@ -215,8 +215,8 @@ namespace Ring.Api.Tester
         (light, siren, chime speaker, camera shutter) are further excluded by --no-physical.
 
         USAGE:
-          ApiTester --auth
-          ApiTester [--list | --list-endpoints-json] [--endpoints <csv>] [--output-dir <path>]
+          Ring.Api.SelfTester --auth
+          Ring.Api.SelfTester [--list | --list-endpoints-json] [--endpoints <csv>] [--output-dir <path>]
                      [--location-id <guid>] [--doorbot-id <id>] [--chime-id <id>]
                      [--history-limit <n>] [--destructive [--no-physical] [destructive-endpoint options]]
                      [--username <user> --password <pass> | --refresh-token <token>] [--quiet]
@@ -232,9 +232,8 @@ namespace Ring.Api.Tester
                                      password (masked), handles a two-factor code challenge if your
                                      account requires one, then saves the resulting refresh token to
                                      the shared credentials file at %AppData%\RingVideosData\auth.json
-                                     via KoenZomers.Ring.Api's CredentialStore. Every other ApiTester
-                                     run, and the Ring.Api integration tests, pick this up
-                                     automatically afterward - see external/Ring.Api/README.md
+                                     via KoenZomers.Ring.Api's CredentialStore. Every other SelfTester
+                                     run picks this up automatically afterward - see external/Ring.Api/README.md
                                      ("Authenticating for local tooling") for details. Run this
                                      first if you see a "no credentials found" or "requires
                                      two-factor authentication" error. Ignores --endpoints and every
@@ -280,7 +279,7 @@ namespace Ring.Api.Tester
 
         OUTPUT:
           --output-dir <path>       Directory to write index.json and result files into.
-                                     Default: ./ApiTesterResults/<UTC-timestamp>
+                                     Default: ./SelfTesterResults/<UTC-timestamp>
           --quiet                   Suppress narration; only the final index.json path is printed.
 
         CREDENTIALS (first match wins):

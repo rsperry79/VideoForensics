@@ -2,26 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// Per-doorbot settings values captured from the raw "devices" response before any destructive
     /// call runs, so the endpoint that changes one of them can restore it afterward instead of
     /// leaving the account in a different state than it found it in.
     /// </summary>
-    internal sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled);
+    public sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled);
 
     /// <summary>
-    /// Parses the raw JSON body of GET ring_devices to pull out the settings values ApiTester's
+    /// Parses the raw JSON body of GET ring_devices to pull out the settings values the tester's
     /// destructive endpoints can mutate (volume, chime type, night mode, motion detection), keyed
-    /// by doorbot id. The KoenZomers.Ring.Api <see cref="Api.Entities.Doorbot"/> class doesn't
+    /// by doorbot id. The KoenZomers.Ring.Api <see cref="Entities.Doorbot"/> class doesn't
     /// model these fields at all, so this reads the raw payload directly rather than the
     /// deserialized entity. Field paths below are confirmed against a live capture (not inferred):
     /// settings.doorbell_volume, settings.chime_settings.{type,enable,duration},
     /// settings.night_mode_on, settings.motion_detection_enabled. Never throws - a doorbot/field
     /// that can't be found just means restore is skipped for it later, not a failed run.
     /// </summary>
-    internal static class DeviceSettingsSnapshot
+    public static class DeviceSettingsSnapshot
     {
         public static Dictionary<long, DoorbotSettingsSnapshot> ParseFromDevicesJson(string devicesJson)
         {

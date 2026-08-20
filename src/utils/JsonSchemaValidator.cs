@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 using KoenZomers.Ring.Api.Entities;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// Compares actual API JSON responses against declared entity schemas, reporting type

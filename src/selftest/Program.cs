@@ -6,8 +6,9 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api;
+using KoenZomers.Ring.Api.Utils;
 
-namespace Ring.Api.Tester
+namespace Ring.Api.SelfTester
 {
     internal static class Program
     {
@@ -57,7 +58,7 @@ namespace Ring.Api.Tester
             EndpointRegistry.AssetUuid = options.AssetUuid;
             EndpointRegistry.PushToken = options.PushToken;
 
-            var credentials = CredentialResolver.Resolve(options);
+            var credentials = CredentialResolver.Resolve(options.RefreshToken, options.UserName, options.Password);
             if (credentials == null)
             {
                 WriteNoCredentialsError();
@@ -86,7 +87,7 @@ namespace Ring.Api.Tester
                 return 2;
             }
 
-            var outputDir = options.OutputDir ?? Path.Combine("ApiTesterResults", DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
+            var outputDir = options.OutputDir ?? Path.Combine("SelfTesterResults", DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
             Directory.CreateDirectory(outputDir);
 
             IndexDocument index;
@@ -183,8 +184,8 @@ namespace Ring.Api.Tester
         /// </summary>
         private static async Task<int> RunInteractiveAuthAsync(CliOptions options)
         {
-            Console.WriteLine("Ring interactive login - saves a reusable refresh token so future runs (and the Ring.Api");
-            Console.WriteLine($"integration tests) don't need this again. Credentials are written to:\n  {CredentialResolver.AuthPath}\n");
+            Console.WriteLine("Ring interactive login - saves a reusable refresh token so future runs");
+            Console.WriteLine($"don't need this again. Credentials are written to:\n  {CredentialResolver.AuthPath}\n");
 
             var userName = options.UserName;
             if (string.IsNullOrWhiteSpace(userName))
@@ -242,7 +243,7 @@ namespace Ring.Api.Tester
 
             Console.WriteLine();
             Console.WriteLine($"Authenticated and saved credentials to {CredentialResolver.AuthPath}.");
-            Console.WriteLine("Future ApiTester runs and the Ring.Api integration tests will use this automatically.");
+            Console.WriteLine("Future SelfTester runs will use this automatically.");
             return 0;
         }
 

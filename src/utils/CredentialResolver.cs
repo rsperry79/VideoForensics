@@ -3,44 +3,44 @@ using System.IO;
 
 using KoenZomers.Ring.Api;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
-    /// Resolved set of credentials to authenticate a <see cref="Api.Session"/> with, plus where
+    /// Resolved set of credentials to authenticate a <see cref="Session"/> with, plus where
     /// they came from (surfaced in the index doc so a re-run failure can be diagnosed).
     /// </summary>
-    internal record ResolvedCredentials(string? UserName, string? Password, string? RefreshToken, string Source);
+    public record ResolvedCredentials(string? UserName, string? Password, string? RefreshToken, string Source);
 
     /// <summary>
     /// Finds credentials to authenticate with, in priority order:
-    ///   1. Explicit --username/--password/--refresh-token CLI arguments
+    ///   1. Explicit username/password/refresh-token parameters
     ///   2. The encrypted auth.json at <see cref="AuthPath"/>, read via <see cref="CredentialStore"/>
     ///      (only decryptable on the same machine/user account that created it) - written by this
     ///      tool's own --auth flow, or by RingVideos
     /// No credential source is ever written to the output directory or the index doc. If none of
-    /// the above resolve, run `--auth` to generate one interactively - see
-    /// external/Ring.Api/README.md ("Authenticating for local tooling").
+    /// the above resolve, authenticate interactively to generate one - see external/Ring.Api/README.md
+    /// ("Authenticating for local tooling").
     /// </summary>
-    internal static class CredentialResolver
+    public static class CredentialResolver
     {
         /// <summary>
         /// The shared credentials file both this tool and the Ring.Api integration tests read from
-        /// (via <see cref="CredentialStore"/>), and that `--auth` writes to. Also whatever RingVideos
-        /// itself saves to once its own CredentialStore migration lands.
+        /// (via <see cref="CredentialStore"/>), and that interactive auth writes to. Also whatever
+        /// RingVideos itself saves to once its own CredentialStore migration lands.
         /// </summary>
         public static readonly string AuthPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "RingVideosData", "auth.json");
 
-        public static ResolvedCredentials? Resolve(CliOptions options)
+        public static ResolvedCredentials? Resolve(string? refreshToken, string? userName, string? password)
         {
-            if (!string.IsNullOrWhiteSpace(options.RefreshToken))
+            if (!string.IsNullOrWhiteSpace(refreshToken))
             {
-                return new ResolvedCredentials(options.UserName, null, options.RefreshToken, "cli-argument");
+                return new ResolvedCredentials(userName, null, refreshToken, "cli-argument");
             }
-            if (!string.IsNullOrWhiteSpace(options.UserName) && !string.IsNullOrWhiteSpace(options.Password))
+            if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
             {
-                return new ResolvedCredentials(options.UserName, options.Password, null, "cli-argument");
+                return new ResolvedCredentials(userName, password, null, "cli-argument");
             }
 
             var saved = new CredentialStore().Load(AuthPath);

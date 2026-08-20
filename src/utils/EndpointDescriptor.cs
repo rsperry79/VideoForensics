@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// What a single endpoint call needs from the fan-out (nothing, one location, one doorbot, or
     /// one chime). Locations/doorbots/chimes are discovered by running the "devices"/"locations"
     /// endpoints first.
     /// </summary>
-    internal enum EndpointScope
+    public enum EndpointScope
     {
         None,
         PerLocation,
@@ -24,7 +24,7 @@ namespace Ring.Api.Tester
     /// What to put a setting back to after a destructive call tested a new value, and what the
     /// original value actually was (or a safe fallback, if the original couldn't be read back).
     /// </summary>
-    internal sealed record RestorePlan(string OriginalValueDescription, bool WasCaptured, Func<Session, Task> Restore);
+    public sealed record RestorePlan(string OriginalValueDescription, bool WasCaptured, Func<Session, Task> Restore);
 
     /// <summary>
     /// Describes one Ring API call this tool knows how to make: identity for --endpoints selection
@@ -33,10 +33,10 @@ namespace Ring.Api.Tester
     /// caller passes --destructive; <see cref="Physical"/> ones additionally trigger a real-world
     /// effect on the hardware (light, siren, chime speaker, camera shutter) and are further
     /// excluded by --no-physical. <see cref="PrepareRestore"/>, when set, is called after a
-    /// successful destructive call to put the setting back - see README.md's "Backup and restore"
-    /// section for how this fits into a run.
+    /// successful destructive call to put the setting back - see the SelfTester documentation for
+    /// how this fits into a run.
     /// </summary>
-    internal sealed class EndpointDescriptor
+    public sealed class EndpointDescriptor
     {
         public required string Key { get; init; }
         public required string DisplayName { get; init; }
@@ -57,12 +57,12 @@ namespace Ring.Api.Tester
     /// The location/doorbot/chime (if any) a single call was made against, discovered from the
     /// devices/locations endpoints or narrowed via --location-id/--doorbot-id/--chime-id.
     /// </summary>
-    internal sealed record EndpointTarget(Guid? LocationId, long? DoorbotId, long? ChimeId = null)
+    public sealed record EndpointTarget(Guid? LocationId, long? DoorbotId, long? ChimeId = null)
     {
         public static readonly EndpointTarget None = new(null, null);
     }
 
-    internal static class EndpointRegistry
+    public static class EndpointRegistry
     {
         // Original-value snapshots for restore. Doorbot settings are populated once by Runner from
         // the raw "devices" response before any destructive call runs; location mode is captured
@@ -320,7 +320,7 @@ namespace Ring.Api.Tester
 
             // ---- Destructive: mutate account/device state. Only run with --destructive. Each
             // one either restores what it changed (PrepareRestore) or documents why it can't
-            // (NoRestoreReason) - see README.md's "Backup and restore" section. ----
+            // (NoRestoreReason). ----
 
             new()
             {
@@ -348,9 +348,6 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 Physical = true,
                 Invoke = (session, target) => session.SetLight(target.DoorbotId!.Value, true),
-                // This client has no getter for current light on/off state, so the original value
-                // can't be read back - off is the safe assumption for a light that isn't a
-                // deliberately-left-on porch light during the day.
                 PrepareRestore = target => new RestorePlan(
                     "unknown (no read-path for current light state via this client) - restoring to off as a safe default",
                     WasCaptured: false,
@@ -495,8 +492,6 @@ namespace Ring.Api.Tester
                     {
                         throw new InvalidOperationException("set-location-mode requires --location-mode-value <home|away|disarmed>");
                     }
-                    // Capture the true current mode immediately before mutating it, so
-                    // PrepareRestore can put back exactly what was there - not a guess.
                     var current = await session.GetLocationMode(target.LocationId!.Value);
                     if (!string.IsNullOrWhiteSpace(current?.Mode))
                     {
@@ -520,7 +515,7 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-motion-zones is not executable through ApiTester: it would overwrite the doorbot's entire motion zone configuration with an empty/placeholder payload, which is a real data loss risk. Use KoenZomers.Ring.Api directly with a deliberately constructed zone payload instead.")
+                    "set-motion-zones is not executable through the tester: it would overwrite the doorbot's entire motion zone configuration with an empty/placeholder payload, which is a real data loss risk. Use KoenZomers.Ring.Api directly with a deliberately constructed zone payload instead.")
             },
             new()
             {
@@ -614,7 +609,7 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "disable-location-modes is not executable through ApiTester: it would discard the location's entire Location Mode configuration with no way for this tool to safely restore it afterward. Use KoenZomers.Ring.Api directly if you deliberately want this.")
+                    "disable-location-modes is not executable through the tester: it would discard the location's entire Location Mode configuration with no way for this tool to safely restore it afterward. Use KoenZomers.Ring.Api directly if you deliberately want this.")
             },
             new()
             {
@@ -628,7 +623,7 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-settings is not executable through ApiTester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "set-location-mode-settings is not executable through the tester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
@@ -642,7 +637,7 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-sharing is not executable through ApiTester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "set-location-mode-sharing is not executable through the tester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
@@ -656,7 +651,7 @@ namespace Ring.Api.Tester
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "update-chime is not executable through ApiTester: it would overwrite the chime's settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "update-chime is not executable through the tester: it would overwrite the chime's settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
