@@ -2,13 +2,13 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <RootNamespace>KoenZomers.Ring.Api</RootNamespace>
+        <RootNamespace>Ring.Api</RootNamespace>
         <SignAssembly>true</SignAssembly>
         <AssemblyOriginatorKeyFile>../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
-        <AssemblyName>KoenZomers.Ring.Api.Core</AssemblyName>
+        <AssemblyName>Ring.Api.Core</AssemblyName>
         <Company>Koen Zomers</Company>
         <Authors>Koen Zomers, Daniel Espinosa</Authors>
-        <Description>Core session and service implementations for KoenZomers.Ring.Api</Description>
+        <Description>Core session and service implementations for Ring.Api</Description>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Copyright>Koen Zomers</Copyright>
         <PackageLicenseExpression> EPL-2.0</PackageLicenseExpression>
@@ -34,3 +34,6 @@
     </ItemGroup>
 
 </Project>
+
+
+

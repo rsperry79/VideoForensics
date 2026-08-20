@@ -10,7 +10,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Internal utility class for Http communication with the Ring API

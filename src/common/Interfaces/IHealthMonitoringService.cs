@@ -4,9 +4,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Interfaces;
+namespace Ring.Api.Interfaces;
 
 /// <summary>
 /// Service for monitoring the health and status of Ring devices.

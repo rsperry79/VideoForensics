@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Progress notification emitted during credential-based authentication, so a caller can surface

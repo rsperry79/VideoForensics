@@ -1,7 +1,7 @@
 using System;
 using System.Net;
 
-namespace KoenZomers.Ring.Api.Exceptions
+namespace Ring.Api.Exceptions
 {
     /// <summary>
     /// Exception thrown when the Ring API returns a different response than it was expected to return

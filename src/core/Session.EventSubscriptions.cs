@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Push-notification subscription toggles for a doorbot's ding and motion events. Endpoint

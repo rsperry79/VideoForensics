@@ -1,8 +1,8 @@
 #nullable disable
 using System.Collections.Generic;
 
-using KoenZomers.Ring.Api;
-using KoenZomers.Ring.Api.Models;
+using Ring.Api;
+using Ring.Api.Models;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -250,13 +250,13 @@ namespace Ring.Api.Tests
         [TestMethod]
         public void LocationNameResolutionUsesApiResult()
         {
-            var locations = new List<KoenZomers.Ring.Api.Entities.Location>
+            var locations = new List<Ring.Api.Entities.Location>
             {
                 new()
                 {
                     Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     Name = "Front Door",
-                    Address = new KoenZomers.Ring.Api.Entities.LocationAddress
+                    Address = new Ring.Api.Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -270,7 +270,7 @@ namespace Ring.Api.Tests
                 {
                     Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Name = "Back Patio",
-                    Address = new KoenZomers.Ring.Api.Entities.LocationAddress
+                    Address = new Ring.Api.Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -293,7 +293,7 @@ namespace Ring.Api.Tests
         [TestMethod]
         public void LocationNameResolutionFallsBackToDefault()
         {
-            var locations = new List<KoenZomers.Ring.Api.Entities.Location>
+            var locations = new List<Ring.Api.Entities.Location>
             {
                 new()
                 {
@@ -334,7 +334,7 @@ namespace Ring.Api.Tests
         [TestMethod]
         public void LocationCanBeNullAndHandledGracefully()
         {
-            var location = new KoenZomers.Ring.Api.Entities.Location
+            var location = new Ring.Api.Entities.Location
             {
                 Id = null,
                 Name = null,
@@ -350,3 +350,4 @@ namespace Ring.Api.Tests
         }
     }
 }
+

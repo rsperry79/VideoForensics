@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// Per-doorbot settings values captured from the raw "devices" response before any destructive
@@ -14,7 +14,7 @@ namespace KoenZomers.Ring.Api.Utils
     /// <summary>
     /// Parses the raw JSON body of GET ring_devices to pull out the settings values the tester's
     /// destructive endpoints can mutate (volume, chime type, night mode, motion detection), keyed
-    /// by doorbot id. The KoenZomers.Ring.Api <see cref="Entities.Doorbot"/> class doesn't
+    /// by doorbot id. The Ring.Ring.Api <see cref="Entities.Doorbot"/> class doesn't
     /// model these fields at all, so this reads the raw payload directly rather than the
     /// deserialized entity. Field paths below are confirmed against a live capture (not inferred):
     /// settings.doorbell_volume, settings.chime_settings.{type,enable,duration},
@@ -92,3 +92,4 @@ namespace KoenZomers.Ring.Api.Utils
                 : null;
     }
 }
+

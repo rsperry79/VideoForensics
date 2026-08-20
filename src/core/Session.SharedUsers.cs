@@ -4,9 +4,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Read-only visibility into who has access to a Ring location, and any pending invitations.

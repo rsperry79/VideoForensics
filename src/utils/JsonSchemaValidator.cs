@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// Compares actual API JSON responses against declared entity schemas, reporting type
@@ -32,7 +32,7 @@ namespace KoenZomers.Ring.Api.Utils
             // Pre-cache all entity types from the Entities namespace
             var entityAssembly = typeof(Profile).Assembly;
             foreach (var type in entityAssembly.GetTypes()
-                .Where(t => t.Namespace == "KoenZomers.Ring.Api.Entities" && !t.IsAbstract && !t.IsInterface))
+                .Where(t => t.Namespace == "Ring.Api.Entities" && !t.IsAbstract && !t.IsInterface))
             {
                 EntityTypeCache[type.Name] = type;
             }
@@ -228,3 +228,4 @@ namespace KoenZomers.Ring.Api.Utils
         }
     }
 }
+

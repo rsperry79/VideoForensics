@@ -1,6 +1,6 @@
 # Ring.Api.SelfTester
 
-A tiny CLI that calls endpoints of the Ring API through the `KoenZomers.Ring.Api` client, saves
+A tiny CLI that calls endpoints of the Ring API through the `Ring.Api` client, saves
 every raw HTTP response to disk, and writes an `index.json` describing the whole run.
 
 By default it only calls **non-destructive** (read-only) endpoints. It never mutates account or
@@ -9,7 +9,7 @@ device state unless you explicitly pass `--destructive`.
 ## Why this exists
 
 Ring's API is undocumented and unofficial. It changes shape without notice, and when it does,
-`KoenZomers.Ring.Api`'s entity classes silently stop matching what the server actually returns -
+`Ring.Api`'s entity classes silently stop matching what the server actually returns -
 fields go missing, get renamed, or new ones show up. There's no official spec to diff against, so
 the only way to notice drift is to look at a real response.
 
@@ -32,7 +32,7 @@ dotnet run -- --all                  # run every non-destructive endpoint, write
 `--auth` is the normal way to get this tool (and the Ring.Api integration tests) working: it prompts
 for your Ring username/password, walks through a two-factor code challenge if your account needs
 one, and saves a reusable refresh token to a shared, encrypted credentials file at
-`%AppData%\RingVideosData\auth.json` via `KoenZomers.Ring.Api.CredentialStore`. Every run after
+`%AppData%\RingVideosData\auth.json` via `Ring.Api.CredentialStore`. Every run after
 that - by this tool or integration tests - picks it up automatically with no further prompts. See 
 `external/Ring.Api/README.md` ("Authenticating for local tooling") for the full picture; the 2FA 
 retry logic itself lives in `Api/InteractiveAuth.cs`, independent of this console app, so it's not 
@@ -112,3 +112,4 @@ dotnet run -- --destructive --no-physical --all     # every mutating-but-silent 
   Only add it when the user has explicitly asked to exercise mutating endpoints, and prefer
   `--no-physical` alongside it unless they specifically asked for hardware to visibly/audibly
   trigger.
+

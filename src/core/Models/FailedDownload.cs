@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Models
+namespace Ring.Api.Models
 {
     public class FailedDownload
     {

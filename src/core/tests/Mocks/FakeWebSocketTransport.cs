@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Sockets;
+using Ring.Api.Sockets;
 
 namespace Ring.Api.Tests.Mocks
 {

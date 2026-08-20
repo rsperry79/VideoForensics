@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Contains a collection of Ring devices

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Message providing an URL where to download a recording from

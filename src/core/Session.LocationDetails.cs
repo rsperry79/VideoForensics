@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Single-location detail lookup under clients_api, distinct from GetLocations() (which lists

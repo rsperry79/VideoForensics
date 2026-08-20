@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Converters;
+namespace Ring.Api.Converters;
 
 /// <summary>
 /// Converts JSON to a boolean value. Accepts 0, 1, true and false. Non case sensitive comparison.

@@ -3,7 +3,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api;
+using Ring.Api.Entities;
 
 namespace Ring.Api.Snapshots
 {
@@ -13,9 +14,9 @@ namespace Ring.Api.Snapshots
     /// </summary>
     public class SnapshotManager : ISnapshotManager
     {
-        private readonly KoenZomers.Ring.Api.Session _session;
+        private readonly Session _session;
 
-        public SnapshotManager(KoenZomers.Ring.Api.Session session)
+        public SnapshotManager(Session session)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
         }

@@ -1,7 +1,7 @@
 using System.IO;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Downloads recording bytes from an already-resolved URL (see <see cref="Session.GetDoorbotHistoryRecordingInfo(string)"/>

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     public class DoorbotHistoryEvent
     {

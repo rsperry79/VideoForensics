@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Timestamp related to a specific doorbot

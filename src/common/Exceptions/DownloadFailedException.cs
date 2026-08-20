@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Exceptions
+namespace Ring.Api.Exceptions
 {
     /// <summary>
     /// Exception thrown when a download from the Ring API failed

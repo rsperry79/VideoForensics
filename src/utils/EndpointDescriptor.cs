@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// What a single endpoint call needs from the fan-out (nothing, one location, one doorbot, or
@@ -28,7 +28,7 @@ namespace KoenZomers.Ring.Api.Utils
 
     /// <summary>
     /// Describes one Ring API call this tool knows how to make: identity for --endpoints selection
-    /// and --list, plus the delegate that actually invokes the KoenZomers.Ring.Api Session method.
+    /// and --list, plus the delegate that actually invokes the Ring.Ring.Api Session method.
     /// <see cref="Destructive"/> calls mutate account/device state and only ever run when the
     /// caller passes --destructive; <see cref="Physical"/> ones additionally trigger a real-world
     /// effect on the hardware (light, siren, chime speaker, camera shutter) and are further
@@ -515,7 +515,7 @@ namespace KoenZomers.Ring.Api.Utils
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-motion-zones is not executable through the tester: it would overwrite the doorbot's entire motion zone configuration with an empty/placeholder payload, which is a real data loss risk. Use KoenZomers.Ring.Api directly with a deliberately constructed zone payload instead.")
+                    "set-motion-zones is not executable through the tester: it would overwrite the doorbot's entire motion zone configuration with an empty/placeholder payload, which is a real data loss risk. Use Ring.Ring.Api directly with a deliberately constructed zone payload instead.")
             },
             new()
             {
@@ -609,7 +609,7 @@ namespace KoenZomers.Ring.Api.Utils
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "disable-location-modes is not executable through the tester: it would discard the location's entire Location Mode configuration with no way for this tool to safely restore it afterward. Use KoenZomers.Ring.Api directly if you deliberately want this.")
+                    "disable-location-modes is not executable through the tester: it would discard the location's entire Location Mode configuration with no way for this tool to safely restore it afterward. Use Ring.Ring.Api directly if you deliberately want this.")
             },
             new()
             {
@@ -623,7 +623,7 @@ namespace KoenZomers.Ring.Api.Utils
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-settings is not executable through the tester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "set-location-mode-settings is not executable through the tester: it would overwrite the location's entire mode settings with an empty/placeholder payload. Use Ring.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
@@ -637,7 +637,7 @@ namespace KoenZomers.Ring.Api.Utils
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "set-location-mode-sharing is not executable through the tester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "set-location-mode-sharing is not executable through the tester: it would overwrite the location's entire mode sharing configuration with an empty/placeholder payload. Use Ring.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
@@ -651,7 +651,7 @@ namespace KoenZomers.Ring.Api.Utils
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
                 Invoke = (_, _) => throw new InvalidOperationException(
-                    "update-chime is not executable through the tester: it would overwrite the chime's settings with an empty/placeholder payload. Use KoenZomers.Ring.Api directly with a deliberately constructed payload instead.")
+                    "update-chime is not executable through the tester: it would overwrite the chime's settings with an empty/placeholder payload. Use Ring.Ring.Api directly with a deliberately constructed payload instead.")
             },
             new()
             {
@@ -718,3 +718,4 @@ namespace KoenZomers.Ring.Api.Utils
             All.FirstOrDefault(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase));
     }
 }
+

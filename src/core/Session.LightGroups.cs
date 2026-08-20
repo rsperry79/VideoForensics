@@ -4,9 +4,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Ring Smart Lighting groups - collections of light fixtures at a location, separate from

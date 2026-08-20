@@ -3,7 +3,7 @@ name: Bug report
 about: If you believe something is not working well
 title: "[BUG] Brief description"
 labels: investigating
-assignees: KoenZomers
+assignees: Ring
 
 ---
 
@@ -25,3 +25,4 @@ If applicable, add screenshots to help explain your problem.
 
 **Versions (please complete the following information):**
 - Ring API version: 
+

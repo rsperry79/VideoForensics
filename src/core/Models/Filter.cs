@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Models
+namespace Ring.Api.Models
 {
 
     public class Filter

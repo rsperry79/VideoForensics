@@ -3,7 +3,7 @@ name: Question
 about: If you have a question regarding this project
 title: "[QUESTION] Brief description"
 labels: Reviewing
-assignees: KoenZomers
+assignees: Ring
 
 ---
 
@@ -12,3 +12,4 @@ A clear and concise description of what your question is about.
 
 **Screenshots**
 If applicable, add screenshots to help explain your question.
+

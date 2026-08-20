@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Exceptions
+namespace Ring.Api.Exceptions
 {
     /// <summary>
     /// Exception thrown when the Ring API required two factor authentication for returning an access token

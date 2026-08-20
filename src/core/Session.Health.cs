@@ -3,9 +3,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Standalone device health (connectivity/battery telemetry) lookups. The same data is already

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// One raw HTTP request/response captured via ApiRawLogger while a single endpoint call ran.

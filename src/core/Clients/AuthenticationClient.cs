@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Interfaces;
+using Ring.Api.Interfaces;
 
-namespace KoenZomers.Ring.Api.Clients;
+namespace Ring.Api.Clients;
 
 /// <summary>
 /// High-level client for authenticating with Ring.

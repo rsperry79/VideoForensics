@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// Maps each API endpoint to its expected entity type(s) for schema validation.

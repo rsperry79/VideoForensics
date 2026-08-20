@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

@@ -1,5 +1,5 @@
 #nullable disable
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Moq;
 

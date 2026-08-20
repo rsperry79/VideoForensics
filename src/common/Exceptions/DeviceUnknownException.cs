@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Exceptions
+namespace Ring.Api.Exceptions
 {
     /// <summary>
     /// Exception thrown when trying to retrieve information regarding a specific Ring device which could not be found

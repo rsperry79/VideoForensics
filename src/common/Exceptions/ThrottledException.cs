@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Exceptions
+namespace Ring.Api.Exceptions
 {
     /// <summary>
     /// Exception thrown when the Ring API returns HTTP 429 Too many requests

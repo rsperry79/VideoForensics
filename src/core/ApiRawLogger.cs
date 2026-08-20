@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Details of a single raw HTTP call made to the Ring API, surfaced for diagnostic logging.

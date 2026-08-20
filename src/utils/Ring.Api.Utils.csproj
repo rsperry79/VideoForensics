@@ -2,13 +2,13 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <RootNamespace>KoenZomers.Ring.Api</RootNamespace>
+        <RootNamespace>Ring.Api</RootNamespace>
         <SignAssembly>true</SignAssembly>
         <AssemblyOriginatorKeyFile>../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
-        <AssemblyName>KoenZomers.Ring.Api.Utils</AssemblyName>
+        <AssemblyName>Ring.Api.Utils</AssemblyName>
         <Company>Koen Zomers</Company>
         <Authors>Koen Zomers, Daniel Espinosa</Authors>
-        <Description>Testing and validation utilities for KoenZomers.Ring.Api</Description>
+        <Description>Testing and validation utilities for Ring.Api</Description>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <Copyright>Koen Zomers</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
@@ -29,3 +29,6 @@
     </ItemGroup>
 
 </Project>
+
+
+

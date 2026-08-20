@@ -10,10 +10,11 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
-using KoenZomers.Ring.Api.Models;
+using Ring.Api.Entities;
+using Ring.Api.Exceptions;
+using Ring.Api.Models;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Orchestrates a full Ring video/snapshot download run: authentication, device and location
@@ -30,6 +31,13 @@ namespace KoenZomers.Ring.Api
         private readonly IReadOnlyDictionary<string, string> configLocationNames;
         private readonly Filter defaultFilter;
         private Session ringSession;
+
+        /// <summary>
+        /// Optional callback invoked after successful file download.
+        /// Ring.Videos can provide this to write metadata sidecars.
+        /// Signature: async Task (DoorbotHistoryEvent event, string filePath)
+        /// </summary>
+        public Func<DoorbotHistoryEvent, string, Task> OnFileDownloadedAsync { get; set; }
         private static SemaphoreSlim semaphore = new SemaphoreSlim(10, 10);
         private static int activeDls = 0;
         private static long totalBytesDownloaded = 0;
@@ -48,6 +56,7 @@ namespace KoenZomers.Ring.Api
         private static readonly object rawApiLogLock = new object();
         private Dictionary<Guid, string> locationNameCache = new();
         private Dictionary<long, Guid> deviceIdToLocationId = new();
+        private Devices cachedDevices = null;  // For enriching downloads with current device health
 
         public RingVideoService(
             ILogger<RingVideoService> logger,
@@ -356,11 +365,11 @@ namespace KoenZomers.Ring.Api
                     return s;
                 });
             }
-            catch (KoenZomers.Ring.Api.Exceptions.ThrottledException e)
+            catch (ThrottledException e)
             {
                 reporter.Error(e.Message);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.AuthenticationFailedException e)
+            catch (AuthenticationFailedException e)
             {
                 reporter.Error($"{e.Message}: Please validate your credentials");
             }
@@ -441,12 +450,12 @@ namespace KoenZomers.Ring.Api
                 // Capture every raw API response for this run so we can inspect what Ring actually
                 // sends back (e.g. to spot fields/devices/locations our entities don't map).
                 // Unsubscribe first in case Run() is invoked more than once in this process (interactive mode).
-                KoenZomers.Ring.Api.ApiRawLogger.OnRawResponse -= LogRawApiCall;
-                KoenZomers.Ring.Api.ApiRawLogger.OnRawResponse += LogRawApiCall;
-                KoenZomers.Ring.Api.ApiRawLogger.OnEvent -= LogApiLifecycleEvent;
-                KoenZomers.Ring.Api.ApiRawLogger.OnEvent += LogApiLifecycleEvent;
-                KoenZomers.Ring.Api.ApiRawLogger.OnRingEvents -= LogRingEventsBatch;
-                KoenZomers.Ring.Api.ApiRawLogger.OnRingEvents += LogRingEventsBatch;
+                ApiRawLogger.OnRawResponse -= LogRawApiCall;
+                ApiRawLogger.OnRawResponse += LogRawApiCall;
+                ApiRawLogger.OnEvent -= LogApiLifecycleEvent;
+                ApiRawLogger.OnEvent += LogApiLifecycleEvent;
+                ApiRawLogger.OnRingEvents -= LogRingEventsBatch;
+                ApiRawLogger.OnRingEvents += LogRingEventsBatch;
 
                 // Load existing failures to check for duplicates
                 LoadExistingFailures(reportsDirectory);
@@ -496,6 +505,9 @@ namespace KoenZomers.Ring.Api
                     }
 
                     reporter.Highlight($"Found {(allDevices.Doorbots?.Count ?? 0) + (allDevices.Chimes?.Count ?? 0) + (allDevices.StickupCams?.Count ?? 0)} total devices across all locations");
+
+                    // Cache devices for enriching downloaded events with health data
+                    this.cachedDevices = allDevices;
 
                     // Camera/doorbell health (connectivity, battery, wifi signal) comes embedded directly in
                     // the ring_devices response already fetched above - no separate health API call needed.
@@ -648,6 +660,9 @@ namespace KoenZomers.Ring.Api
                     dings = dings.Where(d => d.Recording != null &&
                                              string.Equals(d.Recording.Status, "ready", StringComparison.OrdinalIgnoreCase)).ToList();
                     dings = dings.OrderBy(d => d.CreatedAtDateTime).ToList();
+
+                    // Track event telemetry (battery, signal strength, AI detections)
+                    TrackEventTelemetry(dings, reportsDirectory, locationNameCache);
 
                     int videoCount = 0;
                     if (dings.Count >= Filter.VideoCount)
@@ -902,14 +917,18 @@ namespace KoenZomers.Ring.Api
                         if (downloadHelper.ValidateMediaExists(filename, downloadInfo.Size))
                         {
                             reporter.CompleteItem(item, "Exists");
+                            await WriteMetadataAsync(ding, filename, DateTime.Now.AddSeconds(-1), DateTime.Now);
                             return (true, ding);
                         }
 
+                        var downloadStart = DateTime.UtcNow;
                         await this.ringSession.GetDoorbotHistoryRecording(downloadInfo, filename);
+                        var downloadEnd = DateTime.UtcNow;
                         long fileSizeBytes = new FileInfo(filename).Length;
                         Interlocked.Add(ref totalBytesDownloaded, fileSizeBytes);
                         reporter.CompleteItem(item, $"Complete - ({fileSizeBytes / 1048576} MB)");
                         UpdateFooterStatus();
+                        await WriteMetadataAsync(ding, filename, downloadStart, downloadEnd, attempt - 1);
                         break;
                     }
                     catch (AggregateException e)
@@ -958,6 +977,56 @@ namespace KoenZomers.Ring.Api
                 Interlocked.Decrement(ref activeDls);
                 semaphore.Release();
             }
+        }
+
+        private async Task WriteMetadataAsync(DoorbotHistoryEvent ding, string filename, DateTime downloadStart, DateTime downloadEnd, int attempts = 1)
+        {
+            try
+            {
+                if (OnFileDownloadedAsync != null)
+                {
+                    // Enrich event with current device health data if available
+                    if (cachedDevices != null && ding?.Doorbot != null)
+                    {
+                        var device = FindDevice(cachedDevices, ding.Doorbot.Id);
+                        if (device?.Health != null)
+                        {
+                            ding.Doorbot.Health = device.Health;
+                        }
+                        if (device?.Features != null)
+                        {
+                            ding.Doorbot.Features = device.Features;
+                        }
+                    }
+
+                    await OnFileDownloadedAsync(ding, filename);
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning(ex, "Failed to write metadata sidecar for {filename}", filename);
+                // Don't throw - metadata failure shouldn't block the download process
+            }
+        }
+
+        private Doorbot FindDevice(Devices devices, int deviceId)
+        {
+            if (devices == null)
+                return null;
+
+            if (devices.Doorbots != null)
+            {
+                var device = devices.Doorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null) return device;
+            }
+
+            if (devices.AuthorizedDoorbots != null)
+            {
+                var device = devices.AuthorizedDoorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null) return device;
+            }
+
+            return null;
         }
 
         private string GetDownloadSpeed()
@@ -1221,6 +1290,64 @@ namespace KoenZomers.Ring.Api
             catch (Exception exe)
             {
                 log.LogError(exe, "Failed to generate camera health report");
+            }
+        }
+
+        private void TrackEventTelemetry(List<DoorbotHistoryEvent> events, string reportsDir, Dictionary<Guid, string> locationNames)
+        {
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                    Directory.CreateDirectory(reportsDir);
+
+                string tsvPath = Path.Combine(reportsDir, "event_tracking.tsv");
+                bool writeHeader = !System.IO.File.Exists(tsvPath);
+
+                var rows = new List<string>();
+
+                foreach (var evt in events)
+                {
+                    if (evt?.Doorbot?.Health == null)
+                        continue;
+
+                    var health = evt.Doorbot.Health;
+                    string timestamp = evt.CreatedAtDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? evt.CreatedAt ?? "";
+                    string eventId = evt.Id?.ToString() ?? "";
+                    string cameraId = evt.Doorbot.Id.ToString();
+                    string cameraName = evt.Doorbot.Description ?? "";
+                    string kind = evt.Kind ?? "";
+                    string batteryPct = health.BatteryPercentage?.ToString() ?? "";
+                    string batteryCategory = health.BatteryPercentageCategory ?? "";
+                    string signalStrength = health.LatestSignalStrength?.ToString("F1") ?? health.Rssi?.ToString("F1") ?? "";
+                    string signalCategory = health.LatestSignalCategory ?? health.RssiCategory ?? "";
+                    string packetLoss = health.PacketLoss?.ToString("F1") ?? "";
+                    string connected = health.Connected?.ToString() ?? "";
+                    string wifiName = health.WifiName ?? "";
+                    string fwVersion = evt.Doorbot.FirmwareVersion ?? "";
+
+                    string personDetected = evt.CvProperties?.PersonDetected?.ToString() ?? "";
+                    string detectionType = evt.CvProperties?.DetectionType ?? "";
+                    string confidence = evt.CvProperties?.Similarity?.ToString("F3") ?? evt.CvProperties?.Anomaly?.ToString("F3") ?? "";
+
+                    rows.Add($"{timestamp}\t{eventId}\t{cameraId}\t{cameraName}\t{kind}\t{batteryPct}\t{batteryCategory}\t{signalStrength}\t{signalCategory}\t{packetLoss}\t{connected}\t{wifiName}\t{fwVersion}\t{personDetected}\t{detectionType}\t{confidence}");
+                }
+
+                if (rows.Count == 0)
+                    return;
+
+                using (var writer = new StreamWriter(tsvPath, append: true, Encoding.UTF8))
+                {
+                    if (writeHeader)
+                        writer.WriteLine("Timestamp\tEventId\tCameraId\tCameraName\tKind\tBatteryPercentage\tBatteryCategory\tSignalStrength\tSignalCategory\tPacketLoss\tConnected\tWifiName\tFirmwareVersion\tPersonDetected\tDetectionType\tConfidence");
+                    foreach (var row in rows)
+                        writer.WriteLine(row);
+                }
+
+                log.LogInformation($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to generate event tracking report");
             }
         }
 

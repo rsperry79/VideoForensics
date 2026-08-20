@@ -204,7 +204,7 @@ namespace Ring.Api.SelfTester
         public const string HelpText = """
         Ring API SelfTester - API validation and smoke testing
 
-        Calls Ring API endpoints through the KoenZomers.Ring.Api client, writes each raw HTTP
+        Calls Ring API endpoints through the Ring.Ring.Api client, writes each raw HTTP
         response to its own file, and writes an index.json describing every call made (function
         called, HTTP method + path, target ids, status code, and a relative link to the result
         file). Intended to be run by an AI agent to detect when the live Ring API has drifted from
@@ -232,7 +232,7 @@ namespace Ring.Api.SelfTester
                                      password (masked), handles a two-factor code challenge if your
                                      account requires one, then saves the resulting refresh token to
                                      the shared credentials file at %AppData%\RingVideosData\auth.json
-                                     via KoenZomers.Ring.Api's CredentialStore. Every other SelfTester
+                                     via Ring.Ring.Api's CredentialStore. Every other SelfTester
                                      run picks this up automatically afterward - see external/Ring.Api/README.md
                                      ("Authenticating for local tooling") for details. Run this
                                      first if you see a "no credentials found" or "requires
@@ -297,3 +297,4 @@ namespace Ring.Api.SelfTester
         """;
     }
 }
+

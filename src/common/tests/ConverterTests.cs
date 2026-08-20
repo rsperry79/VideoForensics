@@ -3,7 +3,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using KoenZomers.Ring.Api.Converters;
+using Ring.Api.Converters;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

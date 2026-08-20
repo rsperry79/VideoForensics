@@ -1,5 +1,5 @@
-using KoenZomers.Ring.Api;
-using KoenZomers.Ring.Api.Auth;
+using Ring.Api;
+using Ring.Api.Auth;
 
 using System;
 using System.Threading.Tasks;
@@ -53,7 +53,7 @@ namespace Ring.Api.Tests.Mocks
                 await session.Authenticate();
                 return session;
             }
-            catch (KoenZomers.Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 throw new InvalidOperationException(
                     $"The saved credentials require two-factor authentication, which this test helper cannot complete " +
@@ -97,3 +97,4 @@ namespace Ring.Api.Tests.Mocks
             $"Ring API credentials not found or not usable at {CredentialResolver.AuthPath}.\n{SetupPointer}";
     }
 }
+

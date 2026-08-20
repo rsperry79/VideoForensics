@@ -5,10 +5,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Entities;
-using KoenZomers.Ring.Api.Sockets;
+using Ring.Api.Entities;
+using Ring.Api.Sockets;
 
-namespace KoenZomers.Ring.Api.Alarm
+namespace Ring.Api.Alarm
 {
     /// <summary>
     /// A persistent, authenticated device-command websocket for a single Ring location ("asset

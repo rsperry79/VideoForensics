@@ -3,12 +3,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Alarm;
-using KoenZomers.Ring.Api.Sockets;
+using Ring.Api.Alarm;
+using Ring.Api.Sockets;
 
-using IWebSocketTransport = KoenZomers.Ring.Api.Sockets.IWebSocketTransport;
+using IWebSocketTransport = Ring.Api.Sockets.IWebSocketTransport;
 
-namespace KoenZomers.Ring.Api.Streaming
+namespace Ring.Api.Streaming
 {
     /// <summary>
     /// WebSocket signaling client for Ring's dedicated WebRTC live-view server

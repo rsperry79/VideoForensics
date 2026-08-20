@@ -1,5 +1,5 @@
 #nullable disable
-using KoenZomers.Ring.Api.Models;
+using Ring.Api.Models;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 namespace Ring.Api.Tests
 {

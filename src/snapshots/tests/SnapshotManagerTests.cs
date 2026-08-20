@@ -22,9 +22,10 @@ namespace Ring.Api.Snapshots.Tests
         [TestMethod]
         public void SnapshotManager_CanBeConstructedWithValidSession()
         {
-            var session = new KoenZomers.Ring.Api.Session("user", "pass");
+            var session = new Ring.Api.Session("user", "pass");
             var manager = new SnapshotManager(session);
             Assert.IsNotNull(manager);
         }
     }
 }
+

@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 #nullable enable
 
-namespace KoenZomers.Ring.Api;
+namespace Ring.Api;
 
 public enum JsonMode
 {

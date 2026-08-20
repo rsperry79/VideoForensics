@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api.Entities;
+namespace Ring.Api.Entities;
 
 /// <summary>
 /// Represents a Ring device (camera, chime, etc.).

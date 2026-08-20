@@ -3,8 +3,8 @@
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <IsTestProject>true</IsTestProject>
-        <AssemblyName>KoenZomers.Ring.Api.Common.Tests</AssemblyName>
-        <RootNamespace>KoenZomers.Ring.Api.Common.Tests</RootNamespace>
+        <AssemblyName>Ring.Api.Common.Tests</AssemblyName>
+        <RootNamespace>Ring.Api.Common.Tests</RootNamespace>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <SignAssembly>true</SignAssembly>
         <AssemblyOriginatorKeyFile>..\..\..\KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
@@ -22,3 +22,6 @@
     </ItemGroup>
 
 </Project>
+
+
+

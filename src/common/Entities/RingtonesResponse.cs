@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Response shape of GET https://api.ring.com/clients_api/ringtones. Confirmed via a live
