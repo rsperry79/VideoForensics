@@ -3,7 +3,7 @@ using System.IO;
 
 using KoenZomers.Ring.Api;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace KoenZomers.Ring.Api.Auth
 {
     /// <summary>
     /// Resolved set of credentials to authenticate a <see cref="Session"/> with, plus where
