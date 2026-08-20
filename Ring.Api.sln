@@ -27,9 +27,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "src\auth\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth.Tests", "src\auth\tests\Ring.Api.Auth.Tests.csproj", "{2DF1C2E9-3E06-4816-89FC-F7CD4CB69082}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video", "Ring.Api.Video\Ring.Api.Video.csproj", "{AF4C4891-24DC-44EC-8344-4501EEC392F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video", "src\video\Ring.Api.Video.csproj", "{AF4C4891-24DC-44EC-8344-4501EEC392F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video.Tests", "Ring.Api.Video.Tests\Ring.Api.Video.Tests.csproj", "{7423B159-3B05-49C7-B34D-7074F10DF00E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video.Tests", "src\video\tests\Ring.Api.Video.Tests.csproj", "{7423B159-3B05-49C7-B34D-7074F10DF00E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
