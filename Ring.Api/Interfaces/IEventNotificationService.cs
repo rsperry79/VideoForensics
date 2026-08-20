@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -14,19 +15,19 @@ namespace KoenZomers.Ring.Api.Interfaces;
 public interface IEventNotificationService
 {
     /// <summary>
-    /// Gets all event subscriptions for the user.
+    /// Gets all event subscriptions for the user. Returns a JsonElement representing the subscription structure.
     /// </summary>
-    Task<List<object>> GetEventSubscriptions();
+    Task<System.Text.Json.JsonElement> GetEventSubscriptions(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates event subscriptions.
     /// </summary>
-    Task<bool> UpdateEventSubscriptions(List<object> subscriptions);
+    Task<bool> UpdateEventSubscriptions(System.Text.Json.JsonElement subscriptions, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all events for a location.
     /// </summary>
-    Task<List<LocationEvent>> GetLocationEvents(Guid locationId);
+    Task<List<LocationEvent>> GetLocationEvents(Guid locationId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets events with advanced filtering.
@@ -34,5 +35,6 @@ public interface IEventNotificationService
     Task<List<HistoryEvent>> GetEvents(
         int limit = 100,
         DateTimeOffset? dateRange = null,
-        string? kind = null);
+        string? kind = null,
+        CancellationToken cancellationToken = default);
 }
