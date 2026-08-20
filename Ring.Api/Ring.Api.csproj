@@ -41,7 +41,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\src\auth\Ring.Api.Auth.csproj" />
-      <ProjectReference Include="..\Ring.Api.Video\Ring.Api.Video.csproj" />
+      <ProjectReference Include="..\src\video\Ring.Api.Video.csproj" />
     </ItemGroup>
 
 </Project>
