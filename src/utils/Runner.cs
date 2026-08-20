@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// What to run and how far to let it reach: which endpoint keys were requested, plus the two
     /// safety gates that keep destructive/physical calls opt-in.
     /// </summary>
-    internal sealed record RunOptions(
+    public sealed record RunOptions(
         IReadOnlyList<string> RequestedKeys,
         bool Destructive,
         bool NoPhysical,
@@ -28,7 +28,7 @@ namespace Ring.Api.Tester
     /// the whole run. For destructive calls, also captures a pre-mutation baseline where one is
     /// available and restores it immediately after - see EndpointDescriptor.PrepareRestore.
     /// </summary>
-    internal sealed class Runner
+    public sealed class Runner
     {
         private readonly Session _session;
         private readonly string _outputDir;
@@ -56,10 +56,6 @@ namespace Ring.Api.Tester
 
             var selected = ResolveSelection(options.RequestedKeys, options.Destructive, options.NoPhysical);
 
-            // devices/locations are the source of ids for every per-location/per-doorbot/per-chime
-            // endpoint below, so they always run first (and only once) whenever anything
-            // downstream of them was selected - regardless of whether they were explicitly
-            // requested themselves.
             var needsDevices = selected.Any(e => e.Key == "devices") || selected.Any(e => e.Scope is EndpointScope.PerDoorbot or EndpointScope.PerChime);
             var needsLocations = selected.Any(e => e.Key == "locations") || selected.Any(e => e.Scope == EndpointScope.PerLocation);
 
@@ -73,9 +69,6 @@ namespace Ring.Api.Tester
                 index.Calls.Add(record);
                 devices = result as KoenZomers.Ring.Api.Entities.Devices;
 
-                // Baseline for set-volume/set-chime-type/set-night-mode's restore: parsed from the
-                // raw devices response rather than the `devices` entity above, since Doorbot.cs
-                // doesn't model the settings sub-object at all (see DeviceSettingsSnapshot).
                 if (record.Success && record.ResultFile != null)
                 {
                     try
@@ -85,8 +78,6 @@ namespace Ring.Api.Tester
                     }
                     catch
                     {
-                        // Leave it empty - affected restores are then reported as un-capturable
-                        // rather than the whole run failing over a diagnostics-only snapshot.
                     }
                 }
             }
@@ -124,7 +115,6 @@ namespace Ring.Api.Tester
             {
                 if (descriptor.Key is "devices" or "locations")
                 {
-                    // Already executed above as a shared prerequisite.
                     continue;
                 }
 
@@ -252,9 +242,6 @@ namespace Ring.Api.Tester
                 await task;
                 testCallCount = raw.Count;
 
-                // Session methods return Task<T>; pull the boxed result off via reflection so the
-                // caller (devices/locations) can hand ids to the rest of the run without every
-                // Invoke delegate needing a non-generic Task<object> signature.
                 var taskType = task.GetType();
                 var resultProperty = taskType.GetProperty("Result");
                 invokeResult = resultProperty?.GetValue(task);
@@ -262,7 +249,6 @@ namespace Ring.Api.Tester
                 record.Success = true;
                 Narrate($"   ok ({raw.Sum(r => r.Body?.Length ?? 0)} bytes, {raw.Count} http call(s))");
 
-                // Validate response against declared entity schema
                 if (raw.Count > 0 && raw[0].Body != null && EndpointSchemaMap.TryGetExpectedType(descriptor.Key, out var expectedType) && expectedType != null)
                 {
                     try
@@ -281,7 +267,6 @@ namespace Ring.Api.Tester
                     }
                     catch
                     {
-                        // Schema validation is best-effort; don't fail the test if validation itself fails
                     }
                 }
             }
@@ -293,8 +278,6 @@ namespace Ring.Api.Tester
                 Narrate($"   FAILED: {record.Error}");
             }
 
-            // Restore, still inside the same subscription window so its own raw HTTP traffic is
-            // captured too (tagged "restore" below, alongside the "test" calls from Invoke).
             if (record.Success && descriptor.Destructive)
             {
                 if (descriptor.PrepareRestore == null)

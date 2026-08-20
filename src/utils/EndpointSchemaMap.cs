@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 using KoenZomers.Ring.Api.Entities;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// Maps each API endpoint to its expected entity type(s) for schema validation.

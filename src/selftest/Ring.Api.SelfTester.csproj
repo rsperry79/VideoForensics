@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Ring.Api.SelfTester</RootNamespace>
+    <AssemblyName>Ring.Api.SelfTester</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Description>Ring API smoke-test CLI utility - validates the API client against live Ring endpoints and generates test reports.</Description>
+    <AssemblyTitle>Ring.Api.SelfTester</AssemblyTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../utils/Ring.Api.Utils.csproj" />
+    <ProjectReference Include="../core/Ring.Api.Core.csproj" />
+    <ProjectReference Include="../auth/Ring.Api.Auth.csproj" />
+    <ProjectReference Include="../video/Ring.Api.Video.csproj" />
+  </ItemGroup>
+
+</Project>

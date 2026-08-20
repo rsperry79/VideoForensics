@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ring.Api.Tester
+namespace KoenZomers.Ring.Api.Utils
 {
     /// <summary>
     /// One raw HTTP request/response captured via ApiRawLogger while a single endpoint call ran.
     /// Usually one per call, but a call is free to make more than one HTTP request (e.g. paging) -
     /// every request it made is listed here so nothing is hidden from the index.
     /// </summary>
-    internal sealed class HttpCallRecord
+    public sealed class HttpCallRecord
     {
         public string Method { get; set; } = "";
         public string Url { get; set; } = "";
@@ -25,7 +25,7 @@ namespace Ring.Api.Tester
     /// resolved it to (from the devices/locations call), so the index is readable without
     /// cross-referencing ids by hand.
     /// </summary>
-    internal sealed class TargetRecord
+    public sealed class TargetRecord
     {
         public string? LocationId { get; set; }
         public string? LocationName { get; set; }
@@ -40,7 +40,7 @@ namespace Ring.Api.Tester
     /// the raw response body was written. This is the "sub-element" unit of index.json's "calls"
     /// array.
     /// </summary>
-    internal sealed class CallRecord
+    public sealed class CallRecord
     {
         public required string Endpoint { get; set; }
         public required string DisplayName { get; set; }
@@ -66,7 +66,7 @@ namespace Ring.Api.Tester
         public List<SchemaIssueRecord> SchemaIssues { get; set; } = new();
     }
 
-    internal sealed class SchemaIssueRecord
+    public sealed class SchemaIssueRecord
     {
         public string Path { get; set; } = "";
         public string IssueType { get; set; } = ""; // "TypeMismatch", "MissingInSchema", "UnusedInSchema", "NullabilityMismatch"
@@ -80,7 +80,7 @@ namespace Ring.Api.Tester
     /// re-deriving anything from the raw files: what ran, against what account, where each raw
     /// response landed, and a pass/fail summary to check first.
     /// </summary>
-    internal sealed class IndexDocument
+    public sealed class IndexDocument
     {
         public string ToolVersion { get; set; } = "1.0";
         public DateTime GeneratedAtUtc { get; set; }
@@ -90,7 +90,7 @@ namespace Ring.Api.Tester
         public List<CallRecord> Calls { get; set; } = new();
     }
 
-    internal sealed class SummaryRecord
+    public sealed class SummaryRecord
     {
         public int TotalCalls { get; set; }
         public int Succeeded { get; set; }

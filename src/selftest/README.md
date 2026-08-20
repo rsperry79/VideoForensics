@@ -1,4 +1,4 @@
-# ApiTester
+# Ring.Api.SelfTester
 
 A tiny CLI that calls endpoints of the Ring API through the `KoenZomers.Ring.Api` client, saves
 every raw HTTP response to disk, and writes an `index.json` describing the whole run.
@@ -13,7 +13,7 @@ Ring's API is undocumented and unofficial. It changes shape without notice, and 
 fields go missing, get renamed, or new ones show up. There's no official spec to diff against, so
 the only way to notice drift is to look at a real response.
 
-ApiTester exists to make that check cheap and repeatable: run it against a live account, and it
+SelfTester exists to make that check cheap and repeatable: run it against a live account, and it
 captures exactly what Ring sent back for each endpoint - not the deserialized C# object, the raw
 JSON body - next to a record of what was called and how it went. Point a human or an AI agent at
 the output to see whether the client's entity classes still match reality.
@@ -21,7 +21,7 @@ the output to see whether the client's entity classes still match reality.
 ## Quick start
 
 ```powershell
-cd external/Ring.Api/ApiTester
+cd external/RingApi/src/selftest
 dotnet run -- --list                 # see what it can call, no auth needed
 dotnet run -- --auth                 # one-time interactive login (handles 2FA), see below
 dotnet run -- --all                  # run every non-destructive endpoint, write results next to a fresh index.json
@@ -33,10 +33,10 @@ dotnet run -- --all                  # run every non-destructive endpoint, write
 for your Ring username/password, walks through a two-factor code challenge if your account needs
 one, and saves a reusable refresh token to a shared, encrypted credentials file at
 `%AppData%\RingVideosData\auth.json` via `KoenZomers.Ring.Api.CredentialStore`. Every run after
-that - by this tool or by `RealIntegrationTests` in UnitTest - picks it up automatically with no
-further prompts. See `external/Ring.Api/README.md` ("Authenticating for local tooling") for the full
-picture; the 2FA retry logic itself lives in `Api/InteractiveAuth.cs`, independent of this console
-app, so it's not tied to running ApiTester specifically.
+that - by this tool or integration tests - picks it up automatically with no further prompts. See 
+`external/Ring.Api/README.md` ("Authenticating for local tooling") for the full picture; the 2FA 
+retry logic itself lives in `Api/InteractiveAuth.cs`, independent of this console app, so it's not 
+tied to running SelfTester specifically.
 
 Without `--auth`, credentials resolve in this order: `--username`/`--password` or `--refresh-token`
 on the command line, then `RING_USERNAME`/`RING_PASSWORD`/`RING_REFRESH_TOKEN` environment
