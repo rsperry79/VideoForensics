@@ -5,43 +5,43 @@ VisualStudioVersion = 18.9.12112.369
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E74CD4FE-CB4A-4968-B282-C0118BBF63DA}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\cibuild.yml = .github\workflows\cibuild.yml
-		Directory.Build.props = Directory.Build.props
-		KoenZomers.Ring.Api.snk = KoenZomers.Ring.Api.snk
+		..\.github\workflows\cibuild.yml = ..\.github\workflows\cibuild.yml
+		..\Directory.Build.props = ..\Directory.Build.props
+		..\KoenZomers.Ring.Api.snk = ..\KoenZomers.Ring.Api.snk
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{12C92BB7-7D1A-49F5-AD96-2101FEE61C8E}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "docs", "{12C92BB7-7D1A-49F5-AD96-2101FEE61C8E}"
 	ProjectSection(SolutionItems) = preProject
-		README.md = README.md
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{5D858129-BB53-446B-B8B8-C83D383F7F1C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Utils", "src\utils\Ring.Api.Utils.csproj", "{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Utils", "utils\Ring.Api.Utils.csproj", "{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Utils.Tests", "src\utils\tests\Ring.Api.Utils.Tests.csproj", "{A2B3C4D5-E6F7-5A8B-9C0D-1F2A3B4C5D6E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Utils.Tests", "utils\tests\Ring.Api.Utils.Tests.csproj", "{A2B3C4D5-E6F7-5A8B-9C0D-1F2A3B4C5D6E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.SelfTester", "src\selftest\Ring.Api.SelfTester.csproj", "{B2C3D4E5-F6A7-4B8C-9D0E-1F2A3B4C5D6E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.SelfTester", "selftest\Ring.Api.SelfTester.csproj", "{B2C3D4E5-F6A7-4B8C-9D0E-1F2A3B4C5D6E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "src\auth\Ring.Api.Auth.csproj", "{C3787CB7-7901-40C8-AA03-662DF03668BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "auth\Ring.Api.Auth.csproj", "{C3787CB7-7901-40C8-AA03-662DF03668BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth.Tests", "src\auth\tests\Ring.Api.Auth.Tests.csproj", "{2DF1C2E9-3E06-4816-89FC-F7CD4CB69082}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth.Tests", "auth\tests\Ring.Api.Auth.Tests.csproj", "{2DF1C2E9-3E06-4816-89FC-F7CD4CB69082}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video", "src\video\Ring.Api.Video.csproj", "{AF4C4891-24DC-44EC-8344-4501EEC392F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video", "video\Ring.Api.Video.csproj", "{AF4C4891-24DC-44EC-8344-4501EEC392F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video.Tests", "src\video\tests\Ring.Api.Video.Tests.csproj", "{7423B159-3B05-49C7-B34D-7074F10DF00E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video.Tests", "video\tests\Ring.Api.Video.Tests.csproj", "{7423B159-3B05-49C7-B34D-7074F10DF00E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Common", "src\common\Ring.Api.Common.csproj", "{E8B3D4B2-5C8A-4F2E-9D1A-7B4C2A6E8F5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Common", "common\Ring.Api.Common.csproj", "{E8B3D4B2-5C8A-4F2E-9D1A-7B4C2A6E8F5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Common.Tests", "src\common\tests\Ring.Api.Common.Tests.csproj", "{F9C4E5C3-6D9B-5A3F-AE2B-8C5D3B7F9E6E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Common.Tests", "common\tests\Ring.Api.Common.Tests.csproj", "{F9C4E5C3-6D9B-5A3F-AE2B-8C5D3B7F9E6E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Core", "src\core\Ring.Api.Core.csproj", "{D7A2C1B0-4F6E-3E2D-1C0B-9A8B7C6D5E4F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Core", "core\Ring.Api.Core.csproj", "{D7A2C1B0-4F6E-3E2D-1C0B-9A8B7C6D5E4F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Core.Tests", "src\core\tests\Ring.Api.Core.Tests.csproj", "{E8A3F2D1-7B0C-6C4A-BF3C-0D6E4C8F1A7B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Core.Tests", "core\tests\Ring.Api.Core.Tests.csproj", "{E8A3F2D1-7B0C-6C4A-BF3C-0D6E4C8F1A7B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Snapshots", "src\snapshots\Ring.Api.Snapshots.csproj", "{F0D5E4C3-8A1B-5D2E-CF4D-1E7F5A8B0D9C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Snapshots", "snapshots\Ring.Api.Snapshots.csproj", "{F0D5E4C3-8A1B-5D2E-CF4D-1E7F5A8B0D9C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Snapshots.Tests", "src\snapshots\tests\Ring.Api.Snapshots.Tests.csproj", "{1F2E3D4C-5B6A-7D8E-9C0F-A1B2C3D4E5F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Snapshots.Tests", "snapshots\tests\Ring.Api.Snapshots.Tests.csproj", "{1F2E3D4C-5B6A-7D8E-9C0F-A1B2C3D4E5F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

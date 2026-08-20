@@ -98,17 +98,17 @@ Write-Header "Ring API Test Setup"
 
 # Get current directory
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$TestProject = Join-Path $ScriptDir "UnitTest\Unit Test.csproj"
-$ApiTesterProject = Join-Path $ScriptDir "ApiTester\ApiTester.csproj"
+$RootDir = Split-Path -Parent $ScriptDir
+$SolutionFile = Join-Path $RootDir "src\Ring.Api.sln"
 
-# Verify test project exists
-if (-not (Test-Path $TestProject)) {
-    Write-Error-Custom "Test project not found: $TestProject"
+# Verify solution file exists
+if (-not (Test-Path $SolutionFile)) {
+    Write-Error-Custom "Solution file not found: $SolutionFile"
     exit 1
 }
 
-Write-Info "Location: $ScriptDir"
-Write-Info "Test Project: $TestProject"
+Write-Info "Location: $RootDir"
+Write-Info "Solution File: $SolutionFile"
 Write-Host ""
 
 # Step 1: Build
@@ -116,7 +116,7 @@ Write-Header "Step 1: Building Test Project"
 
 $BuildArgs = @(
     "build",
-    $TestProject,
+    $SolutionFile,
     "-c", "Debug"
 )
 
@@ -199,10 +199,10 @@ Write-Header "Step 3: Running Tests"
 
 $TestArgs = @(
     "test",
-    $TestProject,
+    $SolutionFile,
     "-c", "Debug",
     "--collect:XPlat Code Coverage",
-    "--settings", (Join-Path $ScriptDir ".runsettings")
+    "--settings", (Join-Path $RootDir ".runsettings")
 )
 
 if (-not $Verbose) {
@@ -238,7 +238,7 @@ if (-not $NoCoverage -and $GenerateCoverage) {
             Write-Info "Generating HTML coverage report..."
             & $CoverageScript
 
-            $CoverageReport = Join-Path $ScriptDir "TestResults\Coverage\index.html"
+            $CoverageReport = Join-Path $RootDir "TestResults\Coverage\index.html"
             if (Test-Path $CoverageReport) {
                 Write-Success "Coverage report generated: $CoverageReport"
                 Write-Info "Opening report in browser..."
