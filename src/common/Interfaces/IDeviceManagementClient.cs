@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
-using KoenZomers.Ring.Api.Clients;
 
 namespace KoenZomers.Ring.Api.Interfaces;
 
@@ -38,7 +37,7 @@ public interface IDeviceManagementClient
     /// <summary>
     /// Gets the current status of a device.
     /// </summary>
-    Task<Clients.DeviceStatusInfo> GetDeviceStatusAsync(string deviceId, CancellationToken cancellationToken = default);
+    Task<DeviceStatusInfo> GetDeviceStatusAsync(string deviceId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all locations accessible to the user.

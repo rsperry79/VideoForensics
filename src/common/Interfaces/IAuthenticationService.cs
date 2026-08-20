@@ -9,11 +9,6 @@ namespace KoenZomers.Ring.Api.Interfaces;
 public interface IAuthenticationService
 {
     /// <summary>
-    /// Gets a Session instance using a refresh token.
-    /// </summary>
-    Task<Session> GetSessionByRefreshToken(string refreshToken, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Authenticates with the Ring API using stored credentials.
     /// </summary>
     Task<bool> Authenticate(string operatingSystem = "windows", CancellationToken cancellationToken = default);

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace KoenZomers.Ring.Api.Clients;
+namespace KoenZomers.Ring.Api.Entities;
 
 /// <summary>
 /// Represents an action to perform on a device.
