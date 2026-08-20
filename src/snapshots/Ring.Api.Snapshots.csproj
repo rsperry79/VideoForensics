@@ -15,4 +15,8 @@
     <ProjectReference Include="../core/Ring.Api.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+  </ItemGroup>
+
 </Project>
