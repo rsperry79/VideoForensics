@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api;
+using KoenZomers.Ring.Api.Auth;
 using KoenZomers.Ring.Api.Utils;
 
 namespace Ring.Api.SelfTester

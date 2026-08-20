@@ -1,34 +1,28 @@
 using KoenZomers.Ring.Api;
+using KoenZomers.Ring.Api.Auth;
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace Ring.Api.Tests.Mocks
 {
     /// <summary>
     /// Helper class for creating real Ring API sessions for integration testing. Reads the shared
-    /// credentials file (refresh token, or username/password) via <see cref="CredentialStore"/> -
+    /// credentials file (refresh token, or username/password) via <see cref="CredentialResolver"/> -
     /// the same file ApiTester's `--auth` flow writes to, and that RingVideos may also write to.
     /// Never performs its own interactive/2FA authentication (tests aren't interactive) - if
     /// credentials aren't available or don't work, callers get a clear error pointing at how to fix
     /// it via ApiTester rather than this project's own auth code.
     ///
     /// To populate the credentials file:
-    ///   cd external/Ring.Api/ApiTester
+    ///   cd external/Ring.Api/selftest
     ///   dotnet run -- --auth
     /// See external/Ring.Api/README.md ("Authenticating for local tooling") for details.
     /// </summary>
     public class RealSessionHelper
     {
-        private static readonly string ConfigPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "RingVideosData",
-            "auth.json"
-        );
-
         private const string SetupPointer =
-            "Run 'dotnet run -- --auth' from external/Ring.Api/ApiTester to authenticate (handles two-factor " +
+            "Run 'dotnet run -- --auth' from external/Ring.Api/selftest to authenticate (handles two-factor " +
             "accounts too) and save a reusable refresh token. See external/Ring.Api/README.md " +
             "(\"Authenticating for local tooling\") for details.";
 
@@ -41,11 +35,11 @@ namespace Ring.Api.Tests.Mocks
         /// </summary>
         public static async Task<Session> CreateAuthenticatedSessionAsync()
         {
-            var auth = LoadAuthenticationFromAppData();
+            var auth = CredentialResolver.Resolve(null, null, null);
             if (auth == null)
             {
                 throw new InvalidOperationException(
-                    $"Ring API credentials not found at {ConfigPath}.\n{SetupPointer}");
+                    $"Ring API credentials not found at {CredentialResolver.AuthPath}.\n{SetupPointer}");
             }
 
             try
@@ -68,7 +62,7 @@ namespace Ring.Api.Tests.Mocks
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to authenticate with the Ring API using the saved credentials at {ConfigPath}. " +
+                    $"Failed to authenticate with the Ring API using the saved credentials at {CredentialResolver.AuthPath}. " +
                     $"They may be stale or invalid.\n{SetupPointer}\nUnderlying error: {ex.Message}", ex);
             }
         }
@@ -80,11 +74,11 @@ namespace Ring.Api.Tests.Mocks
         /// </summary>
         public static Session CreateSessionWithoutAuth()
         {
-            var auth = LoadAuthenticationFromAppData();
+            var auth = CredentialResolver.Resolve(null, null, null);
             if (auth?.UserName == null || auth.Password == null)
             {
                 throw new InvalidOperationException(
-                    $"Ring API username/password not found at {ConfigPath}.\n{SetupPointer}");
+                    $"Ring API username/password not found at {CredentialResolver.AuthPath}.\n{SetupPointer}");
             }
 
             return new Session(auth.UserName, auth.Password);
@@ -94,23 +88,12 @@ namespace Ring.Api.Tests.Mocks
         /// Checks if credentials (a refresh token, or username/password) are available for real
         /// integration testing.
         /// </summary>
-        public static bool CredentialsAvailable() => LoadAuthenticationFromAppData() != null;
-
-        /// <summary>
-        /// Loads credentials from the shared credentials file, or null if none usable are present.
-        /// </summary>
-        private static RingCredentials? LoadAuthenticationFromAppData()
-        {
-            var creds = new CredentialStore().Load(ConfigPath);
-            var hasRefreshToken = !string.IsNullOrEmpty(creds.RefreshToken);
-            var hasUserNameAndPassword = !string.IsNullOrEmpty(creds.UserName) && !string.IsNullOrEmpty(creds.Password);
-            return hasRefreshToken || hasUserNameAndPassword ? creds : null;
-        }
+        public static bool CredentialsAvailable() => CredentialResolver.Resolve(null, null, null) != null;
 
         /// <summary>
         /// Gets a message explaining how to setup credentials, for tests that want to surface it directly.
         /// </summary>
         public static string GetSetupInstructions() =>
-            $"Ring API credentials not found or not usable at {ConfigPath}.\n{SetupPointer}";
+            $"Ring API credentials not found or not usable at {CredentialResolver.AuthPath}.\n{SetupPointer}";
     }
 }
