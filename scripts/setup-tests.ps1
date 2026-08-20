@@ -202,7 +202,7 @@ $TestArgs = @(
     $SolutionFile,
     "-c", "Debug",
     "--collect:XPlat Code Coverage",
-    "--settings", (Join-Path $RootDir ".runsettings")
+    "--settings", (Join-Path $RootDir "src\.runsettings")
 )
 
 if (-not $Verbose) {

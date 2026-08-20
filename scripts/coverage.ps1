@@ -17,7 +17,7 @@ dotnet test $solutionFile `
     --configuration Release `
     --logger trx `
     --collect:"XPlat Code Coverage" `
-    --settings "$projectPath\.runsettings" `
+    --settings "$rootPath\src\.runsettings" `
     -- RunConfiguration.DisableAppDomain=true
 
 if ($LASTEXITCODE -eq 0) {
