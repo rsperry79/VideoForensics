@@ -8,10 +8,13 @@
         <AssemblyName>KoenZomers.Ring.Api.Common</AssemblyName>
         <Company>Koen Zomers</Company>
         <Authors>Koen Zomers, Daniel Espinosa</Authors>
-        <Description>Common interfaces, entities, and exceptions for KoenZomers.Ring.Api</Description>
+        <Description>Common interfaces, entities, and exceptions for Ring API</Description>
+        <PackageProjectUrl>https://github.com/KoenZomers/RingApi</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/KoenZomers/RingApi</RepositoryUrl>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <PackageTags>Ring;Ring Api;Ring Doorbell;.NET;C#</PackageTags>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Copyright>Koen Zomers</Copyright>
-        <PackageLicenseExpression> EPL-2.0</PackageLicenseExpression>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Nullable>enable</Nullable>
