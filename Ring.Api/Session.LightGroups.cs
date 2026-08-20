@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -25,12 +26,12 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public async Task<List<Group>> GetGroups(Guid locationId)
+        public async Task<List<Group>> GetGroups(Guid locationId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             var parsed = JsonSerializer.Deserialize<GroupsResponse>(response);
             return parsed?.DeviceGroups ?? new List<Group>();
@@ -49,21 +50,21 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public async Task SetGroupLights(Guid locationId, string groupId, bool on, int? durationSeconds = null)
+        public async Task SetGroupLights(Guid locationId, string groupId, bool on, int? durationSeconds = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(groupId))
             {
                 throw new ArgumentNullException(nameof(groupId));
             }
 
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups/{groupId}/devices");
             var bodyContent = JsonSerializer.Serialize(new
             {
                 lights_on = new { enabled = on, duration_seconds = durationSeconds }
             });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken, cancellationToken);
         }
     }
 }

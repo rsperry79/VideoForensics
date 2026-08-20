@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -18,12 +19,12 @@ namespace KoenZomers.Ring.Api
         /// Returns any dings (doorbell presses/motion events) currently active/in-progress across
         /// the account.
         /// </summary>
-        public async Task<List<DoorbotHistoryEvent>> GetActiveDings()
+        public async Task<List<DoorbotHistoryEvent>> GetActiveDings(CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, "dings/active");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response) ?? new List<DoorbotHistoryEvent>();
         }

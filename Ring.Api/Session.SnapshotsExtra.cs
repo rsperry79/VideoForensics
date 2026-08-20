@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -29,12 +30,12 @@ namespace KoenZomers.Ring.Api
         /// Returns a previously captured snapshot identified by its UUID.
         /// </summary>
         /// <param name="uuid">UUID of the snapshot to retrieve</param>
-        public async Task<Stream> GetSnapshotByUuid(string uuid)
+        public async Task<Stream> GetSnapshotByUuid(string uuid, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"snapshots/uuid?uuid={uuid}");
-            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken);
+            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
             return new MemoryStream(bytes);
         }
 
@@ -44,12 +45,12 @@ namespace KoenZomers.Ring.Api
         /// path, and from UpdateSnapshot's fire-and-forget refresh trigger).
         /// </summary>
         /// <param name="doorbotId">ID of the doorbot to retrieve the next snapshot from</param>
-        public async Task<Stream> GetNextSnapshot(long doorbotId)
+        public async Task<Stream> GetNextSnapshot(long doorbotId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(AppSnapsApiBaseUrl, $"snapshots/next/{doorbotId}");
-            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken);
+            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
             return new MemoryStream(bytes);
         }
 
@@ -57,12 +58,12 @@ namespace KoenZomers.Ring.Api
         /// Requests download info for a periodical footage clip by its identifier.
         /// </summary>
         /// <param name="footageId">Identifier of the footage clip</param>
-        public async Task<DownloadRecording> GetPeriodicalFootage(string footageId)
+        public async Task<DownloadRecording> GetPeriodicalFootage(string footageId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingRecordingsApiBaseUrl, $"footages/{footageId}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DownloadRecording>(response);
         }

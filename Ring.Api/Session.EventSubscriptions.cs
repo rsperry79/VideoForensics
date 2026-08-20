@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KoenZomers.Ring.Api
@@ -17,23 +18,23 @@ namespace KoenZomers.Ring.Api
     public partial class Session
     {
         /// <summary>Subscribes the current session to ding (doorbell press) push events for a doorbot.</summary>
-        public Task SubscribeToDingEvents(long doorbotId) => PostDoorbotEventToggle(doorbotId, "subscribe");
+        public Task SubscribeToDingEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "subscribe", cancellationToken);
 
         /// <summary>Unsubscribes the current session from ding push events for a doorbot.</summary>
-        public Task UnsubscribeFromDingEvents(long doorbotId) => PostDoorbotEventToggle(doorbotId, "unsubscribe");
+        public Task UnsubscribeFromDingEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "unsubscribe", cancellationToken);
 
         /// <summary>Subscribes the current session to motion push events for a doorbot.</summary>
-        public Task SubscribeToMotionEvents(long doorbotId) => PostDoorbotEventToggle(doorbotId, "motions_subscribe");
+        public Task SubscribeToMotionEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "motions_subscribe", cancellationToken);
 
         /// <summary>Unsubscribes the current session from motion push events for a doorbot.</summary>
-        public Task UnsubscribeFromMotionEvents(long doorbotId) => PostDoorbotEventToggle(doorbotId, "motions_unsubscribe");
+        public Task UnsubscribeFromMotionEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "motions_unsubscribe", cancellationToken);
 
-        private async Task PostDoorbotEventToggle(long doorbotId, string action)
+        private async Task PostDoorbotEventToggle(long doorbotId, string action, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/{action}");
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, null, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, null, AuthenticationToken, cancellationToken);
         }
     }
 }

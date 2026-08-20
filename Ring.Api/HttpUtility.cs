@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Collections.Specialized;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -82,7 +83,7 @@ namespace KoenZomers.Ring.Api
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Contents of the result returned by the webserver</returns>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public async Task<string> GetContents(Uri url, string bearerToken = null, string hardwareId = null)
+        public async Task<string> GetContents(Uri url, string bearerToken = null, string hardwareId = null, CancellationToken cancellationToken = default)
         {
             // Construct the request
             var request = new HttpRequestMessage
@@ -105,11 +106,11 @@ namespace KoenZomers.Ring.Api
             }
 
             // Send the request to the webserver
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Read the body up front (even on error responses) so it can be captured for diagnostics
             // before we potentially throw below.
-            var responseFromServer = await response.Content.ReadAsStringAsync();
+            var responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, responseFromServer);
 
             switch (response.StatusCode)
@@ -315,7 +316,7 @@ namespace KoenZomers.Ring.Api
         /// <param name="url">Url to download the file from</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Byte array with the file download</returns>
-        public async Task<byte[]> DownloadFile(Uri url, string bearerToken = null)
+        public async Task<byte[]> DownloadFile(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             // Construct the request
             var request = new HttpRequestMessage
@@ -338,9 +339,9 @@ namespace KoenZomers.Ring.Api
             }
 
             // Receive the response from the webserver
-            using (var response = await _httpClient.SendAsync(request))
+            using (var response = await _httpClient.SendAsync(request, cancellationToken))
             {
-                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
                 ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
                 return bytes;
             }
@@ -355,7 +356,7 @@ namespace KoenZomers.Ring.Api
         /// <param name="bodyContent">Content to send along with the request in the body. Leave NULL to not send along any content.</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the actual HTTP response is different from what was expected (or, with no specific expectation, wasn't a success)</exception>
-        public async Task SendRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, HttpStatusCode? expectedStatusCode, string bodyContent = null, string bearerToken = null)
+        public async Task SendRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, HttpStatusCode? expectedStatusCode, string bodyContent = null, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             using var request = new HttpRequestMessage(httpMethod, url);
 
@@ -371,7 +372,7 @@ namespace KoenZomers.Ring.Api
             }
 
             // Send the HTTP request
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Read the body up front (even on error responses) so it can be captured for diagnostics
             // before we potentially throw below. This is the request-body counterpart of the
@@ -379,7 +380,7 @@ namespace KoenZomers.Ring.Api
             // every device-control/setter call: SetLight, SetSiren, SetVolume, SetMotionZones,
             // SetGroupLights, SetLocationMode, UpdateSnapshot, etc.) never surfaced anything through
             // ApiRawLogger, leaving a large blind spot in the raw traffic log.
-            var responseFromServer = await response.Content.ReadAsStringAsync();
+            var responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode,
                 bodyContent == null ? responseFromServer : $"REQUEST: {bodyContent}\nRESPONSE: {responseFromServer}");
 
@@ -410,10 +411,10 @@ namespace KoenZomers.Ring.Api
         /// <param name="bodyContent">Content to send along with the request in the body. Leave NULL to not send along any content.</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Contents of the result returned by the Ring API parsed in the type T provided</returns>
-        public async Task<T> SendRequest<T>(Uri url, HttpMethod httpMethod, string bodyContent, string bearerToken = null)
+        public async Task<T> SendRequest<T>(Uri url, HttpMethod httpMethod, string bodyContent, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             // Make the request and get the body contents of the response
-            var response = await SendRequest(url, httpMethod, bodyContent, bearerToken);
+            var response = await SendRequest(url, httpMethod, bodyContent, bearerToken, cancellationToken);
 
             // Try parsing the response to the type provided with this method
             T responseEntity = JsonSerializer.Deserialize<T>(response);
@@ -427,8 +428,9 @@ namespace KoenZomers.Ring.Api
         /// <param name="httpMethod">The HTTP method to use to call the provided Url</param>
         /// <param name="bodyContent">Content to send along with the request in the body. Leave NULL to not send along any content.</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
+        /// <param name="cancellationToken">Cancellation token to allow cancelling the request</param>
         /// <returns>Contents of the result returned by the Ring API</returns>
-        public async Task<string> SendRequest(Uri url, HttpMethod httpMethod, string bodyContent, string bearerToken = null)
+        public async Task<string> SendRequest(Uri url, HttpMethod httpMethod, string bodyContent, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             using var request = new HttpRequestMessage(httpMethod, url);
 
@@ -444,10 +446,10 @@ namespace KoenZomers.Ring.Api
             }
 
             // Send the HTTP request
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Get the response body and return it
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode, responseBody);
             return responseBody;
         }

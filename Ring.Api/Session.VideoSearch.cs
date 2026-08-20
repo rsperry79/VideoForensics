@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -22,9 +23,9 @@ namespace KoenZomers.Ring.Api
         /// <param name="doorbotId">ID of the doorbot to search events for</param>
         /// <param name="dateFrom">Start of the date range (inclusive). Defaults to 30 days before dateTo/now.</param>
         /// <param name="dateTo">End of the date range (inclusive). Defaults to now.</param>
-        public async Task<List<VideoSearchItem>> VideoSearch(long doorbotId, DateTime? dateFrom = null, DateTime? dateTo = null)
+        public async Task<List<VideoSearchItem>> VideoSearch(long doorbotId, DateTime? dateFrom = null, DateTime? dateTo = null, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var effectiveDateTo = dateTo ?? DateTime.UtcNow;
             var effectiveDateFrom = dateFrom ?? effectiveDateTo.AddDays(-30);
@@ -33,7 +34,7 @@ namespace KoenZomers.Ring.Api
                 $"&date_from={new DateTimeOffset(effectiveDateFrom).ToUnixTimeMilliseconds()}" +
                 $"&date_to={new DateTimeOffset(effectiveDateTo).ToUnixTimeMilliseconds()}";
 
-            var response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId, cancellationToken);
 
             var parsed = JsonSerializer.Deserialize<VideoSearchResponse>(response);
             return parsed?.VideoSearch ?? new List<VideoSearchItem>();

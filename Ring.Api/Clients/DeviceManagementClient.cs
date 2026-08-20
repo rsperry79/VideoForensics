@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Interfaces;
@@ -30,19 +31,19 @@ public class DeviceManagementClient : IDeviceManagementClient
         _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
     }
 
-    public async Task<List<Doorbot>> GetAllDevicesAsync()
+    public async Task<List<Doorbot>> GetAllDevicesAsync(CancellationToken cancellationToken = default)
     {
-        return await _discoveryService.GetRingDevices();
+        return await _discoveryService.GetRingDevices(null, cancellationToken);
     }
 
-    public async Task<Doorbot> GetDeviceByNameAsync(string deviceName)
+    public async Task<Doorbot> GetDeviceByNameAsync(string deviceName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(deviceName))
         {
             throw new ArgumentException("Device name is required", nameof(deviceName));
         }
 
-        var devices = await _discoveryService.GetRingDevices();
+        var devices = await _discoveryService.GetRingDevices(null, cancellationToken);
         var device = devices.FirstOrDefault(d =>
             d.Description?.Equals(deviceName, StringComparison.OrdinalIgnoreCase) ?? false);
 
@@ -54,14 +55,14 @@ public class DeviceManagementClient : IDeviceManagementClient
         return device;
     }
 
-    public async Task<Doorbot> GetDeviceByIdAsync(string deviceId)
+    public async Task<Doorbot> GetDeviceByIdAsync(string deviceId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(deviceId))
         {
             throw new ArgumentException("Device ID is required", nameof(deviceId));
         }
 
-        var devices = await _discoveryService.GetRingDevices();
+        var devices = await _discoveryService.GetRingDevices(null, cancellationToken);
         var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
         if (device == null)
@@ -72,7 +73,7 @@ public class DeviceManagementClient : IDeviceManagementClient
         return device;
     }
 
-    public async Task<bool> ControlDeviceAsync(string deviceId, DeviceAction action)
+    public async Task<bool> ControlDeviceAsync(string deviceId, DeviceAction action, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(deviceId))
         {
@@ -88,14 +89,14 @@ public class DeviceManagementClient : IDeviceManagementClient
         {
             return action.ActionType.ToLower() switch
             {
-                "light_on" => await _controlService.SetLight(deviceId, true),
-                "light_off" => await _controlService.SetLight(deviceId, false),
-                "siren_on" => await _controlService.SetSiren(deviceId, true, action.Parameters.ContainsKey("duration") ? (int)action.Parameters["duration"] : 30),
-                "siren_off" => await _controlService.SetSiren(deviceId, false),
-                "night_mode_on" => await _controlService.SetNightMode(deviceId, true),
-                "night_mode_off" => await _controlService.SetNightMode(deviceId, false),
-                "motion_detection_on" => await _controlService.SetMotionDetection(deviceId, true),
-                "motion_detection_off" => await _controlService.SetMotionDetection(deviceId, false),
+                "light_on" => await _controlService.SetLight(deviceId, true, cancellationToken),
+                "light_off" => await _controlService.SetLight(deviceId, false, cancellationToken),
+                "siren_on" => await _controlService.SetSiren(deviceId, true, action.Parameters.ContainsKey("duration") ? (int)action.Parameters["duration"] : 30, cancellationToken),
+                "siren_off" => await _controlService.SetSiren(deviceId, false, cancellationToken: cancellationToken),
+                "night_mode_on" => await _controlService.SetNightMode(deviceId, true, cancellationToken),
+                "night_mode_off" => await _controlService.SetNightMode(deviceId, false, cancellationToken),
+                "motion_detection_on" => await _controlService.SetMotionDetection(deviceId, true, cancellationToken),
+                "motion_detection_off" => await _controlService.SetMotionDetection(deviceId, false, cancellationToken),
                 _ => throw new NotSupportedException($"Action '{action.ActionType}' is not supported")
             };
         }
@@ -105,15 +106,15 @@ public class DeviceManagementClient : IDeviceManagementClient
         }
     }
 
-    public async Task<DeviceStatusInfo> GetDeviceStatusAsync(string deviceId)
+    public async Task<DeviceStatusInfo> GetDeviceStatusAsync(string deviceId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(deviceId))
         {
             throw new ArgumentException("Device ID is required", nameof(deviceId));
         }
 
-        var device = await GetDeviceByIdAsync(deviceId);
-        var health = await _healthService.GetDoorbotHealth(deviceId);
+        var device = await GetDeviceByIdAsync(deviceId, cancellationToken);
+        var health = await _healthService.GetDoorbotHealth(deviceId, cancellationToken);
 
         return new DeviceStatusInfo
         {
@@ -124,22 +125,22 @@ public class DeviceManagementClient : IDeviceManagementClient
         };
     }
 
-    public async Task<List<Location>> GetAllLocationsAsync()
+    public async Task<List<Location>> GetAllLocationsAsync(CancellationToken cancellationToken = default)
     {
-        return await _discoveryService.GetLocations();
+        return await _discoveryService.GetLocations(cancellationToken);
     }
 
-    public async Task<List<Doorbot>> GetDevicesByLocationAsync(Guid locationId)
+    public async Task<List<Doorbot>> GetDevicesByLocationAsync(Guid locationId, CancellationToken cancellationToken = default)
     {
         if (locationId == Guid.Empty)
         {
             throw new ArgumentException("Location ID is required", nameof(locationId));
         }
 
-        return await _discoveryService.GetRingDevices(locationId);
+        return await _discoveryService.GetRingDevices(locationId, cancellationToken);
     }
 
-    public async Task<bool> SetLocationModeAsync(Guid locationId, string mode)
+    public async Task<bool> SetLocationModeAsync(Guid locationId, string mode, CancellationToken cancellationToken = default)
     {
         if (locationId == Guid.Empty)
         {
@@ -152,6 +153,6 @@ public class DeviceManagementClient : IDeviceManagementClient
         }
 
         var locationMode = new LocationMode { Mode = mode };
-        return await _locationService.SetLocationMode(locationId, locationMode);
+        return await _locationService.SetLocationMode(locationId, locationMode, cancellationToken);
     }
 }

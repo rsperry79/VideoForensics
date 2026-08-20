@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Interfaces;
@@ -30,12 +31,14 @@ public class VideoDownloadClient : IVideoDownloadClient
         int? limit = null,
         DateTimeOffset? dateRange = null,
         string? deviceId = null,
-        string? eventKind = null)
+        string? eventKind = null,
+        CancellationToken cancellationToken = default)
     {
         var recordings = await _recordingService.GetDoorbotHistory(
             limit ?? 100,
             dateRange,
-            deviceId);
+            deviceId,
+            cancellationToken);
 
         if (!string.IsNullOrEmpty(eventKind))
         {
@@ -47,7 +50,8 @@ public class VideoDownloadClient : IVideoDownloadClient
 
     public async Task<bool> DownloadRecordingAsync(
         DoorbotHistoryEvent recording,
-        string outputPath)
+        string outputPath,
+        CancellationToken cancellationToken = default)
     {
         if (recording == null)
         {
@@ -61,7 +65,7 @@ public class VideoDownloadClient : IVideoDownloadClient
 
         try
         {
-            await _recordingService.GetDoorbotHistoryRecording(recording, outputPath);
+            await _recordingService.GetDoorbotHistoryRecording(recording, outputPath, cancellationToken);
             return true;
         }
         catch
@@ -72,7 +76,8 @@ public class VideoDownloadClient : IVideoDownloadClient
 
     public async Task<bool> DownloadSnapshotAsync(
         string deviceId,
-        string outputPath)
+        string outputPath,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(deviceId))
         {
@@ -86,7 +91,7 @@ public class VideoDownloadClient : IVideoDownloadClient
 
         try
         {
-            var devices = await _deviceService.GetRingDevices();
+            var devices = await _deviceService.GetRingDevices(null, cancellationToken);
             var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
             if (device == null)
@@ -94,7 +99,7 @@ public class VideoDownloadClient : IVideoDownloadClient
                 return false;
             }
 
-            await _recordingService.GetLatestSnapshot(device, outputPath);
+            await _recordingService.GetLatestSnapshot(device, outputPath, cancellationToken);
             return true;
         }
         catch
@@ -104,23 +109,24 @@ public class VideoDownloadClient : IVideoDownloadClient
     }
 
     public async Task<DoorbotHistoryEventRecording> GetRecordingInfoAsync(
-        DoorbotHistoryEvent recording)
+        DoorbotHistoryEvent recording,
+        CancellationToken cancellationToken = default)
     {
         if (recording == null)
         {
             throw new ArgumentNullException(nameof(recording));
         }
 
-        return await _recordingService.GetDoorbotHistoryRecordingInfo(recording);
+        return await _recordingService.GetDoorbotHistoryRecordingInfo(recording, cancellationToken);
     }
 
-    public async Task<string> ShareRecordingAsync(string recordingId)
+    public async Task<string> ShareRecordingAsync(string recordingId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(recordingId))
         {
             throw new ArgumentException("Recording ID is required", nameof(recordingId));
         }
 
-        return await _recordingService.ShareRecording(recordingId);
+        return await _recordingService.ShareRecording(recordingId, cancellationToken);
     }
 }

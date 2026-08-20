@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KoenZomers.Ring.Api
@@ -28,12 +29,12 @@ namespace KoenZomers.Ring.Api
         /// Returns the alarm monitoring status for a location's account.
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve monitoring status for</param>
-        public async Task<JsonElement> GetAccountMonitoringStatus(Guid locationId)
+        public async Task<JsonElement> GetAccountMonitoringStatus(Guid locationId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(MonitoringApiBaseUrl, $"{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }
@@ -44,17 +45,17 @@ namespace KoenZomers.Ring.Api
         /// </summary>
         /// <param name="locationId">ID of the location the asset belongs to</param>
         /// <param name="assetUuid">UUID of the monitored asset to trigger the alarm for</param>
-        public async Task TriggerAlarm(Guid locationId, string assetUuid)
+        public async Task TriggerAlarm(Guid locationId, string assetUuid, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(assetUuid))
             {
                 throw new ArgumentNullException(nameof(assetUuid));
             }
 
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(MonitoringApiBaseUrl, $"{locationId:D}/assets/{assetUuid}/userAlarm");
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, null, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, null, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -62,12 +63,12 @@ namespace KoenZomers.Ring.Api
         /// GetDoorbotsHistory()/GetLocationEvents() feeds).
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve history for</param>
-        public async Task<JsonElement> GetLocationHistory(Guid locationId)
+        public async Task<JsonElement> GetLocationHistory(Guid locationId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingEvmApiBaseUrl, $"{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }

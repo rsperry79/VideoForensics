@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KoenZomers.Ring.Api
@@ -21,12 +22,12 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetLight(long doorbotId, bool on)
+        public async Task SetLight(long doorbotId, bool on, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/floodlight_light_{(on ? "on" : "off")}");
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, null, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, null, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -40,9 +41,9 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetSiren(long doorbotId, bool on, int? durationSeconds = null)
+        public async Task SetSiren(long doorbotId, bool on, int? durationSeconds = null, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var path = $"doorbots/{doorbotId}/siren_{(on ? "on" : "off")}";
             if (on && durationSeconds.HasValue)
@@ -51,7 +52,7 @@ namespace KoenZomers.Ring.Api
             }
 
             var uri = new Uri(BaseUrl, path);
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, null, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, null, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -64,13 +65,13 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task TestChimeSound(int chimeId, string kind = "ding")
+        public async Task TestChimeSound(int chimeId, string kind = "ding", CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/play_sound");
             var bodyContent = JsonSerializer.Serialize(new { kind });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -84,16 +85,16 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetVolume(long doorbotId, int volume)
+        public async Task SetVolume(long doorbotId, int volume, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
             var bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
             {
                 ["doorbot[settings][doorbell_volume]"] = volume
             });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -106,16 +107,16 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetMotionDetection(long doorbotId, bool enabled)
+        public async Task SetMotionDetection(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
             var bodyContent = JsonSerializer.Serialize(new
             {
                 motion_settings = new { motion_detection_enabled = enabled }
             });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Patch, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Patch, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -130,9 +131,9 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetChimeType(long doorbotId, int type, bool? enabled = null, int? duration = null)
+        public async Task SetChimeType(long doorbotId, int type, bool? enabled = null, int? duration = null, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
             var fields = new System.Collections.Generic.Dictionary<string, object>
@@ -149,7 +150,7 @@ namespace KoenZomers.Ring.Api
             }
 
             var bodyContent = JsonSerializer.Serialize(fields);
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -163,13 +164,13 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetDoNotDisturb(long chimeId, int seconds)
+        public async Task SetDoNotDisturb(long chimeId, int seconds, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/do_not_disturb");
             var bodyContent = JsonSerializer.Serialize(new { time = seconds });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -181,16 +182,16 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetNightMode(long doorbotId, bool enabled)
+        public async Task SetNightMode(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
             var bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
             {
                 ["doorbot[settings][night_mode]"] = enabled ? 1 : 0
             });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -200,12 +201,12 @@ namespace KoenZomers.Ring.Api
         /// knows how to write.
         /// </summary>
         /// <param name="doorbotId">ID of the device to retrieve settings for</param>
-        public async Task<System.Text.Json.JsonElement> GetDeviceSettings(long doorbotId)
+        public async Task<System.Text.Json.JsonElement> GetDeviceSettings(long doorbotId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }
@@ -217,12 +218,12 @@ namespace KoenZomers.Ring.Api
         /// </summary>
         /// <param name="chimeId">ID of the chime to update</param>
         /// <param name="settingsJson">Raw JSON body describing the settings to apply</param>
-        public async Task UpdateChime(long chimeId, string settingsJson)
+        public async Task UpdateChime(long chimeId, string settingsJson, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}");
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, settingsJson, AuthenticationToken);
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, settingsJson, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -231,12 +232,12 @@ namespace KoenZomers.Ring.Api
         /// confirmed, hence raw JsonElement rather than an invented type.
         /// </summary>
         /// <param name="chimeId">ID of the chime to retrieve linked doorbots for</param>
-        public async Task<System.Text.Json.JsonElement> GetLinkedChimeDoorbots(long chimeId)
+        public async Task<System.Text.Json.JsonElement> GetLinkedChimeDoorbots(long chimeId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/linked_doorbots");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }
