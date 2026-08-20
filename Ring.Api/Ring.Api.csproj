@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>KoenZomers.Ring.Api</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>..\KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>KoenZomers.Ring.Api</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers, Daniel Espinosa</Authors>
+        <Description>API in .NET to communicate with the Ring Doorbell service</Description>
+        <PackageProjectUrl>https://github.com/KoenZomers/RingApi</PackageProjectUrl>
+        <PackageReleaseNotes>- Fixed 406 Http Response issue due to missing headers in http calls.</PackageReleaseNotes>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/KoenZomers/RingApi</RepositoryUrl>
+        <PackageLicenseExpression> EPL-2.0</PackageLicenseExpression>
+        <PackageTags>Ring;Ring Api;Ring Doorbell;.NET;C#</PackageTags>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <None Include="..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+      <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+      <PackageReference Include="SIPSorcery" Version="10.0.16" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\src\common\Ring.Api.Common.csproj" />
+      <ProjectReference Include="..\src\core\Ring.Api.Core.csproj" />
+      <ProjectReference Include="..\src\auth\Ring.Api.Auth.csproj" />
+      <ProjectReference Include="..\src\video\Ring.Api.Video.csproj" />
+    </ItemGroup>
+
+</Project>

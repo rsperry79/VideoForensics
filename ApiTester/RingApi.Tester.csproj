@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KoenZomers.Ring.ApiTester</RootNamespace>
+    <AssemblyName>ApiTester</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Description>Non-destructive Ring API smoke-test CLI. Calls read-only endpoints against a real Ring account, writes each raw HTTP response to disk, and produces a JSON index so an AI agent can detect when the live Ring API has drifted from what the KoenZomers.Ring.Api client expects.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Api\RingApi.csproj" />
+  </ItemGroup>
+
+</Project>
