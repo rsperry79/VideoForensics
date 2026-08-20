@@ -44,6 +44,7 @@ namespace Ring.Api.Entities
         public string BatteryPercentageCategory { get; set; }
 
         [JsonPropertyName("battery_voltage")]
+        [JsonConverter(typeof(DecimalConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public decimal? BatteryVoltage { get; set; }
 
@@ -52,6 +53,7 @@ namespace Ring.Api.Entities
         public string BatteryVoltageCategory { get; set; }
 
         [JsonPropertyName("rssi")]
+        [JsonConverter(typeof(DoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Rssi { get; set; }
 
@@ -68,6 +70,7 @@ namespace Ring.Api.Entities
         public string WifiName { get; set; }
 
         [JsonPropertyName("packet_loss")]
+        [JsonConverter(typeof(DoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? PacketLoss { get; set; }
 
@@ -92,6 +95,7 @@ namespace Ring.Api.Entities
         public long? Id { get; set; }
 
         [JsonPropertyName("latest_signal_strength")]
+        [JsonConverter(typeof(DoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? LatestSignalStrength { get; set; }
 
@@ -100,6 +104,7 @@ namespace Ring.Api.Entities
         public string LatestSignalCategory { get; set; }
 
         [JsonPropertyName("average_signal_strength")]
+        [JsonConverter(typeof(DoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? AverageSignalStrength { get; set; }
 
@@ -116,6 +121,7 @@ namespace Ring.Api.Entities
         public string UpdatedAt { get; set; }
 
         [JsonPropertyName("packet_loss_strength")]
+        [JsonConverter(typeof(DoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? PacketLossStrength { get; set; }
 
