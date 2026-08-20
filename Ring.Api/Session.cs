@@ -352,7 +352,7 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         /// 
-        public async Task EnsureSessionValid()
+        public async Task EnsureSessionValid(CancellationToken cancellationToken = default)
         {
             // Ensure the session is authenticated
             if (!IsAuthenticated)

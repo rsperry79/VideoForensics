@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Entities;
@@ -17,12 +18,12 @@ namespace KoenZomers.Ring.Api
         /// Returns the connectivity/battery health of a single doorbell/camera.
         /// </summary>
         /// <param name="doorbotId">ID of the doorbot to retrieve health for</param>
-        public async Task<DeviceHealthResponse> GetDoorbotHealth(long doorbotId)
+        public async Task<DeviceHealthResponse> GetDoorbotHealth(long doorbotId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/health");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DeviceHealthResponse>(response);
         }
@@ -31,12 +32,12 @@ namespace KoenZomers.Ring.Api
         /// Returns the connectivity health of a single chime.
         /// </summary>
         /// <param name="chimeId">ID of the chime to retrieve health for</param>
-        public async Task<DeviceHealthResponse> GetChimeHealth(long chimeId)
+        public async Task<DeviceHealthResponse> GetChimeHealth(long chimeId, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/health");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DeviceHealthResponse>(response);
         }

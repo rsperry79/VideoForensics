@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using KoenZomers.Ring.Api.Alarm;
@@ -28,20 +29,20 @@ namespace KoenZomers.Ring.Api
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public Task<RingLiveViewSession> StartLiveView(long doorbotId) =>
-            StartLiveView(doorbotId, new ClientWebSocketTransport());
+        public Task<RingLiveViewSession> StartLiveView(long doorbotId, CancellationToken cancellationToken = default) =>
+            StartLiveView(doorbotId, new ClientWebSocketTransport(), cancellationToken);
 
         /// <summary>
         /// Overload accepting an explicit IWebSocketTransport - used by tests to inject a fake
         /// transport instead of opening a real websocket, and available to consumers who want to
         /// supply their own transport (e.g. for logging or a proxied connection).
         /// </summary>
-        public async Task<RingLiveViewSession> StartLiveView(long doorbotId, IWebSocketTransport transport)
+        public async Task<RingLiveViewSession> StartLiveView(long doorbotId, IWebSocketTransport transport, CancellationToken cancellationToken = default)
         {
-            await EnsureSessionValid();
+            await EnsureSessionValid(cancellationToken);
 
             var ticketUri = new Uri(RingAppApiBaseUrl, "clap/ticket/request/signalsocket");
-            var response = await _httpUtility.SendRequest(ticketUri, System.Net.Http.HttpMethod.Post, null, AuthenticationToken);
+            var response = await _httpUtility.SendRequest(ticketUri, System.Net.Http.HttpMethod.Post, null, AuthenticationToken, cancellationToken);
             var ticketResponse = JsonSerializer.Deserialize<ClapSignalingTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Ticket))
