@@ -23,9 +23,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Tester", "Ring.Api
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Tests", "Ring.Api.Tests\Ring.Api.Tests.csproj", "{ADF1C052-8F3A-4904-EBE6-9DBBAFDD63E5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "Ring.Api.Auth\Ring.Api.Auth.csproj", "{C3787CB7-7901-40C8-AA03-662DF03668BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "src\auth\Ring.Api.Auth.csproj", "{C3787CB7-7901-40C8-AA03-662DF03668BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth.Tests", "Ring.Api.Auth.Tests\Ring.Api.Auth.Tests.csproj", "{2DF1C2E9-3E06-4816-89FC-F7CD4CB69082}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth.Tests", "src\auth\tests\Ring.Api.Auth.Tests.csproj", "{2DF1C2E9-3E06-4816-89FC-F7CD4CB69082}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Video", "Ring.Api.Video\Ring.Api.Video.csproj", "{AF4C4891-24DC-44EC-8344-4501EEC392F4}"
 EndProject
