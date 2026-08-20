@@ -1,8 +1,9 @@
 # Run tests with code coverage for the Ring API
 
-$projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testProject = "$projectPath\UnitTest\Unit Test.csproj"
-$resultsDir = "$projectPath\TestResults"
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootPath = Split-Path -Parent $scriptPath
+$solutionFile = "$rootPath\src\Ring.Api.sln"
+$resultsDir = "$rootPath\TestResults"
 
 Write-Host "Running code coverage for Ring API..." -ForegroundColor Cyan
 
@@ -11,8 +12,8 @@ if (Test-Path $resultsDir) {
     Remove-Item $resultsDir -Recurse -Force
 }
 
-# Run tests with coverage collection
-dotnet test $testProject `
+# Run all tests with coverage collection
+dotnet test $solutionFile `
     --configuration Release `
     --logger trx `
     --collect:"XPlat Code Coverage" `
