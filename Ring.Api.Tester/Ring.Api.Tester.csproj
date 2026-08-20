@@ -20,7 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ring.Api\Ring.Api.csproj" />
+    <ProjectReference Include="..\src\core\Ring.Api.Core.csproj" />
+    <ProjectReference Include="..\src\auth\Ring.Api.Auth.csproj" />
+    <ProjectReference Include="..\src\video\Ring.Api.Video.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,8 +17,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{5D858129-BB53-446B-B8B8-C83D383F7F1C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api", "Ring.Api\Ring.Api.csproj", "{BD09CC33-0133-918A-CD20-E4D9A1037860}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Tester", "Ring.Api.Tester\Ring.Api.Tester.csproj", "{111BE4B0-E3A6-D737-95AD-3EDAD729B6FF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ring.Api.Auth", "src\auth\Ring.Api.Auth.csproj", "{C3787CB7-7901-40C8-AA03-662DF03668BD}"
@@ -47,18 +45,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|x64.Build.0 = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Debug|x86.Build.0 = Debug|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|x64.ActiveCfg = Release|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|x64.Build.0 = Release|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|x86.ActiveCfg = Release|Any CPU
-		{BD09CC33-0133-918A-CD20-E4D9A1037860}.Release|x86.Build.0 = Release|Any CPU
 		{111BE4B0-E3A6-D737-95AD-3EDAD729B6FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{111BE4B0-E3A6-D737-95AD-3EDAD729B6FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{111BE4B0-E3A6-D737-95AD-3EDAD729B6FF}.Debug|x64.ActiveCfg = Debug|Any CPU
