@@ -2,7 +2,7 @@
 
 using System;
 
-namespace KoenZomers.Ring.Api.Clients;
+namespace KoenZomers.Ring.Api.Entities;
 
 /// <summary>
 /// Represents the current status of a device.
