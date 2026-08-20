@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     public class DownloadHelper
     {

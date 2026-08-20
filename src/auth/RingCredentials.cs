@@ -1,6 +1,6 @@
 using System;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Plaintext Ring account credentials, as loaded from or about to be saved to disk via <see cref="ICredentialStore"/>.

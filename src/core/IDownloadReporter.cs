@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Everything <see cref="RingVideoService"/> needs to surface to a user, abstracted so this

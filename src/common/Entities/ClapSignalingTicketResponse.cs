@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Response shape of POST clap/ticket/request/signalsocket - grants a short-lived ticket to open

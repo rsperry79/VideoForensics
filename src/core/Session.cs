@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Threading;
 using System.Text.Json;
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 using System.Collections.Specialized;
 using System.Reflection.Metadata.Ecma335;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     public partial class Session
     {

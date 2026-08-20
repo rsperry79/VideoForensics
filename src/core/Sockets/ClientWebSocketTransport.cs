@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api.Sockets
+namespace Ring.Api.Sockets
 {
     /// <summary>
     /// Real IWebSocketTransport implementation backed by the BCL ClientWebSocket.

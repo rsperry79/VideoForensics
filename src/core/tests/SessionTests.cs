@@ -1,4 +1,4 @@
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Ring.Api.Tests.Mocks;
 

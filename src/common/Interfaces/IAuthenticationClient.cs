@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api.Interfaces;
+namespace Ring.Api.Interfaces;
 
 /// <summary>
 /// High-level client for handling Ring authentication.

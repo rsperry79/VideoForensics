@@ -6,10 +6,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Interfaces;
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Interfaces;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Clients;
+namespace Ring.Api.Clients;
 
 /// <summary>
 /// High-level client for downloading Ring videos and snapshots.

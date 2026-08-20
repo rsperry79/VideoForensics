@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 
-using KoenZomers.Ring.Api.Entities;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Models
+namespace Ring.Api.Models
 {
     public class DeviceInfo
     {

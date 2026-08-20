@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using KoenZomers.Ring.Api.Utils;
+using Ring.Api.Utils;
 
 namespace Ring.Api.Utils.Tests
 {
@@ -24,10 +24,11 @@ namespace Ring.Api.Utils.Tests
         [TestMethod]
         public void Runner_CanBeConstructedWithValidSession()
         {
-            var session = new KoenZomers.Ring.Api.Session("user", "pass");
+            var session = new Ring.Api.Session("user", "pass");
             var outputDir = Path.Combine(Path.GetTempPath(), "test");
             var runner = new Runner(session, outputDir, quiet: true);
             Assert.IsNotNull(runner);
         }
     }
 }
+

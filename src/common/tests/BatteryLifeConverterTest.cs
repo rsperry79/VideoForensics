@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using KoenZomers.Ring.Api.Converters;
+using Ring.Api.Converters;
 
 namespace Ring.Api.Tests.Converters;
 

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Response shape of GET/POST https://api.ring.com/rs/mode/location/{locationId} - Ring's

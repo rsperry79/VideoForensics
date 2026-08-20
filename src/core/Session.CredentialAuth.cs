@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     public partial class Session
     {

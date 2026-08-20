@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <inheritdoc cref="IVideoDownloader"/>
     public class VideoDownloader : IVideoDownloader, IDisposable

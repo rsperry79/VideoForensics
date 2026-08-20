@@ -7,7 +7,7 @@ using SIPSorcery.Net;
 
 using SIPSorceryMedia.Abstractions;
 
-namespace KoenZomers.Ring.Api.Streaming
+namespace Ring.Api.Streaming
 {
     /// <summary>
     /// A connected WebRTC live-view session for a Ring camera. Wraps a SIPSorcery RTCPeerConnection

@@ -3,61 +3,61 @@
 [![stars badge]][stars]
 [![forks badge]][forks]
 [![issues badge]][issues]
-[![Continuous Integration Build](https://github.com/KoenZomers/Ring.Api/actions/workflows/cibuild.yml/badge.svg)](https://github.com/KoenZomers/Ring.Api/actions/workflows/cibuild.yml)
+[![Continuous Integration Build](https://github.com/Ring/Ring.Api/actions/workflows/cibuild.yml/badge.svg)](https://github.com/Ring/Ring.Api/actions/workflows/cibuild.yml)
 
 [licence badge]:https://img.shields.io/badge/license-MIT-blue.svg
-[stars badge]:https://img.shields.io/github/stars/koenzomers/Ring.Api.svg
-[forks badge]:https://img.shields.io/github/forks/koenzomers/Ring.Api.svg
-[issues badge]:https://img.shields.io/github/issues/koenzomers/Ring.Api.svg
+[stars badge]:https://img.shields.io/github/stars/Ring/Ring.Api.svg
+[forks badge]:https://img.shields.io/github/forks/Ring/Ring.Api.svg
+[issues badge]:https://img.shields.io/github/issues/Ring/Ring.Api.svg
 
-[licence]:https://github.com/koenzomers/Ring.Api/blob/master/LICENSE.md
-[stars]:https://github.com/koenzomers/Ring.Api/stargazers
-[forks]:https://github.com/koenzomers/Ring.Api/network
-[issues]:https://github.com/koenzomers/Ring.Api/issues
+[licence]:https://github.com/Ring/Ring.Api/blob/master/LICENSE.md
+[stars]:https://github.com/Ring/Ring.Api/stargazers
+[forks]:https://github.com/Ring/Ring.Api/network
+[issues]:https://github.com/Ring/Ring.Api/issues
 
 This library for C# compiled against .NET 8 will allow you to easily communicate with the Ring API and retrieve details about your Ring doorbells and Ring chimes.
 
-If you're just looking for a tool to download your Ring recordings, [go here instead](https://github.com/KoenZomers/RingRecordingDownload).  
-If you're looking for a tool to download snapshots from your Ring cameras, [go here](https://github.com/KoenZomers/RingSnapshotDownload).
+If you're just looking for a tool to download your Ring recordings, [go here instead](https://github.com/Ring/RingRecordingDownload).  
+If you're looking for a tool to download snapshots from your Ring cameras, [go here](https://github.com/Ring/RingSnapshotDownload).
 
 ## Version History
 
-[1.0.0.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/1.0.0.0) - released Oct 23, 2024
+[1.0.0.0](https://www.nuget.org/packages/Ring.Api/1.0.0.0) - released Oct 23, 2024
 
 - Added support for .NET 8 and stopped support for .NET 6
 
-[0.5.4.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.4.0) - released April 5, 2024
+[0.5.4.0](https://www.nuget.org/packages/Ring.Api/0.5.4.0) - released April 5, 2024
 
 - Fixed 406 Http Response issue due to missing headers in http calls.
 
-[0.5.3.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.3.0) - released September 2, 2023
+[0.5.3.0](https://www.nuget.org/packages/Ring.Api/0.5.3.0) - released September 2, 2023
 
 - Fixed a few more issues with Ring devices not properly being parsed
 
-[0.5.2.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.2.0) - released July 4, 2023
+[0.5.2.0](https://www.nuget.org/packages/Ring.Api/0.5.2.0) - released July 4, 2023
 
 - Fixed issue with Ring devices not properly being parsed
 
-[0.5.1.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.1.0) - released July 3, 2023
+[0.5.1.0](https://www.nuget.org/packages/Ring.Api/0.5.1.0) - released July 3, 2023
 
 - Updated default clientId from Windows to Android to restore the service to the Ring API. Thanks to [@chrisstuart-cl](https://github.com/chrisstuart-cl) for assisting on the fix.
 
-[0.5.0.1](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.0.1) - released September 14, 2022
+[0.5.0.1](https://www.nuget.org/packages/Ring.Api/0.5.0.1) - released September 14, 2022
 
 - Fixing regression in multi factor authentication
 
-[0.5.0.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.5.0.0) - released September 14, 2022
+[0.5.0.0](https://www.nuget.org/packages/Ring.Api/0.5.0.0) - released September 14, 2022
 
 - Replaced obsolete method of working with HTTP requests with modern method
 - Rebuild code to avoid port exhaustion potentially causing random crashed when used in a loop
 - Code is not fully backwards compatible. You may need to update your code if you upgrade to this version.
 
-[0.4.4.0](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.4.4) - released September 14, 2022
+[0.4.4.0](https://www.nuget.org/packages/Ring.Api/0.4.4) - released September 14, 2022
 
 - Compiled against .NET 6
 - Switched to .NET JSON instead of NewtonSoft JSON. Note that I had to change the types of some properties to become nullable and some to become longs instead of strings, so it might require some changes in your code as well.
 
-[0.4.3.2](https://www.nuget.org/packages/KoenZomers.Ring.Api/0.4.3.2) - released April 29, 2020
+[0.4.3.2](https://www.nuget.org/packages/Ring.Api/0.4.3.2) - released April 29, 2020
 
 - Bugfix in `GetDoorbotsHistory` throwing a NullReferenceException when the Ring API would return an empty result
 
@@ -71,7 +71,7 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.4.2.2 - released March 16, 2020
 
-- Merged [PR # 13](https://github.com/KoenZomers/Ring.Api/pull/13) adding possible exceptions to each method call and doing some code efficiency improvements. Thanks to [ronwarner](https://github.com/ronwarner) for his contribution!
+- Merged [PR # 13](https://github.com/Ring/Ring.Api/pull/13) adding possible exceptions to each method call and doing some code efficiency improvements. Thanks to [ronwarner](https://github.com/ronwarner) for his contribution!
 
 0.4.2.1 - released January 22, 2020
 
@@ -90,15 +90,15 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.4.0.3 - released December 24, 2019
 
-- Changed to less strict JSON result parsing as it turns out that the API responses may differ quite a bit between users. To avoid the slightest change not making possible to use the returned results, I followed [insane4sure](https://github.com/insane4sure)'s recommendation in [issue 4](https://github.com/KoenZomers/Ring.Api/issues/4) and applied this to all responses except for the authentication part.
+- Changed to less strict JSON result parsing as it turns out that the API responses may differ quite a bit between users. To avoid the slightest change not making possible to use the returned results, I followed [insane4sure](https://github.com/insane4sure)'s recommendation in [issue 4](https://github.com/Ring/Ring.Api/issues/4) and applied this to all responses except for the authentication part.
 
 0.4.0.2 - released December 24, 2019
 
- - Added support for AuthorizedDoorbots in the devices response from Ring. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 6](https://github.com/KoenZomers/Ring.Api/issues/6).
+ - Added support for AuthorizedDoorbots in the devices response from Ring. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 6](https://github.com/Ring/Ring.Api/issues/6).
 
 0.4.0.1 - released December 24, 2019
 
-- Fixed issue where having certain special characters such as a + in your e-mail or password used to log on would make the authentication fail. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 5](https://github.com/KoenZomers/Ring.Api/issues/5).
+- Fixed issue where having certain special characters such as a + in your e-mail or password used to log on would make the authentication fail. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 5](https://github.com/Ring/Ring.Api/issues/5).
 
 0.4.0.0 - released December 23, 2019
 
@@ -125,7 +125,7 @@ If you're looking for a tool to download snapshots from your Ring cameras, [go h
 
 0.3.1.0 - released August 9, 2019
 
-- Changed the implementation of GetDoorbotsHistory(int limit) so that it will return as many items as you request, instead of just a maximum of 100 items, even if you would provide a higher number. Discussed in [issue #2](https://github.com/KoenZomers/Ring.Api/issues/2).
+- Changed the implementation of GetDoorbotsHistory(int limit) so that it will return as many items as you request, instead of just a maximum of 100 items, even if you would provide a higher number. Discussed in [issue #2](https://github.com/Ring/Ring.Api/issues/2).
 
 0.3.0.1 - released March 2, 2019
 
@@ -167,10 +167,10 @@ This API is built using Microsoft .NET Standard 2.0 and is fully asynchronous
 
 ## Usage Instructions
 
-To communicate with the Ring API, [add the NuGet package](https://github.com/KoenZomers/Ring.Api#available-via-nuget) to your solution and add a using reference in your code:
+To communicate with the Ring API, [add the NuGet package](https://github.com/Ring/Ring.Api#available-via-nuget) to your solution and add a using reference in your code:
 
 ```C#
-using KoenZomers.Ring.Api;
+using Ring.Api;
 ```
 
 Then create a new session instance using:
@@ -245,7 +245,7 @@ Alternatively, App.config still works for RealIntegrationTests: copy App.sample.
 
 ### Authenticating for local tooling
 
-ApiTester (this repo's non-destructive API smoke-test CLI - see `ApiTester/README.md`) and the `RealIntegrationTests` in UnitTest both authenticate through the same mechanism: `KoenZomers.Ring.Api.CredentialStore`, reading/writing one shared, encrypted credentials file at:
+ApiTester (this repo's non-destructive API smoke-test CLI - see `ApiTester/README.md`) and the `RealIntegrationTests` in UnitTest both authenticate through the same mechanism: `Ring.Api.CredentialStore`, reading/writing one shared, encrypted credentials file at:
 
 ```
 %AppData%\RingVideosData\auth.json
@@ -262,15 +262,15 @@ dotnet run -- --auth
 
 This prompts for your Ring username and password (password input is masked), and if your account requires two-factor authentication, prompts for the code Ring texts/e-mails you and completes the challenge automatically. On success it saves a reusable refresh token to `auth.json`. Every ApiTester run after that, and every `RealIntegrationTests` run, picks it up automatically - no further prompts, no re-entering 2FA codes.
 
-If a run reports "no credentials found" or "requires two-factor authentication", that's this step - run `--auth` and retry. The retry-with-2FA-code mechanics themselves live in `Api/InteractiveAuth.cs` (`KoenZomers.Ring.Api.InteractiveAuth`), independent of any console app, so anything in this repo can reuse them without shelling out to ApiTester.
+If a run reports "no credentials found" or "requires two-factor authentication", that's this step - run `--auth` and retry. The retry-with-2FA-code mechanics themselves live in `Api/InteractiveAuth.cs` (`Ring.Api.InteractiveAuth`), independent of any console app, so anything in this repo can reuse them without shelling out to ApiTester.
 
 ## Available via NuGet
 
-You can also pull this API in as a NuGet package by adding "KoenZomers.Ring.Api" or running:
+You can also pull this API in as a NuGet package by adding "Ring.Api" or running:
 
-Install-Package KoenZomers.Ring.Api
+Install-Package Ring.Api
 
-Package statistics: https://www.nuget.org/packages/KoenZomers.Ring.Api
+Package statistics: https://www.nuget.org/packages/Ring.Api
 
 ## Current functionality
 
@@ -285,4 +285,5 @@ With this API at its current state you can:
 
 ## Feedback
 
-Any kind of feedback is welcome! Feel free to drop me an e-mail at koen@zomers.eu or [create an issue](https://github.com/KoenZomers/Ring.Api/issues)
+Any kind of feedback is welcome! Feel free to drop me an e-mail at koen@zomers.eu or [create an issue](https://github.com/Ring/Ring.Api/issues)
+

@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

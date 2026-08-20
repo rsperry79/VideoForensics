@@ -1,6 +1,6 @@
 using System;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 namespace Ring.Api.Tests
 {
@@ -111,7 +111,7 @@ namespace Ring.Api.Tests
                 // No refresh token available, try to authenticate with the credentials from the config file
                 session = new Session(Username, Password);
 
-                KoenZomers.Ring.Api.Entities.Session? authResult = null;
+                Ring.Api.Entities.Session? authResult = null;
                 try
                 {
                     authResult = await session.Authenticate(twoFactorAuthCode: TwoFactorAuthenticationToken);
@@ -122,11 +122,11 @@ namespace Ring.Api.Tests
                         TwoFactorAuthenticationToken = string.Empty;
                     }
                 }
-                catch (KoenZomers.Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
+                catch (Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
                 {
                     Assert.Fail("Ring account requires two factor authentication. Add the token received through text message to the config file as 'TwoFactorAuthenticationToken' and run the test again.");
                 }
-                catch (KoenZomers.Ring.Api.Exceptions.TwoFactorAuthenticationIncorrectException)
+                catch (Ring.Api.Exceptions.TwoFactorAuthenticationIncorrectException)
                 {
                     Assert.Fail("The two factor authentication token provided in the config file as 'TwoFactorAuthenticationToken' is invalid or has expired.");
                 }
@@ -156,7 +156,7 @@ namespace Ring.Api.Tests
                 await session.Authenticate();
                 Assert.Fail("Should have thrown AuthenticationFailedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (Ring.Api.Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -188,7 +188,7 @@ namespace Ring.Api.Tests
                 await Session.GetSessionByRefreshToken("abcdefghijklmnopqrstuvwxyz");
                 Assert.Fail("Should have thrown AuthenticationFailedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (Ring.Api.Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -219,7 +219,7 @@ namespace Ring.Api.Tests
                 await session.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -284,7 +284,7 @@ namespace Ring.Api.Tests
                 await session.GetDoorbotsHistory(doorbotId: 1234567);
                 Assert.Fail("Should have thrown DeviceUnknownException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.DeviceUnknownException)
+            catch (Ring.Api.Exceptions.DeviceUnknownException)
             {
             }
         }
@@ -448,18 +448,18 @@ namespace Ring.Api.Tests
         public void FlexibleStringConverterTest()
         {
             // Verify the converter exists and can be instantiated
-            var converter = new KoenZomers.Ring.Api.Converters.FlexibleStringConverter();
+            var converter = new Ring.Api.Converters.FlexibleStringConverter();
             Assert.IsNotNull(converter, "FlexibleStringConverter should be instantiable");
 
             // Test that StickupCam with flexible LedStatus deserializes correctly
             var jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
-            var cam1 = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.StickupCam>(jsonWithStringLedStatus);
+            var cam1 = System.Text.Json.JsonSerializer.Deserialize<Ring.Api.Entities.StickupCam>(jsonWithStringLedStatus);
             Assert.IsNotNull(cam1, "StickupCam should deserialize with string led_status");
             Assert.AreEqual("on", cam1.LedStatus, "LedStatus should be 'on'");
 
             // Test with number LedStatus (the reason for FlexibleStringConverter)
             var jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
-            var cam2 = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.StickupCam>(jsonWithNumberLedStatus);
+            var cam2 = System.Text.Json.JsonSerializer.Deserialize<Ring.Api.Entities.StickupCam>(jsonWithNumberLedStatus);
             Assert.IsNotNull(cam2, "StickupCam should deserialize with number led_status");
             Assert.AreEqual("1", cam2.LedStatus, "LedStatus should convert number to string");
         }
@@ -477,7 +477,7 @@ namespace Ring.Api.Tests
             var locations = await session.GetLocations();
 
             Assert.IsNotNull(locations, "GetLocations() should not return null");
-            Assert.IsTrue(locations is System.Collections.Generic.List<KoenZomers.Ring.Api.Entities.Location>, "Should return a list of Location objects");
+            Assert.IsTrue(locations is System.Collections.Generic.List<Ring.Api.Entities.Location>, "Should return a list of Location objects");
         }
 
         /// <summary>
@@ -487,13 +487,13 @@ namespace Ring.Api.Tests
         public void LocationIdDeserializationTest()
         {
             var chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
-            var chime = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.Chime>(chimeJson);
+            var chime = System.Text.Json.JsonSerializer.Deserialize<Ring.Api.Entities.Chime>(chimeJson);
 
             Assert.IsNotNull(chime, "Chime should deserialize");
             Assert.AreEqual(new System.Guid("550e8400-e29b-41d4-a716-446655440000"), chime.LocationId, "LocationId should deserialize from JSON");
 
             var doorbotJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440001", "description": "test"}""";
-            var doorbot = System.Text.Json.JsonSerializer.Deserialize<KoenZomers.Ring.Api.Entities.Doorbot>(doorbotJson);
+            var doorbot = System.Text.Json.JsonSerializer.Deserialize<Ring.Api.Entities.Doorbot>(doorbotJson);
 
             Assert.IsNotNull(doorbot, "Doorbot should deserialize");
             Assert.AreEqual(new System.Guid("550e8400-e29b-41d4-a716-446655440001"), doorbot.LocationId, "LocationId should deserialize from JSON");
@@ -508,9 +508,9 @@ namespace Ring.Api.Tests
             // Verify that the ApiRawLogger events exist and can be subscribed to. The events are
             // raised internally by the API when making actual HTTP calls - this test only confirms
             // subscribing doesn't throw; it passes as long as it completes without an exception.
-            KoenZomers.Ring.Api.ApiRawLogger.OnRawResponse += (call) => { };
-            KoenZomers.Ring.Api.ApiRawLogger.OnEvent += (evt) => { };
-            KoenZomers.Ring.Api.ApiRawLogger.OnRingEvents += (evt) => { };
+            Ring.Api.ApiRawLogger.OnRawResponse += (call) => { };
+            Ring.Api.ApiRawLogger.OnEvent += (evt) => { };
+            Ring.Api.ApiRawLogger.OnRingEvents += (evt) => { };
         }
 
         /// <summary>
@@ -529,3 +529,4 @@ namespace Ring.Api.Tests
         }
     }
 }
+

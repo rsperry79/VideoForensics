@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Represents an OAuth Token received from the Ring API that can be used to communicate with the Ring Services

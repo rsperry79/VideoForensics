@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -188,7 +188,7 @@ namespace Ring.Api.Tests
                 await session.ConnectAssetSocket(Guid.NewGuid(), new FakeWebSocketTransport());
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
         }
 
         [TestMethod]
@@ -234,7 +234,8 @@ namespace Ring.Api.Tests
                 await session.StartLiveView(123456, new FakeWebSocketTransport());
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
         }
     }
 }
+

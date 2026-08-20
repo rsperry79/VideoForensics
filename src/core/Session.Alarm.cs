@@ -2,13 +2,13 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Alarm;
-using KoenZomers.Ring.Api.Entities;
-using KoenZomers.Ring.Api.Sockets;
+using Ring.Api.Alarm;
+using Ring.Api.Entities;
+using Ring.Api.Sockets;
 
-using IWebSocketTransport = KoenZomers.Ring.Api.Sockets.IWebSocketTransport;
+using IWebSocketTransport = Ring.Api.Sockets.IWebSocketTransport;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Full Ring Alarm security-panel control (arm/disarm), done over a persistent authenticated
@@ -61,3 +61,4 @@ namespace KoenZomers.Ring.Api
         }
     }
 }
+

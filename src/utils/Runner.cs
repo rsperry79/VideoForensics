@@ -6,9 +6,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
+using Ring.Api.Entities;
 
-namespace KoenZomers.Ring.Api.Utils
+namespace Ring.Api.Utils
 {
     /// <summary>
     /// What to run and how far to let it reach: which endpoint keys were requested, plus the two
@@ -59,15 +60,15 @@ namespace KoenZomers.Ring.Api.Utils
             var needsDevices = selected.Any(e => e.Key == "devices") || selected.Any(e => e.Scope is EndpointScope.PerDoorbot or EndpointScope.PerChime);
             var needsLocations = selected.Any(e => e.Key == "locations") || selected.Any(e => e.Scope == EndpointScope.PerLocation);
 
-            KoenZomers.Ring.Api.Entities.Devices? devices = null;
-            List<KoenZomers.Ring.Api.Entities.Location>? locations = null;
+            Devices? devices = null;
+            List<Location>? locations = null;
 
             if (needsDevices)
             {
                 var descriptor = EndpointRegistry.Find("devices")!;
                 var (record, result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
                 index.Calls.Add(record);
-                devices = result as KoenZomers.Ring.Api.Entities.Devices;
+                devices = result as Devices;
 
                 if (record.Success && record.ResultFile != null)
                 {
@@ -87,7 +88,7 @@ namespace KoenZomers.Ring.Api.Utils
                 var descriptor = EndpointRegistry.Find("locations")!;
                 var (record, result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
                 index.Calls.Add(record);
-                locations = result as List<KoenZomers.Ring.Api.Entities.Location>;
+                locations = result as List<Location>;
             }
 
             var locationNames = (locations ?? new()).Where(l => l.Id.HasValue)
@@ -377,3 +378,4 @@ namespace KoenZomers.Ring.Api.Utils
         }
     }
 }
+

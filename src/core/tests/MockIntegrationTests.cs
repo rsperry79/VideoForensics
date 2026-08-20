@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -92,7 +92,7 @@ namespace Ring.Api.Tests
                 // Assert
                 Assert.IsNotNull(devices);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
                 // Expected - session not authenticated
             }
@@ -110,7 +110,7 @@ namespace Ring.Api.Tests
                 await session.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -168,7 +168,7 @@ namespace Ring.Api.Tests
                 // Assert
                 Assert.IsNotNull(session);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (Ring.Api.Exceptions.AuthenticationFailedException)
             {
                 // Expected - mock handler doesn't have real token response configured
             }
@@ -247,7 +247,7 @@ namespace Ring.Api.Tests
                 await _mockSession!.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -316,7 +316,7 @@ namespace Ring.Api.Tests
                 // Locations can only be retrieved when authenticated
                 Assert.IsTrue(locations != null || !_mockSession!.IsAuthenticated);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -337,7 +337,7 @@ namespace Ring.Api.Tests
                 var history = await _mockSession!.GetDoorbotsHistory()!;
                 Assert.IsTrue(history != null || !_mockSession!.IsAuthenticated);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -465,7 +465,7 @@ namespace Ring.Api.Tests
                 var devices = await _mockSession!.GetRingDevices();
                 Assert.IsTrue(devices != null || !_mockSession!.IsAuthenticated);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -486,7 +486,7 @@ namespace Ring.Api.Tests
                 var history = await _mockSession!.GetDoorbotsHistory();
                 Assert.IsTrue(history != null || !_mockSession!.IsAuthenticated);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -507,7 +507,7 @@ namespace Ring.Api.Tests
                 var newSession = await Session.GetSessionByRefreshToken(refreshToken, _mockHelper!.GetMockHandler());
                 Assert.IsNotNull(newSession);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (Ring.Api.Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -638,21 +638,21 @@ namespace Ring.Api.Tests
                 await session.SetLight(123456, true);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
 
             try
             {
                 await session.SetSiren(123456, true);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
 
             try
             {
                 await session.TestChimeSound(789012);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
         }
 
         // --- Phase 1: device setting setters ---
@@ -736,9 +736,9 @@ namespace Ring.Api.Tests
             mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, "");
             await _mockSession!.Authenticate();
 
-            var zones = new KoenZomers.Ring.Api.Entities.AdvancedMotionZones
+            var zones = new Ring.Api.Entities.AdvancedMotionZones
             {
-                Zone1 = new KoenZomers.Ring.Api.Entities.Zone { Name = "Front Yard", State = 1 }
+                Zone1 = new Ring.Api.Entities.Zone { Name = "Front Yard", State = 1 }
             };
             await _mockSession!.SetMotionZones(123456, zones);
 
@@ -888,7 +888,7 @@ namespace Ring.Api.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.SetVolume(123456, 5));
@@ -896,7 +896,7 @@ namespace Ring.Api.Tests
             await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1));
             await ExpectNotAuthenticated(() => session.SetDoNotDisturb(789012, 60));
             await ExpectNotAuthenticated(() => session.SetNightMode(123456, true));
-            await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new KoenZomers.Ring.Api.Entities.AdvancedMotionZones()));
+            await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new Ring.Api.Entities.AdvancedMotionZones()));
             await ExpectNotAuthenticated(() => session.GetGroups(locationId));
             await ExpectNotAuthenticated(() => session.SetGroupLights(locationId, "grp-1", true));
             await ExpectNotAuthenticated(() => session.GetSharedUsers(locationId));
@@ -1440,7 +1440,7 @@ namespace Ring.Api.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.GetDoorbotHealth(123456));
@@ -1568,7 +1568,7 @@ namespace Ring.Api.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (KoenZomers.Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.GetActiveDings());
@@ -1639,3 +1639,4 @@ namespace Ring.Api.Tests
         }
     }
 }
+

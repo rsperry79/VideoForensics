@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// A pending invitation for a user to be granted access to a Ring location. Field shape is

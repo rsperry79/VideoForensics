@@ -4,7 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api.Sockets
+namespace Ring.Api.Sockets
 {
     /// <summary>
     /// Minimal websocket abstraction shared by RingAssetSocket (Alarm) and RingSignalingClient

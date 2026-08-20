@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Converters;
+namespace Ring.Api.Converters;
 
 /// <summary>
 /// Converts JSON to from a numeric of string value to a numeric value

@@ -3,14 +3,14 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api.Alarm;
-using KoenZomers.Ring.Api.Entities;
-using KoenZomers.Ring.Api.Sockets;
-using KoenZomers.Ring.Api.Streaming;
+using Ring.Api.Alarm;
+using Ring.Api.Entities;
+using Ring.Api.Sockets;
+using Ring.Api.Streaming;
 
-using IWebSocketTransport = KoenZomers.Ring.Api.Sockets.IWebSocketTransport;
+using IWebSocketTransport = Ring.Api.Sockets.IWebSocketTransport;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// WebRTC live view - connects to a Ring camera's real-time video feed. Distinct from the

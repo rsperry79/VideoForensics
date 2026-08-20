@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// A device discovered on a location's asset socket (DeviceInfoDocGetList), flattened from

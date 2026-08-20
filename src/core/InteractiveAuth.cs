@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Authenticates a <see cref="Session"/> with a username/password, transparently handling a

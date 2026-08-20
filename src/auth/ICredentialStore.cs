@@ -1,4 +1,4 @@
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// Reads and writes Ring account credentials (username, password, refresh token) to a JSON file

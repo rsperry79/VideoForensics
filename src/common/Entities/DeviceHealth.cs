@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-using KoenZomers.Ring.Api.Converters;
+using Ring.Api.Converters;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     /// <summary>
     /// Connectivity/battery telemetry embedded directly in the "health" object of each device

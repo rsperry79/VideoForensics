@@ -5,9 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-using KoenZomers.Ring.Api;
-using KoenZomers.Ring.Api.Auth;
-using KoenZomers.Ring.Api.Utils;
+using Ring.Api;
+using Ring.Api.Auth;
+using Ring.Api.Utils;
 
 namespace Ring.Api.SelfTester
 {
@@ -72,7 +72,7 @@ namespace Ring.Api.SelfTester
                 session = await AuthenticateAsync(credentials);
                 PersistRotatedRefreshToken(session, credentials);
             }
-            catch (KoenZomers.Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 Console.Error.WriteLine("Error: this account requires two-factor authentication, which this non-interactive run");
                 Console.Error.WriteLine("cannot complete. Run 'dotnet run -- --auth' once instead - it prompts for the 2FA code and");
@@ -177,7 +177,7 @@ namespace Ring.Api.SelfTester
 
         /// <summary>
         /// Interactive one-time login: prompts for credentials, authenticates via
-        /// KoenZomers.Ring.Api.InteractiveAuth (handling a 2FA challenge if one comes back), and
+        /// Ring.Api.InteractiveAuth (handling a 2FA challenge if one comes back), and
         /// saves the result to the shared credentials file via CredentialStore. This is the console
         /// I/O half of that flow - InteractiveAuth itself knows nothing about Console, so the same
         /// authenticate-with-2FA-retry logic is reusable by anything else (tests included) without
@@ -318,3 +318,4 @@ namespace Ring.Api.SelfTester
         }
     }
 }
+

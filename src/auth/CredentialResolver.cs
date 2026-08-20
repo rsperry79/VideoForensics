@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 
-using KoenZomers.Ring.Api;
+using Ring.Api;
 
-namespace KoenZomers.Ring.Api.Auth
+namespace Ring.Api.Auth
 {
     /// <summary>
     /// Resolved set of credentials to authenticate a <see cref="Session"/> with, plus where

@@ -4,7 +4,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KoenZomers.Ring.Api.Interfaces;
+namespace Ring.Api.Interfaces;
 
 /// <summary>
 /// Service for controlling Ring devices.

@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using System;
 
-using KoenZomers.Ring.Api.Converters;
+using Ring.Api.Converters;
 
-namespace KoenZomers.Ring.Api.Entities
+namespace Ring.Api.Entities
 {
     public class StickupCam
     {

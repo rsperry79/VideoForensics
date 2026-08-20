@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 using ProtectedData = System.Security.Cryptography.ProtectedData;
 using DataProtectionScope = System.Security.Cryptography.DataProtectionScope;
 
-namespace KoenZomers.Ring.Api
+namespace Ring.Api
 {
     /// <summary>
     /// On-disk (encrypted) representation of <see cref="RingCredentials"/>.
