@@ -29,4 +29,8 @@
         <ProjectReference Include="../video/Ring.Api.Video.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <Compile Remove="tests/**" />
+    </ItemGroup>
+
 </Project>

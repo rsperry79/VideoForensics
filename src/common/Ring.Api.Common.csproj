@@ -21,4 +21,8 @@
         <None Include="../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
     </ItemGroup>
 
+    <ItemGroup>
+        <Compile Remove="tests/**" />
+    </ItemGroup>
+
 </Project>
