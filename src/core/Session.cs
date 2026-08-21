@@ -6,6 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Text.Json;
 using Ring.Api.Entities;
+using Ring.Api.Common;
+using Ring.Api.Common.Interfaces;
 using System.Collections.Specialized;
 using System.Reflection.Metadata.Ecma335;
 
@@ -23,7 +25,8 @@ namespace Ring.Api
 
         private static string GetOrCreateHardwareId()
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RingVideosData");
+            var directoryService = new PlatformDirectoryService();
+            var folder = directoryService.GetApplicationDataDirectory();
             var filePath = Path.Combine(folder, "hardware_id.txt");
             try
             {

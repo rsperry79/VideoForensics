@@ -68,6 +68,90 @@ namespace Ring.Api.Entities
         /// </summary>
         [JsonPropertyName("download")]
         public DownloadProcessingInfo Download { get; set; }
+
+        /// <summary>
+        /// Video metadata processing results (validation and correction status)
+        /// </summary>
+        [JsonPropertyName("metadata_processing")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public MetadataProcessingInfo? MetadataProcessing { get; set; }
+    }
+
+    /// <summary>
+    /// Video metadata processing and validation results
+    /// </summary>
+    public class MetadataProcessingInfo
+    {
+        /// <summary>
+        /// Overall status of metadata processing
+        /// </summary>
+        [JsonPropertyName("status")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public MetadataStatus Status { get; set; }
+
+        /// <summary>
+        /// Whether metadata was successfully written to the file
+        /// </summary>
+        [JsonPropertyName("was_written")]
+        public bool WasWritten { get; set; }
+
+        /// <summary>
+        /// Whether the file passed validation after processing
+        /// </summary>
+        [JsonPropertyName("is_valid")]
+        public bool IsValid { get; set; }
+
+        /// <summary>
+        /// Whether the file was corrected (codec, frame rate, etc.)
+        /// </summary>
+        [JsonPropertyName("was_corrected")]
+        public bool WasCorrected { get; set; }
+
+        /// <summary>
+        /// List of corrections applied to the file
+        /// </summary>
+        [JsonPropertyName("corrections_applied")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? CorrectionsApplied { get; set; }
+
+        /// <summary>
+        /// Error message if processing failed
+        /// </summary>
+        [JsonPropertyName("error_message")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ErrorMessage { get; set; }
+
+        /// <summary>
+        /// Duration of metadata processing in milliseconds
+        /// </summary>
+        [JsonPropertyName("duration_ms")]
+        public long DurationMs { get; set; }
+
+        /// <summary>
+        /// Timestamp when processing completed
+        /// </summary>
+        [JsonPropertyName("processed_at")]
+        public DateTime ProcessedAt { get; set; }
+
+        /// <summary>
+        /// PhotoPrism-compatible tags written to the file
+        /// </summary>
+        [JsonPropertyName("photoprism_tags")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? PhotoPrismTags { get; set; }
+    }
+
+    /// <summary>
+    /// Metadata status enumeration matching Ring.Api.Video.Metadata
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum MetadataStatus
+    {
+        NotProcessed = 0,
+        Valid = 1,
+        Corrected = 2,
+        Corrupt = 3,
+        Failed = 4
     }
 
     /// <summary>

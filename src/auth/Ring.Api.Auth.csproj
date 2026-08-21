@@ -18,7 +18,9 @@
 
     <ItemGroup>
         <None Include="../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.7.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
+        <ProjectReference Include="../common/Ring.Api.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>

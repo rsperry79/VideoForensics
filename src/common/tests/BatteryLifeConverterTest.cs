@@ -6,26 +6,25 @@ using Ring.Api.Converters;
 
 namespace Ring.Api.Tests.Converters;
 
-[TestClass]
 public class BatteryLifeConverterTest
 {
     private string GenerateTestJson(string value) => $"{{ \"TestValue\": {value} }}";
     private BatteryLifeConverter SystemUnderTest => new();
 
-    [TestMethod]
+    [Fact]
     public void TestNumericValue()
     {
         var testJson = GenerateTestJson("81");
         var value = ReadValueFromJson(testJson);
-        Assert.AreEqual(81, value);
+        Assert.Equal(81, value);
     }
 
-    [TestMethod]
+    [Fact]
     public void TestStringValue()
     {
         var testJson = GenerateTestJson("\"81\"");
         var value = ReadValueFromJson(testJson);
-        Assert.AreEqual(81, value);
+        Assert.Equal(81, value);
     }
 
     private int? ReadValueFromJson(string json)
