@@ -19,6 +19,7 @@
 
     <ItemGroup>
         <None Include="../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
         <PackageReference Include="SIPSorcery" Version="10.0.16" />
     </ItemGroup>

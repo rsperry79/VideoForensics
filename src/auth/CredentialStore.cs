@@ -1,19 +1,15 @@
 using System;
 using System.IO;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-
-using ProtectedData = System.Security.Cryptography.ProtectedData;
-using DataProtectionScope = System.Security.Cryptography.DataProtectionScope;
+using Ring.Api.Auth;
+using Ring.Api.Auth.Implementations;
 
 namespace Ring.Api
 {
     /// <summary>
     /// On-disk (encrypted) representation of <see cref="RingCredentials"/>.
-    /// Uses Windows DPAPI (Data Protection API) for encryption, which leverages the user's security context.
+    /// Encrypts credentials using platform-appropriate encryption (DPAPI on Windows, AES on Linux/macOS).
     /// </summary>
     internal class StoredCredentials
     {
@@ -25,29 +21,11 @@ namespace Ring.Api
     /// <inheritdoc cref="ICredentialStore"/>
     public class CredentialStore : ICredentialStore
     {
-        private static string EncryptWithDpapi(string clearText)
+        private readonly ICredentialEncryption _encryption;
+
+        public CredentialStore(ICredentialEncryption encryption = null)
         {
-            if (string.IsNullOrEmpty(clearText)) return null;
-
-            var clearBytes = Encoding.UTF8.GetBytes(clearText);
-            var encryptedBytes = ProtectedData.Protect(clearBytes, null, DataProtectionScope.CurrentUser);
-            return Convert.ToBase64String(encryptedBytes);
-        }
-
-        private static string DecryptWithDpapi(string encryptedText)
-        {
-            if (string.IsNullOrEmpty(encryptedText)) return null;
-
-            try
-            {
-                var encryptedBytes = Convert.FromBase64String(encryptedText);
-                var clearBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
-                return Encoding.UTF8.GetString(clearBytes);
-            }
-            catch
-            {
-                return null;
-            }
+            _encryption = encryption ?? CredentialEncryptionFactory.CreateDefault();
         }
 
         public RingCredentials Load(string path)
@@ -73,8 +51,8 @@ namespace Ring.Api
                 return new RingCredentials
                 {
                     UserName = stored.UserName,
-                    Password = DecryptWithDpapi(stored.Password),
-                    RefreshToken = DecryptWithDpapi(stored.RefreshToken)
+                    Password = _encryption.Decrypt(stored.Password),
+                    RefreshToken = _encryption.Decrypt(stored.RefreshToken)
                 };
             }
             catch
@@ -88,8 +66,8 @@ namespace Ring.Api
             var stored = new StoredCredentials
             {
                 UserName = credentials.UserName,
-                Password = EncryptWithDpapi(credentials.Password),
-                RefreshToken = EncryptWithDpapi(credentials.RefreshToken)
+                Password = _encryption.Encrypt(credentials.Password),
+                RefreshToken = _encryption.Encrypt(credentials.RefreshToken)
             };
 
             var directory = Path.GetDirectoryName(path);

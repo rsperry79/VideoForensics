@@ -2,6 +2,8 @@ using System;
 using System.IO;
 
 using Ring.Api;
+using Ring.Api.Common;
+using Ring.Api.Common.Interfaces;
 
 namespace Ring.Api.Auth
 {
@@ -23,14 +25,20 @@ namespace Ring.Api.Auth
     /// </summary>
     public static class CredentialResolver
     {
+        private static IPlatformDirectoryService _directoryService;
+
         /// <summary>
         /// The shared credentials file both this tool and the Ring.Api integration tests read from
         /// (via <see cref="CredentialStore"/>), and that interactive auth writes to. Also whatever
         /// RingVideos itself saves to once its own CredentialStore migration lands.
         /// </summary>
-        public static readonly string AuthPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "RingVideosData", "auth.json");
+        public static string AuthPath =>
+            Path.Combine(GetDirectoryService().GetApplicationDataDirectory(), "auth.json");
+
+        private static IPlatformDirectoryService GetDirectoryService()
+        {
+            return _directoryService ??= new PlatformDirectoryService();
+        }
 
         public static ResolvedCredentials? Resolve(string? refreshToken, string? userName, string? password)
         {
