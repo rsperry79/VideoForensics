@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Ring.Api.Entities;
 using Ring.Api.Snapshots.Metadata.Models;
@@ -117,6 +118,59 @@ namespace Ring.Api.Snapshots.Metadata
             metadata.DeviceName = doorbot.Description ?? doorbot.Kind;
             metadata.DeviceManufacturer = "Amazon";
             metadata.DeviceModel = DetermineDeviceModel(doorbot.Kind, doorbot.Type);
+
+            if (doorbot.Health != null)
+            {
+                // Store RSSI in dBm for review flagging
+                metadata.RssiDbm = doorbot.Health.Rssi.HasValue ? (int)doorbot.Health.Rssi.Value : null;
+
+                // Check packet loss if available
+                metadata.PacketLossPercent = doorbot.Health.PacketLoss;
+            }
+
+            // ============================================================================
+            // Evidence Integrity Fields (DV Support)
+            // ============================================================================
+
+            // Firmware version - important for evidence chain of custody
+            metadata.DeviceFirmwareVersion = doorbot.FirmwareVersion;
+
+            // Owner notification status - indicates if owner was expected to be aware
+            metadata.OwnerNotificationsEnabled = doorbot.SubscribedMotions ?? doorbot.Subscribed;
+
+            // Device connectivity status
+            metadata.DeviceOnline = doorbot.ExternalConnection;
+
+            // Flag for review if signal is weak or packet loss detected
+            CheckAndFlagForReview(metadata);
+        }
+
+        private void CheckAndFlagForReview(SnapshotMetadata metadata)
+        {
+            var reasons = new List<string>();
+
+            // RSSI threshold: -70 dBm or lower indicates weak/compromised signal
+            // Signal strength interpretation:
+            // -30 to -40 dBm: Excellent
+            // -40 to -60 dBm: Good
+            // -60 to -70 dBm: Fair (may have issues)
+            // -70 dBm or lower: Poor (likely tampering or interference)
+            if (metadata.RssiDbm.HasValue && metadata.RssiDbm.Value <= -70)
+            {
+                reasons.Add($"Low signal strength ({metadata.RssiDbm} dBm - may indicate jamming or interference)");
+            }
+
+            // Packet loss threshold: > 5% indicates network instability
+            if (metadata.PacketLossPercent.HasValue && metadata.PacketLossPercent.Value > 5.0)
+            {
+                reasons.Add($"High packet loss ({metadata.PacketLossPercent:F1}% - indicates network instability)");
+            }
+
+            if (reasons.Any())
+            {
+                metadata.NeedsReview = true;
+                metadata.NeedsReviewReason = string.Join("; ", reasons);
+            }
         }
 
         private void ExtractCvProperties(DoorbotHistoryEvent snapshotEvent, SnapshotMetadata metadata)
@@ -146,6 +200,77 @@ namespace Ring.Api.Snapshots.Metadata
             if (cvProperties.Similarity.HasValue)
             {
                 metadata.DetectionConfidence = (int)cvProperties.Similarity.Value;
+            }
+
+            // ============================================================================
+            // Evidence Integrity Fields (DV Support)
+            // ============================================================================
+
+            // Stream quality & integrity
+            metadata.StreamBroken = cvProperties.StreamBroken;
+            metadata.AnomalyScore = cvProperties.Anomaly;
+
+            // Security alerts
+            if (cvProperties.SecurityAlerts != null)
+            {
+                metadata.SecurityAlerts = cvProperties.SecurityAlerts.Alerts;
+                metadata.AlertSeverity = cvProperties.SecurityAlerts.Severity;
+            }
+
+            // AI descriptions
+            metadata.FullDescription = cvProperties.FullDescription;
+            metadata.ShortDescription = cvProperties.ShortDescription;
+
+            // Model confidence & version
+            metadata.ModelConfidence = cvProperties.Similarity;
+            metadata.AiModelVersion = cvProperties.DetectionDetails?.ModelVersion;
+
+            // Recognized profiles (face recognition) - CRITICAL for DV cases
+            if (cvProperties.Profiles != null && cvProperties.Profiles.Any())
+            {
+                metadata.RecognizedProfiles = cvProperties.Profiles
+                    .Select(p => new DetectedProfile
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Confidence = p.Confidence,
+                        ThumbnailUrl = p.ThumbnailUrl
+                    })
+                    .ToList();
+            }
+
+            // Detection zones - shows where in frame activity occurred
+            if (cvProperties.DetectionDetails?.Zones != null && cvProperties.DetectionDetails.Zones.Any())
+            {
+                metadata.DetectionZones = cvProperties.DetectionDetails.Zones
+                    .Select(z => new Models.MotionZone
+                    {
+                        Id = z.Id,
+                        Name = z.Name,
+                        Confidence = z.Confidence
+                    })
+                    .ToList();
+            }
+
+            // Verified detection timestamps - CRITICAL for timeline evidence
+            if (cvProperties.DetectionTypes != null && cvProperties.DetectionTypes.Any())
+            {
+                var allTimestamps = cvProperties.DetectionTypes
+                    .Where(dt => dt.VerifiedTimestamps != null)
+                    .SelectMany(dt => dt.VerifiedTimestamps)
+                    .OrderBy(ts => ts)
+                    .ToList();
+
+                if (allTimestamps.Any())
+                {
+                    metadata.VerifiedDetectionTimestamps = allTimestamps;
+                }
+            }
+
+            // User tags
+            if (cvProperties.Tags != null && cvProperties.Tags.Any())
+            {
+                metadata.EventTags = cvProperties.Tags;
             }
         }
 
