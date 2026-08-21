@@ -66,6 +66,18 @@ namespace Ring.Api.Models
 
         public long? DeviceId { get; set; }
 
+        /// <summary>
+        /// Whether to log raw API HTTP responses (request/response/status) to a log folder.
+        /// Default: false (off by default for performance)
+        /// </summary>
+        public bool LogRawApiResponses { get; set; } = false;
+
+        /// <summary>
+        /// Whether to save the full Ring event JSON from API responses to a log folder.
+        /// Default: true (keep full event JSON by default for debugging)
+        /// </summary>
+        public bool LogEventJsonResponses { get; set; } = true;
+
     }
 
     internal class Config
