@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Providers.Ring.Snapshots.Metadata</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers, Daniel Espinosa</Authors>
+        <Description>Snapshot metadata extraction, EXIF writing, and validation for Ring.Api</Description>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests/**/*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Ring.Api.Snapshots.csproj" />
+        <ProjectReference Include="../../common/Ring.Api.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.IO.Abstractions" Version="22.2.0" />
+        <PackageReference Include="MetadataExtractor" Version="2.9.3" />
+    </ItemGroup>
+
+</Project>
