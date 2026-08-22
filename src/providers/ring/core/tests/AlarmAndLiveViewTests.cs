@@ -188,7 +188,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 await session.ConnectAssetSocket(Guid.NewGuid(), new FakeWebSocketTransport());
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
         }
 
         [TestMethod]
@@ -234,7 +234,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 await session.StartLiveView(123456, new FakeWebSocketTransport());
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
         }
     }
 }

@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Entities
     }
 
     /// <summary>
-    /// Metadata status enumeration matching Ring.Api.Video.Metadata
+    /// Metadata status enumeration matching VideoForensics.Providers.Ring.Video.Metadata
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum MetadataStatus

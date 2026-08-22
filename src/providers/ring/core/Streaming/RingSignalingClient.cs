@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using VideoForensics.Providers.Ring.Alarm;
 using VideoForensics.Providers.Ring.Sockets;
 
-using IWebSocketTransport = Ring.Api.Sockets.IWebSocketTransport;
+using IWebSocketTransport = VideoForensics.Providers.Ring.Sockets.IWebSocketTransport;
 
 namespace VideoForensics.Providers.Ring.Streaming
 {

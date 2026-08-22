@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
         <SignAssembly>true</SignAssembly>
-        <AssemblyOriginatorKeyFile>../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile>../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
         <AssemblyName>VideoForensics.Providers.Ring.Utils</AssemblyName>
         <Company>Koen Zomers</Company>
         <Authors>Koen Zomers, Daniel Espinosa</Authors>
@@ -16,7 +16,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <None Include="../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
     </ItemGroup>
 
     <ItemGroup>

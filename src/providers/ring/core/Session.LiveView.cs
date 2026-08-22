@@ -8,7 +8,7 @@ using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Sockets;
 using VideoForensics.Providers.Ring.Streaming;
 
-using IWebSocketTransport = Ring.Api.Sockets.IWebSocketTransport;
+using IWebSocketTransport = VideoForensics.Providers.Ring.Sockets.IWebSocketTransport;
 
 namespace VideoForensics.Providers.Ring
 {

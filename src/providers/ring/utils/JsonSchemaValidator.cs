@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Utils
             // Pre-cache all entity types from the Entities namespace
             var entityAssembly = typeof(Profile).Assembly;
             foreach (var type in entityAssembly.GetTypes()
-                .Where(t => t.Namespace == "Ring.Api.Entities" && !t.IsAbstract && !t.IsInterface))
+                .Where(t => t.Namespace == "VideoForensics.Providers.Ring.Entities" && !t.IsAbstract && !t.IsInterface))
             {
                 EntityTypeCache[type.Name] = type;
             }
