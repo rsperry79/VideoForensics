@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Providers.Ring.Auth</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers, Daniel Espinosa</Authors>
+        <Description>Credential storage and authentication primitives for Ring.Api</Description>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageLicenseExpression> EPL-2.0</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
+        <ProjectReference Include="../common/Ring.Api.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests/**/*.cs" />
+    </ItemGroup>
+
+</Project>
+
+
+
