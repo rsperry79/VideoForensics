@@ -83,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
                 Latitude = 40.7128,
                 Longitude = -74.0060,
                 Address = "123 Main St, New York, NY 10001",
-                Health = new Ring.Api.Entities.DeviceHealth
+                Health = new VideoForensics.Providers.Ring.Entities.DeviceHealth
                 {
                     Rssi = -50,
                     BatteryPercentage = 95

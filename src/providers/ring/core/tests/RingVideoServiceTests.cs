@@ -250,13 +250,13 @@ namespace VideoForensics.Providers.Ring.Tests
         [TestMethod]
         public void LocationNameResolutionUsesApiResult()
         {
-            var locations = new List<Ring.Api.Entities.Location>
+            var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
             {
                 new()
                 {
                     Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     Name = "Front Door",
-                    Address = new Ring.Api.Entities.LocationAddress
+                    Address = new VideoForensics.Providers.Ring.Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -270,7 +270,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Name = "Back Patio",
-                    Address = new Ring.Api.Entities.LocationAddress
+                    Address = new VideoForensics.Providers.Ring.Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -293,7 +293,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [TestMethod]
         public void LocationNameResolutionFallsBackToDefault()
         {
-            var locations = new List<Ring.Api.Entities.Location>
+            var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
             {
                 new()
                 {
@@ -334,7 +334,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [TestMethod]
         public void LocationCanBeNullAndHandledGracefully()
         {
-            var location = new Ring.Api.Entities.Location
+            var location = new VideoForensics.Providers.Ring.Entities.Location
             {
                 Id = null,
                 Name = null,

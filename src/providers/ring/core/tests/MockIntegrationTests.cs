@@ -92,7 +92,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Assert
                 Assert.IsNotNull(devices);
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
                 // Expected - session not authenticated
             }
@@ -110,7 +110,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 await session.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Assert
                 Assert.IsNotNull(session);
             }
-            catch (Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.AuthenticationFailedException)
             {
                 // Expected - mock handler doesn't have real token response configured
             }
@@ -247,7 +247,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 await _mockSession!.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -316,7 +316,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Locations can only be retrieved when authenticated
                 Assert.IsTrue(locations != null || !_mockSession!.IsAuthenticated);
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -337,7 +337,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var history = await _mockSession!.GetDoorbotsHistory()!;
                 Assert.IsTrue(history != null || !_mockSession!.IsAuthenticated);
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -465,7 +465,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var devices = await _mockSession!.GetRingDevices();
                 Assert.IsTrue(devices != null || !_mockSession!.IsAuthenticated);
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -486,7 +486,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var history = await _mockSession!.GetDoorbotsHistory();
                 Assert.IsTrue(history != null || !_mockSession!.IsAuthenticated);
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -507,7 +507,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var newSession = await Session.GetSessionByRefreshToken(refreshToken, _mockHelper!.GetMockHandler());
                 Assert.IsNotNull(newSession);
             }
-            catch (Ring.Api.Exceptions.AuthenticationFailedException)
+            catch (VideoForensics.Providers.Ring.Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -638,21 +638,21 @@ namespace VideoForensics.Providers.Ring.Tests
                 await session.SetLight(123456, true);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
 
             try
             {
                 await session.SetSiren(123456, true);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
 
             try
             {
                 await session.TestChimeSound(789012);
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
         }
 
         // --- Phase 1: device setting setters ---
@@ -736,9 +736,9 @@ namespace VideoForensics.Providers.Ring.Tests
             mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, "");
             await _mockSession!.Authenticate();
 
-            var zones = new Ring.Api.Entities.AdvancedMotionZones
+            var zones = new VideoForensics.Providers.Ring.Entities.AdvancedMotionZones
             {
-                Zone1 = new Ring.Api.Entities.Zone { Name = "Front Yard", State = 1 }
+                Zone1 = new VideoForensics.Providers.Ring.Entities.Zone { Name = "Front Yard", State = 1 }
             };
             await _mockSession!.SetMotionZones(123456, zones);
 
@@ -888,7 +888,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.SetVolume(123456, 5));
@@ -896,7 +896,7 @@ namespace VideoForensics.Providers.Ring.Tests
             await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1));
             await ExpectNotAuthenticated(() => session.SetDoNotDisturb(789012, 60));
             await ExpectNotAuthenticated(() => session.SetNightMode(123456, true));
-            await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new Ring.Api.Entities.AdvancedMotionZones()));
+            await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new VideoForensics.Providers.Ring.Entities.AdvancedMotionZones()));
             await ExpectNotAuthenticated(() => session.GetGroups(locationId));
             await ExpectNotAuthenticated(() => session.SetGroupLights(locationId, "grp-1", true));
             await ExpectNotAuthenticated(() => session.GetSharedUsers(locationId));
@@ -1440,7 +1440,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.GetDoorbotHealth(123456));
@@ -1568,7 +1568,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     await action();
                     Assert.Fail("Should have thrown SessionNotAuthenticatedException");
                 }
-                catch (Ring.Api.Exceptions.SessionNotAuthenticatedException) { }
+                catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
             }
 
             await ExpectNotAuthenticated(() => session.GetActiveDings());

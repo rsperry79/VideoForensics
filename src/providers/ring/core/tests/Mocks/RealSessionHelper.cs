@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
                 await session.Authenticate();
                 return session;
             }
-            catch (Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 throw new InvalidOperationException(
                     $"The saved credentials require two-factor authentication, which this test helper cannot complete " +

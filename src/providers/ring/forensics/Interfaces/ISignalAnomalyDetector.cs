@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Forensics.Models;
-using VideoForensics.Providers.Ring.Forensics.Models.Reports;
+using VideoForensics.Forensics.Models;
+using VideoForensics.Forensics.Models.Reports;
 
 namespace VideoForensics.Providers.Ring.Forensics
 {

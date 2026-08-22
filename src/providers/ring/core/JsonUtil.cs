@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 #nullable enable
 
-namespace Ring.Api;
+namespace VideoForensics.Providers.Ring;
 
 public enum JsonMode
 {
