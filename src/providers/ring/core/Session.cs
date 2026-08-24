@@ -665,7 +665,14 @@ namespace VideoForensics.Providers.Ring
             var downloadRequestUri = new Uri(BaseUrl, $"dings/{dingId}/share/download?disable_redirect=true");
 
             Entities.DownloadRecording downloadResult = null;
-            for (var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
+            // Ring returns an empty URL while it prepares the download server-side, but also returns
+            // an empty URL indefinitely for recordings that have expired/aren't retained anymore —
+            // those two cases are indistinguishable from the response alone. Capped at 5 attempts
+            // (~8s worst case) rather than the original 59 (~118s) so that a bulk download across many
+            // events doesn't stall for minutes per expired recording; a genuinely-preparing recording
+            // that isn't ready within ~8s is rare enough that this is the better tradeoff for callers
+            // downloading many events at once.
+            for (var downloadAttempt = 1; downloadAttempt < 6; downloadAttempt++)
             {
                 // Request to download the recording
                 var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
