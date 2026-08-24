@@ -58,6 +58,13 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("recording")]
         public DoorbotHistoryEventRecording Recording { get; set; }
 
+        /// <summary>
+        /// The doorbot/camera this event belongs to. The /doorbots/history endpoint returns only a
+        /// minimal stub here — Id and Description are populated, but DeviceId, BatteryLife,
+        /// FirmwareVersion, and Health all come back empty/null. Match events to devices via
+        /// Doorbot.Id (the numeric Ring id), not DeviceId (the hex device_id used by /devices) — the
+        /// two are different identifiers and DeviceId is never present on this embedded object.
+        /// </summary>
         [JsonPropertyName("doorbot")]
         public Doorbot Doorbot { get; set; }
 
