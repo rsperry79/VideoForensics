@@ -1,4 +1,4 @@
 global using System;
-global using Microsoft.VisualStudio.TestTools.UnitTesting;
+global using Xunit;
 global using System.IO;
 global using System.Threading.Tasks;

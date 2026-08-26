@@ -1,18 +1,16 @@
 namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
-    [TestClass]
     public class EvidenceExtractorTests
     {
         private IEvidenceExtractor _extractor = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public EvidenceExtractorTests()
         {
             // Instantiate implementation when ready
             // _extractor = new EvidenceExtractor();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ExtractEvidenceAsync_WithValidEvent_ReturnsMetadata()
         {
             // Arrange
@@ -29,7 +27,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsNotNull(result.EvidenceId);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ExtractEvidenceTimeSeriesAsync_WithMultipleEvents_ReturnsOrderedSequence()
         {
             // Arrange
@@ -47,7 +45,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(list.Count > 0);
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateExtraction_AfterExtraction_ReturnsStatus()
         {
             // Arrange

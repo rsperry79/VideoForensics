@@ -9,7 +9,6 @@ using Moq;
 
 namespace VideoForensics.Providers.Ring.Video.Tests
 {
-    [TestClass]
     public class VideoDownloaderTests
     {
         private static VideoDownloader CreateDownloader(FakeHttpMessageHandler handler)
@@ -17,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             return new VideoDownloader(new HttpClient(handler));
         }
 
-        [TestMethod]
+        [Fact]
         public async Task OpenStreamAsync_ReturnsDownloadedBytes()
         {
             var expected = Encoding.UTF8.GetBytes("fake-video-bytes");
@@ -31,10 +30,10 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
 
-            CollectionAssert.AreEqual(expected, ms.ToArray());
+            Assert.Equal(expected, ms.ToArray());
         }
 
-        [TestMethod]
+        [Fact]
         public async Task OpenStreamAsync_RequestsWithRangeHeader()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -45,11 +44,11 @@ namespace VideoForensics.Providers.Ring.Video.Tests
 
             await downloader.OpenStreamAsync("https://example.com/recording.mp4");
 
-            Assert.IsNotNull(handler.LastRequest.Headers.Range);
-            Assert.AreEqual("https://example.com/recording.mp4", handler.LastRequest.RequestUri.ToString());
+            Assert.NotNull(handler.LastRequest.Headers.Range);
+            Assert.Equal("https://example.com/recording.mp4", handler.LastRequest.RequestUri.ToString());
         }
 
-        [TestMethod]
+        [Fact]
         public async Task DownloadToFileAsync_WritesBytesToDisk()
         {
             var expected = Encoding.UTF8.GetBytes("fake-video-bytes-for-file");
@@ -64,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             {
                 await downloader.DownloadToFileAsync("https://example.com/recording.mp4", path);
 
-                CollectionAssert.AreEqual(expected, await File.ReadAllBytesAsync(path));
+                Assert.Equal(expected, await File.ReadAllBytesAsync(path));
             }
             finally
             {
@@ -73,7 +72,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task OpenStreamAsync_InvalidUrl_ThrowsArgumentException()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
@@ -90,7 +89,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task OpenStreamAsync_EmptyUrl_ThrowsArgumentException()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
@@ -111,7 +110,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         /// IVideoDownloader exists specifically so consumers like Session can be constructed with a
         /// fake in tests instead of making real HTTP calls - confirms a mock can stand in for it.
         /// </summary>
-        [TestMethod]
+        [Fact]
         public async Task IVideoDownloader_IsMockable()
         {
             var mock = new Mock<IVideoDownloader>();
@@ -122,7 +121,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             using var stream = await downloader.OpenStreamAsync("irrelevant-url");
             using var reader = new StreamReader(stream);
 
-            Assert.AreEqual("mocked", await reader.ReadToEndAsync());
+            Assert.Equal("mocked", await reader.ReadToEndAsync());
             mock.Verify(d => d.OpenStreamAsync("irrelevant-url"), Times.Once);
         }
     }

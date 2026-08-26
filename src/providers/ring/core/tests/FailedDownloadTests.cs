@@ -3,14 +3,11 @@ using System.Collections.Generic;
 
 using VideoForensics.Providers.Ring.Models;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace VideoForensics.Providers.Ring.Tests
 {
-    [TestClass]
     public class FailedDownloadTests
     {
-        [TestMethod]
+        [Fact]
         public void FailedDownloadCanBeCreatedWithAllProperties()
         {
             var timestamp = DateTime.UtcNow;
@@ -28,17 +25,17 @@ namespace VideoForensics.Providers.Ring.Tests
                 ErrorDescription = "Network timeout"
             };
 
-            Assert.AreEqual(timestamp, download.Timestamp);
-            Assert.AreEqual("Front Door", download.LocationName);
-            Assert.AreEqual("Doorbell", download.CameraName);
-            Assert.AreEqual(123, download.CameraId);
-            Assert.AreEqual("evt_456", download.EventId);
-            Assert.AreEqual("motion", download.EventType);
-            Assert.AreEqual(createdAt, download.CreatedAt);
-            Assert.AreEqual("Network timeout", download.ErrorDescription);
+            Assert.Equal(timestamp, download.Timestamp);
+            Assert.Equal("Front Door", download.LocationName);
+            Assert.Equal("Doorbell", download.CameraName);
+            Assert.Equal(123, download.CameraId);
+            Assert.Equal("evt_456", download.EventId);
+            Assert.Equal("motion", download.EventType);
+            Assert.Equal(createdAt, download.CreatedAt);
+            Assert.Equal("Network timeout", download.ErrorDescription);
         }
 
-        [TestMethod]
+        [Fact]
         public void FailedDownloadHandlesNullValues()
         {
             var download = new FailedDownload
@@ -53,12 +50,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 ErrorDescription = "Test error"
             };
 
-            Assert.IsNull(download.LocationName);
-            Assert.IsNull(download.CameraName);
-            Assert.AreEqual("Test error", download.ErrorDescription);
+            Assert.Null(download.LocationName);
+            Assert.Null(download.CameraName);
+            Assert.Equal("Test error", download.ErrorDescription);
         }
 
-        [TestMethod]
+        [Fact]
         public void FailedDownloadCanBeDeduplicatedByEventAndCamera()
         {
             var now = DateTime.UtcNow;
@@ -74,10 +71,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 .Select(g => g.First())
                 .ToList();
 
-            Assert.AreEqual(2, deduped.Count);
+            Assert.Equal(2, deduped.Count);
         }
 
-        [TestMethod]
+        [Fact]
         public void FailedDownloadListCanBeTsvSerialized()
         {
             var downloads = new List<FailedDownload>
@@ -106,9 +103,9 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             var tsvContent = string.Join(Environment.NewLine, lines);
-            Assert.IsFalse(string.IsNullOrEmpty(tsvContent));
-            Assert.IsTrue(tsvContent.Contains("Timeout"));
-            Assert.IsTrue(tsvContent.Contains("Doorbell"));
+            Assert.False(string.IsNullOrEmpty(tsvContent));
+            Assert.True(tsvContent.Contains("Timeout"));
+            Assert.True(tsvContent.Contains("Doorbell"));
         }
     }
 }

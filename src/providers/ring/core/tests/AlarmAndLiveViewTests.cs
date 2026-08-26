@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 using VideoForensics.Providers.Ring.Tests.Mocks;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -19,20 +17,18 @@ namespace VideoForensics.Providers.Ring.Tests
     /// numbering, dst addressing, JSON shape) but NOT real ICE negotiation or DataUpdate push, which
     /// can't be meaningfully faked and remain unverified until run against real hardware.
     /// </summary>
-    [TestClass]
     public class AlarmAndLiveViewTests
     {
         private MockSessionHelper _mockHelper = null!;
         private Session _mockSession = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public AlarmAndLiveViewTests()
         {
             _mockHelper = new MockSessionHelper();
             _mockSession = _mockHelper.CreateSessionWithMockHandler();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ConnectAssetSocket_RequestsTicketAndConnectsWebSocket()
         {
             var locationId = Guid.NewGuid();
@@ -47,17 +43,17 @@ namespace VideoForensics.Providers.Ring.Tests
             var socket = await _mockSession.ConnectAssetSocket(locationId, transport);
 
             var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("clap/tickets"));
-            Assert.IsNotNull(call.Url, "Expected a request to the clap/tickets endpoint");
-            Assert.IsTrue(call.Url.Contains($"locationID={locationId:D}"));
+            Assert.NotNull(call.Url);
+            Assert.True(call.Url.Contains($"locationID={locationId:D}"));
 
-            Assert.IsNotNull(transport.ConnectedUri);
-            Assert.AreEqual("asset-host.ring.com", transport.ConnectedUri.Host);
-            Assert.AreEqual("ticket-abc", System.Web.HttpUtility.ParseQueryString(transport.ConnectedUri.Query)["authcode"]);
+            Assert.NotNull(transport.ConnectedUri);
+            Assert.Equal("asset-host.ring.com", transport.ConnectedUri.Host);
+            Assert.Equal("ticket-abc", System.Web.HttpUtility.ParseQueryString(transport.ConnectedUri.Query)["authcode"]);
 
             await socket.CloseAsync();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ArmAway_DiscoversSecurityPanelThenSendsSwitchModeAll()
         {
             var locationId = Guid.NewGuid();
@@ -96,13 +92,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 .First(el => el.GetProperty("msg").GetProperty("msg").GetString() == "security-panel.switch-mode");
 
             var msg = switchModeMessage.GetProperty("msg");
-            Assert.AreEqual("panel-1", msg.GetProperty("dst").GetString(), "Expected the command to address the panel's own zid");
-            Assert.AreEqual("all", msg.GetProperty("body").GetProperty("mode").GetString());
+            Assert.Equal("panel-1", msg.GetProperty("dst").GetString());
+            Assert.Equal("all", msg.GetProperty("body").GetProperty("mode").GetString());
 
             await socket.CloseAsync();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task Disarm_SendsSwitchModeNone()
         {
             var locationId = Guid.NewGuid();
@@ -140,12 +136,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 .Select(m => JsonDocument.Parse(m).RootElement)
                 .First(el => el.GetProperty("msg").GetProperty("msg").GetString() == "security-panel.switch-mode");
 
-            Assert.AreEqual("none", switchModeMessage.GetProperty("msg").GetProperty("body").GetProperty("mode").GetString());
+            Assert.Equal("none", switchModeMessage.GetProperty("msg").GetProperty("body").GetProperty("mode").GetString());
 
             await socket.CloseAsync();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetDevices_ThrowsWhenNoSecurityPanelFoundOnArm()
         {
             var locationId = Guid.NewGuid();
@@ -178,7 +174,7 @@ namespace VideoForensics.Providers.Ring.Tests
             await socket.CloseAsync();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ConnectAssetSocket_ThrowsWhenNotAuthenticated()
         {
             var session = _mockHelper.CreateSessionWithMockHandler();
@@ -191,7 +187,7 @@ namespace VideoForensics.Providers.Ring.Tests
             catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException) { }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task StartLiveView_RequestsTicketAndSendsLiveViewOffer()
         {
             var mockHandler = _mockHelper.GetMockHandler();
@@ -205,26 +201,26 @@ namespace VideoForensics.Providers.Ring.Tests
             var liveView = await _mockSession.StartLiveView(123456, transport);
 
             var call = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("clap/ticket/request/signalsocket"));
-            Assert.IsNotNull(call.Url, "Expected a request to the signaling ticket endpoint");
-            Assert.AreEqual(System.Net.Http.HttpMethod.Post, call.Method);
+            Assert.NotNull(call.Url);
+            Assert.Equal(System.Net.Http.HttpMethod.Post, call.Method);
 
-            Assert.IsNotNull(transport.ConnectedUri);
-            Assert.AreEqual("api.prod.signalling.ring.devices.a2z.com", transport.ConnectedUri.Host);
-            Assert.AreEqual("signal-ticket-abc", System.Web.HttpUtility.ParseQueryString(transport.ConnectedUri.Query)["token"]);
+            Assert.NotNull(transport.ConnectedUri);
+            Assert.Equal("api.prod.signalling.ring.devices.a2z.com", transport.ConnectedUri.Host);
+            Assert.Equal("signal-ticket-abc", System.Web.HttpUtility.ParseQueryString(transport.ConnectedUri.Query)["token"]);
 
             // Locally gathered ICE candidates fire asynchronously as separate "ice" messages, and can
             // race the offer send itself - only the presence and content of the offer is asserted here.
             var offerMessage = transport.SentMessages
                 .Select(m => JsonDocument.Parse(m).RootElement)
                 .FirstOrDefault(el => el.GetProperty("method").GetString() == "live_view");
-            Assert.AreNotEqual(JsonValueKind.Undefined, offerMessage.ValueKind, "Expected a live_view offer message to have been sent");
-            Assert.AreEqual(123456, offerMessage.GetProperty("body").GetProperty("doorbot_id").GetInt64());
-            Assert.IsFalse(string.IsNullOrEmpty(offerMessage.GetProperty("body").GetProperty("sdp").GetString()), "Expected a non-empty SDP offer");
+            Assert.NotEqual(JsonValueKind.Undefined, offerMessage.ValueKind);
+            Assert.Equal(123456, offerMessage.GetProperty("body").GetProperty("doorbot_id").GetInt64());
+            Assert.False(string.IsNullOrEmpty(offerMessage.GetProperty("body").GetProperty("sdp").GetString()), "Expected a non-empty SDP offer");
 
             await liveView.CloseAsync();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task StartLiveView_ThrowsWhenNotAuthenticated()
         {
             var session = _mockHelper.CreateSessionWithMockHandler();

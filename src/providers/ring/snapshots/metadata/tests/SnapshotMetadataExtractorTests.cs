@@ -1,16 +1,15 @@
+﻿using Xunit;
 using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
 using VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures;
 
 namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
-    [TestClass]
     public class SnapshotMetadataExtractorTests
     {
         private IMetadataExtractor _extractor = null!;
         private SnapshotProcessingOptions _defaultOptions = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public SnapshotMetadataExtractorTests()
         {
             _defaultOptions = SnapshotProcessingOptions.CreateDefault();
             _extractor = new SnapshotMetadataExtractor(_defaultOptions);
@@ -18,7 +17,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
         #region GPS and Location Extraction
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithValidLocation_ExtractsLatitude()
         {
             var builder = new SnapshotEventBuilder()
@@ -28,11 +27,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Latitude);
-            Assert.AreEqual(40.7128, metadata.Latitude);
+            Assert.NotNull(metadata.Latitude);
+            Assert.Equal(40.7128, metadata.Latitude);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithValidLocation_ExtractsLongitude()
         {
             var builder = new SnapshotEventBuilder()
@@ -42,11 +41,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Longitude);
-            Assert.AreEqual(-74.0060, metadata.Longitude);
+            Assert.NotNull(metadata.Longitude);
+            Assert.Equal(-74.0060, metadata.Longitude);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithAddress_ExtractsAddress()
         {
             var builder = new SnapshotEventBuilder()
@@ -56,11 +55,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Address);
-            Assert.AreEqual("123 Main St, New York, NY 10001", metadata.Address);
+            Assert.NotNull(metadata.Address);
+            Assert.Equal("123 Main St, New York, NY 10001", metadata.Address);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPrivacyFocusedOptions_OmitsGps()
         {
             var builder = new SnapshotEventBuilder()
@@ -72,11 +71,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNull(metadata.Latitude);
-            Assert.IsNull(metadata.Longitude);
+            Assert.Null(metadata.Latitude);
+            Assert.Null(metadata.Longitude);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPrivacyFocusedOptions_OmitsAddress()
         {
             var builder = new SnapshotEventBuilder()
@@ -88,14 +87,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNull(metadata.Address);
+            Assert.Null(metadata.Address);
         }
 
         #endregion
 
         #region Device Information Extraction
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsDeviceName()
         {
             var builder = new SnapshotEventBuilder()
@@ -105,10 +104,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("Front Door", metadata.DeviceName);
+            Assert.Equal("Front Door", metadata.DeviceName);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsDeviceManufacturer()
         {
             var builder = new SnapshotEventBuilder()
@@ -118,10 +117,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("Amazon", metadata.DeviceManufacturer);
+            Assert.Equal("Amazon", metadata.DeviceManufacturer);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithDoorbotKind_ExtractsCorrectModel()
         {
             var builder = new SnapshotEventBuilder()
@@ -131,10 +130,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("Doorbell", metadata.DeviceModel);
+            Assert.Equal("Doorbell", metadata.DeviceModel);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithDoorbell_v3_Kind_ExtractsCorrectModel()
         {
             var snapshotEvent = new SnapshotEventBuilder()
@@ -145,14 +144,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("doorbell_v3", metadata.DeviceModel);
+            Assert.Equal("doorbell_v3", metadata.DeviceModel);
         }
 
         #endregion
 
         #region Device Health Metrics
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsRssi()
         {
             var builder = new SnapshotEventBuilder()
@@ -162,10 +161,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual(-50, metadata.Rssi);
+            Assert.Equal(-50, metadata.Rssi);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsBatteryPercentage()
         {
             var builder = new SnapshotEventBuilder()
@@ -175,10 +174,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual(95, metadata.BatteryPercentage);
+            Assert.Equal(95, metadata.BatteryPercentage);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPrivacyFocusedOptions_OmitsDeviceHealth()
         {
             var builder = new SnapshotEventBuilder()
@@ -190,15 +189,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNull(metadata.Rssi);
-            Assert.IsNull(metadata.BatteryPercentage);
+            Assert.Null(metadata.Rssi);
+            Assert.Null(metadata.BatteryPercentage);
         }
 
         #endregion
 
         #region CV Properties - Detection
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetection_ExtractsPersonDetected()
         {
             var builder = new SnapshotEventBuilder()
@@ -209,11 +208,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsTrue(metadata.PersonDetected);
-            Assert.AreEqual("person", metadata.DetectionType);
+            Assert.True(metadata.PersonDetected);
+            Assert.Equal("person", metadata.DetectionType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetection_ExtractsConfidence()
         {
             var builder = new SnapshotEventBuilder()
@@ -224,10 +223,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual(87, metadata.DetectionConfidence);
+            Assert.Equal(87, metadata.DetectionConfidence);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithMotionDetection_ExtractsMotionDetected()
         {
             var builder = new SnapshotEventBuilder()
@@ -238,11 +237,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsTrue(metadata.MotionDetected);
-            Assert.AreEqual("motion", metadata.DetectionType);
+            Assert.True(metadata.MotionDetected);
+            Assert.Equal("motion", metadata.DetectionType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPrivacyFocusedOptions_OmitsDetectionData()
         {
             var builder = new SnapshotEventBuilder()
@@ -255,15 +254,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNull(metadata.PersonDetected);
-            Assert.IsNull(metadata.DetectionConfidence);
+            Assert.Null(metadata.PersonDetected);
+            Assert.Null(metadata.DetectionConfidence);
         }
 
         #endregion
 
         #region Event Type and Keywords
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithMotionKind_DeterminesMotionEventType()
         {
             var builder = new SnapshotEventBuilder()
@@ -274,10 +273,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("motion", metadata.EventType);
+            Assert.Equal("motion", metadata.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonKind_DeterminesPersonEventType()
         {
             var builder = new SnapshotEventBuilder()
@@ -288,10 +287,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("person", metadata.EventType);
+            Assert.Equal("person", metadata.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_GeneratesKeywordsWithDeviceName()
         {
             var builder = new SnapshotEventBuilder()
@@ -302,11 +301,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Keywords);
-            Assert.IsTrue(metadata.Keywords.Any(k => k.Contains("front") || k.Contains("door")));
+            Assert.NotNull(metadata.Keywords);
+            Assert.True(metadata.Keywords.Any(k => k.Contains("front") || k.Contains("door")));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetected_IncludesPersonKeyword()
         {
             var builder = new SnapshotEventBuilder()
@@ -317,11 +316,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Keywords);
-            Assert.IsTrue(metadata.Keywords.Contains("person"));
+            Assert.NotNull(metadata.Keywords);
+            Assert.True(metadata.Keywords.Contains("person"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithMotionDetected_IncludesMotionKeyword()
         {
             var builder = new SnapshotEventBuilder()
@@ -332,15 +331,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Keywords);
-            Assert.IsTrue(metadata.Keywords.Contains("motion"));
+            Assert.NotNull(metadata.Keywords);
+            Assert.True(metadata.Keywords.Contains("motion"));
         }
 
         #endregion
 
         #region Comment Building
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetected_BuildsCommentWithPersonAndConfidence()
         {
             var builder = new SnapshotEventBuilder()
@@ -351,12 +350,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Comment);
-            Assert.IsTrue(metadata.Comment.Contains("Person detected"));
-            Assert.IsTrue(metadata.Comment.Contains("92"));
+            Assert.NotNull(metadata.Comment);
+            Assert.True(metadata.Comment.Contains("Person detected"));
+            Assert.True(metadata.Comment.Contains("92"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithMotionDetected_BuildsCommentWithMotion()
         {
             var builder = new SnapshotEventBuilder()
@@ -367,11 +366,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Comment);
-            Assert.IsTrue(metadata.Comment.Contains("Motion detected"));
+            Assert.NotNull(metadata.Comment);
+            Assert.True(metadata.Comment.Contains("Motion detected"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithDeviceName_IncludesDeviceNameInComment()
         {
             var builder = new SnapshotEventBuilder()
@@ -381,15 +380,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Comment);
-            Assert.IsTrue(metadata.Comment.Contains("Front Door"));
+            Assert.NotNull(metadata.Comment);
+            Assert.True(metadata.Comment.Contains("Front Door"));
         }
 
         #endregion
 
         #region Ring Event Fields
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsRingEventId()
         {
             var eventId = 12345L;
@@ -401,10 +400,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual(eventId.ToString(), metadata.RingEventId);
+            Assert.Equal(eventId.ToString(), metadata.RingEventId);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsRingEventKind()
         {
             var builder = new SnapshotEventBuilder()
@@ -415,10 +414,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("visitor", metadata.RingEventKind);
+            Assert.Equal("visitor", metadata.RingEventKind);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsEventDateTime()
         {
             var builder = new SnapshotEventBuilder()
@@ -430,14 +429,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             // EventDateTime may be null if not properly set on the event
             // The extractor extracts what's available from the event
-            Assert.IsNotNull(metadata);
+            Assert.NotNull(metadata);
         }
 
         #endregion
 
         #region Timezone
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsTimezone()
         {
             var builder = new SnapshotEventBuilder()
@@ -447,14 +446,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.AreEqual("America/New_York", metadata.Timezone);
+            Assert.Equal("America/New_York", metadata.Timezone);
         }
 
         #endregion
 
         #region Async Operations
 
-        [TestMethod]
+        [Fact]
         public async Task ExtractMetadataAsync_ReturnsMetadata()
         {
             var builder = new SnapshotEventBuilder()
@@ -465,15 +464,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = await _extractor.ExtractMetadataAsync(snapshotEvent);
 
-            Assert.IsNotNull(metadata);
-            Assert.IsTrue(metadata.PersonDetected);
+            Assert.NotNull(metadata);
+            Assert.True(metadata.PersonDetected);
         }
 
         #endregion
 
         #region Edge Cases
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithNullEvent_ThrowsArgumentNullException()
         {
             try
@@ -486,7 +485,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithNoDoorbot_HandlesGracefully()
         {
             var builder = new SnapshotEventBuilder()
@@ -497,16 +496,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = _extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata);
-            Assert.IsNull(metadata.Latitude);
-            Assert.IsNull(metadata.DeviceName);
+            Assert.NotNull(metadata);
+            Assert.Null(metadata.Latitude);
+            Assert.Null(metadata.DeviceName);
         }
 
         #endregion
 
         #region PhotoPrism Compatibility
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPhotoPrismEnabled_GeneratesKeywords()
         {
             var builder = new SnapshotEventBuilder()
@@ -520,8 +519,8 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = extractor.ExtractMetadata(snapshotEvent);
 
-            Assert.IsNotNull(metadata.Keywords);
-            Assert.IsTrue(metadata.Keywords.Count > 0);
+            Assert.NotNull(metadata.Keywords);
+            Assert.True(metadata.Keywords.Count > 0);
         }
 
         #endregion

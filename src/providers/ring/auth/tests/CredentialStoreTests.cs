@@ -5,10 +5,9 @@ using Moq;
 
 namespace VideoForensics.Providers.Ring.Auth.Tests
 {
-    [TestClass]
     public class CredentialStoreTests
     {
-        [TestMethod]
+        [Fact]
         public void SaveAndLoadRoundTrip()
         {
             var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
@@ -26,11 +25,11 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 var raw = File.ReadAllText(path);
                 var loaded = store.Load(path);
 
-                Assert.IsFalse(raw.Contains("testPassword"));
-                Assert.IsFalse(raw.Contains("testRefresh"));
-                Assert.AreEqual("test@example.com", loaded.UserName);
-                Assert.AreEqual("testPassword", loaded.Password);
-                Assert.AreEqual("testRefresh", loaded.RefreshToken);
+                Assert.False(raw.Contains("testPassword"));
+                Assert.False(raw.Contains("testRefresh"));
+                Assert.Equal("test@example.com", loaded.UserName);
+                Assert.Equal("testPassword", loaded.Password);
+                Assert.Equal("testRefresh", loaded.RefreshToken);
             }
             finally
             {
@@ -39,7 +38,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void EncryptsBeforeWritingToDisk()
         {
             var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
@@ -56,8 +55,8 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 store.Save(path, auth);
                 var raw = File.ReadAllText(path);
 
-                Assert.IsFalse(raw.Contains("SecurePassword123!"));
-                Assert.IsFalse(raw.Contains("refresh_abc123"));
+                Assert.False(raw.Contains("SecurePassword123!"));
+                Assert.False(raw.Contains("refresh_abc123"));
             }
             finally
             {
@@ -66,7 +65,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Load_MissingFile_ReturnsEmptyCredentials()
         {
             var store = new CredentialStore();
@@ -74,12 +73,12 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
 
             var loaded = store.Load(path);
 
-            Assert.IsNull(loaded.UserName);
-            Assert.IsNull(loaded.Password);
-            Assert.IsNull(loaded.RefreshToken);
+            Assert.Null(loaded.UserName);
+            Assert.Null(loaded.Password);
+            Assert.Null(loaded.RefreshToken);
         }
 
-        [TestMethod]
+        [Fact]
         public void SetCredentials_WritesRetrievableRoundTrip()
         {
             var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
@@ -90,9 +89,9 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 store.SetCredentials(path, "user@example.com", "pw", "refresh");
                 var loaded = store.Load(path);
 
-                Assert.AreEqual("user@example.com", loaded.UserName);
-                Assert.AreEqual("pw", loaded.Password);
-                Assert.AreEqual("refresh", loaded.RefreshToken);
+                Assert.Equal("user@example.com", loaded.UserName);
+                Assert.Equal("pw", loaded.Password);
+                Assert.Equal("refresh", loaded.RefreshToken);
             }
             finally
             {
@@ -101,7 +100,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void SanitizeClearTextPassword_MigratesAndRemovesClearTextField()
         {
             var settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");
@@ -114,9 +113,9 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
 
                 var migrated = store.SanitizeClearTextPassword(settingsPath, authPath);
 
-                Assert.IsTrue(migrated);
-                Assert.IsFalse(File.ReadAllText(settingsPath).Contains("clear-text-secret"));
-                Assert.AreEqual("clear-text-secret", store.Load(authPath).Password);
+                Assert.True(migrated);
+                Assert.False(File.ReadAllText(settingsPath).Contains("clear-text-secret"));
+                Assert.Equal("clear-text-secret", store.Load(authPath).Password);
             }
             finally
             {
@@ -132,7 +131,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         /// with a fake in tests instead of touching disk - this confirms the interface actually
         /// satisfies that: a mock can stand in wherever ICredentialStore is expected.
         /// </summary>
-        [TestMethod]
+        [Fact]
         public void ICredentialStore_IsMockable()
         {
             var mock = new Mock<ICredentialStore>();
@@ -141,7 +140,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             ICredentialStore store = mock.Object;
             var result = store.Load("irrelevant-path");
 
-            Assert.AreEqual("fake-token", result.RefreshToken);
+            Assert.Equal("fake-token", result.RefreshToken);
             mock.Verify(s => s.Load("irrelevant-path"), Times.Once);
         }
     }

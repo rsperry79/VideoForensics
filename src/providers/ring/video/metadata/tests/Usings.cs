@@ -1,4 +1,4 @@
-global using Microsoft.VisualStudio.TestTools.UnitTesting;
+global using Xunit;
 global using Moq;
 global using VideoForensics.Providers.Ring.Entities;
 global using VideoForensics.Providers.Ring.Video.Metadata;

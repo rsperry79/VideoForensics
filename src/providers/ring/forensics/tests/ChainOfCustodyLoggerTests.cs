@@ -1,18 +1,16 @@
 namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
-    [TestClass]
     public class ChainOfCustodyLoggerTests
     {
         private IChainOfCustodyLogger _logger = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public ChainOfCustodyLoggerTests()
         {
             // Instantiate implementation when ready
             // _logger = new ChainOfCustodyLogger();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task LogEvidenceReceptionAsync_WithValidData_Succeeds()
         {
             // Arrange
@@ -29,7 +27,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(entries.Count > 0);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task LogCustodyTransferAsync_BetweenHandlers_CreatesEntry()
         {
             // Arrange
@@ -46,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(entries.Any(e => e.Action == "transfer"));
         }
 
-        [TestMethod]
+        [Fact]
         public async Task VerifyCustodyIntegrityAsync_WithUnbrokenChain_ReturnsTrue()
         {
             // Arrange
@@ -59,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(isValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetChainOfCustodyAsync_ReturnsChronologicalOrder()
         {
             // Arrange

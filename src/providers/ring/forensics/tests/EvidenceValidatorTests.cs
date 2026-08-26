@@ -1,18 +1,16 @@
 namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
-    [TestClass]
     public class EvidenceValidatorTests
     {
         private IEvidenceValidator _validator = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public EvidenceValidatorTests()
         {
             // Instantiate implementation when ready
             // _validator = new EvidenceValidator();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateCompletenessAsync_WithCompleteEvidence_ReturnsValid()
         {
             // Arrange
@@ -32,7 +30,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.AreEqual(0, result.Errors.Count);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateIntegrityAsync_WithIntactData_ReturnsValid()
         {
             // Arrange
@@ -52,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(result.IsValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateComplianceAsync_WithCompliantEvidence_ReturnsValid()
         {
             // Arrange
@@ -70,7 +68,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(result.IsValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateCompletenessAsync_WithMissingFields_ReturnsErrors()
         {
             // Arrange

@@ -1,44 +1,41 @@
 #nullable disable
 using VideoForensics.Providers.Ring.Models;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace VideoForensics.Providers.Ring.Tests
 {
-    [TestClass]
     public class FilterTests
     {
-        [TestMethod]
+        [Fact]
         public void Filter_DefaultVideoCountIs10000()
         {
             var filter = new Filter();
-            Assert.AreEqual(10000, filter.VideoCount);
+            Assert.Equal(10000, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanSetVideoCount()
         {
             var filter = new Filter { VideoCount = 100 };
-            Assert.AreEqual(100, filter.VideoCount);
+            Assert.Equal(100, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanSetStartDateTime()
         {
             var now = DateTime.Now;
             var filter = new Filter { StartDateTime = now };
-            Assert.AreEqual(now, filter.StartDateTime);
+            Assert.Equal(now, filter.StartDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanSetEndDateTime()
         {
             var now = DateTime.Now;
             var filter = new Filter { EndDateTime = now };
-            Assert.AreEqual(now, filter.EndDateTime);
+            Assert.Equal(now, filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_StartAndEndDateCanBeDifferent()
         {
             var start = new DateTime(2026, 1, 1);
@@ -50,11 +47,11 @@ namespace VideoForensics.Providers.Ring.Tests
                 EndDateTime = end
             };
 
-            Assert.AreEqual(start, filter.StartDateTime);
-            Assert.AreEqual(end, filter.EndDateTime);
+            Assert.Equal(start, filter.StartDateTime);
+            Assert.Equal(end, filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanSetEndDateBeforeStart()
         {
             var start = new DateTime(2026, 1, 31);
@@ -66,21 +63,21 @@ namespace VideoForensics.Providers.Ring.Tests
                 EndDateTime = end
             };
 
-            Assert.AreEqual(start, filter.StartDateTime);
-            Assert.AreEqual(end, filter.EndDateTime);
+            Assert.Equal(start, filter.StartDateTime);
+            Assert.Equal(end, filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanModifyPropertiesAfterCreation()
         {
             var filter = new Filter { VideoCount = 50 };
-            Assert.AreEqual(50, filter.VideoCount);
+            Assert.Equal(50, filter.VideoCount);
 
             filter.VideoCount = 200;
-            Assert.AreEqual(200, filter.VideoCount);
+            Assert.Equal(200, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_AllPropertiesCanBeSetTogether()
         {
             var start = DateTime.Now;
@@ -93,12 +90,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 EndDateTime = end
             };
 
-            Assert.AreEqual(500, filter.VideoCount);
-            Assert.AreEqual(start, filter.StartDateTime);
-            Assert.AreEqual(end, filter.EndDateTime);
+            Assert.Equal(500, filter.VideoCount);
+            Assert.Equal(start, filter.StartDateTime);
+            Assert.Equal(end, filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_DateTimeCanBeSet()
         {
             var filter = new Filter();
@@ -107,25 +104,25 @@ namespace VideoForensics.Providers.Ring.Tests
             filter.StartDateTime = now;
             filter.EndDateTime = now.AddDays(1);
 
-            Assert.IsNotNull(filter.StartDateTime);
-            Assert.IsNotNull(filter.EndDateTime);
+            Assert.NotNull(filter.StartDateTime);
+            Assert.NotNull(filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_LargeVideoCountHandling()
         {
             var filter = new Filter { VideoCount = 1000000 };
-            Assert.AreEqual(1000000, filter.VideoCount);
+            Assert.Equal(1000000, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_ZeroVideoCount()
         {
             var filter = new Filter { VideoCount = 0 };
-            Assert.AreEqual(0, filter.VideoCount);
+            Assert.Equal(0, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_SameDateForStartAndEnd()
         {
             var date = new DateTime(2026, 6, 15);
@@ -135,9 +132,9 @@ namespace VideoForensics.Providers.Ring.Tests
                 EndDateTime = date
             };
 
-            Assert.AreEqual(date, filter.StartDateTime);
-            Assert.AreEqual(date, filter.EndDateTime);
-            Assert.AreEqual(filter.StartDateTime, filter.EndDateTime);
+            Assert.Equal(date, filter.StartDateTime);
+            Assert.Equal(date, filter.EndDateTime);
+            Assert.Equal(filter.StartDateTime, filter.EndDateTime);
         }
     }
 }
