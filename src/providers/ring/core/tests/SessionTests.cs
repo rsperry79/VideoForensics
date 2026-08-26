@@ -2,14 +2,11 @@ using VideoForensics.Providers.Ring;
 
 using VideoForensics.Providers.Ring.Tests.Mocks;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace VideoForensics.Providers.Ring.Tests
 {
-    [TestClass]
     public class SessionTests
     {
-        [TestMethod]
+        [Fact]
         public void Session_Constructor_WithCredentials_CreatesSession()
         {
             // Arrange
@@ -20,13 +17,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = new Session(username, password);
 
             // Assert
-            Assert.IsNotNull(session);
-            Assert.AreEqual(username, session.Username);
-            Assert.AreEqual(password, session.Password);
-            Assert.IsFalse(session.IsAuthenticated);
+            Assert.NotNull(session);
+            Assert.Equal(username, session.Username);
+            Assert.Equal(password, session.Password);
+            Assert.False(session.IsAuthenticated);
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_Constructor_WithMockHandler_CreatesSession()
         {
             // Arrange
@@ -38,12 +35,12 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = new Session(username, password, mockHandler);
 
             // Assert
-            Assert.IsNotNull(session);
-            Assert.AreEqual(username, session.Username);
-            Assert.AreEqual(password, session.Password);
+            Assert.NotNull(session);
+            Assert.Equal(username, session.Username);
+            Assert.Equal(password, session.Password);
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_IsAuthenticated_WithoutToken_ReturnsFalse()
         {
             // Arrange
@@ -53,10 +50,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var isAuthenticated = session.IsAuthenticated;
 
             // Assert
-            Assert.IsFalse(isAuthenticated);
+            Assert.False(isAuthenticated);
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_AuthenticationToken_WithoutAuth_ReturnsNull()
         {
             // Arrange
@@ -66,10 +63,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var token = session.AuthenticationToken;
 
             // Assert
-            Assert.IsNull(token);
+            Assert.Null(token);
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_WithMockHandler_CanBeInstantiated()
         {
             // Arrange
@@ -79,11 +76,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var mockSession = helper.CreateSessionWithMockHandler();
 
             // Assert
-            Assert.IsNotNull(mockSession);
-            Assert.IsFalse(mockSession.IsAuthenticated);
+            Assert.NotNull(mockSession);
+            Assert.False(mockSession.IsAuthenticated);
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_OAuthUrl_IsCorrect()
         {
             // Arrange
@@ -93,11 +90,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var oauthUrl = session.OAuthUrl;
 
             // Assert
-            Assert.IsNotNull(oauthUrl);
-            Assert.AreEqual("https://oauth.ring.com/oauth/token", oauthUrl.ToString());
+            Assert.NotNull(oauthUrl);
+            Assert.Equal("https://oauth.ring.com/oauth/token", oauthUrl.ToString());
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_BaseUrl_IsCorrect()
         {
             // Arrange
@@ -107,11 +104,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var baseUrl = session.BaseUrl;
 
             // Assert
-            Assert.IsNotNull(baseUrl);
-            Assert.IsTrue(baseUrl.ToString().Contains("https://api.ring.com"));
+            Assert.NotNull(baseUrl);
+            Assert.True(baseUrl.ToString().Contains("https://api.ring.com"));
         }
 
-        [TestMethod]
+        [Fact]
         public void Session_CanBeCreatedMultipleTimes()
         {
             // Arrange & Act
@@ -120,11 +117,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var session3 = new Session("user3@example.com", "pass3");
 
             // Assert
-            Assert.IsNotNull(session1);
-            Assert.IsNotNull(session2);
-            Assert.IsNotNull(session3);
-            Assert.AreNotEqual(session1.Username, session2.Username);
-            Assert.AreNotEqual(session2.Username, session3.Username);
+            Assert.NotNull(session1);
+            Assert.NotNull(session2);
+            Assert.NotNull(session3);
+            Assert.NotEqual(session1.Username, session2.Username);
+            Assert.NotEqual(session2.Username, session3.Username);
         }
     }
 }

@@ -1,11 +1,10 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Snapshots.Tests
 {
-    [TestClass]
     public class SnapshotManagerTests
     {
-        [TestMethod]
+        [Fact]
         public void SnapshotManager_RequiresSession()
         {
             try
@@ -19,13 +18,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void SnapshotManager_CanBeConstructedWithValidSession()
         {
             var session = new VideoForensics.Providers.Ring.Session("user", "pass");
             var manager = new SnapshotManager(session);
-            Assert.IsNotNull(manager);
+            Assert.NotNull(manager);
         }
     }
 }
-

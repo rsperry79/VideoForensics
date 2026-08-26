@@ -1,24 +1,22 @@
+﻿using Xunit;
 using System.IO.Abstractions;
 
 namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
-    [TestClass]
-    public class ImageMetadataValidatorTests
+    public class ImageMetadataValidatorTests : IDisposable
     {
         private IMetadataValidator _validator = null!;
         private IFileSystem _fileSystem = null!;
         private string _testFilePath = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public ImageMetadataValidatorTests()
         {
             _fileSystem = new System.IO.Abstractions.FileSystem();
             _validator = new ImageMetadataValidator(_fileSystem);
             _testFilePath = Path.Combine(Path.GetTempPath(), $"test-image-{Guid.NewGuid()}.jpg");
         }
 
-        [TestCleanup]
-        public void Cleanup()
+        public void Dispose()
         {
             if (_fileSystem.File.Exists(_testFilePath))
             {
@@ -28,7 +26,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
         #region Format Detection Tests
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithJpegFile_ReturnsJpeg()
         {
             var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
@@ -36,10 +34,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var format = _validator.DetectFormat(_testFilePath);
 
-            Assert.AreEqual("JPEG", format);
+            Assert.Equal("JPEG", format);
         }
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithPngFile_ReturnsPng()
         {
             var pngHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -47,10 +45,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var format = _validator.DetectFormat(_testFilePath);
 
-            Assert.AreEqual("PNG", format);
+            Assert.Equal("PNG", format);
         }
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithWebPFile_ReturnsWebP()
         {
             var webpHeader = new byte[] { 0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50 };
@@ -58,10 +56,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var format = _validator.DetectFormat(_testFilePath);
 
-            Assert.AreEqual("WebP", format);
+            Assert.Equal("WebP", format);
         }
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithGifFile_ReturnsGif()
         {
             var gifHeader = new byte[] { 0x47, 0x49, 0x46, 0x38 };
@@ -69,10 +67,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var format = _validator.DetectFormat(_testFilePath);
 
-            Assert.AreEqual("GIF", format);
+            Assert.Equal("GIF", format);
         }
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithUnknownFormat_ReturnsNull()
         {
             var unknownHeader = new byte[] { 0x00, 0x00, 0x00, 0x00 };
@@ -80,22 +78,22 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var format = _validator.DetectFormat(_testFilePath);
 
-            Assert.IsNull(format);
+            Assert.Null(format);
         }
 
-        [TestMethod]
+        [Fact]
         public void DetectFormat_WithNonExistentFile_ReturnsNull()
         {
             var format = _validator.DetectFormat("/nonexistent/file.jpg");
 
-            Assert.IsNull(format);
+            Assert.Null(format);
         }
 
         #endregion
 
         #region Validation Tests
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithValidJpegFile_ReturnsTrue()
         {
             var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
@@ -103,10 +101,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var isValid = _validator.Validate(_testFilePath);
 
-            Assert.IsTrue(isValid);
+            Assert.True(isValid);
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithValidPngFile_ReturnsTrue()
         {
             var pngPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.png");
@@ -116,7 +114,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isValid = _validator.Validate(pngPath);
-                Assert.IsTrue(isValid);
+                Assert.True(isValid);
             }
             finally
             {
@@ -125,15 +123,15 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithNonExistentFile_ReturnsFalse()
         {
             var isValid = _validator.Validate("/nonexistent/file.jpg");
 
-            Assert.IsFalse(isValid);
+            Assert.False(isValid);
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithInvalidExtension_ReturnsFalse()
         {
             var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
@@ -143,7 +141,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             {
                 var isValid = _validator.Validate(invalidPath);
 
-                Assert.IsFalse(isValid);
+                Assert.False(isValid);
             }
             finally
             {
@@ -152,27 +150,27 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithNullPath_ReturnsFalse()
         {
             var isValid = _validator.Validate(null!);
 
-            Assert.IsFalse(isValid);
+            Assert.False(isValid);
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_WithEmptyPath_ReturnsFalse()
         {
             var isValid = _validator.Validate("");
 
-            Assert.IsFalse(isValid);
+            Assert.False(isValid);
         }
 
         #endregion
 
         #region Corruption Detection Tests
 
-        [TestMethod]
+        [Fact]
         public void IsCorrupted_WithValidJpeg_ReturnsFalse()
         {
             var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
@@ -180,10 +178,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var isCorrupted = _validator.IsCorrupted(_testFilePath);
 
-            Assert.IsFalse(isCorrupted);
+            Assert.False(isCorrupted);
         }
 
-        [TestMethod]
+        [Fact]
         public void IsCorrupted_WithValidPng_ReturnsFalse()
         {
             var pngPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.png");
@@ -193,7 +191,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isCorrupted = _validator.IsCorrupted(pngPath);
-                Assert.IsFalse(isCorrupted);
+                Assert.False(isCorrupted);
             }
             finally
             {
@@ -202,7 +200,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void IsCorrupted_WithInvalidHeader_ReturnsTrue()
         {
             var invalidHeader = new byte[] { 0x00, 0x00, 0x00, 0x00 };
@@ -210,32 +208,32 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var isCorrupted = _validator.IsCorrupted(_testFilePath);
 
-            Assert.IsTrue(isCorrupted);
+            Assert.True(isCorrupted);
         }
 
-        [TestMethod]
+        [Fact]
         public void IsCorrupted_WithEmptyFile_ReturnsTrue()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { });
 
             var isCorrupted = _validator.IsCorrupted(_testFilePath);
 
-            Assert.IsTrue(isCorrupted);
+            Assert.True(isCorrupted);
         }
 
-        [TestMethod]
+        [Fact]
         public void IsCorrupted_WithNonExistentFile_ReturnsTrue()
         {
             var isCorrupted = _validator.IsCorrupted("/nonexistent/file.jpg");
 
-            Assert.IsTrue(isCorrupted);
+            Assert.True(isCorrupted);
         }
 
         #endregion
 
         #region Async Operations
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateAsync_WithValidFile_ReturnsTrue()
         {
             var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
@@ -243,22 +241,22 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var isValid = await _validator.ValidateAsync(_testFilePath);
 
-            Assert.IsTrue(isValid);
+            Assert.True(isValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateAsync_WithInvalidFile_ReturnsFalse()
         {
             var isValid = await _validator.ValidateAsync("/nonexistent/file.jpg");
 
-            Assert.IsFalse(isValid);
+            Assert.False(isValid);
         }
 
         #endregion
 
         #region Supported Formats
 
-        [TestMethod]
+        [Fact]
         public void Validate_SupportJpg()
         {
             var jpgPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpg");
@@ -267,7 +265,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isValid = _validator.Validate(jpgPath);
-                Assert.IsTrue(isValid);
+                Assert.True(isValid);
             }
             finally
             {
@@ -276,7 +274,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_SupportJpeg()
         {
             var jpegPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpeg");
@@ -285,7 +283,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isValid = _validator.Validate(jpegPath);
-                Assert.IsTrue(isValid);
+                Assert.True(isValid);
             }
             finally
             {
@@ -294,7 +292,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_SupportWebp()
         {
             var webpPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.webp");
@@ -303,7 +301,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isValid = _validator.Validate(webpPath);
-                Assert.IsTrue(isValid);
+                Assert.True(isValid);
             }
             finally
             {
@@ -312,7 +310,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Validate_SupportPng()
         {
             var pngPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.png");
@@ -321,7 +319,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var isValid = _validator.Validate(pngPath);
-                Assert.IsTrue(isValid);
+                Assert.True(isValid);
             }
             finally
             {

@@ -1,18 +1,16 @@
 namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
-    [TestClass]
     public class SignalAnomalyDetectorTests
     {
         private ISignalAnomalyDetector _detector = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public SignalAnomalyDetectorTests()
         {
             // Instantiate implementation when ready
             // _detector = new SignalAnomalyDetector();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task CalculateRssiStatisticsAsync_WithEvents_ReturnsStats()
         {
             // Arrange
@@ -31,7 +29,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(stats.SampleCount > 0);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task AnalyzeCameraSignalsAsync_WithEvents_ReturnsCameraProfiles()
         {
             // Arrange
@@ -49,7 +47,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(profileList.Count > 0);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task DetectSignalAnomaliesAsync_WithAnomalousEvents_FlagThemForReview()
         {
             // Arrange
@@ -68,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsTrue(findingsList.All(f => f.Priority != ReviewPriority.Low || f.AnomalyType != null));
         }
 
-        [TestMethod]
+        [Fact]
         public async Task DetectJammingAsync_WithSustainedSignalDegradation_ReturnsJammingIncident()
         {
             // Arrange

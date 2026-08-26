@@ -2,20 +2,18 @@ using VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures;
 
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {
-    [TestClass]
     public class MetadataExtractorTests
     {
         private IMetadataExtractor _extractor = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public MetadataExtractorTests()
         {
             _extractor = new MetadataExtractor();
         }
 
         #region Basic Extraction Tests
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithValidEvent_ReturnsMetadata()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -25,12 +23,12 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result);
-            Assert.AreEqual(12345, result.RingEventId);
-            Assert.AreEqual("motion", result.RingEventKind);
+            Assert.NotNull(result);
+            Assert.Equal(12345, result.RingEventId);
+            Assert.Equal("motion", result.RingEventKind);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithNullEvent_ThrowsArgumentNullException()
         {
             try
@@ -44,21 +42,21 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ExtractMetadataAsync_WithValidEvent_ReturnsMetadata()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create().Build();
 
             var result = await _extractor.ExtractMetadataAsync(ringEvent);
 
-            Assert.IsNotNull(result);
+            Assert.NotNull(result);
         }
 
         #endregion
 
         #region Device Information Extraction
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsDeviceName()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -67,10 +65,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("Front Door Camera", result.DeviceName);
+            Assert.Equal("Front Door Camera", result.DeviceName);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsDeviceTimezone()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -79,10 +77,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("America/New_York", result.Timezone);
+            Assert.Equal("America/New_York", result.Timezone);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsBatteryPercentage()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -91,10 +89,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(75, result.BatteryPercentage);
+            Assert.Equal(75, result.BatteryPercentage);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsRssi()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -103,14 +101,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(-45.5, result.Rssi);
+            Assert.Equal(-45.5, result.Rssi);
         }
 
         #endregion
 
         #region Location Information Extraction
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsLatitude()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -119,10 +117,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(40.7128, result.Latitude);
+            Assert.Equal(40.7128, result.Latitude);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsLongitude()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -131,10 +129,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(-74.0060, result.Longitude);
+            Assert.Equal(-74.0060, result.Longitude);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsAddress()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -143,14 +141,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("123 Main Street, New York, NY 10001", result.Address);
+            Assert.Equal("123 Main Street, New York, NY 10001", result.Address);
         }
 
         #endregion
 
         #region Computer Vision Properties Extraction
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetected_SetsBothPersonAndMotion()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -159,11 +157,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsTrue(result.PersonDetected);
-            Assert.IsTrue(result.MotionDetected);
+            Assert.True(result.PersonDetected);
+            Assert.True(result.MotionDetected);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithDetectionType_SetsMotionDetected()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -172,11 +170,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsTrue(result.MotionDetected);
-            Assert.AreEqual("human", result.DetectionType);
+            Assert.True(result.MotionDetected);
+            Assert.Equal("human", result.DetectionType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsDetectionConfidence()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -185,10 +183,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(0.95, result.DetectionConfidence);
+            Assert.Equal(0.95, result.DetectionConfidence);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithoutCvProperties_AssumsMotion()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -196,14 +194,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsTrue(result.MotionDetected);
+            Assert.True(result.MotionDetected);
         }
 
         #endregion
 
         #region Event Type Determination
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithPersonDetected_SetsEventTypeToperson()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -212,10 +210,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("person", result.EventType);
+            Assert.Equal("person", result.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithMotionKind_SetsEventTypeToMotion()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -224,10 +222,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("motion", result.EventType);
+            Assert.Equal("motion", result.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithDoorbellKind_SetsEventTypeToDoorbell()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -236,10 +234,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("doorbell", result.EventType);
+            Assert.Equal("doorbell", result.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithButtonKind_SetsEventTypeToDoorbell()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -248,10 +246,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("doorbell", result.EventType);
+            Assert.Equal("doorbell", result.EventType);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithUnknownKind_SetsEventTypeToRing()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -260,14 +258,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual("ring", result.EventType);
+            Assert.Equal("ring", result.EventType);
         }
 
         #endregion
 
         #region Keywords Building
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_BuildsKeywordsFromEventType()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -276,11 +274,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
-            Assert.IsTrue(result.Keywords.Contains("motion"));
+            Assert.NotNull(result.Keywords);
+            Assert.True(result.Keywords.Contains("motion"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_BuildsKeywordsFromDetectionType()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -289,11 +287,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
-            Assert.IsTrue(result.Keywords.Contains("human"));
+            Assert.NotNull(result.Keywords);
+            Assert.True(result.Keywords.Contains("human"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_IncludesPersonKeywordWhenPersonDetected()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -302,11 +300,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
-            Assert.IsTrue(result.Keywords.Contains("person"));
+            Assert.NotNull(result.Keywords);
+            Assert.True(result.Keywords.Contains("person"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_NormalizeDeviceNameInKeywords()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -315,13 +313,13 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
+            Assert.NotNull(result.Keywords);
             var deviceKeyword = result.Keywords.FirstOrDefault(k => k.Contains("door"));
-            Assert.IsNotNull(deviceKeyword);
-            Assert.IsFalse(deviceKeyword!.Contains("_"), "Device keyword should not contain underscores");
+            Assert.NotNull(deviceKeyword);
+            Assert.False(deviceKeyword!.Contains("_"), "Device keyword should not contain underscores");
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_KeywordsAreDistinct()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -331,15 +329,15 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
-            Assert.AreEqual(result.Keywords.Count, result.Keywords.Distinct().Count());
+            Assert.NotNull(result.Keywords);
+            Assert.Equal(result.Keywords.Count, result.Keywords.Distinct().Count());
         }
 
         #endregion
 
         #region Comment Building
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_BuildsComment()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -349,12 +347,12 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Comment);
-            StringAssert.Contains(result.Comment, "Front Door");
-            StringAssert.Contains(result.Comment, "2026");
+            Assert.NotNull(result.Comment);
+            Assert.Contains("Front Door", result.Comment);
+            Assert.Contains("2026", result.Comment);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_CommentIncludesPersonDetection()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -363,11 +361,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Comment);
-            StringAssert.Contains(result.Comment, "Person detected");
+            Assert.NotNull(result.Comment);
+            Assert.Contains("Person detected", result.Comment);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_CommentIncludesBatteryInfo()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -376,11 +374,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Comment);
-            StringAssert.Contains(result.Comment, "Battery: 75%");
+            Assert.NotNull(result.Comment);
+            Assert.Contains("Battery: 75%", result.Comment);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_CommentIncludesSignalInfo()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -389,15 +387,15 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Comment);
-            StringAssert.Contains(result.Comment, "Signal:");
+            Assert.NotNull(result.Comment);
+            Assert.Contains("Signal:", result.Comment);
         }
 
         #endregion
 
         #region Event DateTime
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_ExtractsEventDateTime()
         {
             var expectedDateTime = new DateTime(2026, 8, 20, 14, 30, 45);
@@ -407,14 +405,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(expectedDateTime, result.EventDateTime);
+            Assert.Equal(expectedDateTime, result.EventDateTime);
         }
 
         #endregion
 
         #region PhotoPrism Compatibility
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_BuildsKeywordsForPhotoPrism()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -426,13 +424,13 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result.Keywords);
-            Assert.IsTrue(result.Keywords.Contains("person"));
-            Assert.IsTrue(result.Keywords.Contains("motion"));
-            Assert.IsTrue(result.Keywords.Contains("human"));
+            Assert.NotNull(result.Keywords);
+            Assert.True(result.Keywords.Contains("person"));
+            Assert.True(result.Keywords.Contains("motion"));
+            Assert.True(result.Keywords.Contains("human"));
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_EventTypeIsPhotoPrismCompatible()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -442,26 +440,26 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var result = _extractor.ExtractMetadata(ringEvent);
 
             var validEventTypes = new[] { "motion", "person", "ring", "doorbell" };
-            Assert.IsTrue(validEventTypes.Contains(result.EventType));
+            Assert.True(validEventTypes.Contains(result.EventType));
         }
 
         #endregion
 
         #region Null/Empty Handling
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithoutDoorbot_HandlesNullGracefully()
         {
             var ringEvent = new DoorbotHistoryEvent { Id = 1 };
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNotNull(result);
-            Assert.IsNull(result.DeviceName);
-            Assert.IsNull(result.Address);
+            Assert.NotNull(result);
+            Assert.Null(result.DeviceName);
+            Assert.Null(result.Address);
         }
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithEmptyAddress_DoesNotSetAddress()
         {
             var ringEvent = DoorbotHistoryEventBuilder.Create()
@@ -470,14 +468,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.IsNull(result.Address);
+            Assert.Null(result.Address);
         }
 
         #endregion
 
         #region Complex Scenarios
 
-        [TestMethod]
+        [Fact]
         public void ExtractMetadata_WithFullData_ExtractsAllInformation()
         {
             var dateTime = new DateTime(2026, 8, 20, 14, 30, 45);
@@ -501,21 +499,21 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _extractor.ExtractMetadata(ringEvent);
 
-            Assert.AreEqual(98765, result.RingEventId);
-            Assert.AreEqual("motion", result.RingEventKind);
-            Assert.AreEqual(dateTime, result.EventDateTime);
-            Assert.AreEqual("Front Door Camera", result.DeviceName);
-            Assert.AreEqual("123 Main St, Springfield, IL 62701", result.Address);
-            Assert.AreEqual(39.7817, result.Latitude);
-            Assert.AreEqual(-89.6501, result.Longitude);
-            Assert.AreEqual(92, result.BatteryPercentage);
-            Assert.AreEqual(-42.5, result.Rssi);
-            Assert.IsTrue(result.PersonDetected);
-            Assert.AreEqual("human", result.DetectionType);
-            Assert.AreEqual(0.98, result.DetectionConfidence);
-            Assert.AreEqual("person", result.EventType);
-            Assert.IsNotNull(result.Keywords);
-            Assert.IsTrue(result.Keywords.Count > 0);
+            Assert.Equal(98765, result.RingEventId);
+            Assert.Equal("motion", result.RingEventKind);
+            Assert.Equal(dateTime, result.EventDateTime);
+            Assert.Equal("Front Door Camera", result.DeviceName);
+            Assert.Equal("123 Main St, Springfield, IL 62701", result.Address);
+            Assert.Equal(39.7817, result.Latitude);
+            Assert.Equal(-89.6501, result.Longitude);
+            Assert.Equal(92, result.BatteryPercentage);
+            Assert.Equal(-42.5, result.Rssi);
+            Assert.True(result.PersonDetected);
+            Assert.Equal("human", result.DetectionType);
+            Assert.Equal(0.98, result.DetectionConfidence);
+            Assert.Equal("person", result.EventType);
+            Assert.NotNull(result.Keywords);
+            Assert.True(result.Keywords.Count > 0);
         }
 
         #endregion

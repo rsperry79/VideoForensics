@@ -4,23 +4,20 @@ using System.Collections.Generic;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Models;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace VideoForensics.Providers.Ring.Tests
 {
-    [TestClass]
     public class RingVideoServiceModelTests
     {
-        [TestMethod]
+        [Fact]
         public void Filter_CanBeCreatedWithDefaults()
         {
             var filter = new Filter();
 
-            Assert.IsNotNull(filter);
-            Assert.AreEqual(10000, filter.VideoCount);
+            Assert.NotNull(filter);
+            Assert.Equal(10000, filter.VideoCount);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_CanHavePropertiesSet()
         {
             var filter = new Filter();
@@ -30,22 +27,22 @@ namespace VideoForensics.Providers.Ring.Tests
             filter.StartDateTime = now;
             filter.EndDateTime = now.AddDays(1);
 
-            Assert.AreEqual(100, filter.VideoCount);
-            Assert.AreEqual(now, filter.StartDateTime);
-            Assert.AreEqual(now.AddDays(1), filter.EndDateTime);
+            Assert.Equal(100, filter.VideoCount);
+            Assert.Equal(now, filter.StartDateTime);
+            Assert.Equal(now.AddDays(1), filter.EndDateTime);
         }
 
-        [TestMethod]
+        [Fact]
         public void RingCredentials_CanBeCreatedWithDefaults()
         {
             var auth = new RingCredentials();
 
-            Assert.IsNotNull(auth);
-            Assert.IsNull(auth.UserName);
-            Assert.IsNull(auth.Password);
+            Assert.NotNull(auth);
+            Assert.Null(auth.UserName);
+            Assert.Null(auth.Password);
         }
 
-        [TestMethod]
+        [Fact]
         public void RingCredentials_StoresUserNameAndPassword()
         {
             var auth = new RingCredentials();
@@ -55,11 +52,11 @@ namespace VideoForensics.Providers.Ring.Tests
             auth.UserName = username;
             auth.Password = password;
 
-            Assert.AreEqual(username, auth.UserName);
-            Assert.AreEqual(password, auth.Password);
+            Assert.Equal(username, auth.UserName);
+            Assert.Equal(password, auth.Password);
         }
 
-        [TestMethod]
+        [Fact]
         public void DeviceInfo_CanBeCreatedWithProperties()
         {
             var device = new DeviceInfo
@@ -69,12 +66,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 DeviceId = "device_abc123"
             };
 
-            Assert.AreEqual(123, device.Id);
-            Assert.AreEqual("Front Door", device.Name);
-            Assert.AreEqual("device_abc123", device.DeviceId);
+            Assert.Equal(123, device.Id);
+            Assert.Equal("Front Door", device.Name);
+            Assert.Equal("device_abc123", device.DeviceId);
         }
 
-        [TestMethod]
+        [Fact]
         public void DeviceList_CanBeCreatedAndDevicesAdded()
         {
             var deviceList = new DeviceList();
@@ -87,11 +84,11 @@ namespace VideoForensics.Providers.Ring.Tests
 
             deviceList.Devices.Add(device);
 
-            Assert.AreEqual(1, deviceList.Devices.Count);
-            Assert.AreEqual("Back Patio", deviceList.Devices[0].Name);
+            Assert.Equal(1, deviceList.Devices.Count);
+            Assert.Equal("Back Patio", deviceList.Devices[0].Name);
         }
 
-        [TestMethod]
+        [Fact]
         public void DeviceList_SupportsMultipleDevices()
         {
             var deviceList = new DeviceList();
@@ -107,22 +104,22 @@ namespace VideoForensics.Providers.Ring.Tests
                 deviceList.Devices.Add(device);
             }
 
-            Assert.AreEqual(3, deviceList.Devices.Count);
-            Assert.AreEqual("Camera 2", deviceList.Devices[1].Name);
+            Assert.Equal(3, deviceList.Devices.Count);
+            Assert.Equal("Camera 2", deviceList.Devices[1].Name);
         }
 
-        [TestMethod]
+        [Fact]
         public void Model_DeviceInfoPropertiesAreIndependent()
         {
             var device1 = new DeviceInfo { Id = 1, Name = "Device A", DeviceId = "dev_a" };
             var device2 = new DeviceInfo { Id = 2, Name = "Device B", DeviceId = "dev_b" };
 
-            Assert.AreNotEqual(device1.Id, device2.Id);
-            Assert.AreNotEqual(device1.Name, device2.Name);
-            Assert.AreNotEqual(device1.DeviceId, device2.DeviceId);
+            Assert.NotEqual(device1.Id, device2.Id);
+            Assert.NotEqual(device1.Name, device2.Name);
+            Assert.NotEqual(device1.DeviceId, device2.DeviceId);
         }
 
-        [TestMethod]
+        [Fact]
         public void FailedDownload_StoresErrorInformation()
         {
             var now = DateTime.UtcNow;
@@ -136,12 +133,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 ErrorDescription = "Network timeout"
             };
 
-            Assert.AreEqual("evt_123", error.EventId);
-            Assert.AreEqual(456, error.CameraId);
-            Assert.AreEqual("Network timeout", error.ErrorDescription);
+            Assert.Equal("evt_123", error.EventId);
+            Assert.Equal(456, error.CameraId);
+            Assert.Equal("Network timeout", error.ErrorDescription);
         }
 
-        [TestMethod]
+        [Fact]
         public void FailedDownload_CanBeSerialized()
         {
             var failedDownload = new FailedDownload
@@ -154,22 +151,22 @@ namespace VideoForensics.Providers.Ring.Tests
                 Timestamp = DateTime.UtcNow
             };
 
-            Assert.IsNotNull(failedDownload.EventId);
-            Assert.IsNotNull(failedDownload.CameraName);
-            Assert.IsNotNull(failedDownload.LocationName);
+            Assert.NotNull(failedDownload.EventId);
+            Assert.NotNull(failedDownload.CameraName);
+            Assert.NotNull(failedDownload.LocationName);
         }
 
-        [TestMethod]
+        [Fact]
         public void Model_FailedDownloadTimestampIsUtc()
         {
             var now = DateTime.UtcNow;
             var failed = new FailedDownload { Timestamp = now };
 
-            Assert.AreEqual(now, failed.Timestamp);
-            Assert.AreEqual(DateTimeKind.Utc, now.Kind);
+            Assert.Equal(now, failed.Timestamp);
+            Assert.Equal(DateTimeKind.Utc, now.Kind);
         }
 
-        [TestMethod]
+        [Fact]
         public void Filter_DateRangeCanSpanMonths()
         {
             var start = new DateTime(2026, 1, 1);
@@ -183,55 +180,54 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var daysDifference = (filter.EndDateTime - filter.StartDateTime).Value.Days;
 
-            Assert.AreEqual(89, daysDifference);
-            Assert.AreEqual(1000, filter.VideoCount);
+            Assert.Equal(89, daysDifference);
+            Assert.Equal(1000, filter.VideoCount);
         }
     }
 
-    [TestClass]
     public class AuthResolutionTests
     {
-        [TestMethod]
+        [Fact]
         public void RefreshToken_Present_SucceedsWithoutUsernameOrPassword()
         {
             var auth = new RingCredentials { RefreshToken = "cached-refresh-token" };
 
             var error = RingVideoService.ResolveAuthError(auth);
 
-            Assert.IsNull(error);
+            Assert.Null(error);
         }
 
-        [TestMethod]
+        [Fact]
         public void UsernameAndPassword_Present_Succeeds()
         {
             var auth = new RingCredentials { UserName = "user@example.com", Password = "pw" };
 
             var error = RingVideoService.ResolveAuthError(auth);
 
-            Assert.IsNull(error);
+            Assert.Null(error);
         }
 
-        [TestMethod]
+        [Fact]
         public void NoCredentialsAnywhere_FailsWithUsernameError()
         {
             var auth = new RingCredentials();
 
             var error = RingVideoService.ResolveAuthError(auth);
 
-            Assert.AreEqual("A Ring username is required", error);
+            Assert.Equal("A Ring username is required", error);
         }
 
-        [TestMethod]
+        [Fact]
         public void UsernameOnly_NoPassword_FailsWithPasswordError()
         {
             var auth = new RingCredentials { UserName = "user@example.com" };
 
             var error = RingVideoService.ResolveAuthError(auth);
 
-            Assert.AreEqual("A Ring password is required", error);
+            Assert.Equal("A Ring password is required", error);
         }
 
-        [TestMethod]
+        [Fact]
         public void RefreshToken_TakesPriorityOverIncompleteUsernamePassword()
         {
             // A username with no password would normally fail, but a refresh token short-circuits
@@ -240,14 +236,13 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var error = RingVideoService.ResolveAuthError(auth);
 
-            Assert.IsNull(error);
+            Assert.Null(error);
         }
     }
 
-    [TestClass]
     public class LocationResolutionTests
     {
-        [TestMethod]
+        [Fact]
         public void LocationNameResolutionUsesApiResult()
         {
             var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
@@ -287,10 +282,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var locationId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             var name = locationById.TryGetValue(locationId, out var value) ? value : "Unknown";
 
-            Assert.AreEqual("Front Door", name);
+            Assert.Equal("Front Door", name);
         }
 
-        [TestMethod]
+        [Fact]
         public void LocationNameResolutionFallsBackToDefault()
         {
             var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
@@ -307,10 +302,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var locationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
             var name = locationById.TryGetValue(locationId, out var value) ? value : "Unknown Location";
 
-            Assert.AreEqual("Unknown Location", name);
+            Assert.Equal("Unknown Location", name);
         }
 
-        [TestMethod]
+        [Fact]
         public void LocationNameResolutionWithAppSettingsFallback()
         {
             var apiLocations = new Dictionary<Guid, string>
@@ -328,10 +323,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 ? apiName
                 : (fallbackLocationNames.TryGetValue(locationIdToResolve.ToString(), out var configName) ? configName : "Unknown");
 
-            Assert.AreEqual("Back Patio (from config)", name);
+            Assert.Equal("Back Patio (from config)", name);
         }
 
-        [TestMethod]
+        [Fact]
         public void LocationCanBeNullAndHandledGracefully()
         {
             var location = new VideoForensics.Providers.Ring.Entities.Location
@@ -345,8 +340,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var id = location.Id ?? Guid.Empty;
             var name = location.Name ?? "Unknown";
 
-            Assert.AreEqual(Guid.Empty, id);
-            Assert.AreEqual("Unknown", name);
+            Assert.Equal(Guid.Empty, id);
+            Assert.Equal("Unknown", name);
         }
     }
 }

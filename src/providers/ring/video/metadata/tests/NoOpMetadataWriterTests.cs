@@ -3,15 +3,13 @@ using System.IO.Abstractions.TestingHelpers;
 
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {
-    [TestClass]
-    public class NoOpMetadataWriterTests
+    public class NoOpMetadataWriterTests : IDisposable
     {
         private IMetadataWriter _writer = null!;
         private string _testFilePath = null!;
         private IFileSystem _fileSystem = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public NoOpMetadataWriterTests()
         {
             // Use real file system for tests (MockFileSystem has limitations with streams)
             _fileSystem = new System.IO.Abstractions.FileSystem();
@@ -19,8 +17,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             _testFilePath = Path.Combine(Path.GetTempPath(), $"test-video-{Guid.NewGuid()}.mp4");
         }
 
-        [TestCleanup]
-        public void Cleanup()
+        public void Dispose()
         {
             if (_fileSystem.File.Exists(_testFilePath))
             {
@@ -30,7 +27,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
         #region WriteMetadata Tests
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithValidFileAndMetadata_ReturnsSuccessResult()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 }); // MP4 header
@@ -44,14 +41,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            Assert.IsNotNull(result);
-            Assert.AreEqual(MetadataStatus.Valid, result.Status);
-            Assert.IsTrue(result.IsValid);
-            Assert.IsFalse(result.WasWritten); // No-op doesn't actually write
-            Assert.IsFalse(result.WasCorrected);
+            Assert.NotNull(result);
+            Assert.Equal(MetadataStatus.Valid, result.Status);
+            Assert.True(result.IsValid);
+            Assert.False(result.WasWritten); // No-op doesn't actually write
+            Assert.False(result.WasCorrected);
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithNullFilePath_ThrowsArgumentException()
         {
             var metadata = new VideoMetadata { DeviceName = "Test" };
@@ -67,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithEmptyFilePath_ThrowsArgumentException()
         {
             var metadata = new VideoMetadata { DeviceName = "Test" };
@@ -83,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithNullMetadata_ThrowsArgumentNullException()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -99,7 +96,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithNonExistentFile_ReturnsFailed()
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
@@ -107,13 +104,13 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _writer.WriteMetadata(nonExistentPath, metadata);
 
-            Assert.AreEqual(MetadataStatus.Failed, result.Status);
-            Assert.IsFalse(result.IsValid);
-            Assert.IsNotNull(result.ErrorMessage);
-            StringAssert.Contains(result.ErrorMessage, "not found");
+            Assert.Equal(MetadataStatus.Failed, result.Status);
+            Assert.False(result.IsValid);
+            Assert.NotNull(result.ErrorMessage);
+            Assert.Contains("not found", result.ErrorMessage);
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithInvalidFileExtension_ReturnsFailed()
         {
             var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
@@ -124,8 +121,8 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
                 var metadata = new VideoMetadata { DeviceName = "Test" };
                 var result = _writer.WriteMetadata(invalidPath, metadata);
 
-                Assert.AreEqual(MetadataStatus.Failed, result.Status);
-                Assert.IsFalse(result.IsValid);
+                Assert.Equal(MetadataStatus.Failed, result.Status);
+                Assert.False(result.IsValid);
             }
             finally
             {
@@ -134,7 +131,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_ResultHasValidProperties()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -142,16 +139,16 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var metadata = new VideoMetadata { PersonDetected = true };
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            Assert.IsTrue(result.DurationMs >= 0);
-            Assert.IsTrue(result.ProcessedAt <= DateTime.UtcNow);
-            Assert.IsFalse(result.WasCorrected);
+            Assert.True(result.DurationMs >= 0);
+            Assert.True(result.ProcessedAt <= DateTime.UtcNow);
+            Assert.False(result.WasCorrected);
         }
 
         #endregion
 
         #region WriteMetadataAsync Tests
 
-        [TestMethod]
+        [Fact]
         public async Task WriteMetadataAsync_WithValidFile_ReturnsSuccessResult()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -160,11 +157,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = await _writer.WriteMetadataAsync(_testFilePath, metadata);
 
-            Assert.AreEqual(MetadataStatus.Valid, result.Status);
-            Assert.IsTrue(result.IsValid);
+            Assert.Equal(MetadataStatus.Valid, result.Status);
+            Assert.True(result.IsValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task WriteMetadataAsync_WithNonExistentFile_ReturnsFailed()
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
@@ -172,38 +169,38 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
 
-            Assert.AreEqual(MetadataStatus.Failed, result.Status);
+            Assert.Equal(MetadataStatus.Failed, result.Status);
         }
 
         #endregion
 
         #region ValidateVideo Tests
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_WithValidFile_ReturnsValid()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             var result = _writer.ValidateVideo(_testFilePath);
 
-            Assert.AreEqual(MetadataStatus.Valid, result.Status);
-            Assert.IsTrue(result.IsValid);
-            Assert.IsFalse(result.WasWritten);
-            Assert.IsFalse(result.WasCorrected);
+            Assert.Equal(MetadataStatus.Valid, result.Status);
+            Assert.True(result.IsValid);
+            Assert.False(result.WasWritten);
+            Assert.False(result.WasCorrected);
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_WithNonExistentFile_ReturnsFailed()
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
             var result = _writer.ValidateVideo(nonExistentPath);
 
-            Assert.AreEqual(MetadataStatus.Failed, result.Status);
-            Assert.IsFalse(result.IsValid);
+            Assert.Equal(MetadataStatus.Failed, result.Status);
+            Assert.False(result.IsValid);
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_WithInvalidFileFormat_ReturnsCorrupt()
         {
             var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
@@ -213,8 +210,8 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             {
                 var result = _writer.ValidateVideo(invalidPath);
 
-                Assert.AreEqual(MetadataStatus.Corrupt, result.Status);
-                Assert.IsFalse(result.IsValid);
+                Assert.Equal(MetadataStatus.Corrupt, result.Status);
+                Assert.False(result.IsValid);
             }
             finally
             {
@@ -223,7 +220,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_WithNullPath_ThrowsArgumentException()
         {
             try
@@ -241,32 +238,32 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
         #region ValidateVideoAsync Tests
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateVideoAsync_WithValidFile_ReturnsValid()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             var result = await _writer.ValidateVideoAsync(_testFilePath);
 
-            Assert.AreEqual(MetadataStatus.Valid, result.Status);
-            Assert.IsTrue(result.IsValid);
+            Assert.Equal(MetadataStatus.Valid, result.Status);
+            Assert.True(result.IsValid);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ValidateVideoAsync_WithNonExistentFile_ReturnsFailed()
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
             var result = await _writer.ValidateVideoAsync(nonExistentPath);
 
-            Assert.AreEqual(MetadataStatus.Failed, result.Status);
+            Assert.Equal(MetadataStatus.Failed, result.Status);
         }
 
         #endregion
 
         #region PhotoPrism Tags Tests
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithPersonDetected_IncludesPhotoPrismTags()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -279,11 +276,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            Assert.IsNotNull(result.PhotoPrismTags);
-            Assert.IsTrue(result.PhotoPrismTags.Contains("person"));
+            Assert.NotNull(result.PhotoPrismTags);
+            Assert.True(result.PhotoPrismTags.Contains("person"));
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithMotionDetected_IncludesMotionTag()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -296,11 +293,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            Assert.IsNotNull(result.PhotoPrismTags);
-            Assert.IsTrue(result.PhotoPrismTags.Contains("motion"));
+            Assert.NotNull(result.PhotoPrismTags);
+            Assert.True(result.PhotoPrismTags.Contains("motion"));
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_WithoutEvents_NoPhotoPrismTags()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -311,14 +308,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             // Tags can be null or empty
             var hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
-            Assert.IsTrue(hasRelevantTags);
+            Assert.True(hasRelevantTags);
         }
 
         #endregion
 
         #region Supported Formats Tests
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_SupportsMp4()
         {
             var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
@@ -327,7 +324,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             try
             {
                 var result = _writer.ValidateVideo(path);
-                Assert.AreEqual(MetadataStatus.Valid, result.Status);
+                Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
@@ -335,7 +332,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_SupportsMov()
         {
             var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mov");
@@ -344,7 +341,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             try
             {
                 var result = _writer.ValidateVideo(path);
-                Assert.AreEqual(MetadataStatus.Valid, result.Status);
+                Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
@@ -352,7 +349,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void ValidateVideo_SupportsMkv()
         {
             var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mkv");
@@ -361,7 +358,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             try
             {
                 var result = _writer.ValidateVideo(path);
-                Assert.AreEqual(MetadataStatus.Valid, result.Status);
+                Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
@@ -373,7 +370,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
         #region Result Timing Tests
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_ResultDurationIsReasonable()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -381,10 +378,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var metadata = new VideoMetadata { DeviceName = "Test" };
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            Assert.IsTrue(result.DurationMs < 1000, "Operation should complete in less than 1 second");
+            Assert.True(result.DurationMs < 1000, "Operation should complete in less than 1 second");
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteMetadata_ProcessedAtIsRecent()
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
@@ -394,8 +391,8 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var result = _writer.WriteMetadata(_testFilePath, metadata);
             var afterTime = DateTime.UtcNow;
 
-            Assert.IsTrue(result.ProcessedAt >= beforeTime, "ProcessedAt should be after operation start");
-            Assert.IsTrue(result.ProcessedAt <= afterTime.AddSeconds(1), "ProcessedAt should be close to operation end");
+            Assert.True(result.ProcessedAt >= beforeTime, "ProcessedAt should be after operation start");
+            Assert.True(result.ProcessedAt <= afterTime.AddSeconds(1), "ProcessedAt should be close to operation end");
         }
 
         #endregion

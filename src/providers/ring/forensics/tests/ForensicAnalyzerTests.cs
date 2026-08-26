@@ -1,18 +1,16 @@
 namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
-    [TestClass]
     public class ForensicAnalyzerTests
     {
         private IForensicAnalyzer _analyzer = null!;
 
-        [TestInitialize]
-        public void Setup()
+        public ForensicAnalyzerTests()
         {
             // Instantiate implementation when ready
             // _analyzer = new ForensicAnalyzer();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task AnalyzeEvidenceAsync_WithValidEvidence_ReturnsFinding()
         {
             // Arrange
@@ -30,7 +28,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsNotNull(result.Finding);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task DetectAnomaliesAsync_WithSequence_ReturnsAnomalies()
         {
             // Arrange
@@ -46,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
             // Assert.IsNotNull(results);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GenerateReportAsync_WithResults_ReturnsFormattedReport()
         {
             // Arrange

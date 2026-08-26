@@ -1,5 +1,5 @@
 global using System;
-global using Microsoft.VisualStudio.TestTools.UnitTesting;
+global using Xunit;
 global using System.IO;
 global using Moq;
 global using VideoForensics.Providers.Ring.Entities;
