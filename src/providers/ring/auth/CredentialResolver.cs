@@ -2,8 +2,8 @@ using System;
 using System.IO;
 
 using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Common;
-using VideoForensics.Providers.Ring.Common.Interfaces;
+using VideoForensics.Providers.Common.Helpers.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring.Auth
 {

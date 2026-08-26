@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Text.Json;
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Common;
-using VideoForensics.Providers.Ring.Common.Interfaces;
+using VideoForensics.Providers.Common.Helpers.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 using System.Collections.Specialized;
 using System.Reflection.Metadata.Ecma335;
 

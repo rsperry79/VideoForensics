@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Providers.Ring.Utils</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers, Daniel Espinosa</Authors>
+        <Description>Testing and validation utilities for Ring.Api</Description>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../common/VideoForensics.Providers.Ring.Common.csproj" />
+        <ProjectReference Include="../core/VideoForensics.Providers.Ring.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests/**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    </ItemGroup>
+
+</Project>
+
+
+

@@ -13,6 +13,10 @@ using System.Threading.Tasks;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Models;
+using VideoForensics.Providers.Common.Helpers.Contracts;
+using VideoForensics.Providers.Common.Helpers.Json;
+using VideoForensics.Providers.Common.Helpers.Media;
+using static VideoForensics.Providers.Common.Helpers.Contracts.JsonSerializationMode;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -47,7 +51,8 @@ namespace VideoForensics.Providers.Ring
         public readonly string SavedSettingsFolder;
         public readonly string SavedSettingsFile;
         public readonly string AuthFile;
-        private readonly DownloadHelper downloadHelper;
+        private readonly IMediaValidator mediaValidator;
+        private readonly IJsonSerializer jsonSerializer;
         private ConcurrentBag<FailedDownload> newFailures = new();
         private HashSet<string> loadedEventIds = new();
         private string reportsDirectory;
@@ -64,14 +69,17 @@ namespace VideoForensics.Providers.Ring
             ICredentialStore credentialStore,
             string dataDirectory,
             IReadOnlyDictionary<string, string> configLocationNames = null,
-            Filter defaultFilter = null)
+            Filter defaultFilter = null,
+            IMediaValidator mediaValidator = null,
+            IJsonSerializer jsonSerializer = null)
         {
             this.log = logger;
             this.reporter = reporter;
             this.credentialStore = credentialStore;
             this.configLocationNames = configLocationNames;
             this.defaultFilter = defaultFilter;
-            this.downloadHelper = new DownloadHelper();
+            this.mediaValidator = mediaValidator ?? new MediaValidator();
+            this.jsonSerializer = jsonSerializer ?? new VideoForensics.Providers.Common.Helpers.Json.JsonSerializer();
 
             this.SavedSettingsFolder = dataDirectory;
             this.SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");
@@ -94,7 +102,7 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 contents = System.IO.File.ReadAllText(SavedSettingsFile);
-                var settings = JsonSerializer.Deserialize<Config>(contents);
+                var settings = jsonSerializer.Deserialize<Config>(contents);
                 this.Filter = settings.Filter ?? new Filter();
             }
             catch (Exception)
@@ -170,7 +178,7 @@ namespace VideoForensics.Providers.Ring
             {
                 Filter = this.Filter
             };
-            var config = JsonUtil.Serialize(conf, JsonMode.Pretty);
+            var config = jsonSerializer.Serialize(conf, Pretty);
 
             System.IO.File.WriteAllText(this.SavedSettingsFile, config);
             log.LogInformation("Settings saved to {settingsFile}", this.SavedSettingsFile);
@@ -200,7 +208,7 @@ namespace VideoForensics.Providers.Ring
                     bodyLength = call.Body?.Length ?? 0,
                     body = call.Body
                 };
-                var line = JsonUtil.Serialize(entry, JsonMode.Raw);
+                var line = jsonSerializer.Serialize(entry, Raw);
 
                 var logPath = Path.Combine(logsDirectory, "api_raw_responses.jsonl");
                 lock (rawApiLogLock)
@@ -259,7 +267,7 @@ namespace VideoForensics.Providers.Ring
                 var filePath = Path.Combine(logsDirectory, fileName);
 
                 using var doc = JsonDocument.Parse(batch.EventsJson);
-                var pretty = JsonUtil.Serialize(doc, JsonMode.Pretty);
+                var pretty = jsonSerializer.Serialize(doc, Pretty);
 
                 System.IO.File.WriteAllText(filePath, pretty, Utf8NoBom);
                 log.LogInformation("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
@@ -914,7 +922,7 @@ namespace VideoForensics.Providers.Ring
                             downloadInfo = await this.ringSession.GetDoorbotHistoryRecordingInfo(ding);
                         }
 
-                        if (downloadHelper.ValidateMediaExists(filename, downloadInfo.Size))
+                        if (mediaValidator.ValidateMediaExists(filename, downloadInfo.Size))
                         {
                             reporter.CompleteItem(item, "Exists");
                             await WriteMetadataAsync(ding, filename, DateTime.Now.AddSeconds(-1), DateTime.Now);
@@ -1135,7 +1143,7 @@ namespace VideoForensics.Providers.Ring
                 var fileName = $"{safeCameraName}-{date}-T{time}-{ding.Kind}.json";
                 var filePath = Path.Combine(logsDirectory, fileName);
 
-                var json = JsonUtil.Serialize(ding, JsonMode.Pretty);
+                var json = jsonSerializer.Serialize(ding, Pretty);
 
                 System.IO.File.WriteAllText(filePath, json, Utf8NoBom);
                 log.LogInformation("PerEventJson {fileName} written", Path.GetFileName(filePath));

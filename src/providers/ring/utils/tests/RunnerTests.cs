@@ -24,7 +24,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [TestMethod]
         public void Runner_CanBeConstructedWithValidSession()
         {
-            var session = new Ring.Api.Session("user", "pass");
+            var session = new VideoForensics.Providers.Ring.Session("user", "pass");
             var outputDir = Path.Combine(Path.GetTempPath(), "test");
             var runner = new Runner(session, outputDir, quiet: true);
             Assert.IsNotNull(runner);

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System;
 
-using VideoForensics.Providers.Ring.Converters;
+using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {

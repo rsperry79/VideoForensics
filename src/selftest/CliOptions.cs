@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Ring.Api.SelfTester
+namespace VideoForensics.Providers.Ring.SelfTester
 {
     /// <summary>
     /// Parsed command-line options. Kept as a plain hand-rolled parser (no external CLI
