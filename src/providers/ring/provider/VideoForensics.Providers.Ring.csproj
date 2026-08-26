@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Ring</AssemblyName>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Ring.com provider implementation for VideoForensics using IVideoProvider abstraction</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
+        <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+        <ProjectReference Include="..\..\..\core\data\data-core\VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="..\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
+        <ProjectReference Include="..\core\VideoForensics.Providers.Ring.Core.csproj" />
+        <ProjectReference Include="..\common\VideoForensics.Providers.Ring.Common.csproj" />
+        <ProjectReference Include="..\auth\VideoForensics.Providers.Ring.Auth.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests\**\*.cs" />
+    </ItemGroup>
+
+</Project>
