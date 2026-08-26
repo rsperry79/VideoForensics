@@ -1,0 +1,234 @@
+using Microsoft.Extensions.Logging;
+using VideoForensics.Providers.Common.Contracts;
+
+namespace VideoForensics.Providers.Ring.Services
+{
+    public class RingDeviceDiscoveryService : IDeviceDiscoveryService
+    {
+        private readonly ILogger _logger;
+        private readonly ISessionProvider _sessionProvider;
+
+        // Locations/devices rarely change within a single workflow run, but MenuManager and
+        // VideoDownloadServiceAdapter both discover them independently for the same operation.
+        // Cache briefly so that double-discovery collapses into one HTTP round trip instead of two.
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+        private readonly SemaphoreSlim _locationsCacheLock = new(1, 1);
+        private IReadOnlyList<Location>? _cachedLocations;
+        private DateTime _cachedLocationsAt;
+
+        private readonly SemaphoreSlim _devicesCacheLock = new(1, 1);
+        private readonly Dictionary<string, (IReadOnlyList<Device> Devices, DateTime FetchedAt)> _cachedDevicesByLocation = new();
+
+        public RingDeviceDiscoveryService(ILogger logger, ISessionProvider sessionProvider)
+        {
+            _logger = logger;
+            _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
+        }
+
+        public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
+        {
+            await _locationsCacheLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
+                {
+                    _logger.LogInformation("Reusing cached locations ({Count}), fetched {Age:F0}s ago",
+                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
+                    return _cachedLocations;
+                }
+
+                _logger.LogInformation("Fetching Ring locations");
+
+                var session = _sessionProvider.GetSession();
+                if (session == null)
+                {
+                    _logger.LogError("Not authenticated: Session is null");
+                    return new List<Location>().AsReadOnly();
+                }
+
+                _logger.LogInformation("Session exists: OAuthToken = {HasToken}",
+                    session.OAuthToken != null ? "yes" : "no");
+
+                // Ensure session is valid before calling APIs
+                try
+                {
+                    await session.EnsureSessionValid();
+                    _logger.LogInformation("Session validation passed");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Session validation failed");
+                    throw;
+                }
+
+                var locations = await session.GetLocations();
+                _logger.LogInformation("GetLocations() completed, returned collection type: {Type}", locations?.GetType().Name ?? "null");
+
+                if (locations == null)
+                {
+                    _logger.LogWarning("GetLocations returned null");
+                    return new List<Location>().AsReadOnly();
+                }
+
+                _logger.LogInformation("GetLocations returned {RawLocationCount} location(s)", locations.Count);
+
+                var result = locations
+                    .Where(l => l.Id.HasValue)
+                    .Select(l => new Location(
+                        Id: l.Id!.Value.ToString(),
+                        Name: l.Name ?? "Unknown Location",
+                        Address: l.Address?.Address1
+                    ))
+                    .ToList()
+                    .AsReadOnly();
+
+                _logger.LogInformation("Found {LocationCount} locations after filtering", result.Count);
+                foreach (var loc in result)
+                {
+                    _logger.LogInformation("Location: {LocationId} - {LocationName}", loc.Id, loc.Name);
+                }
+
+                _cachedLocations = result;
+                _cachedLocationsAt = DateTime.UtcNow;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching locations from Ring API: {Message}", ex.Message);
+                throw;
+            }
+            finally
+            {
+                _locationsCacheLock.Release();
+            }
+        }
+
+        public async Task<IReadOnlyList<Device>> GetDevicesAsync(string locationId, CancellationToken cancellationToken = default)
+        {
+            await _devicesCacheLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (_cachedDevicesByLocation.TryGetValue(locationId, out var cached) &&
+                    DateTime.UtcNow - cached.FetchedAt < CacheTtl)
+                {
+                    _logger.LogInformation("Reusing cached devices for location {LocationId} ({Count}), fetched {Age:F0}s ago",
+                        locationId, cached.Devices.Count, (DateTime.UtcNow - cached.FetchedAt).TotalSeconds);
+                    return cached.Devices;
+                }
+
+                _logger.LogInformation("Fetching devices for location: {LocationId}", locationId);
+
+                var session = _sessionProvider.GetSession();
+                if (session == null)
+                {
+                    _logger.LogError("Not authenticated: Session is null");
+                    return new List<Device>().AsReadOnly();
+                }
+
+                if (!Guid.TryParse(locationId, out var locId))
+                {
+                    return new List<Device>().AsReadOnly();
+                }
+
+                var devices = await session.GetRingDevices(locId);
+
+                var locationDevices = new List<Device>();
+
+                // Add Doorbots
+                // Id uses the numeric doorbot id (not the hex device_id) because that's the only
+                // identifier the /doorbots/history endpoint's embedded doorbot object populates —
+                // history events can't be matched back to a device by device_id (it comes back empty).
+                if (devices?.Doorbots != null)
+                {
+                    foreach (var d in devices.Doorbots)
+                    {
+                        locationDevices.Add(new Device(
+                            Id: d.Id.ToString(),
+                            Name: d.Description ?? "Unknown Device",
+                            Type: "doorbot",
+                            LocationId: d.LocationId?.ToString() ?? locationId,
+                            IsOnline: d.Subscribed ?? false
+                        ));
+                    }
+                }
+
+                // Add Stickup Cameras
+                if (devices?.StickupCams != null)
+                {
+                    foreach (var d in devices.StickupCams)
+                    {
+                        locationDevices.Add(new Device(
+                            Id: d.Id?.ToString() ?? d.DeviceId,
+                            Name: d.Description ?? "Unknown Device",
+                            Type: "stickup_cam",
+                            LocationId: d.LocationId?.ToString() ?? locationId,
+                            IsOnline: d.Subscribed ?? false
+                        ));
+                    }
+                }
+
+                // Add Authorized Doorbots (if different from Doorbots)
+                if (devices?.AuthorizedDoorbots != null)
+                {
+                    var alreadyAdded = new HashSet<string>(locationDevices.Select(d => d.Id));
+
+                    foreach (var d in devices.AuthorizedDoorbots.Where(d => !alreadyAdded.Contains(d.Id.ToString())))
+                    {
+                        locationDevices.Add(new Device(
+                            Id: d.Id.ToString(),
+                            Name: d.Description ?? "Unknown Device",
+                            Type: "authorized_doorbot",
+                            LocationId: d.LocationId?.ToString() ?? locationId,
+                            IsOnline: d.Subscribed ?? false
+                        ));
+                    }
+                }
+
+                _logger.LogInformation("Found {DeviceCount} devices in location {LocationId}", locationDevices.Count, locationId);
+                foreach (var device in locationDevices)
+                {
+                    _logger.LogInformation("  Device: {DeviceId} - {DeviceName} ({DeviceType}), Online: {IsOnline}",
+                        device.Id, device.Name, device.Type, device.IsOnline);
+                }
+
+                var readOnlyDevices = locationDevices.AsReadOnly();
+                _cachedDevicesByLocation[locationId] = (readOnlyDevices, DateTime.UtcNow);
+                return readOnlyDevices;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching devices for location {LocationId}", locationId);
+                return new List<Device>().AsReadOnly();
+            }
+            finally
+            {
+                _devicesCacheLock.Release();
+            }
+        }
+
+        public async Task<Device?> GetDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching device: {DeviceId}", deviceId);
+
+                var locations = await GetLocationsAsync(cancellationToken);
+
+                foreach (var location in locations)
+                {
+                    var devices = await GetDevicesAsync(location.Id, cancellationToken);
+                    var device = devices.FirstOrDefault(d => d.Id == deviceId);
+                    if (device != null)
+                        return device;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching device {DeviceId}", deviceId);
+                return null;
+            }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Providers.Common</AssemblyName>
+        <RootNamespace>VideoForensics.Providers.Common</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Common interfaces and contracts for video providers (Ring, Wyze, etc.)</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="VideoForensics.Providers.Core" />
+        <InternalsVisibleTo Include="VideoForensics.Providers.Common.Tests" />
+        <InternalsVisibleTo Include="VideoForensics.Providers.Ring" />
+    </ItemGroup>
+
+</Project>
