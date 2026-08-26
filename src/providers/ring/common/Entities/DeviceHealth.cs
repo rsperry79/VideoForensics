@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-using VideoForensics.Providers.Ring.Converters;
+using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -35,7 +35,7 @@ namespace VideoForensics.Providers.Ring.Entities
         // Ring returns this as a JSON string (e.g. "100") rather than a number - confirmed via a
         // live ApiTester run (doorbot-health) after the naive long? deserialization threw.
         [JsonPropertyName("battery_percentage")]
-        [JsonConverter(typeof(BatteryLifeConverter))]
+        [JsonConverter(typeof(FlexibleIntConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? BatteryPercentage { get; set; }
 
@@ -44,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public string BatteryPercentageCategory { get; set; }
 
         [JsonPropertyName("battery_voltage")]
-        [JsonConverter(typeof(DecimalConverter))]
+        [JsonConverter(typeof(FlexibleDecimalConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public decimal? BatteryVoltage { get; set; }
 
@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public string BatteryVoltageCategory { get; set; }
 
         [JsonPropertyName("rssi")]
-        [JsonConverter(typeof(DoubleConverter))]
+        [JsonConverter(typeof(FlexibleDoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Rssi { get; set; }
 
@@ -70,7 +70,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public string WifiName { get; set; }
 
         [JsonPropertyName("packet_loss")]
-        [JsonConverter(typeof(DoubleConverter))]
+        [JsonConverter(typeof(FlexibleDoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? PacketLoss { get; set; }
 
@@ -95,7 +95,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public long? Id { get; set; }
 
         [JsonPropertyName("latest_signal_strength")]
-        [JsonConverter(typeof(DoubleConverter))]
+        [JsonConverter(typeof(FlexibleDoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? LatestSignalStrength { get; set; }
 
@@ -104,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public string LatestSignalCategory { get; set; }
 
         [JsonPropertyName("average_signal_strength")]
-        [JsonConverter(typeof(DoubleConverter))]
+        [JsonConverter(typeof(FlexibleDoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? AverageSignalStrength { get; set; }
 
@@ -121,7 +121,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public string UpdatedAt { get; set; }
 
         [JsonPropertyName("packet_loss_strength")]
-        [JsonConverter(typeof(DoubleConverter))]
+        [JsonConverter(typeof(FlexibleDoubleConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? PacketLossStrength { get; set; }
 

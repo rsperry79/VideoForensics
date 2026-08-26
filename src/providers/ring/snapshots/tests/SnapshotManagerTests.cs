@@ -22,7 +22,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Tests
         [TestMethod]
         public void SnapshotManager_CanBeConstructedWithValidSession()
         {
-            var session = new Ring.Api.Session("user", "pass");
+            var session = new VideoForensics.Providers.Ring.Session("user", "pass");
             var manager = new SnapshotManager(session);
             Assert.IsNotNull(manager);
         }

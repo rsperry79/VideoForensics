@@ -10,7 +10,6 @@
         <Company>DV Victim Protection Team</Company>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Provider-agnostic forensic evidence extraction, validation, and analysis framework for video security devices.</Description>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Copyright>2026</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
         <IncludeSymbols>true</IncludeSymbols>

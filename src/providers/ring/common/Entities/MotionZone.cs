@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -6,7 +7,7 @@ namespace VideoForensics.Providers.Ring.Entities
     {
         [JsonPropertyName("enable_audio")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonConverter(typeof(Converters.BooleanConverter))]
+        [JsonConverter(typeof(FlexibleBooleanConverter))]
         public bool? EnableAudio { get; set; }
 
         [JsonPropertyName("active_motion_filter")]

@@ -5,11 +5,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-using Ring.Api;
-using Ring.Api.Auth;
-using Ring.Api.Utils;
+using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Auth;
+using VideoForensics.Providers.Ring.Utils;
 
-namespace Ring.Api.SelfTester
+namespace VideoForensics.Providers.Ring.SelfTester
 {
     internal static class Program
     {
@@ -72,7 +72,7 @@ namespace Ring.Api.SelfTester
                 session = await AuthenticateAsync(credentials);
                 PersistRotatedRefreshToken(session, credentials);
             }
-            catch (Ring.Api.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 Console.Error.WriteLine("Error: this account requires two-factor authentication, which this non-interactive run");
                 Console.Error.WriteLine("cannot complete. Run 'dotnet run -- --auth' once instead - it prompts for the 2FA code and");

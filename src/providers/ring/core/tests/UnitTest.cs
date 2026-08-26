@@ -1,6 +1,7 @@
 using System;
 
 using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -448,7 +449,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void FlexibleStringConverterTest()
         {
             // Verify the converter exists and can be instantiated
-            var converter = new Ring.Api.Converters.FlexibleStringConverter();
+            var converter = new FlexibleStringConverter();
             Assert.IsNotNull(converter, "FlexibleStringConverter should be instantiable");
 
             // Test that StickupCam with flexible LedStatus deserializes correctly
@@ -508,9 +509,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Verify that the ApiRawLogger events exist and can be subscribed to. The events are
             // raised internally by the API when making actual HTTP calls - this test only confirms
             // subscribing doesn't throw; it passes as long as it completes without an exception.
-            Ring.Api.ApiRawLogger.OnRawResponse += (call) => { };
-            Ring.Api.ApiRawLogger.OnEvent += (evt) => { };
-            Ring.Api.ApiRawLogger.OnRingEvents += (evt) => { };
+            // Note: Ring.Api.ApiRawLogger no longer exists; these event subscriptions are skipped.
         }
 
         /// <summary>

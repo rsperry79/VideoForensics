@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Wyze</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Providers.Wyze.Common</AssemblyName>
+        <Company>Video Forensics</Company>
+        <Authors>Video Forensics Team</Authors>
+        <Description>Common types and models for Wyze API</Description>
+        <Copyright>Video Forensics</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests/**/*.cs" />
+    </ItemGroup>
+
+</Project>
