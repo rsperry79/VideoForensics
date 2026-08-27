@@ -1,6 +1,5 @@
 namespace VideoForensics.Client.Core
 {
-    using System.Text.Json;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Client.Common;
     using VideoForensics.Data.Common.Contracts;
@@ -8,14 +7,12 @@ namespace VideoForensics.Client.Core
     public class ForensicsConfigurationService : IForensicsConfigurationService
     {
         private readonly ILogger<ForensicsConfigurationService> _logger;
-        private readonly string _configPath;
-        private readonly IAppSettingRepository? _settingRepository;
+        private readonly IAppSettingRepository _settingRepository;
 
-        public ForensicsConfigurationService(ILogger<ForensicsConfigurationService> logger, string configPath, IAppSettingRepository? settingRepository = null)
+        public ForensicsConfigurationService(ILogger<ForensicsConfigurationService> logger, IAppSettingRepository settingRepository)
         {
             _logger = logger;
-            _configPath = configPath;
-            _settingRepository = settingRepository;
+            _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
@@ -24,19 +21,11 @@ namespace VideoForensics.Client.Core
 
             try
             {
-                if (_settingRepository != null)
-                {
-                    await LoadFromDatabaseAsync(config, cancellationToken);
-                }
-                else if (File.Exists(configPath))
-                {
-                    var json = await File.ReadAllTextAsync(configPath, cancellationToken);
-                    config = JsonSerializer.Deserialize<ForensicsConfiguration>(json) ?? new ForensicsConfiguration();
-                }
+                await LoadFromDatabaseAsync(config, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load configuration, using defaults");
+                _logger.LogError(ex, "Failed to load configuration from database, using defaults");
             }
 
             return config;
@@ -44,14 +33,7 @@ namespace VideoForensics.Client.Core
 
         public async Task SaveConfigurationAsync(IForensicsConfiguration config, CancellationToken cancellationToken = default)
         {
-            if (_settingRepository != null)
-            {
-                await SaveToDatabaseAsync(config, cancellationToken);
-            }
-            else
-            {
-                await SaveToFileAsync(config, cancellationToken);
-            }
+            await SaveToDatabaseAsync(config, cancellationToken);
         }
 
         private async Task LoadFromDatabaseAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
@@ -112,19 +94,6 @@ namespace VideoForensics.Client.Core
             }
         }
 
-        private async Task SaveToFileAsync(IForensicsConfiguration config, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(_configPath, json, cancellationToken);
-                _logger.LogInformation("Configuration saved to {path}", _configPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save configuration to {path}", _configPath);
-            }
-        }
 
         private async Task<bool> GetBoolSetting(string key, bool defaultValue, CancellationToken ct)
         {

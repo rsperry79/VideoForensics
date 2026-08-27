@@ -90,8 +90,9 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new SessionProvider();
             var mockLogger = new Mock<ILogger>();
             var mockDataClient = new Mock<IVideoForensicsDataClient>();
+            var mockCredentialStore = new Mock<ICredentialStore>();
 
-            var authService = new RingAuthService(mockLogger.Object, sessionProvider);
+            var authService = new RingAuthService(mockLogger.Object, sessionProvider, mockCredentialStore.Object);
             var deviceService = new RingDeviceDiscoveryService(mockLogger.Object, sessionProvider);
             var downloadService = new RingMediaDownloadService(mockLogger.Object, sessionProvider, mockDataClient.Object);
             var eventService = new RingEventAndConfigService(mockLogger.Object, sessionProvider);
