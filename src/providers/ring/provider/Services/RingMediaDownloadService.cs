@@ -80,6 +80,10 @@ namespace VideoForensics.Providers.Ring.Services
         // Per-device Guid cache to avoid redundant EnsureDeviceAsync calls for the same providerDeviceId
         private readonly ConcurrentDictionary<string, Guid> _deviceIdCache = new();
 
+        // Transfer rate tracking: rolling average over 5-second window
+        private DateTime _rateWindowStart = DateTime.UtcNow;
+        private long _rateWindowBytes = 0;
+
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
         {
             _logger = logger;
@@ -160,8 +164,9 @@ namespace VideoForensics.Providers.Ring.Services
                         new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentFileDownloads, CancellationToken = rateLimitCts.Token },
                         async (@event, itemToken) =>
                         {
+                            var cameraName = @event.Doorbot?.Description ?? deviceId;
                             var fileName = Path.Combine(outputPath,
-                                $"{deviceId}_{@event.CreatedAtDateTime:yyyyMMdd_HHmmss}.mp4");
+                                MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, "video", "mp4"));
                             var eventIdStr = @event.Id?.ToString() ?? "unknown";
 
                             // Use the device GUID resolved at batch start; all events are for this same device
@@ -218,6 +223,8 @@ namespace VideoForensics.Providers.Ring.Services
                                         if (wroteMetadata)
                                             metadataFilesWritten++;
 
+                                        RecordBytesForRate(existingSize);
+
                                         _currentStatus = _currentStatus with
                                         {
                                             FilesCompleted = downloadedFiles,
@@ -233,7 +240,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             latestSuccessfulTime = eventTime;
                                     }
 
-                                    _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} already exists, skipped");
+                                    _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
                                     return;
                                 }
                             }
@@ -250,8 +257,6 @@ namespace VideoForensics.Providers.Ring.Services
 
                             try
                             {
-                                _activityLog.Enqueue($"[blue]▸[/] Downloading {Path.GetFileName(fileName)}...");
-
                                 var concurrentNow = Interlocked.Increment(ref _activeDownloads);
                                 // TEMP DIAGNOSTIC: track the true peak concurrency reached this batch,
                                 // independent of the UI's 400ms poll (which can easily miss a narrow
@@ -360,6 +365,8 @@ namespace VideoForensics.Providers.Ring.Services
                                         if (wroteMetadata)
                                             metadataFilesWritten++;
 
+                                        RecordBytesForRate(downloadedSize);
+
                                         _currentStatus = _currentStatus with
                                         {
                                             FilesCompleted = downloadedFiles,
@@ -369,18 +376,21 @@ namespace VideoForensics.Providers.Ring.Services
                                         };
                                     }
 
-                                    _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)}) complete");
+                                    _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)})");
+                                }
+                                else
+                                {
+                                    _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)} empty/invalid");
                                 }
                             }
                             catch (OperationCanceledException) when (itemToken.IsCancellationRequested)
                             {
-                                // Cooperative stop — either caller cancellation or a sibling file's
-                                // rate limit triggering rateLimitCts. Not a per-file failure.
+                                _activityLog.Enqueue($"[yellow]⊘[/] {Path.GetFileName(fileName)} cancelled");
                             }
                             catch (Exception ex)
                             {
                                 _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
-                                _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
+                                _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)}: {EscapeMarkup(ex.GetType().Name)}");
                                 if (IsRateLimitError(ex))
                                 {
                                     _logger.LogInformation("Rate limit detected. Stopping remaining downloads for this device.");
@@ -474,9 +484,9 @@ namespace VideoForensics.Providers.Ring.Services
                     _logger.LogInformation(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
-                var fileName = Path.Combine(outputPath, $"{deviceId}_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
-
-                _activityLog.Enqueue($"[blue]▸[/] Downloading {Path.GetFileName(fileName)}...");
+                // Get device name for consistent file naming (fallback to deviceId if unavailable)
+                var deviceNameForSnapshot = deviceId; // Snapshots don't have event data with device name, so use deviceId
+                var fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
                 {
@@ -486,7 +496,7 @@ namespace VideoForensics.Providers.Ring.Services
                 if (!File.Exists(fileName))
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
-                    _activityLog.Enqueue($"[red]✗[/] device {deviceId}: no snapshot available");
+                    _activityLog.Enqueue($"[red]✗[/] {deviceNameForSnapshot}: no snapshot available");
                     return new DownloadResult(
                         Success: false,
                         ErrorMessage: "No snapshot available for this device"
@@ -502,7 +512,7 @@ namespace VideoForensics.Providers.Ring.Services
                     _logger.LogWarning("Device {DeviceId} returned a non-image response instead of a snapshot (device likely offline)", deviceId);
                     File.Delete(fileName);
                     _currentStatus = _currentStatus with { IsDownloading = false };
-                    _activityLog.Enqueue($"[red]✗[/] device {deviceId}: offline, no snapshot available");
+                    _activityLog.Enqueue($"[red]✗[/] {deviceNameForSnapshot}: offline/no snapshot");
                     return new DownloadResult(
                         Success: false,
                         ErrorMessage: "No snapshot available for this device (device may be offline)"
@@ -576,15 +586,19 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                 }
 
-                _currentStatus = _currentStatus with
+                lock (_statusLock)
                 {
-                    IsDownloading = false,
-                    FilesCompleted = 1,
-                    BytesDownloaded = fileSize,
-                    CurrentFile = fileName
-                };
+                    RecordBytesForRate(fileSize);
+                    _currentStatus = _currentStatus with
+                    {
+                        IsDownloading = false,
+                        FilesCompleted = 1,
+                        BytesDownloaded = fileSize,
+                        CurrentFile = fileName
+                    };
+                }
 
-                _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(fileSize)}) complete");
+                _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(fileSize)})");
 
                 _logger.LogInformation("Downloaded latest snapshot ({Bytes} bytes) for device {DeviceId}", fileSize, deviceId);
 
@@ -609,7 +623,38 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        public DownloadStatus GetStatus() => _currentStatus;
+        public DownloadStatus GetStatus()
+        {
+            lock (_statusLock)
+            {
+                return _currentStatus;
+            }
+        }
+
+        // Track bytes for 5-second rolling average transfer rate
+        private void RecordBytesForRate(long bytes)
+        {
+            lock (_statusLock)
+            {
+                var now = DateTime.UtcNow;
+                var elapsedSeconds = (now - _rateWindowStart).TotalSeconds;
+
+                // Reset window if it's been 5+ seconds
+                if (elapsedSeconds >= 5.0)
+                {
+                    _rateWindowStart = now;
+                    _rateWindowBytes = bytes;
+                }
+                else
+                {
+                    _rateWindowBytes += bytes;
+                }
+
+                // Calculate current rate in MB/s
+                var rateMbps = elapsedSeconds > 0 ? (_rateWindowBytes / (1024.0 * 1024.0)) / elapsedSeconds : 0.0;
+                _currentStatus = _currentStatus with { CurrentSpeedMbps = rateMbps };
+            }
+        }
 
         public IReadOnlyList<string> DrainActivityLog()
         {

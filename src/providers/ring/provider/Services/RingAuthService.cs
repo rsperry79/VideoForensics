@@ -7,16 +7,14 @@ namespace VideoForensics.Providers.Ring.Services
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
-        private readonly ICredentialStore? _credentialStore;
-        private readonly string? _credentialPath;
+        private readonly ICredentialStore _credentialStore;
         private bool _isAuthenticated;
 
-        public RingAuthService(ILogger logger, ISessionProvider sessionProvider, ICredentialStore? credentialStore = null, string? credentialPath = null)
+        public RingAuthService(ILogger logger, ISessionProvider sessionProvider, ICredentialStore credentialStore)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
-            _credentialPath = credentialPath;
-            _credentialStore = credentialStore;
+            _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
             _isAuthenticated = false;
         }
 
@@ -45,13 +43,13 @@ namespace VideoForensics.Providers.Ring.Services
                     _isAuthenticated = true;
                     var expiresAt = DateTime.UtcNow.AddHours(24);
 
-                    // Persist credentials if credential store is configured
-                    if (_credentialStore != null && credentials.RefreshToken != null)
+                    // Persist credentials to secure store
+                    if (credentials.RefreshToken != null)
                     {
                         try
                         {
-                            _credentialStore.Save(_credentialPath, credentials);
-                            _logger.LogInformation("Credentials saved to {CredentialPath}", _credentialPath);
+                            _credentialStore.Save(null!, credentials);
+                            _logger.LogInformation("Credentials saved to secure store");
                         }
                         catch (Exception ex)
                         {
@@ -150,45 +148,10 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> RestoreFromSavedCredentialsAsync(CancellationToken cancellationToken = default)
         {
-            if (_credentialStore == null)
-            {
-                _logger.LogInformation("No credential store configured for restoration");
-                return false;
-            }
-
-            try
-            {
-                var saved = _credentialStore.Load(_credentialPath);
-                if (string.IsNullOrEmpty(saved.RefreshToken))
-                {
-                    _logger.LogInformation("No saved refresh token found");
-                    return false;
-                }
-
-                _logger.LogInformation("Attempting to restore session from saved refresh token for user {Username}", saved.UserName);
-
-                var session = await Session.AuthenticateWithCredentials(
-                    saved,
-                    twoFactorAuthCodeProvider: null!,
-                    progress: null!
-                );
-
-                if (session?.OAuthToken != null)
-                {
-                    _sessionProvider.SetSession(session);
-                    _isAuthenticated = true;
-                    _logger.LogInformation("Session restored successfully for user {Username}", saved.UserName);
-                    return true;
-                }
-
-                _logger.LogWarning("Refresh token validation failed, credentials may be stale");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to restore session from saved credentials");
-                return false;
-            }
+            // Credentials are now managed through the database via ProviderAccountRepository
+            // This method is kept for compatibility but restoration happens at startup via account selection
+            _logger.LogInformation("Credential restoration is managed through account selection");
+            return false;
         }
 
         public string GetAuthStatus()

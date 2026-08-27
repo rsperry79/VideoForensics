@@ -737,8 +737,10 @@ namespace VideoForensics
             var daysBack = AskIntWithEditableDefault("[yellow]Force re-scan window (last N days):[/]", _forensicsConfig.RescanWindowDays);
             if (daysBack != _forensicsConfig.RescanWindowDays)
             {
+                _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
                 _forensicsConfig.RescanWindowDays = daysBack;
                 await SaveConfiguration(cancellationToken);
+                _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
             }
 
             var startDate = DateTime.Now.AddDays(-daysBack);
@@ -757,7 +759,7 @@ namespace VideoForensics
             // Discover devices
             AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
             var locations = await _deviceService.GetLocationsAsync();
-            var devices = new List<(string Id, string Name, string Location)>();
+            var deviceDict = new Dictionary<string, (string Id, string Name, string Location)>();
 
             if (locations != null && locations.Count > 0)
             {
@@ -768,11 +770,16 @@ namespace VideoForensics
                     {
                         foreach (var device in locationDevices)
                         {
-                            devices.Add((device.Id, device.Name, location.Name));
+                            if (!deviceDict.ContainsKey(device.Id))
+                            {
+                                deviceDict[device.Id] = (device.Id, device.Name, location.Name);
+                            }
                         }
                     }
                 }
             }
+
+            var devices = deviceDict.Values.ToList();
 
             if (devices.Count == 0)
             {
@@ -856,6 +863,8 @@ namespace VideoForensics
                 if (result)
                 {
                     _forensicsConfig.DownloadLocation = outputPath;
+                    // Ensure RescanWindowDays is persisted
+                    _logger.LogInformation("Persisting configuration after download: RescanWindowDays={Days}", _forensicsConfig.RescanWindowDays);
                     await SaveConfiguration(cancellationToken);
 
                     // Display summary
@@ -947,7 +956,7 @@ namespace VideoForensics
             // Discover devices
             AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
             var locations = await _deviceService.GetLocationsAsync();
-            var devices = new List<(string Id, string Name, string Location)>();
+            var deviceDict = new Dictionary<string, (string Id, string Name, string Location)>();
 
             if (locations != null && locations.Count > 0)
             {
@@ -958,11 +967,16 @@ namespace VideoForensics
                     {
                         foreach (var device in locationDevices)
                         {
-                            devices.Add((device.Id, device.Name, location.Name));
+                            if (!deviceDict.ContainsKey(device.Id))
+                            {
+                                deviceDict[device.Id] = (device.Id, device.Name, location.Name);
+                            }
                         }
                     }
                 }
             }
+
+            var devices = deviceDict.Values.ToList();
 
             if (devices.Count == 0)
             {
@@ -1580,14 +1594,16 @@ namespace VideoForensics
         private async Task<bool> RunDownloadWithProgressAsync(Func<Task<bool>> startDownload, string mediaLabel, CancellationToken cancellationToken)
         {
             var result = false;
+            var globalStartTime = DateTime.Now;
+            var deviceStartTime = DateTime.Now;
+            var lastDeviceIndex = 0;
 
             await AnsiConsole.Progress()
                 .AutoClear(true)
                 .Columns(
                     new TaskDescriptionColumn(),
                     new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new ElapsedTimeColumn())
+                    new PercentageColumn())
                 .StartAsync(async ctx =>
                 {
                     var deviceTask = ctx.AddTask("[cyan]Current Device[/]", maxValue: 1);
@@ -1605,13 +1621,22 @@ namespace VideoForensics
                         var progress = _downloadService.GetProgress();
                         var (deviceIndex, deviceTotal, deviceName) = _downloadService.GetCurrentDevice();
 
+                        // Reset per-device timer when moving to a new device
+                        if (deviceIndex != lastDeviceIndex)
+                        {
+                            deviceStartTime = DateTime.Now;
+                            lastDeviceIndex = deviceIndex;
+                        }
+
                         // Bar 1: Current Device
                         if (progress.FilesTotal > 0)
                         {
                             deviceTask.IsIndeterminate = false;
                             deviceTask.MaxValue = progress.FilesTotal;
                             deviceTask.Value = progress.FilesCompleted;
-                            deviceTask.Description = $"[cyan]Device {deviceIndex}/{deviceTotal}[/] {EscapeMarkup(deviceName)}: {progress.FilesCompleted}/{progress.FilesTotal} ({FormatBytes(progress.BytesDownloaded)})";
+                            var deviceElapsed = DateTime.Now - deviceStartTime;
+                            var deviceTimeStr = $"{deviceElapsed.Hours:D2}:{deviceElapsed.Minutes:D2}:{deviceElapsed.Seconds:D2}";
+                            deviceTask.Description = $"[cyan]Device {deviceIndex}/{deviceTotal}[/] {EscapeMarkup(deviceName)}: {progress.FilesCompleted}/{progress.FilesTotal} ({FormatBytes(progress.BytesDownloaded)}) {deviceTimeStr}";
                         }
                         else if (progress.IsDownloading)
                         {
@@ -1632,7 +1657,9 @@ namespace VideoForensics
                             totalTask.MaxValue = aggregateTotal;
                             totalTask.Value = progress.TotalFilesCompleted + progress.FilesCompleted;
                             var aggregateCompleted = progress.TotalFilesCompleted + progress.FilesCompleted;
-                            totalTask.Description = $"[cyan]Across All Devices[/]: {aggregateCompleted}/{aggregateTotal} ({FormatBytes(progress.TotalBytesDownloaded + progress.BytesDownloaded)})";
+                            var globalElapsed = DateTime.Now - globalStartTime;
+                            var globalTimeStr = $"{globalElapsed.Hours:D2}:{globalElapsed.Minutes:D2}:{globalElapsed.Seconds:D2}";
+                            totalTask.Description = $"[cyan]Across All Devices[/]: {aggregateCompleted}/{aggregateTotal} ({FormatBytes(progress.TotalBytesDownloaded + progress.BytesDownloaded)}) {globalTimeStr}";
                         }
 
                         // Bar 3: Speed & Connections — percent reflects how saturated the configured

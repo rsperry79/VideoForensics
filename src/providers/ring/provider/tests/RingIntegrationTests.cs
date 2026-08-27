@@ -77,8 +77,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>(),
-                    _credentialPath
+                    provider.GetRequiredService<ICredentialStore>()
                 )
             );
             services.AddSingleton<IDeviceDiscoveryService>(provider =>

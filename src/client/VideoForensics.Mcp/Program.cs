@@ -39,8 +39,6 @@ namespace VideoForensics.Mcp
         {
             var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics");
             Directory.CreateDirectory(configDir);
-            var configPath = Path.Combine(configDir, "ForensicsConfig.json");
-            var credentialPath = Path.Combine(configDir, "RingCredentials.json");
 
             var builder = Host.CreateApplicationBuilder(args);
 
@@ -66,8 +64,7 @@ namespace VideoForensics.Mcp
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>(),
-                    credentialPath
+                    provider.GetRequiredService<ICredentialStore>()
                 )
             );
             services.AddSingleton<IDeviceDiscoveryService>(provider =>
@@ -156,7 +153,6 @@ namespace VideoForensics.Mcp
             services.AddSingleton<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
-                    configPath,
                     serviceProvider.GetRequiredService<IAppSettingRepository>()
                 )
             );
@@ -200,35 +196,10 @@ namespace VideoForensics.Mcp
                 return 1;
             }
 
-            // Load persisted settings from the database now that the container is built and the
-            // database is migrated, and apply them onto the already-registered IForensicsConfiguration
-            // singleton (see registration above for why this can't just replace it outright).
+            // Load persisted settings from the database
             var configService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
-            var loadedConfig = await configService.LoadConfigurationAsync(configPath);
-            runtimeConfig.EnableForensicAnalysisReports = loadedConfig.EnableForensicAnalysisReports;
-            runtimeConfig.EnableSignalAnomalyReports = loadedConfig.EnableSignalAnomalyReports;
-            runtimeConfig.EnableChainOfCustodyReports = loadedConfig.EnableChainOfCustodyReports;
-            runtimeConfig.EnableEvidenceValidationReports = loadedConfig.EnableEvidenceValidationReports;
-            runtimeConfig.EnableAccessControlMonitoring = loadedConfig.EnableAccessControlMonitoring;
-            runtimeConfig.EnablePiiRedaction = loadedConfig.EnablePiiRedaction;
-            runtimeConfig.ReportsDirectory = loadedConfig.ReportsDirectory;
-            runtimeConfig.ReportOutputFormat = loadedConfig.ReportOutputFormat;
-            runtimeConfig.DownloadLocation = loadedConfig.DownloadLocation;
-            runtimeConfig.RedactionLevel = loadedConfig.RedactionLevel;
-            runtimeConfig.KeyStorageProvider = loadedConfig.KeyStorageProvider;
-            runtimeConfig.RetentionDaysDefault = loadedConfig.RetentionDaysDefault;
-            runtimeConfig.LogLevel = loadedConfig.LogLevel;
-
-            // Migrate legacy credentials from old JSON file to encrypted credential store
-            var legacyMigrator = new LegacyCredentialMigrator(
-                serviceProvider.GetRequiredService<ILogger<LegacyCredentialMigrator>>(),
-                serviceProvider.GetRequiredService<IVideoForensicsDataClient>(),
-                credentialPath);
-            await legacyMigrator.MigrateIfNeededAsync(CancellationToken.None);
-
-            // Try to restore from saved credentials (skip if no saved credentials)
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            await authService.RestoreFromSavedCredentialsAsync();
+            var configLogger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            await ConfigurationLoader.LoadAndApplyAsync(configService, runtimeConfig, configLogger, CancellationToken.None);
 
             initLogger.LogInformation("VideoForensics MCP server starting on stdio transport");
 

@@ -7,15 +7,15 @@ namespace VideoForensics.Data.Core.Services
     /// <summary>Service for resolving incremental download start dates using watermarks.</summary>
     internal class WatermarkService : IWatermarkService
     {
-        private readonly IDownloadEventRepository _downloadEventRepository;
+        private readonly IDeviceRepository _deviceRepository;
         private readonly ILogger<WatermarkService> _logger;
 
         /// <summary>Buffer time (1 hour) subtracted from the watermark to catch in-flight events.</summary>
         private static readonly TimeSpan WatermarkBuffer = TimeSpan.FromHours(1);
 
-        public WatermarkService(IDownloadEventRepository downloadEventRepository, ILogger<WatermarkService> logger)
+        public WatermarkService(IDeviceRepository deviceRepository, ILogger<WatermarkService> logger)
         {
-            _downloadEventRepository = downloadEventRepository;
+            _deviceRepository = deviceRepository;
             _logger = logger;
         }
 
@@ -27,20 +27,20 @@ namespace VideoForensics.Data.Core.Services
                 return requestedStartDate;
             }
 
-            var lastSuccessfulTime = await _downloadEventRepository.GetLatestSuccessfulEventTimeAsync(deviceId, ct);
-            if (lastSuccessfulTime == null)
+            var device = await _deviceRepository.GetAsync(deviceId, ct);
+            if (device?.LastSuccessfulPullAtUtc == null)
             {
                 _logger.LogInformation("No prior successful download found for device {DeviceId}; using requested start date {RequestedDate:O}", deviceId, requestedStartDate);
                 return requestedStartDate;
             }
 
-            var watermarkWithBuffer = lastSuccessfulTime.Value.Subtract(WatermarkBuffer);
+            var watermarkWithBuffer = device.LastSuccessfulPullAtUtc.Value.Subtract(WatermarkBuffer);
             var effectiveDate = new[] { requestedStartDate, watermarkWithBuffer }.Max();
 
             _logger.LogInformation(
-                "Watermark resolution for device {DeviceId}: last successful={LastSuccessful:O}, buffer={Buffer}, effective={EffectiveDate:O}",
+                "Watermark resolution for device {DeviceId}: last successful pull={LastSuccessful:O}, buffer={Buffer}, effective={EffectiveDate:O}",
                 deviceId,
-                lastSuccessfulTime.Value,
+                device.LastSuccessfulPullAtUtc.Value,
                 WatermarkBuffer,
                 effectiveDate);
 
