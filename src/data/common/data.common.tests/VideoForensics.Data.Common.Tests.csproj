@@ -9,8 +9,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <AssemblyName>VideoForensics.Providers.Ring.Tests</AssemblyName>
-        <RootNamespace>VideoForensics.Providers.Ring.Tests</RootNamespace>
+        <AssemblyName>VideoForensics.Data.Common.Tests</AssemblyName>
+        <RootNamespace>VideoForensics.Data.Common.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,14 +21,14 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Moq" Version="4.20.70" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+        <PackageReference Include="coverlet.collector" Version="6.0.4">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\..\clients\VideoForensics\VideoForensics.csproj" />
-        <ProjectReference Include="..\VideoForensics.Providers.Ring.csproj" />
-        <ProjectReference Include="..\..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="..\..\utils\VideoForensics.Providers.Ring.Utils.csproj" />
+        <ProjectReference Include="..\data.common\VideoForensics.Data.Common.csproj" />
     </ItemGroup>
 
 </Project>
