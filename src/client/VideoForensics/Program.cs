@@ -17,6 +17,7 @@ using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Tools;
 
 namespace VideoForensics
 {
@@ -157,6 +158,22 @@ namespace VideoForensics
                 )
             );
 
+            // Register tool orchestrators for shared use
+            services.AddSingleton<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(serviceProvider =>
+                new VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IForensicsConfigurationService>(),
+                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                )
+            );
+
+            services.AddSingleton<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>(serviceProvider =>
+                new VideoForensics.Client.Core.Tools.JammingToolsOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IJammingRepository>()
+                )
+            );
+
             // Register MenuManager with injected dependencies
             services.AddSingleton<MenuManager>(serviceProvider =>
             {
@@ -175,7 +192,9 @@ namespace VideoForensics
                     serviceProvider.GetRequiredService<IMediaItemRepository>(),
                     serviceProvider.GetRequiredService<IEvidenceValidationService>(),
                     serviceProvider.GetRequiredService<IEvidenceExportService>(),
-                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                    serviceProvider.GetRequiredService<IAppSettingRepository>(),
+                    serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(),
+                    serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>()
                 );
             });
 

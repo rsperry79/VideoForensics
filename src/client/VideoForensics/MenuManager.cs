@@ -10,6 +10,7 @@ using Spectre.Console;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -34,6 +35,8 @@ namespace VideoForensics
         private readonly IEvidenceValidationService _evidenceValidationService;
         private readonly IEvidenceExportService _evidenceExportService;
         private readonly IAppSettingRepository _appSettingRepository;
+        private readonly ConfigToolsOrchestrator _configToolsOrchestrator;
+        private readonly JammingToolsOrchestrator _jammingToolsOrchestrator;
 
         public MenuManager(
             ILogger<MenuManager> logger,
@@ -50,7 +53,9 @@ namespace VideoForensics
             IMediaItemRepository mediaItemRepository,
             IEvidenceValidationService evidenceValidationService,
             IEvidenceExportService evidenceExportService,
-            IAppSettingRepository appSettingRepository)
+            IAppSettingRepository appSettingRepository,
+            ConfigToolsOrchestrator configToolsOrchestrator,
+            JammingToolsOrchestrator jammingToolsOrchestrator)
         {
             _logger = logger;
             _forensicsConfig = config;
@@ -67,6 +72,8 @@ namespace VideoForensics
             _evidenceValidationService = evidenceValidationService;
             _evidenceExportService = evidenceExportService;
             _appSettingRepository = appSettingRepository;
+            _configToolsOrchestrator = configToolsOrchestrator;
+            _jammingToolsOrchestrator = jammingToolsOrchestrator;
         }
 
         public async Task ShowMainMenuAsync()
@@ -1288,7 +1295,7 @@ namespace VideoForensics
             }
         }
 
-        private void ConfigureRetentionPolicy()
+        private async Task ConfigureRetentionPolicy()
         {
             AnsiConsole.MarkupLine("[bold cyan]Retention Policy[/]");
 
@@ -1310,9 +1317,14 @@ namespace VideoForensics
                 {
                     case var c when c.StartsWith("Retention Period"):
                         var days = AnsiConsole.Ask<int>("[yellow]Enter retention period (days):[/]");
-                        if (days > 0)
+                        var (success, message) = await _configToolsOrchestrator.SetRetentionDaysAsync(_forensicsConfig, days);
+                        if (success)
                         {
-                            _forensicsConfig.RetentionDaysDefault = days;
+                            AnsiConsole.MarkupLine("[green]{0}[/]", message);
+                        }
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[red]{0}[/]", message);
                         }
                         break;
                     case "Back":
@@ -1321,7 +1333,7 @@ namespace VideoForensics
             }
         }
 
-        private void ConfigureMaxConcurrentDownloads()
+        private async Task ConfigureMaxConcurrentDownloads()
         {
             AnsiConsole.MarkupLine("[bold cyan]⇅ Max Concurrent Downloads[/]");
 
@@ -1343,13 +1355,14 @@ namespace VideoForensics
                 {
                     case var c when c.StartsWith("Concurrent Downloads"):
                         var count = AnsiConsole.Ask<int>("[yellow]Enter max concurrent downloads (per device):[/]");
-                        if (count > 0)
+                        var (success, message) = await _configToolsOrchestrator.SetMaxConcurrentDownloadsAsync(_forensicsConfig, count);
+                        if (success)
                         {
-                            _forensicsConfig.MaxConcurrentDownloads = count;
+                            AnsiConsole.MarkupLine("[green]{0}[/]", message);
                         }
                         else
                         {
-                            AnsiConsole.MarkupLine("[red]Must be at least 1.[/]");
+                            AnsiConsole.MarkupLine("[red]{0}[/]", message);
                         }
                         break;
                     case "Back":
@@ -1478,66 +1491,21 @@ namespace VideoForensics
 
             try
             {
-                var downloadDir = _forensicsConfig.DownloadLocation ?? Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Pictures",
-                    "VideoForensics");
+                // Use orchestrator for the core reset logic
+                var (success, message) = await _configToolsOrchestrator.FactoryResetAsync();
 
-                if (Directory.Exists(downloadDir))
+                if (success)
                 {
-                    _logger.LogInformation("Deleting download directory: {DownloadDir}", downloadDir);
-                    Directory.Delete(downloadDir, recursive: true);
-                    AnsiConsole.MarkupLine("[green]✓ Deleted downloaded video files[/]");
+                    AnsiConsole.MarkupLine("[green]✓ {0}[/]", message);
+                    AnsiConsole.MarkupLine("[bold green]✓ Factory reset complete. Exiting...[/]");
+                    AnsiConsole.MarkupLine("");
+                    await Task.Delay(250);
+                    Environment.Exit(0);
                 }
-
-                var dbPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics",
-                    "videoforensics.db");
-
-                if (File.Exists(dbPath))
+                else
                 {
-                    // The connection string uses Pooling=true;Cache=Shared, so the app's still-open
-                    // pooled SQLite connection holds an OS-level lock on the file (and its WAL/SHM
-                    // sidecar files) even though nothing here is actively querying it. Deleting the
-                    // .db file without releasing the pool first leaves the settings/data intact —
-                    // either the delete throws (caught below, silently reported as a failure) or the
-                    // WAL sidecar files survive and get replayed against a freshly created database.
-                    Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-
-                    _logger.LogInformation("Deleting database file: {DbPath}", dbPath);
-                    File.Delete(dbPath);
-
-                    foreach (var sidecar in new[] { dbPath + "-wal", dbPath + "-shm", dbPath + "-journal" })
-                    {
-                        if (File.Exists(sidecar))
-                        {
-                            File.Delete(sidecar);
-                        }
-                    }
-
-                    AnsiConsole.MarkupLine("[green]✓ Deleted database[/]");
+                    AnsiConsole.MarkupLine("[red]✗ {0}[/]", message);
                 }
-
-                // Legacy settings file from before settings moved into the database — no longer the
-                // source of truth, but a leftover copy here would otherwise survive the reset untouched.
-                var legacyConfigPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics",
-                    "ForensicsConfig.json");
-
-                if (File.Exists(legacyConfigPath))
-                {
-                    _logger.LogInformation("Deleting legacy settings file: {ConfigPath}", legacyConfigPath);
-                    File.Delete(legacyConfigPath);
-                    AnsiConsole.MarkupLine("[green]✓ Deleted legacy settings file[/]");
-                }
-
-                _logger.LogInformation("Factory reset completed successfully");
-                AnsiConsole.MarkupLine("");
-                AnsiConsole.MarkupLine("[bold green]✓ Factory reset complete. Exiting...[/]");
-                AnsiConsole.MarkupLine("");
-                Environment.Exit(0);
             }
             catch (Exception ex)
             {
