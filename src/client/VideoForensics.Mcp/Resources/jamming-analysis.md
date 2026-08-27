@@ -13,6 +13,13 @@ intrusion. It is fetched on demand; it is not injected into every tool call.
   begins abruptly and (usually) recovers abruptly rather than drifting back gradually. A short single
   bad reading is much less meaningful than several consecutive degraded readings clustered in a tight
   window.
+- **Recurring temporal pattern** (high confidence for intent): degradation that occurs at the *same
+  approximate time each week* — such as during custody handoff times, regular visitor arrivals, or
+  scheduled absences — is a strong indicator of intentional, targeted interference rather than
+  environmental factors. Environmental interference is random or tied to specific external events
+  (weather, appliance startup); deliberate jamming often aligns with planned activities or presence
+  windows. Cross-reference incident times against known schedules before concluding environmental
+  cause.
 - Interference affecting only one device while others at the same location stay normal points more
   toward a localized jammer or physical obstruction near that device; interference affecting every
   device at a location simultaneously more often points to a router/Wi-Fi problem, a household
@@ -63,6 +70,11 @@ Signal degradation can also result from non-hostile causes: a battery running lo
 router changes, physical obstruction (furniture, foliage growth), or weather. Before treating a
 detected incident as evidence of interference:
 
+- **Check temporal patterns against known schedules.** If degradation occurs at recurring times
+  (e.g. every Thursday evening, regular custody handoff times, or predictable visiting hours),
+  cross-reference against the victim's timeline of when specific people visit, depart, or have
+  access. Regular, predictable timing strongly suggests deliberate interference; random or
+  weather-correlated timing suggests environmental causes.
 - Check whether the device's system clock may have been tampered with, which can also produce
   timestamp irregularities that masquerade as, or mask, other tampering —
   `ISignalAnomalyDetector.ValidateDeviceTimeAsync` (surfaced via the forensic analysis / chain of
