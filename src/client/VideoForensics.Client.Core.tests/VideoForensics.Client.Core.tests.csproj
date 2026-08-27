@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsTestProject>true</IsTestProject>
+
+        <AssemblyName>VideoForensics.Client.Core.Tests</AssemblyName>
+        <RootNamespace>VideoForensics.Client.Core.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="xunit" Version="2.8.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Moq" Version="4.20.71" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
+        <ProjectReference Include="..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="..\..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
+    </ItemGroup>
+
+</Project>
