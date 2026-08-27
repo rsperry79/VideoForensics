@@ -27,7 +27,7 @@
         <ProjectReference Include="../common/VideoForensics.Providers.Ring.Common.csproj" />
         <ProjectReference Include="../auth/VideoForensics.Providers.Ring.Auth.csproj" />
         <ProjectReference Include="../video/VideoForensics.Providers.Ring.Video.csproj" />
-        <ProjectReference Include="../../../core/helpers/VideoForensics.Providers.Common.Helpers.csproj" />
+        <ProjectReference Include="../../../core/helpers/core.helpers/VideoForensics.Providers.Common.Helpers.csproj" />
     </ItemGroup>
 
     <ItemGroup>

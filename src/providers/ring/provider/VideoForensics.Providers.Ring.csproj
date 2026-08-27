@@ -24,8 +24,8 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
         <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
-        <ProjectReference Include="..\..\..\core\data\data-core\VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="..\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
+        <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="..\..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
         <ProjectReference Include="..\core\VideoForensics.Providers.Ring.Core.csproj" />
         <ProjectReference Include="..\common\VideoForensics.Providers.Ring.Common.csproj" />
         <ProjectReference Include="..\auth\VideoForensics.Providers.Ring.Auth.csproj" />

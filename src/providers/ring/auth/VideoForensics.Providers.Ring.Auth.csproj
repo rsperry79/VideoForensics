@@ -20,7 +20,7 @@
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
         <ProjectReference Include="../common/VideoForensics.Providers.Ring.Common.csproj" />
-        <ProjectReference Include="../../../core/helpers/VideoForensics.Providers.Common.Helpers.csproj" />
+        <ProjectReference Include="../../../core/helpers/core.helpers/VideoForensics.Providers.Common.Helpers.csproj" />
     </ItemGroup>
 
     <ItemGroup>
