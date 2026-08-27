@@ -1,4 +1,3 @@
-using Moq;
 using VideoForensics.Providers.Common.Contracts;
 using Xunit;
 

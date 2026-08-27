@@ -25,4 +25,8 @@
         <Compile Remove="tests/**/*.cs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    </ItemGroup>
+
 </Project>

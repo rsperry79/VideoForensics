@@ -25,6 +25,25 @@ namespace VideoForensics.Providers.Common.Contracts
         DownloadStatus GetStatus();
 
         /// <summary>
+        /// Counts how many items match the query (e.g. events in range for this device) without
+        /// downloading anything. Lets a caller learn the true total across multiple devices up front
+        /// — e.g. to size an aggregate progress bar before the first device's download even starts —
+        /// instead of only finding out each device's count as its turn in a sequential loop arrives.
+        /// </summary>
+        Task<int> GetMatchedEventCountAsync(
+            string deviceId,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(0);
+
+        /// <summary>
+        /// Sets how many files may download concurrently within a single device's batch (devices
+        /// themselves are still processed sequentially by the caller). Values below 1 are ignored.
+        /// </summary>
+        void SetMaxConcurrentDownloads(int value) { }
+
+        /// <summary>
         /// Returns and clears any per-item activity messages (e.g. "downloaded X", "failed: Y")
         /// queued since the last call, so a caller can poll this alongside GetStatus() to show a
         /// live feed of individual file outcomes during a download in progress.

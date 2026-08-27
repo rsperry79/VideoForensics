@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Mcp</AssemblyName>
+        <RootNamespace>VideoForensics.Mcp</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>MCP (Model Context Protocol) server exposing VideoForensics forensic evidence workflows to MCP-aware AI clients (e.g. Claude Desktop) over stdio.</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+        <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="..\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
+        <ProjectReference Include="..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+        <ProjectReference Include="..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
+        <ProjectReference Include="..\..\providers\ring\provider\VideoForensics.Providers.Ring.csproj" />
+        <ProjectReference Include="..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
+        <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
+        <ProjectReference Include="..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\jamming-analysis.md" />
+    </ItemGroup>
+
+</Project>

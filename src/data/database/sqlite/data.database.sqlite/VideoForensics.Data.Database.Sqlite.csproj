@@ -13,6 +13,8 @@
         <Description>SQLite EF Core provider implementation for the VideoForensics data access layer</Description>
         <Copyright>2026</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <!-- Microsoft.CodeAnalysis is pinned to 5.9.0; EF Core Design's transitive Workspaces.MSBuild 5.0.0 dependency wants Workspaces.Common == 5.0.0 exactly, which NuGet flags but is safe since EF's design-time tooling isn't invoked in a normal build. -->
+        <NoWarn>$(NoWarn);NU1608</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

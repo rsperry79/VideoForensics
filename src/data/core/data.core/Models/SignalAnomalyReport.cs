@@ -9,6 +9,19 @@ namespace VideoForensics.Data.Core.Models
         public DateTime ReportFromUtc { get; set; }
         public DateTime ReportToUtc { get; set; }
         public IReadOnlyList<AnomalyFindings> AnomaliesByDevice { get; set; } = new List<AnomalyFindings>();
+        public IReadOnlyList<JammingSummaryEntry> JammingByDevice { get; set; } = new List<JammingSummaryEntry>();
+
+        public class JammingSummaryEntry
+        {
+            public Guid DeviceId { get; set; }
+            public string DeviceName { get; set; } = string.Empty;
+            public int IncidentCount { get; set; }
+            public double TotalJammedDurationMinutes { get; set; }
+            public double AverageDegradationDb { get; set; }
+            public double MaxDegradationDb { get; set; }
+            public DateTime? FirstIncidentUtc { get; set; }
+            public DateTime? LastIncidentUtc { get; set; }
+        }
 
         public class AnomalyFindings
         {
