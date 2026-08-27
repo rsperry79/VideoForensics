@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     </ItemGroup>
 
 </Project>

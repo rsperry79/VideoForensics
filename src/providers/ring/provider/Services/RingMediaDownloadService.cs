@@ -26,8 +26,18 @@ namespace VideoForensics.Providers.Ring.Services
 
         // Files within a single device download concurrently (devices themselves stay sequential —
         // see VideoDownloadServiceAdapter — to keep the deliberate inter-device rate-limit backoff).
-        // Kept modest since Ring's API throttles per-account, not just per-connection.
-        private const int MaxConcurrentFileDownloads = 3;
+        // Configurable via SetMaxConcurrentDownloads (backed by IForensicsConfiguration.MaxConcurrentDownloads)
+        // since Ring's per-account (not just per-connection) throttling means the right value varies
+        // by account; 10 is a reasonable default.
+        private int _maxConcurrentFileDownloads = 10;
+
+        public void SetMaxConcurrentDownloads(int value)
+        {
+            if (value > 0)
+            {
+                _maxConcurrentFileDownloads = value;
+            }
+        }
 
         // Guards _currentStatus and the per-device counters below while multiple file downloads for
         // the same device update them concurrently.
@@ -36,6 +46,24 @@ namespace VideoForensics.Providers.Ring.Services
         // How many files are actively being fetched from Ring right now (as opposed to skipped
         // because they already exist on disk) — surfaced via DownloadStatus.ActiveConnections.
         private int _activeDownloads;
+
+        // TEMP DIAGNOSTIC: highest value _activeDownloads actually reached during the current batch,
+        // sampled at every increment (not on a UI poll interval) so it can't miss a narrow window.
+        // Remove once the "active connections never exceeds 9" report is confirmed/resolved.
+        private int _peakActiveDownloads;
+
+        private static void InterlockedMax(ref int target, int candidate)
+        {
+            int initial;
+            do
+            {
+                initial = Volatile.Read(ref target);
+                if (candidate <= initial)
+                {
+                    return;
+                }
+            } while (Interlocked.CompareExchange(ref target, candidate, initial) != initial);
+        }
 
         // GetDoorbotsHistory returns the FULL account history (all devices), not just one device's.
         // Cache it so a sequential per-device download loop doesn't re-fetch the same data N times.
@@ -57,6 +85,22 @@ namespace VideoForensics.Providers.Ring.Services
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
+        }
+
+        public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
+            CancellationToken cancellationToken = default)
+        {
+            var session = _sessionProvider.GetSession();
+            if (session == null)
+            {
+                return 0;
+            }
+
+            // Reuses GetHistoryEventsAsync's per-(startDate,endDate) cache, so when this device's
+            // resolved range matches a range already fetched (e.g. another device with the same
+            // watermark), no extra API call happens here.
+            var events = await GetHistoryEventsAsync(session, startDate, endDate);
+            return events.Count(e => e.Doorbot?.Id.ToString() == deviceId);
         }
 
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
@@ -97,6 +141,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var validatedFiles = new List<string>();
 
                 _activeDownloads = 0;
+                _peakActiveDownloads = 0;
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = relevantEvents.Count, FilesCompleted = 0, BytesDownloaded = 0, ActiveConnections = 0 };
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
@@ -112,66 +157,94 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     await Parallel.ForEachAsync(
                         relevantEvents,
-                        new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentFileDownloads, CancellationToken = rateLimitCts.Token },
+                        new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentFileDownloads, CancellationToken = rateLimitCts.Token },
                         async (@event, itemToken) =>
                         {
                             var fileName = Path.Combine(outputPath,
                                 $"{deviceId}_{@event.CreatedAtDateTime:yyyyMMdd_HHmmss}.mp4");
+                            var eventIdStr = @event.Id?.ToString() ?? "unknown";
 
                             // Use the device GUID resolved at batch start; all events are for this same device
                             // (filtered by deviceId above). Avoids per-item redundant lookups.
 
-                            // Check both filesystem and DB for existing download
-                            var eventIdStr = @event.Id?.ToString() ?? "unknown";
-                            var alreadyDownloadedInDb = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceGuid, eventIdStr, itemToken);
-
-                            if ((File.Exists(fileName) && new FileInfo(fileName).Length > 0) || alreadyDownloadedInDb)
+                            // Everything below runs per-item inside Parallel.ForEachAsync with no outer
+                            // per-item guard — an unhandled exception here (e.g. a bad DB round-trip or a
+                            // filesystem error on the "already downloaded" check) would previously escape
+                            // the whole batch, get caught by DownloadVideosAsync's outer try/catch, and
+                            // discard every count already accumulated by sibling items that succeeded.
+                            // Keep this check wrapped so a single bad item can only fail itself.
+                            try
                             {
-                                var existingSize = new FileInfo(fileName).Length > 0 ? new FileInfo(fileName).Length : 0;
+                                // Check both filesystem and DB for existing download. The DB flag alone is not
+                                // trustworthy — it can be true while the file itself is missing (deleted, moved,
+                                // or downloaded to a different output path in a prior run). Only skip the
+                                // network call when the file is actually present on disk; otherwise fall through
+                                // and redownload it, even though the DB says it was already downloaded.
+                                var alreadyDownloadedInDb = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceGuid, eventIdStr, itemToken);
+                                var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
 
-                                // Compute hash for existing file if it exists on disk
-                                string? sha256Hash = null;
-                                if (File.Exists(fileName) && existingSize > 0)
+                                if (alreadyDownloadedInDb && !existsOnDisk)
                                 {
-                                    try
-                                    {
-                                        var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), itemToken);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", fileName);
-                                    }
+                                    _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, fileName);
                                 }
 
-                                var wroteMetadata = !File.Exists(Path.ChangeExtension(fileName, ".json")) &&
-                                    WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4");
-
-                                lock (_statusLock)
+                                if (existsOnDisk)
                                 {
-                                    downloadedFiles++;
-                                    downloadedBytes += existingSize;
-                                    mediaFilesValidated++;
-                                    validatedFiles.Add(fileName);
-                                    if (wroteMetadata)
-                                        metadataFilesWritten++;
+                                    var existingSize = new FileInfo(fileName).Length;
 
-                                    _currentStatus = _currentStatus with
+                                    // Compute hash for existing file if it exists on disk
+                                    string? sha256Hash = null;
                                     {
-                                        FilesCompleted = downloadedFiles,
-                                        BytesDownloaded = downloadedBytes,
-                                        CurrentFile = fileName,
-                                        ActiveConnections = Volatile.Read(ref _activeDownloads)
-                                    };
+                                        try
+                                        {
+                                            var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), itemToken);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", fileName);
+                                        }
+                                    }
 
-                                    // Update watermark for existing files too, so if batch fails later,
-                                    // we don't re-attempt files we've already validated
-                                    var eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
-                                    if (eventTime > latestSuccessfulTime)
-                                        latestSuccessfulTime = eventTime;
+                                    var wroteMetadata = !File.Exists(Path.ChangeExtension(fileName, ".json")) &&
+                                        WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4");
+
+                                    lock (_statusLock)
+                                    {
+                                        downloadedFiles++;
+                                        downloadedBytes += existingSize;
+                                        mediaFilesValidated++;
+                                        validatedFiles.Add(fileName);
+                                        if (wroteMetadata)
+                                            metadataFilesWritten++;
+
+                                        _currentStatus = _currentStatus with
+                                        {
+                                            FilesCompleted = downloadedFiles,
+                                            BytesDownloaded = downloadedBytes,
+                                            CurrentFile = fileName,
+                                            ActiveConnections = Volatile.Read(ref _activeDownloads)
+                                        };
+
+                                        // Update watermark for existing files too, so if batch fails later,
+                                        // we don't re-attempt files we've already validated
+                                        var eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                                        if (eventTime > latestSuccessfulTime)
+                                            latestSuccessfulTime = eventTime;
+                                    }
+
+                                    _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} already exists, skipped");
+                                    return;
                                 }
-
-                                _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} already exists, skipped");
+                            }
+                            catch (OperationCanceledException) when (itemToken.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
+                                _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
                                 return;
                             }
 
@@ -179,7 +252,12 @@ namespace VideoForensics.Providers.Ring.Services
                             {
                                 _activityLog.Enqueue($"[blue]▸[/] Downloading {Path.GetFileName(fileName)}...");
 
-                                Interlocked.Increment(ref _activeDownloads);
+                                var concurrentNow = Interlocked.Increment(ref _activeDownloads);
+                                // TEMP DIAGNOSTIC: track the true peak concurrency reached this batch,
+                                // independent of the UI's 400ms poll (which can easily miss a narrow
+                                // window where all slots are briefly filled). Remove once the "active
+                                // connections never exceeds 9" report is confirmed/resolved.
+                                InterlockedMax(ref _peakActiveDownloads, concurrentNow);
                                 try
                                 {
                                     await RetryWithBackoffAsync(async () =>
@@ -322,6 +400,11 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
                     downloadedFiles, downloadedBytes, deviceId);
+                _logger.LogInformation("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
+                    _peakActiveDownloads, _maxConcurrentFileDownloads, relevantEvents.Count);
+                // _logger has no provider registered in Program.cs (nothing sinks LogInformation
+                // anywhere right now), so also surface this via the activity log the UI already drains.
+                _activityLog.Enqueue($"[grey][[DIAG]][/] Peak concurrent downloads: {_peakActiveDownloads} (configured max: {_maxConcurrentFileDownloads}, items: {relevantEvents.Count})");
 
                 return new DownloadResult(
                     Success: true,

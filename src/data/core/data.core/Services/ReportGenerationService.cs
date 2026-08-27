@@ -15,6 +15,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IEventRepository _eventRepository;
+        private readonly IJammingRepository _jammingRepository;
         private readonly ILogger<ReportGenerationService> _logger;
 
         public ReportGenerationService(
@@ -23,6 +24,7 @@ namespace VideoForensics.Data.Core.Services
             IDownloadEventRepository downloadEventRepository,
             IActionLogRepository actionLogRepository,
             IEventRepository eventRepository,
+            IJammingRepository jammingRepository,
             ILogger<ReportGenerationService> logger)
         {
             _mediaItemRepository = mediaItemRepository;
@@ -30,6 +32,7 @@ namespace VideoForensics.Data.Core.Services
             _downloadEventRepository = downloadEventRepository;
             _actionLogRepository = actionLogRepository;
             _eventRepository = eventRepository;
+            _jammingRepository = jammingRepository;
             _logger = logger;
         }
 
@@ -143,6 +146,7 @@ namespace VideoForensics.Data.Core.Services
                 }
 
                 var anomaliesList = new List<SignalAnomalyReport.AnomalyFindings>();
+                var jammingList = new List<SignalAnomalyReport.JammingSummaryEntry>();
 
                 foreach (var device in devices)
                 {
@@ -153,9 +157,26 @@ namespace VideoForensics.Data.Core.Services
                         Anomalies = new List<SignalAnomalyReport.SignalAnomaly>()
                     };
                     anomaliesList.Add(findings);
+
+                    var jammingStats = await _jammingRepository.GetStatsAsync(device.Id, ct);
+                    if (jammingStats != null)
+                    {
+                        jammingList.Add(new SignalAnomalyReport.JammingSummaryEntry
+                        {
+                            DeviceId = device.Id,
+                            DeviceName = device.Name,
+                            IncidentCount = jammingStats.IncidentCount,
+                            TotalJammedDurationMinutes = jammingStats.TotalJammedDurationMinutes,
+                            AverageDegradationDb = jammingStats.AverageDegradationDb,
+                            MaxDegradationDb = jammingStats.MaxDegradationDb,
+                            FirstIncidentUtc = jammingStats.FirstIncidentUtc,
+                            LastIncidentUtc = jammingStats.LastIncidentUtc
+                        });
+                    }
                 }
 
                 report.AnomaliesByDevice = anomaliesList;
+                report.JammingByDevice = jammingList;
                 _logger.LogInformation("Built signal anomaly report for {DeviceCount} devices", devices.Count);
             }
             catch (Exception ex)

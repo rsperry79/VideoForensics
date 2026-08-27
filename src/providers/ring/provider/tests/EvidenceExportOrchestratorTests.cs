@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;

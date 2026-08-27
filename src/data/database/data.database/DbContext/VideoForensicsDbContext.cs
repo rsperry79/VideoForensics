@@ -66,6 +66,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the application settings.</summary>
         public DbSet<AppSetting> AppSettings { get; set; }
 
+        /// <summary>Gets or sets the jamming incident records.</summary>
+        public DbSet<JammingIncidentRecord> JammingIncidentRecords { get; set; }
+
+        /// <summary>Gets or sets the jamming stats summaries.</summary>
+        public DbSet<JammingStatsSummary> JammingStatsSummaries { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

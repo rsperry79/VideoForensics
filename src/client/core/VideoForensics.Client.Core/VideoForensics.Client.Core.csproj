@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Client.Core</AssemblyName>
+        <RootNamespace>VideoForensics.Client.Core</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Service implementations shared by the VideoForensics console client and MCP server</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+        <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="VideoForensics" />
+        <InternalsVisibleTo Include="VideoForensics.Mcp" />
+        <InternalsVisibleTo Include="VideoForensics.Providers.Ring.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+        <ProjectReference Include="..\..\..\providers\ring\provider\VideoForensics.Providers.Ring.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyName>VideoForensics.Client.Common</AssemblyName>
+        <RootNamespace>VideoForensics.Client.Common</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Shared interfaces and dependency-free DTOs for the VideoForensics console client and MCP server</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+    </ItemGroup>
+
+</Project>
