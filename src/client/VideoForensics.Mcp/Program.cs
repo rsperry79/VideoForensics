@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -157,6 +158,22 @@ namespace VideoForensics.Mcp
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                     configPath,
                     serviceProvider.GetRequiredService<IAppSettingRepository>()
+                )
+            );
+
+            // Register tool orchestrators for shared use by both console and MCP clients
+            services.AddSingleton<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(serviceProvider =>
+                new VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IForensicsConfigurationService>(),
+                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                )
+            );
+
+            services.AddSingleton<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>(serviceProvider =>
+                new VideoForensics.Client.Core.Tools.JammingToolsOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IJammingRepository>()
                 )
             );
 

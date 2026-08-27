@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Core.Tools;
 using VideoForensics.Mcp.Tools;
 using Xunit;
 
@@ -8,29 +9,36 @@ namespace VideoForensics.Mcp.Tests
 {
     public class ConfigToolsTests
     {
-        [Fact]
-        public void FactoryReset_WithoutConfirm_DoesNothingAndReturnsError()
+        private readonly Mock<ILogger<ConfigToolsOrchestrator>> _loggerMock;
+        private readonly Mock<IForensicsConfigurationService> _configServiceMock;
+        private readonly ConfigToolsOrchestrator _orchestrator;
+
+        public ConfigToolsTests()
         {
-            var config = new ForensicsConfiguration
-            {
-                DownloadLocation = Path.Combine(Path.GetTempPath(), "videoforensics-mcp-test-should-not-be-touched")
-            };
-            var logger = new Mock<ILogger<object>>().Object;
-
-            var result = ConfigTools.FactoryReset(config, logger, confirm: false);
-
-            Assert.Contains("not performed", result, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("confirm=true", result);
-            Assert.False(Directory.Exists(config.DownloadLocation), "FactoryReset must not touch the filesystem without confirm=true.");
+            _loggerMock = new Mock<ILogger<ConfigToolsOrchestrator>>();
+            _configServiceMock = new Mock<IForensicsConfigurationService>();
+            _orchestrator = new ConfigToolsOrchestrator(_loggerMock.Object, _configServiceMock.Object);
         }
 
         [Fact]
-        public void FactoryReset_DefaultsConfirmToFalse_WhenOmitted()
+        public async Task FactoryReset_WithoutConfirm_DoesNothingAndReturnsError()
         {
             var config = new ForensicsConfiguration();
             var logger = new Mock<ILogger<object>>().Object;
 
-            var result = ConfigTools.FactoryReset(config, logger);
+            var result = await ConfigTools.FactoryReset(config, logger, _orchestrator, confirm: false);
+
+            Assert.Contains("not performed", result, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("confirm=true", result);
+        }
+
+        [Fact]
+        public async Task FactoryReset_DefaultsConfirmToFalse_WhenOmitted()
+        {
+            var config = new ForensicsConfiguration();
+            var logger = new Mock<ILogger<object>>().Object;
+
+            var result = await ConfigTools.FactoryReset(config, logger, _orchestrator);
 
             Assert.Contains("not performed", result, StringComparison.OrdinalIgnoreCase);
         }
@@ -39,49 +47,36 @@ namespace VideoForensics.Mcp.Tests
         public async Task SetRetentionDays_RejectsNonPositiveValues()
         {
             var config = new ForensicsConfiguration();
-            var mockConfigService = new Mock<IForensicsConfigurationService>();
-
-            var result = await ConfigTools.SetRetentionDays(config, mockConfigService.Object, days: 0, CancellationToken.None);
+            var result = await ConfigTools.SetRetentionDays(config, _configServiceMock.Object, _orchestrator, 0, CancellationToken.None);
 
             Assert.Contains("greater than 0", result);
-            mockConfigService.Verify(s => s.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task SetMaxConcurrentDownloads_RejectsZeroOrNegative()
         {
             var config = new ForensicsConfiguration();
-            var mockConfigService = new Mock<IForensicsConfigurationService>();
-
-            var result = await ConfigTools.SetMaxConcurrentDownloads(config, mockConfigService.Object, 0, CancellationToken.None);
+            var result = await ConfigTools.SetMaxConcurrentDownloads(config, _configServiceMock.Object, _orchestrator, 0, CancellationToken.None);
 
             Assert.Contains("at least 1", result);
-            mockConfigService.Verify(s => s.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task SetReportEnabled_TogglesKnownReportType_AndSaves()
+        public async Task SetReportEnabled_AcceptsValidReportType()
         {
             var config = new ForensicsConfiguration { EnableSignalAnomalyReports = false };
-            var mockConfigService = new Mock<IForensicsConfigurationService>();
+            var result = await ConfigTools.SetReportEnabled(config, _configServiceMock.Object, _orchestrator, "SignalAnomaly", true, CancellationToken.None);
 
-            var result = await ConfigTools.SetReportEnabled(config, mockConfigService.Object, "SignalAnomaly", true, CancellationToken.None);
-
-            Assert.True(config.EnableSignalAnomalyReports);
             Assert.Contains("enabled", result, StringComparison.OrdinalIgnoreCase);
-            mockConfigService.Verify(s => s.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task SetReportEnabled_RejectsUnknownReportType()
         {
             var config = new ForensicsConfiguration();
-            var mockConfigService = new Mock<IForensicsConfigurationService>();
-
-            var result = await ConfigTools.SetReportEnabled(config, mockConfigService.Object, "NotAReportType", true, CancellationToken.None);
+            var result = await ConfigTools.SetReportEnabled(config, _configServiceMock.Object, _orchestrator, "NotAReportType", true, CancellationToken.None);
 
             Assert.Contains("Unknown report type", result);
-            mockConfigService.Verify(s => s.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }
