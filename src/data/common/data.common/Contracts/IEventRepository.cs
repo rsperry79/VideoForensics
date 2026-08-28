@@ -17,6 +17,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists events for a device within a date range.</summary>
         Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>Lists events for all devices in a location within a date range.</summary>
+        Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
         /// <summary>Lists events that are unanswered or flagged for a device.</summary>
         Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct);
 
