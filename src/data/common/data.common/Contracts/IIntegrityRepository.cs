@@ -29,6 +29,17 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Computes overall integrity score for a location (0-100%).</summary>
         Task<int> ComputeEventIntegrityScoreAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Detects missing events using baseline patterns (abnormal gaps).</summary>
+        Task<IReadOnlyList<AnomalousGap>> DetectMissingEventsByPatternAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+        /// <summary>Identifies recording failures (device offline, battery, connectivity).</summary>
+        Task<IReadOnlyList<RecordingFailure>> IdentifyRecordingFailuresAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+        /// <summary>Flags suspicious gaps during critical periods.</summary>
+        Task<IReadOnlyList<SuspiciousGap>> FlagSuspiciousGapsAsync(Guid locationId, CancellationToken ct);
     }
 
     /// <summary>Download audit record for chain of custody.</summary>
@@ -80,5 +91,44 @@ namespace VideoForensics.Data.Common.Contracts
         public string IndicatorType { get; set; } = string.Empty; // "HashMismatch", "TimestampAnomaly", "SourceMismatch"
         public string Description { get; set; } = string.Empty;
         public int TamperingScore { get; set; } // 1-100
+    }
+
+    /// <summary>Anomalous gap detected via pattern analysis.</summary>
+    public class AnomalousGap
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        public DateTime StartUtc { get; set; }
+        public DateTime EndUtc { get; set; }
+        public int DurationMinutes { get; set; }
+        public decimal BaselineEventRate { get; set; } // events/hour
+        public decimal ExpectedEvents { get; set; }
+        public int ActualEvents { get; set; }
+        public string Anomaly { get; set; } = "Missing"; // "Missing", "Excess"
+    }
+
+    /// <summary>Identified recording failure cause.</summary>
+    public class RecordingFailure
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        public DateTime FailureAtUtc { get; set; }
+        public DateTime? RecoveryAtUtc { get; set; }
+        public int DurationMinutes { get; set; }
+        public string FailureType { get; set; } = string.Empty; // "DeviceOffline", "LowBattery", "NoConnectivity", "Unknown"
+        public string Evidence { get; set; } = string.Empty;
+    }
+
+    /// <summary>Gap occurring during suspicious time (critical moments).</summary>
+    public class SuspiciousGap
+    {
+        public Guid LocationId { get; set; }
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        public DateTime GapStartUtc { get; set; }
+        public DateTime GapEndUtc { get; set; }
+        public int DurationMinutes { get; set; }
+        public string Suspicion { get; set; } = string.Empty; // "NightGap", "WeekendGap", "LongGap", "MultiDeviceGap"
+        public int SuspicionScore { get; set; } // 1-100
     }
 }
