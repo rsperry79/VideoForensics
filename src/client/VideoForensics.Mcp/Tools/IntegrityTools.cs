@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK.Attributes;
+using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Mcp.Tools
@@ -18,7 +18,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get quick integrity summary for compliance decisions. Check this first.</summary>
-        [McpServerTool("Get quick integrity health summary")]
+        [McpServerTool]
         public async Task<IntegritySummary> GetIntegritySummary(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get paginated tampering indicators ranked by suspicion score.</summary>
-        [McpServerTool("Get paginated tampering indicators")]
+        [McpServerTool]
         public async Task<PaginatedResult<TamperingIndicator>> GetTamperingIndicatorsPaginated(
             Guid locationId,
             int pageNumber = 1,
@@ -40,7 +40,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Stream download audit history with cursor pagination.</summary>
-        [McpServerTool("Get streaming download history")]
+        [McpServerTool]
         public async Task<CursorPaginatedResult<DownloadAuditRecord>> GetDownloadHistoryCursor(
             Guid deviceId,
             DateTime fromUtc,
@@ -54,7 +54,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Compute overall integrity score for location (0-100%).</summary>
-        [McpServerTool("Compute location integrity score")]
+        [McpServerTool]
         public async Task<int> ComputeEventIntegrityScore(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -64,7 +64,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Verify download completeness with missing event details.</summary>
-        [McpServerTool("Verify download completeness")]
+        [McpServerTool]
         public async Task<DownloadCompletenessReport> VerifyDownloadCompleteness(
             Guid locationId,
             DateTime fromUtc,
@@ -76,7 +76,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get all tampering indicators for location ranked by suspicion.</summary>
-        [McpServerTool("Get all tampering indicators")]
+        [McpServerTool]
         public async Task<IReadOnlyList<TamperingIndicator>> GetTamperingIndicators(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -86,7 +86,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Verify event hashes for tampering detection.</summary>
-        [McpServerTool("Verify event hashes for tampering")]
+        [McpServerTool]
         public async Task<IReadOnlyList<TamperingIndicator>> VerifyEventHashes(
             Guid deviceId,
             DateTime fromUtc,

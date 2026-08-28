@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK.Attributes;
+using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Mcp.Tools
@@ -18,7 +18,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get quick audit trail summary for compliance review. Use this first to assess chain of custody integrity.</summary>
-        [McpServerTool("Get quick audit trail summary")]
+        [McpServerTool]
         public async Task<AuditTrailSummary> GetAuditTrailSummary(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get evidence access history with full details (offset-based pagination). Use after summary indicates access concerns.</summary>
-        [McpServerTool("Get paginated access history")]
+        [McpServerTool]
         public async Task<PaginatedResult<AccessAuditLog>> GetAccessHistoryPaginated(
             Guid evidenceId,
             int pageNumber = 1,
@@ -41,7 +41,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Stream export history with cursor pagination (for large datasets). Use cursor from previous call to continue streaming.</summary>
-        [McpServerTool("Get streaming export history with cursor pagination")]
+        [McpServerTool]
         public async Task<CursorPaginatedResult<ExportAuditRecord>> GetExportHistoryCursor(
             Guid locationId,
             string? cursor = null,
@@ -54,7 +54,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Verify chain of custody - confirm all accesses are logged and evidence integrity is intact.</summary>
-        [McpServerTool("Verify chain of custody")]
+        [McpServerTool]
         public async Task<AccessAuditReport> VerifyChainOfCustody(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -64,7 +64,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Flag unauthorized access patterns (off-hours access, excessive access, anomalies).</summary>
-        [McpServerTool("Flag unauthorized access patterns")]
+        [McpServerTool]
         public async Task<IReadOnlyList<UnauthorizedAccessFlag>> FlagUnauthorizedAccess(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -74,7 +74,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get all evidence exports for a location with purpose and format details.</summary>
-        [McpServerTool("Get export history")]
+        [McpServerTool]
         public async Task<IReadOnlyList<ExportAuditRecord>> GetExportHistory(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -84,7 +84,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Verify export integrity - confirm exported events are unchanged.</summary>
-        [McpServerTool("Verify export integrity")]
+        [McpServerTool]
         public async Task<ExportIntegrityReport> VerifyExportIntegrity(
             Guid exportId,
             CancellationToken cancellationToken = default)

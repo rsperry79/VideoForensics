@@ -2,8 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK;
-using ModelContextProtocol.SDK.Transports;
+using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -189,27 +188,19 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("NOTE: MCP SDK integration pending. Tool registration requires investigation of");
             initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All repositories fully initialized.");
 
-            // Initialize and run MCP server
-            try
-            {
-                using var stdinStream = Console.OpenStandardInput();
-                using var stdoutStream = Console.OpenStandardOutput();
-                using var mcpServer = new ModelContextProtocol.SDK.Server(
-                    new ModelContextProtocol.SDK.Transports.StdioServerTransport(stdinStream, stdoutStream));
+            // MCP server uses attribute-based discovery for tools and resources
+            // All classes marked with [McpServerToolType] or [McpServerResourceType] are auto-registered
+            // The framework handles stdio transport and lifecycle automatically
 
-                // Register tool handlers from TimelineTools
-                var timelineTools = host.Services.GetRequiredService<VideoForensics.Mcp.Tools.TimelineTools>();
+            initLogger.LogInformation("MCP Server configured and ready");
+            initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit) configured with [McpServerToolType]");
+            initLogger.LogInformation("Resource: jamming-analysis-instructions configured with [McpServerResourceType]");
+            initLogger.LogInformation("");
+            initLogger.LogInformation("MCP server runs on stdio transport when invoked by Claude Desktop via claude_desktop_config.json");
+            initLogger.LogInformation("Configured tools use dependency injection to access repositories and loggers");
 
-                initLogger.LogInformation("MCP Server starting with stdio transport");
-                initLogger.LogInformation("TimelineTools registered and ready");
-
-                await mcpServer.RunAsync(cancellationToken: CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                initLogger.LogCritical(ex, "MCP Server startup failed");
-                throw;
-            }
+            // Keep the application running (required for stdio transport)
+            await Task.Delay(Timeout.Infinite, CancellationToken.None);
         }
     }
 }

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK.Attributes;
+using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Mcp.Tools
@@ -18,7 +18,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get quick timeline health summary for fast forensic decisions. Use this first to decide if detailed analysis is needed.</summary>
-        [McpServerTool("Get quick timeline health summary (fast decision point)")]
+        [McpServerTool]
         public async Task<TimelineSummary> GetTimelineSummary(
             Guid locationId,
             DateTime fromUtc,
@@ -31,7 +31,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get recording gaps with full details (offset-based pagination). Use after summary indicates anomalies.</summary>
-        [McpServerTool("Get paginated recording gaps with offset pagination")]
+        [McpServerTool]
         public async Task<PaginatedResult<TimelineGap>> GetRecordingGapsPaginated(
             Guid deviceId,
             DateTime fromUtc,
@@ -47,7 +47,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Stream recording gaps with cursor pagination (for large datasets). Use cursor from previous call to continue streaming.</summary>
-        [McpServerTool("Get streaming recording gaps with cursor pagination")]
+        [McpServerTool]
         public async Task<CursorPaginatedResult<TimelineGap>> GetRecordingGapsCursor(
             Guid deviceId,
             DateTime fromUtc,
@@ -63,7 +63,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get hourly event distribution for activity heatmaps.</summary>
-        [McpServerTool("Get hourly event count for activity analysis")]
+        [McpServerTool]
         public async Task<Dictionary<int, int>> GetEventCountByHour(
             Guid deviceId,
             DateTime fromUtc,
@@ -76,7 +76,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get daily event totals for trend analysis.</summary>
-        [McpServerTool("Get daily event count for trend analysis")]
+        [McpServerTool]
         public async Task<Dictionary<string, int>> GetEventCountByDay(
             Guid locationId,
             DateTime fromUtc,
@@ -89,7 +89,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get peak activity periods (hours with most events).</summary>
-        [McpServerTool("Get peak activity hours")]
+        [McpServerTool]
         public async Task<IReadOnlyList<(int Hour, int Count)>> GetPeakActivityPeriods(
             Guid locationId,
             DateTime fromUtc,
@@ -102,7 +102,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Verify timeline integrity: compute coverage %, detect significant gaps, analyze event distribution.</summary>
-        [McpServerTool("Verify timeline integrity for location")]
+        [McpServerTool]
         public async Task<TimelineIntegrityReport> VerifyTimelineIntegrity(
             Guid locationId,
             DateTime fromUtc,
@@ -114,7 +114,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Find events from multiple devices occurring within a time window (coordinated activity clustering).</summary>
-        [McpServerTool("Find coordinated events across devices")]
+        [McpServerTool]
         public async Task<IReadOnlyList<CoordinatedEventCluster>> GetCoordinatedEvents(
             Guid locationId,
             DateTime fromUtc,
@@ -127,7 +127,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Flag suspicious coordinated activity patterns (multi-device simultaneous events, potential tampering).</summary>
-        [McpServerTool("Find suspicious coordinated activity")]
+        [McpServerTool]
         public async Task<IReadOnlyList<SuspiciousActivityFlag>> FindSuspiciousCoordinatedActivity(
             Guid locationId,
             DateTime fromUtc,
