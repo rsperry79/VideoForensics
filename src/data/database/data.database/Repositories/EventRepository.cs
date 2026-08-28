@@ -79,6 +79,20 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Lists events for all devices in a location within a date range.</summary>
+        public async Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => x.Event)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Lists events that are unanswered or flagged for a device.</summary>
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
