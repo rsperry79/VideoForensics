@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Client.Core
@@ -318,9 +319,18 @@ namespace VideoForensics.Client.Core
                             effectiveStartDate, device.Name, startDate);
                     }
 
+                    // Build device-specific path with location and camera name structure
+                    var locationName = "Unknown";
+                    if (device.LocationId != Guid.Empty)
+                    {
+                        locationName = device.LocationId.ToString();
+                    }
+
+                    var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
+
                     var result = await _downloadService.DownloadVideosAsync(
                         device.Id,
-                        outputPath,
+                        deviceOutputPath,
                         effectiveStartDate,
                         endDate
                     );
@@ -496,9 +506,18 @@ namespace VideoForensics.Client.Core
                     _logger.LogInformation("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
+                    // Build device-specific path with location and camera name structure
+                    var locationName = "Unknown";
+                    if (device.LocationId != Guid.Empty)
+                    {
+                        locationName = device.LocationId.ToString();
+                    }
+
+                    var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
+
                     var result = await _downloadService.DownloadSnapshotsAsync(
                         device.Id,
-                        outputPath,
+                        deviceOutputPath,
                         startDate,
                         endDate
                     );
