@@ -777,22 +777,14 @@ namespace VideoForensics
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
             }
 
-            // Only ask about rescan window if there are prior downloads to rescan
-            var daysBack = _forensicsConfig.RescanWindowDays;
-            if (hasAnyPriorDownloads)
+            // Always ask for rescan window (days back to pull)
+            var daysBack = AskIntWithEditableDefault("[yellow]Days back to pull:[/]", _forensicsConfig.RescanWindowDays);
+            if (daysBack != _forensicsConfig.RescanWindowDays)
             {
-                daysBack = AskIntWithEditableDefault("[yellow]Force re-scan window (last N days):[/]", _forensicsConfig.RescanWindowDays);
-                if (daysBack != _forensicsConfig.RescanWindowDays)
-                {
-                    _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
-                    _forensicsConfig.RescanWindowDays = daysBack;
-                    await SaveConfiguration(cancellationToken);
-                    _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
-                }
-            }
-            else
-            {
-                _logger.LogInformation("No prior downloads found; using default RescanWindowDays={Days}", _forensicsConfig.RescanWindowDays);
+                _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
+                _forensicsConfig.RescanWindowDays = daysBack;
+                await SaveConfiguration(cancellationToken);
+                _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
             }
 
             var startDate = DateTime.Now.AddDays(-daysBack);
