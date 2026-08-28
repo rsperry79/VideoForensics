@@ -179,5 +179,118 @@ namespace VideoForensics.Data.Database.Repositories
 
             return score;
         }
+
+        public async Task<IReadOnlyList<AnomalousGap>> DetectMissingEventsByPatternAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            var events = await db.Events
+                .Where(e => e.DeviceId == deviceId &&
+                            e.OccurredAtUtc >= fromUtc &&
+                            e.OccurredAtUtc <= toUtc)
+                .OrderBy(e => e.OccurredAtUtc)
+                .ToListAsync(ct);
+
+            var baselineRate = events.Count / ((toUtc - fromUtc).TotalHours + 1);
+            var gaps = new List<AnomalousGap>();
+
+            for (int i = 0; i < events.Count - 1; i++)
+            {
+                var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                var expectedEvents = (decimal)(gapDuration / 60) * (decimal)baselineRate;
+
+                if (gapDuration > 30 && expectedEvents > 0)
+                {
+                    gaps.Add(new AnomalousGap
+                    {
+                        DeviceId = deviceId,
+                        DeviceName = device?.Name ?? "Unknown",
+                        StartUtc = events[i].OccurredAtUtc,
+                        EndUtc = events[i + 1].OccurredAtUtc,
+                        DurationMinutes = (int)gapDuration,
+                        BaselineEventRate = (decimal)baselineRate,
+                        ExpectedEvents = expectedEvents,
+                        ActualEvents = 0,
+                        Anomaly = "Missing"
+                    });
+                }
+            }
+
+            return gaps;
+        }
+
+        public async Task<IReadOnlyList<RecordingFailure>> IdentifyRecordingFailuresAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var failures = new List<RecordingFailure>();
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+
+            foreach (var device in devices)
+            {
+                var gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
+                foreach (var gap in gaps)
+                {
+                    var health = await db.DeviceHealthRecords
+                        .Where(h => h.DeviceId == device.Id &&
+                                    h.LastHeartbeatUtc >= gap.StartUtc &&
+                                    h.LastHeartbeatUtc <= gap.EndUtc)
+                        .FirstOrDefaultAsync(ct);
+
+                    var failureType = "Unknown";
+                    if (health?.IsOnline == false) failureType = "DeviceOffline";
+                    else if (health?.BatteryPercentage < 10m) failureType = "LowBattery";
+                    else if (health?.WifiSignalRssi < -80) failureType = "NoConnectivity";
+
+                    failures.Add(new RecordingFailure
+                    {
+                        DeviceId = device.Id,
+                        DeviceName = device.Name,
+                        FailureAtUtc = gap.StartUtc,
+                        RecoveryAtUtc = gap.EndUtc,
+                        DurationMinutes = gap.DurationMinutes,
+                        FailureType = failureType,
+                        Evidence = health != null ? $"Battery={health.BatteryPercentage}% RSSI={health.WifiSignalRssi}" : "Unknown"
+                    });
+                }
+            }
+
+            return failures;
+        }
+
+        public async Task<IReadOnlyList<SuspiciousGap>> FlagSuspiciousGapsAsync(Guid locationId, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var suspiciousGaps = new List<SuspiciousGap>();
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+
+            foreach (var device in devices)
+            {
+                var gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
+                foreach (var gap in gaps)
+                {
+                    var suspicion = gap.StartUtc.Hour switch
+                    {
+                        >= 22 or < 6 => "NightGap",
+                        _ => gap.StartUtc.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "WeekendGap" : "LongGap"
+                    };
+
+                    suspiciousGaps.Add(new SuspiciousGap
+                    {
+                        LocationId = locationId,
+                        DeviceId = device.Id,
+                        DeviceName = device.Name,
+                        GapStartUtc = gap.StartUtc,
+                        GapEndUtc = gap.EndUtc,
+                        DurationMinutes = gap.DurationMinutes,
+                        Suspicion = suspicion,
+                        SuspicionScore = gap.DurationMinutes > 60 ? 75 : 50
+                    });
+                }
+            }
+
+            return suspiciousGaps.OrderByDescending(g => g.SuspicionScore).ToList();
+        }
     }
 }
