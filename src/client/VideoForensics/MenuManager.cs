@@ -777,9 +777,15 @@ namespace VideoForensics
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
             }
 
-            // Use default rescan window (180 days)
-            var daysBack = _forensicsConfig.RescanWindowDays;
-            _logger.LogInformation("Using default RescanWindowDays={Days}", _forensicsConfig.RescanWindowDays);
+            // Always ask for rescan window (days back to pull)
+            var daysBack = AskIntWithEditableDefault("[yellow]Days back to pull:[/]", _forensicsConfig.RescanWindowDays);
+            if (daysBack != _forensicsConfig.RescanWindowDays)
+            {
+                _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
+                _forensicsConfig.RescanWindowDays = daysBack;
+                await SaveConfiguration(cancellationToken);
+                _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
+            }
 
             var startDate = DateTime.Now.AddDays(-daysBack);
             var endDate = DateTime.Now;
