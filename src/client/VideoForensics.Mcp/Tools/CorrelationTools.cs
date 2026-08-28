@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK.Attributes;
+using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Mcp.Tools
@@ -18,7 +18,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get quick correlation and sync health summary for fast forensic decisions. Use this first to decide if detailed analysis is needed.</summary>
-        [McpServerTool("Get quick correlation health summary")]
+        [McpServerTool]
         public async Task<CorrelationSummary> GetCorrelationSummary(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get health-related gaps with full details (offset-based pagination). Use after summary indicates anomalies.</summary>
-        [McpServerTool("Get paginated health-related gaps")]
+        [McpServerTool]
         public async Task<PaginatedResult<HealthRelatedGap>> GetHealthRelatedGapsPaginated(
             Guid locationId,
             int pageNumber = 1,
@@ -41,7 +41,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Stream event health correlations with cursor pagination (for large datasets). Use cursor from previous call to continue streaming.</summary>
-        [McpServerTool("Get streaming event health correlations with cursor pagination")]
+        [McpServerTool]
         public async Task<CursorPaginatedResult<EventWithHealthCorrelation>> GetEventHealthCorrelationCursor(
             Guid deviceId,
             DateTime fromUtc,
@@ -56,7 +56,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Analyze overall sync health for a location including device reliability.</summary>
-        [McpServerTool("Analyze sync health for location")]
+        [McpServerTool]
         public async Task<SyncHealthReport> AnalyzeSyncHealth(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -66,7 +66,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Identify gaps caused by device health issues (low battery, poor signal, offline).</summary>
-        [McpServerTool("Identify health-related recording gaps")]
+        [McpServerTool]
         public async Task<IReadOnlyList<HealthRelatedGap>> IdentifyHealthRelatedGaps(
             Guid locationId,
             CancellationToken cancellationToken = default)
@@ -76,7 +76,7 @@ namespace VideoForensics.Mcp.Tools
         }
 
         /// <summary>Get device reliability analysis (uptime vs event capture rate).</summary>
-        [McpServerTool("Analyze device reliability")]
+        [McpServerTool]
         public async Task<DeviceReliabilityAnalysis> AnalyzeDeviceReliability(
             Guid deviceId,
             CancellationToken cancellationToken = default)
