@@ -709,6 +709,7 @@ namespace VideoForensics.Providers.Ring.Services
                     MediaFormat: mediaFormat,
                     RecordingStatus: @event.Recording?.Status,
                     SnapshotUrl: @event.SnapshotUrl,
+                    LocationId: @event.Doorbot?.LocationId,
                     ComputerVision: cv == null ? null : new RingCvMetadata(
                         PersonDetected: cv.PersonDetected,
                         StreamBroken: cv.StreamBroken,
@@ -766,6 +767,7 @@ namespace VideoForensics.Providers.Ring.Services
             string MediaFormat,
             string? RecordingStatus,
             string? SnapshotUrl,
+            Guid? LocationId,
             RingCvMetadata? ComputerVision
         );
 
