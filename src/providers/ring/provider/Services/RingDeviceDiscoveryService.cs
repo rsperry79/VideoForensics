@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -7,10 +9,10 @@ namespace VideoForensics.Providers.Ring.Services
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
+        private readonly IDeviceCapabilitiesRepository? _capabilitiesRepository;
+        private readonly ILocationMetadataRepository? _metadataRepository;
+        private readonly ApiResponseNormalizer? _normalizer;
 
-        // Locations/devices rarely change within a single workflow run, but MenuManager and
-        // VideoDownloadServiceAdapter both discover them independently for the same operation.
-        // Cache briefly so that double-discovery collapses into one HTTP round trip instead of two.
         private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
         private readonly SemaphoreSlim _locationsCacheLock = new(1, 1);
         private IReadOnlyList<Location>? _cachedLocations;
@@ -19,10 +21,18 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly SemaphoreSlim _devicesCacheLock = new(1, 1);
         private readonly Dictionary<string, (IReadOnlyList<Device> Devices, DateTime FetchedAt)> _cachedDevicesByLocation = new();
 
-        public RingDeviceDiscoveryService(ILogger logger, ISessionProvider sessionProvider)
+        public RingDeviceDiscoveryService(
+            ILogger logger,
+            ISessionProvider sessionProvider,
+            IDeviceCapabilitiesRepository? capabilitiesRepository = null,
+            ILocationMetadataRepository? metadataRepository = null,
+            ApiResponseNormalizer? normalizer = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
+            _capabilitiesRepository = capabilitiesRepository;
+            _metadataRepository = metadataRepository;
+            _normalizer = normalizer;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -191,6 +201,9 @@ namespace VideoForensics.Providers.Ring.Services
                         device.Id, device.Name, device.Type, device.IsOnline);
                 }
 
+                // Persist device capabilities to database (non-critical, fire-and-forget)
+                _ = PersistDeviceCapabilitiesAsync(locationDevices, cancellationToken);
+
                 var readOnlyDevices = locationDevices.AsReadOnly();
                 _cachedDevicesByLocation[locationId] = (readOnlyDevices, DateTime.UtcNow);
                 return readOnlyDevices;
@@ -228,6 +241,40 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogError(ex, "Error fetching device {DeviceId}", deviceId);
                 return null;
+            }
+        }
+
+        private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
+        {
+            if (_capabilitiesRepository == null)
+                return;
+
+            try
+            {
+                foreach (var device in devices)
+                {
+                    // Skip if already persisted for this device
+                    var existing = await _capabilitiesRepository.GetByDeviceIdAsync(device.Id, ct);
+                    if (existing != null)
+                        continue;
+
+                    var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = device.Id,
+                        HasAudio = true,
+                        HasMotionDetection = true,
+                        HasCloudStorage = true
+                    };
+
+                    await _capabilitiesRepository.AddAsync(caps, ct);
+                }
+
+                _logger.LogDebug("Persisted capabilities for {DeviceCount} devices", devices.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical)");
             }
         }
     }
