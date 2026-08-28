@@ -13,5 +13,8 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? LastSuccessfulPullAtUtc { get; set; }
         public DateTime? LastPullAttemptAtUtc { get; set; }
         public string? TimeZoneId { get; set; }
+        public DateTime? LastSyncedUtc { get; set; }
+        public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
+        public string? ApiResponseHash { get; set; }
     }
 }
