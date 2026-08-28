@@ -36,9 +36,9 @@ namespace VideoForensics.Data.Database.Repositories
             return await Task.FromResult(new List<AccessAuditLog>());
         }
 
-        public async Task<ChainOfCustodyReport> VerifyChainOfCustodyAsync(Guid locationId, CancellationToken ct)
+        public async Task<AccessAuditReport> VerifyChainOfCustodyAsync(Guid locationId, CancellationToken ct)
         {
-            return await Task.FromResult(new ChainOfCustodyReport
+            return await Task.FromResult(new AccessAuditReport
             {
                 LocationId = locationId,
                 TotalEventsTracked = 0,
