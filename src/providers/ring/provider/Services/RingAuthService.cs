@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -8,13 +11,25 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly ICredentialStore _credentialStore;
+        private readonly IRingAccountRepository? _ringAccountRepository;
+        private readonly IProviderAccountRepository? _providerAccountRepository;
+        private readonly ApiResponseNormalizer? _normalizer;
         private bool _isAuthenticated;
 
-        public RingAuthService(ILogger logger, ISessionProvider sessionProvider, ICredentialStore credentialStore)
+        public RingAuthService(
+            ILogger logger,
+            ISessionProvider sessionProvider,
+            ICredentialStore credentialStore,
+            IRingAccountRepository? ringAccountRepository = null,
+            IProviderAccountRepository? providerAccountRepository = null,
+            ApiResponseNormalizer? normalizer = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+            _ringAccountRepository = ringAccountRepository;
+            _providerAccountRepository = providerAccountRepository;
+            _normalizer = normalizer;
             _isAuthenticated = false;
         }
 
@@ -55,6 +70,17 @@ namespace VideoForensics.Providers.Ring.Services
                         {
                             _logger.LogError(ex, "Failed to persist credentials");
                         }
+                    }
+
+                    // Persist Ring account data to database
+                    try
+                    {
+                        await PersistRingAccountAsync(username, session, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist Ring account data (non-fatal)");
+                        // Continue - account data persistence is optional
                     }
 
                     return new AuthResult(
@@ -164,6 +190,33 @@ namespace VideoForensics.Providers.Ring.Services
                 return "No session";
 
             return "Authenticated";
+        }
+
+        private async Task PersistRingAccountAsync(string username, Session session, CancellationToken ct)
+        {
+            if (_ringAccountRepository == null)
+                return;
+
+            try
+            {
+                // Persist Ring account record for data governance
+                // ProviderAccountId will be linked later when account is activated
+                var ringAccount = new RingAccount
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderAccountId = Guid.Empty,
+                    SubscriptionLevel = "unknown",
+                    AccountEmail = username,
+                    AuthenticatedAtUtc = DateTime.UtcNow
+                };
+
+                await _ringAccountRepository.AddAsync(ringAccount, ct);
+                _logger.LogInformation("Persisted Ring authentication for {Username}", username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Skipping account persistence (non-critical)");
+            }
         }
     }
 }
