@@ -165,8 +165,9 @@ namespace VideoForensics.Providers.Ring.Services
                         async (@event, itemToken) =>
                         {
                             var cameraName = @event.Doorbot?.Description ?? deviceId;
+                            var eventType = @event.Kind ?? "video";
                             var fileName = Path.Combine(outputPath,
-                                MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, "video", "mp4"));
+                                MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
                             var eventIdStr = @event.Id?.ToString() ?? "unknown";
 
                             // Use the device GUID resolved at batch start; all events are for this same device
