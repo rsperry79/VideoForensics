@@ -23,6 +23,8 @@ namespace VideoForensics.Client.Core
         private Guid? _cachedLocationId;
         private string? _cachedLocationName;
         private readonly Dictionary<string, Guid> _deviceIdCache = new();
+        // Device ID to location name mapping, set by the caller before downloading
+        private Dictionary<string, string>? _deviceToLocationMapping;
         private int _lastRemainingCount;
         private int _currentDeviceIndex;
         private int _currentDeviceTotal;
@@ -69,6 +71,13 @@ namespace VideoForensics.Client.Core
             _deviceService = deviceService;
             _dataClient = dataClient;
             _forensicsConfig = forensicsConfig;
+        }
+
+        /// <summary>Sets the device-to-location name mapping. Call this before DownloadVideosAsync to use real location names.</summary>
+        public void SetDeviceLocationMapping(Dictionary<string, string> deviceIdToLocationName)
+        {
+            _deviceToLocationMapping = deviceIdToLocationName;
+            _logger.LogInformation("Device location mapping set with {Count} entries", deviceIdToLocationName?.Count ?? 0);
         }
 
         /// <summary>
@@ -322,7 +331,16 @@ namespace VideoForensics.Client.Core
                     }
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = _cachedLocationName ?? "Unknown";
+                    var locationName = "Unknown";
+                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out var mappedLocation) == true)
+                    {
+                        locationName = mappedLocation;
+                    }
+                    else if (!string.IsNullOrEmpty(_cachedLocationName))
+                    {
+                        locationName = _cachedLocationName;
+                    }
+
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadVideosAsync(
@@ -504,7 +522,16 @@ namespace VideoForensics.Client.Core
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = _cachedLocationName ?? "Unknown";
+                    var locationName = "Unknown";
+                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out var mappedLocation) == true)
+                    {
+                        locationName = mappedLocation;
+                    }
+                    else if (!string.IsNullOrEmpty(_cachedLocationName))
+                    {
+                        locationName = _cachedLocationName;
+                    }
+
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadSnapshotsAsync(

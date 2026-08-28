@@ -877,6 +877,18 @@ namespace VideoForensics
             AnsiConsole.MarkupLine("[dim]Scanning for videos from {0} device(s)...[/]", devices.Count);
             AnsiConsole.MarkupLine("");
 
+            // Build device ID to location name mapping and pass it to the adapter
+            var deviceIdToLocationMapping = new Dictionary<string, string>();
+            foreach (var (deviceId, deviceName, locationName) in devices)
+            {
+                deviceIdToLocationMapping[deviceId] = locationName;
+            }
+
+            if (_downloadService is VideoDownloadServiceAdapter adapter)
+            {
+                adapter.SetDeviceLocationMapping(deviceIdToLocationMapping);
+            }
+
             while (true)
             {
                 var result = await RunDownloadWithProgressAsync(
@@ -1026,6 +1038,18 @@ namespace VideoForensics
 
             AnsiConsole.MarkupLine("[dim]Capturing latest snapshot from {0} device(s)...[/]", devices.Count);
             AnsiConsole.MarkupLine("");
+
+            // Build device ID to location name mapping and pass it to the adapter
+            var deviceIdToLocationMapping = new Dictionary<string, string>();
+            foreach (var (deviceId, deviceName, locationName) in devices)
+            {
+                deviceIdToLocationMapping[deviceId] = locationName;
+            }
+
+            if (_downloadService is VideoDownloadServiceAdapter adapter)
+            {
+                adapter.SetDeviceLocationMapping(deviceIdToLocationMapping);
+            }
 
             var result = await RunDownloadWithProgressAsync(
                 () => _downloadService.DownloadSnapshotsAsync(outputPath, startDate, endDate),
