@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.SDK;
+using ModelContextProtocol.SDK.Transports;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -135,6 +137,12 @@ namespace VideoForensics.Mcp
             builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
             builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
 
+            // MCP Tool classes (Phases 1-4)
+            builder.Services.AddScoped<VideoForensics.Mcp.Tools.TimelineTools>();
+            builder.Services.AddScoped<VideoForensics.Mcp.Tools.IntegrityTools>();
+            builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
+            builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
+
             using var host = builder.Build();
 
             // Initialize database
@@ -181,11 +189,27 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("NOTE: MCP SDK integration pending. Tool registration requires investigation of");
             initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All repositories fully initialized.");
 
-            // TODO: Uncomment when MCP SDK API is fully understood
-            // var server = new Server(new StdioServerTransport());
-            // await server.RunAsync();
+            // Initialize and run MCP server
+            try
+            {
+                using var stdinStream = Console.OpenStandardInput();
+                using var stdoutStream = Console.OpenStandardOutput();
+                using var mcpServer = new ModelContextProtocol.SDK.Server(
+                    new ModelContextProtocol.SDK.Transports.StdioServerTransport(stdinStream, stdoutStream));
 
-            await Task.Delay(Timeout.Infinite); // Keep server alive
+                // Register tool handlers from TimelineTools
+                var timelineTools = host.Services.GetRequiredService<VideoForensics.Mcp.Tools.TimelineTools>();
+
+                initLogger.LogInformation("MCP Server starting with stdio transport");
+                initLogger.LogInformation("TimelineTools registered and ready");
+
+                await mcpServer.RunAsync(cancellationToken: CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                initLogger.LogCritical(ex, "MCP Server startup failed");
+                throw;
+            }
         }
     }
 }
