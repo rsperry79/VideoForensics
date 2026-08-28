@@ -13,7 +13,7 @@ namespace VideoForensics.Data.Common.Contracts
         Task<IReadOnlyList<AccessAuditLog>> GetLocationAccessHistoryAsync(Guid locationId, CancellationToken ct);
 
         /// <summary>Verifies chain of custody (all accesses logged).</summary>
-        Task<ChainOfCustodyReport> VerifyChainOfCustodyAsync(Guid locationId, CancellationToken ct);
+        Task<AccessAuditReport> VerifyChainOfCustodyAsync(Guid locationId, CancellationToken ct);
 
         /// <summary>Flags unauthorized access patterns.</summary>
         Task<IReadOnlyList<UnauthorizedAccessFlag>> FlagUnauthorizedAccessAsync(Guid locationId, CancellationToken ct);
@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Common.Contracts
     }
 
     /// <summary>Chain of custody report.</summary>
-    public class ChainOfCustodyReport
+    public class AccessAuditReport
     {
         public Guid LocationId { get; set; }
         public int TotalEventsTracked { get; set; }

@@ -472,6 +472,35 @@ namespace VideoForensics.Data.Database.Repositories
             if (@event != null) _db.Events.Remove(@event);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
+                .Join(_db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId && x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => x.Event)
+                .ToList());
+
+        public Task<IReadOnlyList<Event>> ListByDeviceEventTypeAndDateRangeAsync(Guid deviceId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId && e.EventType == eventType && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
+                .ToList());
+
+        public Task<IReadOnlyList<Event>> ListByLocationEventTypeAndDateRangeAsync(Guid locationId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
+                .Join(_db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId && x.Event.EventType == eventType && x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => x.Event)
+                .ToList());
+
+        public Task<Dictionary<string, int>> GetEventTypeSummaryAsync(Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            var summary = _db.Events.AsNoTracking()
+                .Join(_db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId && x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                .GroupBy(x => x.Event.EventType)
+                .ToDictionary(g => g.Key, g => g.Count());
+            return Task.FromResult(summary);
+        }
     }
 
     internal class UnitOfWorkDeviceConfigRepository : IDeviceConfigRepository
