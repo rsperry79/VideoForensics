@@ -24,6 +24,17 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Overall sync health analysis for a location.</summary>
         Task<SyncHealthReport> AnalyzeSyncHealthAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Gets quick sync/health summary for fast decisions.</summary>
+        Task<CorrelationSummary> GetCorrelationSummaryAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Gets paginated health-related gaps.</summary>
+        Task<PaginatedResult<HealthRelatedGap>> GetHealthRelatedGapsPaginatedAsync(
+            Guid locationId, int pageNumber, int pageSize, CancellationToken ct);
+
+        /// <summary>Gets cursor-paginated event health correlations for streaming.</summary>
+        Task<CursorPaginatedResult<EventWithHealthCorrelation>> GetEventHealthCorrelationCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct);
     }
 
     /// <summary>Event with correlated device health data.</summary>

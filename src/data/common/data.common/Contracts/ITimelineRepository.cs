@@ -40,6 +40,18 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Flags suspicious coordinated activity across devices.</summary>
         Task<IReadOnlyList<SuspiciousActivityFlag>> FindSuspiciousCoordinatedActivityAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+        /// <summary>Gets quick summary of timeline health for fast decisions (before detail queries).</summary>
+        Task<TimelineSummary> GetTimelineSummaryAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+        /// <summary>Gets paginated recording gaps (offset-based for large result sets).</summary>
+        Task<PaginatedResult<TimelineGap>> GetRecordingGapsPaginatedAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, int pageNumber, int pageSize, CancellationToken ct);
+
+        /// <summary>Gets cursor-paginated gaps (for streaming/live scenarios).</summary>
+        Task<CursorPaginatedResult<TimelineGap>> GetRecordingGapsCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, string? cursor, int pageSize, CancellationToken ct);
     }
 
     /// <summary>Represents a gap in event recording.</summary>

@@ -241,5 +241,110 @@ namespace VideoForensics.Data.Database.Repositories
 
             return flags;
         }
+
+        public async Task<TimelineSummary> GetTimelineSummaryAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            var gaps = await GetLocationRecordingGapsAsync(locationId, fromUtc, toUtc, minGapMinutes: 5, ct);
+            var hourly = new Dictionary<int, int>();
+
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var allEvents = await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => x.Event)
+                .ToListAsync(ct);
+
+            hourly = allEvents
+                .GroupBy(e => e.OccurredAtUtc.Hour)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var peakHours = hourly
+                .OrderByDescending(h => h.Value)
+                .Take(5)
+                .Select(h => (h.Key, h.Value))
+                .ToList();
+
+            var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
+            var gappedDurationMinutes = (decimal)gaps.Sum(g => g.DurationMinutes);
+            var coverage = ((totalDurationMinutes - gappedDurationMinutes) / totalDurationMinutes) * 100m;
+
+            var suspiciousDevices = gaps
+                .GroupBy(g => g.DeviceName)
+                .Where(g => g.Sum(x => x.DurationMinutes) > 60)
+                .Select(g => g.Key)
+                .ToList();
+
+            var summary = new TimelineSummary
+            {
+                TotalCount = allEvents.Count,
+                Status = coverage < 50m ? "Critical" : coverage < 80m ? "Anomalies" : "Healthy",
+                ComplianceScore = (double)coverage,
+                GapCount = gaps.Count,
+                LargestGapMinutes = gaps.Count > 0 ? gaps.Max(g => g.DurationMinutes) : 0,
+                CoveragePercentage = coverage,
+                SuspiciousDevices = suspiciousDevices,
+                PeakHours = peakHours,
+                DetailQueryMethod = "FindSuspiciousCoordinatedActivityAsync"
+            };
+
+            summary.TopIssues["GapsDetected"] = gaps.Count;
+            if (suspiciousDevices.Count > 0)
+                summary.TopIssues["SuspiciousDevices"] = suspiciousDevices.Count;
+
+            return summary;
+        }
+
+        public async Task<PaginatedResult<TimelineGap>> GetRecordingGapsPaginatedAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, int pageNumber, int pageSize, CancellationToken ct)
+        {
+            var allGaps = await GetRecordingGapsAsync(deviceId, fromUtc, toUtc, minGapMinutes, ct);
+            var orderedGaps = allGaps.OrderBy(g => g.StartUtc).ToList();
+
+            var totalCount = orderedGaps.Count;
+            var paginatedGaps = orderedGaps
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PaginatedResult<TimelineGap>
+            {
+                Items = paginatedGaps,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<CursorPaginatedResult<TimelineGap>> GetRecordingGapsCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, string? cursor, int pageSize, CancellationToken ct)
+        {
+            var allGaps = await GetRecordingGapsAsync(deviceId, fromUtc, toUtc, minGapMinutes, ct);
+            var orderedGaps = allGaps.OrderBy(g => g.StartUtc).ToList();
+
+            int startIndex = 0;
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            {
+                startIndex = cursorIndex;
+            }
+
+            var items = orderedGaps
+                .Skip(startIndex)
+                .Take(pageSize)
+                .ToList();
+
+            var nextCursor = (startIndex + items.Count < orderedGaps.Count)
+                ? (startIndex + items.Count).ToString()
+                : null;
+
+            return new CursorPaginatedResult<TimelineGap>
+            {
+                Items = items,
+                NextCursor = nextCursor,
+                HasMore = nextCursor != null
+            };
+        }
     }
 }
