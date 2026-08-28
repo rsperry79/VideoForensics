@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Common.Contracts.DeviceDiscovery;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
