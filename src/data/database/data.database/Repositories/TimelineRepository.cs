@@ -134,8 +134,8 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(x => x.Event)
                 .ToListAsync(ct);
 
-            var totalDurationMinutes = (toUtc - fromUtc).TotalMinutes;
-            var gappedDurationMinutes = gaps.Sum(g => g.DurationMinutes);
+            var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
+            var gappedDurationMinutes = (decimal)gaps.Sum(g => g.DurationMinutes);
             var coverage = ((totalDurationMinutes - gappedDurationMinutes) / totalDurationMinutes) * 100m;
 
             var report = new TimelineIntegrityReport

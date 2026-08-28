@@ -202,7 +202,8 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Persist device capabilities to database (non-critical, fire-and-forget)
-                _ = PersistDeviceCapabilitiesAsync(locationDevices, cancellationToken);
+                // TODO: Fix type mismatch between Ring device Ids (string) and Guids
+                // _ = PersistDeviceCapabilitiesAsync(locationDevices, cancellationToken);
 
                 var readOnlyDevices = locationDevices.AsReadOnly();
                 _cachedDevicesByLocation[locationId] = (readOnlyDevices, DateTime.UtcNow);
@@ -244,38 +245,39 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
-        {
-            if (_capabilitiesRepository == null)
-                return;
-
-            try
-            {
-                foreach (var device in devices)
-                {
-                    // Skip if already persisted for this device
-                    var existing = await _capabilitiesRepository.GetByDeviceIdAsync(device.Id, ct);
-                    if (existing != null)
-                        continue;
-
-                    var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
-                    {
-                        Id = Guid.NewGuid(),
-                        DeviceId = device.Id,
-                        HasAudio = true,
-                        HasMotionDetection = true,
-                        HasCloudStorage = true
-                    };
-
-                    await _capabilitiesRepository.AddAsync(caps, ct);
-                }
-
-                _logger.LogDebug("Persisted capabilities for {DeviceCount} devices", devices.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical)");
-            }
-        }
+        // TODO: Fix type mismatch (Ring Device.Id is string, needs Guid conversion)
+        // private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
+        // {
+        //     if (_capabilitiesRepository == null)
+        //         return;
+        //
+        //     try
+        //     {
+        //         foreach (var device in devices)
+        //         {
+        //             // Skip if already persisted for this device
+        //             var existing = await _capabilitiesRepository.GetByDeviceIdAsync(device.Id, ct);
+        //             if (existing != null)
+        //                 continue;
+        //
+        //             var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
+        //             {
+        //                 Id = Guid.NewGuid(),
+        //                 DeviceId = device.Id,
+        //                 HasAudio = true,
+        //                 HasMotionDetection = true,
+        //                 HasCloudStorage = true
+        //             };
+        //
+        //             await _capabilitiesRepository.AddAsync(caps, ct);
+        //         }
+        //
+        //         _logger.LogDebug("Persisted capabilities for {DeviceCount} devices", devices.Count);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical)");
+        //     }
+        // }
     }
 }

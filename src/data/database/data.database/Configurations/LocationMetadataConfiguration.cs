@@ -29,9 +29,6 @@ namespace VideoForensics.Data.Database.Configurations
             builder.Property(lm => lm.TimeZoneId)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.SyncStatus)
-                .HasDefaultValue(0);
-
             builder.Property(lm => lm.ApiResponseHash)
                 .HasMaxLength(256);
 
