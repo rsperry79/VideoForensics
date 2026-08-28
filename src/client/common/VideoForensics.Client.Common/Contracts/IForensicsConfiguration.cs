@@ -46,10 +46,7 @@ namespace VideoForensics.Client.Common
         public bool EnablePiiRedaction { get; set; } = true;
         public string? ReportsDirectory { get; set; }
         public string ReportOutputFormat { get; set; } = "json";
-        public string? DownloadLocation { get; set; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Pictures",
-            "VideoForensics");
+        public string? DownloadLocation { get; set; }
         public RedactionLevel RedactionLevel { get; set; } = RedactionLevel.Medium;
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
         public int RetentionDaysDefault { get; set; } = 90;

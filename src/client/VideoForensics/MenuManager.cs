@@ -15,6 +15,7 @@ using VideoForensics.Data;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Client.Core.Utilities;
 
 namespace VideoForensics
 {
@@ -1071,8 +1072,33 @@ namespace VideoForensics
                 }
             }
 
-            // Ask for new location if none saved or saved one failed
-            AnsiConsole.MarkupLine("[yellow]No download location configured[/]");
+            // Use OneDrive-aware default location
+            var defaultPath = PathUtilities.GetDefaultDownloadLocation();
+            AnsiConsole.MarkupLine("[cyan]Suggested location:[/] {0}", defaultPath);
+
+            if (AnsiConsole.Confirm("Use this location?", true))
+            {
+                try
+                {
+                    if (!Directory.Exists(defaultPath))
+                    {
+                        _logger.LogInformation("Creating download directory: {DownloadPath}", defaultPath);
+                        Directory.CreateDirectory(defaultPath);
+                    }
+                    _forensicsConfig.DownloadLocation = defaultPath;
+                    _logger.LogInformation("Download location configured: {DownloadPath}", defaultPath);
+                    await SaveConfiguration(cancellationToken);
+                    AnsiConsole.MarkupLine("[green]✓ Location saved and configured[/]");
+                    return defaultPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create directory: {DownloadPath}", defaultPath);
+                    AnsiConsole.MarkupLine("[yellow]⚠ Could not use suggested location: {0}[/]", ex.Message);
+                }
+            }
+
+            // Ask for custom location if user declined default
             var newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for downloads:[/]");
 
             if (!string.IsNullOrEmpty(newPath))
