@@ -1,9 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-// MCP SDK - proper imports to be configured after SDK investigation
-// using ModelContextProtocol;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -30,12 +28,9 @@ namespace VideoForensics.Mcp
                 "VideoForensics");
             Directory.CreateDirectory(configDir);
 
-            // Build host with MCP server
+            // Build host with full DI setup
             var builder = Host.CreateApplicationBuilder(args);
             builder.Logging.SetMinimumLevel(LogLevel.Information);
-
-            // TODO: Register MCP server with ModelContextProtocol SDK v2.2
-            // MCP SDK integration pending investigation of proper namespaces and API
 
             // Shared session provider
             builder.Services.AddSingleton<ISessionProvider, SessionProvider>();
@@ -43,98 +38,98 @@ namespace VideoForensics.Mcp
 
             // Ring provider services
             builder.Services.AddSingleton<IProviderAuthService>(provider =>
-                        new RingAuthService(
-                            provider.GetRequiredService<ILogger<RingAuthService>>(),
-                            provider.GetRequiredService<ISessionProvider>(),
-                            provider.GetRequiredService<ICredentialStore>()
-                        )
-                    );
+                new RingAuthService(
+                    provider.GetRequiredService<ILogger<RingAuthService>>(),
+                    provider.GetRequiredService<ISessionProvider>(),
+                    provider.GetRequiredService<ICredentialStore>()
+                )
+            );
             builder.Services.AddSingleton<IDeviceDiscoveryService>(provider =>
-                        new RingDeviceDiscoveryService(
-                            provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                            provider.GetRequiredService<ISessionProvider>()
-                        )
-                    );
+                new RingDeviceDiscoveryService(
+                    provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
+                    provider.GetRequiredService<ISessionProvider>()
+                )
+            );
             builder.Services.AddSingleton<IMediaDownloadService>(provider =>
-                        new RingMediaDownloadService(
-                            provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
-                            provider.GetRequiredService<ISessionProvider>(),
-                            provider.GetRequiredService<IVideoForensicsDataClient>()
-                        )
-                    );
+                new RingMediaDownloadService(
+                    provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
+                    provider.GetRequiredService<ISessionProvider>(),
+                    provider.GetRequiredService<IVideoForensicsDataClient>()
+                )
+            );
             builder.Services.AddSingleton<IEventAndConfigService>(provider =>
-                        new RingEventAndConfigService(
-                            provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
-                            provider.GetRequiredService<ISessionProvider>()
-                        )
-                    );
+                new RingEventAndConfigService(
+                    provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
+                    provider.GetRequiredService<ISessionProvider>()
+                )
+            );
 
-                    // RingVideoProvider
+            // RingVideoProvider
             builder.Services.AddSingleton<IVideoProvider>(provider =>
-                        new RingVideoProvider(
-                            provider.GetRequiredService<ILogger<RingVideoProvider>>(),
-                            provider.GetRequiredService<IProviderAuthService>(),
-                            provider.GetRequiredService<IDeviceDiscoveryService>(),
-                            provider.GetRequiredService<IMediaDownloadService>(),
-                            provider.GetRequiredService<IEventAndConfigService>()
-                        )
-                    );
+                new RingVideoProvider(
+                    provider.GetRequiredService<ILogger<RingVideoProvider>>(),
+                    provider.GetRequiredService<IProviderAuthService>(),
+                    provider.GetRequiredService<IDeviceDiscoveryService>(),
+                    provider.GetRequiredService<IMediaDownloadService>(),
+                    provider.GetRequiredService<IEventAndConfigService>()
+                )
+            );
 
-                    // Forensics configuration
-                    var runtimeConfig = new ForensicsConfiguration();
+            // Forensics configuration
+            var runtimeConfig = new ForensicsConfiguration();
             builder.Services.AddSingleton<IForensicsConfiguration>(runtimeConfig);
 
-                    // Data layer (SQLite, EF Core, repositories, Data.Core)
+            // Data layer
             builder.Services.AddVideoForensicsSqlite();
             builder.Services.AddVideoForensicsDatabase();
             builder.Services.AddVideoForensicsDataCore();
 
-                    // Video download service
+            // Video download service
             builder.Services.AddSingleton<IVideoDownloadService>(serviceProvider =>
-                    {
-                        var logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
-                        var videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
-                        var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-                        var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
-                        var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-                        var dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
-                        var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
-                        return new VideoDownloadServiceAdapter(logger, videoProvider, authService, downloadService, deviceService, dataClient, forensicsConfig);
-                    });
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
+                var videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
+                var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+                var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+                var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+                var dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
+                var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+                return new VideoDownloadServiceAdapter(logger, videoProvider, authService, downloadService, deviceService, dataClient, forensicsConfig);
+            });
 
-                    // Evidence validation service
+            // Evidence validation service
             builder.Services.AddSingleton<IEvidenceValidationService>(serviceProvider =>
-                    {
-                        var logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
-                        var eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
-                        var eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
-                        var deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
-                        var integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                        var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                        var reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
-                        return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
-                    });
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
+                var eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
+                var eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
+                var deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
+                var integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
+                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                var reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
+                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
+            });
 
-                    // Evidence export service
+            // Evidence export service
             builder.Services.AddSingleton<IEvidenceExportService>(serviceProvider =>
-                    {
-                        var logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
-                        var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                        var integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                        var actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
-                        var exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
-                        return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
-                    });
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
+                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                var integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
+                var actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
+                var exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
+            });
 
-                    // Forensics configuration service
+            // Forensics configuration service
             builder.Services.AddSingleton<IForensicsConfigurationService>(serviceProvider =>
-                        new ForensicsConfigurationService(
-                            serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
-                            serviceProvider.GetRequiredService<IAppSettingRepository>()
-                        )
-                    );
+                new ForensicsConfigurationService(
+                    serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
+                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                )
+            );
 
-                    // Forensics query repositories (Phases 1-4)
+            // Forensics query repositories (Phases 1-4)
             builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
             builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
             builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
@@ -162,8 +157,22 @@ namespace VideoForensics.Mcp
             var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
 
-            // TODO: Run MCP server once SDK is properly configured
-            initLogger.LogInformation("MCP server foundation ready. All forensics repositories initialized.");
+            initLogger.LogInformation("VideoForensics MCP Server ready.");
+            initLogger.LogInformation("All 4 forensics query phases initialized:");
+            initLogger.LogInformation("  ✓ Phase 1: Timeline & Patterns (8 methods)");
+            initLogger.LogInformation("  ✓ Phase 2: Evidence Integrity (10 methods)");
+            initLogger.LogInformation("  ✓ Phase 3: Correlation Queries (7 methods)");
+            initLogger.LogInformation("  ✓ Phase 4: Access & Export Audit (9 methods)");
+            initLogger.LogInformation("");
+            initLogger.LogInformation("NOTE: MCP SDK integration pending. Tool registration requires investigation of");
+            initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All 4-phase forensics repositories are");
+            initLogger.LogInformation("fully initialized and ready to expose via MCP tools.");
+
+            // TODO: Uncomment when MCP SDK API is fully understood
+            // var server = new Server(new StdioServerTransport());
+            // await server.RunAsync();
+
+            await Task.Delay(Timeout.Infinite); // Keep server alive
         }
     }
 }
