@@ -738,28 +738,6 @@ namespace VideoForensics
                 return;
             }
 
-            var daysBack = AskIntWithEditableDefault("[yellow]Force re-scan window (last N days):[/]", _forensicsConfig.RescanWindowDays);
-            if (daysBack != _forensicsConfig.RescanWindowDays)
-            {
-                _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
-                _forensicsConfig.RescanWindowDays = daysBack;
-                await SaveConfiguration(cancellationToken);
-                _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
-            }
-
-            var startDate = DateTime.Now.AddDays(-daysBack);
-            var endDate = DateTime.Now;
-
-            // Default: only fetch what's new since each device's last successful pull (the
-            // watermark), so a normal run doesn't re-scan the whole N-day window every time. The
-            // N-day prompt above becomes the fallback/cap for devices with no prior successful pull,
-            // and the ceiling used when the operator explicitly forces a full re-scan below.
-            var force = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("[yellow]Force re-scan the full window above, or only fetch what's new since the last successful pull?[/]")
-                    .HighlightStyle("green")
-                    .AddChoices("Only fetch new items (recommended)", "Force full re-scan")) == "Force full re-scan";
-
             // Discover devices
             AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
             var locations = await _deviceService.GetLocationsAsync();
@@ -790,6 +768,45 @@ namespace VideoForensics
                 AnsiConsole.MarkupLine("[yellow]No devices found on this account[/]");
                 return;
             }
+
+            // Check if any device has prior download history by querying the device repository
+            var hasAnyPriorDownloads = false;
+            var allDevices = await _deviceRepository.ListAsync(cancellationToken);
+            if (allDevices != null)
+            {
+                hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
+            }
+
+            // Only ask about rescan window if there are prior downloads to rescan
+            var daysBack = _forensicsConfig.RescanWindowDays;
+            if (hasAnyPriorDownloads)
+            {
+                daysBack = AskIntWithEditableDefault("[yellow]Force re-scan window (last N days):[/]", _forensicsConfig.RescanWindowDays);
+                if (daysBack != _forensicsConfig.RescanWindowDays)
+                {
+                    _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
+                    _forensicsConfig.RescanWindowDays = daysBack;
+                    await SaveConfiguration(cancellationToken);
+                    _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("No prior downloads found; using default RescanWindowDays={Days}", _forensicsConfig.RescanWindowDays);
+            }
+
+            var startDate = DateTime.Now.AddDays(-daysBack);
+            var endDate = DateTime.Now;
+
+            // Default: only fetch what's new since each device's last successful pull (the
+            // watermark), so a normal run doesn't re-scan the whole N-day window every time. The
+            // N-day prompt above becomes the fallback/cap for devices with no prior successful pull,
+            // and the ceiling used when the operator explicitly forces a full re-scan below.
+            var force = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[yellow]Force re-scan the full window above, or only fetch what's new since the last successful pull?[/]")
+                    .HighlightStyle("green")
+                    .AddChoices("Only fetch new items (recommended)", "Force full re-scan")) == "Force full re-scan";
 
             // Display devices, with an Items column that fills in live as the pre-scan (matched-event
             // count per device) runs — before any actual downloading starts.

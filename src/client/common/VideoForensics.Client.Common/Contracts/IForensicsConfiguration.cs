@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Common
         public string? DownloadLocation { get; set; }
         public RedactionLevel RedactionLevel { get; set; } = RedactionLevel.Medium;
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
-        public int RetentionDaysDefault { get; set; } = 90;
+        public int RetentionDaysDefault { get; set; } = 180;
         public string LogLevel { get; set; } = "Information";
         public int MaxConcurrentDownloads { get; set; } = 10;
         public int RescanWindowDays { get; set; } = 7;
