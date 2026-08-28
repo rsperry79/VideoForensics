@@ -52,7 +52,7 @@ namespace VideoForensics.Client.Common
         public int RetentionDaysDefault { get; set; } = 180;
         public string LogLevel { get; set; } = "Information";
         public int MaxConcurrentDownloads { get; set; } = 10;
-        public int RescanWindowDays { get; set; } = 7;
+        public int RescanWindowDays { get; set; } = 180;
         public Guid? ActiveProviderAccountId { get; set; }
     }
 }
