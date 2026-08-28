@@ -11,7 +11,19 @@ namespace VideoForensics.Client.Core.Utilities
             // Try to detect OneDrive path first (Windows)
             var oneDrivePath = GetOneDrivePath();
             if (!string.IsNullOrEmpty(oneDrivePath))
+            {
+                // Prefer Videos folder if it exists in OneDrive, otherwise use Pictures, otherwise use root
+                var videosPath = Path.Combine(oneDrivePath, "Videos");
+                if (Directory.Exists(videosPath))
+                    return Path.Combine(videosPath, "VideoForensics");
+
+                var picturesPath = Path.Combine(oneDrivePath, "Pictures");
+                if (Directory.Exists(picturesPath))
+                    return Path.Combine(picturesPath, "VideoForensics");
+
+                // Fallback to OneDrive root
                 return Path.Combine(oneDrivePath, "VideoForensics");
+            }
 
             // Fallback to UserProfile/Pictures
             return Path.Combine(
@@ -23,28 +35,51 @@ namespace VideoForensics.Client.Core.Utilities
         /// <summary>Gets the OneDrive path if it exists. Returns null if OneDrive is not configured.</summary>
         public static string? GetOneDrivePath()
         {
-            // Check environment variable (OneDrive sets this)
+            // Check environment variable (OneDrive sets this when OneDrive is running)
             var oneDriveEnv = Environment.GetEnvironmentVariable("OneDrive");
             if (!string.IsNullOrEmpty(oneDriveEnv) && Directory.Exists(oneDriveEnv))
                 return oneDriveEnv;
 
-            // Check registry on Windows for OneDrive path
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                try
-                {
-                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts\Business1");
-                    if (key?.GetValue("UserFolder") is string businessOneDrive && Directory.Exists(businessOneDrive))
-                        return businessOneDrive;
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return null;
 
-                    using var personalKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts\Personal");
-                    if (personalKey?.GetValue("UserFolder") is string personalOneDrive && Directory.Exists(personalOneDrive))
-                        return personalOneDrive;
-                }
-                catch
+            try
+            {
+                // Check User Shell Folders registry (Windows Explorer known folders mapped to OneDrive)
+                using var shellFoldersKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders");
+                if (shellFoldersKey != null)
                 {
-                    // Registry lookup failed, fall back to default
+                    // Try OneDrive first, then OneDriveCommercial
+                    foreach (var valueName in new[] { "OneDrive", "OneDriveCommercial", "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" })
+                    {
+                        if (shellFoldersKey.GetValue(valueName) is string folderPath && Directory.Exists(folderPath))
+                            return folderPath;
+                    }
                 }
+
+                // Check OneDrive Accounts registry for configured OneDrive paths
+                using var accountsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts");
+                if (accountsKey != null)
+                {
+                    foreach (var accountName in accountsKey.GetSubKeyNames())
+                    {
+                        using var accountKey = accountsKey.OpenSubKey(accountName);
+                        if (accountKey?.GetValue("UserFolder") is string userFolder && Directory.Exists(userFolder))
+                            return userFolder;
+                    }
+                }
+
+                // Also check Shell Folders (non-user-specific)
+                using var shellKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders");
+                if (shellKey != null)
+                {
+                    if (shellKey.GetValue("OneDrive") is string oneDriveShell && Directory.Exists(oneDriveShell))
+                        return oneDriveShell;
+                }
+            }
+            catch
+            {
+                // Registry lookup failed, fall back to default
             }
 
             return null;
