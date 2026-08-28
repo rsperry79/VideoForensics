@@ -36,6 +36,7 @@ namespace VideoForensics
         private readonly IEvidenceValidationService _evidenceValidationService;
         private readonly IEvidenceExportService _evidenceExportService;
         private readonly IAppSettingRepository _appSettingRepository;
+        private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ConfigToolsOrchestrator _configToolsOrchestrator;
         private readonly JammingToolsOrchestrator _jammingToolsOrchestrator;
 
@@ -55,6 +56,7 @@ namespace VideoForensics
             IEvidenceValidationService evidenceValidationService,
             IEvidenceExportService evidenceExportService,
             IAppSettingRepository appSettingRepository,
+            IProviderAccountRepository providerAccountRepository,
             ConfigToolsOrchestrator configToolsOrchestrator,
             JammingToolsOrchestrator jammingToolsOrchestrator)
         {
@@ -73,6 +75,7 @@ namespace VideoForensics
             _evidenceValidationService = evidenceValidationService;
             _evidenceExportService = evidenceExportService;
             _appSettingRepository = appSettingRepository;
+            _providerAccountRepository = providerAccountRepository;
             _configToolsOrchestrator = configToolsOrchestrator;
             _jammingToolsOrchestrator = jammingToolsOrchestrator;
         }
@@ -1741,37 +1744,118 @@ namespace VideoForensics
                 Console.WriteLine("MANAGE ACCOUNTS");
                 Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-                // TODO (Phase 2): Implement GetProviderAccountsAsync in IVideoForensicsDataClient
-                // var accounts = await _videoForensicsDataClient.GetProviderAccountsAsync(ct);
+                var accounts = await _providerAccountRepository.ListAsync(ct);
+                var activeAccountId = _forensicsConfig.ActiveProviderAccountId;
 
-                Console.WriteLine("\nActive Accounts:");
-                Console.WriteLine("[Phase 2 implementation pending: Add IVideoForensicsDataClient.GetProviderAccountsAsync]");
+                if (accounts.Count == 0)
+                {
+                    Console.WriteLine("\nNo provider accounts configured.");
+                }
+                else
+                {
+                    Console.WriteLine("\nConfigured Accounts:");
+                    for (int i = 0; i < accounts.Count; i++)
+                    {
+                        var account = accounts[i];
+                        var isActive = account.Id == activeAccountId ? " [ACTIVE]" : "";
+                        var lastAuth = account.LastSuccessfulAuthUtc.HasValue
+                            ? account.LastSuccessfulAuthUtc.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                            : "Never";
+                        Console.WriteLine($"  {i + 1}. {account.ProviderName} - Linked: {account.LinkedUtc:yyyy-MM-dd HH:mm:ss}, Last Auth: {lastAuth}{isActive}");
+                    }
+                }
 
                 Console.WriteLine("\nOptions:");
-                Console.WriteLine("1. Add Account");
-                Console.WriteLine("2. Remove Account");
-                Console.WriteLine("3. Back to Main Menu");
+                Console.WriteLine("1. Select Active Account");
+                Console.WriteLine("2. Add Account");
+                Console.WriteLine("3. Remove Account");
+                Console.WriteLine("4. Back to Main Menu");
 
                 var choice = Console.ReadLine();
 
                 switch (choice)
                 {
                     case "1":
+                    case "select":
+                        if (accounts.Count > 0)
+                            await SelectActiveAccountAsync(accounts, ct);
+                        else
+                            Console.WriteLine("No accounts available to select.");
+                        Console.ReadKey();
+                        break;
+                    case "2":
                     case "add":
                         await AddNewAccountAsync(ct);
                         break;
-                    case "2":
+                    case "3":
                     case "remove":
-                        Console.WriteLine("No accounts available.");
+                        if (accounts.Count > 0)
+                            await RemoveAccountAsync(accounts, ct);
+                        else
+                            Console.WriteLine("No accounts available to remove.");
                         Console.ReadKey();
                         break;
-                    case "3":
+                    case "4":
                     case "back":
                         return;
                     default:
                         Console.WriteLine("Invalid selection.");
                         Console.ReadKey();
                         break;
+                }
+            }
+        }
+
+        private async Task SelectActiveAccountAsync(IReadOnlyList<ProviderAccount> accounts, CancellationToken ct)
+        {
+            Console.Clear();
+            Console.WriteLine("Select Active Account");
+            Console.WriteLine("───────────────────────────────────────────────────────────");
+
+            for (int i = 0; i < accounts.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {accounts[i].ProviderName}");
+            }
+
+            Console.Write("Enter account number (or 0 to cancel): ");
+            if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
+            {
+                var selected = accounts[selection - 1];
+                _forensicsConfig.ActiveProviderAccountId = selected.Id;
+                await SaveConfiguration(ct);
+                AnsiConsole.MarkupLine($"[green]✓ Active account set to {selected.ProviderName}[/]");
+                _logger.LogInformation("Active account changed to {AccountId} ({ProviderName})", selected.Id, selected.ProviderName);
+            }
+        }
+
+        private async Task RemoveAccountAsync(IReadOnlyList<ProviderAccount> accounts, CancellationToken ct)
+        {
+            Console.Clear();
+            Console.WriteLine("Remove Account");
+            Console.WriteLine("───────────────────────────────────────────────────────────");
+
+            for (int i = 0; i < accounts.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {accounts[i].ProviderName}");
+            }
+
+            Console.Write("Enter account number to remove (or 0 to cancel): ");
+            if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
+            {
+                var selected = accounts[selection - 1];
+                if (AnsiConsole.Confirm($"Remove {selected.ProviderName} account?", false))
+                {
+                    await _providerAccountRepository.DeleteAsync(selected.Id, ct);
+
+                    // If this was the active account, clear it
+                    if (_forensicsConfig.ActiveProviderAccountId == selected.Id)
+                    {
+                        _forensicsConfig.ActiveProviderAccountId = null;
+                        await SaveConfiguration(ct);
+                    }
+
+                    AnsiConsole.MarkupLine($"[green]✓ Account removed[/]");
+                    _logger.LogInformation("Account removed: {AccountId} ({ProviderName})", selected.Id, selected.ProviderName);
                 }
             }
         }
