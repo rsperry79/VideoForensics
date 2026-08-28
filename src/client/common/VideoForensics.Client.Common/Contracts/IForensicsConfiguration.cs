@@ -17,6 +17,7 @@ namespace VideoForensics.Client.Common
         string LogLevel { get; set; }
         int MaxConcurrentDownloads { get; set; }
         int RescanWindowDays { get; set; }
+        Guid? ActiveProviderAccountId { get; set; }
     }
 
     public enum RedactionLevel
@@ -55,5 +56,6 @@ namespace VideoForensics.Client.Common
         public string LogLevel { get; set; } = "Information";
         public int MaxConcurrentDownloads { get; set; } = 10;
         public int RescanWindowDays { get; set; } = 7;
+        public Guid? ActiveProviderAccountId { get; set; }
     }
 }

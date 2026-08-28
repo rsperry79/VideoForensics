@@ -35,6 +35,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.LogLevel = loadedConfig.LogLevel;
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.RescanWindowDays = loadedConfig.RescanWindowDays;
+                runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }

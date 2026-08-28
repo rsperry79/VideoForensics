@@ -55,6 +55,7 @@ namespace VideoForensics.Client.Core
                 config.LogLevel = await GetStringSetting("LogLevel", config.LogLevel, cancellationToken);
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
                 config.RescanWindowDays = await GetIntSetting("RescanWindowDays", config.RescanWindowDays, cancellationToken);
+                config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -84,6 +85,7 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("LogLevel", config.LogLevel, cancellationToken);
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RescanWindowDays", config.RescanWindowDays.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }
@@ -117,6 +119,12 @@ namespace VideoForensics.Client.Core
         {
             var value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : (T)Enum.Parse(typeof(T), value);
+        }
+
+        private async Task<Guid?> GetGuidSetting(string key, Guid? defaultValue, CancellationToken ct)
+        {
+            var value = await _settingRepository!.GetAsync(key, ct);
+            return string.IsNullOrEmpty(value) ? defaultValue : Guid.Parse(value);
         }
     }
 }
