@@ -72,6 +72,18 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the jamming stats summaries.</summary>
         public DbSet<JammingStatsSummary> JammingStatsSummaries { get; set; }
 
+        /// <summary>Gets or sets the Ring account records.</summary>
+        public DbSet<RingAccount> RingAccounts { get; set; }
+
+        /// <summary>Gets or sets the device capabilities.</summary>
+        public DbSet<DeviceCapabilities> DeviceCapabilities { get; set; }
+
+        /// <summary>Gets or sets the device health records.</summary>
+        public DbSet<DeviceHealth> DeviceHealthRecords { get; set; }
+
+        /// <summary>Gets or sets the location metadata.</summary>
+        public DbSet<LocationMetadata> LocationMetadata { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
