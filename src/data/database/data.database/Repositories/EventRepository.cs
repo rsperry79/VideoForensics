@@ -93,6 +93,48 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Lists events by type for a device within a date range.</summary>
+        public async Task<IReadOnlyList<Event>> ListByDeviceEventTypeAndDateRangeAsync(
+            Guid deviceId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events
+                .Where(e => e.DeviceId == deviceId &&
+                            e.EventType == eventType &&
+                            e.OccurredAtUtc >= fromUtc &&
+                            e.OccurredAtUtc <= toUtc)
+                .ToListAsync(ct);
+        }
+
+        /// <summary>Lists events by type for all devices in a location within a date range.</summary>
+        public async Task<IReadOnlyList<Event>> ListByLocationEventTypeAndDateRangeAsync(
+            Guid locationId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.EventType == eventType &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => x.Event)
+                .ToListAsync(ct);
+        }
+
+        /// <summary>Gets event type summary (count by type) for a location within a date range.</summary>
+        public async Task<Dictionary<string, int>> GetEventTypeSummaryAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .GroupBy(x => x.Event.EventType)
+                .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+        }
+
         /// <summary>Lists events that are unanswered or flagged for a device.</summary>
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
