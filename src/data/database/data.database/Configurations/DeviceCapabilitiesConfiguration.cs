@@ -23,9 +23,6 @@ namespace VideoForensics.Data.Database.Configurations
             builder.Property(dc => dc.HardwareModel)
                 .HasMaxLength(256);
 
-            builder.Property(dc => dc.SyncStatus)
-                .HasDefaultValue(0);
-
             builder.Property(dc => dc.ApiResponseHash)
                 .HasMaxLength(256);
 

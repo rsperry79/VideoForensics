@@ -2,8 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.SDK;
-using ModelContextProtocol.SDK.Stdio;
+// using ModelContextProtocol.SDK;
+// using ModelContextProtocol.SDK.Stdio;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -31,45 +31,44 @@ namespace VideoForensics.Mcp
             Directory.CreateDirectory(configDir);
 
             // Build host with MCP server
-            using var host = Host.CreateApplicationBuilder(args)
-                .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Information))
-                .ConfigureServices((context, services) =>
-                {
-                    // Register MCP server with stdio transport
-                    services.AddMcpServer(mcpBuilder =>
-                    {
-                        mcpBuilder
-                            .WithStdioServerTransport()
-                            .WithToolsFromAssembly()
-                            .WithResourcesFromAssembly();
-                    });
+            var builder = Host.CreateApplicationBuilder(args);
+            builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-                    // Shared session provider
-                    services.AddSingleton<ISessionProvider, SessionProvider>();
-                    services.AddSingleton<ICredentialStore>(new CredentialStore());
+            // TODO: Register MCP server with stdio transport once SDK is properly imported
+            // builder.Services.AddMcpServer(mcpBuilder =>
+            // {
+            //     mcpBuilder
+            //         .WithStdioServerTransport()
+            //         .WithToolsFromAssembly()
+            //         .WithResourcesFromAssembly();
+            // });
 
-                    // Ring provider services
-                    services.AddSingleton<IProviderAuthService>(provider =>
+            // Shared session provider
+            builder.Services.AddSingleton<ISessionProvider, SessionProvider>();
+            builder.Services.AddSingleton<ICredentialStore>(new CredentialStore());
+
+            // Ring provider services
+            builder.Services.AddSingleton<IProviderAuthService>(provider =>
                         new RingAuthService(
                             provider.GetRequiredService<ILogger<RingAuthService>>(),
                             provider.GetRequiredService<ISessionProvider>(),
                             provider.GetRequiredService<ICredentialStore>()
                         )
                     );
-                    services.AddSingleton<IDeviceDiscoveryService>(provider =>
+            builder.Services.AddSingleton<IDeviceDiscoveryService>(provider =>
                         new RingDeviceDiscoveryService(
                             provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                             provider.GetRequiredService<ISessionProvider>()
                         )
                     );
-                    services.AddSingleton<IMediaDownloadService>(provider =>
+            builder.Services.AddSingleton<IMediaDownloadService>(provider =>
                         new RingMediaDownloadService(
                             provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                             provider.GetRequiredService<ISessionProvider>(),
                             provider.GetRequiredService<IVideoForensicsDataClient>()
                         )
                     );
-                    services.AddSingleton<IEventAndConfigService>(provider =>
+            builder.Services.AddSingleton<IEventAndConfigService>(provider =>
                         new RingEventAndConfigService(
                             provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
                             provider.GetRequiredService<ISessionProvider>()
@@ -77,7 +76,7 @@ namespace VideoForensics.Mcp
                     );
 
                     // RingVideoProvider
-                    services.AddSingleton<IVideoProvider>(provider =>
+            builder.Services.AddSingleton<IVideoProvider>(provider =>
                         new RingVideoProvider(
                             provider.GetRequiredService<ILogger<RingVideoProvider>>(),
                             provider.GetRequiredService<IProviderAuthService>(),
@@ -89,15 +88,15 @@ namespace VideoForensics.Mcp
 
                     // Forensics configuration
                     var runtimeConfig = new ForensicsConfiguration();
-                    services.AddSingleton<IForensicsConfiguration>(runtimeConfig);
+            builder.Services.AddSingleton<IForensicsConfiguration>(runtimeConfig);
 
                     // Data layer (SQLite, EF Core, repositories, Data.Core)
-                    services.AddVideoForensicsSqlite();
-                    services.AddVideoForensicsDatabase();
-                    services.AddVideoForensicsDataCore();
+            builder.Services.AddVideoForensicsSqlite();
+            builder.Services.AddVideoForensicsDatabase();
+            builder.Services.AddVideoForensicsDataCore();
 
                     // Video download service
-                    services.AddSingleton<IVideoDownloadService>(serviceProvider =>
+            builder.Services.AddSingleton<IVideoDownloadService>(serviceProvider =>
                     {
                         var logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
                         var videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
@@ -110,7 +109,7 @@ namespace VideoForensics.Mcp
                     });
 
                     // Evidence validation service
-                    services.AddSingleton<IEvidenceValidationService>(serviceProvider =>
+            builder.Services.AddSingleton<IEvidenceValidationService>(serviceProvider =>
                     {
                         var logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
                         var eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
@@ -123,7 +122,7 @@ namespace VideoForensics.Mcp
                     });
 
                     // Evidence export service
-                    services.AddSingleton<IEvidenceExportService>(serviceProvider =>
+            builder.Services.AddSingleton<IEvidenceExportService>(serviceProvider =>
                     {
                         var logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
                         var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
@@ -134,7 +133,7 @@ namespace VideoForensics.Mcp
                     });
 
                     // Forensics configuration service
-                    services.AddSingleton<IForensicsConfigurationService>(serviceProvider =>
+            builder.Services.AddSingleton<IForensicsConfigurationService>(serviceProvider =>
                         new ForensicsConfigurationService(
                             serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                             serviceProvider.GetRequiredService<IAppSettingRepository>()
@@ -142,12 +141,12 @@ namespace VideoForensics.Mcp
                     );
 
                     // Forensics query repositories (Phases 1-4)
-                    services.AddScoped<ITimelineRepository, TimelineRepository>();
-                    services.AddScoped<IIntegrityRepository, IntegrityRepository>();
-                    services.AddScoped<ICorrelationRepository, CorrelationRepository>();
-                    services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
-                })
-                .Build();
+            builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
+            builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
+            builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
+            builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
+
+            using var host = builder.Build();
 
             // Initialize database
             var dbFactory = host.Services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
@@ -164,13 +163,16 @@ namespace VideoForensics.Mcp
 
             // Load persisted settings
             var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
-            var runtimeConfig = host.Services.GetRequiredService<IForensicsConfiguration>();
+            var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
+                ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
             var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
-            await ConfigurationLoader.LoadAndApplyAsync(configService, runtimeConfig, configLogger, CancellationToken.None);
+            await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
 
-            // Run MCP server
-            var mcpServer = host.Services.GetRequiredService<IMcpServer>();
-            await mcpServer.RunAsync();
+            // Run MCP server (TODO: uncomment once MCP SDK is properly configured)
+            // var mcpServer = host.Services.GetRequiredService<IMcpServer>();
+            // await mcpServer.RunAsync();
+
+            initLogger.LogInformation("MCP server skeleton created. Configure ModelContextProtocol SDK to enable full functionality.");
         }
     }
 }

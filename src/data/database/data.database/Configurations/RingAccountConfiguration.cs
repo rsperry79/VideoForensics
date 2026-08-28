@@ -21,9 +21,6 @@ namespace VideoForensics.Data.Database.Configurations
             builder.Property(ra => ra.AccountEmail)
                 .HasMaxLength(256);
 
-            builder.Property(ra => ra.SyncStatus)
-                .HasDefaultValue(0);
-
             builder.Property(ra => ra.ApiResponseHash)
                 .HasMaxLength(256);
 
