@@ -692,7 +692,7 @@ namespace VideoForensics
                 {
                     AnsiConsole.MarkupLine("[yellow]Two-factor authentication required[/]");
                     var code = AnsiConsole.Prompt(
-                        new TextPrompt<string>("[yellow]Enter the 2FA code from your text message:[/]").Secret()
+                        new TextPrompt<string>("[yellow]Enter the 2FA code (SMS or authenticator app):[/]").Secret()
                     );
                     return code;
                 };
