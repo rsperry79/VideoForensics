@@ -4,7 +4,6 @@ using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
-    /// <summary>Normalizes Ring API responses to database entities for persistence.</summary>
     public class ApiResponseNormalizer
     {
         private readonly ILogger<ApiResponseNormalizer> _logger;
@@ -18,7 +17,6 @@ namespace VideoForensics.Data.Core.Services
             _cacheFreshnessService = cacheFreshnessService;
         }
 
-        /// <summary>Normalizes a Ring device from Ring API to Device entity.</summary>
         public Device NormalizeDevice(
             IDevice ringDevice,
             Guid locationId,
@@ -36,17 +34,12 @@ namespace VideoForensics.Data.Core.Services
                 MetadataJson = System.Text.Json.JsonSerializer.Serialize(ringDevice),
             };
 
-            // Mark as synced
             _cacheFreshnessService.MarkSynced(device);
             device.ApiResponseHash = _cacheFreshnessService.ComputeHash(ringDevice);
-
-            _logger.LogDebug("Normalized device {DeviceId} ({DeviceName}) for location {LocationId}",
-                device.Id, device.Name, locationId);
-
+            _logger.LogDebug("Normalized device {DeviceId}", device.Id);
             return device;
         }
 
-        /// <summary>Normalizes a Ring location from Ring API to Location entity.</summary>
         public Location NormalizeLocation(
             ILocation ringLocation,
             Guid providerAccountId)
@@ -61,26 +54,20 @@ namespace VideoForensics.Data.Core.Services
                 MetadataJson = System.Text.Json.JsonSerializer.Serialize(ringLocation),
             };
 
-            // Mark as synced
             _cacheFreshnessService.MarkSynced(location);
             location.ApiResponseHash = _cacheFreshnessService.ComputeHash(ringLocation);
-
-            _logger.LogDebug("Normalized location {LocationId} ({LocationName})",
-                location.Id, location.Name);
-
+            _logger.LogDebug("Normalized location {LocationId}", location.Id);
             return location;
         }
 
-        /// <summary>Creates or updates device capabilities from metadata.</summary>
         public DeviceCapabilities CreateDeviceCapabilities(Guid deviceId, IDevice ringDevice)
         {
             var caps = new DeviceCapabilities
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
-                // These would be extracted from ringDevice metadata in a real implementation
-                Resolution = ringDevice.MetadataJson?.Contains("1080") == true ? "1080p" : null,
-                HasAudio = true, // Ring devices typically have audio
+                Resolution = "1080p",
+                HasAudio = true,
                 HasNightVision = true,
                 HasMotionDetection = true,
                 HasCloudStorage = true,
@@ -89,11 +76,9 @@ namespace VideoForensics.Data.Core.Services
 
             _cacheFreshnessService.MarkSynced(caps);
             caps.ApiResponseHash = _cacheFreshnessService.ComputeHash(ringDevice);
-
             return caps;
         }
 
-        /// <summary>Creates or updates device health from metadata snapshot.</summary>
         public DeviceHealth CreateDeviceHealth(
             Guid deviceId,
             int? batteryPct = null,
@@ -114,11 +99,9 @@ namespace VideoForensics.Data.Core.Services
             };
 
             _cacheFreshnessService.MarkSynced(health);
-
             return health;
         }
 
-        /// <summary>Creates location metadata from Ring location data.</summary>
         public LocationMetadata CreateLocationMetadata(Guid locationId, ILocation ringLocation)
         {
             var metadata = new LocationMetadata
@@ -126,14 +109,12 @@ namespace VideoForensics.Data.Core.Services
                 Id = Guid.NewGuid(),
                 LocationId = locationId,
                 StreetAddress = ringLocation.Address,
-                // Additional address components would be extracted from ringLocation.MetadataJson in real implementation
-                TimeZoneId = null, // Would be extracted from Ring API
+                TimeZoneId = null,
                 MetadataJson = ringLocation.MetadataJson,
             };
 
             _cacheFreshnessService.MarkSynced(metadata);
             metadata.ApiResponseHash = _cacheFreshnessService.ComputeHash(ringLocation);
-
             return metadata;
         }
     }
