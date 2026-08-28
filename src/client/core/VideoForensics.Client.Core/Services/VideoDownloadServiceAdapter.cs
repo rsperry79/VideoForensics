@@ -21,6 +21,7 @@ namespace VideoForensics.Client.Core
         // provider-agnostic here via _videoProvider.ProviderName rather than hardcoding "Ring").
         private readonly SemaphoreSlim _identityResolutionLock = new(1, 1);
         private Guid? _cachedLocationId;
+        private string? _cachedLocationName;
         private readonly Dictionary<string, Guid> _deviceIdCache = new();
         private int _lastRemainingCount;
         private int _currentDeviceIndex;
@@ -93,6 +94,7 @@ namespace VideoForensics.Client.Core
                     var location = await _dataClient.EnsureLocationAsync(
                         account.Id, "default", "default", null, ct);
                     _cachedLocationId = location.Id;
+                    _cachedLocationName = location.Name;
                 }
 
                 var device = await _dataClient.EnsureDeviceAsync(
@@ -320,8 +322,7 @@ namespace VideoForensics.Client.Core
                     }
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = string.IsNullOrEmpty(device.LocationId) ? "Unknown" : device.LocationId;
-
+                    var locationName = _cachedLocationName ?? "Unknown";
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadVideosAsync(
@@ -503,8 +504,7 @@ namespace VideoForensics.Client.Core
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = string.IsNullOrEmpty(device.LocationId) ? "Unknown" : device.LocationId;
-
+                    var locationName = _cachedLocationName ?? "Unknown";
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadSnapshotsAsync(
