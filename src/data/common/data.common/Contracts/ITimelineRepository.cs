@@ -32,6 +32,14 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Verifies timeline integrity and returns forensic report.</summary>
         Task<TimelineIntegrityReport> VerifyTimelineIntegrityAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+        /// <summary>Finds events from multiple devices occurring within a time window (coordinated activity).</summary>
+        Task<IReadOnlyList<CoordinatedEventCluster>> GetCoordinatedEventsAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, int timeWindowSeconds, CancellationToken ct);
+
+        /// <summary>Flags suspicious coordinated activity across devices.</summary>
+        Task<IReadOnlyList<SuspiciousActivityFlag>> FindSuspiciousCoordinatedActivityAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
     }
 
     /// <summary>Represents a gap in event recording.</summary>
@@ -59,5 +67,25 @@ namespace VideoForensics.Data.Common.Contracts
         public IReadOnlyList<TimelineGap> SignificantGaps { get; set; } = new List<TimelineGap>();
         public Dictionary<string, int> EventTypeDistribution { get; set; } = new();
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Gaps", "Critical"
+    }
+
+    /// <summary>Group of events from multiple devices within a time window.</summary>
+    public class CoordinatedEventCluster
+    {
+        public DateTime ClusterTimeUtc { get; set; }
+        public int DeviceCount { get; set; }
+        public int TotalEventCount { get; set; }
+        public List<(Guid DeviceId, string DeviceName, string EventType, DateTime OccurredAtUtc)> Events { get; set; } = new();
+    }
+
+    /// <summary>Suspicious pattern detected (potential tampering or coordinated action).</summary>
+    public class SuspiciousActivityFlag
+    {
+        public Guid LocationId { get; set; }
+        public DateTime OccurredAtUtc { get; set; }
+        public string ActivityType { get; set; } = string.Empty; // "SimultaneousMotion", "CameraDisabledDuringMotion", "MultipleDeviceGap"
+        public string Description { get; set; } = string.Empty;
+        public int SuspicionScore { get; set; } // 1-100
+        public List<(Guid DeviceId, string DeviceName)> InvolvedDevices { get; set; } = new();
     }
 }
