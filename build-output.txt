@@ -1,0 +1,6 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+  VideoForensics.Forensics -> C:\Users\richa\source\repos\VideoForensics\src\core\helpers\core.helpers\core.forensics\bin\Debug\net10.0\VideoForensics.Forensics.dll
+  VideoForensics.Data.Common -> C:\Users\richa\source\repos\VideoForensics\src\data\common\data.common\bin\Debug\net10.0\VideoForensics.Data.Common.dll
+  VideoForensics.Providers.Common.Helpers -> C:\Users\richa\source\repos\VideoForensics\src\core\helpers\core.helpers\bin\Debug\net10.0\VideoForensics.Providers.Common.Helpers.dll
+  VideoForensics.Providers.Common -> C:\Users\richa\source\repos\VideoForensics\src\core\providers\providers-common\bin\Debug\net10.0\VideoForensics.Providers.Common.dll
