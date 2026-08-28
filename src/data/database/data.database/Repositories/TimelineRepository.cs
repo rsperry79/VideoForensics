@@ -160,5 +160,86 @@ namespace VideoForensics.Data.Database.Repositories
 
             return report;
         }
+
+        public async Task<IReadOnlyList<CoordinatedEventCluster>> GetCoordinatedEventsAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, int timeWindowSeconds, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var events = await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .Select(x => new { x.Event, x.Device })
+                .OrderBy(x => x.Event.OccurredAtUtc)
+                .ToListAsync(ct);
+
+            var clusters = new List<CoordinatedEventCluster>();
+            var processed = new HashSet<int>();
+
+            for (int i = 0; i < events.Count; i++)
+            {
+                if (processed.Contains(i)) continue;
+
+                var cluster = new CoordinatedEventCluster
+                {
+                    ClusterTimeUtc = events[i].Event.OccurredAtUtc
+                };
+
+                var devicesInCluster = new HashSet<Guid>();
+                var timeWindow = new TimeSpan(0, 0, timeWindowSeconds);
+
+                for (int j = i; j < events.Count; j++)
+                {
+                    if (events[j].Event.OccurredAtUtc - events[i].Event.OccurredAtUtc <= timeWindow)
+                    {
+                        cluster.Events.Add((events[j].Device.Id, events[j].Device.Name, events[j].Event.EventType, events[j].Event.OccurredAtUtc));
+                        devicesInCluster.Add(events[j].Device.Id);
+                        processed.Add(j);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                cluster.DeviceCount = devicesInCluster.Count;
+                cluster.TotalEventCount = cluster.Events.Count;
+
+                // Only report clusters with multiple devices
+                if (cluster.DeviceCount > 1)
+                {
+                    clusters.Add(cluster);
+                }
+            }
+
+            return clusters;
+        }
+
+        public async Task<IReadOnlyList<SuspiciousActivityFlag>> FindSuspiciousCoordinatedActivityAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            var flags = new List<SuspiciousActivityFlag>();
+            var clusters = await GetCoordinatedEventsAsync(locationId, fromUtc, toUtc, timeWindowSeconds: 10, ct);
+
+            foreach (var cluster in clusters)
+            {
+                var motionEvents = cluster.Events.Where(e => e.EventType.Contains("motion", StringComparison.OrdinalIgnoreCase)).ToList();
+                if (motionEvents.Count > 0 && cluster.DeviceCount > 1)
+                {
+                    flags.Add(new SuspiciousActivityFlag
+                    {
+                        LocationId = locationId,
+                        OccurredAtUtc = cluster.ClusterTimeUtc,
+                        ActivityType = "SimultaneousMotion",
+                        Description = $"Multiple devices ({cluster.DeviceCount}) detected motion simultaneously within 10 seconds",
+                        SuspicionScore = Math.Min(100, cluster.DeviceCount * 25),
+                        InvolvedDevices = cluster.Events.Select(e => (e.DeviceId, e.DeviceName)).Distinct().ToList()
+                    });
+                }
+            }
+
+            return flags;
+        }
     }
 }
