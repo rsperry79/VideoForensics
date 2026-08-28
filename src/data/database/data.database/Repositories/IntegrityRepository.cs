@@ -1,0 +1,183 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Database.DbContext;
+
+namespace VideoForensics.Data.Database.Repositories
+{
+    /// <summary>Repository for evidence integrity verification and audit trails.</summary>
+    public class IntegrityRepository : IIntegrityRepository
+    {
+        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly ILogger<IntegrityRepository> _logger;
+
+        public IntegrityRepository(
+            IDbContextFactory<VideoForensicsDbContext> factory,
+            ILogger<IntegrityRepository> logger)
+        {
+            _factory = factory;
+            _logger = logger;
+        }
+
+        public async Task<IReadOnlyList<DownloadAuditRecord>> GetDownloadHistoryAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            var events = await db.Events
+                .Where(e => e.DeviceId == deviceId &&
+                            e.OccurredAtUtc >= fromUtc &&
+                            e.OccurredAtUtc <= toUtc)
+                .ToListAsync(ct);
+
+            return events.Select(e => new DownloadAuditRecord
+            {
+                EventId = e.Id,
+                DeviceId = deviceId,
+                DeviceName = device?.Name ?? "Unknown",
+                OccurredAtUtc = e.OccurredAtUtc,
+                DownloadedAtUtc = e.DownloadedAtUtc,
+                DelayMinutes = e.DownloadedAtUtc.HasValue ? (int)(e.DownloadedAtUtc.Value - e.OccurredAtUtc).TotalMinutes : 0,
+                EventType = e.EventType,
+                DownloadStatus = e.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
+            }).ToList();
+        }
+
+        public async Task<IReadOnlyList<DownloadAuditRecord>> GetLocationDownloadHistoryAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            var allRecords = new List<DownloadAuditRecord>();
+
+            foreach (var device in devices)
+            {
+                var records = await GetDownloadHistoryAsync(device.Id, fromUtc, toUtc, ct);
+                allRecords.AddRange(records);
+            }
+
+            return allRecords.OrderBy(r => r.OccurredAtUtc).ToList();
+        }
+
+        public async Task<IReadOnlyList<MissingDownloadRecord>> GetMissingDownloadsAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var missing = await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc &&
+                            x.Event.DownloadedAtUtc == null)
+                .Select(x => new MissingDownloadRecord
+                {
+                    EventId = x.Event.Id,
+                    DeviceId = x.Device.Id,
+                    DeviceName = x.Device.Name,
+                    OccurredAtUtc = x.Event.OccurredAtUtc,
+                    DiscoveredAtUtc = x.Event.DiscoveredAtUtc,
+                    EventType = x.Event.EventType,
+                    Reason = "NotRequested"
+                })
+                .ToListAsync(ct);
+
+            return missing;
+        }
+
+        public async Task<DownloadCompletenessReport> VerifyDownloadCompletenessAsync(
+            Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var allEvents = await db.Events
+                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Device.LocationId == locationId &&
+                            x.Event.OccurredAtUtc >= fromUtc &&
+                            x.Event.OccurredAtUtc <= toUtc)
+                .ToListAsync(ct);
+
+            var downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
+            var missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
+
+            var completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
+
+            return new DownloadCompletenessReport
+            {
+                LocationId = locationId,
+                AnalysisFromUtc = fromUtc,
+                AnalysisToUtc = toUtc,
+                TotalEvents = allEvents.Count,
+                DownloadedEvents = downloaded,
+                MissingEvents = missing.Count,
+                CompletenessPercentage = completeness,
+                MissingRecords = missing.ToList(),
+                Status = completeness < 50m ? "Critical" : completeness < 95m ? "Incomplete" : "Complete"
+            };
+        }
+
+        public async Task<IReadOnlyList<TamperingIndicator>> VerifyEventHashesAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            var events = await db.Events
+                .Where(e => e.DeviceId == deviceId &&
+                            e.OccurredAtUtc >= fromUtc &&
+                            e.OccurredAtUtc <= toUtc &&
+                            e.ApiSourceHash != null)
+                .ToListAsync(ct);
+
+            var indicators = new List<TamperingIndicator>();
+            foreach (var e in events)
+            {
+                if (e.ApiSourceHash != e.EventIntegrityHash && e.EventIntegrityHash != null)
+                {
+                    indicators.Add(new TamperingIndicator
+                    {
+                        EventId = e.Id,
+                        DeviceId = deviceId,
+                        DeviceName = device?.Name ?? "Unknown",
+                        OccurredAtUtc = e.OccurredAtUtc,
+                        IndicatorType = "HashMismatch",
+                        Description = $"Event hash mismatch: API={e.ApiSourceHash?.Substring(0, 8)}... vs Local={e.EventIntegrityHash?.Substring(0, 8)}...",
+                        TamperingScore = 85
+                    });
+                }
+            }
+
+            return indicators;
+        }
+
+        public async Task<IReadOnlyList<TamperingIndicator>> GetTamperingIndicatorsAsync(
+            Guid locationId, CancellationToken ct)
+        {
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            var allIndicators = new List<TamperingIndicator>();
+
+            foreach (var device in devices)
+            {
+                var indicators = await VerifyEventHashesAsync(device.Id, DateTime.MinValue, DateTime.MaxValue, ct);
+                allIndicators.AddRange(indicators);
+            }
+
+            return allIndicators.OrderByDescending(i => i.TamperingScore).ToList();
+        }
+
+        public async Task<int> ComputeEventIntegrityScoreAsync(Guid locationId, CancellationToken ct)
+        {
+            var tampering = await GetTamperingIndicatorsAsync(locationId, ct);
+            var completeness = await VerifyDownloadCompletenessAsync(
+                locationId, DateTime.UtcNow.AddDays(-180), DateTime.UtcNow, ct);
+
+            var tamperingPenalty = Math.Min(50, tampering.Count * 5);
+            var completenessScore = (int)completeness.CompletenessPercentage;
+            var score = Math.Max(0, completenessScore - tamperingPenalty);
+
+            _logger.LogInformation(
+                "Integrity score for {LocationId}: {Score}% (Completeness={Completeness}%, Tampering Indicators={TamperingCount})",
+                locationId, score, completenessScore, tampering.Count);
+
+            return score;
+        }
+    }
+}
