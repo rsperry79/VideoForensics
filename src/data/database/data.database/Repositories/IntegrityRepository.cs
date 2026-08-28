@@ -292,5 +292,90 @@ namespace VideoForensics.Data.Database.Repositories
 
             return suspiciousGaps.OrderByDescending(g => g.SuspicionScore).ToList();
         }
+
+        public async Task<IntegritySummary> GetIntegritySummaryAsync(Guid locationId, CancellationToken ct)
+        {
+            var integrityScore = await ComputeEventIntegrityScoreAsync(locationId, ct);
+            var tampering = await GetTamperingIndicatorsAsync(locationId, ct);
+            var completeness = await VerifyDownloadCompletenessAsync(
+                locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
+            var failures = await IdentifyRecordingFailuresAsync(
+                locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
+
+            var compromisedDevices = tampering
+                .GroupBy(t => t.DeviceName)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            var summary = new IntegritySummary
+            {
+                TotalCount = completeness.TotalEvents,
+                Status = integrityScore >= 80 ? "Healthy" : integrityScore >= 50 ? "Anomalies" : "Critical",
+                ComplianceScore = integrityScore,
+                TamperingIndicators = tampering.Count,
+                MissingDownloads = completeness.MissingEvents,
+                FailedRecordings = failures.Count,
+                IntegrityScore = (decimal)integrityScore,
+                CompromisedDevices = compromisedDevices,
+                DetailQueryMethod = "GetTamperingIndicatorsAsync"
+            };
+
+            summary.TopIssues["HashMismatches"] = tampering.Count;
+            summary.TopIssues["MissingDownloads"] = completeness.MissingEvents;
+            summary.TopIssues["RecordingFailures"] = failures.Count;
+
+            return summary;
+        }
+
+        public async Task<PaginatedResult<TamperingIndicator>> GetTamperingIndicatorsPaginatedAsync(
+            Guid locationId, int pageNumber, int pageSize, CancellationToken ct)
+        {
+            var allIndicators = await GetTamperingIndicatorsAsync(locationId, ct);
+            var orderedIndicators = allIndicators.OrderByDescending(i => i.TamperingScore).ToList();
+
+            var totalCount = orderedIndicators.Count;
+            var paginatedIndicators = orderedIndicators
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PaginatedResult<TamperingIndicator>
+            {
+                Items = paginatedIndicators,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<CursorPaginatedResult<DownloadAuditRecord>> GetDownloadHistoryCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct)
+        {
+            var allRecords = await GetDownloadHistoryAsync(deviceId, fromUtc, toUtc, ct);
+            var orderedRecords = allRecords.OrderBy(r => r.OccurredAtUtc).ToList();
+
+            int startIndex = 0;
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            {
+                startIndex = cursorIndex;
+            }
+
+            var items = orderedRecords
+                .Skip(startIndex)
+                .Take(pageSize)
+                .ToList();
+
+            var nextCursor = (startIndex + items.Count < orderedRecords.Count)
+                ? (startIndex + items.Count).ToString()
+                : null;
+
+            return new CursorPaginatedResult<DownloadAuditRecord>
+            {
+                Items = items,
+                NextCursor = nextCursor,
+                HasMore = nextCursor != null
+            };
+        }
     }
 }

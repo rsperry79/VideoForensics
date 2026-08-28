@@ -79,5 +79,88 @@ namespace VideoForensics.Data.Database.Repositories
         {
             return await Task.FromResult(new List<ModificationAuditRecord>());
         }
+
+        public async Task<AuditTrailSummary> GetAuditTrailSummaryAsync(Guid locationId, CancellationToken ct)
+        {
+            var accessHistory = await GetLocationAccessHistoryAsync(locationId, ct);
+            var exports = await GetExportHistoryAsync(locationId, ct);
+            var custody = await VerifyChainOfCustodyAsync(locationId, ct);
+            var unauthorized = await FlagUnauthorizedAccessAsync(locationId, ct);
+
+            var summary = new AuditTrailSummary
+            {
+                TotalCount = accessHistory.Count + exports.Count,
+                Status = custody.CustodyStatus == "Intact" ? "Healthy" : "Anomalies",
+                ComplianceScore = custody.IsComplete ? 100 : 50,
+                AccessCount = accessHistory.Count,
+                UnauthorizedAccessCount = unauthorized.Count,
+                ExportCount = exports.Count,
+                LastAccessUtc = accessHistory.Count > 0 ? accessHistory.Max(a => a.AccessedAtUtc) : DateTime.MinValue,
+                LastExportUtc = exports.Count > 0 ? exports.Max(e => e.ExportedAtUtc) : DateTime.MinValue,
+                ChainOfCustodyIntact = custody.IsComplete,
+                SuspiciousAccessPatterns = new List<string>(),
+                DetailQueryMethod = "VerifyChainOfCustodyAsync"
+            };
+
+            summary.TopIssues["AccessRecords"] = accessHistory.Count;
+            summary.TopIssues["ExportRecords"] = exports.Count;
+            if (unauthorized.Count > 0)
+            {
+                summary.TopIssues["UnauthorizedAccess"] = unauthorized.Count;
+                summary.SuspiciousAccessPatterns = unauthorized.Select(u => $"Unauthorized: {u.FlagReason}").ToList();
+            }
+
+            return summary;
+        }
+
+        public async Task<PaginatedResult<AccessAuditLog>> GetAccessHistoryPaginatedAsync(
+            Guid evidenceId, int pageNumber, int pageSize, CancellationToken ct)
+        {
+            var allAccess = await GetAccessHistoryAsync(evidenceId, ct);
+            var orderedAccess = allAccess.OrderByDescending(a => a.AccessedAtUtc).ToList();
+
+            var totalCount = orderedAccess.Count;
+            var paginatedAccess = orderedAccess
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PaginatedResult<AccessAuditLog>
+            {
+                Items = paginatedAccess,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<CursorPaginatedResult<ExportAuditRecord>> GetExportHistoryCursorAsync(
+            Guid locationId, string? cursor, int pageSize, CancellationToken ct)
+        {
+            var allExports = await GetExportHistoryAsync(locationId, ct);
+            var orderedExports = allExports.OrderByDescending(e => e.ExportedAtUtc).ToList();
+
+            int startIndex = 0;
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            {
+                startIndex = cursorIndex;
+            }
+
+            var items = orderedExports
+                .Skip(startIndex)
+                .Take(pageSize)
+                .ToList();
+
+            var nextCursor = (startIndex + items.Count < orderedExports.Count)
+                ? (startIndex + items.Count).ToString()
+                : null;
+
+            return new CursorPaginatedResult<ExportAuditRecord>
+            {
+                Items = items,
+                NextCursor = nextCursor,
+                HasMore = nextCursor != null
+            };
+        }
     }
 }

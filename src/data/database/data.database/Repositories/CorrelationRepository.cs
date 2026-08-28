@@ -202,5 +202,100 @@ namespace VideoForensics.Data.Database.Repositories
             if (battery < 10m || rssi < -80) return "Degraded";
             return "Good";
         }
+
+        public async Task<CorrelationSummary> GetCorrelationSummaryAsync(Guid locationId, CancellationToken ct)
+        {
+            var syncHealth = await AnalyzeSyncHealthAsync(locationId, ct);
+            var healthGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
+            var locationChanges = new List<LocationChangeImpact>();
+
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            foreach (var device in devices)
+            {
+                var changes = await GetLocationChangeHistoryAsync(device.Id, ct);
+                locationChanges.AddRange(changes);
+            }
+
+            var unhealthyDevices = devices
+                .Where(d => syncHealth.DeviceStatus.Any(s => s.Item1 == d.Id && s.Item3 < 95m))
+                .Select(d => d.Name)
+                .ToList();
+
+            var offlineDevices = devices
+                .Where(d => syncHealth.DeviceStatus.Any(s => s.Item1 == d.Id && s.Item3 < 80m))
+                .Select(d => d.Name)
+                .ToList();
+
+            var summary = new CorrelationSummary
+            {
+                TotalCount = devices.Count,
+                Status = syncHealth.HealthStatus == "Healthy" ? "Healthy" : "Anomalies",
+                ComplianceScore = (double)syncHealth.AverageUptime,
+                DeviceCount = devices.Count,
+                UnhealthyDeviceCount = unhealthyDevices.Count,
+                SyncFailureCount = syncHealth.TotalSyncGaps,
+                AverageDeviceUptime = syncHealth.AverageUptime,
+                OfflineDevices = offlineDevices,
+                LocationChanges = locationChanges.Select(lc => $"{lc.DeviceName} moved on {lc.ChangedAtUtc:yyyy-MM-dd}").ToList(),
+                DetailQueryMethod = "AnalyzeSyncHealthAsync"
+            };
+
+            summary.TopIssues["UnhealthyDevices"] = unhealthyDevices.Count;
+            summary.TopIssues["SyncGaps"] = syncHealth.TotalSyncGaps;
+            summary.TopIssues["LocationChanges"] = locationChanges.Count;
+
+            return summary;
+        }
+
+        public async Task<PaginatedResult<HealthRelatedGap>> GetHealthRelatedGapsPaginatedAsync(
+            Guid locationId, int pageNumber, int pageSize, CancellationToken ct)
+        {
+            var allGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
+            var orderedGaps = allGaps.OrderByDescending(g => g.DurationMinutes).ToList();
+
+            var totalCount = orderedGaps.Count;
+            var paginatedGaps = orderedGaps
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PaginatedResult<HealthRelatedGap>
+            {
+                Items = paginatedGaps,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<CursorPaginatedResult<EventWithHealthCorrelation>> GetEventHealthCorrelationCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct)
+        {
+            var allEvents = await GetEventHealthCorrelationAsync(deviceId, fromUtc, toUtc, ct);
+            var orderedEvents = allEvents.OrderBy(e => e.OccurredAtUtc).ToList();
+
+            int startIndex = 0;
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            {
+                startIndex = cursorIndex;
+            }
+
+            var items = orderedEvents
+                .Skip(startIndex)
+                .Take(pageSize)
+                .ToList();
+
+            var nextCursor = (startIndex + items.Count < orderedEvents.Count)
+                ? (startIndex + items.Count).ToString()
+                : null;
+
+            return new CursorPaginatedResult<EventWithHealthCorrelation>
+            {
+                Items = items,
+                NextCursor = nextCursor,
+                HasMore = nextCursor != null
+            };
+        }
     }
 }

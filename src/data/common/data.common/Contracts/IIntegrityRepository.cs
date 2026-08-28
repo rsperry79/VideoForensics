@@ -40,6 +40,17 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Flags suspicious gaps during critical periods.</summary>
         Task<IReadOnlyList<SuspiciousGap>> FlagSuspiciousGapsAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Gets quick integrity summary for compliance decisions.</summary>
+        Task<IntegritySummary> GetIntegritySummaryAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Gets paginated tampering indicators.</summary>
+        Task<PaginatedResult<TamperingIndicator>> GetTamperingIndicatorsPaginatedAsync(
+            Guid locationId, int pageNumber, int pageSize, CancellationToken ct);
+
+        /// <summary>Gets cursor-paginated download history for streaming.</summary>
+        Task<CursorPaginatedResult<DownloadAuditRecord>> GetDownloadHistoryCursorAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct);
     }
 
     /// <summary>Download audit record for chain of custody.</summary>

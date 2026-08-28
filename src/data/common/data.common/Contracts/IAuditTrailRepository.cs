@@ -29,6 +29,17 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Tracks full modification history for an event.</summary>
         Task<IReadOnlyList<ModificationAuditRecord>> TraceModificationHistoryAsync(Guid eventId, CancellationToken ct);
+
+        /// <summary>Gets quick audit summary for compliance review.</summary>
+        Task<AuditTrailSummary> GetAuditTrailSummaryAsync(Guid locationId, CancellationToken ct);
+
+        /// <summary>Gets paginated access history.</summary>
+        Task<PaginatedResult<AccessAuditLog>> GetAccessHistoryPaginatedAsync(
+            Guid evidenceId, int pageNumber, int pageSize, CancellationToken ct);
+
+        /// <summary>Gets cursor-paginated export records for streaming.</summary>
+        Task<CursorPaginatedResult<ExportAuditRecord>> GetExportHistoryCursorAsync(
+            Guid locationId, string? cursor, int pageSize, CancellationToken ct);
     }
 
     /// <summary>Access audit log entry.</summary>

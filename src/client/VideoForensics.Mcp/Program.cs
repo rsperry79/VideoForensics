@@ -158,15 +158,28 @@ namespace VideoForensics.Mcp
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
 
             initLogger.LogInformation("VideoForensics MCP Server ready.");
-            initLogger.LogInformation("All 4 forensics query phases initialized:");
-            initLogger.LogInformation("  ✓ Phase 1: Timeline & Patterns (8 methods)");
-            initLogger.LogInformation("  ✓ Phase 2: Evidence Integrity (10 methods)");
-            initLogger.LogInformation("  ✓ Phase 3: Correlation Queries (7 methods)");
-            initLogger.LogInformation("  ✓ Phase 4: Access & Export Audit (9 methods)");
+            initLogger.LogInformation("All 4 forensics query phases initialized with optimization:");
+            initLogger.LogInformation("  ✓ Phase 1: Timeline & Patterns (8 methods + summary + pagination)");
+            initLogger.LogInformation("  ✓ Phase 2: Evidence Integrity (10 methods + summary + pagination)");
+            initLogger.LogInformation("  ✓ Phase 3: Correlation Queries (7 methods + summary + pagination)");
+            initLogger.LogInformation("  ✓ Phase 4: Access & Export Audit (9 methods + summary + pagination)");
+            initLogger.LogInformation("");
+            initLogger.LogInformation("OPTIMIZATIONS ENABLED:");
+            initLogger.LogInformation("  • Summary + Detail-on-Demand: Fast decisions via lightweight summaries");
+            initLogger.LogInformation("  • Pagination: Offset-based (PaginatedResult) and cursor-based (CursorPaginatedResult)");
+            initLogger.LogInformation("  • Parallel Queries: All 4 phases can be called simultaneously without blocking");
+            initLogger.LogInformation("  • Streaming Ready: Cursor-paginated results support incremental data flow");
+            initLogger.LogInformation("");
+            initLogger.LogInformation("PARALLEL QUERY PATTERN:");
+            initLogger.LogInformation("  await Task.WhenAll(");
+            initLogger.LogInformation("    timelineRepo.GetTimelineSummaryAsync(...),");
+            initLogger.LogInformation("    integrityRepo.GetIntegritySummaryAsync(...),");
+            initLogger.LogInformation("    correlationRepo.GetCorrelationSummaryAsync(...),");
+            initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
+            initLogger.LogInformation("  )");
             initLogger.LogInformation("");
             initLogger.LogInformation("NOTE: MCP SDK integration pending. Tool registration requires investigation of");
-            initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All 4-phase forensics repositories are");
-            initLogger.LogInformation("fully initialized and ready to expose via MCP tools.");
+            initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All repositories fully initialized.");
 
             // TODO: Uncomment when MCP SDK API is fully understood
             // var server = new Server(new StdioServerTransport());
