@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VideoForensics.Data.Database.DbContext;
 
@@ -10,9 +11,11 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    partial class VideoForensicsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828000728_AddActiveProviderAccountId")]
+    partial class AddActiveProviderAccountId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
