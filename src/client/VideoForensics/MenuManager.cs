@@ -798,15 +798,22 @@ namespace VideoForensics
             var startDate = DateTime.Now.AddDays(-daysBack);
             var endDate = DateTime.Now;
 
-            // Default: only fetch what's new since each device's last successful pull (the
-            // watermark), so a normal run doesn't re-scan the whole N-day window every time. The
-            // N-day prompt above becomes the fallback/cap for devices with no prior successful pull,
-            // and the ceiling used when the operator explicitly forces a full re-scan below.
-            var force = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("[yellow]Force re-scan the full window above, or only fetch what's new since the last successful pull?[/]")
-                    .HighlightStyle("green")
-                    .AddChoices("Only fetch new items (recommended)", "Force full re-scan")) == "Force full re-scan";
+            // If no prior downloads, force a full re-scan to fetch all data. If there are prior downloads,
+            // ask whether to fetch incrementally (since last pull) or force a full re-scan.
+            var force = false;
+            if (!hasAnyPriorDownloads)
+            {
+                force = true;
+                _logger.LogInformation("No prior downloads found; automatically forcing full re-scan to fetch all available data");
+            }
+            else
+            {
+                force = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("[yellow]Force re-scan the full window above, or only fetch what's new since the last successful pull?[/]")
+                        .HighlightStyle("green")
+                        .AddChoices("Only fetch new items (recommended)", "Force full re-scan")) == "Force full re-scan";
+            }
 
             // Display devices, with an Items column that fills in live as the pre-scan (matched-event
             // count per device) runs — before any actual downloading starts.
