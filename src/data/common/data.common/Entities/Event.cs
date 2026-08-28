@@ -11,5 +11,8 @@ namespace VideoForensics.Data.Common.Entities
         public string? SnapshotUrl { get; set; }
         public string? MetadataJson { get; set; }
         public DateTime DiscoveredAtUtc { get; set; }
+        public DateTime? DownloadedAtUtc { get; set; }
+        public string? ApiSourceHash { get; set; }
+        public string? EventIntegrityHash { get; set; }
     }
 }
