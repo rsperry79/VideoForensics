@@ -320,11 +320,7 @@ namespace VideoForensics.Client.Core
                     }
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = "Unknown";
-                    if (device.LocationId != Guid.Empty)
-                    {
-                        locationName = device.LocationId.ToString();
-                    }
+                    var locationName = string.IsNullOrEmpty(device.LocationId) ? "Unknown" : device.LocationId;
 
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
@@ -507,11 +503,7 @@ namespace VideoForensics.Client.Core
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = "Unknown";
-                    if (device.LocationId != Guid.Empty)
-                    {
-                        locationName = device.LocationId.ToString();
-                    }
+                    var locationName = string.IsNullOrEmpty(device.LocationId) ? "Unknown" : device.LocationId;
 
                     var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 

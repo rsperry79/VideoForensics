@@ -189,6 +189,7 @@ namespace VideoForensics
                     serviceProvider.GetRequiredService<IEvidenceValidationService>(),
                     serviceProvider.GetRequiredService<IEvidenceExportService>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>(),
+                    serviceProvider.GetRequiredService<IProviderAccountRepository>(),
                     serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(),
                     serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>()
                 );
