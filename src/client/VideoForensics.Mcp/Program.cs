@@ -229,14 +229,12 @@ namespace VideoForensics.Mcp
                 try
                 {
                     await Task.Delay(2000); // Wait 2s for db init to complete first
-                    initLogger.LogInformation("Running database optimization (PRAGMA optimize)...");
-                    await using var db = await dbFactory.CreateDbContextAsync(CancellationToken.None);
-                    await db.Database.ExecuteSqlRawAsync("PRAGMA optimize;", CancellationToken.None);
-                    initLogger.LogInformation("Database optimization completed.");
+                    initLogger.LogInformation("Starting comprehensive database maintenance...");
+                    await DatabaseMaintenance.OptimizeAsync(dbFactory, initLogger, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
-                    initLogger.LogWarning(ex, "Database optimization failed (non-fatal).");
+                    initLogger.LogWarning(ex, "Database maintenance failed (non-fatal).");
                 }
             });
 
