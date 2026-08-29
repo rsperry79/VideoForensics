@@ -1,3 +1,12 @@
+/// <summary>
+/// VideoForensics MCP Server entry point. Initializes 4-phase forensic analysis pipeline.
+///
+/// EXTERNAL DOCUMENTATION:
+/// - E2E testing guide: see _docs_external/E2E_TESTING_GUIDE.md
+/// - Claude Desktop setup: see _docs_external/README_CLAUDE_DESKTOP.md
+/// - Main README: see README.md in this directory
+/// </summary>
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
