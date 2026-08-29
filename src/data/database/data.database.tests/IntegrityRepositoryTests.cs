@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -6,29 +5,20 @@ using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Tests
 {
-    public class IntegrityRepositoryTests : IAsyncLifetime
+    public class IntegrityRepositoryTests : RepositoryTestBase
     {
-        private SqliteInMemoryFixture _fixture = null!;
         private IntegrityRepository _repository = null!;
         private EventRepository _eventRepository = null!;
         private DeviceRepository _deviceRepository = null!;
         private LocationRepository _locationRepository = null!;
 
-        public async ValueTask InitializeAsync()
+        public override async ValueTask InitializeAsync()
         {
-            _fixture = new SqliteInMemoryFixture();
-            await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            _eventRepository = new EventRepository(_fixture.Factory, loggerFactory.CreateLogger<EventRepository>());
-            _deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
-            _locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
-            _repository = new IntegrityRepository(_fixture.Factory, loggerFactory.CreateLogger<IntegrityRepository>());
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await _fixture.DisposeAsync();
-            _fixture.Dispose();
+            await base.InitializeAsync();
+            _eventRepository = new EventRepository(Fixture.Factory, CreateLogger<EventRepository>());
+            _deviceRepository = new DeviceRepository(Fixture.Factory, CreateLogger<DeviceRepository>());
+            _locationRepository = new LocationRepository(Fixture.Factory, CreateLogger<LocationRepository>());
+            _repository = new IntegrityRepository(Fixture.Factory, CreateLogger<IntegrityRepository>());
         }
 
         [Fact]
