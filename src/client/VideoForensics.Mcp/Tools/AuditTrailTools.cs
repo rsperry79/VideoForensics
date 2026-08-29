@@ -6,15 +6,13 @@ namespace VideoForensics.Mcp.Tools
 {
     /// <summary>Phase 4 forensics tools: Access & Export Audit & Chain of Custody</summary>
     [McpServerToolType]
-    public class AuditTrailTools
+    public class AuditTrailTools : ForensicsToolBase
     {
         private readonly IAuditTrailRepository _auditTrailRepository;
-        private readonly ILogger<AuditTrailTools> _logger;
 
-        public AuditTrailTools(IAuditTrailRepository auditTrailRepository, ILogger<AuditTrailTools> logger)
+        public AuditTrailTools(IAuditTrailRepository auditTrailRepository, ILogger<AuditTrailTools> logger) : base(logger)
         {
             _auditTrailRepository = auditTrailRepository;
-            _logger = logger;
         }
 
         /// <summary>Get quick audit trail summary for compliance review. Use this first to assess chain of custody integrity.</summary>
@@ -23,7 +21,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetAuditTrailSummary: location={LocationId}", locationId);
+            Logger.LogInformation("GetAuditTrailSummary: location={LocationId}", locationId);
             return await _auditTrailRepository.GetAuditTrailSummaryAsync(locationId, cancellationToken);
         }
 
@@ -35,7 +33,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetAccessHistoryPaginated: evidence={EvidenceId}, page={PageNumber}/{PageSize}",
+            Logger.LogInformation("GetAccessHistoryPaginated: evidence={EvidenceId}, page={PageNumber}/{PageSize}",
                 evidenceId, pageNumber, pageSize);
             return await _auditTrailRepository.GetAccessHistoryPaginatedAsync(evidenceId, pageNumber, pageSize, cancellationToken);
         }
@@ -48,7 +46,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetExportHistoryCursor: location={LocationId}, cursor={Cursor}, pageSize={PageSize}",
+            Logger.LogInformation("GetExportHistoryCursor: location={LocationId}, cursor={Cursor}, pageSize={PageSize}",
                 locationId, cursor ?? "null", pageSize);
             return await _auditTrailRepository.GetExportHistoryCursorAsync(locationId, cursor, pageSize, cancellationToken);
         }
@@ -59,7 +57,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("VerifyChainOfCustody: location={LocationId}", locationId);
+            Logger.LogInformation("VerifyChainOfCustody: location={LocationId}", locationId);
             return await _auditTrailRepository.VerifyChainOfCustodyAsync(locationId, cancellationToken);
         }
 
@@ -69,7 +67,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("FlagUnauthorizedAccess: location={LocationId}", locationId);
+            Logger.LogInformation("FlagUnauthorizedAccess: location={LocationId}", locationId);
             return await _auditTrailRepository.FlagUnauthorizedAccessAsync(locationId, cancellationToken);
         }
 
@@ -79,7 +77,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetExportHistory: location={LocationId}", locationId);
+            Logger.LogInformation("GetExportHistory: location={LocationId}", locationId);
             return await _auditTrailRepository.GetExportHistoryAsync(locationId, cancellationToken);
         }
 
@@ -89,7 +87,7 @@ namespace VideoForensics.Mcp.Tools
             Guid exportId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("VerifyExportIntegrity: exportId={ExportId}", exportId);
+            Logger.LogInformation("VerifyExportIntegrity: exportId={ExportId}", exportId);
             return await _auditTrailRepository.VerifyExportIntegrityAsync(exportId, cancellationToken);
         }
     }
