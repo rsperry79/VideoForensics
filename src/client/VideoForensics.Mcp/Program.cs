@@ -223,21 +223,8 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
             initLogger.LogInformation("  )");
 
-            // Optimize database in background for performance (with intelligent threshold-based execution)
-            var dbOptimizeTask = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(2000); // Wait 2s for db init to complete first
-                    initLogger.LogInformation("Running database health diagnostics...");
-                    var diagnosis = await DatabaseMaintenance.DiagnoseAsync(dbFactory, initLogger, CancellationToken.None);
-                    await DatabaseMaintenance.OptimizeAsync(dbFactory, initLogger, diagnosis, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    initLogger.LogWarning(ex, "Database maintenance failed (non-fatal).");
-                }
-            });
+            // Note: Database optimization via PRAGMA optimize; is handled by DatabaseInitializer during migrations.
+            // Diagnostics-based maintenance has been deferred to avoid blocking MCP initialization.
 
             try
             {
