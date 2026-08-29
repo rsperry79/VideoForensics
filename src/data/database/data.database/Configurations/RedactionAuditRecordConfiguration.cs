@@ -5,7 +5,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Database.Configurations
 {
     /// <summary>Fluent API configuration for RedactionAuditRecordEntity.</summary>
-    public class RedactionAuditRecordConfiguration : IEntityTypeConfiguration<RedactionAuditRecordEntity>
+    public class RedactionAuditRecordConfiguration : AuditConfigurationBase, IEntityTypeConfiguration<RedactionAuditRecordEntity>
     {
         public void Configure(EntityTypeBuilder<RedactionAuditRecordEntity> builder)
         {
@@ -13,19 +13,19 @@ namespace VideoForensics.Data.Database.Configurations
 
             builder.Property(rar => rar.RedactedBy)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(rar => rar.ApprovedBy)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(rar => rar.ContentRedacted)
                 .IsRequired()
-                .HasMaxLength(2000);
+                .HasMaxLength(DescriptionMaxLength);
 
             builder.Property(rar => rar.JustificationNotes)
                 .IsRequired()
-                .HasMaxLength(2000);
+                .HasMaxLength(DescriptionMaxLength);
 
             builder.HasIndex(rar => rar.EvidenceId);
             builder.HasIndex(rar => rar.RedactedAtUtc);

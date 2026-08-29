@@ -5,7 +5,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Database.Configurations
 {
     /// <summary>Fluent API configuration for AccessAuditLogEntity.</summary>
-    public class AccessAuditLogConfiguration : IEntityTypeConfiguration<AccessAuditLogEntity>
+    public class AccessAuditLogConfiguration : AuditConfigurationBase, IEntityTypeConfiguration<AccessAuditLogEntity>
     {
         public void Configure(EntityTypeBuilder<AccessAuditLogEntity> builder)
         {
@@ -13,19 +13,19 @@ namespace VideoForensics.Data.Database.Configurations
 
             builder.Property(aal => aal.UserId)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(aal => aal.Action)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActionMaxLength);
 
             builder.Property(aal => aal.IpAddress)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(aal => aal.Purpose)
                 .IsRequired()
-                .HasMaxLength(2000);
+                .HasMaxLength(DescriptionMaxLength);
 
             builder.HasIndex(aal => aal.EvidenceId);
             builder.HasIndex(aal => aal.UserId);

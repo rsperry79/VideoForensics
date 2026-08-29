@@ -5,7 +5,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Database.Configurations
 {
     /// <summary>Fluent API configuration for ExportAuditRecordEntity.</summary>
-    public class ExportAuditRecordConfiguration : IEntityTypeConfiguration<ExportAuditRecordEntity>
+    public class ExportAuditRecordConfiguration : AuditConfigurationBase, IEntityTypeConfiguration<ExportAuditRecordEntity>
     {
         public void Configure(EntityTypeBuilder<ExportAuditRecordEntity> builder)
         {
@@ -13,15 +13,15 @@ namespace VideoForensics.Data.Database.Configurations
 
             builder.Property(ear => ear.ExportedBy)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(ear => ear.ExportFormat)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActionMaxLength);
 
             builder.Property(ear => ear.Purpose)
                 .IsRequired()
-                .HasMaxLength(2000);
+                .HasMaxLength(DescriptionMaxLength);
 
             builder.HasIndex(ear => ear.LocationId);
             builder.HasIndex(ear => ear.ExportedAtUtc);
