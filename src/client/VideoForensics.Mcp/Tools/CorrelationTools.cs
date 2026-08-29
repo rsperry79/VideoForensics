@@ -6,15 +6,13 @@ namespace VideoForensics.Mcp.Tools
 {
     /// <summary>Phase 3 forensics tools: Event Correlation & Device Health Analysis</summary>
     [McpServerToolType]
-    public class CorrelationTools
+    public class CorrelationTools : ForensicsToolBase
     {
         private readonly ICorrelationRepository _correlationRepository;
-        private readonly ILogger<CorrelationTools> _logger;
 
-        public CorrelationTools(ICorrelationRepository correlationRepository, ILogger<CorrelationTools> logger)
+        public CorrelationTools(ICorrelationRepository correlationRepository, ILogger<CorrelationTools> logger) : base(logger)
         {
             _correlationRepository = correlationRepository;
-            _logger = logger;
         }
 
         /// <summary>Get quick correlation and sync health summary for fast forensic decisions. Use this first to decide if detailed analysis is needed.</summary>
@@ -23,7 +21,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetCorrelationSummary: location={LocationId}", locationId);
+            Logger.LogInformation("GetCorrelationSummary: location={LocationId}", locationId);
             return await _correlationRepository.GetCorrelationSummaryAsync(locationId, cancellationToken);
         }
 
@@ -35,7 +33,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetHealthRelatedGapsPaginated: location={LocationId}, page={PageNumber}/{PageSize}",
+            Logger.LogInformation("GetHealthRelatedGapsPaginated: location={LocationId}, page={PageNumber}/{PageSize}",
                 locationId, pageNumber, pageSize);
             return await _correlationRepository.GetHealthRelatedGapsPaginatedAsync(locationId, pageNumber, pageSize, cancellationToken);
         }
@@ -50,7 +48,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetEventHealthCorrelationCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
+            Logger.LogInformation("GetEventHealthCorrelationCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
                 deviceId, cursor ?? "null", pageSize);
             return await _correlationRepository.GetEventHealthCorrelationCursorAsync(deviceId, fromUtc, toUtc, cursor, pageSize, cancellationToken);
         }
@@ -61,7 +59,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("AnalyzeSyncHealth: location={LocationId}", locationId);
+            Logger.LogInformation("AnalyzeSyncHealth: location={LocationId}", locationId);
             return await _correlationRepository.AnalyzeSyncHealthAsync(locationId, cancellationToken);
         }
 
@@ -71,7 +69,7 @@ namespace VideoForensics.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("IdentifyHealthRelatedGaps: location={LocationId}", locationId);
+            Logger.LogInformation("IdentifyHealthRelatedGaps: location={LocationId}", locationId);
             return await _correlationRepository.IdentifyHealthRelatedGapsAsync(locationId, cancellationToken);
         }
 
@@ -81,7 +79,7 @@ namespace VideoForensics.Mcp.Tools
             Guid deviceId,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("AnalyzeDeviceReliability: device={DeviceId}", deviceId);
+            Logger.LogInformation("AnalyzeDeviceReliability: device={DeviceId}", deviceId);
             return await _correlationRepository.AnalyzeDeviceReliabilityAsync(deviceId, cancellationToken);
         }
     }

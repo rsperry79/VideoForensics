@@ -6,15 +6,13 @@ namespace VideoForensics.Mcp.Tools
 {
     /// <summary>Phase 1 forensics tools: Timeline & Pattern Analysis</summary>
     [McpServerToolType]
-    public class TimelineTools
+    public class TimelineTools : ForensicsToolBase
     {
         private readonly ITimelineRepository _timelineRepository;
-        private readonly ILogger<TimelineTools> _logger;
 
-        public TimelineTools(ITimelineRepository timelineRepository, ILogger<TimelineTools> logger)
+        public TimelineTools(ITimelineRepository timelineRepository, ILogger<TimelineTools> logger) : base(logger)
         {
             _timelineRepository = timelineRepository;
-            _logger = logger;
         }
 
         /// <summary>Get quick timeline health summary for fast forensic decisions. Use this first to decide if detailed analysis is needed.</summary>
@@ -25,7 +23,7 @@ namespace VideoForensics.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetTimelineSummary: location={LocationId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
+            Logger.LogInformation("GetTimelineSummary: location={LocationId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
                 locationId, fromUtc, toUtc);
             return await _timelineRepository.GetTimelineSummaryAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
@@ -41,7 +39,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetRecordingGapsPaginated: device={DeviceId}, page={PageNumber}/{PageSize}, minGap={MinGapMinutes}m",
+            Logger.LogInformation("GetRecordingGapsPaginated: device={DeviceId}, page={PageNumber}/{PageSize}, minGap={MinGapMinutes}m",
                 deviceId, pageNumber, pageSize, minGapMinutes);
             return await _timelineRepository.GetRecordingGapsPaginatedAsync(deviceId, fromUtc, toUtc, minGapMinutes, pageNumber, pageSize, cancellationToken);
         }
@@ -57,7 +55,7 @@ namespace VideoForensics.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetRecordingGapsCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
+            Logger.LogInformation("GetRecordingGapsCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
                 deviceId, cursor ?? "null", pageSize);
             return await _timelineRepository.GetRecordingGapsCursorAsync(deviceId, fromUtc, toUtc, minGapMinutes, cursor, pageSize, cancellationToken);
         }
@@ -70,7 +68,7 @@ namespace VideoForensics.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetEventCountByHour: device={DeviceId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
+            Logger.LogInformation("GetEventCountByHour: device={DeviceId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
                 deviceId, fromUtc, toUtc);
             return await _timelineRepository.GetEventCountByHourAsync(deviceId, fromUtc, toUtc, cancellationToken);
         }
@@ -83,7 +81,7 @@ namespace VideoForensics.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetEventCountByDay: location={LocationId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
+            Logger.LogInformation("GetEventCountByDay: location={LocationId}, period={FromUtc:yyyy-MM-dd} to {ToUtc:yyyy-MM-dd}",
                 locationId, fromUtc, toUtc);
             return await _timelineRepository.GetEventCountByDayAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
@@ -97,7 +95,7 @@ namespace VideoForensics.Mcp.Tools
             int topN = 5,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetPeakActivityPeriods: location={LocationId}, topN={TopN}", locationId, topN);
+            Logger.LogInformation("GetPeakActivityPeriods: location={LocationId}, topN={TopN}", locationId, topN);
             return await _timelineRepository.GetPeakActivityPeriodsAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
 
@@ -109,7 +107,7 @@ namespace VideoForensics.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("VerifyTimelineIntegrity: location={LocationId}", locationId);
+            Logger.LogInformation("VerifyTimelineIntegrity: location={LocationId}", locationId);
             return await _timelineRepository.VerifyTimelineIntegrityAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
 
@@ -122,7 +120,7 @@ namespace VideoForensics.Mcp.Tools
             int timeWindowSeconds = 60,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("GetCoordinatedEvents: location={LocationId}, window={WindowSeconds}s", locationId, timeWindowSeconds);
+            Logger.LogInformation("GetCoordinatedEvents: location={LocationId}, window={WindowSeconds}s", locationId, timeWindowSeconds);
             return await _timelineRepository.GetCoordinatedEventsAsync(locationId, fromUtc, toUtc, timeWindowSeconds, cancellationToken);
         }
 
@@ -134,7 +132,7 @@ namespace VideoForensics.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("FindSuspiciousCoordinatedActivity: location={LocationId}", locationId);
+            Logger.LogInformation("FindSuspiciousCoordinatedActivity: location={LocationId}", locationId);
             return await _timelineRepository.FindSuspiciousCoordinatedActivityAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
     }
