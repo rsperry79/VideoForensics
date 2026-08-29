@@ -193,9 +193,6 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("    correlationRepo.GetCorrelationSummaryAsync(...),");
             initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
             initLogger.LogInformation("  )");
-            initLogger.LogInformation("");
-            initLogger.LogInformation("NOTE: MCP SDK integration pending. Tool registration requires investigation of");
-            initLogger.LogInformation("proper ModelContextProtocol.Sdk namespaces. All repositories fully initialized.");
 
             // MCP server uses attribute-based discovery for tools and resources
             // All classes marked with [McpServerToolType] or [McpServerResourceType] are auto-registered
