@@ -84,6 +84,18 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the location metadata.</summary>
         public DbSet<LocationMetadata> LocationMetadata { get; set; }
 
+        /// <summary>Gets or sets the access audit logs.</summary>
+        public DbSet<AccessAuditLogEntity> AccessAuditLogs { get; set; }
+
+        /// <summary>Gets or sets the export audit records.</summary>
+        public DbSet<ExportAuditRecordEntity> ExportAuditRecords { get; set; }
+
+        /// <summary>Gets or sets the redaction audit records.</summary>
+        public DbSet<RedactionAuditRecordEntity> RedactionAuditRecords { get; set; }
+
+        /// <summary>Gets or sets the modification audit records.</summary>
+        public DbSet<ModificationAuditRecordEntity> ModificationAuditRecords { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

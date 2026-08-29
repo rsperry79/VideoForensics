@@ -207,5 +207,104 @@ namespace VideoForensics.Data.Database.Tests
                 MediaItemSha256HashAtExport = $"{Guid.NewGuid():N}{Guid.NewGuid():N}"
             };
         }
+
+        public static AccessAuditLogEntity BuildAccessAuditLog(Guid? evidenceId = null, string? userId = null, string? action = null)
+        {
+            return new AccessAuditLogEntity
+            {
+                Id = Guid.NewGuid(),
+                EvidenceId = evidenceId ?? Guid.NewGuid(),
+                UserId = userId ?? $"user_{Guid.NewGuid():N}",
+                AccessedAtUtc = DateTime.UtcNow,
+                Action = action ?? "View",
+                IpAddress = "127.0.0.1",
+                Purpose = "Forensic Investigation"
+            };
+        }
+
+        public static ExportAuditRecordEntity BuildExportAuditRecord(Guid? locationId = null, string? exportedBy = null)
+        {
+            return new ExportAuditRecordEntity
+            {
+                Id = Guid.NewGuid(),
+                LocationId = locationId ?? Guid.NewGuid(),
+                ExportedAtUtc = DateTime.UtcNow,
+                ExportedBy = exportedBy ?? "TestUser",
+                EventsExported = 10,
+                ExportFormat = "AES256Archive",
+                Purpose = "CaseFile"
+            };
+        }
+
+        public static RedactionAuditRecordEntity BuildRedactionAuditRecord(Guid? evidenceId = null, string? redactedBy = null)
+        {
+            return new RedactionAuditRecordEntity
+            {
+                Id = Guid.NewGuid(),
+                EvidenceId = evidenceId ?? Guid.NewGuid(),
+                RedactedAtUtc = DateTime.UtcNow,
+                RedactedBy = redactedBy ?? "TestReviewer",
+                ApprovedBy = "TestApprover",
+                ContentRedacted = "PII",
+                JustificationNotes = "Redacted for privacy compliance"
+            };
+        }
+
+        public static ModificationAuditRecordEntity BuildModificationAuditRecord(Guid? eventId = null, string? modifiedBy = null)
+        {
+            return new ModificationAuditRecordEntity
+            {
+                Id = Guid.NewGuid(),
+                EventId = eventId ?? Guid.NewGuid(),
+                ModifiedAtUtc = DateTime.UtcNow,
+                ModifiedBy = modifiedBy ?? "TestModifier",
+                ModificationType = "Annotation",
+                ChangeSummary = "Added investigator notes",
+                ApprovedByInvestigator = true
+            };
+        }
+
+        public static JammingIncidentRecord BuildJammingIncident(
+            Guid? deviceId = null,
+            DateTime? startUtc = null,
+            DateTime? endUtc = null,
+            double confidence = 0.75,
+            int affectedEventCount = 5)
+        {
+            var start = startUtc ?? DateTime.UtcNow;
+            return new JammingIncidentRecord
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId ?? Guid.NewGuid(),
+                StartUtc = start,
+                EndUtc = endUtc ?? start.AddMinutes(15),
+                AffectedEventCount = affectedEventCount,
+                AverageDegradationDb = confidence * 20,
+                Confidence = (JammingConfidenceLevel)(int)(confidence * 3),
+                DetectedAtUtc = DateTime.UtcNow,
+                Notes = "Test jamming incident",
+                Source = JammingIncidentSource.AutoDetected
+            };
+        }
+
+        public static JammingStatsSummary BuildJammingStats(Guid? deviceId = null, int incidentCount = 5)
+        {
+            return new JammingStatsSummary
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId ?? Guid.NewGuid(),
+                IncidentCount = incidentCount,
+                TotalJammedDurationMinutes = incidentCount * 15,
+                AverageDegradationDb = 10.0,
+                MaxDegradationDb = 18.5,
+                LowConfidenceCount = 1,
+                MediumConfidenceCount = 2,
+                HighConfidenceCount = incidentCount - 3,
+                DefiniteConfidenceCount = 0,
+                FirstIncidentUtc = DateTime.UtcNow.AddHours(-24),
+                LastIncidentUtc = DateTime.UtcNow,
+                LastUpdatedUtc = DateTime.UtcNow
+            };
+        }
     }
 }
