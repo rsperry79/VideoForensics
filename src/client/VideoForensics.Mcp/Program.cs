@@ -156,7 +156,7 @@ namespace VideoForensics.Mcp
 
             try
             {
-                initLogger.LogInformation("Host built successfully. Starting database initialization...");
+                initLogger.LogInformation("Host built successfully. Deferring database initialization...");
             }
             catch (Exception ex)
             {
@@ -164,45 +164,43 @@ namespace VideoForensics.Mcp
                 return;
             }
 
-            // Initialize database
+            // LAZY: Initialize database in background without blocking MCP startup
             var dbFactory = host.Services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-            try
-            {
-                initLogger.LogInformation("Acquiring database factory...");
-                initLogger.LogInformation("Starting migration and integrity checks...");
-                await DatabaseInitializer.InitializeAsync(dbFactory, initLogger, CancellationToken.None);
-                initLogger.LogInformation("Database initialization completed. Proceeding with MCP server startup...");
-            }
-            catch (Exception ex)
-            {
-                initLogger.LogCritical(ex, "Database initialization failed. The MCP server cannot continue.");
-                Console.Error.WriteLine($"DATABASE INIT ERROR: {ex}");
-                return;
-            }
+            var dbInitTask = DatabaseInitializer.InitializeAsync(dbFactory, initLogger, CancellationToken.None)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        initLogger.LogCritical(t.Exception, "Deferred database initialization failed.");
+                    }
+                    else
+                    {
+                        initLogger.LogInformation("Deferred database initialization completed.");
+                    }
+                }, TaskScheduler.Default);
 
-            // Load persisted settings
-            try
+            initLogger.LogInformation("Database initialization started in background. MCP server can respond to requests immediately.");
+
+            // LAZY: Load persisted settings in background without blocking MCP startup
+            var configLoadTask = Task.Run(async () =>
             {
-                initLogger.LogInformation("Acquiring configuration service...");
-                var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
+                try
+                {
+                    initLogger.LogInformation("Loading persisted settings from database (background)...");
+                    var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
+                    var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
+                        ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
+                    var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
+                    await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
+                    initLogger.LogInformation("Configuration loaded successfully (background).");
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogError(ex, "Configuration loading failed in background.");
+                }
+            });
 
-                initLogger.LogInformation("Acquiring forensics configuration instance...");
-                var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
-                    ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
-
-                initLogger.LogInformation("Acquiring config logger...");
-                var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
-
-                initLogger.LogInformation("Loading persisted settings from database...");
-                await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
-                initLogger.LogInformation("Configuration loaded successfully.");
-            }
-            catch (Exception ex)
-            {
-                initLogger.LogError(ex, "FATAL: Configuration loading failed");
-                Console.Error.WriteLine($"CONFIG LOAD ERROR: {ex}");
-                throw;
-            }
+            initLogger.LogInformation("Configuration loading started in background.");
 
             initLogger.LogInformation("VideoForensics MCP Server ready.");
             initLogger.LogInformation("All 4 forensics query phases initialized with optimization:");
@@ -224,6 +222,23 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("    correlationRepo.GetCorrelationSummaryAsync(...),");
             initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
             initLogger.LogInformation("  )");
+
+            // Optimize database in background for performance
+            var dbOptimizeTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(2000); // Wait 2s for db init to complete first
+                    initLogger.LogInformation("Running database optimization (PRAGMA optimize)...");
+                    await using var db = await dbFactory.CreateDbContextAsync(CancellationToken.None);
+                    await db.Database.ExecuteSqlRawAsync("PRAGMA optimize;", CancellationToken.None);
+                    initLogger.LogInformation("Database optimization completed.");
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogWarning(ex, "Database optimization failed (non-fatal).");
+                }
+            });
 
             try
             {
