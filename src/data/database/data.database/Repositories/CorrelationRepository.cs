@@ -56,16 +56,23 @@ namespace VideoForensics.Data.Database.Repositories
             var gaps = await _timelineRepository.GetLocationRecordingGapsAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, minGapMinutes: 5, ct);
 
-            var healthGaps = new List<HealthRelatedGap>();
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            if (gaps.Count == 0) return new List<HealthRelatedGap>();
 
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var gapDeviceIds = gaps.Select(g => g.DeviceId).Distinct().ToList();
+            var healthRecords = await db.DeviceHealthRecords
+                .Where(h => gapDeviceIds.Contains(h.DeviceId))
+                .OrderByDescending(h => h.LastHeartbeatUtc)
+                .ToListAsync(ct);
+
+            var healthGaps = new List<HealthRelatedGap>();
             foreach (var gap in gaps)
             {
-                var health = await db.DeviceHealthRecords
+                var health = healthRecords
                     .Where(h => h.DeviceId == gap.DeviceId &&
                                 h.LastHeartbeatUtc >= gap.StartUtc &&
                                 h.LastHeartbeatUtc <= gap.EndUtc)
-                    .FirstOrDefaultAsync(ct);
+                    .FirstOrDefault();
 
                 if (health != null)
                 {

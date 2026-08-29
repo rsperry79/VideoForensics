@@ -47,16 +47,23 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
-            var allRecords = new List<DownloadAuditRecord>();
-
-            foreach (var device in devices)
-            {
-                var records = await GetDownloadHistoryAsync(device.Id, fromUtc, toUtc, ct);
-                allRecords.AddRange(records);
-            }
-
-            return allRecords.OrderBy(r => r.OccurredAtUtc).ToList();
+            return await db.Events
+                .Join(db.Devices.Where(d => d.LocationId == locationId),
+                      e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                .OrderBy(x => x.Event.OccurredAtUtc)
+                .Select(x => new DownloadAuditRecord
+                {
+                    EventId = x.Event.Id,
+                    DeviceId = x.Device.Id,
+                    DeviceName = x.Device.Name,
+                    OccurredAtUtc = x.Event.OccurredAtUtc,
+                    DownloadedAtUtc = x.Event.DownloadedAtUtc,
+                    DelayMinutes = x.Event.DownloadedAtUtc.HasValue ? (int)(x.Event.DownloadedAtUtc.Value - x.Event.OccurredAtUtc).TotalMinutes : 0,
+                    EventType = x.Event.EventType,
+                    DownloadStatus = x.Event.DownloadedAtUtc.HasValue ? "Downloaded" : "Missing"
+                })
+                .ToListAsync(ct);
         }
 
         public async Task<IReadOnlyList<MissingDownloadRecord>> GetMissingDownloadsAsync(

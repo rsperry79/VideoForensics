@@ -29,6 +29,9 @@ namespace VideoForensics.Data.Database.Repositories
             Guid deviceId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
+            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            var deviceName = device?.Name ?? "Unknown";
+
             var events = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
@@ -42,11 +45,10 @@ namespace VideoForensics.Data.Database.Repositories
                 var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
                 if (gapDuration >= minGapMinutes)
                 {
-                    var device = await _deviceRepository.GetAsync(deviceId, ct);
                     gaps.Add(new TimelineGap
                     {
                         DeviceId = deviceId,
-                        DeviceName = device?.Name ?? "Unknown",
+                        DeviceName = deviceName,
                         StartUtc = events[i].OccurredAtUtc,
                         EndUtc = events[i + 1].OccurredAtUtc,
                         DurationMinutes = (int)gapDuration,
@@ -63,16 +65,42 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, int minGapMinutes, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
-            var devices = await db.Devices
+            var deviceMap = await db.Devices
                 .Where(d => d.LocationId == locationId)
-                .Select(d => d.Id)
+                .ToDictionaryAsync(d => d.Id, d => d.Name, cancellationToken: ct);
+
+            var allEvents = await db.Events
+                .Join(db.Devices.Where(d => d.LocationId == locationId),
+                      e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
+                .Where(x => x.Event.OccurredAtUtc >= fromUtc && x.Event.OccurredAtUtc <= toUtc)
+                .OrderBy(x => x.Event.DeviceId)
+                .ThenBy(x => x.Event.OccurredAtUtc)
+                .Select(x => x.Event)
                 .ToListAsync(ct);
 
             var allGaps = new List<TimelineGap>();
-            foreach (var deviceId in devices)
+            var eventsByDevice = allEvents.GroupBy(e => e.DeviceId);
+
+            foreach (var deviceEvents in eventsByDevice)
             {
-                var gaps = await GetRecordingGapsAsync(deviceId, fromUtc, toUtc, minGapMinutes, ct);
-                allGaps.AddRange(gaps);
+                var events = deviceEvents.OrderBy(e => e.OccurredAtUtc).ToList();
+                for (int i = 0; i < events.Count - 1; i++)
+                {
+                    var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                    if (gapDuration >= minGapMinutes)
+                    {
+                        allGaps.Add(new TimelineGap
+                        {
+                            DeviceId = deviceEvents.Key,
+                            DeviceName = deviceMap.TryGetValue(deviceEvents.Key, out var name) ? name : "Unknown",
+                            StartUtc = events[i].OccurredAtUtc,
+                            EndUtc = events[i + 1].OccurredAtUtc,
+                            DurationMinutes = (int)gapDuration,
+                            EventsBeforeGap = i + 1,
+                            EventsAfterGap = events.Count - i - 1
+                        });
+                    }
+                }
             }
 
             return allGaps.OrderBy(g => g.StartUtc).ToList();
@@ -82,42 +110,42 @@ namespace VideoForensics.Data.Database.Repositories
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
-            var events = await db.Events
+            return await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc)
-                .ToListAsync(ct);
-
-            return events
                 .GroupBy(e => e.OccurredAtUtc.Hour)
-                .ToDictionary(g => g.Key, g => g.Count());
+                .Select(g => new { Hour = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Hour, x => x.Count, cancellationToken: ct);
         }
 
         public async Task<Dictionary<string, int>> GetEventCountByDayAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
-            var events = await db.Events
-                .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
-                .Where(x => x.Device.LocationId == locationId &&
-                            x.Event.OccurredAtUtc >= fromUtc &&
-                            x.Event.OccurredAtUtc <= toUtc)
-                .Select(x => x.Event)
-                .ToListAsync(ct);
-
-            return events
+            return await db.Events
+                .Join(db.Devices.Where(d => d.LocationId == locationId),
+                      e => e.DeviceId, d => d.Id, (e, d) => e)
+                .Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .GroupBy(e => e.OccurredAtUtc.Date.ToString("yyyy-MM-dd"))
-                .ToDictionary(g => g.Key, g => g.Count());
+                .Select(g => new { Date = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Date, x => x.Count, cancellationToken: ct);
         }
 
         public async Task<IReadOnlyList<(int Hour, int Count)>> GetPeakActivityPeriodsAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            var hourly = await GetEventCountByHourAsync(Guid.Empty, fromUtc, toUtc, ct);
-            return hourly
-                .OrderByDescending(h => h.Value)
-                .Select(h => (h.Key, h.Value))
-                .ToList();
+            await using var db = await _factory.CreateDbContextAsync(ct);
+            var results = await db.Events
+                .Join(db.Devices.Where(d => d.LocationId == locationId),
+                      e => e.DeviceId, d => d.Id, (e, d) => e)
+                .Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
+                .GroupBy(e => e.OccurredAtUtc.Hour)
+                .Select(g => new { Hour = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .ToListAsync(ct);
+
+            return results.Select(x => (x.Hour, x.Count)).ToList();
         }
 
         public async Task<TimelineIntegrityReport> VerifyTimelineIntegrityAsync(

@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Database.Repositories
                     DetailsJson = null,
                     TimestampUtc = accessAtUtc,
                     PreviousEntryHash = null,
-                    EntryHash = "hash_" + Guid.NewGuid().ToString().Substring(0, 8)
+                    EntryHash = Guid.NewGuid().ToString("N").Substring(0, 8)
                 };
 
                 context.ActionLogEntries.Add(entry);
@@ -73,7 +73,7 @@ namespace VideoForensics.Data.Database.Repositories
                     DetailsJson = $"{{\"exportId\":\"{exportId}\",\"eventCount\":{eventCount}}}",
                     TimestampUtc = DateTime.UtcNow,
                     PreviousEntryHash = null,
-                    EntryHash = "hash_" + Guid.NewGuid().ToString().Substring(0, 8)
+                    EntryHash = Guid.NewGuid().ToString("N").Substring(0, 8)
                 };
 
                 context.ActionLogEntries.Add(entry);
