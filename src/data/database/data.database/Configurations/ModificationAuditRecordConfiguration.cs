@@ -5,7 +5,7 @@ using VideoForensics.Data.Common.Entities;
 namespace VideoForensics.Data.Database.Configurations
 {
     /// <summary>Fluent API configuration for ModificationAuditRecordEntity.</summary>
-    public class ModificationAuditRecordConfiguration : IEntityTypeConfiguration<ModificationAuditRecordEntity>
+    public class ModificationAuditRecordConfiguration : AuditConfigurationBase, IEntityTypeConfiguration<ModificationAuditRecordEntity>
     {
         public void Configure(EntityTypeBuilder<ModificationAuditRecordEntity> builder)
         {
@@ -13,15 +13,15 @@ namespace VideoForensics.Data.Database.Configurations
 
             builder.Property(mar => mar.ModifiedBy)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActorMaxLength);
 
             builder.Property(mar => mar.ModificationType)
                 .IsRequired()
-                .HasMaxLength(256);
+                .HasMaxLength(ActionMaxLength);
 
             builder.Property(mar => mar.ChangeSummary)
                 .IsRequired()
-                .HasMaxLength(2000);
+                .HasMaxLength(DescriptionMaxLength);
 
             builder.HasIndex(mar => mar.EventId);
             builder.HasIndex(mar => mar.ModifiedAtUtc);
