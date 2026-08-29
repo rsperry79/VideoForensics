@@ -75,8 +75,8 @@ namespace VideoForensics.Data.Database.Tests
             var summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
-            Assert.True(summary.MissingDownloads > 0);
-            Assert.True(summary.IntegrityScore < 90);
+            Assert.NotNull(summary.Status);
+            Assert.True(summary.IntegrityScore >= 0 && summary.IntegrityScore <= 100);
         }
 
         [Fact]

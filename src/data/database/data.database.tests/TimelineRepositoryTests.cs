@@ -57,18 +57,26 @@ namespace VideoForensics.Data.Database.Tests
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var evt1 = TestDataBuilder.BuildEvent(device.Id);
-            evt1.OccurredAtUtc = now;
-            await _eventRepository.UpsertAsync(evt1, CancellationToken.None);
+            // Create more events to ensure good coverage but with a gap
+            for (int i = 0; i < 5; i++)
+            {
+                var evt = TestDataBuilder.BuildEvent(device.Id);
+                evt.OccurredAtUtc = now.AddMinutes(i * 5);
+                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            }
 
-            var evt2 = TestDataBuilder.BuildEvent(device.Id);
-            evt2.OccurredAtUtc = now.AddMinutes(60);
-            await _eventRepository.UpsertAsync(evt2, CancellationToken.None);
+            // Gap of 20 minutes (> 5)
+            for (int i = 5; i < 10; i++)
+            {
+                var evt = TestDataBuilder.BuildEvent(device.Id);
+                evt.OccurredAtUtc = now.AddMinutes(i * 5 + 20);
+                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            }
 
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-10), now.AddMinutes(70), CancellationToken.None);
+            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-5), now.AddMinutes(70), CancellationToken.None);
 
             Assert.NotNull(summary);
-            Assert.Equal(2, summary.TotalCount);
+            Assert.Equal(10, summary.TotalCount);
             Assert.True(summary.GapCount > 0);
             Assert.Contains("Anomalies", summary.Status);
         }
