@@ -48,6 +48,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // Enable WAL mode for better concurrency
                 await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
 
+                // Quick optimization: analyze table statistics (fast ~5-50ms, improves query planner)
+                await db.Database.ExecuteSqlRawAsync("ANALYZE;", cancellationToken);
+
                 // Skip integrity check for performance - it scans the entire database
                 // If corruption is suspected, run: PRAGMA integrity_check; manually
                 logger.LogInformation("Database initialization completed successfully.");
