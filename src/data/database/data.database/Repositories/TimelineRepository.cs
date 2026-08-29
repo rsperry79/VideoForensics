@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
             for (int i = 0; i < events.Count - 1; i++)
             {
                 var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
-                if (gapDuration >= minGapMinutes)
+                if (gapDuration > minGapMinutes)
                 {
                     gaps.Add(new TimelineGap
                     {
@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
                 for (int i = 0; i < events.Count - 1; i++)
                 {
                     var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
-                    if (gapDuration >= minGapMinutes)
+                    if (gapDuration > minGapMinutes)
                     {
                         allGaps.Add(new TimelineGap
                         {
