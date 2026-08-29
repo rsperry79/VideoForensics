@@ -11,7 +11,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Create AccessAuditLogs table
             migrationBuilder.CreateTable(
                 name: "AccessAuditLogs",
                 columns: table => new
@@ -30,7 +29,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
                 });
 
-            // Create ExportAuditRecords table
             migrationBuilder.CreateTable(
                 name: "ExportAuditRecords",
                 columns: table => new
@@ -48,7 +46,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
                 });
 
-            // Create RedactionAuditRecords table
             migrationBuilder.CreateTable(
                 name: "RedactionAuditRecords",
                 columns: table => new
@@ -66,7 +63,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     table.PrimaryKey("PK_RedactionAuditRecords", x => x.Id);
                 });
 
-            // Create ModificationAuditRecords table
             migrationBuilder.CreateTable(
                 name: "ModificationAuditRecords",
                 columns: table => new
@@ -84,7 +80,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     table.PrimaryKey("PK_ModificationAuditRecords", x => x.Id);
                 });
 
-            // Create indexes
             migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_AccessedAtUtc",
                 table: "AccessAuditLogs",
