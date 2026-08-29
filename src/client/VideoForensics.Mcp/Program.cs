@@ -152,26 +152,57 @@ namespace VideoForensics.Mcp
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
 
             using var host = builder.Build();
+            var initLogger = host.Services.GetRequiredService<ILogger<Program>>();
+
+            try
+            {
+                initLogger.LogInformation("Host built successfully. Starting database initialization...");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"FATAL: Failed to get logger: {ex}");
+                return;
+            }
 
             // Initialize database
             var dbFactory = host.Services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-            var initLogger = host.Services.GetRequiredService<ILogger<Program>>();
             try
             {
+                initLogger.LogInformation("Acquiring database factory...");
+                initLogger.LogInformation("Starting migration and integrity checks...");
                 await DatabaseInitializer.InitializeAsync(dbFactory, initLogger, CancellationToken.None);
+                initLogger.LogInformation("Database initialization completed. Proceeding with MCP server startup...");
             }
             catch (Exception ex)
             {
                 initLogger.LogCritical(ex, "Database initialization failed. The MCP server cannot continue.");
+                Console.Error.WriteLine($"DATABASE INIT ERROR: {ex}");
                 return;
             }
 
             // Load persisted settings
-            var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
-            var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
-                ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
-            var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
-            await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
+            try
+            {
+                initLogger.LogInformation("Acquiring configuration service...");
+                var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
+
+                initLogger.LogInformation("Acquiring forensics configuration instance...");
+                var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
+                    ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
+
+                initLogger.LogInformation("Acquiring config logger...");
+                var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
+
+                initLogger.LogInformation("Loading persisted settings from database...");
+                await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
+                initLogger.LogInformation("Configuration loaded successfully.");
+            }
+            catch (Exception ex)
+            {
+                initLogger.LogError(ex, "FATAL: Configuration loading failed");
+                Console.Error.WriteLine($"CONFIG LOAD ERROR: {ex}");
+                throw;
+            }
 
             initLogger.LogInformation("VideoForensics MCP Server ready.");
             initLogger.LogInformation("All 4 forensics query phases initialized with optimization:");
@@ -194,19 +225,38 @@ namespace VideoForensics.Mcp
             initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
             initLogger.LogInformation("  )");
 
-            // MCP server uses attribute-based discovery for tools and resources
-            // All classes marked with [McpServerToolType] or [McpServerResourceType] are auto-registered
-            // The framework handles stdio transport and lifecycle automatically
-
-            initLogger.LogInformation("MCP Server configured and ready");
+            try
+            {
+                initLogger.LogInformation("Initializing MCP server with attribute-based tool/resource discovery...");
+                // MCP server uses attribute-based discovery for tools and resources
+                // All classes marked with [McpServerToolType] or [McpServerResourceType] are auto-registered
+                // The framework handles stdio transport and lifecycle automatically
+                initLogger.LogInformation("MCP Server configured and ready");
+            }
+            catch (Exception ex)
+            {
+                initLogger.LogError(ex, "FATAL: MCP server configuration failed");
+                Console.Error.WriteLine($"MCP CONFIG ERROR: {ex}");
+                throw;
+            }
             initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit) configured with [McpServerToolType]");
             initLogger.LogInformation("Resource: jamming-analysis-instructions configured with [McpServerResourceType]");
             initLogger.LogInformation("");
             initLogger.LogInformation("MCP server runs on stdio transport when invoked by Claude Desktop via claude_desktop_config.json");
             initLogger.LogInformation("Configured tools use dependency injection to access repositories and loggers");
+            initLogger.LogInformation("=== MCP SERVER READY FOR CONNECTIONS ===");
 
-            // Keep the application running (required for stdio transport)
-            await Task.Delay(Timeout.Infinite, CancellationToken.None);
+            try
+            {
+                // Keep the application running (required for stdio transport)
+                await Task.Delay(Timeout.Infinite, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                initLogger.LogError(ex, "FATAL: Unexpected error in main loop");
+                Console.Error.WriteLine($"FATAL MAIN LOOP ERROR: {ex}");
+                throw;
+            }
         }
     }
 }
