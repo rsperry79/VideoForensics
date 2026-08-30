@@ -968,6 +968,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ApiSourceHash")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("AudioCodec")
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
@@ -1009,6 +1012,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("MediaFormat")
                         .IsRequired()
                         .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PurgeReason")
