@@ -276,6 +276,14 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Restoring Ring session from refresh token");
 
+                if (credentials.RefreshToken == null)
+                {
+                    _logger.LogError("Cannot restore session: refresh token is null");
+                    _isAuthenticated = false;
+                    return false;
+                }
+
+                // For refresh token flow, we don't need 2FA — Ring API handles it server-side
                 var session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!);
 
                 if (session?.OAuthToken == null)
