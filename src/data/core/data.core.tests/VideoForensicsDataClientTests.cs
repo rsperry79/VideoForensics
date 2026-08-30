@@ -569,7 +569,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             var result = await _dataClient.EnsureLocationAsync(
-                providerAccountId, providerLocationId, locationName, address, CancellationToken.None);
+                providerAccountId, providerLocationId, locationName, address, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -619,7 +619,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             var result = await _dataClient.EnsureLocationAsync(
-                providerAccountId, providerLocationId, locationName, address, CancellationToken.None);
+                providerAccountId, providerLocationId, locationName, address, ct: CancellationToken.None);
 
             // Assert
             Assert.Equal(existingLocation.Id, result.Id);
@@ -658,7 +658,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             var result = await _dataClient.EnsureDeviceAsync(
-                locationId, providerDeviceId, deviceName, deviceType, isOnline, CancellationToken.None);
+                locationId, providerDeviceId, deviceName, deviceType, isOnline, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -711,7 +711,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Act
             var result = await _dataClient.EnsureDeviceAsync(
-                locationId, providerDeviceId, newDeviceName, newDeviceType, isOnline, CancellationToken.None);
+                locationId, providerDeviceId, newDeviceName, newDeviceType, isOnline, ct: CancellationToken.None);
 
             // Assert
             Assert.Equal(existingDevice.Id, result.Id);
