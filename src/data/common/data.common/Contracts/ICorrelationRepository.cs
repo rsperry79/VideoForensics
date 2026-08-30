@@ -107,15 +107,25 @@ namespace VideoForensics.Data.Common.Contracts
         public bool CauseLikely { get; set; }
     }
 
-    /// <summary>Overall sync health for a location.</summary>
+    /// <summary>Per-device sync status entry within a <see cref="SyncHealthReport"/>.</summary>
+    public class DeviceSyncStatus
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        public decimal Uptime { get; set; }
+    }
+
+    /// <summary>
+    /// Overall sync health for a location. Deliberately does NOT expose a blended average uptime
+    /// or overall health status across devices - a healthy camera would mask an unhealthy one,
+    /// which is invalid for evidence. See <see cref="DeviceStatus"/> for each device's own uptime.
+    /// </summary>
     public class SyncHealthReport
     {
         public Guid LocationId { get; set; }
         public int DeviceCount { get; set; }
-        public decimal AverageUptime { get; set; }
         public int TotalSyncGaps { get; set; }
         public DateTime LastSuccessfulSyncUtc { get; set; }
-        public string HealthStatus { get; set; } = "Unknown"; // "Healthy", "Degraded", "Critical"
-        public List<(Guid DeviceId, string DeviceName, decimal Uptime)> DeviceStatus { get; set; } = new();
+        public List<DeviceSyncStatus> DeviceStatus { get; set; } = new();
     }
 }

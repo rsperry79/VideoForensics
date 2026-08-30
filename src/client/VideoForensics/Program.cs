@@ -38,10 +38,13 @@ namespace VideoForensics
             // Build dependency injection container
             var services = new ServiceCollection();
 
-            // Register logging
+            // Register logging. Writes to a file rather than the console since this is an
+            // interactive Spectre.Console TUI - console logging would corrupt the menu rendering.
+            var logFilePath = Path.Combine(configDir, "logs", $"videoforensics-{DateTime.Now:yyyy-MM-dd}.log");
             services.AddLogging(builder =>
             {
                 builder.SetMinimumLevel(LogLevel.Information);
+                builder.AddProvider(new VideoForensics.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
             });
 
             // Register the shared session provider (must be singleton so all services observe same session)
@@ -55,7 +58,10 @@ namespace VideoForensics
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>()
+                    provider.GetRequiredService<ICredentialStore>(),
+                    provider.GetRequiredService<IRingAccountRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredService<IUserRepository>()
                 )
             );
             services.AddSingleton<IDeviceDiscoveryService>(provider =>
@@ -181,6 +187,7 @@ namespace VideoForensics
                     serviceProvider.GetRequiredService<IForensicReportRenderer>(),
                     serviceProvider.GetRequiredService<IProviderAuthService>(),
                     serviceProvider.GetRequiredService<IDeviceDiscoveryService>(),
+                    serviceProvider.GetRequiredService<IEventAndConfigService>(),
                     serviceProvider.GetRequiredService<IVideoForensicsDataClient>(),
                     serviceProvider.GetRequiredService<IEventRepository>(),
                     serviceProvider.GetRequiredService<IDeviceConfigRepository>(),
@@ -190,6 +197,7 @@ namespace VideoForensics
                     serviceProvider.GetRequiredService<IEvidenceExportService>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>(),
                     serviceProvider.GetRequiredService<IProviderAccountRepository>(),
+                    serviceProvider.GetRequiredService<IUserRepository>(),
                     serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(),
                     serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>()
                 );
@@ -201,6 +209,15 @@ namespace VideoForensics
             // Initialize database with migrations and integrity checks
             var dbFactory = serviceProvider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
             var initLogger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+            // Surface raw Ring API traffic (never auth bodies/tokens - see ApiRawLogger) to the
+            // file log, so device-discovery/API issues can be diagnosed from what Ring actually
+            // returned instead of guessing.
+            var apiLogger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("RingApi");
+            VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
+                apiLogger.LogInformation("{Method} {Url} -> {StatusCode}: {Body}", call.Method, call.Url, call.StatusCode, call.Body);
+            VideoForensics.Providers.Ring.ApiRawLogger.OnEvent += evt =>
+                apiLogger.LogInformation("[{Category}] {Message}", evt.Category, evt.Message);
             try
             {
                 await DatabaseInitializer.InitializeAsync(dbFactory, initLogger, CancellationToken.None);

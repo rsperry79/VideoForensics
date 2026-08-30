@@ -82,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("GetLocations returned {RawLocationCount} location(s)", locations.Count);
 
-                var result = locations
+                IReadOnlyList<Location> result = locations
                     .Where(l => l.Id.HasValue)
                     .Select(l => new Location(
                         Id: l.Id!.Value.ToString(),
@@ -91,6 +91,17 @@ namespace VideoForensics.Providers.Ring.Services
                     ))
                     .ToList()
                     .AsReadOnly();
+
+                // The devices/v1/locations endpoint has been observed returning an empty list for
+                // some accounts/tokens even when the account genuinely owns devices (it's a newer
+                // endpoint than the legacy ring_devices one GetRingDevices uses, and doesn't always
+                // carry the same access). Fall back to deriving locations directly from the device
+                // list itself so device discovery doesn't dead-end on that endpoint alone.
+                if (result.Count == 0)
+                {
+                    _logger.LogWarning("GetLocations returned zero locations; deriving locations from the device list instead");
+                    result = await DeriveLocationsFromDevicesAsync(session);
+                }
 
                 _logger.LogInformation("Found {LocationCount} locations after filtering", result.Count);
                 foreach (var loc in result)
@@ -111,6 +122,36 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _locationsCacheLock.Release();
             }
+        }
+
+        /// <summary>
+        /// Builds a location list from location_id/address fields embedded in the device list
+        /// itself (legacy ring_devices endpoint), for accounts where devices/v1/locations comes
+        /// back empty. Devices without a location_id are skipped since there's nothing to group
+        /// them under.
+        /// </summary>
+        private async Task<IReadOnlyList<Location>> DeriveLocationsFromDevicesAsync(Session session)
+        {
+            var devices = await session.GetRingDevices();
+
+            var candidates = Enumerable.Empty<(Guid? LocationId, string Address)>();
+            if (devices?.Doorbots != null)
+                candidates = candidates.Concat(devices.Doorbots.Select(d => (d.LocationId, d.Address)));
+            if (devices?.StickupCams != null)
+                candidates = candidates.Concat(devices.StickupCams.Select(d => (d.LocationId, d.Address)));
+            if (devices?.AuthorizedDoorbots != null)
+                candidates = candidates.Concat(devices.AuthorizedDoorbots.Select(d => (d.LocationId, d.Address)));
+
+            return candidates
+                .Where(c => c.LocationId.HasValue)
+                .GroupBy(c => c.LocationId!.Value)
+                .Select(g => new Location(
+                    Id: g.Key.ToString(),
+                    Name: g.FirstOrDefault(c => !string.IsNullOrEmpty(c.Address)).Address ?? "Unknown Location",
+                    Address: g.FirstOrDefault(c => !string.IsNullOrEmpty(c.Address)).Address
+                ))
+                .ToList()
+                .AsReadOnly();
         }
 
         public async Task<IReadOnlyList<Device>> GetDevicesAsync(string locationId, CancellationToken cancellationToken = default)

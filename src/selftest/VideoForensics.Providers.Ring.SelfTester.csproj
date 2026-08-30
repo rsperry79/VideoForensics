@@ -20,7 +20,12 @@
     <ProjectReference Include="../providers/ring/utils/VideoForensics.Providers.Ring.Utils.csproj" />
     <ProjectReference Include="../providers/ring/core/VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../providers/ring/auth/VideoForensics.Providers.Ring.Auth.csproj" />
+    <ProjectReference Include="../providers/ring/provider/VideoForensics.Providers.Ring.csproj" />
     <ProjectReference Include="../providers/ring/video/VideoForensics.Providers.Ring.Video.csproj" />
+    <ProjectReference Include="../core/providers/providers-common/VideoForensics.Providers.Common.csproj" />
+    <ProjectReference Include="../data/common/data.common/VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="../data/database/data.database/VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../data/database/sqlite/data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
   </ItemGroup>
 
 </Project>

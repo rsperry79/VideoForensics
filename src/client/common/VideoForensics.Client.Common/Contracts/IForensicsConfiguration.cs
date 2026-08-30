@@ -11,12 +11,14 @@ namespace VideoForensics.Client.Common
         string? ReportsDirectory { get; set; }
         string ReportOutputFormat { get; set; }
         string? DownloadLocation { get; set; }
+        string? QueryExportLocation { get; set; }
         RedactionLevel RedactionLevel { get; set; }
         KeyStorageProvider KeyStorageProvider { get; set; }
         int RetentionDaysDefault { get; set; }
         string LogLevel { get; set; }
         int MaxConcurrentDownloads { get; set; }
-        int RescanWindowDays { get; set; }
+        /// <summary>Start date for downloads, as a "yyyy-MM-dd" string parsed to a DateTime at use. Empty means unset.</summary>
+        string DownloadStartDate { get; set; }
         Guid? ActiveProviderAccountId { get; set; }
     }
 
@@ -47,12 +49,13 @@ namespace VideoForensics.Client.Common
         public string? ReportsDirectory { get; set; }
         public string ReportOutputFormat { get; set; } = "json";
         public string? DownloadLocation { get; set; }
+        public string? QueryExportLocation { get; set; }
         public RedactionLevel RedactionLevel { get; set; } = RedactionLevel.Medium;
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
         public int RetentionDaysDefault { get; set; } = 180;
         public string LogLevel { get; set; } = "Information";
         public int MaxConcurrentDownloads { get; set; } = 10;
-        public int RescanWindowDays { get; set; } = 180;
+        public string DownloadStartDate { get; set; } = "";
         public Guid? ActiveProviderAccountId { get; set; }
     }
 }

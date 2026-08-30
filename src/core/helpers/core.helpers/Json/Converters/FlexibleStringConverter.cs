@@ -15,15 +15,28 @@ namespace VideoForensics.Providers.Common.Helpers.Json.Converters
     {
         public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            return reader.TokenType switch
+            switch (reader.TokenType)
             {
-                JsonTokenType.String => reader.GetString(),
-                JsonTokenType.Number => reader.GetDouble().ToString(),
-                JsonTokenType.True => "true",
-                JsonTokenType.False => "false",
-                JsonTokenType.Null => null,
-                _ => null
-            };
+                case JsonTokenType.String:
+                    return reader.GetString();
+                case JsonTokenType.Number:
+                    return reader.GetDouble().ToString();
+                case JsonTokenType.True:
+                    return "true";
+                case JsonTokenType.False:
+                    return "false";
+                case JsonTokenType.Null:
+                    return null;
+                default:
+                    // Some devices report object/array shapes for this field (e.g. Ring's
+                    // stickup_cams led_status coming back as {"seconds_remaining":0} instead of a
+                    // string). Skip() consumes the whole value so the reader ends up positioned
+                    // correctly for whatever comes next - without it, System.Text.Json throws
+                    // "converter read too much or not enough" and the whole containing object
+                    // fails to deserialize.
+                    reader.Skip();
+                    return null;
+            }
         }
 
         public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)

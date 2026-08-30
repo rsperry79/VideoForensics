@@ -18,6 +18,12 @@ namespace VideoForensics.Data.Core.Contracts
         /// </summary>
         Task<DownloadEvent> RecordDownloadEventAsync(DownloadEvent evt, MediaItem? media, CancellationToken ct);
 
+        /// <summary>
+        /// Upserts an event record (independent of download status) by device ID + provider event ID.
+        /// Call once when an event is discovered, and again once it's downloaded/hashed to enrich it.
+        /// </summary>
+        Task<Event> UpsertEventAsync(Event evt, CancellationToken ct);
+
         /// <summary>Resolves the effective start date for a download window, considering the watermark.</summary>
         Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct);
 
@@ -48,6 +54,9 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);
+
+        /// <summary>Records a point-in-time device health/connectivity telemetry snapshot.</summary>
+        Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct);
 
         /// <summary>Gets the credential repository for direct credential access.</summary>
         ICredentialRepository Credentials { get; }

@@ -178,6 +178,46 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task AnalyzeSyncHealthAsync_TwoDevicesDifferentUptime_NoBlendedAverageInReport()
+        {
+            var location = TestDataBuilder.BuildLocation();
+            var reliableDevice = TestDataBuilder.BuildDevice(location.Id);
+            var unreliableDevice = TestDataBuilder.BuildDevice(location.Id);
+            var now = DateTime.UtcNow;
+
+            await _locationRepository.AddAsync(location, CancellationToken.None);
+            await _deviceRepository.AddAsync(reliableDevice, CancellationToken.None);
+            await _deviceRepository.AddAsync(unreliableDevice, CancellationToken.None);
+
+            // Reliable device: frequent events, no significant gaps in the last 30 days.
+            for (int i = 0; i < 20; i++)
+            {
+                var evt = TestDataBuilder.BuildEvent(reliableDevice.Id);
+                evt.OccurredAtUtc = now.AddDays(-1).AddMinutes(i * 5);
+                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            }
+
+            // Unreliable device: one huge gap dominating the 30-day window.
+            var firstEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
+            firstEvt.OccurredAtUtc = now.AddDays(-29);
+            await _eventRepository.UpsertAsync(firstEvt, CancellationToken.None);
+            var secondEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
+            secondEvt.OccurredAtUtc = now.AddDays(-1);
+            await _eventRepository.UpsertAsync(secondEvt, CancellationToken.None);
+
+            var report = await _repository.AnalyzeSyncHealthAsync(location.Id, CancellationToken.None);
+
+            Assert.NotNull(report);
+            Assert.Equal(2, report.DeviceCount);
+            var reliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == reliableDevice.Id);
+            var unreliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == unreliableDevice.Id);
+            // The core regression: each device's true uptime survives independently - the
+            // unreliable device's number must not be dragged up by averaging with the reliable one.
+            Assert.True(reliableStatus.Uptime > unreliableStatus.Uptime);
+            Assert.True(unreliableStatus.Uptime < 90m);
+        }
+
+        [Fact]
         public async Task AnalyzeDeviceReliabilityAsync_ReturnsReliabilityAnalysis()
         {
             var device = TestDataBuilder.BuildDevice();

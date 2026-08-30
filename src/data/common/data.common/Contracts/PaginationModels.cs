@@ -7,7 +7,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int TotalCount { get; set; }
         public int PageNumber { get; set; }
         public int PageSize { get; set; }
-        public int TotalPages => (TotalCount + PageSize - 1) / PageSize;
+        public int TotalPages => PageSize <= 0 ? 0 : (TotalCount + PageSize - 1) / PageSize;
         public bool HasNextPage => PageNumber < TotalPages;
         public bool HasPreviousPage => PageNumber > 1;
     }

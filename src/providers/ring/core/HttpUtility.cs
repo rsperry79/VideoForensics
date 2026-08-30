@@ -122,6 +122,15 @@ namespace VideoForensics.Providers.Ring
                     throw new Exceptions.DeviceUnknownException(url);
             }
 
+            // A non-2xx response here (e.g. 401 from an expired token, or 403 from a scope the
+            // legacy auth flow doesn't grant on newer endpoints like devices/v1/locations) was
+            // previously deserialized as if it were a successful empty payload, silently turning
+            // into "no devices/locations found" instead of a surfaced auth error.
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode);
+            }
+
             return responseFromServer;
         }
 

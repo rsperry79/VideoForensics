@@ -233,6 +233,7 @@ public class MediaEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
         var downloadEventId = Guid.NewGuid();
         var connected = true;
         var batteryPercentage = 75.5m;
@@ -245,6 +246,7 @@ public class MediaEntityTests
         var snapshot = new DeviceHealthSnapshot
         {
             Id = id,
+            DeviceId = deviceId,
             DownloadEventId = downloadEventId,
             Connected = connected,
             BatteryPercentage = batteryPercentage,
@@ -256,6 +258,7 @@ public class MediaEntityTests
 
         // Assert
         Assert.Equal(id, snapshot.Id);
+        Assert.Equal(deviceId, snapshot.DeviceId);
         Assert.Equal(downloadEventId, snapshot.DownloadEventId);
         Assert.True(snapshot.Connected);
         Assert.Equal(batteryPercentage, snapshot.BatteryPercentage);

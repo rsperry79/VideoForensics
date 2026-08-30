@@ -51,7 +51,10 @@ namespace VideoForensics.Mcp
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>()
+                    provider.GetRequiredService<ICredentialStore>(),
+                    provider.GetRequiredService<IRingAccountRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredService<IUserRepository>()
                 )
             );
             builder.Services.AddSingleton<IDeviceDiscoveryService>(provider =>
@@ -151,6 +154,13 @@ namespace VideoForensics.Mcp
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
 
+            // MCP server: stdio transport, attribute-discovered tools/resources
+            builder.Services
+                .AddMcpServer()
+                .WithStdioServerTransport()
+                .WithToolsFromAssembly()
+                .WithResourcesFromAssembly();
+
             using var host = builder.Build();
             var initLogger = host.Services.GetRequiredService<ILogger<Program>>();
 
@@ -180,6 +190,39 @@ namespace VideoForensics.Mcp
                 }, TaskScheduler.Default);
 
             initLogger.LogInformation("Database initialization started in background. MCP server can respond to requests immediately.");
+
+            // LAZY, ONE-TIME: backfill the Events table from existing DownloadEvents/MediaItems history.
+            // Events (independent of download status) is what all forensic Timeline/Integrity/Correlation/
+            // Audit tools read from, but historically nothing wrote to it. Runs once after DB init, gated
+            // by an AppSettings flag so subsequent startups skip it.
+            var eventsBackfillTask = dbInitTask.ContinueWith(async _ =>
+            {
+                const string backfillFlagKey = "EventsBackfillFromDownloadEventsCompleted";
+                try
+                {
+                    var appSettingRepo = host.Services.GetRequiredService<IAppSettingRepository>();
+                    var alreadyDone = await appSettingRepo.GetAsync(backfillFlagKey, CancellationToken.None);
+                    if (alreadyDone == "true")
+                    {
+                        initLogger.LogInformation("Events backfill already completed previously, skipping.");
+                        return;
+                    }
+
+                    var downloadEventRepo = host.Services.GetRequiredService<IDownloadEventRepository>();
+                    var mediaItemRepo = host.Services.GetRequiredService<IMediaItemRepository>();
+                    var eventRepo = host.Services.GetRequiredService<IEventRepository>();
+
+                    initLogger.LogInformation("Running one-time Events backfill from existing DownloadEvents...");
+                    var count = await EventBackfillService.BackfillFromDownloadEventsAsync(
+                        downloadEventRepo, mediaItemRepo, eventRepo, initLogger, CancellationToken.None);
+                    await appSettingRepo.SetAsync(backfillFlagKey, "true", CancellationToken.None);
+                    initLogger.LogInformation("Events backfill completed: {Count} record(s).", count);
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogError(ex, "Events backfill failed.");
+                }
+            }, TaskScheduler.Default).Unwrap();
 
             // LAZY: Load persisted settings in background without blocking MCP startup
             var configLoadTask = Task.Run(async () =>
@@ -249,8 +292,8 @@ namespace VideoForensics.Mcp
 
             try
             {
-                // Keep the application running (required for stdio transport)
-                await Task.Delay(Timeout.Infinite, CancellationToken.None);
+                // Runs all hosted services, including the MCP stdio transport, until shutdown
+                await host.RunAsync();
             }
             catch (Exception ex)
             {

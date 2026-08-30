@@ -35,6 +35,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
         public string? Password;
         public string? RefreshToken;
         public bool Quiet;
+        public bool VerifyDb;
+        public string? DbPath;
 
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
@@ -174,6 +176,15 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         o.Quiet = true;
                         break;
 
+                    case "--verify-db":
+                        o.VerifyDb = true;
+                        break;
+
+                    case "--db-path":
+                        if (!TryTakeValue(args, ref i, arg, out var dbPathValue, out var dbPathErr)) return (null, dbPathErr);
+                        o.DbPath = dbPathValue;
+                        break;
+
                     default:
                         return (null, $"Unrecognized argument '{arg}'. Use --help to see available switches.");
                 }
@@ -281,6 +292,19 @@ namespace VideoForensics.Providers.Ring.SelfTester
           --output-dir <path>       Directory to write index.json and result files into.
                                      Default: ./SelfTesterResults/<UTC-timestamp>
           --quiet                   Suppress narration; only the final index.json path is printed.
+
+        DATABASE COMPLETENESS CHECK:
+          --verify-db               After the run, fetch this account's live devices/locations
+                                     from the Ring API and cross-check each one against the
+                                     VideoForensics app's own SQLite database (matched by provider
+                                     device/location id) - flags anything Ring reports that never
+                                     got persisted locally. Writes db-completeness.json alongside
+                                     index.json; does not affect the exit code (a device/location
+                                     that simply hasn't been downloaded yet is expected, not a
+                                     failure - this is a completeness report, not a pass/fail gate).
+          --db-path <path>          SQLite database file to check against. Default:
+                                     %AppData%\VideoForensics\videoforensics.db (same file the
+                                     main VideoForensics app uses). Only meaningful with --verify-db.
 
         CREDENTIALS (first match wins):
           --username / --password   Explicit account credentials.

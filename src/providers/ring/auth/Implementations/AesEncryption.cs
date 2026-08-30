@@ -97,14 +97,12 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
             var userId = Environment.UserName ?? "unknown";
             var combinedInput = $"{machineId}:{userId}";
 
-            using (var pbkdf2 = new Rfc2898DeriveBytes(
-                combinedInput,
+            return Rfc2898DeriveBytes.Pbkdf2(
+                Encoding.UTF8.GetBytes(combinedInput),
                 Encoding.UTF8.GetBytes("RingVideos"),
                 Iterations,
-                HashAlgorithmName.SHA256))
-            {
-                return pbkdf2.GetBytes(KeySize);
-            }
+                HashAlgorithmName.SHA256,
+                KeySize);
         }
 
         private string GetMachineIdentifier()
@@ -130,6 +128,7 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private string GetWindowsMachineGuid()
         {
             try

@@ -28,6 +28,7 @@ namespace VideoForensics
         private readonly IForensicReportRenderer _reportRenderer;
         private readonly IProviderAuthService _authService;
         private readonly IDeviceDiscoveryService _deviceService;
+        private readonly IEventAndConfigService _eventAndConfigService;
         private readonly IVideoForensicsDataClient _videoForensicsDataClient;
         private readonly IEventRepository _eventRepository;
         private readonly IDeviceConfigRepository _deviceConfigRepository;
@@ -37,6 +38,7 @@ namespace VideoForensics
         private readonly IEvidenceExportService _evidenceExportService;
         private readonly IAppSettingRepository _appSettingRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly IUserRepository _userRepository;
         private readonly ConfigToolsOrchestrator _configToolsOrchestrator;
         private readonly JammingToolsOrchestrator _jammingToolsOrchestrator;
 
@@ -48,6 +50,7 @@ namespace VideoForensics
             IForensicReportRenderer reportRenderer,
             IProviderAuthService authService,
             IDeviceDiscoveryService deviceService,
+            IEventAndConfigService eventAndConfigService,
             IVideoForensicsDataClient videoForensicsDataClient,
             IEventRepository eventRepository,
             IDeviceConfigRepository deviceConfigRepository,
@@ -57,6 +60,7 @@ namespace VideoForensics
             IEvidenceExportService evidenceExportService,
             IAppSettingRepository appSettingRepository,
             IProviderAccountRepository providerAccountRepository,
+            IUserRepository userRepository,
             ConfigToolsOrchestrator configToolsOrchestrator,
             JammingToolsOrchestrator jammingToolsOrchestrator)
         {
@@ -67,6 +71,7 @@ namespace VideoForensics
             _reportRenderer = reportRenderer;
             _authService = authService;
             _deviceService = deviceService;
+            _eventAndConfigService = eventAndConfigService;
             _videoForensicsDataClient = videoForensicsDataClient;
             _eventRepository = eventRepository;
             _deviceConfigRepository = deviceConfigRepository;
@@ -76,8 +81,17 @@ namespace VideoForensics
             _evidenceExportService = evidenceExportService;
             _appSettingRepository = appSettingRepository;
             _providerAccountRepository = providerAccountRepository;
+            _userRepository = userRepository;
             _configToolsOrchestrator = configToolsOrchestrator;
             _jammingToolsOrchestrator = jammingToolsOrchestrator;
+        }
+
+        /// <summary>Formats an account for display as its user's email/display name, falling back to the provider name if the user record is missing.</summary>
+        private async Task<string> FormatAccountLabelAsync(ProviderAccount account, CancellationToken ct)
+        {
+            var user = await _userRepository.GetAsync(account.UserId, ct);
+            var identity = user?.Email ?? user?.DisplayName;
+            return string.IsNullOrEmpty(identity) ? account.ProviderName : identity;
         }
 
         public async Task ShowMainMenuAsync()
@@ -102,6 +116,7 @@ namespace VideoForensics
                             "Review Evidence",
                             "Browse Events",
                             "Device Configuration",
+                            "Query API",
                             "Manage Accounts",
                             "Configuration",
                             "Exit"
@@ -126,6 +141,9 @@ namespace VideoForensics
                         break;
                     case "Device Configuration":
                         await ShowDeviceConfigurationMenu(CancellationToken.None);
+                        break;
+                    case "Query API":
+                        await ShowQueryApiMenu(CancellationToken.None);
                         break;
                     case "Manage Accounts":
                         await ShowManageAccountsMenu(CancellationToken.None);
@@ -570,6 +588,273 @@ namespace VideoForensics
             Console.ReadKey();
         }
 
+        private async Task ShowQueryApiMenu(CancellationToken ct)
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("═══════════════════════════════════════════════════════════");
+                Console.WriteLine("QUERY API");
+                Console.WriteLine("═══════════════════════════════════════════════════════════");
+                AnsiConsole.MarkupLine("[yellow]Runs a live query against the provider API and saves the raw result as JSON.[/]");
+
+                var choice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select a query to run")
+                        .HighlightStyle("green")
+                        .AddChoices(
+                            "Account Status",
+                            "Locations",
+                            "Devices",
+                            "Device Events",
+                            "Device Config",
+                            "Back to Main Menu"
+                        ));
+
+                try
+                {
+                    switch (choice)
+                    {
+                        case "Account Status":
+                            await QueryAccountStatusAsync(ct);
+                            break;
+                        case "Locations":
+                            await QueryLocationsAsync(ct);
+                            break;
+                        case "Devices":
+                            await QueryDevicesAsync(ct);
+                            break;
+                        case "Device Events":
+                            await QueryDeviceEventsAsync(ct);
+                            break;
+                        case "Device Config":
+                            await QueryDeviceConfigAsync(ct);
+                            break;
+                        case "Back to Main Menu":
+                            return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Query API request failed");
+                    AnsiConsole.MarkupLine("[red]✗ Query failed: {0}[/]", EscapeMarkup(ex.Message));
+                }
+
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+                Console.ReadKey();
+            }
+        }
+
+        private async Task QueryAccountStatusAsync(CancellationToken ct)
+        {
+            var isAuthenticated = await _authService.IsAuthenticatedAsync(ct);
+            var result = new
+            {
+                AuthStatus = _authService.GetAuthStatus(),
+                IsAuthenticated = isAuthenticated,
+                ActiveProviderAccountId = _forensicsConfig.ActiveProviderAccountId
+            };
+
+            await WriteQueryResultAsync("account-status", result, ct);
+        }
+
+        private async Task QueryLocationsAsync(CancellationToken ct)
+        {
+            var locations = await _deviceService.GetLocationsAsync(ct);
+            AnsiConsole.MarkupLine("[green]✓ {0} location(s) retrieved[/]", locations.Count);
+            await WriteQueryResultAsync("locations", locations, ct);
+        }
+
+        private async Task QueryDevicesAsync(CancellationToken ct)
+        {
+            var locations = await _deviceService.GetLocationsAsync(ct);
+            if (locations.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No locations found on the account.[/]");
+                return;
+            }
+
+            Console.WriteLine("\nSelect location:");
+            for (int i = 0; i < locations.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {locations[i].Name}");
+            }
+
+            Console.Write("\nEnter location number: ");
+            if (!int.TryParse(Console.ReadLine(), out int locationChoice) || locationChoice < 1 || locationChoice > locations.Count)
+            {
+                Console.WriteLine("Invalid selection.");
+                return;
+            }
+
+            var selectedLocation = locations[locationChoice - 1];
+            var devices = await _deviceService.GetDevicesAsync(selectedLocation.Id, ct);
+            AnsiConsole.MarkupLine("[green]✓ {0} device(s) retrieved for {1}[/]", devices.Count, EscapeMarkup(selectedLocation.Name));
+            await WriteQueryResultAsync($"devices_{selectedLocation.Name}", devices, ct);
+        }
+
+        private async Task QueryDeviceEventsAsync(CancellationToken ct)
+        {
+            var devices = await _deviceRepository.ListAsync(ct);
+            if (!devices.Any())
+            {
+                Console.WriteLine("No devices found.");
+                return;
+            }
+
+            Console.WriteLine("\nSelect device:");
+            for (int i = 0; i < devices.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {devices[i].Name}");
+            }
+
+            Console.Write("\nEnter device number: ");
+            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
+            {
+                Console.WriteLine("Invalid selection.");
+                return;
+            }
+
+            var selectedDevice = devices[deviceChoice - 1];
+
+            Console.Write("Enter start date (yyyy-MM-dd): ");
+            if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
+            {
+                Console.WriteLine("Invalid date format.");
+                return;
+            }
+
+            Console.Write("Enter end date (yyyy-MM-dd): ");
+            if (!DateTime.TryParse(Console.ReadLine(), out var toDate))
+            {
+                Console.WriteLine("Invalid date format.");
+                return;
+            }
+
+            var events = await _eventAndConfigService.GetEventsAsync(selectedDevice.ProviderDeviceId, fromDate, toDate, cancellationToken: ct);
+            AnsiConsole.MarkupLine("[green]✓ {0} event(s) retrieved for {1}[/]", events.Count, EscapeMarkup(selectedDevice.Name));
+            await WriteQueryResultAsync($"device-events_{selectedDevice.Name}", events, ct);
+        }
+
+        private async Task QueryDeviceConfigAsync(CancellationToken ct)
+        {
+            var devices = await _deviceRepository.ListAsync(ct);
+            if (!devices.Any())
+            {
+                Console.WriteLine("No devices found.");
+                return;
+            }
+
+            Console.WriteLine("\nSelect device:");
+            for (int i = 0; i < devices.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {devices[i].Name}");
+            }
+
+            Console.Write("\nEnter device number: ");
+            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
+            {
+                Console.WriteLine("Invalid selection.");
+                return;
+            }
+
+            var selectedDevice = devices[deviceChoice - 1];
+            var config = await _eventAndConfigService.GetDeviceConfigAsync(selectedDevice.ProviderDeviceId, ct);
+            if (config == null)
+            {
+                AnsiConsole.MarkupLine("[yellow]No configuration returned for {0}[/]", EscapeMarkup(selectedDevice.Name));
+                return;
+            }
+
+            await WriteQueryResultAsync($"device-config_{selectedDevice.Name}", config, ct);
+        }
+
+        /// <summary>Serializes a query result to JSON and writes it under the query export location.</summary>
+        private async Task WriteQueryResultAsync(string queryLabel, object result, CancellationToken ct)
+        {
+            var exportDirectory = await GetQueryExportLocation(ct);
+            if (exportDirectory == null)
+            {
+                AnsiConsole.MarkupLine("[yellow]Query result not saved (no export location available).[/]");
+                return;
+            }
+
+            var sanitizedLabel = new string(queryLabel.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+            var fileName = $"{sanitizedLabel}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+            var filePath = Path.Combine(exportDirectory, fileName);
+
+            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(filePath, json, ct);
+
+            _logger.LogInformation("Query result saved: {FilePath}", filePath);
+            AnsiConsole.MarkupLine("[green]✓ Saved to: {0}[/]", filePath);
+        }
+
+        /// <summary>Resolves the directory to write query results to, prompting for and persisting a choice if none is configured yet.</summary>
+        private async Task<string?> GetQueryExportLocation(CancellationToken ct)
+        {
+            if (!string.IsNullOrEmpty(_forensicsConfig.QueryExportLocation))
+            {
+                try
+                {
+                    if (!Directory.Exists(_forensicsConfig.QueryExportLocation))
+                        Directory.CreateDirectory(_forensicsConfig.QueryExportLocation);
+                    return _forensicsConfig.QueryExportLocation;
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine("[yellow]⚠ Saved export location not accessible: {0}[/]", ex.Message);
+                }
+            }
+
+            // Use OneDrive-aware default (Documents/VideoForensics)
+            var defaultPath = PathUtilities.GetDefaultQueryExportLocation();
+            AnsiConsole.MarkupLine("[cyan]Suggested export location:[/] {0}", defaultPath);
+
+            if (AnsiConsole.Confirm("Use this location?", true))
+            {
+                try
+                {
+                    Directory.CreateDirectory(defaultPath);
+                    _forensicsConfig.QueryExportLocation = defaultPath;
+                    await SaveConfiguration(ct);
+                    return defaultPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create query export directory: {ExportPath}", defaultPath);
+                    AnsiConsole.MarkupLine("[yellow]⚠ Could not use suggested location: {0}[/]", ex.Message);
+                }
+            }
+
+            var newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for query results:[/]");
+            if (string.IsNullOrEmpty(newPath))
+                return null;
+
+            newPath = newPath.Trim();
+            var validationError = ValidateDownloadPath(newPath);
+            if (validationError != null)
+            {
+                AnsiConsole.MarkupLine("[red]✗ Invalid path: {0}[/]", validationError);
+                return null;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(newPath);
+                _forensicsConfig.QueryExportLocation = newPath;
+                await SaveConfiguration(ct);
+                return newPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create query export directory: {ExportPath}", newPath);
+                AnsiConsole.MarkupLine("[red]✗ Failed to create directory: {0}[/]", ex.Message);
+                return null;
+            }
+        }
+
         private async Task ShowDeviceConfigurationMenu(CancellationToken ct)
         {
             Console.Clear();
@@ -623,38 +908,25 @@ namespace VideoForensics
         private async Task RunFullForensicWorkflow(CancellationToken cancellationToken = default)
         {
             AnsiConsole.MarkupLine("[bold cyan]Full Forensic Workflow[/]");
-            AnsiConsole.MarkupLine("[dim]Guided walkthrough: authenticate → collect → analyze → review[/]");
+            AnsiConsole.MarkupLine("[dim]Guided walkthrough: collect → analyze → review[/]");
             AnsiConsole.MarkupLine("");
 
-            AnsiConsole.MarkupLine("[bold]Step 1 of 4: Authenticate[/]");
-            if (!await _authService.IsAuthenticatedAsync(cancellationToken))
-            {
-                if (!await AuthenticateWithTwoFactorAsync(cancellationToken))
-                {
-                    AnsiConsole.MarkupLine("[red]✗ Workflow stopped — authentication required[/]");
-                    return;
-                }
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[green]✓ Already authenticated[/]");
-            }
-            AnsiConsole.MarkupLine("");
-
-            AnsiConsole.MarkupLine("[bold]Step 2 of 4: Collect Evidence[/]");
+            AnsiConsole.MarkupLine("[bold]Step 1 of 3: Collect Evidence[/]");
             var collectChoice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("What would you like to download?")
                     .HighlightStyle("green")
                     .AddChoices("Videos", "Snapshots", "Both", "Skip"));
 
+            // Download* prompts for authentication itself if needed, so accounts aren't
+            // forced to log in when this step is skipped or when only analyzing existing evidence.
             if (collectChoice == "Videos" || collectChoice == "Both")
                 await DownloadVideos(cancellationToken);
             if (collectChoice == "Snapshots" || collectChoice == "Both")
                 await DownloadSnapshots(cancellationToken);
             AnsiConsole.MarkupLine("");
 
-            AnsiConsole.MarkupLine("[bold]Step 3 of 4: Analyze Evidence[/]");
+            AnsiConsole.MarkupLine("[bold]Step 2 of 3: Analyze Evidence[/]");
             await ShowForensicReports();
             AnsiConsole.MarkupLine("");
             await ShowSignalAnomalies();
@@ -664,7 +936,7 @@ namespace VideoForensics
             await ShowChainOfCustody();
             AnsiConsole.MarkupLine("");
 
-            AnsiConsole.MarkupLine("[bold]Step 4 of 4: Review Evidence[/]");
+            AnsiConsole.MarkupLine("[bold]Step 3 of 3: Review Evidence[/]");
             await ShowEvidence();
             AnsiConsole.MarkupLine("");
 
@@ -672,6 +944,48 @@ namespace VideoForensics
         }
 
         private const int MaxAuthenticationAttempts = 3;
+
+        /// <summary>
+        /// Ensures a Ring session is active before a download/collection flow proceeds. First
+        /// enumerates known provider accounts (so the flow always knows what's configured before
+        /// touching the network), then tries to resume the most recently used one from its saved
+        /// refresh token, falling back to an interactive username/password/2FA prompt only if no
+        /// saved session could be restored.
+        /// </summary>
+        private async Task<bool> EnsureAuthenticatedAsync(CancellationToken cancellationToken = default)
+        {
+            if (await _authService.IsAuthenticatedAsync(cancellationToken))
+            {
+                return true;
+            }
+
+            var accounts = await _providerAccountRepository.ListAsync(cancellationToken);
+            if (accounts.Count > 0)
+            {
+                var activeAccountId = _forensicsConfig.ActiveProviderAccountId;
+                var active = accounts.FirstOrDefault(a => a.Id == activeAccountId) ?? accounts[0];
+                AnsiConsole.MarkupLine($"[dim]Found {accounts.Count} saved account(s); resuming {active.ProviderName} session...[/]");
+
+                if (await _authService.RestoreFromSavedCredentialsAsync(cancellationToken))
+                {
+                    AnsiConsole.MarkupLine("[green]✓ Resumed saved session[/]");
+                    if (_forensicsConfig.ActiveProviderAccountId == null)
+                    {
+                        _forensicsConfig.ActiveProviderAccountId = active.Id;
+                        await SaveConfiguration(cancellationToken);
+                    }
+                    return true;
+                }
+
+                AnsiConsole.MarkupLine("[yellow]Saved session could not be resumed; re-authentication required[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[yellow]No saved accounts found; authentication required[/]");
+            }
+
+            return await AuthenticateWithTwoFactorAsync(cancellationToken);
+        }
 
         private async Task<bool> AuthenticateWithTwoFactorAsync(CancellationToken cancellationToken = default)
         {
@@ -701,6 +1015,16 @@ namespace VideoForensics
                 if (result.Success)
                 {
                     AnsiConsole.MarkupLine("[green]✓ Authentication successful[/]");
+
+                    // Without this, the active account stays unset after a fresh login (only the
+                    // "resume saved session" path used to set it), so device downloads later had
+                    // nothing to attach to and fell back to creating a synthetic "default" account.
+                    if (result.ProviderAccountId.HasValue && _forensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
+                    {
+                        _forensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
+                        await SaveConfiguration(cancellationToken);
+                    }
+
                     return true;
                 }
 
@@ -721,15 +1045,10 @@ namespace VideoForensics
         {
             AnsiConsole.MarkupLine("[bold cyan]Download Ring Videos[/]");
 
-            // Check if authenticated, authenticate if needed
-            if (!await _authService.IsAuthenticatedAsync(cancellationToken))
+            if (!await EnsureAuthenticatedAsync(cancellationToken))
             {
-                AnsiConsole.MarkupLine("[yellow]Authentication required[/]");
-                if (!await AuthenticateWithTwoFactorAsync(cancellationToken))
-                {
-                    AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
-                    return;
-                }
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
             }
 
             var outputPath = await GetDownloadLocation(cancellationToken);
@@ -739,33 +1058,9 @@ namespace VideoForensics
             }
 
             // Discover devices
-            AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
-            var locations = await _deviceService.GetLocationsAsync();
-            var deviceDict = new Dictionary<string, (string Id, string Name, string Location)>();
-
-            if (locations != null && locations.Count > 0)
+            var devices = await DiscoverDevicesAsync();
+            if (devices == null)
             {
-                foreach (var location in locations)
-                {
-                    var locationDevices = await _deviceService.GetDevicesAsync(location.Id.ToString());
-                    if (locationDevices != null)
-                    {
-                        foreach (var device in locationDevices)
-                        {
-                            if (!deviceDict.ContainsKey(device.Id))
-                            {
-                                deviceDict[device.Id] = (device.Id, device.Name, location.Name);
-                            }
-                        }
-                    }
-                }
-            }
-
-            var devices = deviceDict.Values.ToList();
-
-            if (devices.Count == 0)
-            {
-                AnsiConsole.MarkupLine("[yellow]No devices found on this account[/]");
                 return;
             }
 
@@ -777,17 +1072,21 @@ namespace VideoForensics
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
             }
 
-            // Always ask for rescan window (days back to pull)
-            var daysBack = AskIntWithEditableDefault("[yellow]Days back to pull:[/]", _forensicsConfig.RescanWindowDays);
-            if (daysBack != _forensicsConfig.RescanWindowDays)
+            // Always ask for the start date to pull from
+            var defaultStartDate = DateTime.TryParseExact(_forensicsConfig.DownloadStartDate, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDefault)
+                ? parsedDefault
+                : DateTime.Today.AddDays(-180);
+            var startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
+            var startDateString = startDate.ToString("yyyy-MM-dd");
+            if (startDateString != _forensicsConfig.DownloadStartDate)
             {
-                _logger.LogInformation("Updating RescanWindowDays from {Old} to {New}", _forensicsConfig.RescanWindowDays, daysBack);
-                _forensicsConfig.RescanWindowDays = daysBack;
+                _logger.LogInformation("Updating DownloadStartDate from {Old} to {New}", _forensicsConfig.DownloadStartDate, startDateString);
+                _forensicsConfig.DownloadStartDate = startDateString;
                 await SaveConfiguration(cancellationToken);
-                _logger.LogInformation("RescanWindowDays saved: {Value}", _forensicsConfig.RescanWindowDays);
+                _logger.LogInformation("DownloadStartDate saved: {Value}", _forensicsConfig.DownloadStartDate);
             }
 
-            var startDate = DateTime.Now.AddDays(-daysBack);
             var endDate = DateTime.Now;
 
             // If no prior downloads, force a full re-scan to fetch all data. If there are prior downloads,
@@ -895,14 +1194,14 @@ namespace VideoForensics
                 if (result)
                 {
                     _forensicsConfig.DownloadLocation = outputPath;
-                    // Ensure RescanWindowDays is persisted
-                    _logger.LogInformation("Persisting configuration after download: RescanWindowDays={Days}", _forensicsConfig.RescanWindowDays);
+                    // Ensure DownloadStartDate is persisted
+                    _logger.LogInformation("Persisting configuration after download: DownloadStartDate={StartDate}", _forensicsConfig.DownloadStartDate);
                     await SaveConfiguration(cancellationToken);
 
                     // Display summary
                     AnsiConsole.MarkupLine("[bold cyan]Download Summary[/]");
                     AnsiConsole.MarkupLine("[yellow]Date Range:[/] {0:yyyy-MM-dd} to {1:yyyy-MM-dd} ({2} days)",
-                        startDate, endDate, daysBack);
+                        startDate, endDate, (endDate - startDate).Days);
                     AnsiConsole.MarkupLine("[yellow]Locations Scanned:[/] {0}",
                         string.Join(", ", devices.GroupBy(d => d.Location).Select(g => g.Key)));
                     AnsiConsole.MarkupLine("[yellow]Devices:[/]");
@@ -930,10 +1229,12 @@ namespace VideoForensics
                     var remaining = _downloadService.GetRemainingCount();
                     if (remaining > 0)
                     {
+                        var reason = _downloadService.GetRemainingReason();
+                        var reasonSuffix = reason != null ? $" ({EscapeMarkup(reason)})" : " (reason unknown)";
                         AnsiConsole.MarkupLine("");
                         var choice = AnsiConsole.Prompt(
                             new SelectionPrompt<string>()
-                                .Title($"[yellow]{remaining} more video(s) matched but weren't downloaded (likely a rate limit paused the run). Continue downloading the rest?[/]")
+                                .Title($"[yellow]{remaining} more video(s) matched but weren't downloaded{reasonSuffix}. Continue downloading the rest?[/]")
                                 .HighlightStyle("green")
                                 .AddChoices("Continue downloading", "Return to Main Menu"));
 
@@ -960,15 +1261,10 @@ namespace VideoForensics
         {
             AnsiConsole.MarkupLine("[bold cyan]Download Ring Snapshots[/]");
 
-            // Check if authenticated, authenticate if needed
-            if (!await _authService.IsAuthenticatedAsync(cancellationToken))
+            if (!await EnsureAuthenticatedAsync(cancellationToken))
             {
-                AnsiConsole.MarkupLine("[yellow]Authentication required[/]");
-                if (!await AuthenticateWithTwoFactorAsync(cancellationToken))
-                {
-                    AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
-                    return;
-                }
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
             }
 
             var outputPath = await GetDownloadLocation(cancellationToken);
@@ -986,33 +1282,9 @@ namespace VideoForensics
             var endDate = DateTime.Now;
 
             // Discover devices
-            AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
-            var locations = await _deviceService.GetLocationsAsync();
-            var deviceDict = new Dictionary<string, (string Id, string Name, string Location)>();
-
-            if (locations != null && locations.Count > 0)
+            var devices = await DiscoverDevicesAsync();
+            if (devices == null)
             {
-                foreach (var location in locations)
-                {
-                    var locationDevices = await _deviceService.GetDevicesAsync(location.Id.ToString());
-                    if (locationDevices != null)
-                    {
-                        foreach (var device in locationDevices)
-                        {
-                            if (!deviceDict.ContainsKey(device.Id))
-                            {
-                                deviceDict[device.Id] = (device.Id, device.Name, location.Name);
-                            }
-                        }
-                    }
-                }
-            }
-
-            var devices = deviceDict.Values.ToList();
-
-            if (devices.Count == 0)
-            {
-                AnsiConsole.MarkupLine("[yellow]No devices found on this account[/]");
                 return;
             }
 
@@ -1190,6 +1462,7 @@ namespace VideoForensics
                             "Key Storage Configuration",
                             "Retention Policy",
                             "Download Location",
+                            "Query Export Location",
                             "Max Concurrent Downloads",
                             "Logging Level",
                             "Factory Reset (Destructive)",
@@ -1208,13 +1481,16 @@ namespace VideoForensics
                         ConfigureKeyStorage();
                         break;
                     case "Retention Policy":
-                        ConfigureRetentionPolicy();
+                        await ConfigureRetentionPolicy();
                         break;
                     case "Download Location":
                         await ConfigureDownloadLocation();
                         break;
+                    case "Query Export Location":
+                        await ConfigureQueryExportLocation();
+                        break;
                     case "Max Concurrent Downloads":
-                        ConfigureMaxConcurrentDownloads();
+                        await ConfigureMaxConcurrentDownloads();
                         break;
                     case "Logging Level":
                         ConfigureLoggingLevel();
@@ -1505,6 +1781,56 @@ namespace VideoForensics
             }
         }
 
+        private async Task ConfigureQueryExportLocation()
+        {
+            AnsiConsole.MarkupLine("[bold cyan]Query Export Location[/]");
+
+            while (true)
+            {
+                var exportChoices = new[]
+                {
+                    EscapeMarkup($"Export Directory [{(_forensicsConfig.QueryExportLocation ?? "Not set - defaults to " + PathUtilities.GetDefaultQueryExportLocation())}]"),
+                    "Back"
+                };
+
+                var choice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Configure query export location")
+                        .HighlightStyle("green")
+                        .AddChoices(exportChoices));
+
+                switch (choice)
+                {
+                    case var c when c.StartsWith("Export Directory"):
+                        var newPath = AnsiConsole.Ask<string>("[yellow]Enter new export directory (or press Enter to keep current):[/]", _forensicsConfig.QueryExportLocation ?? "");
+
+                        if (!string.IsNullOrEmpty(newPath))
+                        {
+                            var validationError = ValidateDownloadPath(newPath);
+                            if (validationError != null)
+                            {
+                                AnsiConsole.MarkupLine("[red]✗ Invalid path: {0}[/]", validationError);
+                                break;
+                            }
+
+                            try
+                            {
+                                Directory.CreateDirectory(newPath);
+                                _forensicsConfig.QueryExportLocation = newPath;
+                                await SaveConfiguration();
+                            }
+                            catch (Exception ex)
+                            {
+                                AnsiConsole.MarkupLine("[red]✗ Failed to set location: {0}[/]", ex.Message);
+                            }
+                        }
+                        break;
+                    case "Back":
+                        return;
+                }
+            }
+        }
+
         private void ConfigureLoggingLevel()
         {
             AnsiConsole.MarkupLine("[bold cyan]Logging Level[/]");
@@ -1657,6 +1983,53 @@ namespace VideoForensics
         }
 
         /// <summary>
+        /// Discovers devices across all locations, printing progress/error/empty-result messages
+        /// as it goes. Returns null (with a message already shown) if discovery failed or found
+        /// nothing; callers should just check for null and return.
+        /// </summary>
+        private async Task<List<(string Id, string Name, string Location)>?> DiscoverDevicesAsync()
+        {
+            AnsiConsole.MarkupLine("[dim]Discovering devices...[/]");
+            var deviceDict = new Dictionary<string, (string Id, string Name, string Location)>();
+
+            try
+            {
+                var locations = await _deviceService.GetLocationsAsync();
+                if (locations != null && locations.Count > 0)
+                {
+                    foreach (var location in locations)
+                    {
+                        var locationDevices = await _deviceService.GetDevicesAsync(location.Id.ToString());
+                        if (locationDevices != null)
+                        {
+                            foreach (var device in locationDevices)
+                            {
+                                if (!deviceDict.ContainsKey(device.Id))
+                                {
+                                    deviceDict[device.Id] = (device.Id, device.Name, location.Name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]✗ Device discovery failed: {EscapeMarkup(ex.Message)}[/]");
+                return null;
+            }
+
+            var devices = deviceDict.Values.ToList();
+            if (devices.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No devices found on this account[/]");
+                return null;
+            }
+
+            return devices;
+        }
+
+        /// <summary>
         /// Runs a download with three live-updating progress bars: current device, total aggregate,
         /// and speed/connections info. Plus a scrolling feed of per-file outcomes.
         /// </summary>
@@ -1797,11 +2170,12 @@ namespace VideoForensics
                     for (int i = 0; i < accounts.Count; i++)
                     {
                         var account = accounts[i];
+                        var label = await FormatAccountLabelAsync(account, ct);
                         var isActive = account.Id == activeAccountId ? " [ACTIVE]" : "";
                         var lastAuth = account.LastSuccessfulAuthUtc.HasValue
                             ? account.LastSuccessfulAuthUtc.Value.ToString("yyyy-MM-dd HH:mm:ss")
                             : "Never";
-                        Console.WriteLine($"  {i + 1}. {account.ProviderName} - Linked: {account.LinkedUtc:yyyy-MM-dd HH:mm:ss}, Last Auth: {lastAuth}{isActive}");
+                        Console.WriteLine($"  {i + 1}. {label} ({account.ProviderName}) - Linked: {account.LinkedUtc:yyyy-MM-dd HH:mm:ss}, Last Auth: {lastAuth}{isActive}");
                     }
                 }
 
@@ -1854,16 +2228,18 @@ namespace VideoForensics
 
             for (int i = 0; i < accounts.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {accounts[i].ProviderName}");
+                var label = await FormatAccountLabelAsync(accounts[i], ct);
+                Console.WriteLine($"{i + 1}. {label}");
             }
 
             Console.Write("Enter account number (or 0 to cancel): ");
             if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
             {
                 var selected = accounts[selection - 1];
+                var selectedLabel = await FormatAccountLabelAsync(selected, ct);
                 _forensicsConfig.ActiveProviderAccountId = selected.Id;
                 await SaveConfiguration(ct);
-                AnsiConsole.MarkupLine($"[green]✓ Active account set to {selected.ProviderName}[/]");
+                AnsiConsole.MarkupLine($"[green]✓ Active account set to {selectedLabel}[/]");
                 _logger.LogInformation("Active account changed to {AccountId} ({ProviderName})", selected.Id, selected.ProviderName);
             }
         }
@@ -1876,14 +2252,16 @@ namespace VideoForensics
 
             for (int i = 0; i < accounts.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {accounts[i].ProviderName}");
+                var label = await FormatAccountLabelAsync(accounts[i], ct);
+                Console.WriteLine($"{i + 1}. {label}");
             }
 
             Console.Write("Enter account number to remove (or 0 to cancel): ");
             if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
             {
                 var selected = accounts[selection - 1];
-                if (AnsiConsole.Confirm($"Remove {selected.ProviderName} account?", false))
+                var selectedLabel = await FormatAccountLabelAsync(selected, ct);
+                if (AnsiConsole.Confirm($"Remove {selectedLabel} account?", false))
                 {
                     await _providerAccountRepository.DeleteAsync(selected.Id, ct);
 
@@ -1932,19 +2310,20 @@ namespace VideoForensics
         }
 
         /// <summary>
-        /// Prompts for an integer with the default value pre-filled and editable in the input line
+        /// Prompts for a string with the default value pre-filled and editable in the input line
         /// itself (cursor positioned before it), rather than shown as a "(7):" hint the way
-        /// Spectre.Console's TextPrompt/Ask do. The first digit typed clears the pre-filled default
-        /// entirely (as if it were pre-selected) rather than inserting before it; Backspace/Delete/
-        /// arrow keys before that fall back to normal in-place editing. Enter with no changes keeps
-        /// the default.
+        /// Spectre.Console's TextPrompt/Ask do. The first accepted character typed clears the
+        /// pre-filled default entirely (as if it were pre-selected) rather than inserting before
+        /// it; Backspace/Delete/arrow keys before that fall back to normal in-place editing. Enter
+        /// with no changes keeps the default. Only characters accepted by <paramref name="isAllowedChar"/>
+        /// are inserted; all other keys (aside from the navigation/editing keys above) are ignored.
         /// </summary>
-        private static int AskIntWithEditableDefault(string label, int defaultValue)
+        private static string AskStringWithEditableDefault(string label, string defaultValue, Func<char, bool> isAllowedChar)
         {
             AnsiConsole.Markup(label + " ");
             Console.Out.Flush();
 
-            var buffer = new System.Text.StringBuilder(defaultValue.ToString());
+            var buffer = new System.Text.StringBuilder(defaultValue);
             var cursor = 0;
             var defaultConsumed = false;
 
@@ -2034,7 +2413,7 @@ namespace VideoForensics
                     continue;
                 }
 
-                if (char.IsDigit(key.KeyChar))
+                if (isAllowedChar(key.KeyChar))
                 {
                     if (!defaultConsumed)
                     {
@@ -2048,10 +2427,47 @@ namespace VideoForensics
                 }
             }
 
-            if (buffer.Length == 0)
-                return defaultValue;
+            return buffer.Length == 0 ? defaultValue : buffer.ToString();
+        }
 
-            return int.TryParse(buffer.ToString(), out var value) ? value : defaultValue;
+        private static int AskIntWithEditableDefault(string label, int defaultValue)
+        {
+            var result = AskStringWithEditableDefault(label, defaultValue.ToString(), char.IsDigit);
+            return int.TryParse(result, out var value) ? value : defaultValue;
+        }
+
+        /// <summary>
+        /// Accepted date input formats, dash-separated: ISO year-first (yyyy-M-d, any digit
+        /// padding) or US month-first (M-d-y, 2- or 4-digit year).
+        private static readonly string[] DateInputFormats =
+        {
+            "yyyy-MM-dd", "yyyy-M-d", "yyyy-MM-d", "yyyy-M-dd",
+            "M-d-yyyy", "MM-dd-yyyy", "M-dd-yyyy", "MM-d-yyyy",
+            "M-d-yy", "MM-dd-yy", "M-dd-yy", "MM-d-yy"
+        };
+
+        /// <summary>
+        /// Prompts for a date with the default pre-filled and editable, re-prompting until the
+        /// input parses. Digits and '-' are the only characters accepted; see
+        /// <see cref="DateInputFormats"/> for the accepted layouts.
+        /// </summary>
+        private static DateTime AskDateWithEditableDefault(string label, DateTime defaultValue)
+        {
+            while (true)
+            {
+                var input = AskStringWithEditableDefault(label, defaultValue.ToString("yyyy-MM-dd"), c => char.IsDigit(c) || c == '-');
+                if (DateTime.TryParseExact(
+                        input,
+                        DateInputFormats,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None,
+                        out var parsed))
+                {
+                    return parsed;
+                }
+
+                AnsiConsole.MarkupLine("[red]Invalid date - use yyyy-MM-dd or M-d-yy.[/]");
+            }
         }
     }
 }
