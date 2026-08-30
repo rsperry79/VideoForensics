@@ -242,7 +242,9 @@ namespace VideoForensics.Data.Core.Services
             string providerLocationId,
             string name,
             string? address,
-            CancellationToken ct)
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default)
         {
             try
             {
@@ -261,7 +263,11 @@ namespace VideoForensics.Data.Core.Services
                             ProviderAccountId = providerAccountId,
                             ProviderLocationId = providerLocationId,
                             Name = name,
-                            Address = address
+                            Address = address,
+                            MetadataJson = metadataJson,
+                            ApiResponseHash = apiResponseHash,
+                            LastSyncedUtc = DateTime.UtcNow,
+                            SyncStatus = SyncStatus.Synced
                         };
                         await context.Locations.AddAsync(location, ct);
                         _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
@@ -288,7 +294,9 @@ namespace VideoForensics.Data.Core.Services
             string name,
             string type,
             bool isOnline,
-            CancellationToken ct)
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default)
         {
             try
             {
@@ -308,7 +316,11 @@ namespace VideoForensics.Data.Core.Services
                             ProviderDeviceId = providerDeviceId,
                             Name = name,
                             Type = type,
-                            IsOnline = isOnline
+                            IsOnline = isOnline,
+                            MetadataJson = metadataJson,
+                            ApiResponseHash = apiResponseHash,
+                            LastSyncedUtc = DateTime.UtcNow,
+                            SyncStatus = SyncStatus.Synced
                         };
                         await context.Devices.AddAsync(device, ct);
                         _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
