@@ -14,6 +14,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly ICredentialStore _credentialStore;
+        private readonly ICredentialRepository _credentialRepository;
         private readonly IRingAccountRepository? _ringAccountRepository;
         private readonly IProviderAccountRepository? _providerAccountRepository;
         private readonly IUserRepository? _userRepository;
@@ -24,6 +25,7 @@ namespace VideoForensics.Providers.Ring.Services
             ILogger logger,
             ISessionProvider sessionProvider,
             ICredentialStore credentialStore,
+            ICredentialRepository? credentialRepository = null,
             IRingAccountRepository? ringAccountRepository = null,
             IProviderAccountRepository? providerAccountRepository = null,
             IUserRepository? userRepository = null,
@@ -32,6 +34,7 @@ namespace VideoForensics.Providers.Ring.Services
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+            _credentialRepository = credentialRepository;
             _ringAccountRepository = ringAccountRepository;
             _providerAccountRepository = providerAccountRepository;
             _userRepository = userRepository;
@@ -74,11 +77,11 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to persist credentials");
+                            _logger.LogError(ex, "Failed to persist credentials to filesystem");
                         }
                     }
 
-                    // Persist Ring account data to database
+                    // Persist Ring account data to database and save refresh token
                     Guid? providerAccountId = null;
                     try
                     {
@@ -86,6 +89,25 @@ namespace VideoForensics.Providers.Ring.Services
                         if (resolvedAccountId != Guid.Empty)
                         {
                             providerAccountId = resolvedAccountId;
+
+                            // Dual-write: save refresh token to database
+                            if (session.OAuthToken.RefreshToken != null)
+                            {
+                                try
+                                {
+                                    await _credentialRepository.SetAsync(
+                                        resolvedAccountId,
+                                        "RefreshToken",
+                                        session.OAuthToken.RefreshToken,
+                                        cancellationToken);
+                                    _logger.LogInformation("Refresh token saved to database for account {AccountId}", resolvedAccountId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Failed to save refresh token to database (non-fatal)");
+                                }
+                            }
+
                             await PersistRingAccountAsync(username, session, resolvedAccountId, cancellationToken);
                         }
                     }
@@ -187,18 +209,74 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> RestoreFromSavedCredentialsAsync(CancellationToken cancellationToken = default)
         {
+            return await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null, cancellationToken);
+        }
+
+        public async Task<bool> RestoreFromSavedCredentialsAsync(
+            Guid? providerAccountId,
+            CancellationToken cancellationToken = default)
+        {
+            return await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId, cancellationToken);
+        }
+
+        public async Task<bool> RestoreFromSavedCredentialsWithAccountAsync(
+            Guid? providerAccountId = null,
+            CancellationToken cancellationToken = default)
+        {
             try
             {
-                var saved = _credentialStore.Load(CredentialResolver.AuthPath);
-                if (string.IsNullOrWhiteSpace(saved.RefreshToken))
+                RingCredentials? credentials = null;
+
+                // Try database first if providerAccountId provided
+                if (providerAccountId.HasValue)
                 {
-                    _logger.LogInformation("No saved refresh token found at {AuthPath}", CredentialResolver.AuthPath);
+                    try
+                    {
+                        var credentialEntity = await _credentialRepository.GetAsync(
+                            providerAccountId.Value,
+                            "RefreshToken",
+                            cancellationToken);
+
+                        if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
+                        {
+                            _logger.LogInformation("Restoring Ring session from database for account {AccountId}", providerAccountId);
+                            credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId}, falling back to filesystem", providerAccountId);
+                    }
+                }
+
+                // Fall back to filesystem (backward compatibility)
+                if (credentials?.RefreshToken == null)
+                {
+                    try
+                    {
+                        var saved = _credentialStore.Load(CredentialResolver.AuthPath);
+                        if (!string.IsNullOrWhiteSpace(saved.RefreshToken))
+                        {
+                            credentials = saved;
+                            _logger.LogWarning("Restoring Ring credentials from filesystem - consider migrating to database storage");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to restore credentials from filesystem");
+                    }
+                }
+
+                if (credentials?.RefreshToken == null)
+                {
+                    _logger.LogInformation("No saved refresh token found");
+                    _isAuthenticated = false;
                     return false;
                 }
 
-                _logger.LogInformation("Restoring Ring session for {Username} from saved refresh token", saved.UserName);
+                _logger.LogInformation("Restoring Ring session from refresh token");
 
-                var session = await Session.AuthenticateWithCredentials(saved, twoFactorAuthCodeProvider: null, progress: null!);
+                var session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!);
 
                 if (session?.OAuthToken == null)
                 {
@@ -211,10 +289,20 @@ namespace VideoForensics.Providers.Ring.Services
 
                 try
                 {
-                    _credentialStore.Save(CredentialResolver.AuthPath, saved);
+                    // Update filesystem for backward compatibility
+                    _credentialStore.Save(CredentialResolver.AuthPath, credentials);
 
-                    var providerAccountId = await GetOrCreateProviderAccountAsync(saved.UserName ?? "unknown", cancellationToken);
-                    await PersistRingAccountAsync(saved.UserName ?? "unknown", session, providerAccountId, cancellationToken);
+                    // Update database if we have a provider account ID
+                    var resolvedAccountId = providerAccountId ?? (
+                        string.IsNullOrWhiteSpace(credentials.UserName)
+                            ? Guid.Empty
+                            : await GetOrCreateProviderAccountAsync(credentials.UserName, cancellationToken)
+                    );
+
+                    if (resolvedAccountId != Guid.Empty)
+                    {
+                        await PersistRingAccountAsync(credentials.UserName ?? "unknown", session, resolvedAccountId, cancellationToken);
+                    }
                 }
                 catch (Exception ex)
                 {

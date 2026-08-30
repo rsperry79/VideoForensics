@@ -59,6 +59,7 @@ namespace VideoForensics
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
                     provider.GetRequiredService<ICredentialStore>(),
+                    provider.GetRequiredService<ICredentialRepository>(),
                     provider.GetRequiredService<IRingAccountRepository>(),
                     provider.GetRequiredService<IProviderAccountRepository>(),
                     provider.GetRequiredService<IUserRepository>()

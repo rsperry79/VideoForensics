@@ -18,6 +18,9 @@ namespace VideoForensics.Providers.Common.Contracts
         /// <summary>Restores session from saved credentials (refresh token)</summary>
         Task<bool> RestoreFromSavedCredentialsAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>Restores session from saved credentials for a specific account (supports multi-account per-account credential storage)</summary>
+        Task<bool> RestoreFromSavedCredentialsAsync(Guid? providerAccountId, CancellationToken cancellationToken = default);
+
         /// <summary>Gets current authentication status</summary>
         string GetAuthStatus();
     }

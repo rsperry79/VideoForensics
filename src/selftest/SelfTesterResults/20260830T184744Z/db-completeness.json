@@ -1,0 +1,34 @@
+{
+  "DbPath": "C:\\Users\\richa\\AppData\\Roaming\\VideoForensics\\videoforensics.db",
+  "GeneratedAtUtc": "2026-08-30T18:47:50.697552Z",
+  "Devices": [
+    {
+      "Kind": "Doorbot",
+      "ProviderId": "86401464",
+      "Name": "Front Door",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "561158930",
+      "Name": "Flood",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Chime",
+      "ProviderId": "91872744",
+      "Name": "Upstairs",
+      "FoundInDb": false
+    }
+  ],
+  "Locations": [
+    {
+      "Kind": "Location",
+      "ProviderId": "dc5ff64d-bb2e-4c1f-9b74-ee0db6a8d2e9",
+      "Name": "Arlington",
+      "FoundInDb": false
+    }
+  ],
+  "MissingDeviceCount": 1,
+  "MissingLocationCount": 1
+}

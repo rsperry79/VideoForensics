@@ -1001,7 +1001,7 @@ namespace VideoForensics
                 var active = accounts.FirstOrDefault(a => a.Id == activeAccountId) ?? accounts[0];
                 AnsiConsole.MarkupLine($"[dim]Found {accounts.Count} saved account(s); resuming {active.ProviderName} session...[/]");
 
-                if (await _authService.RestoreFromSavedCredentialsAsync(cancellationToken))
+                if (await _authService.RestoreFromSavedCredentialsAsync(active.Id, cancellationToken))
                 {
                     AnsiConsole.MarkupLine("[green]✓ Resumed saved session[/]");
                     if (_forensicsConfig.ActiveProviderAccountId == null)
@@ -2277,7 +2277,7 @@ namespace VideoForensics
                 await SaveConfiguration(ct);
 
                 // Authenticate with the selected account
-                if (await _authService.RestoreFromSavedCredentialsAsync(ct))
+                if (await _authService.RestoreFromSavedCredentialsAsync(selected.Id, ct))
                 {
                     AnsiConsole.MarkupLine($"[green]✓ Active account set to {selectedLabel} and authenticated[/]");
                     _logger.LogInformation("Active account changed to {AccountId} ({ProviderName}) with successful authentication", selected.Id, selected.ProviderName);

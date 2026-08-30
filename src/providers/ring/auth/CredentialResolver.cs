@@ -60,5 +60,21 @@ namespace VideoForensics.Providers.Ring.Auth
 
             return null;
         }
+
+        /// <summary>
+        /// Overload that accepts an optional accountId parameter for API consistency.
+        /// The accountId is accepted for forward compatibility but not used in CredentialResolver
+        /// (database-based resolution happens in RingAuthService).
+        /// </summary>
+        public static ResolvedCredentials? Resolve(
+            string? refreshToken,
+            string? userName,
+            string? password,
+            Guid? accountId = null)
+        {
+            // Delegate to the existing three-parameter overload
+            // accountId is here for forward compatibility but not used in filesystem-based resolution
+            return Resolve(refreshToken, userName, password);
+        }
     }
 }
