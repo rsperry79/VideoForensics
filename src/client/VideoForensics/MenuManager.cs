@@ -259,24 +259,26 @@ namespace VideoForensics
                 return;
             }
 
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+
             // Get media items for the date range and device
             IReadOnlyList<MediaItem> mediaItems;
             if (deviceId.HasValue)
             {
                 mediaItems = await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
                     deviceId.Value,
-                    fromDate.ToUniversalTime(),
-                    toDate.ToUniversalTime(),
+                    adjustedFromDate,
+                    adjustedToDate,
                     ct);
             }
             else
             {
                 // Get all media items and filter by date range
                 var allItems = await _mediaItemRepository.ListAsync(ct);
-                var utcFromDate = fromDate.ToUniversalTime();
-                var utcToDate = toDate.ToUniversalTime();
                 mediaItems = allItems
-                    .Where(m => m.RecordedAtUtc >= utcFromDate && m.RecordedAtUtc <= utcToDate)
+                    .Where(m => m.RecordedAtUtc >= adjustedFromDate && m.RecordedAtUtc <= adjustedToDate)
                     .ToList();
             }
 
@@ -430,9 +432,13 @@ namespace VideoForensics
                 return;
             }
 
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+
             Console.WriteLine("Running provider reconciliation...");
             var discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
-                deviceId, device.ProviderDeviceId, fromDate.ToUniversalTime(), toDate.ToUniversalTime(), ct);
+                deviceId, device.ProviderDeviceId, adjustedFromDate, adjustedToDate, ct);
 
             Console.WriteLine($"\nDiscrepancies Found: {discrepancies.Count}");
             Console.WriteLine("───────────────────────────────────────────────────────────");
@@ -571,7 +577,11 @@ namespace VideoForensics
                 return;
             }
 
-            var events = await _eventRepository.ListByDeviceAndDateRangeAsync(selectedDevice.Id, fromDate.ToUniversalTime(), toDate.ToUniversalTime(), ct);
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+
+            var events = await _eventRepository.ListByDeviceAndDateRangeAsync(selectedDevice.Id, adjustedFromDate, adjustedToDate, ct);
 
             Console.WriteLine($"\n{events.Count} event(s) found:");
             Console.WriteLine("───────────────────────────────────────────────────────────");
@@ -661,6 +671,12 @@ namespace VideoForensics
 
         private async Task QueryLocationsAsync(CancellationToken ct)
         {
+            if (!await EnsureAuthenticatedAsync(ct))
+            {
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
             var locations = await _deviceService.GetLocationsAsync(ct);
             AnsiConsole.MarkupLine("[green]✓ {0} location(s) retrieved[/]", locations.Count);
             await WriteQueryResultAsync("locations", locations, ct);
@@ -668,6 +684,12 @@ namespace VideoForensics
 
         private async Task QueryDevicesAsync(CancellationToken ct)
         {
+            if (!await EnsureAuthenticatedAsync(ct))
+            {
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
             var locations = await _deviceService.GetLocationsAsync(ct);
             if (locations.Count == 0)
             {
@@ -696,6 +718,12 @@ namespace VideoForensics
 
         private async Task QueryDeviceEventsAsync(CancellationToken ct)
         {
+            if (!await EnsureAuthenticatedAsync(ct))
+            {
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
             var devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
@@ -718,27 +746,34 @@ namespace VideoForensics
 
             var selectedDevice = devices[deviceChoice - 1];
 
-            Console.Write("Enter start date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
-            {
-                Console.WriteLine("Invalid date format.");
-                return;
-            }
+            var defaultStartDate = DateTime.Now.AddDays(-1);
+            var defaultEndDate = DateTime.Now;
 
-            Console.Write("Enter end date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var toDate))
-            {
-                Console.WriteLine("Invalid date format.");
-                return;
-            }
+            var fromDate = AskDateWithEditableDefault(
+                "[yellow]Start date (M-d-yy, yyyy-MM-dd):[/]",
+                defaultStartDate);
 
-            var events = await _eventAndConfigService.GetEventsAsync(selectedDevice.ProviderDeviceId, fromDate, toDate, cancellationToken: ct);
+            var toDate = AskDateWithEditableDefault(
+                "[yellow]End date (M-d-yy, yyyy-MM-dd):[/]",
+                defaultEndDate);
+
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+
+            var events = await _eventAndConfigService.GetEventsAsync(selectedDevice.ProviderDeviceId, adjustedFromDate, adjustedToDate, cancellationToken: ct);
             AnsiConsole.MarkupLine("[green]✓ {0} event(s) retrieved for {1}[/]", events.Count, EscapeMarkup(selectedDevice.Name));
             await WriteQueryResultAsync($"device-events_{selectedDevice.Name}", events, ct);
         }
 
         private async Task QueryDeviceConfigAsync(CancellationToken ct)
         {
+            if (!await EnsureAuthenticatedAsync(ct))
+            {
+                AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
             var devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
@@ -1087,7 +1122,10 @@ namespace VideoForensics
                 _logger.LogInformation("DownloadStartDate saved: {Value}", _forensicsConfig.DownloadStartDate);
             }
 
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var adjustedStartDate = startDate.Date.AddSeconds(1);
             var endDate = DateTime.Now;
+            var adjustedEndDate = endDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
             // If no prior downloads, force a full re-scan to fetch all data. If there are prior downloads,
             // ask whether to fetch incrementally (since last pull) or force a full re-scan.
@@ -1125,7 +1163,7 @@ namespace VideoForensics
                 Task preScanTask;
                 try
                 {
-                    preScanTask = _downloadService.PreScanAsync(outputPath, startDate, endDate, force, cancellationToken);
+                    preScanTask = _downloadService.PreScanAsync(outputPath, adjustedStartDate, adjustedEndDate, force, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -1183,7 +1221,7 @@ namespace VideoForensics
             while (true)
             {
                 var result = await RunDownloadWithProgressAsync(
-                    () => _downloadService.DownloadVideosAsync(outputPath, startDate, endDate, force),
+                    () => _downloadService.DownloadVideosAsync(outputPath, adjustedStartDate, adjustedEndDate, force),
                     "videos",
                     cancellationToken);
 
@@ -1472,7 +1510,7 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case "Report Generation Settings":
-                        ConfigureReportGeneration();
+                        await ConfigureReportGeneration();
                         break;
                     case "PII Redaction Settings":
                         ConfigurePiiRedaction();
@@ -1507,7 +1545,7 @@ namespace VideoForensics
             }
         }
 
-        private void ConfigureReportGeneration()
+        private async Task ConfigureReportGeneration()
         {
             AnsiConsole.MarkupLine("[bold cyan]Report Generation Settings[/]");
 
@@ -1546,9 +1584,7 @@ namespace VideoForensics
                         _forensicsConfig.EnableEvidenceValidationReports = !_forensicsConfig.EnableEvidenceValidationReports;
                         break;
                     case "Set Reports Output Directory":
-                        AnsiConsole.MarkupLine("[yellow]Current:[/] {0}", _forensicsConfig.ReportsDirectory ?? "Not set");
-                        var dir = AnsiConsole.Ask<string>("[yellow]Enter reports directory:[/]");
-                        _forensicsConfig.ReportsDirectory = dir;
+                        await ConfigureQueryExportLocation();
                         break;
                     case "Set Report Format":
                         var format = AnsiConsole.Prompt(
@@ -2239,8 +2275,19 @@ namespace VideoForensics
                 var selectedLabel = await FormatAccountLabelAsync(selected, ct);
                 _forensicsConfig.ActiveProviderAccountId = selected.Id;
                 await SaveConfiguration(ct);
-                AnsiConsole.MarkupLine($"[green]✓ Active account set to {selectedLabel}[/]");
-                _logger.LogInformation("Active account changed to {AccountId} ({ProviderName})", selected.Id, selected.ProviderName);
+
+                // Authenticate with the selected account
+                if (await _authService.RestoreFromSavedCredentialsAsync(ct))
+                {
+                    AnsiConsole.MarkupLine($"[green]✓ Active account set to {selectedLabel} and authenticated[/]");
+                    _logger.LogInformation("Active account changed to {AccountId} ({ProviderName}) with successful authentication", selected.Id, selected.ProviderName);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[yellow]✓ Active account set to {selectedLabel}, but authentication failed[/]");
+                    AnsiConsole.MarkupLine("[yellow]Run the Download Videos menu option to re-authenticate with username and password[/]");
+                    _logger.LogWarning("Active account changed to {AccountId} ({ProviderName}) but authentication restore failed", selected.Id, selected.ProviderName);
+                }
             }
         }
 

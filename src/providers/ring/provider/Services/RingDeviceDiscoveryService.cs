@@ -183,7 +183,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 var devices = await session.GetRingDevices(locId);
 
-                var locationDevices = new List<Device>();
+                var deviceMap = new Dictionary<string, Device>();
 
                 // Add Doorbots
                 // Id uses the numeric doorbot id (not the hex device_id) because that's the only
@@ -193,47 +193,56 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     foreach (var d in devices.Doorbots)
                     {
-                        locationDevices.Add(new Device(
-                            Id: d.Id.ToString(),
+                        var deviceId = d.Id.ToString();
+                        deviceMap[deviceId] = new Device(
+                            Id: deviceId,
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? locationId,
                             IsOnline: d.Subscribed ?? false
-                        ));
+                        );
                     }
                 }
 
-                // Add Stickup Cameras
+                // Add Stickup Cameras (skip if already added via Doorbots)
                 if (devices?.StickupCams != null)
                 {
                     foreach (var d in devices.StickupCams)
                     {
-                        locationDevices.Add(new Device(
-                            Id: d.Id?.ToString() ?? d.DeviceId,
-                            Name: d.Description ?? "Unknown Device",
-                            Type: "stickup_cam",
-                            LocationId: d.LocationId?.ToString() ?? locationId,
-                            IsOnline: d.Subscribed ?? false
-                        ));
+                        var deviceId = d.Id?.ToString() ?? d.DeviceId;
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: d.Description ?? "Unknown Device",
+                                Type: "stickup_cam",
+                                LocationId: d.LocationId?.ToString() ?? locationId,
+                                IsOnline: d.Subscribed ?? false
+                            );
+                        }
                     }
                 }
 
-                // Add Authorized Doorbots (if different from Doorbots)
+                // Add Authorized Doorbots (skip if already added)
                 if (devices?.AuthorizedDoorbots != null)
                 {
-                    var alreadyAdded = new HashSet<string>(locationDevices.Select(d => d.Id));
-
-                    foreach (var d in devices.AuthorizedDoorbots.Where(d => !alreadyAdded.Contains(d.Id.ToString())))
+                    foreach (var d in devices.AuthorizedDoorbots)
                     {
-                        locationDevices.Add(new Device(
-                            Id: d.Id.ToString(),
-                            Name: d.Description ?? "Unknown Device",
-                            Type: "authorized_doorbot",
-                            LocationId: d.LocationId?.ToString() ?? locationId,
-                            IsOnline: d.Subscribed ?? false
-                        ));
+                        var deviceId = d.Id.ToString();
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: d.Description ?? "Unknown Device",
+                                Type: "authorized_doorbot",
+                                LocationId: d.LocationId?.ToString() ?? locationId,
+                                IsOnline: d.Subscribed ?? false
+                            );
+                        }
                     }
                 }
+
+                var locationDevices = new List<Device>(deviceMap.Values);
 
                 _logger.LogInformation("Found {DeviceCount} devices in location {LocationId}", locationDevices.Count, locationId);
                 foreach (var device in locationDevices)

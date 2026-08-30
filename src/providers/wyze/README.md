@@ -81,8 +81,7 @@ Utility functions and extensions. Contains:
 ## Building
 
 ```bash
-cd external/RingApi/src
-dotnet build providers/wyze/
+dotnet build src/providers/wyze/
 ```
 
 ## Testing
@@ -115,4 +114,4 @@ When implementing functionality:
 
 - Microsoft.CodeAnalysis (for auth module)
 - System.Security.Cryptography.ProtectedData (for credential encryption)
-- Core helpers and utilities from `external/RingApi/src/core/`
+- Core helpers and utilities from `src/core/` and `src/providers/`

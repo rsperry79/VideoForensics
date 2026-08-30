@@ -9,22 +9,20 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
     /// <summary>
     /// Helper class for creating real Ring API sessions for integration testing. Reads the shared
     /// credentials file (refresh token, or username/password) via <see cref="CredentialResolver"/> -
-    /// the same file ApiTester's `--auth` flow writes to, and that RingVideos may also write to.
+    /// the same file SelfTester's `--auth` flow writes to.
     /// Never performs its own interactive/2FA authentication (tests aren't interactive) - if
     /// credentials aren't available or don't work, callers get a clear error pointing at how to fix
-    /// it via ApiTester rather than this project's own auth code.
+    /// it via the SelfTester authentication flow.
     ///
     /// To populate the credentials file:
-    ///   cd external/Ring.Api/selftest
+    ///   cd src/selftest
     ///   dotnet run -- --auth
-    /// See external/Ring.Api/README.md ("Authenticating for local tooling") for details.
     /// </summary>
     public class RealSessionHelper
     {
         private const string SetupPointer =
-            "Run 'dotnet run -- --auth' from external/Ring.Api/selftest to authenticate (handles two-factor " +
-            "accounts too) and save a reusable refresh token. See external/Ring.Api/README.md " +
-            "(\"Authenticating for local tooling\") for details.";
+            "Run 'dotnet run -- --auth' from src/selftest to authenticate (handles two-factor " +
+            "accounts too) and save a reusable refresh token.";
 
         /// <summary>
         /// Creates and authenticates a session using the shared credentials file, preferring a

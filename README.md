@@ -245,22 +245,22 @@ Alternatively, App.config still works for RealIntegrationTests: copy App.sample.
 
 ### Authenticating for local tooling
 
-ApiTester (this repo's non-destructive API smoke-test CLI - see `ApiTester/README.md`) and the `RealIntegrationTests` in UnitTest both authenticate through the same mechanism: `Ring.Api.CredentialStore`, reading/writing one shared, encrypted credentials file at:
+The SelfTester tool (this repo's non-destructive API smoke-test CLI - see `src/selftest/README.md`) and the `RealIntegrationTests` in the Ring provider tests both authenticate through the same mechanism: `Ring.Api.CredentialStore`, reading/writing encrypted credentials to the VideoForensics database:
 
 ```
-%AppData%\RingVideosData\auth.json
+%AppData%\VideoForensics\videoforensics.db
 ```
 
-This is deliberately decoupled from RingVideos's own app code - neither ApiTester nor the tests depend on anything in the `RingVideos` project to authenticate. The file is encrypted with a key derived from the current machine and user account, so it's only usable where it was created, and safe to leave in AppData.
+Credentials are encrypted with a key derived from the current machine and user account, so they're only usable where they were stored, and safe to leave in AppData.
 
-**To generate or refresh it**, run ApiTester's interactive login once:
+**To generate or refresh it**, run SelfTester's interactive login once:
 
 ```powershell
-cd external/Ring.Api/ApiTester
+cd src/selftest
 dotnet run -- --auth
 ```
 
-This prompts for your Ring username and password (password input is masked), and if your account requires two-factor authentication, prompts for the code Ring texts/e-mails you and completes the challenge automatically. On success it saves a reusable refresh token to `auth.json`. Every ApiTester run after that, and every `RealIntegrationTests` run, picks it up automatically - no further prompts, no re-entering 2FA codes.
+This prompts for your Ring username and password (password input is masked), and if your account requires two-factor authentication, prompts for the code Ring texts/e-mails you and completes the challenge automatically. On success it saves a reusable refresh token to the database. Every SelfTester run after that, and every integration test run, picks it up automatically - no further prompts, no re-entering 2FA codes.
 
 If a run reports "no credentials found" or "requires two-factor authentication", that's this step - run `--auth` and retry. The retry-with-2FA-code mechanics themselves live in `Api/InteractiveAuth.cs` (`Ring.Api.InteractiveAuth`), independent of any console app, so anything in this repo can reuse them without shelling out to ApiTester.
 

@@ -46,7 +46,6 @@ namespace VideoForensics.Client.Core
                 config.EnableEvidenceValidationReports = await GetBoolSetting("EnableEvidenceValidationReports", config.EnableEvidenceValidationReports, cancellationToken);
                 config.EnableAccessControlMonitoring = await GetBoolSetting("EnableAccessControlMonitoring", config.EnableAccessControlMonitoring, cancellationToken);
                 config.EnablePiiRedaction = await GetBoolSetting("EnablePiiRedaction", config.EnablePiiRedaction, cancellationToken);
-                config.ReportsDirectory = await GetStringSetting("ReportsDirectory", config.ReportsDirectory, cancellationToken);
                 config.ReportOutputFormat = await GetStringSetting("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 config.DownloadLocation = await GetStringSetting("DownloadLocation", config.DownloadLocation, cancellationToken);
                 config.QueryExportLocation = await GetStringSetting("QueryExportLocation", config.QueryExportLocation, cancellationToken);
@@ -77,7 +76,6 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("EnableEvidenceValidationReports", config.EnableEvidenceValidationReports.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableAccessControlMonitoring", config.EnableAccessControlMonitoring.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnablePiiRedaction", config.EnablePiiRedaction.ToString(), cancellationToken);
-                await _settingRepository!.SetAsync("ReportsDirectory", config.ReportsDirectory ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);

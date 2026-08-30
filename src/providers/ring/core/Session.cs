@@ -510,6 +510,12 @@ namespace VideoForensics.Providers.Ring
         {
             await EnsureSessionValid();
 
+            // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
+            var effectiveStartDate = startDate.Date.AddSeconds(1);
+            var effectiveEndDate = endDate.HasValue
+                ? endDate.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59)
+                : DateTime.MaxValue;
+
             // Amount of items to retrieve in each request
             const short batchWithItems = 200;
 
@@ -527,7 +533,7 @@ namespace VideoForensics.Providers.Ring
                 doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
 
                 // Add this next batch to the list with all the results which fit within the provided date span
-                allHistory.AddRange(doorbotHistory.Where(h => h.CreatedAtDateTime.HasValue && h.CreatedAtDateTime.Value >= startDate && (!endDate.HasValue || h.CreatedAtDateTime.Value <= endDate.Value)));
+                allHistory.AddRange(doorbotHistory.Where(h => h.CreatedAtDateTime.HasValue && h.CreatedAtDateTime.Value >= effectiveStartDate && h.CreatedAtDateTime.Value <= effectiveEndDate));
 
                 if (doorbotHistory.Count > 0)
                 {
@@ -535,9 +541,9 @@ namespace VideoForensics.Providers.Ring
                 }
             }
             // Keep retrieving next batches until the last item in the retrieved batch does not fit within the request date span anymore
-            while (doorbotHistory.Count > 0 && lastItemDateTime.HasValue && lastItemDateTime.Value > startDate);
+            while (doorbotHistory.Count > 0 && lastItemDateTime.HasValue && lastItemDateTime.Value > effectiveStartDate);
 
-            ApiRawLogger.LogEvent("History", $"Retrieved {allHistory.Count} events" + (doorbotId.HasValue ? $" for doorbot {doorbotId}" : " for all doorbots") + $" between {startDate:o} and {(endDate.HasValue ? endDate.Value.ToString("o") : "now")}");
+            ApiRawLogger.LogEvent("History", $"Retrieved {allHistory.Count} events" + (doorbotId.HasValue ? $" for doorbot {doorbotId}" : " for all doorbots") + $" between {effectiveStartDate:o} and {effectiveEndDate:o}");
             ApiRawLogger.LogRingEvents("History", $"{allHistory.Count} events" + (doorbotId.HasValue ? $" for doorbot {doorbotId}" : ""), JsonSerializer.Serialize(allHistory));
 
             return allHistory;

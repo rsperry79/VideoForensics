@@ -8,7 +8,6 @@ namespace VideoForensics.Client.Common
         bool EnableEvidenceValidationReports { get; set; }
         bool EnableAccessControlMonitoring { get; set; }
         bool EnablePiiRedaction { get; set; }
-        string? ReportsDirectory { get; set; }
         string ReportOutputFormat { get; set; }
         string? DownloadLocation { get; set; }
         string? QueryExportLocation { get; set; }
@@ -46,7 +45,6 @@ namespace VideoForensics.Client.Common
         public bool EnableEvidenceValidationReports { get; set; } = true;
         public bool EnableAccessControlMonitoring { get; set; } = true;
         public bool EnablePiiRedaction { get; set; } = true;
-        public string? ReportsDirectory { get; set; }
         public string ReportOutputFormat { get; set; } = "json";
         public string? DownloadLocation { get; set; }
         public string? QueryExportLocation { get; set; }

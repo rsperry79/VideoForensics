@@ -18,7 +18,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             {
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "RingVideosData");
+                    "VideoForensics");
             }
 
             if (OperatingSystem.IsLinux())
@@ -42,7 +42,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             {
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "RingVideosData", "Logs");
+                    "VideoForensics", "Logs");
             }
 
             if (OperatingSystem.IsLinux())
@@ -66,7 +66,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             {
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "RingVideosData");
+                    "VideoForensics");
             }
 
             if (OperatingSystem.IsLinux())

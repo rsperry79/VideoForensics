@@ -7,8 +7,8 @@ A new `VideoForensics.Providers.Common.Helpers` library has been created to hous
 ## Project Structure
 
 ```
-external/RingApi/src/core/
-├── helpers/                                 # Main library
+src/core/helpers/
+├── core.helpers/                            # Main library
 │   ├── Contracts/
 │   │   ├── IJsonSerializer.cs
 │   │   ├── IMediaValidator.cs
@@ -22,7 +22,7 @@ external/RingApi/src/core/
 │   ├── VideoForensics.Providers.Common.Helpers.csproj
 │   └── HELPERS_MIGRATION.md                # This file
 │
-└── helpers-tests/                          # Test library (separate)
+├── core.helpers-tests/                     # Test library (separate)
     ├── Json/
     │   └── JsonSerializerTests.cs
     ├── Media/

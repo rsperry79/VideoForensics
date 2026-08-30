@@ -10,7 +10,7 @@ namespace VideoForensics.Providers.Common.Helpers.Contracts
     {
         /// <summary>
         /// Returns the user's application data directory.
-        /// - Windows: %APPDATA%\RingVideosData
+        /// - Windows: %APPDATA%\VideoForensics
         /// - Linux: $XDG_DATA_HOME/ringvideos or ~/.local/share/ringvideos
         /// - macOS: ~/Library/Application Support/RingVideos
         /// </summary>
@@ -18,7 +18,7 @@ namespace VideoForensics.Providers.Common.Helpers.Contracts
 
         /// <summary>
         /// Returns the user's log directory.
-        /// - Windows: %APPDATA%\RingVideosData\Logs
+        /// - Windows: %APPDATA%\VideoForensics\Logs
         /// - Linux: $XDG_STATE_HOME/ringvideos or ~/.local/state/ringvideos
         /// - macOS: ~/Library/Logs/RingVideos
         /// </summary>
@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Common.Helpers.Contracts
 
         /// <summary>
         /// Returns the user's configuration directory.
-        /// - Windows: %APPDATA%\RingVideosData
+        /// - Windows: %APPDATA%\VideoForensics
         /// - Linux: $XDG_CONFIG_HOME/ringvideos or ~/.config/ringvideos
         /// - macOS: ~/Library/Preferences/RingVideos
         /// </summary>

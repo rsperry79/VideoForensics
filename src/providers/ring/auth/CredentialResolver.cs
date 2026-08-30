@@ -20,10 +20,9 @@ namespace VideoForensics.Providers.Ring.Auth
     ///   1. Explicit username/password/refresh-token parameters
     ///   2. The encrypted auth.json at <see cref="AuthPath"/>, read via <see cref="CredentialStore"/>
     ///      (only decryptable on the same machine/user account that created it) - written by this
-    ///      tool's own --auth flow, or by RingVideos
+    ///      tool's own --auth flow
     /// No credential source is ever written to the output directory or the index doc. If none of
-    /// the above resolve, authenticate interactively to generate one - see external/Ring.Api/README.md
-    /// ("Authenticating for local tooling").
+    /// the above resolve, authenticate interactively via 'dotnet run -- --auth' to generate and save a refresh token.
     /// </summary>
     public static class CredentialResolver
     {

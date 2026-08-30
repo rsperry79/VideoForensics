@@ -26,7 +26,6 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.EnableEvidenceValidationReports = loadedConfig.EnableEvidenceValidationReports;
                 runtimeConfig.EnableAccessControlMonitoring = loadedConfig.EnableAccessControlMonitoring;
                 runtimeConfig.EnablePiiRedaction = loadedConfig.EnablePiiRedaction;
-                runtimeConfig.ReportsDirectory = loadedConfig.ReportsDirectory;
                 runtimeConfig.ReportOutputFormat = loadedConfig.ReportOutputFormat;
                 runtimeConfig.DownloadLocation = loadedConfig.DownloadLocation;
                 runtimeConfig.QueryExportLocation = loadedConfig.QueryExportLocation;
