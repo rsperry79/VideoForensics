@@ -50,12 +50,17 @@ Completed API response metadata serialization in service layer to store full API
 
 ---
 
-## Future Work (Not Started)
+## Completed: Event/MediaItem Metadata ✅
 
-### Event/MediaItem Metadata
-- [ ] Update Event creation in `RingEventAndConfigService`
-- [ ] Update MediaItem creation in `RingMediaDownloadService`
-- [ ] Add metadata parameters to `UpsertEventAsync()`
+### Event/MediaItem Metadata Implementation
+- ✅ Added SerializeMetadata helper to RingMediaDownloadService
+- ✅ All UpsertEventRecordAsync calls now pass API response
+- ✅ Event table captures full DoorbotHistoryEvent metadata
+- ✅ MediaItem entity extended with MetadataJson and ApiSourceHash
+- ✅ Video downloads and snapshot downloads store metadata
+- ✅ Commit: `372a363`
+
+## Future Work (Not Started)
 
 ### Database Verification
 - [ ] Add metadata validation to self-tester completeness report
