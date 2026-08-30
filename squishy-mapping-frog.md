@@ -60,12 +60,16 @@ Completed API response metadata serialization in service layer to store full API
 - ✅ Video downloads and snapshot downloads store metadata
 - ✅ Commit: `372a363`
 
-## Future Work (Not Started)
+## Completed: Database Verification ✅
 
-### Database Verification
-- [ ] Add metadata validation to self-tester completeness report
-- [ ] Ensure metadata is populated for all API data points
-- [ ] Add forensics query utilities for metadata inspection
+### Database Verification Implementation
+- ✅ Added metadata statistics to self-tester `--verify-db` report
+- ✅ Event and MediaItem metadata capture percentages
+- ✅ Device and location metadata counts
+- ✅ Graceful handling for schemas without metadata columns
+- ✅ Commit: `6bd510d`
+
+## Future Work (Not Started)
 
 ### Documentation
 - [ ] Update API documentation to reflect metadata tracking
