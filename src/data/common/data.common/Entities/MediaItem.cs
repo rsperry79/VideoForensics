@@ -22,5 +22,7 @@ namespace VideoForensics.Data.Common.Entities
         public bool IsPurged { get; set; }
         public DateTime? PurgedAtUtc { get; set; }
         public string? PurgeReason { get; set; }
+        public string? MetadataJson { get; set; }
+        public string? ApiSourceHash { get; set; }
     }
 }
