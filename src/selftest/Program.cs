@@ -282,7 +282,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             {
                 var authJsonPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "RingVideosData", "auth.json");
+                    "VideoForensics", "auth.json");
 
                 if (!File.Exists(authJsonPath))
                 {
@@ -580,7 +580,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
         }
 
 
-        private const string ReadmePointer = "See external/Ring.Api/README.md (\"Authenticating for local tooling\") for details.";
+        private const string ReadmePointer = "Run 'dotnet run -- --auth' first to set up authentication.";
 
         private static void WriteNoCredentialsError()
         {

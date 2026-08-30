@@ -50,11 +50,6 @@ namespace VideoForensics.Providers.Ring.Services
         // because they already exist on disk) — surfaced via DownloadStatus.ActiveConnections.
         private int _activeDownloads;
 
-        // TEMP DIAGNOSTIC: highest value _activeDownloads actually reached during the current batch,
-        // sampled at every increment (not on a UI poll interval) so it can't miss a narrow window.
-        // Remove once the "active connections never exceeds 9" report is confirmed/resolved.
-        private int _peakActiveDownloads;
-
         private static void InterlockedMax(ref int target, int candidate)
         {
             int initial;
@@ -95,6 +90,9 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly SemaphoreSlim _healthCacheLock = new(1, 1);
         private Entities.Devices? _cachedHealthDevices;
         private DateTime _cachedHealthDevicesAt;
+
+        // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
+        private int _peakActiveDownloadsForBatch;
 
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
         {
@@ -159,7 +157,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var otherItemFailures = 0;
 
                 _activeDownloads = 0;
-                _peakActiveDownloads = 0;
+                _peakActiveDownloadsForBatch = 0;
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = relevantEvents.Count, FilesCompleted = 0, BytesDownloaded = 0, ActiveConnections = 0 };
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
@@ -176,272 +174,288 @@ namespace VideoForensics.Providers.Ring.Services
                 // one file hits a rate limit — matching the previous sequential loop's "stop on
                 // first rate limit" behavior, but without blocking files already in flight.
                 using var rateLimitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using var concurrencySemaphore = new SemaphoreSlim(_maxConcurrentFileDownloads, _maxConcurrentFileDownloads);
 
                 try
                 {
-                    await Parallel.ForEachAsync(
-                        relevantEvents,
-                        new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentFileDownloads, CancellationToken = rateLimitCts.Token },
-                        async (@event, itemToken) =>
+                    var downloadTasks = relevantEvents.Select(async (@event) =>
+                    {
+                        if (rateLimitCts.Token.IsCancellationRequested)
+                            return;
+
+                        var cameraName = @event.Doorbot?.Description ?? deviceId;
+                        var eventType = @event.Kind ?? "video";
+                        var fileName = Path.Combine(outputPath,
+                            MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
+                        var eventIdStr = @event.Id?.ToString() ?? "unknown";
+                        var eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+
+                        // Record this event in the Events table independent of download outcome —
+                        // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
+                        // not DownloadEvents, so an event must land here the moment it's discovered
+                        // (not only once/if it's successfully downloaded) or gaps and missing-download
+                        // detection have nothing to compare against.
+                        await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                            @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token);
+
+                        // Use the device GUID resolved at batch start; all events are for this same device
+                        // (filtered by deviceId above). Avoids per-item redundant lookups.
+
+                        // Everything below runs per-item with explicit concurrency control. An unhandled
+                        // exception here (e.g. a bad DB round-trip or a filesystem error on the "already
+                        // downloaded" check) is wrapped so a single bad item can only fail itself.
+                        try
                         {
-                            var cameraName = @event.Doorbot?.Description ?? deviceId;
-                            var eventType = @event.Kind ?? "video";
-                            var fileName = Path.Combine(outputPath,
-                                MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
-                            var eventIdStr = @event.Id?.ToString() ?? "unknown";
-                            var eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                            // Check both filesystem and DB for existing download. The DB flag alone is not
+                            // trustworthy — it can be true while the file itself is missing (deleted, moved,
+                            // or downloaded to a different output path in a prior run). Only skip the
+                            // network call when the file is actually present on disk; otherwise fall through
+                            // and redownload it, even though the DB says it was already downloaded.
+                            var alreadyDownloadedInDb = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+                            var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
 
-                            // Record this event in the Events table independent of download outcome —
-                            // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
-                            // not DownloadEvents, so an event must land here the moment it's discovered
-                            // (not only once/if it's successfully downloaded) or gaps and missing-download
-                            // detection have nothing to compare against.
-                            await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                                @event.SnapshotUrl, downloadedAtUtc: null, hash: null, itemToken);
-
-                            // Use the device GUID resolved at batch start; all events are for this same device
-                            // (filtered by deviceId above). Avoids per-item redundant lookups.
-
-                            // Everything below runs per-item inside Parallel.ForEachAsync with no outer
-                            // per-item guard — an unhandled exception here (e.g. a bad DB round-trip or a
-                            // filesystem error on the "already downloaded" check) would previously escape
-                            // the whole batch, get caught by DownloadVideosAsync's outer try/catch, and
-                            // discard every count already accumulated by sibling items that succeeded.
-                            // Keep this check wrapped so a single bad item can only fail itself.
-                            try
+                            if (alreadyDownloadedInDb && !existsOnDisk)
                             {
-                                // Check both filesystem and DB for existing download. The DB flag alone is not
-                                // trustworthy — it can be true while the file itself is missing (deleted, moved,
-                                // or downloaded to a different output path in a prior run). Only skip the
-                                // network call when the file is actually present on disk; otherwise fall through
-                                // and redownload it, even though the DB says it was already downloaded.
-                                var alreadyDownloadedInDb = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceGuid, eventIdStr, itemToken);
-                                var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
+                                _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, fileName);
+                            }
 
-                                if (alreadyDownloadedInDb && !existsOnDisk)
+                            if (existsOnDisk)
+                            {
+                                var existingSize = new FileInfo(fileName).Length;
+
+                                // Compute hash for existing file if it exists on disk
+                                string? sha256Hash = null;
                                 {
-                                    _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, fileName);
+                                    try
+                                    {
+                                        var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
+                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", fileName);
+                                    }
                                 }
 
-                                if (existsOnDisk)
-                                {
-                                    var existingSize = new FileInfo(fileName).Length;
+                                var wroteMetadata = !File.Exists(Path.ChangeExtension(fileName, ".json")) &&
+                                    WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4");
 
-                                    // Compute hash for existing file if it exists on disk
-                                    string? sha256Hash = null;
+                                if (sha256Hash != null)
+                                {
+                                    await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                        @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token);
+                                }
+
+                                lock (_statusLock)
+                                {
+                                    downloadedFiles++;
+                                    downloadedBytes += existingSize;
+                                    mediaFilesValidated++;
+                                    validatedFiles.Add(fileName);
+                                    if (wroteMetadata)
+                                        metadataFilesWritten++;
+
+                                    RecordBytesForRate(existingSize);
+
+                                    _currentStatus = _currentStatus with
                                     {
+                                        FilesCompleted = downloadedFiles,
+                                        BytesDownloaded = downloadedBytes,
+                                        CurrentFile = fileName,
+                                        ActiveConnections = Volatile.Read(ref _activeDownloads)
+                                    };
+
+                                    // Update watermark for existing files too, so if batch fails later,
+                                    // we don't re-attempt files we've already validated
+                                    var eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                                    if (eventTime > latestSuccessfulTime)
+                                        latestSuccessfulTime = eventTime;
+                                }
+
+                                _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
+                                return;
+                            }
+                        }
+                        catch (OperationCanceledException) when (rateLimitCts.Token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
+                            _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
+                            return;
+                        }
+
+                        // Acquire semaphore slot before fetching from Ring
+                        bool acquiredSemaphore = false;
+                        try
+                        {
+                            await concurrencySemaphore.WaitAsync(rateLimitCts.Token);
+                            acquiredSemaphore = true;
+                        }
+                        catch (OperationCanceledException) when (rateLimitCts.Token.IsCancellationRequested)
+                        {
+                            _activityLog.Enqueue($"[yellow]⊘[/] {Path.GetFileName(fileName)} cancelled");
+                            return;
+                        }
+
+                        try
+                        {
+                            var concurrentNow = Interlocked.Increment(ref _activeDownloads);
+                            InterlockedMax(ref _peakActiveDownloadsForBatch, concurrentNow);
+                            try
+                            {
+                                await RetryWithBackoffAsync(async () =>
+                                {
+                                    await session.GetDoorbotHistoryRecording(@event, fileName);
+                                }, $"video for event {@event.Id}", rateLimitCts.Token);
+                            }
+                            finally
+                            {
+                                Interlocked.Decrement(ref _activeDownloads);
+                            }
+
+                            if (File.Exists(fileName))
+                            {
+                                var downloadedSize = new FileInfo(fileName).Length;
+                                var validated = downloadedSize > 0;
+                                var wroteMetadata = WriteMetadataFile(fileName, deviceId, @event, downloadedSize, "mp4");
+
+                                // Compute SHA-256 hash for the downloaded file
+                                string? sha256Hash = null;
+                                if (validated)
+                                {
+                                    try
+                                    {
+                                        var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
+                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", fileName);
+                                    }
+                                }
+
+                                // Record download event in database
+                                if (sha256Hash != null)
+                                {
+                                    try
+                                    {
+                                        var downloadEvent = new DownloadEvent
+                                        {
+                                            Id = Guid.NewGuid(),
+                                            DeviceId = deviceGuid,
+                                            ProviderEventId = eventIdStr,
+                                            EventType = @event.Kind,
+                                            Answered = @event.Answered,
+                                            Favorite = @event.Favorite,
+                                            EventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
+                                            RecordingStatus = @event.Recording?.Status,
+                                            DownloadStartedUtc = DateTime.UtcNow,
+                                            DownloadCompletedUtc = DateTime.UtcNow,
+                                            Success = true,
+                                            AttemptCount = 1,
+                                            AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
+                                        };
+
+                                        var mediaItem = new MediaItem
+                                        {
+                                            Id = Guid.NewGuid(),
+                                            DeviceId = deviceGuid,
+                                            DownloadEventId = downloadEvent.Id,
+                                            FileName = Path.GetFileName(fileName),
+                                            FilePath = fileName,
+                                            MediaFormat = "mp4",
+                                            FileSizeBytes = downloadedSize,
+                                            RecordedAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
+                                            DownloadedAtUtc = DateTime.UtcNow,
+                                            Sha256Hash = sha256Hash,
+                                            IntegrityVerified = false
+                                        };
+
+                                        await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, rateLimitCts.Token);
+
+                                        await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                            @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token);
+
+                                        // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
                                         try
                                         {
-                                            var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), itemToken);
-                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                            await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, downloadEvent.EventOccurredAtUtc, rateLimitCts.Token);
+                                            _logger.LogInformation("Watermark advanced to {Timestamp} after recording {EventId}",
+                                                downloadEvent.EventOccurredAtUtc, downloadEvent.ProviderEventId);
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", fileName);
+                                            _logger.LogWarning(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
                                         }
                                     }
-
-                                    var wroteMetadata = !File.Exists(Path.ChangeExtension(fileName, ".json")) &&
-                                        WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4");
-
-                                    if (sha256Hash != null)
+                                    catch (Exception ex)
                                     {
-                                        await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                                            @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, itemToken);
+                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", fileName);
                                     }
-
-                                    lock (_statusLock)
-                                    {
-                                        downloadedFiles++;
-                                        downloadedBytes += existingSize;
-                                        mediaFilesValidated++;
-                                        validatedFiles.Add(fileName);
-                                        if (wroteMetadata)
-                                            metadataFilesWritten++;
-
-                                        RecordBytesForRate(existingSize);
-
-                                        _currentStatus = _currentStatus with
-                                        {
-                                            FilesCompleted = downloadedFiles,
-                                            BytesDownloaded = downloadedBytes,
-                                            CurrentFile = fileName,
-                                            ActiveConnections = Volatile.Read(ref _activeDownloads)
-                                        };
-
-                                        // Update watermark for existing files too, so if batch fails later,
-                                        // we don't re-attempt files we've already validated
-                                        var eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
-                                        if (eventTime > latestSuccessfulTime)
-                                            latestSuccessfulTime = eventTime;
-                                    }
-
-                                    _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
-                                    return;
-                                }
-                            }
-                            catch (OperationCanceledException) when (itemToken.IsCancellationRequested)
-                            {
-                                return;
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
-                                _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
-                                return;
-                            }
-
-                            try
-                            {
-                                var concurrentNow = Interlocked.Increment(ref _activeDownloads);
-                                // TEMP DIAGNOSTIC: track the true peak concurrency reached this batch,
-                                // independent of the UI's 400ms poll (which can easily miss a narrow
-                                // window where all slots are briefly filled). Remove once the "active
-                                // connections never exceeds 9" report is confirmed/resolved.
-                                InterlockedMax(ref _peakActiveDownloads, concurrentNow);
-                                try
-                                {
-                                    await RetryWithBackoffAsync(async () =>
-                                    {
-                                        await session.GetDoorbotHistoryRecording(@event, fileName);
-                                    }, $"video for event {@event.Id}", itemToken);
-                                }
-                                finally
-                                {
-                                    Interlocked.Decrement(ref _activeDownloads);
                                 }
 
-                                if (File.Exists(fileName))
+                                lock (_statusLock)
                                 {
-                                    var downloadedSize = new FileInfo(fileName).Length;
-                                    var validated = downloadedSize > 0;
-                                    var wroteMetadata = WriteMetadataFile(fileName, deviceId, @event, downloadedSize, "mp4");
-
-                                    // Compute SHA-256 hash for the downloaded file
-                                    string? sha256Hash = null;
+                                    downloadedFiles++;
+                                    downloadedBytes += downloadedSize;
                                     if (validated)
                                     {
-                                        try
-                                        {
-                                            var hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), itemToken);
-                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", fileName);
-                                        }
+                                        mediaFilesValidated++;
+                                        validatedFiles.Add(fileName);
                                     }
+                                    if (wroteMetadata)
+                                        metadataFilesWritten++;
 
-                                    // Record download event in database
-                                    if (sha256Hash != null)
+                                    RecordBytesForRate(downloadedSize);
+
+                                    _currentStatus = _currentStatus with
                                     {
-                                        try
-                                        {
-                                            var downloadEvent = new DownloadEvent
-                                            {
-                                                Id = Guid.NewGuid(),
-                                                DeviceId = deviceGuid,
-                                                ProviderEventId = eventIdStr,
-                                                EventType = @event.Kind,
-                                                Answered = @event.Answered,
-                                                Favorite = @event.Favorite,
-                                                EventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
-                                                RecordingStatus = @event.Recording?.Status,
-                                                DownloadStartedUtc = DateTime.UtcNow,
-                                                DownloadCompletedUtc = DateTime.UtcNow,
-                                                Success = true,
-                                                AttemptCount = 1,
-                                                AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
-                                            };
-
-                                            var mediaItem = new MediaItem
-                                            {
-                                                Id = Guid.NewGuid(),
-                                                DeviceId = deviceGuid,
-                                                DownloadEventId = downloadEvent.Id,
-                                                FileName = Path.GetFileName(fileName),
-                                                FilePath = fileName,
-                                                MediaFormat = "mp4",
-                                                FileSizeBytes = downloadedSize,
-                                                RecordedAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
-                                                DownloadedAtUtc = DateTime.UtcNow,
-                                                Sha256Hash = sha256Hash,
-                                                IntegrityVerified = false
-                                            };
-
-                                            await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, itemToken);
-
-                                            await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                                                @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, itemToken);
-
-                                            // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
-                                            try
-                                            {
-                                                await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, downloadEvent.EventOccurredAtUtc, itemToken);
-                                                _logger.LogInformation("Watermark advanced to {Timestamp} after recording {EventId}",
-                                                    downloadEvent.EventOccurredAtUtc, downloadEvent.ProviderEventId);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                _logger.LogWarning(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
-                                            }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", fileName);
-                                        }
-                                    }
-
-                                    lock (_statusLock)
-                                    {
-                                        downloadedFiles++;
-                                        downloadedBytes += downloadedSize;
-                                        if (validated)
-                                        {
-                                            mediaFilesValidated++;
-                                            validatedFiles.Add(fileName);
-                                        }
-                                        if (wroteMetadata)
-                                            metadataFilesWritten++;
-
-                                        RecordBytesForRate(downloadedSize);
-
-                                        _currentStatus = _currentStatus with
-                                        {
-                                            FilesCompleted = downloadedFiles,
-                                            BytesDownloaded = downloadedBytes,
-                                            CurrentFile = fileName,
-                                            ActiveConnections = Volatile.Read(ref _activeDownloads)
-                                        };
-                                    }
-
-                                    _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)})");
+                                        FilesCompleted = downloadedFiles,
+                                        BytesDownloaded = downloadedBytes,
+                                        CurrentFile = fileName,
+                                        ActiveConnections = Volatile.Read(ref _activeDownloads)
+                                    };
                                 }
-                                else
-                                {
-                                    _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)} empty/invalid");
-                                }
+
+                                _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)})");
                             }
-                            catch (OperationCanceledException) when (itemToken.IsCancellationRequested)
+                            else
                             {
-                                _activityLog.Enqueue($"[yellow]⊘[/] {Path.GetFileName(fileName)} cancelled");
+                                _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)} empty/invalid");
                             }
-                            catch (Exception ex)
+                        }
+                        catch (OperationCanceledException) when (rateLimitCts.Token.IsCancellationRequested)
+                        {
+                            _activityLog.Enqueue($"[yellow]⊘[/] {Path.GetFileName(fileName)} cancelled");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
+                            _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)}: {EscapeMarkup(ex.GetType().Name)}");
+                            if (IsRateLimitError(ex))
                             {
-                                _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
-                                _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)}: {EscapeMarkup(ex.GetType().Name)}");
-                                if (IsRateLimitError(ex))
-                                {
-                                    _logger.LogInformation("Rate limit detected. Stopping remaining downloads for this device.");
-                                    rateLimited = true;
-                                    rateLimitCts.Cancel();
-                                }
-                                else
-                                {
-                                    Interlocked.Increment(ref otherItemFailures);
-                                }
+                                _logger.LogInformation("Rate limit detected. Stopping remaining downloads for this device.");
+                                rateLimited = true;
+                                rateLimitCts.Cancel();
                             }
-                        });
+                            else
+                            {
+                                Interlocked.Increment(ref otherItemFailures);
+                            }
+                        }
+                        finally
+                        {
+                            if (acquiredSemaphore)
+                            {
+                                concurrencySemaphore.Release();
+                            }
+                        }
+                    });
+
+                    await Task.WhenAll(downloadTasks);
                 }
                 catch (OperationCanceledException)
                 {
@@ -455,10 +469,10 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
                     downloadedFiles, downloadedBytes, deviceId);
                 _logger.LogInformation("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
-                    _peakActiveDownloads, _maxConcurrentFileDownloads, relevantEvents.Count);
+                    _peakActiveDownloadsForBatch, _maxConcurrentFileDownloads, relevantEvents.Count);
                 // _logger has no provider registered in Program.cs (nothing sinks LogInformation
                 // anywhere right now), so also surface this via the activity log the UI already drains.
-                _activityLog.Enqueue($"[grey][[DIAG]][/] Peak concurrent downloads: {_peakActiveDownloads} (configured max: {_maxConcurrentFileDownloads}, items: {relevantEvents.Count})");
+                _activityLog.Enqueue($"[grey][[DIAG]][/] Peak concurrent downloads: {_peakActiveDownloadsForBatch} (configured max: {_maxConcurrentFileDownloads}, items: {relevantEvents.Count})");
 
                 string? skipReason = null;
                 if (downloadedFiles < relevantEvents.Count)

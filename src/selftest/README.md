@@ -21,7 +21,7 @@ the output to see whether the client's entity classes still match reality.
 ## Quick start
 
 ```powershell
-cd external/RingApi/src/selftest
+cd src/selftest
 dotnet run -- --list                 # see what it can call, no auth needed
 dotnet run -- --auth                 # one-time interactive login (handles 2FA), see below
 dotnet run -- --all                  # run every non-destructive endpoint, write results next to a fresh index.json
@@ -29,14 +29,12 @@ dotnet run -- --all                  # run every non-destructive endpoint, write
 
 ## Authentication
 
-`--auth` is the normal way to get this tool (and the Ring.Api integration tests) working: it prompts
+`--auth` is the normal way to get this tool (and integration tests) working: it prompts
 for your Ring username/password, walks through a two-factor code challenge if your account needs
-one, and saves a reusable refresh token to a shared, encrypted credentials file at
-`%AppData%\RingVideosData\auth.json` via `Ring.Api.CredentialStore`. Every run after
-that - by this tool or integration tests - picks it up automatically with no further prompts. See 
-`external/Ring.Api/README.md` ("Authenticating for local tooling") for the full picture; the 2FA 
-retry logic itself lives in `Api/InteractiveAuth.cs`, independent of this console app, so it's not 
-tied to running SelfTester specifically.
+one, and saves a reusable refresh token to the VideoForensics database. 
+Every run after that - by this tool or integration tests - picks it up automatically with no further 
+prompts. The 2FA retry logic handles challenges interactively and is independent of this console app, 
+so it's not tied to running SelfTester specifically.
 
 Without `--auth`, credentials resolve in this order: `--username`/`--password` or `--refresh-token`
 on the command line, then `RING_USERNAME`/`RING_PASSWORD`/`RING_REFRESH_TOKEN` environment

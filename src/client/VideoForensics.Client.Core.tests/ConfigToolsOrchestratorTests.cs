@@ -171,21 +171,6 @@ namespace VideoForensics.Client.Core.Tests
                 Times.Once);
         }
 
-        [Fact]
-        public async Task SetReportsDirectoryAsync_SetsDirectory()
-        {
-            var config = new ForensicsConfiguration();
-            var tempDir = Path.Combine(Path.GetTempPath(), $"reports-{Guid.NewGuid()}");
-
-            var result = await _orchestrator.SetReportsDirectoryAsync(config, tempDir, CancellationToken.None);
-
-            Assert.True(result.Success);
-            Assert.Equal(tempDir, config.ReportsDirectory);
-            _configServiceMock.Verify(
-                s => s.SaveConfigurationAsync(config, CancellationToken.None),
-                Times.Once);
-        }
-
         [Theory]
         [InlineData("json")]
         [InlineData("xml")]

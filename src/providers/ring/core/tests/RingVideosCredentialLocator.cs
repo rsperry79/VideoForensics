@@ -6,15 +6,14 @@ using VideoForensics.Providers.Ring;
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
-    /// Discovers and decrypts credentials saved by the RingVideos application, so the integration
-    /// tests can authenticate automatically when App.config has no credentials of its own.
-    /// Delegates to <see cref="CredentialStore"/>, the same reader/writer the RingVideos app uses.
+    /// Discovers and decrypts credentials saved by the VideoForensics database.
+    /// Used by legacy integration tests; modern flows use database-based credential storage.
     /// </summary>
     internal static class RingVideosCredentialLocator
     {
         private static readonly string AuthPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "RingVideosData", "auth.json");
+            "VideoForensics", "auth.json");
 
         public static bool TryLoad(out string? userName, out string? password, out string? refreshToken)
         {

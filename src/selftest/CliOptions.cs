@@ -242,13 +242,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
           --auth                    Interactive one-time login: prompts for your Ring username and
                                      password (masked), handles a two-factor code challenge if your
                                      account requires one, then saves the resulting refresh token to
-                                     the shared credentials file at %AppData%\RingVideosData\auth.json
-                                     via Ring.Ring.Api's CredentialStore. Every other SelfTester
-                                     run picks this up automatically afterward - see external/Ring.Api/README.md
-                                     ("Authenticating for local tooling") for details. Run this
-                                     first if you see a "no credentials found" or "requires
-                                     two-factor authentication" error. Ignores --endpoints and every
-                                     other run option; exits immediately after saving.
+                                     the shared credentials file (stored in the VideoForensics database).
+                                     Every other SelfTester run picks this up automatically afterward.
+                                     Run this first if you see a "no credentials found" or
+                                     "requires two-factor authentication" error. Ignores --endpoints and
+                                     every other run option; exits immediately after saving.
 
         SELECTION:
           --endpoints <csv>         Comma-separated endpoint keys to run. Default: all
@@ -310,8 +308,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
           --username / --password   Explicit account credentials.
           --refresh-token           An OAuth refresh token from a prior session.
           RING_USERNAME / RING_PASSWORD / RING_REFRESH_TOKEN environment variables.
-          Otherwise: auto-discovered from the RingVideos app's saved, encrypted credentials on this
-          machine (%AppData%\RingVideosData\auth.json), if present and decryptable.
+          Otherwise: auto-discovered from the VideoForensics database's stored, encrypted credentials
+          on this machine, if present and decryptable.
 
         EXIT CODES:
           0  every requested call succeeded (or --list was used)

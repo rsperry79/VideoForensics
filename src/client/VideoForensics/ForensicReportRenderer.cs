@@ -144,9 +144,9 @@ namespace VideoForensics
 
             AnsiConsole.MarkupLine("");
             AnsiConsole.MarkupLine("[yellow]Reports saved to:[/] {0}",
-                string.IsNullOrEmpty(_forensicsConfig.ReportsDirectory)
+                string.IsNullOrEmpty(_forensicsConfig.QueryExportLocation)
                     ? "[red]Not configured[/]"
-                    : _forensicsConfig.ReportsDirectory);
+                    : _forensicsConfig.QueryExportLocation);
             AnsiConsole.MarkupLine("[yellow]Format:[/] {0}", _forensicsConfig.ReportOutputFormat);
         }
 

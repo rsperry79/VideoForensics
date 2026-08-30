@@ -135,25 +135,6 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"Logging level updated to {level}");
         }
 
-        public async Task<(bool Success, string Message)> SetReportsDirectoryAsync(
-            IForensicsConfiguration config,
-            string path,
-            CancellationToken ct = default)
-        {
-            try
-            {
-                config.ReportsDirectory = path;
-                await _configService.SaveConfigurationAsync(config, ct);
-                _logger.LogInformation("Reports directory set to {path}", path);
-                return (true, $"Reports directory updated to {path}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to set reports directory to {path}", path);
-                return (false, $"Failed to set reports directory: {ex.Message}");
-            }
-        }
-
         public async Task<(bool Success, string Message)> SetReportFormatAsync(
             IForensicsConfiguration config,
             string format,
