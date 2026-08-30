@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Core.Utilities;
@@ -81,6 +83,19 @@ namespace VideoForensics.Client.Core
             _logger.LogInformation("Device location mapping set with {Count} entries", deviceIdToLocationName?.Count ?? 0);
         }
 
+        /// <summary>Serializes an API response object to JSON and computes its SHA256 hash for audit/change tracking.</summary>
+        private (string Json, string Hash) SerializeMetadata(object? apiResponse)
+        {
+            if (apiResponse == null)
+                return (string.Empty, string.Empty);
+
+            using var hash = SHA256.Create();
+            var json = JsonSerializer.Serialize(apiResponse);
+            var hashValue = hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
+            var hashHex = Convert.ToHexString(hashValue);
+            return (json, hashHex);
+        }
+
         /// <summary>
         /// Resolves (find-or-create) the Guid Device.Id for a provider's string device id, ensuring the
         /// implicit single-account/single-location chain exists first. Cached per process/device so this
@@ -116,14 +131,16 @@ namespace VideoForensics.Client.Core
                         accountId = account.Id;
                     }
 
+                    var locationMetadata = SerializeMetadata(new { id = "default", name = "default" });
                     var location = await _dataClient.EnsureLocationAsync(
-                        accountId, "default", "default", null, ct: ct);
+                        accountId, "default", "default", locationMetadata.Json, locationMetadata.Hash, ct: ct);
                     _cachedLocationId = location.Id;
                     _cachedLocationName = location.Name;
                 }
 
+                var deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = "camera", isOnline = true });
                 var device = await _dataClient.EnsureDeviceAsync(
-                    _cachedLocationId.Value, providerDeviceId, deviceName, "camera", true, ct: ct);
+                    _cachedLocationId.Value, providerDeviceId, deviceName, "camera", true, deviceMetadata.Json, deviceMetadata.Hash, ct: ct);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
