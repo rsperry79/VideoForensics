@@ -100,6 +100,15 @@ namespace VideoForensics.Providers.Wyze.Services
         }
 
         /// <summary>
+        /// Restores session from saved credentials for a specific account (supports multi-account per-account credential storage).
+        /// </summary>
+        public async Task<bool> RestoreFromSavedCredentialsAsync(Guid? providerAccountId, CancellationToken cancellationToken = default)
+        {
+            // TODO: Implement account-specific credential restoration for Wyze
+            return false;
+        }
+
+        /// <summary>
         /// Gets human-readable authentication status.
         /// </summary>
         public string GetAuthStatus()
