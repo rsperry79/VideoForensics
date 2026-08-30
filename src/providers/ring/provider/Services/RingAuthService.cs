@@ -88,7 +88,7 @@ namespace VideoForensics.Providers.Ring.Services
                         var resolvedAccountId = await GetOrCreateProviderAccountAsync(username, cancellationToken);
                         if (resolvedAccountId != Guid.Empty)
                         {
-                            providerAccountId = resolvedAccountId;
+                            var dbPersistenceSucceeded = true;
 
                             // Dual-write: save refresh token to database
                             if (session.OAuthToken.RefreshToken != null)
@@ -104,17 +104,36 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to save refresh token to database (non-fatal)");
+                                    _logger.LogError(ex, "Failed to save refresh token to database for account {AccountId}", resolvedAccountId);
+                                    dbPersistenceSucceeded = false;
                                 }
                             }
 
-                            await PersistRingAccountAsync(username, session, resolvedAccountId, cancellationToken);
+                            try
+                            {
+                                await PersistRingAccountAsync(username, session, resolvedAccountId, cancellationToken);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to persist Ring account metadata for account {AccountId}", resolvedAccountId);
+                                dbPersistenceSucceeded = false;
+                            }
+
+                            // Only report ProviderAccountId if database persistence succeeded
+                            if (dbPersistenceSucceeded)
+                            {
+                                providerAccountId = resolvedAccountId;
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Database persistence failed for account {AccountId} — using filesystem-only fallback", resolvedAccountId);
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to persist Ring account data (non-fatal)");
-                        // Continue - account data persistence is optional
+                        _logger.LogError(ex, "Failed to create provider account record");
+                        // Continue - account creation is optional, refresh token is persisted to filesystem
                     }
 
                     return new AuthResult(
@@ -386,25 +405,18 @@ namespace VideoForensics.Providers.Ring.Services
             if (_ringAccountRepository == null)
                 return;
 
-            try
+            // Persist Ring account record for data governance
+            var ringAccount = new RingAccount
             {
-                // Persist Ring account record for data governance
-                var ringAccount = new RingAccount
-                {
-                    Id = Guid.NewGuid(),
-                    ProviderAccountId = providerAccountId,
-                    SubscriptionLevel = "unknown",
-                    AccountEmail = username,
-                    AuthenticatedAtUtc = DateTime.UtcNow
-                };
+                Id = Guid.NewGuid(),
+                ProviderAccountId = providerAccountId,
+                SubscriptionLevel = "unknown",
+                AccountEmail = username,
+                AuthenticatedAtUtc = DateTime.UtcNow
+            };
 
-                await _ringAccountRepository.AddAsync(ringAccount, ct);
-                _logger.LogInformation("Persisted Ring authentication for {Username}", username);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Skipping account persistence (non-critical)");
-            }
+            await _ringAccountRepository.AddAsync(ringAccount, ct);
+            _logger.LogInformation("Persisted Ring authentication for {Username}", username);
         }
     }
 }
