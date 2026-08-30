@@ -1,10 +1,10 @@
 # Metadata Capture Implementation Roadmap
 
-## Status: Infrastructure Phase Complete ✅
+## Status: ALL PHASES COMPLETE ✅
 
-The data layer has been prepared to accept and store API response metadata for forensics and audit purposes.
+Complete metadata capture implementation for forensics and audit purposes.
 
-## Phase 1: Infrastructure (COMPLETED)
+## Phase 1: Infrastructure (COMPLETED) ✅
 
 ### Changes Made
 - Updated `IVideoForensicsDataClient.EnsureLocationAsync()` to accept optional `metadataJson` and `apiResponseHash` parameters
@@ -16,7 +16,7 @@ The data layer has been prepared to accept and store API response metadata for f
 - `4d82682` - Integrate self-tester with RingAuthService and update database path
 - `0d30689` - Add metadata capture infrastructure to data layer
 
-## Phase 2: Service Layer Integration (TODO)
+## Phase 2: Service Layer Integration (COMPLETED) ✅
 
 ### Overview
 The service layer needs to serialize API responses and pass them to the data layer.
@@ -81,9 +81,42 @@ Once Phase 2 is complete:
 - ✅ Complete forensics data for investigations
 - ✅ Self-tester will confirm all API data points are recorded
 
-## Next Steps
+## Phase 3: Event & MediaItem Metadata (COMPLETED) ✅
 
-1. Implement Phase 2 service layer integration
-2. Run self-tester with `--verify-db` to validate
-3. Query database to confirm metadata is populated
-4. Remove this documentation once complete
+### Completed Changes
+- Added SerializeMetadata helper to RingMediaDownloadService
+- All UpsertEventRecordAsync calls pass API response for serialization
+- MediaItem entity extended with MetadataJson and ApiSourceHash
+- Video downloads and snapshot downloads store metadata
+- Events table captures full DoorbotHistoryEvent metadata
+
+## Phase 4: Database Verification (COMPLETED) ✅
+
+### Completed Changes
+- Self-tester `--verify-db` now displays metadata capture statistics
+- Event and MediaItem metadata completeness percentage
+- Device and location metadata counts
+- Graceful handling for schemas without metadata columns
+
+## Documentation (COMPLETED) ✅
+
+- FORENSICS_AUDIT_GUIDE.md - Comprehensive audit trail analysis guide
+- METADATA_MIGRATION_GUIDE.md - Migration and schema update guide
+- API documentation updated to reflect metadata tracking
+
+## Implementation Complete
+
+All phases are now complete. Metadata capture is fully integrated throughout VideoForensics:
+
+✅ Data layer infrastructure  
+✅ Service layer integration  
+✅ Event and MediaItem metadata  
+✅ Database verification  
+✅ Forensics audit documentation  
+✅ Migration guide for existing databases
+
+To use metadata:
+1. Run normal collections - metadata is captured automatically
+2. Run self-tester `--verify-db` to verify metadata completeness
+3. See FORENSICS_AUDIT_GUIDE.md for forensics query examples
+4. See METADATA_MIGRATION_GUIDE.md for migration and storage considerations
