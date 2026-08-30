@@ -196,7 +196,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
                         await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                            @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token);
+                            @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
 
                         // Use the device GUID resolved at batch start; all events are for this same device
                         // (filtered by deviceId above). Avoids per-item redundant lookups.
@@ -243,7 +243,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 if (sha256Hash != null)
                                 {
                                     await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                                        @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token);
+                                        @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
                                 }
 
                                 lock (_statusLock)
@@ -359,6 +359,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                                         };
 
+                                        var metadata = SerializeMetadata(@event);
                                         var mediaItem = new MediaItem
                                         {
                                             Id = Guid.NewGuid(),
@@ -371,13 +372,15 @@ namespace VideoForensics.Providers.Ring.Services
                                             RecordedAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime(),
                                             DownloadedAtUtc = DateTime.UtcNow,
                                             Sha256Hash = sha256Hash,
-                                            IntegrityVerified = false
+                                            IntegrityVerified = false,
+                                            MetadataJson = metadata.Json,
+                                            ApiSourceHash = metadata.Hash
                                         };
 
                                         await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, rateLimitCts.Token);
 
                                         await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
-                                            @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token);
+                                            @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
 
                                         // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
                                         try
@@ -639,6 +642,7 @@ namespace VideoForensics.Providers.Ring.Services
                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                         };
 
+                        var snapshotMetadata = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId = deviceId, timestamp = DateTime.UtcNow });
                         var mediaItem = new MediaItem
                         {
                             Id = Guid.NewGuid(),
@@ -651,7 +655,9 @@ namespace VideoForensics.Providers.Ring.Services
                             RecordedAtUtc = DateTime.UtcNow,
                             DownloadedAtUtc = DateTime.UtcNow,
                             Sha256Hash = sha256Hash,
-                            IntegrityVerified = false
+                            IntegrityVerified = false,
+                            MetadataJson = snapshotMetadata.Json,
+                            ApiSourceHash = snapshotMetadata.Hash
                         };
 
                         await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, cancellationToken);
@@ -705,11 +711,26 @@ namespace VideoForensics.Providers.Ring.Services
         /// is successfully downloaded and hashed, to progressively enrich the same row. Failures here
         /// are logged and swallowed — a bad Events write shouldn't fail the download itself.
         /// </summary>
+        /// <summary>Serializes an API response object to JSON and computes its SHA256 hash for audit/change tracking.</summary>
+        private (string Json, string Hash) SerializeMetadata(object? apiResponse)
+        {
+            if (apiResponse == null)
+                return (string.Empty, string.Empty);
+
+            using var hash = SHA256.Create();
+            var json = JsonSerializer.Serialize(apiResponse);
+            var hashValue = hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
+            var hashHex = Convert.ToHexString(hashValue);
+            return (json, hashHex);
+        }
+
         private async Task UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
-            DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct)
+            DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
+            object? apiResponse = null)
         {
             try
             {
+                var metadata = SerializeMetadata(apiResponse);
                 await _dataClient.UpsertEventAsync(new Event
                 {
                     Id = Guid.NewGuid(),
@@ -720,7 +741,9 @@ namespace VideoForensics.Providers.Ring.Services
                     SnapshotUrl = snapshotUrl,
                     DiscoveredAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = downloadedAtUtc,
-                    EventIntegrityHash = hash
+                    EventIntegrityHash = hash,
+                    MetadataJson = metadata.Json,
+                    ApiSourceHash = metadata.Hash
                 }, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
