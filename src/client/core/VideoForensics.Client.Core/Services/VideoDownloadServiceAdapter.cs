@@ -117,13 +117,13 @@ namespace VideoForensics.Client.Core
                     }
 
                     var location = await _dataClient.EnsureLocationAsync(
-                        accountId, "default", "default", null, ct);
+                        accountId, "default", "default", null, ct: ct);
                     _cachedLocationId = location.Id;
                     _cachedLocationName = location.Name;
                 }
 
                 var device = await _dataClient.EnsureDeviceAsync(
-                    _cachedLocationId.Value, providerDeviceId, deviceName, "camera", true, ct);
+                    _cachedLocationId.Value, providerDeviceId, deviceName, "camera", true, ct: ct);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }

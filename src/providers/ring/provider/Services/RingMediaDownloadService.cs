@@ -918,7 +918,7 @@ namespace VideoForensics.Providers.Ring.Services
                         "default",
                         "default",
                         null,
-                        ct);
+                        ct: ct);
                     _cachedLocationId = location.Id;
                 }
             }
@@ -934,7 +934,7 @@ namespace VideoForensics.Providers.Ring.Services
                 deviceName,
                 "camera",
                 true,
-                ct);
+                ct: ct);
 
             // Cache in the per-device dictionary
             _deviceIdCache.TryAdd(providerDeviceId, device.Id);
