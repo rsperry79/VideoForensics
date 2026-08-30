@@ -41,7 +41,9 @@ namespace VideoForensics.Data.Core.Contracts
             string providerLocationId,
             string name,
             string? address,
-            CancellationToken ct);
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default);
 
         /// <summary>Ensures a device exists for a location, creating or updating it as necessary.</summary>
         Task<Device> EnsureDeviceAsync(
@@ -50,7 +52,9 @@ namespace VideoForensics.Data.Core.Contracts
             string name,
             string type,
             bool isOnline,
-            CancellationToken ct);
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default);
 
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);
