@@ -88,6 +88,13 @@ namespace VideoForensics.Data.Common.Contracts
         public string Purpose { get; set; } = string.Empty; // "CaseFile", "CourtSubmission"
     }
 
+    /// <summary>A single modified event within an <see cref="ExportIntegrityReport"/>.</summary>
+    public class ModificationDetail
+    {
+        public Guid EventId { get; set; }
+        public string Modification { get; set; } = string.Empty;
+    }
+
     /// <summary>Export integrity report.</summary>
     public class ExportIntegrityReport
     {
@@ -97,7 +104,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int ModifiedEvents { get; set; }
         public bool IsIntact { get; set; }
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Modified", "Compromised"
-        public List<(Guid EventId, string Modification)> ModificationDetails { get; set; } = new();
+        public List<ModificationDetail> ModificationDetails { get; set; } = new();
     }
 
     /// <summary>Redaction audit record.</summary>

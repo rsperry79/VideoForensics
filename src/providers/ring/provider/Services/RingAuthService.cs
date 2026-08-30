@@ -3,16 +3,20 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring.Auth;
 
 namespace VideoForensics.Providers.Ring.Services
 {
     public class RingAuthService : IProviderAuthService
     {
+        private const string ProviderName = "Ring";
+
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly ICredentialStore _credentialStore;
         private readonly IRingAccountRepository? _ringAccountRepository;
         private readonly IProviderAccountRepository? _providerAccountRepository;
+        private readonly IUserRepository? _userRepository;
         private readonly ApiResponseNormalizer? _normalizer;
         private bool _isAuthenticated;
 
@@ -22,6 +26,7 @@ namespace VideoForensics.Providers.Ring.Services
             ICredentialStore credentialStore,
             IRingAccountRepository? ringAccountRepository = null,
             IProviderAccountRepository? providerAccountRepository = null,
+            IUserRepository? userRepository = null,
             ApiResponseNormalizer? normalizer = null)
         {
             _logger = logger;
@@ -29,6 +34,7 @@ namespace VideoForensics.Providers.Ring.Services
             _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
             _ringAccountRepository = ringAccountRepository;
             _providerAccountRepository = providerAccountRepository;
+            _userRepository = userRepository;
             _normalizer = normalizer;
             _isAuthenticated = false;
         }
@@ -63,8 +69,8 @@ namespace VideoForensics.Providers.Ring.Services
                     {
                         try
                         {
-                            _credentialStore.Save(null!, credentials);
-                            _logger.LogInformation("Credentials saved to secure store");
+                            _credentialStore.Save(CredentialResolver.AuthPath, credentials);
+                            _logger.LogInformation("Credentials saved to secure store at {AuthPath}", CredentialResolver.AuthPath);
                         }
                         catch (Exception ex)
                         {
@@ -73,9 +79,15 @@ namespace VideoForensics.Providers.Ring.Services
                     }
 
                     // Persist Ring account data to database
+                    Guid? providerAccountId = null;
                     try
                     {
-                        await PersistRingAccountAsync(username, session, cancellationToken);
+                        var resolvedAccountId = await GetOrCreateProviderAccountAsync(username, cancellationToken);
+                        if (resolvedAccountId != Guid.Empty)
+                        {
+                            providerAccountId = resolvedAccountId;
+                            await PersistRingAccountAsync(username, session, resolvedAccountId, cancellationToken);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -86,7 +98,8 @@ namespace VideoForensics.Providers.Ring.Services
                     return new AuthResult(
                         Success: true,
                         AuthToken: session.OAuthToken.AccessToken,
-                        ExpiresAt: expiresAt
+                        ExpiresAt: expiresAt,
+                        ProviderAccountId: providerAccountId
                     );
                 }
 
@@ -174,10 +187,90 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> RestoreFromSavedCredentialsAsync(CancellationToken cancellationToken = default)
         {
-            // Credentials are now managed through the database via ProviderAccountRepository
-            // This method is kept for compatibility but restoration happens at startup via account selection
-            _logger.LogInformation("Credential restoration is managed through account selection");
-            return false;
+            try
+            {
+                var saved = _credentialStore.Load(CredentialResolver.AuthPath);
+                if (string.IsNullOrWhiteSpace(saved.RefreshToken))
+                {
+                    _logger.LogInformation("No saved refresh token found at {AuthPath}", CredentialResolver.AuthPath);
+                    return false;
+                }
+
+                _logger.LogInformation("Restoring Ring session for {Username} from saved refresh token", saved.UserName);
+
+                var session = await Session.AuthenticateWithCredentials(saved, twoFactorAuthCodeProvider: null, progress: null!);
+
+                if (session?.OAuthToken == null)
+                {
+                    _isAuthenticated = false;
+                    return false;
+                }
+
+                _sessionProvider.SetSession(session);
+                _isAuthenticated = true;
+
+                try
+                {
+                    _credentialStore.Save(CredentialResolver.AuthPath, saved);
+
+                    var providerAccountId = await GetOrCreateProviderAccountAsync(saved.UserName ?? "unknown", cancellationToken);
+                    await PersistRingAccountAsync(saved.UserName ?? "unknown", session, providerAccountId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to persist restored Ring account data (non-fatal)");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to restore session from saved credentials");
+                _isAuthenticated = false;
+                return false;
+            }
+        }
+
+        private async Task<Guid> GetOrCreateProviderAccountAsync(string username, CancellationToken ct)
+        {
+            if (_userRepository == null || _providerAccountRepository == null)
+                return Guid.Empty;
+
+            var user = await _userRepository.GetByProviderKeyAsync(username, ct);
+            if (user == null)
+            {
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderUserKey = username,
+                    DisplayName = username,
+                    CreatedUtc = DateTime.UtcNow
+                };
+                await _userRepository.AddAsync(user, ct);
+            }
+
+            var account = await _providerAccountRepository.GetByUserAndProviderAsync(user.Id, ProviderName, ct);
+            if (account == null)
+            {
+                account = new ProviderAccount
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    ProviderName = ProviderName,
+                    LinkedUtc = DateTime.UtcNow,
+                    LastSuccessfulAuthUtc = DateTime.UtcNow,
+                    IsActive = true
+                };
+                await _providerAccountRepository.AddAsync(account, ct);
+            }
+            else
+            {
+                account.LastSuccessfulAuthUtc = DateTime.UtcNow;
+                account.IsActive = true;
+                await _providerAccountRepository.UpdateAsync(account, ct);
+            }
+
+            return account.Id;
         }
 
         public string GetAuthStatus()
@@ -192,7 +285,7 @@ namespace VideoForensics.Providers.Ring.Services
             return "Authenticated";
         }
 
-        private async Task PersistRingAccountAsync(string username, Session session, CancellationToken ct)
+        private async Task PersistRingAccountAsync(string username, Session session, Guid providerAccountId, CancellationToken ct)
         {
             if (_ringAccountRepository == null)
                 return;
@@ -200,11 +293,10 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 // Persist Ring account record for data governance
-                // ProviderAccountId will be linked later when account is activated
                 var ringAccount = new RingAccount
                 {
                     Id = Guid.NewGuid(),
-                    ProviderAccountId = Guid.Empty,
+                    ProviderAccountId = providerAccountId,
                     SubscriptionLevel = "unknown",
                     AccountEmail = username,
                     AuthenticatedAtUtc = DateTime.UtcNow

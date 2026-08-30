@@ -85,6 +85,28 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task Migration_DeviceHealthSnapshots_HasNullableDeviceIdColumn()
+        {
+            await using var ctx = _fixture.Factory.CreateDbContext();
+            var snapshot = new VideoForensics.Data.Common.Entities.DeviceHealthSnapshot
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                DownloadEventId = null,
+                BatteryPercentage = 42m,
+                CapturedAtUtc = DateTime.UtcNow
+            };
+
+            ctx.DeviceHealthSnapshots.Add(snapshot);
+            await ctx.SaveChangesAsync();
+
+            var reloaded = await ctx.DeviceHealthSnapshots.FindAsync(snapshot.Id);
+            Assert.NotNull(reloaded);
+            Assert.Equal(snapshot.DeviceId, reloaded!.DeviceId);
+            Assert.Null(reloaded.DownloadEventId);
+        }
+
+        [Fact]
         public async Task Migration_AiAnalysisSnapshots_DbSetQueryable()
         {
             var ctx = _fixture.Factory.CreateDbContext();

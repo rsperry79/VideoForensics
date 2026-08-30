@@ -2,14 +2,6 @@ namespace VideoForensics.Forensics.Tests
 {
     public class ForensicAnalyzerTests
     {
-        private IForensicAnalyzer _analyzer = null!;
-
-        public ForensicAnalyzerTests()
-        {
-            // Instantiate implementation when ready
-            // _analyzer = new ForensicAnalyzer();
-        }
-
         [Fact]
         public async Task AnalyzeEvidenceAsync_WithValidEvidence_ReturnsFinding()
         {

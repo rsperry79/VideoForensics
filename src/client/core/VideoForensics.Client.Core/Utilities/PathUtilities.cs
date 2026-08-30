@@ -32,6 +32,25 @@ namespace VideoForensics.Client.Core.Utilities
                 "VideoForensics");
         }
 
+        /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Documents/VideoForensics.</summary>
+        public static string GetDefaultQueryExportLocation()
+        {
+            var oneDrivePath = GetOneDrivePath();
+            if (!string.IsNullOrEmpty(oneDrivePath))
+            {
+                var documentsPath = Path.Combine(oneDrivePath, "Documents");
+                if (Directory.Exists(documentsPath))
+                    return Path.Combine(documentsPath, "VideoForensics");
+
+                // Fallback to OneDrive root
+                return Path.Combine(oneDrivePath, "VideoForensics");
+            }
+
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "VideoForensics");
+        }
+
         /// <summary>Gets the OneDrive path if it exists. Returns null if OneDrive is not configured.</summary>
         public static string? GetOneDrivePath()
         {

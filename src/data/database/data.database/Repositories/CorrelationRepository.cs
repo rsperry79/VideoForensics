@@ -181,24 +181,20 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
             var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
-            var deviceStatus = new List<(Guid, string, decimal)>();
+            var deviceStatus = new List<DeviceSyncStatus>();
 
             foreach (var device in devices)
             {
                 var reliability = await AnalyzeDeviceReliabilityAsync(device.Id, ct);
-                deviceStatus.Add((device.Id, device.Name, reliability.UptimePercentage));
+                deviceStatus.Add(new DeviceSyncStatus { DeviceId = device.Id, DeviceName = device.Name, Uptime = reliability.UptimePercentage });
             }
-
-            var avgUptime = deviceStatus.Count > 0 ? deviceStatus.Average(d => d.Item3) : 100m;
 
             return new SyncHealthReport
             {
                 LocationId = locationId,
                 DeviceCount = devices.Count,
-                AverageUptime = avgUptime,
-                TotalSyncGaps = deviceStatus.Sum(d => d.Item3 < 95m ? 1 : 0),
+                TotalSyncGaps = deviceStatus.Sum(d => d.Uptime < 95m ? 1 : 0),
                 LastSuccessfulSyncUtc = DateTime.UtcNow,
-                HealthStatus = avgUptime > 95m ? "Healthy" : avgUptime > 80m ? "Degraded" : "Critical",
                 DeviceStatus = deviceStatus
             };
         }
@@ -225,24 +221,27 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             var unhealthyDevices = devices
-                .Where(d => syncHealth.DeviceStatus.Any(s => s.Item1 == d.Id && s.Item3 < 95m))
+                .Where(d => syncHealth.DeviceStatus.Any(s => s.DeviceId == d.Id && s.Uptime < 95m))
                 .Select(d => d.Name)
                 .ToList();
 
             var offlineDevices = devices
-                .Where(d => syncHealth.DeviceStatus.Any(s => s.Item1 == d.Id && s.Item3 < 80m))
+                .Where(d => syncHealth.DeviceStatus.Any(s => s.DeviceId == d.Id && s.Uptime < 80m))
                 .Select(d => d.Name)
                 .ToList();
+
+            // Worst-case-among-devices rollup for the coarse triage string only - not an average,
+            // so one healthy camera can never hide another's offline/unhealthy status.
+            var status = offlineDevices.Count > 0 ? "Critical" : unhealthyDevices.Count > 0 ? "Anomalies" : "Healthy";
 
             var summary = new CorrelationSummary
             {
                 TotalCount = devices.Count,
-                Status = syncHealth.HealthStatus == "Healthy" ? "Healthy" : "Anomalies",
-                ComplianceScore = (double)syncHealth.AverageUptime,
+                Status = status,
+                ComplianceScore = null,
                 DeviceCount = devices.Count,
                 UnhealthyDeviceCount = unhealthyDevices.Count,
                 SyncFailureCount = syncHealth.TotalSyncGaps,
-                AverageDeviceUptime = syncHealth.AverageUptime,
                 OfflineDevices = offlineDevices,
                 LocationChanges = locationChanges.Select(lc => $"{lc.DeviceName} moved on {lc.ChangedAtUtc:yyyy-MM-dd}").ToList(),
                 DetailQueryMethod = "AnalyzeSyncHealthAsync"

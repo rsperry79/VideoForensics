@@ -26,6 +26,7 @@ namespace VideoForensics.Client.Core
         // Device ID to location name mapping, set by the caller before downloading
         private Dictionary<string, string>? _deviceToLocationMapping;
         private int _lastRemainingCount;
+        private string? _lastRemainingReason;
         private int _currentDeviceIndex;
         private int _currentDeviceTotal;
         private string _currentDeviceName = string.Empty;
@@ -98,10 +99,25 @@ namespace VideoForensics.Client.Core
 
                 if (_cachedLocationId is null)
                 {
-                    var (_, account) = await _dataClient.EnsureUserAndAccountAsync(
-                        _videoProvider.ProviderName, "default", "default", null, ct);
+                    Guid accountId;
+                    if (_forensicsConfig.ActiveProviderAccountId is { } activeAccountId)
+                    {
+                        accountId = activeAccountId;
+                    }
+                    else
+                    {
+                        // Shouldn't normally happen - authentication is expected to have already
+                        // set the active account. Falling back to a synthetic placeholder account
+                        // rather than failing the whole download, but this indicates the active
+                        // account wasn't set where it should have been.
+                        _logger.LogWarning("No active provider account set; falling back to a synthetic placeholder account for device identity resolution");
+                        var (_, account) = await _dataClient.EnsureUserAndAccountAsync(
+                            _videoProvider.ProviderName, "default", "default", null, ct);
+                        accountId = account.Id;
+                    }
+
                     var location = await _dataClient.EnsureLocationAsync(
-                        account.Id, "default", "default", null, ct);
+                        accountId, "default", "default", null, ct);
                     _cachedLocationId = location.Id;
                     _cachedLocationName = location.Name;
                 }
@@ -247,6 +263,7 @@ namespace VideoForensics.Client.Core
         public async Task<bool> DownloadVideosAsync(string outputPath, DateTime startDate, DateTime endDate, bool force = false)
         {
             _lastRemainingCount = 0;
+            _lastRemainingReason = null;
             _currentDeviceIndex = 0;
             _currentDeviceTotal = 0;
             _currentDeviceName = string.Empty;
@@ -287,6 +304,11 @@ namespace VideoForensics.Client.Core
                 var totalFilesDownloaded = 0;
                 var totalFilesMatched = 0;
                 var deviceErrors = new List<string>();
+                // Reasons for a per-device shortfall (FilesDownloaded < FilesMatched) even when that
+                // device's call reported Success — e.g. "rate limited by Ring API". Collected
+                // regardless of whether any files downloaded overall, so the "N remaining" prompt can
+                // state the real cause instead of assuming rate limiting.
+                var skipReasons = new List<string>();
 
                 _currentDeviceTotal = uniqueDevices.Count;
 
@@ -363,6 +385,10 @@ namespace VideoForensics.Client.Core
                         {
                             _completedDeviceResults[device.Id] = (result.FilesDownloaded, result.FilesMatched, result.BytesDownloaded);
                         }
+                        else if (result.SkipReason != null)
+                        {
+                            skipReasons.Add(result.SkipReason);
+                        }
                     }
                     else
                     {
@@ -383,6 +409,7 @@ namespace VideoForensics.Client.Core
                 }
 
                 _lastRemainingCount = Math.Max(0, totalFilesMatched - totalFilesDownloaded);
+                _lastRemainingReason = _lastRemainingCount > 0 ? BuildRemainingReason(skipReasons) : null;
 
                 if (totalDevices == 0)
                 {
@@ -448,6 +475,7 @@ namespace VideoForensics.Client.Core
         public async Task<bool> DownloadSnapshotsAsync(string outputPath, DateTime startDate, DateTime endDate)
         {
             _lastRemainingCount = 0;
+            _lastRemainingReason = null;
             _currentDeviceIndex = 0;
             _currentDeviceTotal = 0;
             _currentDeviceName = string.Empty;
@@ -646,6 +674,34 @@ namespace VideoForensics.Client.Core
         public int GetRemainingCount()
         {
             return _lastRemainingCount;
+        }
+
+        /// <summary>Why GetRemainingCount() is nonzero (e.g. "rate limited by Ring API"), or null if unknown/not applicable.</summary>
+        public string? GetRemainingReason()
+        {
+            return _lastRemainingReason;
+        }
+
+        /// <summary>
+        /// Summarizes per-device skip reasons into one human-readable explanation for why some
+        /// matched items weren't downloaded. Returns null (unknown cause) rather than guessing when
+        /// no reasons were collected - e.g. a provider that hasn't been updated to populate
+        /// DownloadResult.SkipReason.
+        /// </summary>
+        private static string? BuildRemainingReason(List<string> skipReasons)
+        {
+            if (skipReasons.Count == 0)
+            {
+                return null;
+            }
+
+            var distinct = skipReasons.Distinct().ToList();
+            if (distinct.Count == 1)
+            {
+                return char.ToUpperInvariant(distinct[0][0]) + distinct[0].Substring(1);
+            }
+
+            return "Multiple causes: " + string.Join(", ", distinct);
         }
 
         public (int Index, int Total, string Name) GetCurrentDevice()

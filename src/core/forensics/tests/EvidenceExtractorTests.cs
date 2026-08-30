@@ -2,14 +2,6 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
     public class EvidenceExtractorTests
     {
-        private IEvidenceExtractor _extractor = null!;
-
-        public EvidenceExtractorTests()
-        {
-            // Instantiate implementation when ready
-            // _extractor = new EvidenceExtractor();
-        }
-
         [Fact]
         public async Task ExtractEvidenceAsync_WithValidEvent_ReturnsMetadata()
         {

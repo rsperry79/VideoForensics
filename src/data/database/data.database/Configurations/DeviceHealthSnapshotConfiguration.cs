@@ -18,6 +18,7 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(256);
 
             builder.HasIndex(dh => dh.DownloadEventId);
+            builder.HasIndex(dh => new { dh.DeviceId, dh.CapturedAtUtc });
         }
     }
 }

@@ -10,6 +10,18 @@
         <Version>1.0.0</Version>
         <AssemblyVersion>1.0.0.0</AssemblyVersion>
         <FileVersion>1.0.0.0</FileVersion>
+
+        <!--
+          Nullable-reference-type warnings (mostly on JSON entity/DTO classes populated by the
+          deserializer rather than a constructor) and xUnit analyzer style suggestions (e.g. use
+          TestContext.Current.CancellationToken). Pre-existing across the codebase; suppressed here
+          rather than hand-annotating hundreds of call sites for no behavioral benefit.
+        -->
+        <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS8629;xUnit1051;xUnit1012;xUnit2002;xUnit2009;xUnit2012;xUnit2013;xUnit2017</NoWarn>
+
+        <!-- Opt-in to new dotnet test experience for .NET 10 compatibility -->
+        <TestingPlatformDotnetTestSupport Condition="'$(IsTestProject)' == 'true'">true</TestingPlatformDotnetTestSupport>
+        <OutputType Condition="'$(IsTestProject)' == 'true'">Exe</OutputType>
     </PropertyGroup>
 
     <!--
@@ -18,6 +30,11 @@
         - AssemblyVersion/FileVersion (numeric): 1.0.0.<commit count>
         - Version (semver, used for the NuGet package): 1.0.0+<short hash>
     -->
+    <!-- Test projects need Microsoft.Testing.Platform for .NET 10 compatibility -->
+    <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+        <PackageReference Include="Microsoft.Testing.Platform" Version="2.3.3" />
+    </ItemGroup>
+
     <Target Name="SetApiVersionFromGit" BeforeTargets="BeforeBuild;GetAssemblyVersion;GenerateNuspec">
         <Exec Command="git rev-list --count HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low" ContinueOnError="true">
             <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCount" />

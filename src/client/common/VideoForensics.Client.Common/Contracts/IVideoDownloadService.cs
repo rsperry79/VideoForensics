@@ -28,6 +28,8 @@ namespace VideoForensics.Client.Common
         IReadOnlyList<string> DrainActivityLog();
         /// <summary>How many matched items from the last download call weren't actually downloaded (e.g. a rate limit cut the run short), aggregated across all devices processed.</summary>
         int GetRemainingCount();
+        /// <summary>Why GetRemainingCount() is nonzero (e.g. "Rate limited by Ring API"), or null if unknown/not applicable - never assume a null reason means nothing was skipped.</summary>
+        string? GetRemainingReason();
         /// <summary>Which device (1-based index, total count, display name) is currently being processed, so a UI can explain why the per-device file count just reset instead of it looking like a glitch.</summary>
         (int Index, int Total, string Name) GetCurrentDevice();
         string? GetLastError();

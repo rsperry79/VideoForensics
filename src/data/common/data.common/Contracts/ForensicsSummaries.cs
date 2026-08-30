@@ -1,13 +1,28 @@
 namespace VideoForensics.Data.Common.Contracts
 {
-    /// <summary>Phase 1 Summary: Timeline & Patterns - fast decision point before detail queries.</summary>
+    /// <summary>
+    /// Phase 1 Summary: Timeline & Patterns - fast decision point before detail queries.
+    /// ComplianceScore (inherited) is intentionally left null: a coverage % averaged across
+    /// devices would let one healthy camera mask another's gaps. See <see cref="DeviceSummaries"/>
+    /// for each device's own numbers; Status reflects the worst device (any camera Critical ->
+    /// overall Critical), which is a categorical triage signal, not an average.
+    /// </summary>
     public class TimelineSummary : QuerySummary
     {
+        public List<DeviceTimelineSummary> DeviceSummaries { get; set; } = new();
+        public List<string> SuspiciousDevices { get; set; } = new();
+        public List<HourlyActivityCount> PeakHours { get; set; } = new();
+    }
+
+    /// <summary>One device's own timeline summary numbers - never blended with any other device's.</summary>
+    public class DeviceTimelineSummary
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
         public int GapCount { get; set; }
         public int LargestGapMinutes { get; set; }
         public decimal CoveragePercentage { get; set; }
-        public List<string> SuspiciousDevices { get; set; } = new();
-        public List<(int Hour, int Count)> PeakHours { get; set; } = new();
+        public string Status { get; set; } = string.Empty; // "Healthy", "Anomalies", "Critical"
     }
 
     /// <summary>Phase 2 Summary: Evidence Integrity - quick compliance check.</summary>
@@ -20,13 +35,17 @@ namespace VideoForensics.Data.Common.Contracts
         public List<string> CompromisedDevices { get; set; } = new();
     }
 
-    /// <summary>Phase 3 Summary: Correlation Queries - health & sync status at-a-glance.</summary>
+    /// <summary>
+    /// Phase 3 Summary: Correlation Queries - health & sync status at-a-glance.
+    /// ComplianceScore (inherited) is intentionally left null: averaging per-device uptime %
+    /// would let a healthy camera mask an unhealthy one, which is invalid for evidence. Use
+    /// AnalyzeSyncHealthAsync's per-device DeviceStatus list for each camera's own uptime.
+    /// </summary>
     public class CorrelationSummary : QuerySummary
     {
         public int DeviceCount { get; set; }
         public int UnhealthyDeviceCount { get; set; }
         public int SyncFailureCount { get; set; }
-        public decimal AverageDeviceUptime { get; set; } // 0-100%
         public List<string> OfflineDevices { get; set; } = new();
         public List<string> LocationChanges { get; set; } = new();
     }

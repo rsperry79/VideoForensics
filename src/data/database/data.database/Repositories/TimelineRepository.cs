@@ -123,16 +123,18 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            var byDate = await db.Events
                 .Join(db.Devices.Where(d => d.LocationId == locationId),
                       e => e.DeviceId, d => d.Id, (e, d) => e)
                 .Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
-                .GroupBy(e => e.OccurredAtUtc.Date.ToString("yyyy-MM-dd"))
+                .GroupBy(e => e.OccurredAtUtc.Date)
                 .Select(g => new { Date = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.Date, x => x.Count, cancellationToken: ct);
+
+            return byDate.ToDictionary(x => x.Key.ToString("yyyy-MM-dd"), x => x.Value);
         }
 
-        public async Task<IReadOnlyList<(int Hour, int Count)>> GetPeakActivityPeriodsAsync(
+        public async Task<IReadOnlyList<HourlyActivityCount>> GetPeakActivityPeriodsAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using var db = await _factory.CreateDbContextAsync(ct);
@@ -145,7 +147,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderByDescending(x => x.Count)
                 .ToListAsync(ct);
 
-            return results.Select(x => (x.Hour, x.Count)).ToList();
+            return results.Select(x => new HourlyActivityCount { Hour = x.Hour, Count = x.Count }).ToList();
         }
 
         public async Task<TimelineIntegrityReport> VerifyTimelineIntegrityAsync(
@@ -154,6 +156,7 @@ namespace VideoForensics.Data.Database.Repositories
             var gaps = await GetLocationRecordingGapsAsync(locationId, fromUtc, toUtc, minGapMinutes: 5, ct);
 
             await using var db = await _factory.CreateDbContextAsync(ct);
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
             var allEvents = await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -163,28 +166,48 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
 
             var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
-            var gappedDurationMinutes = (decimal)gaps.Sum(g => g.DurationMinutes);
-            var coverage = ((totalDurationMinutes - gappedDurationMinutes) / totalDurationMinutes) * 100m;
+            var eventsByDevice = allEvents.ToLookup(e => e.DeviceId);
+            var gapsByDevice = gaps.ToLookup(g => g.DeviceId);
+
+            // Include every device at the location even with zero events - a fully-silent camera
+            // is itself forensically significant and must not just vanish from the report.
+            var deviceReports = devices.Select(device =>
+            {
+                var deviceEvents = eventsByDevice[device.Id].ToList();
+                var deviceGaps = gapsByDevice[device.Id].ToList();
+                var deviceGappedMinutes = (decimal)deviceGaps.Sum(g => g.DurationMinutes);
+                var deviceCoverage = totalDurationMinutes > 0
+                    ? ((totalDurationMinutes - deviceGappedMinutes) / totalDurationMinutes) * 100m
+                    : 100m;
+
+                return new DeviceTimelineIntegrity
+                {
+                    DeviceId = device.Id,
+                    DeviceName = device.Name,
+                    TotalEvents = deviceEvents.Count,
+                    TotalGaps = deviceGaps.Count,
+                    LargestGapMinutes = deviceGaps.Count > 0 ? deviceGaps.Max(g => g.DurationMinutes) : 0,
+                    CoveragePercentage = deviceCoverage,
+                    SignificantGaps = deviceGaps.Where(g => g.DurationMinutes >= 30).ToList(),
+                    EventTypeDistribution = deviceEvents
+                        .GroupBy(e => e.EventType)
+                        .ToDictionary(g => g.Key, g => g.Count()),
+                    IntegrityStatus = deviceCoverage < 50m ? "Critical" : deviceCoverage < 80m ? "Gaps" : "Intact"
+                };
+            }).ToList();
 
             var report = new TimelineIntegrityReport
             {
                 LocationId = locationId,
                 AnalysisFromUtc = fromUtc,
                 AnalysisToUtc = toUtc,
-                TotalEvents = allEvents.Count,
-                TotalGaps = gaps.Count,
-                LargestGapMinutes = gaps.Count > 0 ? gaps.Max(g => g.DurationMinutes) : 0,
-                CoveragePercentage = (decimal)coverage,
-                SignificantGaps = gaps.Where(g => g.DurationMinutes >= 30).ToList(),
-                EventTypeDistribution = allEvents
-                    .GroupBy(e => e.EventType)
-                    .ToDictionary(g => g.Key, g => g.Count()),
-                IntegrityStatus = coverage < 50m ? "Critical" : coverage < 80m ? "Gaps" : "Intact"
+                DeviceReports = deviceReports
             };
 
             _logger.LogInformation(
-                "Timeline integrity: {LocationId} coverage {Coverage:F1}% ({TotalEvents} events, {Gaps} gaps)",
-                locationId, coverage, allEvents.Count, gaps.Count);
+                "Timeline integrity: {LocationId}, {DeviceCount} device(s), coverage {Coverages}",
+                locationId, deviceReports.Count,
+                string.Join(", ", deviceReports.Select(d => $"{d.DeviceName}={d.CoveragePercentage:F1}%")));
 
             return report;
         }
@@ -221,7 +244,13 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     if (events[j].Event.OccurredAtUtc - events[i].Event.OccurredAtUtc <= timeWindow)
                     {
-                        cluster.Events.Add((events[j].Device.Id, events[j].Device.Name, events[j].Event.EventType, events[j].Event.OccurredAtUtc));
+                        cluster.Events.Add(new ClusterEvent
+                        {
+                            DeviceId = events[j].Device.Id,
+                            DeviceName = events[j].Device.Name,
+                            EventType = events[j].Event.EventType,
+                            OccurredAtUtc = events[j].Event.OccurredAtUtc
+                        });
                         devicesInCluster.Add(events[j].Device.Id);
                         processed.Add(j);
                     }
@@ -262,7 +291,10 @@ namespace VideoForensics.Data.Database.Repositories
                         ActivityType = "SimultaneousMotion",
                         Description = $"Multiple devices ({cluster.DeviceCount}) detected motion simultaneously within 10 seconds",
                         SuspicionScore = Math.Min(100, cluster.DeviceCount * 25),
-                        InvolvedDevices = cluster.Events.Select(e => (e.DeviceId, e.DeviceName)).Distinct().ToList()
+                        InvolvedDevices = cluster.Events
+                            .Select(e => new InvolvedDevice { DeviceId = e.DeviceId, DeviceName = e.DeviceName })
+                            .DistinctBy(d => d.DeviceId)
+                            .ToList()
                     });
                 }
             }
@@ -274,9 +306,9 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             var gaps = await GetLocationRecordingGapsAsync(locationId, fromUtc, toUtc, minGapMinutes: 5, ct);
-            var hourly = new Dictionary<int, int>();
 
             await using var db = await _factory.CreateDbContextAsync(ct);
+            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
             var allEvents = await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -285,19 +317,37 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(x => x.Event)
                 .ToListAsync(ct);
 
-            hourly = allEvents
+            var hourly = allEvents
                 .GroupBy(e => e.OccurredAtUtc.Hour)
                 .ToDictionary(g => g.Key, g => g.Count());
 
             var peakHours = hourly
                 .OrderByDescending(h => h.Value)
                 .Take(5)
-                .Select(h => (h.Key, h.Value))
+                .Select(h => new HourlyActivityCount { Hour = h.Key, Count = h.Value })
                 .ToList();
 
             var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
-            var gappedDurationMinutes = (decimal)gaps.Sum(g => g.DurationMinutes);
-            var coverage = ((totalDurationMinutes - gappedDurationMinutes) / totalDurationMinutes) * 100m;
+            var gapsByDevice = gaps.ToLookup(g => g.DeviceId);
+
+            var deviceSummaries = devices.Select(device =>
+            {
+                var deviceGaps = gapsByDevice[device.Id].ToList();
+                var deviceGappedMinutes = (decimal)deviceGaps.Sum(g => g.DurationMinutes);
+                var deviceCoverage = totalDurationMinutes > 0
+                    ? ((totalDurationMinutes - deviceGappedMinutes) / totalDurationMinutes) * 100m
+                    : 100m;
+
+                return new DeviceTimelineSummary
+                {
+                    DeviceId = device.Id,
+                    DeviceName = device.Name,
+                    GapCount = deviceGaps.Count,
+                    LargestGapMinutes = deviceGaps.Count > 0 ? deviceGaps.Max(g => g.DurationMinutes) : 0,
+                    CoveragePercentage = deviceCoverage,
+                    Status = deviceCoverage < 50m ? "Critical" : deviceCoverage < 80m ? "Anomalies" : "Healthy"
+                };
+            }).ToList();
 
             var suspiciousDevices = gaps
                 .GroupBy(g => g.DeviceName)
@@ -305,14 +355,18 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(g => g.Key)
                 .ToList();
 
+            // Worst-status-among-devices rollup for the coarse triage string only - not an
+            // average, so one healthy camera can never hide another's critical status.
+            var overallStatus = deviceSummaries.Any(d => d.Status == "Critical") ? "Critical"
+                : deviceSummaries.Any(d => d.Status == "Anomalies") ? "Anomalies"
+                : "Healthy";
+
             var summary = new TimelineSummary
             {
                 TotalCount = allEvents.Count,
-                Status = coverage < 50m ? "Critical" : coverage < 80m ? "Anomalies" : "Healthy",
-                ComplianceScore = (double)coverage,
-                GapCount = gaps.Count,
-                LargestGapMinutes = gaps.Count > 0 ? gaps.Max(g => g.DurationMinutes) : 0,
-                CoveragePercentage = coverage,
+                Status = overallStatus,
+                ComplianceScore = null,
+                DeviceSummaries = deviceSummaries,
                 SuspiciousDevices = suspiciousDevices,
                 PeakHours = peakHours,
                 DetailQueryMethod = "FindSuspiciousCoordinatedActivityAsync"

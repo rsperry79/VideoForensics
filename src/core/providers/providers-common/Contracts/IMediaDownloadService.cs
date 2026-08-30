@@ -68,7 +68,14 @@ namespace VideoForensics.Providers.Common.Contracts
         /// how many actually got downloaded. Lets a caller detect "some were skipped" (rate limit,
         /// cancellation) via FilesMatched - FilesDownloaded, even when Success is true.
         /// </summary>
-        int FilesMatched = 0
+        int FilesMatched = 0,
+        /// <summary>
+        /// Why FilesDownloaded is less than FilesMatched (e.g. "rate limited", "3 item(s) failed"),
+        /// populated whenever that gap is nonzero even though Success is true. Null when the gap is
+        /// zero, or when the provider hasn't been updated to classify it - callers should not assume
+        /// a null reason means nothing was skipped, only that the cause is unknown.
+        /// </summary>
+        string? SkipReason = null
     );
 
     /// <summary>Metadata about a downloaded media file</summary>

@@ -11,7 +11,6 @@ namespace VideoForensics.Providers.Wyze.Services
     {
         private readonly ILogger _logger;
         private bool _isAuthenticated;
-        private string? _currentAccessToken;
 
         public WyzeAuthService(ILogger logger)
         {

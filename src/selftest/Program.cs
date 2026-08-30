@@ -5,15 +5,37 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
+using Microsoft.EntityFrameworkCore;
+
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Auth;
+using VideoForensics.Providers.Ring.Auth.Implementations;
+using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Utils;
+using VideoForensics.Providers.Ring.Services;
+using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Common.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     internal static class Program
     {
-        private static readonly ICredentialStore credentialStore = new CredentialStore();
+        // Simple logger for RingAuthService
+        private class ConsoleLogger : ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => null!;
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                var message = formatter(state, exception);
+                if (logLevel == LogLevel.Error || logLevel == LogLevel.Warning)
+                {
+                    Console.Error.WriteLine($"[{logLevel}] {message}");
+                }
+            }
+        }
 
         private static readonly JsonSerializerOptions IndexJsonOptions = new()
         {
@@ -59,18 +81,40 @@ namespace VideoForensics.Providers.Ring.SelfTester
             EndpointRegistry.AssetUuid = options.AssetUuid;
             EndpointRegistry.PushToken = options.PushToken;
 
-            var credentials = CredentialResolver.Resolve(options.RefreshToken, options.UserName, options.Password);
-            if (credentials == null)
-            {
-                WriteNoCredentialsError();
-                return 2;
-            }
+            // Use RingAuthService (same as main app) to load credentials
+            var logger = new ConsoleLogger();
+            var sessionProvider = new SessionProvider();
+            var credentialStore = new CredentialStore();
+            var authService = new RingAuthService(logger, sessionProvider, credentialStore);
 
             Session session;
             try
             {
-                session = await AuthenticateAsync(credentials);
-                PersistRotatedRefreshToken(session, credentials);
+                // Try to restore from saved credentials (file-based or database)
+                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                if (!restored)
+                {
+                    // If no saved credentials, try explicit options
+                    var credentials = CredentialResolver.Resolve(options.RefreshToken, options.UserName, options.Password);
+                    if (credentials == null)
+                    {
+                        WriteNoCredentialsError();
+                        return 2;
+                    }
+                    var result = await AuthenticateWithCredentialsAsync(credentials, authService);
+                    if (!result)
+                    {
+                        Console.Error.WriteLine("Authentication failed");
+                        return 2;
+                    }
+                }
+
+                session = sessionProvider.GetSession();
+                if (session == null)
+                {
+                    Console.Error.WriteLine("No session established");
+                    return 2;
+                }
             }
             catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
             {
@@ -102,7 +146,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                     options.LocationId,
                     options.DoorbotId,
                     options.ChimeId);
-                index = await runner.RunAsync(runOptions, credentials.Source);
+                index = await runner.RunAsync(runOptions, "RingAuthService");
             }
             catch (ArgumentException ex)
             {
@@ -120,50 +164,421 @@ namespace VideoForensics.Providers.Ring.SelfTester
             }
             Console.WriteLine(indexPath);
 
+            if (options.VerifyDb)
+            {
+                await RunDbCompletenessCheckAsync(session, options, outputDir);
+            }
+
             return index.Summary.Failed > 0 ? 1 : 0;
         }
 
-        private static async Task<Session> AuthenticateAsync(ResolvedCredentials credentials)
+        /// <summary>
+        /// Fetches this account's live devices/locations directly (independent of whatever
+        /// endpoints --endpoints selected, so --verify-db works regardless of the run's scope) and
+        /// cross-checks each against the VideoForensics app's own SQLite database. Never affects
+        /// the process exit code - a device/location that legitimately hasn't been downloaded yet
+        /// is expected, not a test failure.
+        /// </summary>
+        private static async Task RunDbCompletenessCheckAsync(Session session, CliOptions options, string outputDir)
         {
-            if (!string.IsNullOrWhiteSpace(credentials.RefreshToken))
+            var dbPath = options.DbPath;
+
+            // If no path specified, try ProgramData first, then AppData
+            if (dbPath == null)
             {
-                return await Session.GetSessionByRefreshToken(credentials.RefreshToken);
+                var programDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "VideoForensics", "videoforensics.db");
+                var appDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "VideoForensics", "videoforensics.db");
+
+                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
             }
 
-            var session = new Session(credentials.UserName!, credentials.Password!);
-            await session.Authenticate();
-            return session;
+            if (!options.Quiet)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Checking database completeness against {dbPath} ...");
+            }
+
+            if (!File.Exists(dbPath))
+            {
+                Console.Error.WriteLine($"Warning: --verify-db requested but database file not found at {dbPath}. Skipping (run the main VideoForensics app at least once first, or pass --db-path).");
+                return;
+            }
+
+            Devices? devices;
+            System.Collections.Generic.List<VideoForensics.Providers.Ring.Entities.Location>? locations;
+            try
+            {
+                devices = await session.GetRingDevices();
+                locations = await session.GetLocations();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Warning: --verify-db could not fetch devices/locations from Ring: {ex.Message}. Skipping.");
+                return;
+            }
+
+            DbCompletenessReport report;
+            try
+            {
+                report = await DbCompletenessChecker.CheckAsync(devices, locations, dbPath);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Warning: --verify-db could not query the database: {ex.Message}. Skipping.");
+                return;
+            }
+
+            var reportPath = Path.Combine(outputDir, "db-completeness.json");
+            await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, IndexJsonOptions));
+
+            if (!options.Quiet)
+            {
+                foreach (var missing in report.Devices.Where(d => !d.FoundInDb))
+                {
+                    Console.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
+                }
+                foreach (var missing in report.Locations.Where(l => !l.FoundInDb))
+                {
+                    Console.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
+                }
+                Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
+                    $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
+            }
+            Console.WriteLine(reportPath);
+        }
+
+        private static async Task<bool> AuthenticateWithCredentialsAsync(ResolvedCredentials credentials, IProviderAuthService authService)
+        {
+            if (credentials.RefreshToken != null)
+            {
+                // Use refresh token
+                var session = await Session.GetSessionByRefreshToken(credentials.RefreshToken);
+                if (session?.OAuthToken != null)
+                {
+                    return true;
+                }
+            }
+
+            if (credentials.UserName != null && credentials.Password != null)
+            {
+                // Use username/password
+                var result = await authService.AuthenticateAsync(credentials.UserName, credentials.Password);
+                return result.Success;
+            }
+
+            return false;
         }
 
         /// <summary>
-        /// Ring rotates the refresh token on every use - the one that authenticated this run is
-        /// already spent. Without saving the new one back, the shared credentials file goes stale
-        /// after exactly one successful run and every run after that fails until --auth is redone.
-        /// Merges into whatever's already on disk (preferring what this run actually used) rather
-        /// than overwriting wholesale, so a run authenticated via --refresh-token/env var doesn't
-        /// blow away a stored username/password.
+        /// Migrates credentials from auth.json file to the database if they exist and haven't been migrated yet.
         /// </summary>
-        private static void PersistRotatedRefreshToken(Session session, ResolvedCredentials usedThisRun)
+        private static async Task MigrateAuthJsonToDbAsync(CliOptions options)
         {
-            var newRefreshToken = session.OAuthToken?.RefreshToken;
-            if (string.IsNullOrEmpty(newRefreshToken))
+            try
             {
-                return;
-            }
+                var authJsonPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "RingVideosData", "auth.json");
 
-            var existing = credentialStore.Load(CredentialResolver.AuthPath);
-            if (existing.RefreshToken == newRefreshToken)
-            {
-                return;
-            }
+                if (!File.Exists(authJsonPath))
+                {
+                    return;
+                }
 
-            credentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
+                var dbPath = options.DbPath;
+                if (dbPath == null)
+                {
+                    var programDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "VideoForensics", "videoforensics.db");
+                    var appDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "VideoForensics", "videoforensics.db");
+                    dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
+                }
+
+                if (!File.Exists(dbPath))
+                {
+                    return;
+                }
+
+                // Try to load credentials from auth.json
+                var authJsonContent = await File.ReadAllTextAsync(authJsonPath);
+                var authJsonDoc = JsonDocument.Parse(authJsonContent);
+                var authRoot = authJsonDoc.RootElement;
+
+                var username = authRoot.TryGetProperty("UserName", out var userProp) ? userProp.GetString() : null;
+                if (string.IsNullOrEmpty(username))
+                {
+                    return;
+                }
+
+                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
+                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
+
+                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
+
+                var ringAccount = await db.RingAccounts.FirstOrDefaultAsync();
+                if (ringAccount == null)
+                {
+                    return;
+                }
+
+                // Check if credentials already migrated
+                var existingCred = await db.Credentials.FirstOrDefaultAsync(
+                    c => c.ProviderAccountId == ringAccount.ProviderAccountId && c.CredentialType == "RefreshToken");
+
+                if (existingCred != null)
+                {
+                    return; // Already migrated
+                }
+
+                // Try to migrate the refresh token
+                if (authRoot.TryGetProperty("RefreshToken", out var tokenProp))
+                {
+                    var encryptedToken = tokenProp.GetString();
+                    if (!string.IsNullOrEmpty(encryptedToken))
+                    {
+                        var decrypted = await DecryptCredentialAsync(encryptedToken);
+                        if (!string.IsNullOrEmpty(decrypted))
+                        {
+                            var encryptWithAes = new AesEncryption();
+                            var aesEncrypted = encryptWithAes.Encrypt(decrypted);
+
+                            if (!string.IsNullOrEmpty(aesEncrypted))
+                            {
+                                var credential = new Credential
+                                {
+                                    Id = Guid.NewGuid(),
+                                    ProviderAccountId = ringAccount.ProviderAccountId,
+                                    CredentialType = "RefreshToken",
+                                    EncryptedValue = aesEncrypted,
+                                    EncryptionProvider = "AES-256",
+                                    CreatedUtc = DateTime.UtcNow
+                                };
+                                db.Credentials.Add(credential);
+                                await db.SaveChangesAsync();
+                                Console.Error.WriteLine("Migrated refresh token from auth.json to database");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
             {
-                UserName = usedThisRun.UserName ?? existing.UserName,
-                Password = usedThisRun.Password ?? existing.Password,
-                RefreshToken = newRefreshToken
-            });
+                Console.Error.WriteLine($"Debug: Migration from auth.json failed: {ex.Message}");
+            }
         }
+
+        /// <summary>
+        /// Persists the authenticated refresh token to the database for future use.
+        /// </summary>
+        private static async Task PersistRefreshTokenToDbAsync(Session session, CliOptions options)
+        {
+            try
+            {
+                var newRefreshToken = session.OAuthToken?.RefreshToken;
+                if (string.IsNullOrEmpty(newRefreshToken))
+                {
+                    return;
+                }
+
+                var dbPath = options.DbPath;
+                if (dbPath == null)
+                {
+                    var programDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "VideoForensics", "videoforensics.db");
+                    var appDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "VideoForensics", "videoforensics.db");
+                    dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
+                }
+
+                if (!File.Exists(dbPath))
+                {
+                    return;
+                }
+
+                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
+                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
+
+                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
+
+                var ringAccount = await db.RingAccounts.FirstOrDefaultAsync();
+                if (ringAccount == null)
+                {
+                    return;
+                }
+
+                // Encrypt the refresh token
+                var aesEncryption = new AesEncryption();
+                var encryptedToken = aesEncryption.Encrypt(newRefreshToken);
+
+                if (string.IsNullOrEmpty(encryptedToken))
+                {
+                    return;
+                }
+
+                // Store or update the credential
+                var credential = await db.Credentials.FirstOrDefaultAsync(
+                    c => c.ProviderAccountId == ringAccount.ProviderAccountId && c.CredentialType == "RefreshToken");
+
+                if (credential == null)
+                {
+                    credential = new Credential
+                    {
+                        Id = Guid.NewGuid(),
+                        ProviderAccountId = ringAccount.ProviderAccountId,
+                        CredentialType = "RefreshToken",
+                        EncryptedValue = encryptedToken,
+                        EncryptionProvider = "AES-256",
+                        CreatedUtc = DateTime.UtcNow
+                    };
+                    db.Credentials.Add(credential);
+                }
+                else
+                {
+                    credential.EncryptedValue = encryptedToken;
+                    credential.RotatedUtc = DateTime.UtcNow;
+                    db.Credentials.Update(credential);
+                }
+
+                await db.SaveChangesAsync();
+                Console.Error.WriteLine("Refresh token persisted to database");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Warning: Failed to persist refresh token to database: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Attempts to load stored refresh token from the VideoForensics database as a fallback
+        /// when file-based credential resolution fails. Checks ProgramData first, then AppData.
+        /// Also migrates credentials from auth.json to the database on first use.
+        /// </summary>
+        private static async Task<ResolvedCredentials?> TryLoadCredentialsFromDbAsync(CliOptions options)
+        {
+            // First, try to migrate credentials from auth.json to the database
+            await MigrateAuthJsonToDbAsync(options);
+
+            var dbPath = options.DbPath;
+
+            // If no path specified, try ProgramData first, then AppData
+            if (dbPath == null)
+            {
+                var programDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "VideoForensics", "videoforensics.db");
+                var appDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "VideoForensics", "videoforensics.db");
+
+                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
+            }
+
+            if (!File.Exists(dbPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
+                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
+
+                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
+
+                var ringAccounts = await db.RingAccounts.ToListAsync();
+                if (ringAccounts.Count == 0)
+                {
+                    return null;
+                }
+
+                var ringAccount = ringAccounts.First();
+                Console.Error.WriteLine($"Found Ring account: {ringAccount.AccountEmail} (ID: {ringAccount.ProviderAccountId})");
+
+                var credentials = await db.Credentials
+                    .Where(c => c.ProviderAccountId == ringAccount.ProviderAccountId)
+                    .ToListAsync();
+
+                Console.Error.WriteLine($"Found {credentials.Count} credentials for this account");
+
+                var refreshTokenCred = credentials.FirstOrDefault(c => c.CredentialType == "RefreshToken");
+
+                if (refreshTokenCred == null)
+                {
+                    Console.Error.WriteLine("No RefreshToken credential found");
+                    return null;
+                }
+
+                Console.Error.WriteLine($"Found RefreshToken credential, attempting decryption...");
+
+                // Decrypt the refresh token
+                var decrypted = await DecryptCredentialAsync(refreshTokenCred.EncryptedValue);
+                if (string.IsNullOrEmpty(decrypted))
+                {
+                    Console.Error.WriteLine("Failed to decrypt RefreshToken");
+                    return null;
+                }
+
+                Console.Error.WriteLine($"Successfully loaded credentials from database: {ringAccount.AccountEmail}");
+                return new ResolvedCredentials(
+                    ringAccount.AccountEmail,
+                    null,
+                    decrypted,
+                    $"database:{dbPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error loading credentials from database: {ex.Message}");
+                Console.Error.WriteLine($"Stack: {ex.StackTrace}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Decrypts a credential value using the configured encryption provider.
+        /// </summary>
+        private static async Task<string?> DecryptCredentialAsync(string encryptedValue)
+        {
+            try
+            {
+                // Try AES decryption (cross-platform)
+                var aesEncryption = new AesEncryption();
+                var decrypted = aesEncryption.Decrypt(encryptedValue);
+                if (!string.IsNullOrEmpty(decrypted))
+                {
+                    return decrypted;
+                }
+
+                // Try DPAPI if AES fails (Windows-only)
+                if (OperatingSystem.IsWindows())
+                {
+                    var dpapi = new WindowsDpapiEncryption();
+                    decrypted = dpapi.Decrypt(encryptedValue);
+                    if (!string.IsNullOrEmpty(decrypted))
+                    {
+                        return decrypted;
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
 
         private const string ReadmePointer = "See external/Ring.Api/README.md (\"Authenticating for local tooling\") for details.";
 
@@ -185,6 +600,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
         /// </summary>
         private static async Task<int> RunInteractiveAuthAsync(CliOptions options)
         {
+            var credentialStore = new CredentialStore();
             Console.WriteLine("Ring interactive login - saves a reusable refresh token so future runs");
             Console.WriteLine($"don't need this again. Credentials are written to:\n  {CredentialResolver.AuthPath}\n");
 

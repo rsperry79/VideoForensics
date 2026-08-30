@@ -88,7 +88,7 @@ namespace VideoForensics.Mcp.Tools
 
         /// <summary>Get peak activity periods (hours with most events).</summary>
         [McpServerTool]
-        public async Task<IReadOnlyList<(int Hour, int Count)>> GetPeakActivityPeriods(
+        public async Task<IReadOnlyList<HourlyActivityCount>> GetPeakActivityPeriods(
             Guid locationId,
             DateTime fromUtc,
             DateTime toUtc,

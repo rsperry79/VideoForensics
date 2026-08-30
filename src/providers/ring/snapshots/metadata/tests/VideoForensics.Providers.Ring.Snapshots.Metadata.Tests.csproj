@@ -1,23 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
     <IsPackable>false</IsPackable>
     <AssemblyName>VideoForensics.Providers.Ring.Snapshots.Metadata.Tests</AssemblyName>
     <RootNamespace>VideoForensics.Providers.Ring.Snapshots.Metadata.Tests</RootNamespace>
-
     <SignAssembly>False</SignAssembly>
-
     <DelaySign>False</DelaySign>
-
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0">
@@ -35,13 +29,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="../VideoForensics.Providers.Ring.Snapshots.Metadata.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="System.IO.Abstractions" Version="22.2.0" />
   </ItemGroup>
-
 </Project>

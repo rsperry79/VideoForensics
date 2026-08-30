@@ -50,11 +50,19 @@ namespace VideoForensics.Data.Database.Repositories
                 }
                 else
                 {
+                    // Progressive enrichment: an event is first upserted when merely discovered
+                    // (download-status fields still null) and later re-upserted once downloaded.
+                    // Only overwrite the download-status fields when the incoming value is
+                    // non-null, so a later "discovered" upsert for the same event can't wipe out
+                    // an already-recorded download/hash.
                     existing.EventType = @event.EventType;
                     existing.OccurredAtUtc = @event.OccurredAtUtc;
-                    existing.SnapshotUrl = @event.SnapshotUrl;
-                    existing.MetadataJson = @event.MetadataJson;
+                    existing.SnapshotUrl = @event.SnapshotUrl ?? existing.SnapshotUrl;
+                    existing.MetadataJson = @event.MetadataJson ?? existing.MetadataJson;
                     existing.DiscoveredAtUtc = @event.DiscoveredAtUtc;
+                    existing.DownloadedAtUtc = @event.DownloadedAtUtc ?? existing.DownloadedAtUtc;
+                    existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
+                    existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
                     db.Events.Update(existing);
                     _logger.LogInformation("Event upserted (updated): {EventId}", @event.Id);
                 }

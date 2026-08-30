@@ -14,7 +14,9 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILocationRepository _locationRepository;
         private readonly IDeviceRepository _deviceRepository;
         private readonly IDownloadEventRepository _downloadEventRepository;
+        private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IDeviceHealthSnapshotRepository _deviceHealthSnapshotRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
@@ -33,7 +35,9 @@ namespace VideoForensics.Data.Core.Services
             ILocationRepository locationRepository,
             IDeviceRepository deviceRepository,
             IDownloadEventRepository downloadEventRepository,
+            IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
+            IDeviceHealthSnapshotRepository deviceHealthSnapshotRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
             IActionLogger actionLogger,
@@ -47,7 +51,9 @@ namespace VideoForensics.Data.Core.Services
             _locationRepository = locationRepository;
             _deviceRepository = deviceRepository;
             _downloadEventRepository = downloadEventRepository;
+            _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
+            _deviceHealthSnapshotRepository = deviceHealthSnapshotRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
             _actionLogger = actionLogger;
@@ -69,6 +75,19 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error registering device {DeviceName}", device.Name);
+                throw;
+            }
+        }
+
+        public async Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct)
+        {
+            try
+            {
+                return await _deviceHealthSnapshotRepository.AppendSnapshotAsync(snapshot, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording device health snapshot for device {DeviceId}", snapshot.DeviceId);
                 throw;
             }
         }
@@ -111,6 +130,20 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording download event for device {DeviceId}, provider event {ProviderEventId}",
+                    evt.DeviceId, evt.ProviderEventId);
+                throw;
+            }
+        }
+
+        public async Task<Event> UpsertEventAsync(Event evt, CancellationToken ct)
+        {
+            try
+            {
+                return await _eventRepository.UpsertAsync(evt, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error upserting event for device {DeviceId}, provider event {ProviderEventId}",
                     evt.DeviceId, evt.ProviderEventId);
                 throw;
             }
@@ -310,10 +343,25 @@ namespace VideoForensics.Data.Core.Services
                     var device = await context.Devices.GetAsync(deviceId, ct);
                     if (device != null)
                     {
-                        device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
-                        await context.Devices.UpdateAsync(device, ct);
-                        _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
-                            deviceId, latestSuccessfulPullTime);
+                        // Events download concurrently (see RingMediaDownloadService's
+                        // Parallel.ForEachAsync), so calls here race and can complete in an order
+                        // unrelated to event timestamps. Only ever advance the watermark - never
+                        // let a later-finishing-but-earlier-timestamped event regress it and cause
+                        // the next incremental pull to re-scan (and potentially re-download) events
+                        // already recorded.
+                        if (device.LastSuccessfulPullAtUtc == null || latestSuccessfulPullTime > device.LastSuccessfulPullAtUtc.Value)
+                        {
+                            device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
+                            await context.Devices.UpdateAsync(device, ct);
+                            _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
+                                deviceId, latestSuccessfulPullTime);
+                        }
+                        else
+                        {
+                            _logger.LogDebug(
+                                "Skipped watermark update for device {DeviceId}: {Timestamp} is not newer than current watermark {Current}",
+                                deviceId, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
+                        }
                     }
                     else
                     {

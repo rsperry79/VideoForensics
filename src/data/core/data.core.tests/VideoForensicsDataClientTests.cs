@@ -15,7 +15,9 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
         private readonly Mock<IDeviceRepository> _mockDeviceRepository;
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
+        private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<IDeviceHealthSnapshotRepository> _mockDeviceHealthSnapshotRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IWatermarkService> _mockWatermarkService;
         private readonly Mock<IActionLogger> _mockActionLogger;
@@ -34,7 +36,9 @@ namespace VideoForensics.Data.Core.Tests
             _mockLocationRepository = new Mock<ILocationRepository>();
             _mockDeviceRepository = new Mock<IDeviceRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
+            _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockDeviceHealthSnapshotRepository = new Mock<IDeviceHealthSnapshotRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockWatermarkService = new Mock<IWatermarkService>();
             _mockActionLogger = new Mock<IActionLogger>();
@@ -49,7 +53,9 @@ namespace VideoForensics.Data.Core.Tests
                 _mockLocationRepository.Object,
                 _mockDeviceRepository.Object,
                 _mockDownloadEventRepository.Object,
+                _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
+                _mockDeviceHealthSnapshotRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
                 _mockActionLogger.Object,
@@ -57,6 +63,33 @@ namespace VideoForensics.Data.Core.Tests
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
                 _mockLogger.Object);
+        }
+
+        [Fact]
+        public async Task RecordDeviceHealthSnapshotAsync_DelegatesToDeviceHealthSnapshotRepository()
+        {
+            // Arrange
+            var snapshot = new DeviceHealthSnapshot
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                BatteryPercentage = 55m,
+                Connected = true,
+                CapturedAtUtc = DateTime.UtcNow
+            };
+
+            _mockDeviceHealthSnapshotRepository
+                .Setup(x => x.AppendSnapshotAsync(snapshot, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(snapshot);
+
+            // Act
+            var result = await _dataClient.RecordDeviceHealthSnapshotAsync(snapshot, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(snapshot, result);
+            _mockDeviceHealthSnapshotRepository.Verify(
+                x => x.AppendSnapshotAsync(snapshot, It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -692,6 +725,73 @@ namespace VideoForensics.Data.Core.Tests
             mockDeviceRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateDeviceWatermarkAsync_WithNewerTimestamp_AdvancesWatermark()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var currentWatermark = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var newerTimestamp = currentWatermark.AddHours(1);
+            var device = new Device
+            {
+                Id = deviceId,
+                ProviderDeviceId = "provider-1",
+                Name = "Front Camera",
+                Type = "camera",
+                LastSuccessfulPullAtUtc = currentWatermark
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+
+            _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<bool>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            await _dataClient.UpdateDeviceWatermarkAsync(deviceId, newerTimestamp, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(newerTimestamp, device.LastSuccessfulPullAtUtc);
+            mockDeviceRepoInContext.Verify(x => x.UpdateAsync(device, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateDeviceWatermarkAsync_WithOlderTimestamp_DoesNotRegressWatermark()
+        {
+            // Arrange: simulates a batch where events download concurrently and complete out of
+            // timestamp order - an earlier event finishing last must not undo a later watermark.
+            var deviceId = Guid.NewGuid();
+            var currentWatermark = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            var olderTimestamp = currentWatermark.AddHours(-1);
+            var device = new Device
+            {
+                Id = deviceId,
+                ProviderDeviceId = "provider-1",
+                Name = "Front Camera",
+                Type = "camera",
+                LastSuccessfulPullAtUtc = currentWatermark
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+
+            _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<bool>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            await _dataClient.UpdateDeviceWatermarkAsync(deviceId, olderTimestamp, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(currentWatermark, device.LastSuccessfulPullAtUtc);
+            mockDeviceRepoInContext.Verify(x => x.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

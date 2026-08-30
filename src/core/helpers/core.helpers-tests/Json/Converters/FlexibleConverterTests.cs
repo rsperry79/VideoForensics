@@ -63,6 +63,37 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
             Assert.Null(result);
         }
 
+        [Fact]
+        public void FlexibleStringConverter_WithObjectValue_ReturnsNullWithoutThrowing()
+        {
+            // Regression test: Ring's stickup_cams.led_status has been observed as an object
+            // ({"seconds_remaining":0}) instead of a scalar. The converter must Skip() the value
+            // rather than leaving the reader mid-object, or the containing object fails to
+            // deserialize with "converter read too much or not enough".
+            var json = "{\"seconds_remaining\":0}";
+            var result = JsonSerializer.Deserialize<string?>(json, _options);
+            Assert.Null(result);
+        }
+
+        private class DeviceWithLedStatus
+        {
+            public string? LedStatus { get; set; }
+            public string? NextField { get; set; }
+        }
+
+        [Fact]
+        public void FlexibleStringConverter_WithObjectValue_LeavesReaderInValidStateForSiblingProperties()
+        {
+            // The bug this guards against: a converter that returns without consuming an
+            // object/array token corrupts deserialization of every property that follows it in
+            // the containing object, not just the one it was applied to.
+            var json = "{\"LedStatus\":{\"seconds_remaining\":0},\"NextField\":\"ok\"}";
+            var result = JsonSerializer.Deserialize<DeviceWithLedStatus>(json, _options);
+            Assert.NotNull(result);
+            Assert.Null(result!.LedStatus);
+            Assert.Equal("ok", result.NextField);
+        }
+
         #endregion
 
         #region FlexibleBooleanConverter Tests

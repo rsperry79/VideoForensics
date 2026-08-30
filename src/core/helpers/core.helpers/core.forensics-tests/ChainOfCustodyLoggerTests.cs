@@ -2,20 +2,12 @@ namespace VideoForensics.Forensics.Tests
 {
     public class ChainOfCustodyLoggerTests
     {
-        private IChainOfCustodyLogger _logger = null!;
-
-        public ChainOfCustodyLoggerTests()
-        {
-            // Instantiate implementation when ready
-            // _logger = new ChainOfCustodyLogger();
-        }
-
         [Fact]
         public async Task LogEvidenceReceptionAsync_WithValidData_Succeeds()
         {
             // Arrange
-            var evidenceId = "evidence-123";
-            var handler = "officer-001";
+            // var evidenceId = "evidence-123";
+            // var handler = "officer-001";
 
             // Act
             // await _logger.LogEvidenceReceptionAsync(evidenceId, handler);
@@ -31,9 +23,9 @@ namespace VideoForensics.Forensics.Tests
         public async Task LogCustodyTransferAsync_BetweenHandlers_CreatesEntry()
         {
             // Arrange
-            var evidenceId = "evidence-456";
-            var fromHandler = "officer-001";
-            var toHandler = "lab-tech-002";
+            // var evidenceId = "evidence-456";
+            // var fromHandler = "officer-001";
+            // var toHandler = "lab-tech-002";
 
             // Act
             // await _logger.LogCustodyTransferAsync(evidenceId, fromHandler, toHandler);
@@ -48,7 +40,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task VerifyCustodyIntegrityAsync_WithUnbrokenChain_ReturnsTrue()
         {
             // Arrange
-            var evidenceId = "evidence-789";
+            // var evidenceId = "evidence-789";
 
             // Act
             // var isValid = await _logger.VerifyCustodyIntegrityAsync(evidenceId);
@@ -61,7 +53,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetChainOfCustodyAsync_ReturnsChronologicalOrder()
         {
             // Arrange
-            var evidenceId = "evidence-101";
+            // var evidenceId = "evidence-101";
 
             // Act
             // var custody = await _logger.GetChainOfCustodyAsync(evidenceId);

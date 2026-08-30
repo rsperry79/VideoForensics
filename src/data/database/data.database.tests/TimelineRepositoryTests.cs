@@ -43,8 +43,10 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(summary);
             Assert.Equal(10, summary.TotalCount);
             Assert.Contains("Healthy", summary.Status);
-            Assert.True(summary.ComplianceScore > 80);
-            Assert.Equal(0, summary.GapCount);
+            Assert.Null(summary.ComplianceScore);
+            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            Assert.True(deviceSummary.CoveragePercentage > 80);
+            Assert.Equal(0, deviceSummary.GapCount);
         }
 
         [Fact]
@@ -77,7 +79,8 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.NotNull(summary);
             Assert.Equal(10, summary.TotalCount);
-            Assert.True(summary.GapCount > 0);
+            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            Assert.True(deviceSummary.GapCount > 0);
             Assert.Contains("Anomalies", summary.Status);
         }
 
@@ -103,7 +106,115 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.NotNull(summary);
             Assert.Contains("Critical", summary.Status);
-            Assert.True(summary.ComplianceScore < 50);
+            Assert.Null(summary.ComplianceScore);
+            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            Assert.True(deviceSummary.CoveragePercentage < 50);
+        }
+
+        [Fact]
+        public async Task VerifyTimelineIntegrityAsync_TwoDevicesDifferentCoverage_ReportsIndependentPerDeviceStats()
+        {
+            var location = TestDataBuilder.BuildLocation();
+            var goodDevice = TestDataBuilder.BuildDevice(location.Id);
+            var badDevice = TestDataBuilder.BuildDevice(location.Id);
+            var now = DateTime.UtcNow;
+            var from = now;
+            var to = now.AddMinutes(40);
+
+            await _locationRepository.AddAsync(location, CancellationToken.None);
+            await _deviceRepository.AddAsync(goodDevice, CancellationToken.None);
+            await _deviceRepository.AddAsync(badDevice, CancellationToken.None);
+
+            // Good device: events every 2 minutes (under the 5-minute gap threshold), so no gap
+            // is ever detected between consecutive events - near-100% coverage.
+            for (int i = 0; i < 20; i++)
+            {
+                var evt = TestDataBuilder.BuildEvent(goodDevice.Id);
+                evt.OccurredAtUtc = from.AddMinutes(i * 2);
+                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            }
+
+            // Bad device: two events with a 38-minute gap between them (>> the 5-minute
+            // threshold), consuming nearly the entire window - low coverage.
+            var badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
+            badEvt1.OccurredAtUtc = from.AddMinutes(1);
+            await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
+            var badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
+            badEvt2.OccurredAtUtc = from.AddMinutes(39);
+            await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
+
+            var report = await _repository.VerifyTimelineIntegrityAsync(location.Id, from, to, CancellationToken.None);
+
+            Assert.NotNull(report);
+            Assert.Equal(2, report.DeviceReports.Count);
+            var goodReport = Assert.Single(report.DeviceReports, d => d.DeviceId == goodDevice.Id);
+            var badReport = Assert.Single(report.DeviceReports, d => d.DeviceId == badDevice.Id);
+            // The core regression: each device's true coverage survives independently - the bad
+            // device's low coverage must not be masked by blending with the good device's.
+            Assert.True(goodReport.CoveragePercentage > 90m);
+            Assert.True(badReport.CoveragePercentage < 20m);
+            Assert.Equal("Intact", goodReport.IntegrityStatus);
+            Assert.Equal("Critical", badReport.IntegrityStatus);
+        }
+
+        [Fact]
+        public async Task VerifyTimelineIntegrityAsync_DeviceWithNoEvents_StillAppearsInReport()
+        {
+            var location = TestDataBuilder.BuildLocation();
+            var silentDevice = TestDataBuilder.BuildDevice(location.Id);
+            var now = DateTime.UtcNow;
+
+            await _locationRepository.AddAsync(location, CancellationToken.None);
+            await _deviceRepository.AddAsync(silentDevice, CancellationToken.None);
+
+            var report = await _repository.VerifyTimelineIntegrityAsync(location.Id, now, now.AddHours(1), CancellationToken.None);
+
+            Assert.NotNull(report);
+            var deviceReport = Assert.Single(report.DeviceReports);
+            Assert.Equal(silentDevice.Id, deviceReport.DeviceId);
+            Assert.Equal(0, deviceReport.TotalEvents);
+        }
+
+        [Fact]
+        public async Task GetTimelineSummaryAsync_TwoDevicesDifferentCoverage_ReportsIndependentPerDeviceStats()
+        {
+            var location = TestDataBuilder.BuildLocation();
+            var goodDevice = TestDataBuilder.BuildDevice(location.Id);
+            var badDevice = TestDataBuilder.BuildDevice(location.Id);
+            var now = DateTime.UtcNow;
+            var from = now;
+            var to = now.AddMinutes(40);
+
+            await _locationRepository.AddAsync(location, CancellationToken.None);
+            await _deviceRepository.AddAsync(goodDevice, CancellationToken.None);
+            await _deviceRepository.AddAsync(badDevice, CancellationToken.None);
+
+            for (int i = 0; i < 20; i++)
+            {
+                var evt = TestDataBuilder.BuildEvent(goodDevice.Id);
+                evt.OccurredAtUtc = from.AddMinutes(i * 2);
+                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            }
+
+            var badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
+            badEvt1.OccurredAtUtc = from.AddMinutes(1);
+            await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
+            var badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
+            badEvt2.OccurredAtUtc = from.AddMinutes(39);
+            await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
+
+            var summary = await _repository.GetTimelineSummaryAsync(location.Id, from, to, CancellationToken.None);
+
+            Assert.NotNull(summary);
+            Assert.Null(summary.ComplianceScore);
+            Assert.Equal(2, summary.DeviceSummaries.Count);
+            var goodSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == goodDevice.Id);
+            var badSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == badDevice.Id);
+            Assert.True(goodSummary.CoveragePercentage > 90m);
+            Assert.True(badSummary.CoveragePercentage < 20m);
+            // Worst-status-among-devices rollup: the bad device's Critical status must surface at
+            // the top level even though the good device is Healthy.
+            Assert.Equal("Critical", summary.Status);
         }
 
         [Fact]

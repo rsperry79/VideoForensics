@@ -2,19 +2,10 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
 {
     public class SignalAnomalyDetectorTests
     {
-        private ISignalAnomalyDetector _detector = null!;
-
-        public SignalAnomalyDetectorTests()
-        {
-            // Instantiate implementation when ready
-            // _detector = new SignalAnomalyDetector();
-        }
-
         [Fact]
         public async Task CalculateRssiStatisticsAsync_WithEvents_ReturnsStats()
         {
             // Arrange
-            var deviceId = "test-device";
             var events = new List<DoorbotHistoryEvent>
             {
                 // Add events with RSSI data

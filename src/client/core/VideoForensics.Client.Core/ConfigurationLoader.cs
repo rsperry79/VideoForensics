@@ -29,12 +29,13 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ReportsDirectory = loadedConfig.ReportsDirectory;
                 runtimeConfig.ReportOutputFormat = loadedConfig.ReportOutputFormat;
                 runtimeConfig.DownloadLocation = loadedConfig.DownloadLocation;
+                runtimeConfig.QueryExportLocation = loadedConfig.QueryExportLocation;
                 runtimeConfig.RedactionLevel = loadedConfig.RedactionLevel;
                 runtimeConfig.KeyStorageProvider = loadedConfig.KeyStorageProvider;
                 runtimeConfig.RetentionDaysDefault = loadedConfig.RetentionDaysDefault;
                 runtimeConfig.LogLevel = loadedConfig.LogLevel;
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
-                runtimeConfig.RescanWindowDays = loadedConfig.RescanWindowDays;
+                runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
 
                 logger.LogInformation("Configuration loaded from database successfully");

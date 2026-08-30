@@ -2,14 +2,6 @@ namespace VideoForensics.Forensics.Tests
 {
     public class EvidenceValidatorTests
     {
-        private IEvidenceValidator _validator = null!;
-
-        public EvidenceValidatorTests()
-        {
-            // Instantiate implementation when ready
-            // _validator = new EvidenceValidator();
-        }
-
         [Fact]
         public async Task ValidateCompletenessAsync_WithCompleteEvidence_ReturnsValid()
         {

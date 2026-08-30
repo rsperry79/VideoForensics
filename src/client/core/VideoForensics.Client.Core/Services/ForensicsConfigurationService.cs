@@ -49,12 +49,13 @@ namespace VideoForensics.Client.Core
                 config.ReportsDirectory = await GetStringSetting("ReportsDirectory", config.ReportsDirectory, cancellationToken);
                 config.ReportOutputFormat = await GetStringSetting("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 config.DownloadLocation = await GetStringSetting("DownloadLocation", config.DownloadLocation, cancellationToken);
+                config.QueryExportLocation = await GetStringSetting("QueryExportLocation", config.QueryExportLocation, cancellationToken);
                 config.RedactionLevel = await GetEnumSetting("RedactionLevel", config.RedactionLevel, cancellationToken);
                 config.KeyStorageProvider = await GetEnumSetting("KeyStorageProvider", config.KeyStorageProvider, cancellationToken);
                 config.RetentionDaysDefault = await GetIntSetting("RetentionDaysDefault", config.RetentionDaysDefault, cancellationToken);
                 config.LogLevel = await GetStringSetting("LogLevel", config.LogLevel, cancellationToken);
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
-                config.RescanWindowDays = await GetIntSetting("RescanWindowDays", config.RescanWindowDays, cancellationToken);
+                config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
@@ -79,12 +80,13 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("ReportsDirectory", config.ReportsDirectory ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("RedactionLevel", config.RedactionLevel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("KeyStorageProvider", config.KeyStorageProvider.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RetentionDaysDefault", config.RetentionDaysDefault.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LogLevel", config.LogLevel, cancellationToken);
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
-                await _settingRepository!.SetAsync("RescanWindowDays", config.RescanWindowDays.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");

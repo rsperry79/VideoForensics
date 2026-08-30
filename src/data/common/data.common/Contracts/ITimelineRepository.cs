@@ -26,7 +26,7 @@ namespace VideoForensics.Data.Common.Contracts
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
         /// <summary>Gets peak activity periods (hours with most events).</summary>
-        Task<IReadOnlyList<(int Hour, int Count)>> GetPeakActivityPeriodsAsync(
+        Task<IReadOnlyList<HourlyActivityCount>> GetPeakActivityPeriodsAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
         /// <summary>Verifies timeline integrity and returns forensic report.</summary>
@@ -66,12 +66,25 @@ namespace VideoForensics.Data.Common.Contracts
         public int EventsAfterGap { get; set; }
     }
 
-    /// <summary>Forensic timeline integrity report.</summary>
+    /// <summary>
+    /// Forensic timeline integrity report for a location. Deliberately does NOT expose any
+    /// blended/pooled metric across devices (e.g. one averaged coverage %) - a healthy camera's
+    /// numbers would otherwise mask a compromised camera's, which is invalid for evidence. See
+    /// <see cref="DeviceReports"/> for each device's own, independent numbers.
+    /// </summary>
     public class TimelineIntegrityReport
     {
         public Guid LocationId { get; set; }
         public DateTime AnalysisFromUtc { get; set; }
         public DateTime AnalysisToUtc { get; set; }
+        public List<DeviceTimelineIntegrity> DeviceReports { get; set; } = new();
+    }
+
+    /// <summary>One device's own timeline integrity numbers - never blended with any other device's.</summary>
+    public class DeviceTimelineIntegrity
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
         public int TotalEvents { get; set; }
         public int TotalGaps { get; set; }
         public int LargestGapMinutes { get; set; }
@@ -81,13 +94,36 @@ namespace VideoForensics.Data.Common.Contracts
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Gaps", "Critical"
     }
 
+    /// <summary>Event count for a single hour-of-day bucket.</summary>
+    public class HourlyActivityCount
+    {
+        public int Hour { get; set; }
+        public int Count { get; set; }
+    }
+
+    /// <summary>A single device's event within a <see cref="CoordinatedEventCluster"/>.</summary>
+    public class ClusterEvent
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
+        public string EventType { get; set; } = string.Empty;
+        public DateTime OccurredAtUtc { get; set; }
+    }
+
     /// <summary>Group of events from multiple devices within a time window.</summary>
     public class CoordinatedEventCluster
     {
         public DateTime ClusterTimeUtc { get; set; }
         public int DeviceCount { get; set; }
         public int TotalEventCount { get; set; }
-        public List<(Guid DeviceId, string DeviceName, string EventType, DateTime OccurredAtUtc)> Events { get; set; } = new();
+        public List<ClusterEvent> Events { get; set; } = new();
+    }
+
+    /// <summary>A device involved in a <see cref="SuspiciousActivityFlag"/>.</summary>
+    public class InvolvedDevice
+    {
+        public Guid DeviceId { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
     }
 
     /// <summary>Suspicious pattern detected (potential tampering or coordinated action).</summary>
@@ -98,6 +134,6 @@ namespace VideoForensics.Data.Common.Contracts
         public string ActivityType { get; set; } = string.Empty; // "SimultaneousMotion", "CameraDisabledDuringMotion", "MultipleDeviceGap"
         public string Description { get; set; } = string.Empty;
         public int SuspicionScore { get; set; } // 1-100
-        public List<(Guid DeviceId, string DeviceName)> InvolvedDevices { get; set; } = new();
+        public List<InvolvedDevice> InvolvedDevices { get; set; } = new();
     }
 }

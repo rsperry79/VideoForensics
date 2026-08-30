@@ -151,6 +151,21 @@ namespace VideoForensics.Data.Database.Tests
             };
         }
 
+        public static DeviceHealthSnapshot BuildDeviceHealthSnapshot(Guid? deviceId = null)
+        {
+            return new DeviceHealthSnapshot
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId ?? Guid.NewGuid(),
+                Connected = true,
+                BatteryPercentage = 80m,
+                Rssi = -50,
+                WifiName = "TestNetwork",
+                FirmwareVersion = "1.0.0",
+                CapturedAtUtc = DateTime.UtcNow
+            };
+        }
+
         public static Annotation BuildAnnotation(string? entityType = null, Guid? entityId = null, string? key = null, string? value = null)
         {
             return new Annotation

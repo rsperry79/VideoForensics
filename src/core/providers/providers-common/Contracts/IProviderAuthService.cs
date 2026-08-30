@@ -27,6 +27,13 @@ namespace VideoForensics.Providers.Common.Contracts
         bool Success,
         string? ErrorMessage = null,
         string? AuthToken = null,
-        DateTime? ExpiresAt = null
+        DateTime? ExpiresAt = null,
+        /// <summary>
+        /// The persisted ProviderAccount this login resolved to, when the implementation persists
+        /// accounts. Null on failure, or if account persistence isn't wired up for this provider.
+        /// A caller that tracks "the active account" (e.g. to attach downloaded devices to it)
+        /// should set it from this value after a successful login.
+        /// </summary>
+        Guid? ProviderAccountId = null
     );
 }
