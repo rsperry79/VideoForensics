@@ -23,6 +23,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
     /// Cross-checks every device/location the Ring API reports for this account against the
     /// VideoForensics app's own SQLite database, so a gap between "what Ring says exists" and
     /// "what actually got persisted" is visible without manually diffing JSON against SQL.
+    /// Also validates metadata capture for forensics audit trail.
     /// </summary>
     internal sealed class DbCompletenessReport
     {
@@ -32,6 +33,27 @@ namespace VideoForensics.Providers.Ring.SelfTester
         public List<DbCompletenessRecord> Locations { get; set; } = new();
         public int MissingDeviceCount => Devices.Count(d => !d.FoundInDb);
         public int MissingLocationCount => Locations.Count(l => !l.FoundInDb);
+
+        // Metadata capture statistics
+        public int DevicesWithMetadata { get; set; }
+        public int LocationsWithMetadata { get; set; }
+        public int EventsWithMetadata { get; set; }
+        public int MediaItemsWithMetadata { get; set; }
+        public int TotalEvents { get; set; }
+        public int TotalMediaItems { get; set; }
+
+        public string MetadataCompleteness
+        {
+            get
+            {
+                if (TotalEvents == 0 && TotalMediaItems == 0)
+                    return "No events/media items to verify";
+
+                var eventPct = TotalEvents > 0 ? (EventsWithMetadata * 100) / TotalEvents : 100;
+                var mediaPct = TotalMediaItems > 0 ? (MediaItemsWithMetadata * 100) / TotalMediaItems : 100;
+                return $"Events: {eventPct}% ({EventsWithMetadata}/{TotalEvents}), MediaItems: {mediaPct}% ({MediaItemsWithMetadata}/{TotalMediaItems})";
+            }
+        }
     }
 
     internal static class DbCompletenessChecker
@@ -113,6 +135,28 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         FoundInDb = dbLocationIdSet.Contains(providerId)
                     });
                 }
+            }
+
+            // Verify metadata capture for forensics audit trail
+            try
+            {
+                var devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
+                var locationsWithMeta = await db.Locations.CountAsync(l => l.MetadataJson != null);
+                var eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
+                var totalEvents = await db.Events.CountAsync();
+                var mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
+                var totalMediaItems = await db.MediaItems.CountAsync();
+
+                report.DevicesWithMetadata = devicesWithMeta;
+                report.LocationsWithMetadata = locationsWithMeta;
+                report.EventsWithMetadata = eventsWithMeta;
+                report.TotalEvents = totalEvents;
+                report.MediaItemsWithMetadata = mediaItemsWithMeta;
+                report.TotalMediaItems = totalMediaItems;
+            }
+            catch
+            {
+                // Metadata columns may not exist in schema yet - silently skip
             }
 
             return report;

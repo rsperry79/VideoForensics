@@ -247,6 +247,16 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 }
                 Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
                     $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
+
+                // Display metadata capture statistics
+                if (report.TotalEvents > 0 || report.TotalMediaItems > 0)
+                {
+                    Console.WriteLine($"Metadata capture: {report.MetadataCompleteness}");
+                    if (report.DevicesWithMetadata > 0 || report.LocationsWithMetadata > 0)
+                    {
+                        Console.WriteLine($"  Devices with metadata: {report.DevicesWithMetadata}, Locations: {report.LocationsWithMetadata}");
+                    }
+                }
             }
             Console.WriteLine(reportPath);
         }
