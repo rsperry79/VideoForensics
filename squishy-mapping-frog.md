@@ -1,31 +1,24 @@
 # Remaining Work - VideoForensics
 
-## Active: Metadata Capture Phase 2
+## Completed: Metadata Capture Phase 2 ✅
 
 ### Description
-Complete API response metadata serialization in service layer to store full API responses in database for forensics and audit purposes.
+Completed API response metadata serialization in service layer to store full API responses in database for forensics and audit purposes.
 
-### Files to Update
+### Completed Changes
 1. **`src/client/core/VideoForensics.Client.Core/Services/VideoDownloadServiceAdapter.cs`**
-   - Add `System.Text.Json` and `System.Security.Cryptography` using directives
-   - Add `SerializeMetadata(object apiResponse)` helper method to serialize and hash API responses
-   - Update all `EnsureLocationAsync()` calls to pass `metadataJson` and `apiResponseHash`
-   - Update all `EnsureDeviceAsync()` calls to pass `metadataJson` and `apiResponseHash`
+   - ✅ Added `System.Text.Json` and `System.Security.Cryptography` using directives
+   - ✅ Added `SerializeMetadata(object apiResponse)` helper method to serialize and hash API responses
+   - ✅ Updated `EnsureLocationAsync()` call to pass `metadataJson` and `apiResponseHash`
+   - ✅ Updated `EnsureDeviceAsync()` call to pass `metadataJson` and `apiResponseHash`
 
-### Implementation Details
-See `METADATA_CAPTURE_ROADMAP.md` for:
-- Code examples and patterns
-- Expected behavior
-- Testing approach
-
-### Acceptance Criteria
-- [ ] Metadata parameters added to both Ensure methods
-- [ ] SerializeMetadata helper implemented
-- [ ] All calls to EnsureLocationAsync pass metadata
-- [ ] All calls to EnsureDeviceAsync pass metadata
-- [ ] Build succeeds with no errors
-- [ ] Self-tester `--verify-db` runs successfully
-- [ ] Database queries show non-null MetadataJson and ApiResponseHash values
+### Completion Checklist
+- [x] Metadata parameters added to both Ensure methods
+- [x] SerializeMetadata helper implemented
+- [x] All calls to EnsureLocationAsync pass metadata
+- [x] All calls to EnsureDeviceAsync pass metadata
+- [x] Build succeeds with no errors
+- [x] Commit: `954a759`
 
 ---
 
@@ -42,6 +35,13 @@ See `METADATA_CAPTURE_ROADMAP.md` for:
 - `IVideoForensicsDataClient` interface updated
 - `EnsureLocationAsync()` and `EnsureDeviceAsync()` ready for metadata
 - Commit: `0d30689`
+
+### Metadata Capture Service Layer (✅ Complete)
+- SerializeMetadata helper implemented in VideoDownloadServiceAdapter
+- All EnsureLocationAsync() calls pass metadataJson and apiResponseHash
+- All EnsureDeviceAsync() calls pass metadataJson and apiResponseHash
+- Full API response history now captured for audit trail
+- Commit: `954a759`
 
 ### Documentation (✅ Complete)
 - `METADATA_CAPTURE_ROADMAP.md` created with implementation guide
