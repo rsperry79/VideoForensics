@@ -302,10 +302,20 @@ namespace VideoForensics.Data.Core.Services
             {
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    // Try to find existing device
+                    // Try the common case first: device already under this same location.
                     var devices = await context.Devices.GetByLocationIdAsync(locationId, ct);
                     var existingDevice = devices.FirstOrDefault(d =>
                         d.ProviderDeviceId == providerDeviceId);
+
+                    // ProviderDeviceId is the device's true identity (Ring's own device id, globally
+                    // unique on the account) - a location-scoped lookup alone misses a device that
+                    // was previously recorded under a different (e.g. synthetic placeholder) location,
+                    // which would otherwise create a duplicate row instead of relocating the original.
+                    if (existingDevice == null)
+                    {
+                        var allDevices = await context.Devices.ListAsync(ct);
+                        existingDevice = allDevices?.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+                    }
 
                     if (existingDevice == null)
                     {
@@ -328,10 +338,17 @@ namespace VideoForensics.Data.Core.Services
                     }
                     else
                     {
+                        if (existingDevice.LocationId != locationId)
+                        {
+                            _logger.LogInformation("Relocating device {DeviceName} ({DeviceId}) from location {OldLocationId} to {NewLocationId}",
+                                existingDevice.Name, existingDevice.Id, existingDevice.LocationId, locationId);
+                        }
+
                         // Update device properties if it exists
                         existingDevice.Name = name;
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
+                        existingDevice.LocationId = locationId;
                         await context.Devices.UpdateAsync(existingDevice, ct);
                         _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;

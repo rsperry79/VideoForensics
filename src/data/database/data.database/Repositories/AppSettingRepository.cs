@@ -25,8 +25,17 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using var db = await _contextFactory.CreateDbContextAsync(ct);
             var existing = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == key, ct);
+
+            // Only write when the setting doesn't exist yet or its value actually changed - avoids
+            // needless UpdatedAtUtc churn and WAL growth from callers that re-save unchanged config
+            // on every startup/save (e.g. ConfigurationLoader).
             if (existing != null)
             {
+                if (existing.Value == value)
+                {
+                    return;
+                }
+
                 existing.Value = value;
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 db.AppSettings.Update(existing);

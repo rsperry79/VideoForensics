@@ -644,9 +644,13 @@ namespace VideoForensics.Data.Core.Tests
 
             mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
 
-            // Setup Devices repository to return empty list
+            // Setup Devices repository to return empty list for both the location-scoped lookup and
+            // the account-wide fallback lookup (this device genuinely doesn't exist anywhere yet).
             mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Device>());
+            mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<Device>());
 
             _mockUnitOfWork
@@ -670,6 +674,63 @@ namespace VideoForensics.Data.Core.Tests
 
             mockDeviceRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_RelocatesDeviceFoundUnderDifferentLocation()
+        {
+            // Arrange: device was previously recorded under a placeholder/synthetic location (as
+            // happened before locations were resolved per-device); it must be relocated to the real
+            // location rather than creating a duplicate row with the same ProviderDeviceId.
+            var placeholderLocationId = Guid.NewGuid();
+            var realLocationId = Guid.NewGuid();
+            var providerDeviceId = "device-789";
+
+            var existingDevice = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = placeholderLocationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = "Front Camera",
+                Type = "camera",
+                IsOnline = true
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+
+            mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+
+            // Not found under the real location (that's the whole point)...
+            mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(realLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Device>());
+            // ...but found via the account-wide fallback lookup, still under the old location.
+            mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Device> { existingDevice });
+
+            _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            var result = await _dataClient.EnsureDeviceAsync(
+                realLocationId, providerDeviceId, "Front Camera", "camera", true, ct: CancellationToken.None);
+
+            // Assert: same device Id (no duplicate created), now pointing at the real location.
+            Assert.Equal(existingDevice.Id, result.Id);
+            Assert.Equal(realLocationId, result.LocationId);
+
+            mockDeviceRepoInContext.Verify(
+                x => x.AddAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+            mockDeviceRepoInContext.Verify(
+                x => x.UpdateAsync(It.Is<Device>(d => d.LocationId == realLocationId), It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
