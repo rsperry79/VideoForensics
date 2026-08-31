@@ -9,15 +9,18 @@ namespace VideoForensics.Client.Core.Tools
         private readonly ILogger<ConfigToolsOrchestrator> _logger;
         private readonly IForensicsConfigurationService _configService;
         private readonly IAppSettingRepository? _settingRepository;
+        private readonly IDatabaseMaintenanceService? _maintenanceService;
 
         public ConfigToolsOrchestrator(
             ILogger<ConfigToolsOrchestrator> logger,
             IForensicsConfigurationService configService,
-            IAppSettingRepository? settingRepository = null)
+            IAppSettingRepository? settingRepository = null,
+            IDatabaseMaintenanceService? maintenanceService = null)
         {
             _logger = logger;
             _configService = configService;
             _settingRepository = settingRepository;
+            _maintenanceService = maintenanceService;
         }
 
         public async Task<(bool Success, string Message)> SetRetentionDaysAsync(
@@ -149,11 +152,20 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"Report format updated to {format}");
         }
 
-        public async Task<(bool Success, string Message)> FactoryResetAsync(CancellationToken ct = default)
+        /// <param name="downloadDirOverride">Overrides the download directory to delete. Defaults to
+        /// ~/Pictures/VideoForensics. Exists so tests can exercise this against a throwaway
+        /// directory instead of the real one.</param>
+        /// <param name="dbPathOverride">Overrides the database file to delete. Defaults to
+        /// %AppData%/VideoForensics/videoforensics.db. Exists so tests can exercise this against a
+        /// throwaway file instead of the real, live application database.</param>
+        public async Task<(bool Success, string Message)> FactoryResetAsync(
+            CancellationToken ct = default,
+            string? downloadDirOverride = null,
+            string? dbPathOverride = null)
         {
             try
             {
-                var downloadDir = Path.Combine(
+                var downloadDir = downloadDirOverride ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Pictures",
                     "VideoForensics");
@@ -164,15 +176,36 @@ namespace VideoForensics.Client.Core.Tools
                     Directory.Delete(downloadDir, recursive: true);
                 }
 
-                var dbPath = Path.Combine(
+                var dbPath = dbPathOverride ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics",
                     "videoforensics.db");
 
                 if (File.Exists(dbPath))
                 {
+                    // The app holds the DB file open via a pooled SQLite connection for its entire
+                    // lifetime (see AddVideoForensicsSqlite's Pooling=true), so File.Delete fails with
+                    // "being used by another process" unless every pooled connection is released
+                    // first - disposing a DbContext alone only returns its connection to the pool,
+                    // it doesn't release the OS-level file handle.
+                    if (_maintenanceService != null)
+                    {
+                        _logger.LogInformation("Releasing database connections before deletion");
+                        await _maintenanceService.ReleaseAllConnectionsAsync(ct);
+                    }
+
                     _logger.LogInformation("Deleting database: {DbPath}", dbPath);
                     File.Delete(dbPath);
+
+                    // WAL mode leaves -wal/-shm sidecar files alongside the main database file;
+                    // deleting only the main file leaves stale ones behind.
+                    foreach (var sidecar in new[] { $"{dbPath}-wal", $"{dbPath}-shm" })
+                    {
+                        if (File.Exists(sidecar))
+                        {
+                            File.Delete(sidecar);
+                        }
+                    }
                 }
 
                 _logger.LogInformation("Factory reset completed successfully");
