@@ -9,5 +9,7 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime LinkedUtc { get; set; }
         public DateTime? LastSuccessfulAuthUtc { get; set; }
         public bool IsActive { get; set; }
+        /// <summary>Timestamp of the last batch download completion for this account (used as default start time for next download).</summary>
+        public DateTime? LastDownloadTimeUtc { get; set; }
     }
 }

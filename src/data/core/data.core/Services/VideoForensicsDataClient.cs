@@ -388,5 +388,58 @@ namespace VideoForensics.Data.Core.Services
                 throw;
             }
         }
+
+        public async Task<DateTime> GetAccountDownloadWatermarkAsync(Guid providerAccountId, CancellationToken ct)
+        {
+            try
+            {
+                var account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
+                if (account?.LastDownloadTimeUtc.HasValue == true)
+                {
+                    _logger.LogInformation("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
+                    return account.LastDownloadTimeUtc.Value;
+                }
+
+                var defaultStart = DateTime.UtcNow.AddDays(-181);
+                _logger.LogInformation("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
+                return defaultStart;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving account download watermark for account {AccountId}", providerAccountId);
+                throw;
+            }
+        }
+
+        public async Task UpdateAccountDownloadWatermarkAsync(Guid providerAccountId, DateTime latestDownloadTime, CancellationToken ct)
+        {
+            try
+            {
+                await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    var account = await context.ProviderAccounts.GetAsync(providerAccountId, ct);
+                    if (account != null)
+                    {
+                        if (account.LastDownloadTimeUtc == null || latestDownloadTime > account.LastDownloadTimeUtc.Value)
+                        {
+                            account.LastDownloadTimeUtc = latestDownloadTime;
+                            await context.ProviderAccounts.UpdateAsync(account, ct);
+                            _logger.LogInformation("Advanced account download watermark for account {AccountId} to {Timestamp}",
+                                providerAccountId, latestDownloadTime);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Provider account {AccountId} not found when attempting to update download watermark", providerAccountId);
+                    }
+                    return true;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating account download watermark for account {AccountId}", providerAccountId);
+                throw;
+            }
+        }
     }
 }
