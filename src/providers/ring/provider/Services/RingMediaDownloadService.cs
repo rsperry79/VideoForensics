@@ -477,6 +477,22 @@ namespace VideoForensics.Providers.Ring.Services
                 // anywhere right now), so also surface this via the activity log the UI already drains.
                 _activityLog.Enqueue($"[grey][[DIAG]][/] Peak concurrent downloads: {_peakActiveDownloadsForBatch} (configured max: {_maxConcurrentFileDownloads}, items: {relevantEvents.Count})");
 
+                // Update device watermark to batch end time to prevent re-scanning the last hour
+                // on the next download (without this, the 1-hour watermark buffer causes regression).
+                // Only update if we actually scanned events for this device.
+                if (relevantEvents.Count > 0 && downloadedFiles > 0)
+                {
+                    try
+                    {
+                        await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, endDate, CancellationToken.None);
+                        _logger.LogInformation("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
+                    }
+                }
+
                 string? skipReason = null;
                 if (downloadedFiles < relevantEvents.Count)
                 {
