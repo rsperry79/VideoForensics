@@ -121,5 +121,88 @@ namespace VideoForensics.Client.Core.Tools
                 return (false, null);
             }
         }
+
+        /// <summary>Unified jamming analysis: detect + analyze + summarize in one call.</summary>
+        public async Task<JammingAnalysisReport> AnalyzeJammingAsync(
+            Guid deviceId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                if (fromUtc >= toUtc)
+                    return new JammingAnalysisReport
+                    {
+                        Success = false,
+                        ErrorMessage = "Start time must be before end time"
+                    };
+
+                _logger.LogInformation("Starting unified jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
+                    deviceId, fromUtc, toUtc);
+
+                // Recompute stats (includes detection)
+                await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
+
+                // Get comprehensive results
+                var stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
+                var incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+
+                return new JammingAnalysisReport
+                {
+                    Success = true,
+                    DeviceId = deviceId,
+                    AnalysisWindowUtc = (fromUtc, toUtc),
+                    Summary = stats ?? new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 },
+                    Incidents = incidents ?? new List<JammingIncidentRecord>(),
+                    AnalyzedAtUtc = DateTime.UtcNow,
+                    Message = stats?.IncidentCount > 0
+                        ? $"Found {stats.IncidentCount} incident(s): {stats.TotalJammedDurationMinutes:F1} min total, " +
+                          $"avg degradation {stats.AverageDegradationDb:F1} dB. " +
+                          $"High: {stats.HighConfidenceCount}, Medium: {stats.MediumConfidenceCount}, Low: {stats.LowConfidenceCount}"
+                        : "No jamming incidents detected in this device's history"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unified jamming analysis failed for device {deviceId}", deviceId);
+                return new JammingAnalysisReport
+                {
+                    Success = false,
+                    ErrorMessage = $"Analysis failed: {ex.Message}"
+                };
+            }
+        }
+    }
+
+    /// <summary>Unified jamming analysis result: all findings in one response.</summary>
+    public class JammingAnalysisReport
+    {
+        public bool Success { get; set; }
+        public string? ErrorMessage { get; set; }
+        public Guid DeviceId { get; set; }
+        public (DateTime From, DateTime To) AnalysisWindowUtc { get; set; }
+        public JammingStatsSummary Summary { get; set; } = new();
+        public IReadOnlyList<JammingIncidentRecord> Incidents { get; set; } = new List<JammingIncidentRecord>();
+        public DateTime AnalyzedAtUtc { get; set; }
+        public string Message { get; set; } = string.Empty;
+
+        /// <summary>Summary of findings for quick reference.</summary>
+        public override string ToString()
+        {
+            if (!Success)
+                return $"Analysis failed: {ErrorMessage}";
+
+            if (Summary.IncidentCount == 0)
+                return "No jamming incidents detected";
+
+            var high = Summary.HighConfidenceCount;
+            var medium = Summary.MediumConfidenceCount;
+            var low = Summary.LowConfidenceCount;
+
+            return $"{Summary.IncidentCount} incident(s): High={high}, Medium={medium}, Low={low} | " +
+                   $"{Summary.TotalJammedDurationMinutes:F0}min duration | " +
+                   $"Max degradation: {Summary.MaxDegradationDb:F1} dB";
+        }
     }
 }
