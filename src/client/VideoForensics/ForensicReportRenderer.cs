@@ -111,7 +111,7 @@ namespace VideoForensics
                 AnsiConsole.MarkupLine("[yellow]Report Period:[/] {0} to {1}",
                     report.ReportFromUtc.ToString("yyyy-MM-dd HH:mm"),
                     report.ReportToUtc.ToString("yyyy-MM-dd HH:mm"));
-                AnsiConsole.MarkupLine("[yellow]Generated:[/] {0}[/]", report.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm"));
+                AnsiConsole.MarkupLine("[yellow]Generated:[/] {0}", report.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm"));
 
                 if (!string.IsNullOrEmpty(report.Summary))
                 {
