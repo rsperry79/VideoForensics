@@ -140,5 +140,25 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.True(updatedAt2 > updatedAt1);
         }
+
+        [Fact]
+        public async Task SetAsync_SameValue_DoesNotBumpUpdatedAtUtc()
+        {
+            await ClearSettingsAsync();
+            var repository = new AppSettingRepository(_fixture.Factory);
+
+            await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
+            var settings1 = await repository.ListAsync(CancellationToken.None);
+            var updatedAt1 = settings1.First().UpdatedAtUtc;
+
+            await Task.Delay(50);
+
+            // Re-setting the same value should be a no-op - no write, no UpdatedAtUtc change.
+            await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
+            var settings2 = await repository.ListAsync(CancellationToken.None);
+
+            Assert.Single(settings2);
+            Assert.Equal(updatedAt1, settings2.First().UpdatedAtUtc);
+        }
     }
 }

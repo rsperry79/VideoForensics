@@ -242,6 +242,29 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                 }
 
+                // Add Chimes. Chimes have no video/event history (there's nothing for
+                // VideoDownloadServiceAdapter to download from one), but they're still a real
+                // device on the account and belong in the Devices table for forensic completeness -
+                // see DbCompletenessChecker, which flags a chime present on the account but absent
+                // from the DB. IsOnline uses Health.Connected (chimes have no Subscribed field).
+                if (devices?.Chimes != null)
+                {
+                    foreach (var c in devices.Chimes)
+                    {
+                        var deviceId = c.Id.ToString();
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: c.Description ?? "Unknown Device",
+                                Type: "chime",
+                                LocationId: c.LocationId?.ToString() ?? locationId,
+                                IsOnline: c.Health?.Connected ?? false
+                            );
+                        }
+                    }
+                }
+
                 var locationDevices = new List<Device>(deviceMap.Values);
 
                 _logger.LogInformation("Found {DeviceCount} devices in location {LocationId}", locationDevices.Count, locationId);

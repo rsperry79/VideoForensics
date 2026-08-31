@@ -110,10 +110,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 }
             }
 
-            // Chimes are not currently mapped into Device rows by the main app's device discovery
-            // (only Doorbots/StickupCams/AuthorizedDoorbots are - see RingDeviceDiscoveryService),
-            // so every chime will show FoundInDb=false today. That reflects reality, not a bug in
-            // this checker - it's exactly the kind of gap this report exists to surface.
+            // Chimes have no video/event history but are still registered as Device rows (see
+            // RingDeviceDiscoveryService.GetDevicesAsync) so they show up here like any other device.
             if (devices?.Chimes != null)
             {
                 foreach (var c in devices.Chimes)

@@ -22,7 +22,12 @@ namespace VideoForensics.Client.Core
         // (mirrors the same synthetic-key pattern used in RingMediaDownloadService, but kept
         // provider-agnostic here via _videoProvider.ProviderName rather than hardcoding "Ring").
         private readonly SemaphoreSlim _identityResolutionLock = new(1, 1);
-        private Guid? _cachedLocationId;
+        // Keyed by the real Ring provider location id (not a single global cache) — an account can
+        // have more than one location, and each must map to its own Location row, not all devices
+        // collapsing into one synthetic "default" location.
+        private readonly Dictionary<string, Guid> _locationIdCache = new();
+        // Real location names discovered via DiscoverUniqueDevicesAsync, keyed by provider location id.
+        private readonly Dictionary<string, string> _knownLocationNames = new();
         private string? _cachedLocationName;
         private readonly Dictionary<string, Guid> _deviceIdCache = new();
         // Device ID to location name mapping, set by the caller before downloading
@@ -100,11 +105,11 @@ namespace VideoForensics.Client.Core
         }
 
         /// <summary>
-        /// Resolves (find-or-create) the Guid Device.Id for a provider's string device id, ensuring the
-        /// implicit single-account/single-location chain exists first. Cached per process/device so this
-        /// is only a DB round-trip on first use for a given device.
+        /// Resolves (find-or-create) the Guid Device.Id for a provider's string device id, ensuring its
+        /// real Ring location (not a synthetic placeholder) exists first. Cached per process/device and
+        /// per process/location so this is only a DB round-trip on first use for a given device/location.
         /// </summary>
-        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, CancellationToken ct)
+        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out var cached))
                 return cached;
@@ -115,7 +120,12 @@ namespace VideoForensics.Client.Core
                 if (_deviceIdCache.TryGetValue(providerDeviceId, out cached))
                     return cached;
 
-                if (_cachedLocationId is null)
+                // Falls back to a synthetic "default" location only when the caller genuinely has no
+                // real Ring location id for this device (e.g. GetLocationsAsync/DeriveLocationsFromDevices
+                // both came back empty) — every device that does have one gets its own real Location row.
+                var effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
+
+                if (!_locationIdCache.TryGetValue(effectiveLocationId, out var locationGuid))
                 {
                     Guid accountId;
                     if (_forensicsConfig.ActiveProviderAccountId is { } activeAccountId)
@@ -134,16 +144,21 @@ namespace VideoForensics.Client.Core
                         accountId = account.Id;
                     }
 
-                    var locationMetadata = SerializeMetadata(new { id = "default", name = "default" });
+                    var locationName = _knownLocationNames.TryGetValue(effectiveLocationId, out var knownName)
+                        ? knownName
+                        : effectiveLocationId;
+
+                    var locationMetadata = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
                     var location = await _dataClient.EnsureLocationAsync(
-                        accountId, "default", "default", locationMetadata.Json, locationMetadata.Hash, ct: ct);
-                    _cachedLocationId = location.Id;
+                        accountId, effectiveLocationId, locationName, locationMetadata.Json, locationMetadata.Hash, ct: ct);
+                    locationGuid = location.Id;
+                    _locationIdCache[effectiveLocationId] = locationGuid;
                     _cachedLocationName = location.Name;
                 }
 
                 var deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = "camera", isOnline = true });
                 var device = await _dataClient.EnsureDeviceAsync(
-                    _cachedLocationId.Value, providerDeviceId, deviceName, "camera", true, deviceMetadata.Json, deviceMetadata.Hash, ct: ct);
+                    locationGuid, providerDeviceId, deviceName, "camera", true, deviceMetadata.Json, deviceMetadata.Hash, ct: ct);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
@@ -177,6 +192,7 @@ namespace VideoForensics.Client.Core
             var uniqueDevices = new List<VideoForensics.Providers.Common.Contracts.Device>();
             foreach (var location in locations)
             {
+                _knownLocationNames[location.Id] = location.Name;
                 _logger.LogInformation("Checking location: {LocationId}", location.Id);
                 var devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                 if (devices == null || devices.Count == 0)
@@ -234,7 +250,7 @@ namespace VideoForensics.Client.Core
                 var deviceEffectiveStart = startDate;
                 try
                 {
-                    var deviceGuid = await EnsureDeviceIdentityAsync(device.Id, device.Name, cancellationToken);
+                    var deviceGuid = await EnsureDeviceIdentityAsync(device.Id, device.Name, device.LocationId, cancellationToken);
                     deviceEffectiveStart = await _dataClient.GetWatermarkAsync(deviceGuid, startDate, force, cancellationToken);
                 }
                 catch (Exception ex)
