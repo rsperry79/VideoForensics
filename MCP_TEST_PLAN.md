@@ -1,206 +1,168 @@
-# VideoForensics MCP Server — Test Plan
+# VideoForensics MCP Server Testing Plan
 
-Verifies the stdio MCP server (`src/client/VideoForensics.Mcp`) after the
-`AddMcpServer()`/`host.RunAsync()` startup fix. Confirms the server connects,
-responds within the client's timeout, and that each tool phase returns valid
-data against the local SQLite database.
+## Overview
+The VideoForensics MCP (Model Context Protocol) server exposes 4 phases of forensic analysis tools:
+- Phase 1: Timeline & Patterns (8 methods)
+- Phase 2: Evidence Integrity (10 methods)
+- Phase 3: Correlation Queries (7 methods)
+- Phase 4: Access & Export Audit (9 methods)
 
-**Status: executed 2026-08-29 against `%APPDATA%\VideoForensics\videoforensics.db`
-(1 location, 5 devices, 4,973 `MediaItems`/`DownloadEvents`, 0 `Events`/
-`ExportRecords`/`AccessAuditLogs`/`DeviceHealthRecords`). 3 real bugs found and
-fixed during the run — see Findings below.**
+## Phase 0: Server Initialization
 
-## 0. Preconditions
+**Tests:**
+- [ ] Server starts without fatal errors
+- [ ] Database initializes (lazy-loaded)
+- [ ] All 4 tool classes register (Timeline, Integrity, Correlation, Audit)
+- [ ] jamming-analysis-instructions resource available
+- [ ] Configuration loads from database
+- [ ] Events backfill completes (one-time)
+- [ ] Stdio transport ready for Claude Desktop
+- [ ] All DI services resolve correctly
+- [ ] Initialization log includes optimization details
 
-- [x] Rebuild + republish: `dotnet publish src/client/VideoForensics.Mcp/VideoForensics.Mcp.csproj -c Release`
-- [x] Client config (Claude Desktop / claude-ai) points at
-      `src/client/VideoForensics.Mcp/bin/Release/net10.0/publish/VideoForensics.Mcp.exe`
-- [x] Reload/reconnect the MCP client so it spawns a fresh process (stale
-      processes will keep serving the old broken binary)
+**Success:** "MCP SERVER READY FOR CONNECTIONS" logged
 
-## 1. Connection & startup (regression check for the bug just fixed)
+---
 
-- [x] Client's `initialize` request completes in well under the 60s timeout
-      (observed: ~120ms) — check client logs for "method 'initialize' request
-      handler completed"
-- [x] `tools/list` returns all ~29 tools (8 timeline, 10 integrity, 7
-      correlation, 9 audit — some overlap/pagination variants)
-- [x] `resources/list` returns the `jamming-analysis-instructions` resource
-- [x] Server logs show `Database initialization completed successfully`
-      and `=== MCP SERVER READY FOR CONNECTIONS ===` before the client's
-      first request is handled
-- [x] Kill the client mid-session (Ctrl+C / close) — server logs a clean
-      shutdown (`shutting down` / `shut down`), not a hang or crash dump
-      (confirmed incidentally — process was killed/restarted 4x during this
-      run to pick up rebuilds, always shut down cleanly)
+## Phase 1: Timeline & Patterns
 
-## 2. Phase 1 — Timeline & Patterns
+| Tool | Test Case | Validation |
+|------|-----------|-----------|
+| GetTimelineSummary | Empty DB | Returns valid summary |
+| GetTimelineSummary | With events | Event counts accurate |
+| GetRecordingGapsPaginated | Pagination | Offset works, no duplicates |
+| GetRecordingGapsCursor | Cursor pagination | Valid cursor progression |
+| GetEventCountByHour | Hourly distribution | Keys 0-23, sums match |
+| GetEventCountByDay | Daily distribution | Dates yyyy-MM-dd, counts cumulative |
+| GetPeakActivityPeriods | Top hours | Sorted, respects limit |
+| VerifyTimelineIntegrity | Sequence validation | No reversions, timestamps valid |
+| GetCoordinatedEvents | Event clustering | Within time window tolerance |
+| FindSuspiciousCoordinatedActivity | Pattern detection | Flags with severity |
 
-- [x] `get_timeline_summary` — pass
-- [x] `get_event_count_by_day` — **failed, fixed** (Finding 1)
-- [x] `get_event_count_by_hour` — pass
-- [x] `get_peak_activity_periods` — pass
-- [x] `verify_timeline_integrity` — pass
-- [x] `get_coordinated_events` — pass
-- [x] `find_suspicious_coordinated_activity` — pass
-- [x] `get_recording_gaps_paginated` / `get_recording_gaps_cursor` — pass
+---
 
-## 3. Phase 2 — Evidence Integrity
+## Phase 2: Evidence Integrity
 
-- [x] `get_integrity_summary` — pass
-- [x] `verify_event_hashes` — pass
-- [x] `get_tampering_indicators` — pass
-- [x] `get_tampering_indicators_paginated` — pass on default page size;
-      **`pageSize=0` failed, fixed** (Finding 3, see Section 7)
-- [x] `get_recording_gaps_paginated` / `get_recording_gaps_cursor` — pass
-- [x] `identify_health_related_gaps` / `get_health_related_gaps_paginated` — pass
-- [x] `analyze_device_reliability` — pass
-- [x] `analyze_sync_health` — **`deviceStatus` silently empty, fixed** (Finding 2)
-- [x] `get_event_health_correlation_cursor` — pass
+| Tool | Test Case | Validation |
+|------|-----------|-----------|
+| GetIntegritySummary | Aggregate report | Counts match detailed phase |
+| GetTamperingIndicatorsPaginated | Detection | Hash mismatches, missing files, inconsistencies |
+| GetDownloadHistoryCursor | Cursor audit trail | Order preserved, timestamps included |
+| ComputeEventIntegrityScore | Score range | 0-100, reflects all issues |
+| VerifyDownloadCompleteness | Gap detection | Expected vs actual, retry strategy |
+| VerifyEventHashes | Re-hash validation | SHA256 matches stored |
+| GetDownloadHistoryCursor | Cursor integrity | No duplicates across pages |
 
-## 4. Phase 3 — Correlation Queries
+**Validation:** Hash verification works end-to-end
 
-- [x] `get_correlation_summary` — pass
-- [x] `find_suspicious_coordinated_activity` — pass (empty, consistent with
-      empty `Events` table)
-- [x] `get_coordinated_events` — pass
+---
 
-## 5. Phase 4 — Access & Export Audit
+## Phase 3: Correlation Queries
 
-- [x] `get_audit_trail_summary` — pass
-- [x] `get_access_history_paginated` — pass
-- [x] `flag_unauthorized_access` — pass
-- [x] `get_download_history_cursor` — pass (empty — see data note below)
-- [x] `get_export_history` / `get_export_history_cursor` — pass
-- [x] `verify_export_integrity` — pass
-- [x] `verify_chain_of_custody` — pass
-- [x] `verify_download_completeness` — pass
+| Tool | Test Case | Validation |
+|------|-----------|-----------|
+| GetCorrelationSummary | Cross-device | Aggregates correctly, < 50KB |
+| GetHealthRelatedGapsPaginated | Health correlation | Battery, connectivity filters work |
+| GetEventHealthCorrelationCursor | Event-health link | Cursor pagination, metrics included |
+| AnalyzeSyncHealth | Sync analysis | Success rates, recovery suggestions |
+| IdentifyHealthRelatedGaps | Gap analysis | Root cause identification |
+| AnalyzeDeviceReliability | Reliability scoring | Uptime %, MTBF calculated |
 
-## 6. Resource
+**Validation:** Multi-device analysis consistent
 
-- [x] Fetch `videoforensics://instructions/jamming-analysis` — handler
-      completed in ~49ms, no error
+---
 
-## 7. Edge cases
+## Phase 4: Access & Export Audit
 
-- [x] Call a paginated tool with `pageSize=0` — **crashed the call, fixed**
-      (Finding 3); server itself stayed healthy and kept serving other
-      requests (no full-process crash, just that one call errored)
-- [x] Call a cursor tool with an invalid/garbage cursor — handled gracefully,
-      silently falls back to the start of the result set (no crash)
-- [x] Two tool calls issued back-to-back — both completed, no deadlock in
-      the DI `Scoped` repositories
-- [x] Server restarted 4 times in a row across this session (to pick up
-      each fix) — `initialize` was consistently fast on every reconnect, no
-      "works once, hangs on reconnect" regression
+| Tool | Test Case | Validation |
+|------|-----------|-----------|
+| GetAuditTrailSummary | Summary stats | Rapid response (< 100ms) |
+| GetAccessHistoryPaginated | Access logs | User/IP/timestamp included |
+| GetExportHistoryCursor | Export audit | File list with hashes |
+| VerifyChainOfCustody | Custody chain | Unbroken access history |
+| FlagUnauthorizedAccess | Access detection | Flags with severity levels |
+| GetExportHistory | Export record | Complete metadata |
+| VerifyExportIntegrity | Export validation | Files verified, hashes checked |
 
-## Findings
+**Validation:** Chain of custody unbroken
 
-1. **`get_event_count_by_day` always threw.** [TimelineRepository.cs:122-133](src/data/database/data.database/Repositories/TimelineRepository.cs:122)
-   grouped by `e.OccurredAtUtc.Date.ToString("yyyy-MM-dd")` inside a LINQ
-   `GroupBy` — EF Core can't translate `DateTime.ToString(format)` to SQL for
-   SQLite, so the query threw `InvalidOperationException` on every call,
-   regardless of data. **Fixed**: group by `.Date` (translatable), format the
-   key to `yyyy-MM-dd` after materializing.
+---
 
-2. **`analyze_sync_health.deviceStatus` always serialized as empty objects.**
-   `SyncHealthReport.DeviceStatus` in [ICorrelationRepository.cs:119](src/data/common/data.common/Contracts/ICorrelationRepository.cs:119)
-   was `List<(Guid DeviceId, string DeviceName, decimal Uptime)>` — an
-   unnamed `ValueTuple`. Tuple element names are compile-time only; at
-   runtime the members are public *fields* (`Item1`/`Item2`/`Item3`), and
-   `System.Text.Json` doesn't serialize fields by default, so every entry
-   came back as `{}`. Every consumer of this field was silently getting no
-   per-device data. **Fixed**: replaced with a proper `DeviceSyncStatus`
-   class with real properties.
+## Error Handling
 
-3. **Any offset-paginated tool crashed on `pageSize=0`.**
-   `PaginatedResult<T>.TotalPages` in [PaginationModels.cs:10](src/data/common/data.common/Contracts/PaginationModels.cs:10)
-   computed `(TotalCount + PageSize - 1) / PageSize` with no guard —
-   integer division by zero throws in C#, and this type is shared by every
-   offset-paginated tool across all 4 phases. **Fixed**: `TotalPages` now
-   returns `0` when `PageSize <= 0` instead of throwing.
+**Invalid Input:**
+- [ ] Null device ID → error
+- [ ] End date < start date → error
+- [ ] Negative pagination offset → error
+- [ ] Page size = 0 → error
+- [ ] Invalid cursor → error
 
-## Follow-up: Events ingestion gap — investigated and fixed 2026-08-29
+**System Resilience:**
+- [ ] Database unavailable → graceful degradation
+- [ ] Concurrent requests → no data corruption
+- [ ] Large result sets (1M+ records) → no timeout
+- [ ] Memory efficient cursor pagination
 
-The data-pipeline observation above turned out to be a real structural gap,
-not just a data-freshness issue: **nothing in the codebase ever wrote to the
-`Events` table.** `IEventRepository.UpsertAsync` existed and worked, but no
-caller in the Ring provider ever invoked it — the download pipeline
-([RingMediaDownloadService.cs](src/providers/ring/provider/Services/RingMediaDownloadService.cs))
-only ever wrote to `DownloadEvents`/`MediaItems`, and
-[RingEventAndConfigService.GetEventsAsync](src/providers/ring/provider/Services/RingEventAndConfigService.cs:25)
-fetches events read-only and never persists them. Every forensic tool across
-all 4 phases was reading from a table nothing had ever populated — for any
-account, ever.
+---
 
-Fixed with user sign-off (live ingestion + backfill):
+## Integration Tests
 
-4. **Live ingestion wired up.** `RingMediaDownloadService.DownloadVideosAsync`
-   now upserts an `Events` row for every provider event it sees —
-   independent of download outcome — at discovery, at skip-existing, and at
-   successful download (progressively enriching `DownloadedAtUtc`/
-   `EventIntegrityHash`). Added `IVideoForensicsDataClient.UpsertEventAsync`
-   as the facade method. Also fixed `EventRepository.UpsertAsync`'s update
-   branch, which previously silently dropped `DownloadedAtUtc`/
-   `EventIntegrityHash`/`ApiSourceHash` on every update (never persisted
-   them at all) — it now merges them without letting a later "discovered"
-   upsert wipe out an already-recorded download.
+**Parallel Execution:**
+```csharp
+await Task.WhenAll(
+    timelineRepo.GetTimelineSummaryAsync(...),
+    integrityRepo.GetIntegritySummaryAsync(...),
+    correlationRepo.GetCorrelationSummaryAsync(...),
+    auditRepo.GetAuditTrailSummaryAsync(...)
+);
+```
+- [ ] All 4 queries complete without blocking
+- [ ] No race conditions
+- [ ] Total time < sum of individual times
 
-5. **One-time backfill.** New [EventBackfillService](src/data/database/data.database/Repositories/EventBackfillService.cs)
-   reconstructs `Events` rows from the existing `DownloadEvents`/`MediaItems`
-   history (joining on `MediaItem.DownloadEventId` for the hash). Wired into
-   `Program.cs` as a background step after DB init, gated by an
-   `AppSettings` flag (`EventsBackfillFromDownloadEventsCompleted`) so it
-   only runs once. Verified on a copy of the live DB first, then run for
-   real: **4,973 `DownloadEvents` → 4,973 `Events`**, all with hash and
-   download timestamp populated.
+**Data Consistency:**
+- [ ] Event counts match across all phases
+- [ ] Download counts consistent
+- [ ] Hash mismatches reported everywhere
+- [ ] Timestamps aligned
 
-   Caveat (inherent to backfilling from `DownloadEvents`, not a bug): events
-   that were discovered but never downloaded — which is exactly the
-   "missing download" signal forensic tools are meant to catch — can't be
-   recovered this way, since they never had a `DownloadEvents` row either.
-   Only future syncs (via the live-ingestion fix above) will capture those.
+---
 
-Post-fix, live tools now return real data instead of empty results:
-`get_timeline_summary` → 4,973 events, 1,062 gaps, 96.4% coverage;
-`get_integrity_summary` → 1,552 tracked, 240 failed recordings;
-`get_event_count_by_day` → real per-day counts across Jun–Aug 2026.
+## Performance Baselines
 
-### Finding 6 (found while verifying the above): more silent-`{}` tuple bugs
+| Operation | Target | Measured |
+|-----------|--------|----------|
+| Summary queries | < 100ms | ? |
+| Paginated queries | < 500ms per page | ? |
+| Cursor pagination | < 300ms per page | ? |
+| Concurrent 4-phase | < 2s total | ? |
+| Large dataset (1M events) | < 5s | ? |
 
-The same unnamed-`ValueTuple` serialization bug as Finding 2 was present in
-4 more places once real data started flowing through them — a
-`GroupBy(...).Select(g => (x, y))`-style tuple return always looks empty
-until you feed it non-empty data, so these had been masked by the empty
-`Events` table the whole time:
+---
 
-- `ITimelineRepository.GetPeakActivityPeriodsAsync` and
-  `TimelineSummary.PeakHours` — `List<(int Hour, int Count)>` →
-  `List<HourlyActivityCount>`
-- `TimelineTools.GetPeakActivityPeriods` (the MCP tool itself) had the same
-  tuple in its own signature — fixed too
-- `CoordinatedEventCluster.Events` — `List<(Guid, string, string, DateTime)>`
-  → `List<ClusterEvent>`
-- `SuspiciousActivityFlag.InvolvedDevices` — `List<(Guid, string)>` →
-  `List<InvolvedDevice>`
-- `ExportIntegrityReport.ModificationDetails` — same tuple pattern fixed for
-  consistency, though no repository code currently populates it (separate,
-  pre-existing incompleteness — not fixed, out of scope)
+## Test Execution
 
-All fixed by replacing the tuples with named DTO classes (same pattern as
-Finding 2) and updating every construction site. Verified live:
-`get_peak_activity_periods`, `get_timeline_summary.peakHours`,
-`get_coordinated_events.events`, and
-`find_suspicious_coordinated_activity.involvedDevices` all now return
-fully-populated, correctly-named fields instead of `{}`.
+**Smoke Test (5 min):**
+```bash
+# Terminal 1: Start server
+dotnet run --project src/client/VideoForensics.Mcp
 
-**Lesson for future testing**: an empty dataset can hide serialization bugs
-that only surface once there's real data to serialize. Worth re-running a
-quick spot-check across all tools now that `Events` is populated.
+# Terminal 2: Test basic calls
+curl http://localhost:3000/timeline/summary
+curl http://localhost:3000/integrity/summary
+```
 
-## Pass criteria
+**Quick MCP Verification:**
+- [ ] Server responds to capability requests
+- [ ] All 34 methods callable
+- [ ] No startup errors
+- [ ] Logs show initialization sequence
 
-All checkboxes above complete with no unhandled exceptions in server logs
-(`FATAL`, `CRITICAL`, or an unlogged process exit), and every `initialize`
-handshake completes well inside the client's timeout window. **Met**, after
-fixing the 3 findings above.
+---
+
+## Known Issues to Fix
+
+| Issue | Status | Fix |
+|-------|--------|-----|
+| (Add after testing) | | |
+
