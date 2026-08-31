@@ -199,36 +199,35 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task FactoryResetAsync_DeletesDownloadAndDatabaseDirectories()
         {
-            // Create temporary directories to simulate the actual locations
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var downloadDir = Path.Combine(userProfile, "Pictures", "VideoForensics-FactoryResetTest");
-            var appDataDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "VideoForensics-FactoryResetTest");
-            var dbPath = Path.Combine(appDataDir, "videoforensics.db");
+            // Uses the downloadDirOverride/dbPathOverride parameters to point at throwaway temp
+            // paths - FactoryResetAsync's defaults are the REAL production download folder and the
+            // REAL live application database, and must never be exercised by a test.
+            var downloadDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-{Guid.NewGuid():N}");
+            var dbDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-Db-{Guid.NewGuid():N}");
+            var dbPath = Path.Combine(dbDir, "videoforensics.db");
 
             try
             {
                 // Create test directories and files
                 Directory.CreateDirectory(downloadDir);
-                Directory.CreateDirectory(appDataDir);
+                Directory.CreateDirectory(dbDir);
                 File.WriteAllText(dbPath, "test");
 
                 Assert.True(Directory.Exists(downloadDir));
                 Assert.True(File.Exists(dbPath));
 
-                // Note: actual factory reset would use the default paths
-                // This test verifies the logic works when directories exist
-                var result = await _orchestrator.FactoryResetAsync();
+                var result = await _orchestrator.FactoryResetAsync(downloadDirOverride: downloadDir, dbPathOverride: dbPath);
 
                 Assert.True(result.Success);
+                Assert.False(Directory.Exists(downloadDir));
+                Assert.False(File.Exists(dbPath));
             }
             finally
             {
                 if (Directory.Exists(downloadDir))
                     Directory.Delete(downloadDir, recursive: true);
-                if (Directory.Exists(appDataDir))
-                    Directory.Delete(appDataDir, recursive: true);
+                if (Directory.Exists(dbDir))
+                    Directory.Delete(dbDir, recursive: true);
             }
         }
     }

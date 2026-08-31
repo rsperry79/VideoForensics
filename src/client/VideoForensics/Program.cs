@@ -166,7 +166,8 @@ namespace VideoForensics
                 new VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>>(),
                     serviceProvider.GetRequiredService<IForensicsConfigurationService>(),
-                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                    serviceProvider.GetRequiredService<IAppSettingRepository>(),
+                    serviceProvider.GetRequiredService<IDatabaseMaintenanceService>()
                 )
             );
 

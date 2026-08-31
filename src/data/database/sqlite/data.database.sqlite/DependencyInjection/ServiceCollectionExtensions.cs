@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Sqlite.Migrations;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {
@@ -35,6 +37,8 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 
             services.AddDbContextFactory<VideoForensicsDbContext>(options =>
                 options.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite")));
+
+            services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 
             return services;
         }
