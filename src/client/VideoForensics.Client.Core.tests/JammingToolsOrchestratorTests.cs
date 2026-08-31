@@ -11,17 +11,18 @@ namespace VideoForensics.Client.Core.Tests
     {
         private readonly Mock<ILogger<JammingToolsOrchestrator>> _loggerMock;
         private readonly Mock<IJammingRepository> _repositoryMock;
+        private readonly Mock<IDeviceHealthSnapshotRepository> _healthSnapshotRepositoryMock;
         private readonly JammingToolsOrchestrator _orchestrator;
 
         public JammingToolsOrchestratorTests()
         {
             _loggerMock = new Mock<ILogger<JammingToolsOrchestrator>>();
-            _detectorMock = new Mock<ISignalAnomalyDetector>();
             _repositoryMock = new Mock<IJammingRepository>();
-            _eventRepositoryMock = new Mock<IEventRepository>();
+            _healthSnapshotRepositoryMock = new Mock<IDeviceHealthSnapshotRepository>();
             _orchestrator = new JammingToolsOrchestrator(
                 _loggerMock.Object,
-                _repositoryMock.Object);
+                _repositoryMock.Object,
+                _healthSnapshotRepositoryMock.Object);
         }
 
         [Fact]
@@ -36,7 +37,8 @@ namespace VideoForensics.Client.Core.Tests
                 now, // End before start
                 5,
                 10.0,
-                JammingConfidenceLevel.Medium);
+                JammingConfidenceLevel.Medium,
+                notes: null);
 
             Assert.False(result.Success);
             Assert.Contains("Start time must be before end time", result.Message);
@@ -54,7 +56,8 @@ namespace VideoForensics.Client.Core.Tests
                 now.AddHours(1),
                 5,
                 -10.0, // Negative
-                JammingConfidenceLevel.Medium);
+                JammingConfidenceLevel.Medium,
+                notes: null);
 
             Assert.False(result.Success);
             Assert.Contains("must be non-negative", result.Message);
@@ -158,6 +161,92 @@ namespace VideoForensics.Client.Core.Tests
             Assert.True(result.Success);
             Assert.NotNull(result.Incidents);
             Assert.Single(result.Incidents);
+        }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_RejectsInvalidTimeRange()
+        {
+            var deviceId = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            var report = await _orchestrator.AnalyzeJammingAsync(deviceId, now.AddHours(1), now);
+
+            Assert.False(report.Success);
+            Assert.Contains("Start time must be before end time", report.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_TooFewReadings_DetectsNoIncidents()
+        {
+            var deviceId = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            _healthSnapshotRepositoryMock
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DeviceHealthSnapshot>
+                {
+                    new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -40, CapturedAtUtc = now }
+                });
+            _repositoryMock
+                .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<JammingIncidentRecord>());
+            _repositoryMock
+                .Setup(r => r.GetStatsAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 });
+
+            var report = await _orchestrator.AnalyzeJammingAsync(deviceId, now.AddMinutes(-10), now.AddMinutes(10));
+
+            Assert.True(report.Success);
+            Assert.Equal(0, report.Summary.IncidentCount);
+            _repositoryMock.Verify(
+                r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_SustainedDrop_DetectsAndPersistsIncident()
+        {
+            var deviceId = Guid.NewGuid();
+            var t0 = DateTime.UtcNow;
+
+            // Established baseline around -40 dBm (8 readings), then a sustained drop to ~-60 dBm
+            // (20 dB degradation) across 3 consecutive readings, then recovery back to baseline.
+            // Degraded readings are a minority of the sample, as in realistic conditions, so the
+            // median baseline isn't skewed by the incident itself.
+            var readings = new List<DeviceHealthSnapshot>();
+            for (var i = 0; i < 8; i++)
+            {
+                readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -40 - (i % 3), CapturedAtUtc = t0.AddMinutes(i) });
+            }
+            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -60, CapturedAtUtc = t0.AddMinutes(8) });
+            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -62, CapturedAtUtc = t0.AddMinutes(9) });
+            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -59, CapturedAtUtc = t0.AddMinutes(10) });
+            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -39, CapturedAtUtc = t0.AddMinutes(11) });
+
+            _healthSnapshotRepositoryMock
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(readings);
+            _repositoryMock
+                .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<JammingIncidentRecord>());
+            _repositoryMock
+                .Setup(r => r.GetStatsAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 1, HighConfidenceCount = 1 });
+
+            JammingIncidentRecord? captured = null;
+            _repositoryMock
+                .Setup(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
+                .Callback<JammingIncidentRecord, CancellationToken>((record, ct) => captured = record)
+                .ReturnsAsync((JammingIncidentRecord record, CancellationToken ct) => record);
+
+            var report = await _orchestrator.AnalyzeJammingAsync(deviceId, t0.AddMinutes(-1), t0.AddMinutes(10));
+
+            Assert.True(report.Success);
+            Assert.NotNull(captured);
+            Assert.Equal(JammingIncidentSource.AutoDetected, captured!.Source);
+            Assert.Equal(3, captured.AffectedEventCount);
+            Assert.True(captured.AverageDegradationDb >= 15);
+            _repositoryMock.Verify(r => r.RecomputeStatsAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

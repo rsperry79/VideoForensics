@@ -173,7 +173,8 @@ namespace VideoForensics
             services.AddSingleton<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>(serviceProvider =>
                 new VideoForensics.Client.Core.Tools.JammingToolsOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>>(),
-                    serviceProvider.GetRequiredService<IJammingRepository>()
+                    serviceProvider.GetRequiredService<IJammingRepository>(),
+                    serviceProvider.GetRequiredService<IDeviceHealthSnapshotRepository>()
                 )
             );
 
