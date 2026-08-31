@@ -1107,11 +1107,28 @@ namespace VideoForensics
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
             }
 
-            // Always ask for the start date to pull from
-            var defaultStartDate = DateTime.TryParseExact(_forensicsConfig.DownloadStartDate, "yyyy-MM-dd",
-                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDefault)
-                ? parsedDefault
-                : DateTime.Today.AddDays(-180);
+            // Determine default start date: use account watermark if available, otherwise use 181 days ago
+            var defaultStartDate = DateTime.Today.AddDays(-181);
+            if (_forensicsConfig.ActiveProviderAccountId.HasValue)
+            {
+                try
+                {
+                    var accountWatermark = await _videoForensicsDataClient.GetAccountDownloadWatermarkAsync(_forensicsConfig.ActiveProviderAccountId.Value, cancellationToken);
+                    defaultStartDate = accountWatermark;
+                    _logger.LogInformation("Using account download watermark as default start date: {WatermarkDate:yyyy-MM-dd}", accountWatermark);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to retrieve account download watermark; falling back to 181 days ago");
+                }
+            }
+
+            // Override with saved configuration if available
+            if (DateTime.TryParseExact(_forensicsConfig.DownloadStartDate, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDefault))
+            {
+                defaultStartDate = parsedDefault;
+            }
             var startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
             var startDateString = startDate.ToString("yyyy-MM-dd");
             if (startDateString != _forensicsConfig.DownloadStartDate)

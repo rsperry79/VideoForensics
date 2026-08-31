@@ -55,6 +55,9 @@ namespace VideoForensics.Client.Core
         private int _preScanGrandTotal;
         private string? _preScanRunKey;
 
+        // Track the account ID during downloads for account watermark updates
+        private Guid? _currentBatchAccountId;
+
         /// <summary>Delay between device downloads to avoid rate limiting (milliseconds)</summary>
         private const int InterDeviceDelayMs = 5000;
 
@@ -300,6 +303,9 @@ namespace VideoForensics.Client.Core
                 _completedRunKey = runKey;
             }
 
+            // Capture the account ID for watermark updates
+            _currentBatchAccountId = _forensicsConfig.ActiveProviderAccountId;
+
             try
             {
                 _logger.LogInformation("Starting video download to {OutputPath} from {StartDate} to {EndDate}", outputPath, startDate, endDate);
@@ -479,6 +485,21 @@ namespace VideoForensics.Client.Core
                 }
 
                 _logger.LogInformation("Downloaded {FileCount} video(s) across {DeviceCount} device(s)", totalFilesDownloaded, totalDevices);
+
+                // Update account-level watermark to enable incremental downloads on next run
+                if (_currentBatchAccountId.HasValue && totalFilesDownloaded > 0)
+                {
+                    try
+                    {
+                        await _dataClient.UpdateAccountDownloadWatermarkAsync(_currentBatchAccountId.Value, endDate, CancellationToken.None);
+                        _logger.LogInformation("Updated account download watermark to {Timestamp}", endDate);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update account download watermark; next download may re-process some events");
+                    }
+                }
+
                 return true;
             }
             catch (Exception ex)

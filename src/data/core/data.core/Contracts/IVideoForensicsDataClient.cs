@@ -59,6 +59,12 @@ namespace VideoForensics.Data.Core.Contracts
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);
 
+        /// <summary>Gets the account-level download watermark; defaults to 181 days ago if not set.</summary>
+        Task<DateTime> GetAccountDownloadWatermarkAsync(Guid providerAccountId, CancellationToken ct);
+
+        /// <summary>Updates the account-level download watermark to track the latest successful batch download completion.</summary>
+        Task UpdateAccountDownloadWatermarkAsync(Guid providerAccountId, DateTime latestDownloadTime, CancellationToken ct);
+
         /// <summary>Records a point-in-time device health/connectivity telemetry snapshot.</summary>
         Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct);
 
