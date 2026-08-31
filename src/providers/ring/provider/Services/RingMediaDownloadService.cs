@@ -155,6 +155,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var validatedFiles = new List<string>();
                 var rateLimited = false;
                 var otherItemFailures = 0;
+                var permanentlySkipped = 0;
 
                 _activeDownloads = 0;
                 _peakActiveDownloadsForBatch = 0;
@@ -224,6 +225,7 @@ namespace VideoForensics.Providers.Ring.Services
                             // case the recording becomes available again later or the failure was transient.
                             if (existingRecord is { Success: false, AttemptCount: >= MaxRetries } && !existsOnDisk)
                             {
+                                Interlocked.Increment(ref permanentlySkipped);
                                 _activityLog.Enqueue($"[dim]⊘ {EscapeMarkup(Path.GetFileName(fileName))}: skipped, failed permanently after {existingRecord.AttemptCount} attempt(s) ({EscapeMarkup(existingRecord.ErrorMessage ?? "unknown error")})[/]");
                                 return;
                             }
@@ -538,8 +540,14 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                 }
 
+                // Permanently-skipped items (failed every retry, Ring never returns a valid recording
+                // for them) are excluded from the matched count entirely - otherwise "N more matched
+                // but weren't downloaded" can never reach zero and "Continue downloading" becomes a
+                // dead-end loop that just re-shows the same unfixable items forever.
+                var effectiveMatched = relevantEvents.Count - permanentlySkipped;
+
                 string? skipReason = null;
-                if (downloadedFiles < relevantEvents.Count)
+                if (downloadedFiles < effectiveMatched)
                 {
                     if (rateLimited)
                     {
@@ -555,6 +563,14 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                 }
 
+                if (permanentlySkipped > 0)
+                {
+                    var skippedNote = permanentlySkipped == 1
+                        ? "1 item permanently unavailable (excluded)"
+                        : $"{permanentlySkipped} items permanently unavailable (excluded)";
+                    skipReason = skipReason == null ? skippedNote : $"{skipReason}; {skippedNote}";
+                }
+
                 return new DownloadResult(
                     Success: true,
                     FilesDownloaded: downloadedFiles,
@@ -562,7 +578,7 @@ namespace VideoForensics.Providers.Ring.Services
                     MetadataFilesWritten: metadataFilesWritten,
                     MediaFilesValidated: mediaFilesValidated,
                     ValidatedFiles: validatedFiles,
-                    FilesMatched: relevantEvents.Count,
+                    FilesMatched: effectiveMatched,
                     SkipReason: skipReason
                 );
             }
