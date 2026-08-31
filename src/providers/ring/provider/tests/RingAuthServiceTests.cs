@@ -148,55 +148,37 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void ConstructorThrowsOnNullCredentialRepository()
+        public void ConstructorAcceptsNullCredentialRepository()
         {
-            // Arrange
+            // credentialRepository (and the other DB-backed repositories after it) are optional -
+            // RingAuthService falls back to filesystem-only credential storage when they're not
+            // supplied (see RestoreFromSavedCredentialsWithAccountAsync's filesystem fallback), so
+            // the constructor intentionally does not require them.
             var logger = new Mock<ILogger>().Object;
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
 
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, null!));
+            var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository: null);
+
+            Assert.NotNull(service);
         }
 
         [Fact]
-        public async Task GetOrCreateProviderAccountAsync_WithValidUsername_ReturnsGuid()
+        public async Task RestoreFromSavedCredentialsAsync_WithNoSavedCredentials_DoesNotTouchProviderAccountRepositories()
         {
-            // Arrange
-            var username = "test@example.com";
-            var userId = Guid.NewGuid();
-            var accountId = Guid.NewGuid();
-
+            // GetOrCreateProviderAccountAsync (the account-creation path this originally tried to
+            // exercise) only runs after a refresh token is actually restored and re-authenticated
+            // against the live Ring API (see RestoreFromSavedCredentialsWithAccountAsync) - not
+            // reachable from a unit test without a live network call. What IS unit-testable, and
+            // what this now covers: with neither a DB-stored nor filesystem-stored credential
+            // available, restore must fail fast and never touch the user/account repositories.
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
+            credentialStore.Setup(cs => cs.Load(It.IsAny<string>())).Returns(new RingCredentials());
             var credentialRepository = new Mock<ICredentialRepository>();
             var userRepository = new Mock<IUserRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
             var logger = new Mock<ILogger>().Object;
-
-            // Setup user repository to return a new user
-            userRepository.Setup(ur => ur.GetByProviderKeyAsync(username, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((User?)null);
-
-            var newUser = new User
-            {
-                Id = userId,
-                ProviderUserKey = username,
-                DisplayName = username,
-                CreatedUtc = DateTime.UtcNow
-            };
-
-            userRepository.Setup(ur => ur.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-                .Callback<User, CancellationToken>((u, ct) => { u.Id = userId; })
-                .Returns(Task.CompletedTask);
-
-            // Setup provider account repository to return null, then verify creation
-            providerAccountRepository.Setup(par => par.GetByUserAndProviderAsync(userId, "Ring", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((ProviderAccount?)null);
-
-            providerAccountRepository.Setup(par => par.AddAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()))
-                .Callback<ProviderAccount, CancellationToken>((a, ct) => { a.Id = accountId; })
-                .Returns(Task.CompletedTask);
 
             var service = new RingAuthService(
                 logger,
@@ -211,8 +193,9 @@ namespace VideoForensics.Providers.Ring.Tests
             var result = await service.RestoreFromSavedCredentialsAsync();
 
             // Assert
-            userRepository.Verify(ur => ur.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
-            providerAccountRepository.Verify(par => par.AddAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.False(result);
+            userRepository.Verify(ur => ur.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+            providerAccountRepository.Verify(par => par.AddAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

@@ -89,6 +89,18 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         public static bool CredentialsAvailable() => CredentialResolver.Resolve(null, null, null) != null;
 
         /// <summary>
+        /// Checks specifically for saved username/password (not just any credential) - needed by
+        /// tests that call <see cref="CreateSessionWithoutAuth"/> or read <c>Session.Username</c>,
+        /// neither of which a refresh-token-only credential set (the common case after the
+        /// SelfTester's 2FA `--auth` flow) can satisfy.
+        /// </summary>
+        public static bool UsernamePasswordAvailable()
+        {
+            var auth = CredentialResolver.Resolve(null, null, null);
+            return auth?.UserName != null && auth.Password != null;
+        }
+
+        /// <summary>
         /// Gets a message explaining how to setup credentials, for tests that want to surface it directly.
         /// </summary>
         public static string GetSetupInstructions() =>

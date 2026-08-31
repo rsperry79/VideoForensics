@@ -38,7 +38,7 @@ namespace VideoForensics.Providers.Ring.Utils
 
         public Runner(Session session, string outputDir, bool quiet)
         {
-            _session = session;
+            _session = session ?? throw new ArgumentNullException(nameof(session));
             _outputDir = outputDir;
             _quiet = quiet;
         }

@@ -38,9 +38,15 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void SanitizeForFilePath_RemovesControlCharacters()
         {
-            var input = "Front\x00Door\x01Monitor\x1F";
+            // \u escapes (fixed 4 hex digits) used rather than \x (variable-length, 1-4 hex
+            // digits, which greedily consumes following hex-digit-looking letters) - \x00Door
+            // would parse as \x00D (a 3-digit hex escape, 0x0D) followed by "oor", silently
+            // swallowing the "D" from "Door".
+            var input = "Front\u0000Door\u0001Monitor\u001F";
             var result = MediaFileNamer.SanitizeForFilePath(input);
-            Assert.Equal("Front_Door_Monitor", result);
+            // Control characters are stripped entirely, not replaced with underscore - see
+            // MediaFileNamer.SanitizeForFilePath's regex, which maps them to string.Empty.
+            Assert.Equal("FrontDoorMonitor", result);
         }
 
         [Theory]
@@ -58,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [InlineData("<<>>")]
         [InlineData("::")]
         [InlineData("||||")]
-        [InlineData("\x00\x01\x02")]
+        [InlineData("\u0000\u0001\u0002")]
         public void SanitizeForFilePath_ReturnsFallback_WhenAllCharactersAreInvalid(string input)
         {
             var result = MediaFileNamer.SanitizeForFilePath(input);
