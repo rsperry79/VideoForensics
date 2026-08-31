@@ -1124,10 +1124,9 @@ namespace VideoForensics
             }
 
             // Override with saved configuration if available
-            if (DateTime.TryParseExact(_forensicsConfig.DownloadStartDate, "yyyy-MM-dd",
-                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDefault))
+            if (VideoForensics.Client.Core.Utilities.DateTimeUtilities.TryParseDate(_forensicsConfig.DownloadStartDate) is { } parsed)
             {
-                defaultStartDate = parsedDefault;
+                defaultStartDate = parsed;
             }
             var startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
             var startDateString = startDate.ToString("yyyy-MM-dd");
