@@ -1,5 +1,6 @@
 namespace VideoForensics.Client.Core.Tools
 {
+    using System.Linq;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Data.Common.Contracts;
     using VideoForensics.Data.Common.Entities;
@@ -8,13 +9,25 @@ namespace VideoForensics.Client.Core.Tools
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
         private readonly IJammingRepository _jammingRepository;
+        private readonly IDeviceHealthSnapshotRepository _healthSnapshotRepository;
+
+        // A drop of at least this many dB below the device's own baseline RSSI is treated as
+        // "degraded" for a single reading. Matches the playbook in JammingAnalysisResource
+        // ("many dB below baseline", not a routine few-dB dip).
+        private const double DegradationThresholdDb = 8.0;
+
+        // Minimum consecutive degraded readings required to record an incident at all — a single
+        // bad reading is noise (per the playbook), not a candidate incident.
+        private const int MinConsecutiveReadingsForIncident = 2;
 
         public JammingToolsOrchestrator(
             ILogger<JammingToolsOrchestrator> logger,
-            IJammingRepository jammingRepository)
+            IJammingRepository jammingRepository,
+            IDeviceHealthSnapshotRepository healthSnapshotRepository)
         {
             _logger = logger;
             _jammingRepository = jammingRepository;
+            _healthSnapshotRepository = healthSnapshotRepository;
         }
 
         public async Task<(bool Success, string Message, JammingStatsSummary? Stats)> RunJammingDetectionNotificationAsync(
@@ -122,7 +135,16 @@ namespace VideoForensics.Client.Core.Tools
             }
         }
 
-        /// <summary>Unified jamming analysis: detect + analyze + summarize in one call.</summary>
+        /// <summary>
+        /// Unified jamming analysis: detects incidents from captured RSSI history, persists them,
+        /// recomputes device stats, and returns everything in one call.
+        ///
+        /// Detection runs against DeviceHealthSnapshot rows (real RSSI readings captured once per
+        /// download batch — see RingMediaDownloadService.CaptureDeviceHealthSnapshotAsync). Ring's
+        /// /doorbots/history endpoint does not return RSSI on individual historical events (the
+        /// embedded Doorbot stub's Health is always null there), so per-event RSSI does not exist to
+        /// analyze; the health-snapshot timeline is the actual signal-strength data this system has.
+        /// </summary>
         public async Task<JammingAnalysisReport> AnalyzeJammingAsync(
             Guid deviceId,
             DateTime fromUtc,
@@ -138,13 +160,13 @@ namespace VideoForensics.Client.Core.Tools
                         ErrorMessage = "Start time must be before end time"
                     };
 
-                _logger.LogInformation("Starting unified jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
+                _logger.LogInformation("Starting jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
                     deviceId, fromUtc, toUtc);
 
-                // Recompute stats (includes detection)
+                var detectedCount = await DetectAndPersistIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+
                 await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
 
-                // Get comprehensive results
                 var stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
                 var incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
 
@@ -157,21 +179,125 @@ namespace VideoForensics.Client.Core.Tools
                     Incidents = incidents ?? new List<JammingIncidentRecord>(),
                     AnalyzedAtUtc = DateTime.UtcNow,
                     Message = stats?.IncidentCount > 0
-                        ? $"Found {stats.IncidentCount} incident(s): {stats.TotalJammedDurationMinutes:F1} min total, " +
-                          $"avg degradation {stats.AverageDegradationDb:F1} dB. " +
+                        ? $"Found {stats.IncidentCount} incident(s) ({detectedCount} newly detected this run): " +
+                          $"{stats.TotalJammedDurationMinutes:F1} min total, avg degradation {stats.AverageDegradationDb:F1} dB. " +
                           $"High: {stats.HighConfidenceCount}, Medium: {stats.MediumConfidenceCount}, Low: {stats.LowConfidenceCount}"
-                        : "No jamming incidents detected in this device's history"
+                        : "No jamming incidents detected in this device's health-snapshot history"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unified jamming analysis failed for device {deviceId}", deviceId);
+                _logger.LogError(ex, "Jamming analysis failed for device {deviceId}", deviceId);
                 return new JammingAnalysisReport
                 {
                     Success = false,
                     ErrorMessage = $"Analysis failed: {ex.Message}"
                 };
             }
+        }
+
+        /// <summary>
+        /// Scans the device's health-snapshot history for sustained RSSI degradation relative to its
+        /// own baseline, persists any runs found as auto-detected JammingIncidentRecords (upserted by
+        /// StartUtc so re-running analysis over the same window doesn't create duplicates), and
+        /// returns how many incidents were found this run.
+        /// </summary>
+        private async Task<int> DetectAndPersistIncidentsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            var history = await _healthSnapshotRepository.GetHistoryAsync(deviceId, ct);
+
+            var readings = history
+                .Where(s => s.Rssi.HasValue && s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)
+                .OrderBy(s => s.CapturedAtUtc)
+                .ToList();
+
+            // Baseline needs enough readings to be meaningful; a device with only 1-2 snapshots in
+            // the window has no established "normal" to compare against.
+            if (readings.Count < 3)
+            {
+                _logger.LogInformation("Insufficient RSSI history for device {deviceId} in window ({Count} reading(s)); skipping detection",
+                    deviceId, readings.Count);
+                return 0;
+            }
+
+            var baselineRssi = Median(readings.Select(r => (double)r.Rssi!.Value));
+
+            var existingIncidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+            var alreadyDetectedStarts = existingIncidents
+                .Where(i => i.Source == JammingIncidentSource.AutoDetected)
+                .Select(i => i.StartUtc)
+                .ToHashSet();
+
+            var detected = 0;
+            var runStart = -1;
+
+            for (var i = 0; i <= readings.Count; i++)
+            {
+                var isDegraded = i < readings.Count && (baselineRssi - readings[i].Rssi!.Value) >= DegradationThresholdDb;
+
+                if (isDegraded && runStart == -1)
+                {
+                    runStart = i;
+                }
+                else if (!isDegraded && runStart != -1)
+                {
+                    var runLength = i - runStart;
+                    if (runLength >= MinConsecutiveReadingsForIncident)
+                    {
+                        var runReadings = readings.GetRange(runStart, runLength);
+                        var incidentStart = runReadings[0].CapturedAtUtc;
+
+                        if (!alreadyDetectedStarts.Contains(incidentStart))
+                        {
+                            var avgDegradation = baselineRssi - runReadings.Average(r => r.Rssi!.Value);
+
+                            await _jammingRepository.UpsertIncidentAsync(new JammingIncidentRecord
+                            {
+                                Id = Guid.NewGuid(),
+                                DeviceId = deviceId,
+                                StartUtc = incidentStart,
+                                EndUtc = runReadings[^1].CapturedAtUtc,
+                                AffectedEventCount = runLength,
+                                AverageDegradationDb = avgDegradation,
+                                Confidence = ClassifyConfidence(runLength, avgDegradation),
+                                DetectedAtUtc = DateTime.UtcNow,
+                                Notes = $"Auto-detected: baseline RSSI {baselineRssi:F1} dBm, {runLength} consecutive degraded reading(s)",
+                                Source = JammingIncidentSource.AutoDetected
+                            }, ct);
+
+                            detected++;
+                        }
+                    }
+
+                    runStart = -1;
+                }
+            }
+
+            _logger.LogInformation("Jamming detection for device {deviceId}: baseline={Baseline:F1} dBm, {ReadingCount} reading(s) scanned, {Detected} new incident(s)",
+                deviceId, baselineRssi, readings.Count, detected);
+
+            return detected;
+        }
+
+        /// <summary>Classifies confidence from run length (sustained-ness) and average degradation magnitude, per the JammingAnalysisResource playbook.</summary>
+        private static JammingConfidenceLevel ClassifyConfidence(int runLength, double avgDegradationDb)
+        {
+            if (runLength >= 5 && avgDegradationDb >= 20)
+                return JammingConfidenceLevel.Definite;
+            if (runLength >= 3 && avgDegradationDb >= 15)
+                return JammingConfidenceLevel.High;
+            if (runLength >= 2 && avgDegradationDb >= 10)
+                return JammingConfidenceLevel.Medium;
+            return JammingConfidenceLevel.Low;
+        }
+
+        private static double Median(IEnumerable<double> values)
+        {
+            var sorted = values.OrderBy(v => v).ToList();
+            var mid = sorted.Count / 2;
+            return sorted.Count % 2 == 0
+                ? (sorted[mid - 1] + sorted[mid]) / 2.0
+                : sorted[mid];
         }
     }
 
