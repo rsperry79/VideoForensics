@@ -1107,14 +1107,23 @@ namespace VideoForensics
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
             }
 
-            // Determine default start date: use account watermark if available, otherwise use 181 days ago
+            // Determine default start date. The account watermark reflects the actual last
+            // successful download position and should win whenever it's available - the
+            // previously-saved DownloadStartDate is only ever what the user typed into this same
+            // prompt on some earlier run, which goes stale immediately after the very next
+            // successful download advances the real watermark. Using it as an override here (as
+            // this used to do) meant the watermark default was dead: every run's prompt defaulted
+            // back to whatever date was first ever entered, permanently re-scanning the full
+            // history instead of narrowing to what's actually new.
             var defaultStartDate = DateTime.Today.AddDays(-181);
+            var watermarkResolved = false;
             if (_forensicsConfig.ActiveProviderAccountId.HasValue)
             {
                 try
                 {
                     var accountWatermark = await _videoForensicsDataClient.GetAccountDownloadWatermarkAsync(_forensicsConfig.ActiveProviderAccountId.Value, cancellationToken);
                     defaultStartDate = accountWatermark;
+                    watermarkResolved = true;
                     _logger.LogInformation("Using account download watermark as default start date: {WatermarkDate:yyyy-MM-dd}", accountWatermark);
                 }
                 catch (Exception ex)
@@ -1123,8 +1132,10 @@ namespace VideoForensics
                 }
             }
 
-            // Override with saved configuration if available
-            if (VideoForensics.Client.Core.Utilities.DateTimeUtilities.TryParseDate(_forensicsConfig.DownloadStartDate) is { } parsed)
+            // Only fall back to the saved prompt value when the watermark couldn't be resolved at
+            // all (e.g. no active account yet) - never let it override a resolved watermark.
+            if (!watermarkResolved &&
+                VideoForensics.Client.Core.Utilities.DateTimeUtilities.TryParseDate(_forensicsConfig.DownloadStartDate) is { } parsed)
             {
                 defaultStartDate = parsed;
             }

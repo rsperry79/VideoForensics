@@ -97,13 +97,34 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.ExistsForProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
+        public async Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct)
+        {
+            return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
+        }
+
         public async Task<DownloadEvent> RecordDownloadEventAsync(DownloadEvent evt, MediaItem? media, CancellationToken ct)
         {
             try
             {
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    await context.DownloadEvents.AddAsync(evt, ct);
+                    // Upsert by (DeviceId, ProviderEventId) rather than blind-inserting - repeated
+                    // attempts at the same event (retries after a transient failure, or a permanent
+                    // failure recorded so it's not retried forever - see RingMediaDownloadService's
+                    // MaxRetries check) would otherwise pile up duplicate rows, and a caller reading
+                    // "the" DownloadEvent for an event id would get whichever row happened to sort
+                    // first rather than the latest attempt's outcome.
+                    var existing = await context.DownloadEvents.GetByProviderEventIdAsync(evt.DeviceId, evt.ProviderEventId, ct);
+                    if (existing != null)
+                    {
+                        evt.Id = existing.Id;
+                        await context.DownloadEvents.UpdateAsync(evt, ct);
+                    }
+                    else
+                    {
+                        await context.DownloadEvents.AddAsync(evt, ct);
+                    }
+
                     if (media != null)
                     {
                         await context.MediaItems.AddAsync(media, ct);

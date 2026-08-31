@@ -189,6 +189,7 @@ namespace VideoForensics.Providers.Ring.Services
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
                         var eventIdStr = @event.Id?.ToString() ?? "unknown";
                         var eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                        var previousAttemptCount = 0;
 
                         // Record this event in the Events table independent of download outcome —
                         // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
@@ -211,10 +212,23 @@ namespace VideoForensics.Providers.Ring.Services
                             // or downloaded to a different output path in a prior run). Only skip the
                             // network call when the file is actually present on disk; otherwise fall through
                             // and redownload it, even though the DB says it was already downloaded.
-                            var alreadyDownloadedInDb = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+                            var existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
                             var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
+                            previousAttemptCount = existingRecord?.AttemptCount ?? 0;
 
-                            if (alreadyDownloadedInDb && !existsOnDisk)
+                            // A record with Success=false and no attempt limit reached means a prior run
+                            // hit a permanent failure (e.g. Ring reports the recording no longer exists —
+                            // DeviceUnknownException/HTTP 404) rather than a transient one. Retrying an item
+                            // that will never succeed just burns an API call and reappears in "N more matched
+                            // but not downloaded" forever. Cap retries instead of never retrying at all, in
+                            // case the recording becomes available again later or the failure was transient.
+                            if (existingRecord is { Success: false, AttemptCount: >= MaxRetries } && !existsOnDisk)
+                            {
+                                _activityLog.Enqueue($"[dim]⊘ {EscapeMarkup(Path.GetFileName(fileName))}: skipped, failed permanently after {existingRecord.AttemptCount} attempt(s) ({EscapeMarkup(existingRecord.ErrorMessage ?? "unknown error")})[/]");
+                                return;
+                            }
+
+                            if (existingRecord != null && !existsOnDisk)
                             {
                                 _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, fileName);
                             }
@@ -437,7 +451,7 @@ namespace VideoForensics.Providers.Ring.Services
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
-                            _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)}: {EscapeMarkup(ex.GetType().Name)}");
+                            _activityLog.Enqueue($"[red]✗ {EscapeMarkup(Path.GetFileName(fileName))}: {EscapeMarkup(HumanizeExceptionTypeName(ex.GetType().Name))}[/]");
                             if (IsRateLimitError(ex))
                             {
                                 _logger.LogInformation("Rate limit detected. Stopping remaining downloads for this device.");
@@ -447,6 +461,37 @@ namespace VideoForensics.Providers.Ring.Services
                             else
                             {
                                 Interlocked.Increment(ref otherItemFailures);
+
+                                // Record the failed attempt so a subsequent run/"Continue downloading"
+                                // can tell this item was already tried (see the MaxRetries skip check
+                                // above) instead of hitting the Ring API again for something that will
+                                // never succeed - e.g. DeviceUnknownException (HTTP 404), which means
+                                // Ring itself no longer has this recording.
+                                try
+                                {
+                                    var failedEvent = new DownloadEvent
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        DeviceId = deviceGuid,
+                                        ProviderEventId = eventIdStr,
+                                        EventType = @event.Kind,
+                                        Answered = @event.Answered,
+                                        Favorite = @event.Favorite,
+                                        EventOccurredAtUtc = eventOccurredAtUtc,
+                                        RecordingStatus = @event.Recording?.Status,
+                                        DownloadStartedUtc = DateTime.UtcNow,
+                                        DownloadCompletedUtc = DateTime.UtcNow,
+                                        Success = false,
+                                        AttemptCount = previousAttemptCount + 1,
+                                        ErrorMessage = HumanizeExceptionTypeName(ex.GetType().Name) + ": " + ex.Message,
+                                        AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
+                                    };
+                                    await _dataClient.RecordDownloadEventAsync(failedEvent, media: null, CancellationToken.None);
+                                }
+                                catch (Exception recordEx)
+                                {
+                                    _logger.LogWarning(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
+                                }
                             }
                         }
                         finally
@@ -831,6 +876,25 @@ namespace VideoForensics.Providers.Ring.Services
                 return string.Empty;
 
             return text.Replace("[", "[[").Replace("]", "]]");
+        }
+
+        /// <summary>Turns a PascalCase exception type name (e.g. "DeviceUnknownException") into a
+        /// readable, space-separated form ("Device Unknown Exception") for display in the activity log.</summary>
+        private static string HumanizeExceptionTypeName(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return typeName;
+
+            var sb = new System.Text.StringBuilder(typeName.Length + 8);
+            for (var i = 0; i < typeName.Length; i++)
+            {
+                if (i > 0 && char.IsUpper(typeName[i]) && !char.IsUpper(typeName[i - 1]))
+                {
+                    sb.Append(' ');
+                }
+                sb.Append(typeName[i]);
+            }
+            return sb.ToString();
         }
 
         private static string BuildNamespacedOutputPath(string outputPath, string providerName, string accountDisplayName)

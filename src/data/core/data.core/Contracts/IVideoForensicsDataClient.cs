@@ -12,6 +12,9 @@ namespace VideoForensics.Data.Core.Contracts
         /// <summary>Checks if a media item was already downloaded for a given device and provider event ID.</summary>
         Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
+        /// <summary>Gets the download event record (if any) for a device/provider event ID, including failed attempts.</summary>
+        Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct);
+
         /// <summary>
         /// Records a download event and associated media item(s) atomically via IUnitOfWork,
         /// along with an action log entry.

@@ -742,6 +742,9 @@ namespace VideoForensics.Client.Core
         /// no reasons were collected - e.g. a provider that hasn't been updated to populate
         /// DownloadResult.SkipReason.
         /// </summary>
+        private static readonly System.Text.RegularExpressions.Regex ItemFailureCountPattern =
+            new(@"^(\d+) items? failed to download$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
         private static string? BuildRemainingReason(List<string> skipReasons)
         {
             if (skipReasons.Count == 0)
@@ -749,13 +752,37 @@ namespace VideoForensics.Client.Core
                 return null;
             }
 
-            var distinct = skipReasons.Distinct().ToList();
-            if (distinct.Count == 1)
+            // Each device reports its own "N item(s) failed to download" count, which .Distinct()
+            // treats as unrelated reasons when the counts differ (e.g. "9 items failed to download"
+            // vs "1 item failed to download" render as two separate "causes" instead of one combined
+            // total) - sum those into a single reason before deduplicating what's left.
+            var itemFailureTotal = 0;
+            var otherReasons = new List<string>();
+            foreach (var reason in skipReasons)
             {
-                return char.ToUpperInvariant(distinct[0][0]) + distinct[0].Substring(1);
+                var match = ItemFailureCountPattern.Match(reason);
+                if (match.Success)
+                {
+                    itemFailureTotal += int.Parse(match.Groups[1].Value);
+                }
+                else
+                {
+                    otherReasons.Add(reason);
+                }
             }
 
-            return "Multiple causes: " + string.Join(", ", distinct);
+            var reasons = otherReasons.Distinct().ToList();
+            if (itemFailureTotal > 0)
+            {
+                reasons.Add(itemFailureTotal == 1 ? "1 item failed to download" : $"{itemFailureTotal} items failed to download");
+            }
+
+            if (reasons.Count == 1)
+            {
+                return char.ToUpperInvariant(reasons[0][0]) + reasons[0].Substring(1);
+            }
+
+            return "Multiple causes: " + string.Join(", ", reasons);
         }
 
         public (int Index, int Total, string Name) GetCurrentDevice()
