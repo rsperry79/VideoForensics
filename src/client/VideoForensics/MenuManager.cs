@@ -164,36 +164,23 @@ namespace VideoForensics
         {
             while (true)
             {
-                Console.Clear();
-                Console.WriteLine("═══════════════════════════════════════════════════════════");
-                Console.WriteLine("REVIEW & EXPORT EVIDENCE");
-                Console.WriteLine("═══════════════════════════════════════════════════════════");
-                Console.WriteLine();
-                Console.WriteLine("1. Review Evidence");
-                Console.WriteLine("2. Export Evidence");
-                Console.WriteLine("3. Back to Main Menu");
-                Console.WriteLine();
-                Console.Write("Select an option: ");
-
-                var choice = Console.ReadLine();
+                AnsiConsole.MarkupLine("[bold cyan]Review & Export Evidence[/]");
+                var choice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select an option")
+                        .HighlightStyle("green")
+                        .AddChoices("Review Evidence", "Export Evidence", "Back to Main Menu"));
 
                 switch (choice)
                 {
-                    case "1":
-                    case "review":
+                    case "Review Evidence":
                         await _reportRenderer.ShowEvidenceAsync(CancellationToken.None);
                         break;
-                    case "2":
-                    case "export":
+                    case "Export Evidence":
                         await ShowExportEvidenceMenu(CancellationToken.None);
                         break;
-                    case "3":
-                    case "back":
+                    case "Back to Main Menu":
                         return;
-                    default:
-                        Console.WriteLine("Invalid selection.");
-                        Console.ReadKey();
-                        break;
                 }
             }
         }
@@ -234,14 +221,8 @@ namespace VideoForensics
             Console.Write("Enter passphrase for AES-256 encryption (optional): ");
             var passphrase = Console.ReadLine();
 
-            Console.Write("Enter device ID to export (or press Enter for all): ");
-            var deviceIdStr = Console.ReadLine();
-            Guid? deviceId = null;
-
-            if (!string.IsNullOrEmpty(deviceIdStr) && Guid.TryParse(deviceIdStr, out var parsedId))
-            {
-                deviceId = parsedId;
-            }
+            var exportDevices = await _deviceRepository.ListAsync(ct);
+            Guid? deviceId = PromptSelectDeviceOrAll("Select device to export (or All Devices)", exportDevices);
 
             Console.Write("Enter start date (yyyy-MM-dd): ");
             if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
@@ -335,30 +316,22 @@ namespace VideoForensics
             Console.WriteLine("VALIDATE EVIDENCE");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-            Console.WriteLine("\nOptions:");
-            Console.WriteLine("1. Check File Integrity");
-            Console.WriteLine("2. Reconcile With Provider");
-            Console.WriteLine("3. Back to Analysis Menu");
-
-            var choice = Console.ReadLine();
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select an option")
+                    .HighlightStyle("green")
+                    .AddChoices("Check File Integrity", "Reconcile With Provider", "Back to Analysis Menu"));
 
             switch (choice)
             {
-                case "1":
-                case "integrity":
+                case "Check File Integrity":
                     await CheckFileIntegrityAsync(ct);
                     break;
-                case "2":
-                case "reconcile":
+                case "Reconcile With Provider":
                     await ReconcileWithProviderAsync(ct);
                     break;
-                case "3":
-                case "back":
+                case "Back to Analysis Menu":
                     return;
-                default:
-                    Console.WriteLine("Invalid selection.");
-                    Console.ReadKey();
-                    break;
             }
         }
 
@@ -368,14 +341,8 @@ namespace VideoForensics
             Console.WriteLine("Check File Integrity");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            Console.Write("Enter device ID (or press Enter for all): ");
-            var deviceIdStr = Console.ReadLine();
-            Guid? deviceId = null;
-
-            if (!string.IsNullOrEmpty(deviceIdStr) && Guid.TryParse(deviceIdStr, out var parsedId))
-            {
-                deviceId = parsedId;
-            }
+            var integrityDevices = await _deviceRepository.ListAsync(ct);
+            Guid? deviceId = PromptSelectDeviceOrAll("Select device to verify (or All Devices)", integrityDevices);
 
             Console.WriteLine("Running integrity verification...");
             var results = await _evidenceValidationService.VerifyLocalIntegrityAsync(deviceId, ct);
@@ -399,22 +366,20 @@ namespace VideoForensics
             Console.WriteLine("Reconcile With Provider");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            Console.Write("Enter device ID: ");
-            if (!Guid.TryParse(Console.ReadLine(), out var deviceId))
+            var reconcileDevices = await _deviceRepository.ListAsync(ct);
+            if (!reconcileDevices.Any())
             {
-                Console.WriteLine("Invalid device ID.");
+                Console.WriteLine("No devices found.");
                 Console.ReadKey();
                 return;
             }
 
-            // Look up the device to get the provider device ID
-            var device = await _deviceRepository.GetAsync(deviceId, ct);
+            var device = PromptSelect("Select device", reconcileDevices, d => d.Name);
             if (device == null)
             {
-                Console.WriteLine("Device not found.");
-                Console.ReadKey();
                 return;
             }
+            var deviceId = device.Id;
 
             Console.Write("Enter start date (yyyy-MM-dd): ");
             if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
@@ -546,20 +511,11 @@ namespace VideoForensics
                 return;
             }
 
-            Console.WriteLine("\nSelect device:");
-            for (int i = 0; i < devices.Count; i++)
+            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            if (selectedDevice == null)
             {
-                Console.WriteLine($"{i + 1}. {devices[i].Name}");
-            }
-
-            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
-            {
-                Console.WriteLine("Invalid selection.");
-                Console.ReadKey();
                 return;
             }
-
-            var selectedDevice = devices[deviceChoice - 1];
 
             Console.Write("\nEnter start date (yyyy-MM-dd): ");
             if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
@@ -697,20 +653,12 @@ namespace VideoForensics
                 return;
             }
 
-            Console.WriteLine("\nSelect location:");
-            for (int i = 0; i < locations.Count; i++)
+            var selectedLocation = PromptSelect("Select location", locations, l => l.Name);
+            if (selectedLocation == null)
             {
-                Console.WriteLine($"{i + 1}. {locations[i].Name}");
-            }
-
-            Console.Write("\nEnter location number: ");
-            if (!int.TryParse(Console.ReadLine(), out int locationChoice) || locationChoice < 1 || locationChoice > locations.Count)
-            {
-                Console.WriteLine("Invalid selection.");
                 return;
             }
 
-            var selectedLocation = locations[locationChoice - 1];
             var devices = await _deviceService.GetDevicesAsync(selectedLocation.Id, ct);
             AnsiConsole.MarkupLine("[green]✓ {0} device(s) retrieved for {1}[/]", devices.Count, EscapeMarkup(selectedLocation.Name));
             await WriteQueryResultAsync($"devices_{selectedLocation.Name}", devices, ct);
@@ -731,20 +679,11 @@ namespace VideoForensics
                 return;
             }
 
-            Console.WriteLine("\nSelect device:");
-            for (int i = 0; i < devices.Count; i++)
+            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            if (selectedDevice == null)
             {
-                Console.WriteLine($"{i + 1}. {devices[i].Name}");
-            }
-
-            Console.Write("\nEnter device number: ");
-            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
-            {
-                Console.WriteLine("Invalid selection.");
                 return;
             }
-
-            var selectedDevice = devices[deviceChoice - 1];
 
             var defaultStartDate = DateTime.Now.AddDays(-1);
             var defaultEndDate = DateTime.Now;
@@ -781,20 +720,12 @@ namespace VideoForensics
                 return;
             }
 
-            Console.WriteLine("\nSelect device:");
-            for (int i = 0; i < devices.Count; i++)
+            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            if (selectedDevice == null)
             {
-                Console.WriteLine($"{i + 1}. {devices[i].Name}");
-            }
-
-            Console.Write("\nEnter device number: ");
-            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
-            {
-                Console.WriteLine("Invalid selection.");
                 return;
             }
 
-            var selectedDevice = devices[deviceChoice - 1];
             var config = await _eventAndConfigService.GetDeviceConfigAsync(selectedDevice.ProviderDeviceId, ct);
             if (config == null)
             {
@@ -905,20 +836,12 @@ namespace VideoForensics
                 return;
             }
 
-            Console.WriteLine("\nSelect device:");
-            for (int i = 0; i < devices.Count; i++)
+            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            if (selectedDevice == null)
             {
-                Console.WriteLine($"{i + 1}. {devices[i].Name}");
-            }
-
-            if (!int.TryParse(Console.ReadLine(), out int deviceChoice) || deviceChoice < 1 || deviceChoice > devices.Count)
-            {
-                Console.WriteLine("Invalid selection.");
-                Console.ReadKey();
                 return;
             }
 
-            var selectedDevice = devices[deviceChoice - 1];
             var latestConfig = await _deviceConfigRepository.GetLatestAsync(selectedDevice.Id, ct);
 
             Console.WriteLine($"\nLatest Configuration for {selectedDevice.Name}:");
@@ -2046,6 +1969,55 @@ namespace VideoForensics
         }
 
         /// <summary>
+        /// Presents items as an arrow-selectable list (numbered for readability/uniqueness) rather
+        /// than prompting for a typed index. Returns null if the list is empty or the user picks
+        /// the "Cancel" entry.
+        /// </summary>
+        private static T? PromptSelect<T>(string title, IReadOnlyList<T> items, Func<T, string> labelSelector, bool allowCancel = true) where T : class
+        {
+            if (items.Count == 0)
+                return null;
+
+            var choices = new List<string>(items.Count + 1);
+            for (var i = 0; i < items.Count; i++)
+                choices.Add($"{i + 1}. {EscapeMarkup(labelSelector(items[i]))}");
+            if (allowCancel)
+                choices.Add("Cancel");
+
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(title)
+                    .HighlightStyle("green")
+                    .PageSize(15)
+                    .AddChoices(choices));
+
+            if (allowCancel && choice == "Cancel")
+                return null;
+
+            return items[choices.IndexOf(choice)];
+        }
+
+        /// <summary>Arrow-selectable device picker with a leading "All Devices" entry; returns null for that entry.</summary>
+        private static Guid? PromptSelectDeviceOrAll(string title, IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices)
+        {
+            if (devices.Count == 0)
+                return null;
+
+            var choices = new List<string> { "All Devices" };
+            choices.AddRange(devices.Select(d => EscapeMarkup(d.Name)));
+
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(title)
+                    .HighlightStyle("green")
+                    .PageSize(15)
+                    .AddChoices(choices));
+
+            var index = choices.IndexOf(choice);
+            return index == 0 ? null : devices[index - 1].Id;
+        }
+
+        /// <summary>
         /// Discovers devices across all locations, printing progress/error/empty-result messages
         /// as it goes. Returns null (with a message already shown) if discovery failed or found
         /// nothing; callers should just check for null and return.
@@ -2242,43 +2214,35 @@ namespace VideoForensics
                     }
                 }
 
-                Console.WriteLine("\nOptions:");
-                Console.WriteLine("1. Select Active Account");
-                Console.WriteLine("2. Add Account");
-                Console.WriteLine("3. Remove Account");
-                Console.WriteLine("4. Back to Main Menu");
-
-                var choice = Console.ReadLine();
+                var choice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select an option")
+                        .HighlightStyle("green")
+                        .AddChoices("Select Active Account", "Add Account", "Remove Account", "Back to Main Menu"));
 
                 switch (choice)
                 {
-                    case "1":
-                    case "select":
+                    case "Select Active Account":
                         if (accounts.Count > 0)
                             await SelectActiveAccountAsync(accounts, ct);
                         else
                             Console.WriteLine("No accounts available to select.");
+                        Console.WriteLine("\nPress any key to continue...");
                         Console.ReadKey();
                         break;
-                    case "2":
-                    case "add":
+                    case "Add Account":
                         await AddNewAccountAsync(ct);
                         break;
-                    case "3":
-                    case "remove":
+                    case "Remove Account":
                         if (accounts.Count > 0)
                             await RemoveAccountAsync(accounts, ct);
                         else
                             Console.WriteLine("No accounts available to remove.");
+                        Console.WriteLine("\nPress any key to continue...");
                         Console.ReadKey();
                         break;
-                    case "4":
-                    case "back":
+                    case "Back to Main Menu":
                         return;
-                    default:
-                        Console.WriteLine("Invalid selection.");
-                        Console.ReadKey();
-                        break;
                 }
             }
         }
@@ -2289,17 +2253,16 @@ namespace VideoForensics
             Console.WriteLine("Select Active Account");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            for (int i = 0; i < accounts.Count; i++)
+            var labels = new Dictionary<ProviderAccount, string>();
+            foreach (var account in accounts)
             {
-                var label = await FormatAccountLabelAsync(accounts[i], ct);
-                Console.WriteLine($"{i + 1}. {label}");
+                labels[account] = await FormatAccountLabelAsync(account, ct);
             }
 
-            Console.Write("Enter account number (or 0 to cancel): ");
-            if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
+            var selected = PromptSelect("Select active account", accounts, a => labels[a]);
+            if (selected != null)
             {
-                var selected = accounts[selection - 1];
-                var selectedLabel = await FormatAccountLabelAsync(selected, ct);
+                var selectedLabel = labels[selected];
                 _forensicsConfig.ActiveProviderAccountId = selected.Id;
                 await SaveConfiguration(ct);
 
@@ -2324,17 +2287,16 @@ namespace VideoForensics
             Console.WriteLine("Remove Account");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            for (int i = 0; i < accounts.Count; i++)
+            var removeLabels = new Dictionary<ProviderAccount, string>();
+            foreach (var account in accounts)
             {
-                var label = await FormatAccountLabelAsync(accounts[i], ct);
-                Console.WriteLine($"{i + 1}. {label}");
+                removeLabels[account] = await FormatAccountLabelAsync(account, ct);
             }
 
-            Console.Write("Enter account number to remove (or 0 to cancel): ");
-            if (int.TryParse(Console.ReadLine(), out var selection) && selection > 0 && selection <= accounts.Count)
+            var selected = PromptSelect("Select account to remove", accounts, a => removeLabels[a]);
+            if (selected != null)
             {
-                var selected = accounts[selection - 1];
-                var selectedLabel = await FormatAccountLabelAsync(selected, ct);
+                var selectedLabel = removeLabels[selected];
                 if (AnsiConsole.Confirm($"Remove {selectedLabel} account?", false))
                 {
                     await _providerAccountRepository.DeleteAsync(selected.Id, ct);
@@ -2358,15 +2320,11 @@ namespace VideoForensics
             Console.WriteLine("Add New Account");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            Console.Write("Enter provider name (Ring/Wyze): ");
-            var provider = Console.ReadLine();
-
-            if (string.IsNullOrEmpty(provider))
-            {
-                Console.WriteLine("Provider name required.");
-                Console.ReadKey();
-                return;
-            }
+            AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select provider")
+                    .HighlightStyle("green")
+                    .AddChoices("Ring", "Wyze"));
 
             // Re-use existing 2FA auth flow from AuthenticateWithTwoFactorAsync
             Console.WriteLine("Initiating authentication flow...");
