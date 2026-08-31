@@ -159,7 +159,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
             session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -195,7 +195,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
             session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -231,7 +231,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
             session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -253,9 +253,12 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task GetDevicesAsync_IgnoresChimes()
+        public async Task GetDevicesAsync_IncludesChimes()
         {
-            // Arrange
+            // Arrange - chimes have no video/event history but are still a real device on the
+            // account and belong in discovery results for forensic completeness (see
+            // DbCompletenessChecker, which flags a chime present on the account but absent from
+            // the DB).
             var locationId = "44444444-4444-4444-4444-444444444444";
             var doorbot = new Doorbot { Id = 300, Description = "Front Door", LocationId = Guid.Parse(locationId) };
             var chime = new Chime { Id = 999, Description = "Speaker", LocationId = Guid.Parse(locationId) };
@@ -268,7 +271,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = new List<Chime> { chime }
             };
 
-            var session = new Mock<Session>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
             session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -283,9 +286,9 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result);
-            Assert.Equal("doorbot", result[0].Type);
-            Assert.NotEqual("999", result[0].Id);
+            Assert.Equal(2, result.Count);
+            Assert.Contains(result, d => d.Id == "300" && d.Type == "doorbot");
+            Assert.Contains(result, d => d.Id == "999" && d.Type == "chime");
         }
 
         [Fact]
@@ -309,7 +312,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
             session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -326,7 +329,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(result);
             Assert.Single(result);
             Assert.Equal("fallback-device-id", result[0].Id);
-            Assert.Equal("stickupcam", result[0].Type);
+            Assert.Equal("stickup_cam", result[0].Type);
         }
     }
 }

@@ -174,8 +174,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         }
 
         [Fact]
-        public async Task InitializeAsync_ValidDatabase_LogsIntegrityCheckPassed()
+        public async Task InitializeAsync_ValidDatabase_LogsCompletionSuccessfully()
         {
+            // PRAGMA integrity_check was deliberately removed from the startup path - it scans
+            // the entire database and was a major contributor to the 30-60s startup timeouts this
+            // app used to see (see DatabaseInitializer.InitializeAsync's "Skip integrity check for
+            // performance" comment). This test previously asserted the now-removed "integrity check
+            // passed" log line; it now asserts the log line startup actually produces.
+
             // Arrange
             var dbPath = GetTempDbPath();
             var tempDir = Path.GetDirectoryName(dbPath)!;
@@ -200,8 +206,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
 
                 // Assert
                 Assert.True(
-                    logMessages.Any(m => m.Item1 == LogLevel.Information && m.Item2.Contains("integrity check passed")),
-                    "Expected an Information-level log entry mentioning integrity check passed");
+                    logMessages.Any(m => m.Item1 == LogLevel.Information && m.Item2.Contains("Database initialization completed successfully")),
+                    "Expected an Information-level log entry confirming database initialization completed");
+                Assert.DoesNotContain(logMessages, m => m.Item1 == LogLevel.Error);
 
                 await provider.DisposeAsync();
                 // Give SQLite time to release the file lock

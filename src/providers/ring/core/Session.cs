@@ -390,7 +390,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public async Task<Devices> GetRingDevices(Guid? locationId = null)
+        public virtual async Task<Devices> GetRingDevices(Guid? locationId = null)
         {
             await EnsureSessionValid();
 
