@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using VideoForensics.Providers.Ring.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -9,6 +10,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public int Id { get; set; }
 
         [JsonPropertyName("location_id")]
+        [JsonConverter(typeof(LenientNullableGuidConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? LocationId { get; set; }
 

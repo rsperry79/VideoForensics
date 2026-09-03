@@ -38,6 +38,15 @@ namespace VideoForensics.Providers.Common.Contracts
         ) => Task.FromResult(0);
 
         /// <summary>
+        /// True when a GetMatchedEventCountAsync/DownloadVideosAsync call for this exact range
+        /// would be served entirely from already-fetched history data, with no API request. Lets a
+        /// caller iterating multiple devices skip a rate-limit-safety delay it only needs before a
+        /// call that will actually hit the network. Defaults to false (assume not cached) so a
+        /// provider that hasn't implemented this keeps the conservative delay.
+        /// </summary>
+        bool IsHistoryCached(DateTime startDate, DateTime endDate) => false;
+
+        /// <summary>
         /// Sets how many files may download concurrently within a single device's batch (devices
         /// themselves are still processed sequentially by the caller). Values below 1 are ignored.
         /// </summary>

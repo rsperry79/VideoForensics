@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using System;
 
 using VideoForensics.Providers.Common.Helpers.Json.Converters;
+using VideoForensics.Providers.Ring.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -85,6 +86,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public bool? Stolen { get; set; }
 
         [JsonPropertyName("location_id")]
+        [JsonConverter(typeof(LenientNullableGuidConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? LocationId { get; set; }
 

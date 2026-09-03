@@ -519,15 +519,43 @@ namespace VideoForensics.Providers.Ring
             // Amount of items to retrieve in each request
             const short batchWithItems = 200;
 
+            // Rate-limit safety for accounts with a lot of history to walk (e.g. a stale watermark
+            // spanning months): without a delay here, an old start date can page through dozens of
+            // 200-item batches back-to-back and trip Ring's rate limit before this single call even
+            // returns, regardless of any delay callers add between devices.
+            const int InterPageDelayMs = 500;
+            const int MaxPageRetries = 3;
+            const int InitialThrottleBackoffMs = 2000;
+
             // Create a list to hold all the results
             var allHistory = new List<DoorbotHistoryEvent>();
             var doorbotHistory = new List<DoorbotHistoryEvent>();
             DateTime? lastItemDateTime = null;
+            var isFirstPage = true;
 
             do
             {
-                // Retrieve a batch with historical items
-                var response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={batchWithItems}{(doorbotHistory.Count == 0 ? "" : "&older_than=" + doorbotHistory.Last().Id)}"), AuthenticationToken, _hardwareId);
+                if (!isFirstPage)
+                {
+                    await Task.Delay(InterPageDelayMs);
+                }
+                isFirstPage = false;
+
+                // Retrieve a batch with historical items, retrying with backoff if Ring throttles us
+                // mid-pagination rather than aborting the whole history fetch.
+                string response = null;
+                for (var attempt = 1; attempt <= MaxPageRetries; attempt++)
+                {
+                    try
+                    {
+                        response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={batchWithItems}{(doorbotHistory.Count == 0 ? "" : "&older_than=" + doorbotHistory.Last().Id)}"), AuthenticationToken, _hardwareId);
+                        break;
+                    }
+                    catch (Exceptions.ThrottledException) when (attempt < MaxPageRetries)
+                    {
+                        await Task.Delay(InitialThrottleBackoffMs * attempt);
+                    }
+                }
 
                 // Parse the result
                 doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
