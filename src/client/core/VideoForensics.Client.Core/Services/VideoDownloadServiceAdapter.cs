@@ -236,6 +236,14 @@ namespace VideoForensics.Client.Core
             var effectiveStartDates = new Dictionary<string, DateTime>();
             var grandTotalMatched = 0;
 
+            // Resolve every device's watermark first - these are local DB lookups, not Ring API
+            // calls - so the count-fetch pass below can process devices widest-range-first (earliest
+            // effective start date first). GetHistoryEventsAsync's cache only avoids a re-fetch when
+            // a later request's range fits inside what's already cached, so starting with the device
+            // that needs the most history means its single fetch covers every other device's
+            // narrower range too - one real history fetch for the whole batch instead of up to one
+            // per distinct watermark.
+            var devicesNeedingCount = new List<(VideoForensics.Providers.Common.Contracts.Device Device, DateTime EffectiveStart)>();
             foreach (var device in uniqueDevices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -258,11 +266,32 @@ namespace VideoForensics.Client.Core
                     _logger.LogWarning(ex, "Failed to resolve watermark for {DeviceName} during pre-scan; using requested date range", device.Name);
                 }
                 effectiveStartDates[device.Id] = deviceEffectiveStart;
+                devicesNeedingCount.Add((device, deviceEffectiveStart));
+            }
+
+            var hasMadeRealHistoryCall = false;
+            foreach (var (device, deviceEffectiveStart) in devicesNeedingCount.OrderBy(d => d.EffectiveStart))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Processing widest-range-first (see the OrderBy above) means most devices after the
+                // first are served from the already-cached superset with no API call at all - the
+                // rate-limit-safety delay below only needs to apply before a call that will actually
+                // hit the network, not before every device regardless.
+                var willHitNetwork = !_downloadService.IsHistoryCached(deviceEffectiveStart, endDate);
+                if (willHitNetwork && hasMadeRealHistoryCall)
+                {
+                    await Task.Delay(InterDeviceDelayMs, cancellationToken);
+                }
 
                 var deviceCount = 0;
                 try
                 {
                     deviceCount = await _downloadService.GetMatchedEventCountAsync(device.Id, deviceEffectiveStart, endDate, cancellationToken);
+                    if (willHitNetwork)
+                    {
+                        hasMadeRealHistoryCall = true;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -461,6 +490,19 @@ namespace VideoForensics.Client.Core
                 {
                     if (deviceErrors.Count > 0)
                     {
+                        // A hard-ban cooldown (see HttpUtility) carries the exact local time to retry
+                        // at and persists across app restarts - surface that precise message verbatim
+                        // instead of the generic "wait 5+ minutes" guess below, which is both vague
+                        // and can be badly wrong (the real cooldown can run up to an hour).
+                        var hardBanError = deviceErrors.FirstOrDefault(e => e.Contains("extended period", StringComparison.OrdinalIgnoreCase));
+                        if (hardBanError != null)
+                        {
+                            var colonIndex = hardBanError.IndexOf(':');
+                            _lastError = colonIndex >= 0 ? hardBanError[(colonIndex + 1)..].Trim() : hardBanError;
+                            _logger.LogError(_lastError);
+                            return false;
+                        }
+
                         // Check if all errors are rate limit errors
                         var rateLimitErrors = deviceErrors
                             .Where(e => e.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||

@@ -117,6 +117,15 @@ namespace VideoForensics.Providers.Ring.Services
             return events.Count(e => e.Doorbot?.Id.ToString() == deviceId);
         }
 
+        public bool IsHistoryCached(DateTime startDate, DateTime endDate)
+        {
+            // No lock: this is a best-effort hint for a caller deciding whether to skip an inter-
+            // device delay, not a correctness-critical read - a stale answer just means one call
+            // waits (or doesn't) a few seconds longer/shorter than strictly necessary.
+            return _cachedHistoryEvents != null && _cachedHistoryStart.HasValue && _cachedHistoryEnd.HasValue &&
+                   startDate >= _cachedHistoryStart.Value && endDate <= _cachedHistoryEnd.Value;
+        }
+
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
             DateTime endDate, CancellationToken cancellationToken = default)
         {
@@ -1085,7 +1094,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 var devices = await GetDevicesForHealthAsync(session, ct);
-                var health = FindDeviceHealth(devices, providerDeviceId);
+                var health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
                     _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
@@ -1114,32 +1123,6 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        // internal (not private) so RingMediaDownloadServiceTests can verify the matching logic
-        // directly - Session makes real HTTP calls and isn't mockable, so this is the only part of
-        // CaptureDeviceHealthSnapshotAsync that's unit-testable without a live Ring account.
-        internal static Entities.DeviceHealth? FindDeviceHealth(Entities.Devices? devices, string providerDeviceId)
-        {
-            if (devices == null)
-            {
-                return null;
-            }
-
-            var doorbot = devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
-            if (doorbot?.Health != null)
-            {
-                return doorbot.Health;
-            }
-
-            var stickupCam = devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId);
-            if (stickupCam?.Health != null)
-            {
-                return stickupCam.Health;
-            }
-
-            var authorizedDoorbot = devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
-            return authorizedDoorbot?.Health;
-        }
-
         private async Task<Entities.Devices?> GetDevicesForHealthAsync(Session session, CancellationToken ct)
         {
             if (_cachedHealthDevices != null && DateTime.UtcNow - _cachedHealthDevicesAt < HealthCacheTtl)
@@ -1166,24 +1149,61 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        // GetDoorbotsHistory already fetches every device's events in one paginated sweep (no
+        // doorbotId means "all doorbots"). The remaining inefficiency was that each device carries
+        // its own watermark-derived start date, and the old exact-match cache treated any different
+        // start date as a total miss - so 11 devices with 11 different watermarks meant 11 separate
+        // full paginated walks of account history, each one a fresh chance to trip Ring's rate limit.
+        //
+        // A request whose [startDate, endDate] falls entirely inside what's already cached is now
+        // served by filtering the cached events in memory - no network call at all. A request that
+        // needs data older than what's cached (a device with an earlier watermark) fetches the union
+        // of the two ranges once and widens the cache, rather than narrowing back down - so as long
+        // as devices are processed widest-range-first (see VideoDownloadServiceAdapter), the whole
+        // batch costs exactly one real history fetch.
         private async Task<List<Entities.DoorbotHistoryEvent>> GetHistoryEventsAsync(Session session, DateTime startDate, DateTime endDate)
         {
             await _historyCacheLock.WaitAsync();
             try
             {
-                if (_cachedHistoryEvents != null && _cachedHistoryStart == startDate && _cachedHistoryEnd == endDate)
+                if (_cachedHistoryEvents != null && _cachedHistoryStart.HasValue && _cachedHistoryEnd.HasValue &&
+                    startDate >= _cachedHistoryStart.Value && endDate <= _cachedHistoryEnd.Value)
                 {
-                    _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
-                        startDate, endDate, _cachedHistoryEvents.Count);
+                    if (startDate == _cachedHistoryStart.Value && endDate == _cachedHistoryEnd.Value)
+                    {
+                        _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
+                            startDate, endDate, _cachedHistoryEvents.Count);
+                        return _cachedHistoryEvents;
+                    }
+
+                    var filtered = _cachedHistoryEvents
+                        .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
+                        .ToList();
+                    _logger.LogInformation("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
+                        startDate, endDate, filtered.Count, _cachedHistoryStart, _cachedHistoryEnd);
+                    return filtered;
+                }
+
+                var fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
+                var fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
+
+                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+                var events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
+                _cachedHistoryEvents = events ?? new List<Entities.DoorbotHistoryEvent>();
+                _cachedHistoryStart = fetchStart;
+                _cachedHistoryEnd = fetchEnd;
+
+                // The fetch above may have covered a wider union range than this specific caller
+                // asked for (to satisfy the cache widening above) - callers don't re-filter by date
+                // themselves, so return only the slice matching what was actually requested.
+                if (fetchStart == startDate && fetchEnd == endDate)
+                {
                     return _cachedHistoryEvents;
                 }
 
-                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", startDate, endDate);
-                var events = await session.GetDoorbotsHistory(startDate, endDate);
-                _cachedHistoryEvents = events ?? new List<Entities.DoorbotHistoryEvent>();
-                _cachedHistoryStart = startDate;
-                _cachedHistoryEnd = endDate;
-                return _cachedHistoryEvents;
+                return _cachedHistoryEvents
+                    .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
+                    .ToList();
             }
             finally
             {

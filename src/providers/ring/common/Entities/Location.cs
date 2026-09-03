@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using VideoForensics.Providers.Ring.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -16,6 +17,7 @@ namespace VideoForensics.Providers.Ring.Entities
     public class Location
     {
         [JsonPropertyName("location_id")]
+        [JsonConverter(typeof(LenientNullableGuidConverter))]
         public Guid? Id { get; set; }
 
         [JsonPropertyName("name")]

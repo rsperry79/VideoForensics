@@ -2032,16 +2032,31 @@ namespace VideoForensics
                 var locations = await _deviceService.GetLocationsAsync();
                 if (locations != null && locations.Count > 0)
                 {
+                    // Ring's legacy ring_devices endpoint doesn't reliably filter by the location_id
+                    // query param, so a per-location GetDevicesAsync call can come back with every
+                    // device on the account rather than just that location's. Label each device with
+                    // the location it actually reports on its own LocationId instead of blindly
+                    // trusting which iteration of this loop returned it — otherwise every device
+                    // collapses onto whichever location happened to be queried first. Deliberately no
+                    // fallback to the queried location's name here: that's exactly the mis-attribution
+                    // this is fixing. A device whose LocationId isn't in this map (GetLocationsAsync
+                    // already fills known gaps with synthetic entries) shows honestly as unresolved
+                    // rather than under a real but wrong location.
+                    var locationNamesById = locations.ToDictionary(l => l.Id, l => l.Name);
+
                     foreach (var location in locations)
                     {
-                        var locationDevices = await _deviceService.GetDevicesAsync(location.Id.ToString());
+                        var locationDevices = await _deviceService.GetDevicesAsync(location.Id);
                         if (locationDevices != null)
                         {
                             foreach (var device in locationDevices)
                             {
                                 if (!deviceDict.ContainsKey(device.Id))
                                 {
-                                    deviceDict[device.Id] = (device.Id, device.Name, location.Name);
+                                    var resolvedLocationName = locationNamesById.TryGetValue(device.LocationId, out var name)
+                                        ? name
+                                        : "Unknown Location";
+                                    deviceDict[device.Id] = (device.Id, device.Name, resolvedLocationName);
                                 }
                             }
                         }

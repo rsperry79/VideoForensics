@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -33,6 +34,91 @@ namespace VideoForensics.Providers.Ring
         /// HttpClientHandler to use for the HttpClient requests
         /// </summary>
         private readonly HttpClientHandler _httpClientHandler;
+
+        // Shared across every HttpUtility instance/Session in the process: once Ring returns a 429,
+        // every caller (across all devices being pre-scanned/downloaded) needs to stop hitting the
+        // API until the ban clears, not just the one call that got throttled. Without this, each
+        // device's own independent per-call retry loop kept probing every few seconds, which - based
+        // on observed behavior - looks like it resets/extends Ring's real punishment window rather
+        // than waiting it out, so the account stayed throttled indefinitely across an entire batch.
+        private static readonly object _throttleLock = new();
+        private static DateTime? _throttledUntilUtc;
+        private static int _consecutiveThrottles;
+        private static readonly TimeSpan BaseThrottleCooldown = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan MaxThrottleCooldown = TimeSpan.FromMinutes(5);
+
+        // If Ring is still 429ing after we've already waited out several escalating cooldowns, the
+        // account is under a real ban well beyond what a short client-side backoff can wait through -
+        // observed in practice as 429s recurring every 5 minutes for 30+ minutes straight. Continuing
+        // to probe every few minutes at that point doesn't recover faster and may be exactly what's
+        // resetting Ring's own punishment timer. Past this many consecutive throttles, stop sending
+        // requests entirely for a long fixed cooldown instead of retrying - every call fails
+        // immediately (no network round-trip at all) until it elapses.
+        private const int HardBanThreshold = 3;
+        private static readonly TimeSpan HardBanCooldown = TimeSpan.FromHours(1);
+        private static DateTime? _hardBanUntilUtc;
+
+        // The hard-ban timestamp is persisted to disk (not just kept in memory) because the actual
+        // incident that motivated this was the user repeatedly closing and relaunching the app while
+        // throttled: a fresh process has no memory of an in-progress ban, so it started probing Ring
+        // again on every relaunch - almost certainly what kept the account locked out for 30+ minutes
+        // straight instead of the ban ever getting a real, uninterrupted chance to expire.
+        private static bool _hardBanStateLoaded;
+        private static string HardBanStateFilePath => Path.Combine(new PlatformDirectoryService().GetApplicationDataDirectory(), "ring_hard_ban.txt");
+
+        private static void EnsureHardBanStateLoaded()
+        {
+            if (_hardBanStateLoaded)
+            {
+                return;
+            }
+
+            lock (_throttleLock)
+            {
+                if (_hardBanStateLoaded)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (File.Exists(HardBanStateFilePath) &&
+                        long.TryParse(File.ReadAllText(HardBanStateFilePath).Trim(), out var ticks))
+                    {
+                        var persisted = new DateTime(ticks, DateTimeKind.Utc);
+                        if (persisted > DateTime.UtcNow)
+                        {
+                            _hardBanUntilUtc = persisted;
+                        }
+                    }
+                }
+                catch { }
+
+                _hardBanStateLoaded = true;
+            }
+        }
+
+        private static void PersistHardBanState()
+        {
+            try
+            {
+                var folder = Path.GetDirectoryName(HardBanStateFilePath);
+                if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+                {
+                    Directory.CreateDirectory(folder);
+                }
+
+                if (_hardBanUntilUtc.HasValue)
+                {
+                    File.WriteAllText(HardBanStateFilePath, _hardBanUntilUtc.Value.Ticks.ToString());
+                }
+                else if (File.Exists(HardBanStateFilePath))
+                {
+                    File.Delete(HardBanStateFilePath);
+                }
+            }
+            catch { }
+        }
 
         #endregion
 
@@ -85,6 +171,9 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         public async Task<string> GetContents(Uri url, string bearerToken = null, string hardwareId = null, CancellationToken cancellationToken = default)
         {
+            ThrowIfHardBanned();
+            await WaitOutActiveThrottleAsync(cancellationToken);
+
             // Construct the request
             var request = new HttpRequestMessage
             {
@@ -116,6 +205,7 @@ namespace VideoForensics.Providers.Ring
             switch (response.StatusCode)
             {
                 case HttpStatusCode.TooManyRequests:
+                    RecordThrottled();
                     throw new Exceptions.ThrottledException();
 
                 case HttpStatusCode.NotFound:
@@ -131,7 +221,111 @@ namespace VideoForensics.Providers.Ring
                 throw new Exceptions.UnexpectedOutcomeException(response.StatusCode);
             }
 
+            ClearThrottle();
             return responseFromServer;
+        }
+
+        /// <summary>
+        /// Fails immediately, with no network round-trip, while a hard ban cooldown is active - see
+        /// HardBanThreshold. Checked before even waiting out the regular per-throttle cooldown below.
+        /// </summary>
+        private static void ThrowIfHardBanned()
+        {
+            EnsureHardBanStateLoaded();
+
+            DateTime? hardBanUntil;
+            lock (_throttleLock)
+            {
+                hardBanUntil = _hardBanUntilUtc;
+            }
+
+            if (hardBanUntil.HasValue)
+            {
+                if (DateTime.UtcNow < hardBanUntil.Value)
+                {
+                    var remaining = hardBanUntil.Value - DateTime.UtcNow;
+                    throw new Exceptions.ThrottledException(
+                        $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.");
+                }
+
+                lock (_throttleLock)
+                {
+                    _hardBanUntilUtc = null;
+                    _consecutiveThrottles = 0;
+                }
+                PersistHardBanState();
+            }
+        }
+
+        /// <summary>
+        /// Blocks until any in-progress process-wide throttle cooldown (set by a prior 429 from any
+        /// caller) has elapsed, so a device further along in a batch doesn't immediately re-trigger
+        /// the same ban a different device just tripped seconds ago.
+        /// </summary>
+        private static async Task WaitOutActiveThrottleAsync(CancellationToken cancellationToken)
+        {
+            TimeSpan remaining;
+            lock (_throttleLock)
+            {
+                remaining = _throttledUntilUtc.HasValue ? _throttledUntilUtc.Value - DateTime.UtcNow : TimeSpan.Zero;
+            }
+
+            if (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Extends the shared throttle cooldown with exponential backoff (30s, 60s, 120s, ... capped
+        /// at 5 minutes) so repeated 429s across a batch back off progressively instead of every
+        /// caller independently hammering the API every few seconds. Once HardBanThreshold
+        /// consecutive throttles have happened - meaning even waiting out that escalating cooldown
+        /// isn't getting past Ring's real ban - stop trying entirely for HardBanCooldown.
+        /// </summary>
+        private static void RecordThrottled()
+        {
+            var justHardBanned = false;
+            lock (_throttleLock)
+            {
+                _consecutiveThrottles++;
+
+                if (_consecutiveThrottles >= HardBanThreshold)
+                {
+                    _hardBanUntilUtc = DateTime.UtcNow + HardBanCooldown;
+                    _throttledUntilUtc = null;
+                    justHardBanned = true;
+                }
+                else
+                {
+                    var cooldown = TimeSpan.FromTicks(Math.Min(
+                        BaseThrottleCooldown.Ticks * (1L << Math.Min(_consecutiveThrottles - 1, 4)),
+                        MaxThrottleCooldown.Ticks));
+                    _throttledUntilUtc = DateTime.UtcNow + cooldown;
+                }
+            }
+
+            if (justHardBanned)
+            {
+                PersistHardBanState();
+            }
+        }
+
+        private static void ClearThrottle()
+        {
+            bool wasHardBanned;
+            lock (_throttleLock)
+            {
+                wasHardBanned = _hardBanUntilUtc.HasValue;
+                _consecutiveThrottles = 0;
+                _throttledUntilUtc = null;
+                _hardBanUntilUtc = null;
+            }
+
+            if (wasHardBanned)
+            {
+                PersistHardBanState();
+            }
         }
 
         /// <summary>
