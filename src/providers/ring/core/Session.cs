@@ -390,6 +390,20 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
+        /// <summary>
+        /// Current hard rate-limit ban expiry (UTC), if one is active - see HttpUtility's circuit
+        /// breaker. Lets a caller check "are we banned right now" up front, with no network call and
+        /// no side effects, instead of only finding out after every device's own retry loop runs.
+        /// Static because the ban is process-wide (shared across every Session/account), matching
+        /// HttpUtility's own state.
+        /// </summary>
+        public static DateTime? GetRateLimitBanUntilUtc() => HttpUtility.GetHardBanUntilUtc();
+
+        /// <summary>
+        /// Explicitly lifts an active hard ban for one more attempt - see HttpUtility.OverrideHardBan.
+        /// </summary>
+        public static void OverrideRateLimitBan() => HttpUtility.OverrideHardBan();
+
         public virtual async Task<Devices> GetRingDevices(Guid? locationId = null)
         {
             await EnsureSessionValid();
@@ -551,7 +565,11 @@ namespace VideoForensics.Providers.Ring
                         response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history?limit={batchWithItems}{(doorbotHistory.Count == 0 ? "" : "&older_than=" + doorbotHistory.Last().Id)}"), AuthenticationToken, _hardwareId);
                         break;
                     }
-                    catch (Exceptions.ThrottledException) when (attempt < MaxPageRetries)
+                    // A hard ban (see Session.GetRateLimitBanUntilUtc) means every attempt fails
+                    // identically with no network call at all - retrying here just re-runs this same
+                    // backoff loop once per page for zero chance of success. Let it propagate
+                    // immediately instead so callers stop trying rather than grinding through it.
+                    catch (Exceptions.ThrottledException ex) when (attempt < MaxPageRetries && !ex.IsHardBan)
                     {
                         await Task.Delay(InitialThrottleBackoffMs * attempt);
                     }

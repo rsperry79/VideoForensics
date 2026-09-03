@@ -117,6 +117,10 @@ namespace VideoForensics.Providers.Ring.Services
             return events.Count(e => e.Doorbot?.Id.ToString() == deviceId);
         }
 
+        public DateTime? GetRateLimitBanUntilUtc() => Session.GetRateLimitBanUntilUtc();
+
+        public void OverrideRateLimitBan() => Session.OverrideRateLimitBan();
+
         public bool IsHistoryCached(DateTime startDate, DateTime endDate)
         {
             // No lock: this is a best-effort hint for a caller deciding whether to skip an inter-
@@ -1285,7 +1289,10 @@ namespace VideoForensics.Providers.Ring.Services
                     await operation();
                     return;
                 }
-                catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries)
+                // A hard ban (see Session.GetRateLimitBanUntilUtc) fails every attempt identically
+                // with no network call - retrying here just re-runs this backoff loop for zero chance
+                // of success, so let it propagate immediately instead of grinding through it.
+                catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries && (ex as VideoForensics.Providers.Ring.Exceptions.ThrottledException)?.IsHardBan != true)
                 {
                     _logger.LogWarning("Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
                         operationName, attempt, MaxRetries, delayMs);

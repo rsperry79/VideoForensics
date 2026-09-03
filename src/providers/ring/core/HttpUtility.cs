@@ -98,6 +98,41 @@ namespace VideoForensics.Providers.Ring
             }
         }
 
+        /// <summary>
+        /// Current hard-ban expiry (UTC), if one is active, with no side effects - lets a caller
+        /// check "are we banned right now" up front and bail out immediately with a clear message,
+        /// instead of only finding out after grinding through every device's own retry loop first.
+        /// </summary>
+        public static DateTime? GetHardBanUntilUtc()
+        {
+            EnsureHardBanStateLoaded();
+
+            lock (_throttleLock)
+            {
+                return _hardBanUntilUtc.HasValue && _hardBanUntilUtc.Value > DateTime.UtcNow
+                    ? _hardBanUntilUtc
+                    : null;
+            }
+        }
+
+        /// <summary>
+        /// Explicitly lifts an active hard ban for one more attempt, at the caller's request (e.g. a
+        /// user prompted "there's a ban expiring in N minutes, try anyway?" who chose yes). This does
+        /// NOT mean Ring's own limit has actually cleared - the very next request can still come back
+        /// 429, in which case RecordThrottled starts a fresh escalating cooldown from scratch (not an
+        /// immediate new hard ban), giving the override a fair one-shot test rather than silently
+        /// failing at this same gate a moment later.
+        /// </summary>
+        public static void OverrideHardBan()
+        {
+            lock (_throttleLock)
+            {
+                _hardBanUntilUtc = null;
+                _consecutiveThrottles = 0;
+            }
+            PersistHardBanState();
+        }
+
         private static void PersistHardBanState()
         {
             try
@@ -245,7 +280,8 @@ namespace VideoForensics.Providers.Ring
                 {
                     var remaining = hardBanUntil.Value - DateTime.UtcNow;
                     throw new Exceptions.ThrottledException(
-                        $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.");
+                        $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
+                        isHardBan: true);
                 }
 
                 lock (_throttleLock)

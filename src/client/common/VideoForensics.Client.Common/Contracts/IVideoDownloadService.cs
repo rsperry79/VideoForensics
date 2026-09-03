@@ -33,5 +33,17 @@ namespace VideoForensics.Client.Common
         /// <summary>Which device (1-based index, total count, display name) is currently being processed, so a UI can explain why the per-device file count just reset instead of it looking like a glitch.</summary>
         (int Index, int Total, string Name) GetCurrentDevice();
         string? GetLastError();
+        /// <summary>
+        /// If the provider has hard-banned this account for excessive rate-limit violations, the UTC
+        /// time that ban expires; null if not currently banned. A caller can check this up front and
+        /// bail out immediately with a clear message instead of only finding out after every device's
+        /// own retry loop runs to exhaustion. Defaults to null for a provider without ban tracking.
+        /// </summary>
+        DateTime? GetRateLimitBanUntilUtc() => null;
+        /// <summary>
+        /// Explicitly lifts an active rate-limit ban for one more attempt, at the caller's request.
+        /// A no-op for a provider without ban tracking.
+        /// </summary>
+        void OverrideRateLimitBan() { }
     }
 }
