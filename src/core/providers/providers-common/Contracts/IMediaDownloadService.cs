@@ -47,6 +47,22 @@ namespace VideoForensics.Providers.Common.Contracts
         bool IsHistoryCached(DateTime startDate, DateTime endDate) => false;
 
         /// <summary>
+        /// If the provider's API has hard-banned this account (repeated rate-limit violations), the
+        /// UTC time that ban expires; null if not currently banned. Lets a caller check up front and
+        /// fail fast with a clear message instead of only finding out after every device's own retry
+        /// loop runs to exhaustion first. Defaults to null (no ban tracking) for a provider that
+        /// hasn't implemented this.
+        /// </summary>
+        DateTime? GetRateLimitBanUntilUtc() => null;
+
+        /// <summary>
+        /// Explicitly lifts an active rate-limit ban for one more attempt, at the caller's request
+        /// (e.g. the user was prompted and chose to try anyway despite the ban). A no-op for a
+        /// provider without ban tracking.
+        /// </summary>
+        void OverrideRateLimitBan() { }
+
+        /// <summary>
         /// Sets how many files may download concurrently within a single device's batch (devices
         /// themselves are still processed sequentially by the caller). Values below 1 are ignored.
         /// </summary>

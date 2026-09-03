@@ -836,5 +836,15 @@ namespace VideoForensics.Client.Core
         {
             return _lastError;
         }
+
+        public DateTime? GetRateLimitBanUntilUtc()
+        {
+            return _downloadService.GetRateLimitBanUntilUtc();
+        }
+
+        public void OverrideRateLimitBan()
+        {
+            _downloadService.OverrideRateLimitBan();
+        }
     }
 }

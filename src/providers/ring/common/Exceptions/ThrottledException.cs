@@ -7,6 +7,15 @@ namespace VideoForensics.Providers.Ring.Exceptions
     /// </summary>
     public class ThrottledException : Exception
     {
+        /// <summary>
+        /// True when this came from the process-wide hard-ban circuit breaker (HttpUtility) rather
+        /// than a single fresh 429. A caller retrying on ThrottledException should not retry a hard
+        /// ban - every retry will fail identically (no network call is even made) until the ban's
+        /// long cooldown elapses, so retrying just wastes time re-running the same short backoff loop
+        /// once per device for no chance of success.
+        /// </summary>
+        public bool IsHardBan { get; }
+
         public ThrottledException() : base("The request has been denied by Ring due to too many requests. Try again in a few minutes.")
         {
         }
@@ -15,8 +24,9 @@ namespace VideoForensics.Providers.Ring.Exceptions
         {
         }
 
-        public ThrottledException(string message) : base(message)
+        public ThrottledException(string message, bool isHardBan = false) : base(message)
         {
+            IsHardBan = isHardBan;
         }
     }
 }

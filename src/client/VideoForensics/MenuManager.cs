@@ -999,6 +999,69 @@ namespace VideoForensics
             return false;
         }
 
+        /// <summary>
+        /// Checks whether the provider has hard-banned this account for excessive rate-limit
+        /// violations and, if so, asks the user how to proceed instead of either silently blocking or
+        /// silently grinding through every device's own retry loop (each failing instantly under the
+        /// hood, but only after minutes of an unchanging 0% progress bar) before anything reaches the
+        /// console. Returns true if the caller should proceed with the download now.
+        /// </summary>
+        private async Task<bool> ShouldProceedDespiteRateLimitBanAsync(CancellationToken cancellationToken)
+        {
+            var bannedUntilUtc = _downloadService.GetRateLimitBanUntilUtc();
+            if (!bannedUntilUtc.HasValue)
+            {
+                return true;
+            }
+
+            var remaining = bannedUntilUtc.Value - DateTime.UtcNow;
+            var localRetryTime = bannedUntilUtc.Value.ToLocalTime().ToString("t");
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title($"[yellow]Ring has rate-limited this account. Ban expires around {localRetryTime} local time (about {Math.Max(0, remaining.TotalMinutes):F0} more minute(s)).[/]")
+                    .HighlightStyle("green")
+                    .AddChoices("Cancel (recommended)", "Wait, then retry automatically when it expires", "Try anyway now"));
+
+            switch (choice)
+            {
+                case "Try anyway now":
+                    _downloadService.OverrideRateLimitBan();
+                    AnsiConsole.MarkupLine("[yellow]⚠ Proceeding despite the ban - if Ring hasn't actually cleared it yet, this attempt will likely fail again.[/]");
+                    return true;
+
+                case "Wait, then retry automatically when it expires":
+                    await WaitForRateLimitBanToExpireAsync(bannedUntilUtc.Value, cancellationToken);
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Blocks (with a live countdown) until the given UTC time passes, then returns so the caller
+        /// can proceed automatically - lets a user pick "wait and retry" once instead of having to
+        /// manually come back and re-launch the download after the ban clears.
+        /// </summary>
+        private async Task WaitForRateLimitBanToExpireAsync(DateTime bannedUntilUtc, CancellationToken cancellationToken)
+        {
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("Waiting for the rate limit ban to expire...", async ctx =>
+                {
+                    while (DateTime.UtcNow < bannedUntilUtc)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var remaining = bannedUntilUtc - DateTime.UtcNow;
+                        ctx.Status($"Waiting for the rate limit ban to expire... {remaining.TotalMinutes:F0} minute(s) remaining");
+                        var delay = TimeSpan.FromSeconds(Math.Clamp(remaining.TotalSeconds, 1, 30));
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                });
+
+            AnsiConsole.MarkupLine("[green]✓ Ban period has elapsed - proceeding[/]");
+        }
+
         private async Task DownloadVideos(CancellationToken cancellationToken = default)
         {
             AnsiConsole.MarkupLine("[bold cyan]Download Ring Videos[/]");
@@ -1006,6 +1069,11 @@ namespace VideoForensics
             if (!await EnsureAuthenticatedAsync(cancellationToken))
             {
                 AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
+            if (!await ShouldProceedDespiteRateLimitBanAsync(cancellationToken))
+            {
                 return;
             }
 
@@ -1252,6 +1320,11 @@ namespace VideoForensics
             if (!await EnsureAuthenticatedAsync(cancellationToken))
             {
                 AnsiConsole.MarkupLine("[red]✗ Cannot proceed without authentication[/]");
+                return;
+            }
+
+            if (!await ShouldProceedDespiteRateLimitBanAsync(cancellationToken))
+            {
                 return;
             }
 
