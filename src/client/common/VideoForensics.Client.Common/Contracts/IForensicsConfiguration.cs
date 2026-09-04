@@ -19,6 +19,8 @@ namespace VideoForensics.Client.Common
         /// <summary>Start date for downloads, as a "yyyy-MM-dd" string parsed to a DateTime at use. Empty means unset.</summary>
         string DownloadStartDate { get; set; }
         Guid? ActiveProviderAccountId { get; set; }
+        /// <summary>Toggles the periodic RSSI/device-health background sync (DeviceHealthSyncService). Default on.</summary>
+        bool EnableHealthSync { get; set; }
     }
 
     public enum RedactionLevel
@@ -55,5 +57,6 @@ namespace VideoForensics.Client.Common
         public int MaxConcurrentDownloads { get; set; } = 10;
         public string DownloadStartDate { get; set; } = "";
         public Guid? ActiveProviderAccountId { get; set; }
+        public bool EnableHealthSync { get; set; } = true;
     }
 }
