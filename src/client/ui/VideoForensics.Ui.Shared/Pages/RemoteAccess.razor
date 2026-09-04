@@ -1,0 +1,318 @@
+@page "/settings/remote-access"
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
+
+<MudText Typo="Typo.h4" Class="mb-4">Remote Access</MudText>
+
+@if (!SessionState.IsSignedIn)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage remote access.
+    </MudAlert>
+}
+
+<MudAlert Severity="Severity.Warning" Class="mb-4">
+    A tunnel only changes network transport - it does not replace passkey pairing/sign-in.
+    An unauthenticated request arriving over the tunnel still cannot reach any data. Starting a
+    tunnel makes this server reachable from the internet, so it requires a fresh passkey
+    confirmation (step-up) even in an already-signed-in session.
+</MudAlert>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
+        signed in via the Local network tier is required to manage remote access.
+    </MudText>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+}
+else
+{
+    <MudStack Row="true" Class="mb-2">
+        <MudButton OnClick="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
+    </MudStack>
+
+    @if (!_installed)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            <c>cloudflared</c> was not found on this server's PATH. Install it from
+            <MudLink Href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Target="_blank">Cloudflare's downloads page</MudLink>
+            and restart the server, then refresh this screen.
+        </MudAlert>
+    }
+    else
+    {
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Current Status</MudText>
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudStack>
+                <MudText>
+                    Status: <MudChip T="string" Color="@StatusColor" Size="Size.Small">@_status</MudChip>
+                    @if (_kind != "None")
+                    {
+                        <span>(@_kind)</span>
+                    }
+                </MudText>
+                @if (_publicUrl is not null)
+                {
+                    <MudText>Public URL: <MudLink Href="@_publicUrl" Target="_blank">@_publicUrl</MudLink></MudText>
+                }
+                @if (_tunnelErrorMessage is not null)
+                {
+                    <MudText Color="Color.Error">@_tunnelErrorMessage</MudText>
+                }
+                @if (_status is "Running" or "Starting")
+                {
+                    <MudButton OnClick="StopAsync" Variant="Variant.Filled" Color="Color.Error" Style="width: fit-content;">Stop Tunnel</MudButton>
+                }
+                @if (_recentLogLines.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Class="mt-2">Recent log output:</MudText>
+                    <pre style="max-height: 200px; overflow-y: auto; background: var(--mud-palette-background-grey); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @if (_status is "Stopped" or "Failed")
+        {
+            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Quick Tunnel</MudText>
+            <MudPaper Class="pa-4 mb-4" Outlined="true">
+                <MudText Class="mb-2">
+                    Starts an ephemeral <code>*.trycloudflare.com</code> URL - no Cloudflare account needed. Good for
+                    short-term remote access; the URL changes every time you start a new one.
+                </MudText>
+                <MudButton OnClick="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" Color="Color.Primary">
+                    @(_isActing ? "Starting..." : "Start Quick Tunnel")
+                </MudButton>
+            </MudPaper>
+
+            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Named Tunnel</MudText>
+            <MudPaper Class="pa-4 mb-4" Outlined="true">
+                <MudText Class="mb-2">
+                    Runs a persistent tunnel you already configured at the command line
+                    (<code>cloudflared tunnel login</code>, <code>cloudflared tunnel create &lt;name&gt;</code>, and a
+                    DNS route) - that one-time setup is not automated here. Select an already-configured tunnel to run it.
+                </MudText>
+                @if (_namedTunnels.Count == 0)
+                {
+                    <MudText Typo="Typo.caption">No configured named tunnels found (or cloudflared is not logged in to a Cloudflare account).</MudText>
+                }
+                else
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudSelect T="string" @bind-Value="_selectedNamedTunnel" Label="Tunnel" Variant="Variant.Outlined" Style="max-width: 260px;">
+                            @foreach (var name in _namedTunnels)
+                            {
+                                <MudSelectItem Value="@name">@name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton OnClick="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" Color="Color.Primary">
+                            @(_isActing ? "Starting..." : "Start Named Tunnel")
+                        </MudButton>
+                    </MudStack>
+                }
+            </MudPaper>
+        }
+    }
+}
+
+@if (_actionError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_actionError</MudAlert>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isActing;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionError;
+
+    private bool _installed;
+    private string _kind = "None";
+    private string _status = "Stopped";
+    private string? _publicUrl;
+    private string? _tunnelErrorMessage;
+    private List<string> _recentLogLines = new();
+    private List<string> _namedTunnels = new();
+    private string? _selectedNamedTunnel;
+
+    private Color StatusColor => _status switch
+    {
+        "Running" => Color.Success,
+        "Starting" => Color.Info,
+        "Failed" => Color.Error,
+        _ => Color.Default
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadStatusAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/remote-access/status");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view remote access status.";
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _installed = body.GetProperty("installed").GetBoolean();
+            _kind = body.GetProperty("kind").GetString() ?? "None";
+            _status = body.GetProperty("status").GetString() ?? "Stopped";
+            _publicUrl = body.GetProperty("publicUrl").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("publicUrl").GetString();
+            _tunnelErrorMessage = body.GetProperty("errorMessage").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("errorMessage").GetString();
+            _recentLogLines = body.GetProperty("recentLogLines").EnumerateArray().Select(e => e.GetString() ?? "").ToList();
+
+            if (_installed && _status is "Stopped" or "Failed")
+            {
+                var namedResponse = await client.GetAsync("api/remote-access/named-tunnels");
+                if (namedResponse.IsSuccessStatusCode)
+                {
+                    _namedTunnels = (await namedResponse.Content.ReadFromJsonAsync<List<string>>()) ?? new();
+                    _selectedNamedTunnel = _namedTunnels.FirstOrDefault();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load remote access status: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task StartQuickTunnelAsync()
+    {
+        await RunStepUpGatedActionAsync("api/remote-access/quick-tunnel/start", null);
+    }
+
+    private async Task StartNamedTunnelAsync()
+    {
+        if (_selectedNamedTunnel is null)
+        {
+            return;
+        }
+
+        await RunStepUpGatedActionAsync("api/remote-access/named-tunnel/start", new { name = _selectedNamedTunnel });
+    }
+
+    private async Task RunStepUpGatedActionAsync(string url, object? body)
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = "Sign in with your passkey first.";
+            return;
+        }
+
+        _isActing = true;
+        _actionError = null;
+        try
+        {
+            // Starting a tunnel exposes this server to the internet - a fresh passkey assertion is
+            // required at the moment of the action, not just an already-open session (plan §5.7).
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = body is null
+                ? await client.PostAsync(url, null)
+                : await client.PostAsJsonAsync(url, body);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await SafeReadErrorAsync(response);
+                _actionError = errorBody ?? $"Failed: {response.StatusCode}";
+                return;
+            }
+
+            await LoadStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            _isActing = false;
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsync("api/remote-access/stop", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _actionError = await SafeReadErrorAsync(response) ?? $"Stop failed: {response.StatusCode}";
+                return;
+            }
+
+            await LoadStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Stop failed: {ex.Message}";
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+}
