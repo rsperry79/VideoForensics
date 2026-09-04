@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using VideoForensics.Client.Common;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
@@ -9,10 +10,17 @@ namespace VideoForensics.WebApp.Api
     /// <summary>
     /// Cloudflare Tunnel management for the Remote Access screen (plan §5.3). Gated
     /// SuperAdmin+Local like every other infrastructure-exposure screen (§5.10) - and, since
-    /// starting a tunnel is functionally "widen the network tier to Internet" even though the
-    /// separate tier-setting UI from §5.2 doesn't exist yet, START additionally requires step-up
-    /// re-authentication (§5.7's "widening the network tier" case) even within an already-verified
-    /// SuperAdminLocal session. Stopping a tunnel only reduces exposure, so it does not.
+    /// starting a tunnel is functionally "widen the network tier to Internet", START additionally
+    /// requires step-up re-authentication (§5.7's "widening the network tier" case) even within an
+    /// already-verified SuperAdminLocal session. Stopping a tunnel only reduces exposure, so it
+    /// does not.
+    ///
+    /// Also requires the configured network tier (§5.2, now enforced at the Kestrel-bind level in
+    /// Program.cs) to be at least Network before a tunnel can start - closing a real loophole: since
+    /// cloudflared runs on the same machine, it reaches this server over loopback regardless of
+    /// whether Kestrel itself is bound to loopback-only, so the Local-tier Kestrel restriction alone
+    /// does NOT stop someone from tunneling out while "Local" is configured. This check is what
+    /// actually closes that gap.
     /// </summary>
     public static class RemoteAccessEndpoints
     {
@@ -41,11 +49,17 @@ namespace VideoForensics.WebApp.Api
             group.MapPost("/quick-tunnel/start", async (
                 ICloudflaredTunnelService tunnels,
                 IServer server,
+                IForensicsConfiguration config,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 HttpContext context,
                 CancellationToken ct) =>
             {
+                if (config.ConfiguredNetworkTier == NetworkTier.Local)
+                {
+                    return Results.Json(new { error = "Set the network tier to Network or Internet (Network Settings) before starting a tunnel." }, statusCode: StatusCodes.Status400BadRequest);
+                }
+
                 var port = ResolveListeningPort(server);
                 if (port is null)
                 {
@@ -60,11 +74,17 @@ namespace VideoForensics.WebApp.Api
             group.MapPost("/named-tunnel/start", async (
                 StartNamedTunnelRequest request,
                 ICloudflaredTunnelService tunnels,
+                IForensicsConfiguration config,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
                 HttpContext context,
                 CancellationToken ct) =>
             {
+                if (config.ConfiguredNetworkTier == NetworkTier.Local)
+                {
+                    return Results.Json(new { error = "Set the network tier to Network or Internet (Network Settings) before starting a tunnel." }, statusCode: StatusCodes.Status400BadRequest);
+                }
+
                 if (string.IsNullOrWhiteSpace(request.Name))
                 {
                     return Results.BadRequest(new { error = "Tunnel name is required." });

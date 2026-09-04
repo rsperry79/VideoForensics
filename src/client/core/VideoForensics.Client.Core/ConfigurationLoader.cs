@@ -45,6 +45,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.SmtpUsername = loadedConfig.SmtpUsername;
                 runtimeConfig.SmtpFromAddress = loadedConfig.SmtpFromAddress;
                 runtimeConfig.NotificationRecipientEmail = loadedConfig.NotificationRecipientEmail;
+                runtimeConfig.ConfiguredNetworkTier = loadedConfig.ConfiguredNetworkTier;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }
