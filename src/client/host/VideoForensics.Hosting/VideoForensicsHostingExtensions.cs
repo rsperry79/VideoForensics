@@ -13,6 +13,7 @@ using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
@@ -177,6 +178,21 @@ namespace VideoForensics.Hosting
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
             services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
 
+            return services;
+        }
+
+        /// <summary>
+        /// Registers HTTP-backed read-only repository implementations that call the server's Minimal
+        /// API (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs) instead of touching a local database
+        /// or any provider directly - for a client host (MAUI) that talks to a remote server rather than
+        /// being the server itself. Per §1's "only the server pulls from any provider" rule, no client
+        /// host calling this method may also call AddVideoForensicsServerCore().
+        /// </summary>
+        public static IServiceCollection AddVideoForensicsClientApi(this IServiceCollection services, Uri serverAddress)
+        {
+            services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
+            services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
+            services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             return services;
         }
 
