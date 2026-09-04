@@ -9,6 +9,8 @@ using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
+using VideoForensics.WebApp.Hubs;
+using VideoForensics.Providers.Common.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,15 @@ builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName
         PairedDeviceAuthenticationDefaults.SchemeName, _ => { });
 
 builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
+
+// One real-time channel for live download progress + urgent-event push (plan §6), for remote
+// paired clients (MAUI) - the WebApp's own UI doesn't consume this hub at all (see LiveHub's doc
+// comment). ILiveConnectionTracker is a singleton so DeviceManagementEndpoints' revoke handler can
+// forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
+builder.Services.AddHostedService<DownloadProgressBroadcastService>();
+builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
 
 // Rate limiting on auth/pairing endpoints (plan §5.7): keyed by the SAME network-tier-aware client
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
@@ -145,6 +156,7 @@ app.MapDeviceManagementEndpoints();
 app.MapSecurityAuditLogEndpoints();
 app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
+app.MapHub<LiveHub>("/hubs/live");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

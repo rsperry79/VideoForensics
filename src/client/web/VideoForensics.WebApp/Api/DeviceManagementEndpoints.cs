@@ -2,6 +2,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Hubs;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -10,13 +11,12 @@ namespace VideoForensics.WebApp.Api
     /// and deactivating an Operator (bulk-revoking every device they've paired). All gated
     /// SuperAdmin+Local - revocation is exactly as sensitive as pairing itself.
     ///
-    /// NOTE: revocation here immediately blocks the device's next API request (enforced by
-    /// PairedDeviceAuthenticationHandler re-checking IsActive on every call - plan §5.4's "within
-    /// one request round-trip" requirement). Force-disconnecting an already-open LIVE connection
-    /// (e.g. a SignalR hub) is explicitly called out in the plan as an additional required step
-    /// once such a connection exists - no SignalR hub exists in this app yet (M6's live-progress
-    /// work is separately scoped), so that half of §5.4 is not yet applicable and is deliberately
-    /// not stubbed here.
+    /// Revocation here does two things, matching the plan's explicit "not just the next HTTP
+    /// request" requirement: it immediately blocks the device's next API request (enforced by
+    /// PairedDeviceAuthenticationHandler re-checking IsActive on every call), AND it forcibly
+    /// terminates any already-open LiveHub connection for that device via ILiveConnectionTracker -
+    /// token invalidation alone does nothing to a persistent SignalR connection that was
+    /// established before the revocation.
     /// </summary>
     public static class DeviceManagementEndpoints
     {
@@ -36,11 +36,13 @@ namespace VideoForensics.WebApp.Api
                 IPairedDeviceRepository devices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
+                ILiveConnectionTracker connectionTracker,
                 HttpContext context,
                 CancellationToken ct) =>
             {
                 var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await devices.RevokeAsync(id, request.Reason, ct);
+                connectionTracker.ForceDisconnect(id);
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingRevoked,
                     Guid.TryParse(operatorIdClaim, out var actingOperatorId) ? actingOperatorId : null,
                     id, tierResolver.ResolveClientIp(context), request.Reason, isUrgent: true, ct);
@@ -54,12 +56,17 @@ namespace VideoForensics.WebApp.Api
                 IPairedDeviceRepository devices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
+                ILiveConnectionTracker connectionTracker,
                 HttpContext context,
                 CancellationToken ct) =>
             {
                 var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await operators.DeactivateAsync(id, ct);
                 var revokedDeviceIds = await devices.RevokeAllForOperatorAsync(id, request.Reason, ct);
+                foreach (var revokedDeviceId in revokedDeviceIds)
+                {
+                    connectionTracker.ForceDisconnect(revokedDeviceId);
+                }
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.OperatorDeactivated,
                     Guid.TryParse(operatorIdClaim, out var actingOperatorId) ? actingOperatorId : null,

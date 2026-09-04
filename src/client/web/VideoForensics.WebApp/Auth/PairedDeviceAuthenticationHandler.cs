@@ -41,18 +41,12 @@ namespace VideoForensics.WebApp.Auth
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            var token = ExtractToken();
+            if (token is null)
             {
                 return AuthenticateResult.NoResult();
             }
 
-            var headerValue = authHeader.ToString();
-            if (!headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            {
-                return AuthenticateResult.NoResult();
-            }
-
-            var token = headerValue["Bearer ".Length..].Trim();
             var principal = _tokenService.Validate(token);
             if (principal == null)
             {
@@ -80,6 +74,33 @@ namespace VideoForensics.WebApp.Auth
             var claimsPrincipal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(claimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
             return AuthenticateResult.Success(ticket);
+        }
+
+        /// <summary>
+        /// Normal requests carry the bearer token in the Authorization header. SignalR's WebSocket
+        /// transport is the one exception - browsers/most WebSocket clients cannot set custom
+        /// headers on the upgrade request, so the token has to travel as an "access_token" query
+        /// string parameter instead (the same accommodation ASP.NET Core's own JWT bearer handler
+        /// makes for SignalR). Restricted to "/hubs/" paths specifically, so a token never has a
+        /// reason to appear in a query string - and therefore in server access logs - anywhere else.
+        /// </summary>
+        private string? ExtractToken()
+        {
+            if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                var headerValue = authHeader.ToString();
+                if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    return headerValue["Bearer ".Length..].Trim();
+                }
+            }
+
+            if (Request.Path.StartsWithSegments("/hubs") && Request.Query.TryGetValue("access_token", out var queryToken))
+            {
+                return queryToken.ToString();
+            }
+
+            return null;
         }
     }
 
