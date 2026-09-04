@@ -1,0 +1,62 @@
+@page "/settings/app-lock"
+@inject IAppLockPreferencesStore AppLockPreferences
+
+<MudText Typo="Typo.h4" Class="mb-4">App Lock</MudText>
+
+@if (!AppLockPreferences.IsSupported)
+{
+    <MudAlert Severity="Severity.Info">
+        App Lock is a device-local setting for the Windows MAUI app - it does not apply here.
+    </MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.body2" Class="mb-4">
+        VideoForensics requires Windows Hello (or your device PIN) to view its content, on every
+        cold launch and again after this much time spent in the background. This is separate from
+        signing in to the server - it protects an already-signed-in device from anyone who simply
+        picks it up.
+    </MudText>
+
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudSelect T="int" Value="_selectedSeconds" ValueChanged="OnTimeoutChangedAsync" Label="Lock after this long in the background" Variant="Variant.Outlined" Style="max-width: 320px;">
+            @foreach (var option in TimeoutOptions)
+            {
+                <MudSelectItem Value="@option.Seconds">@option.Label</MudSelectItem>
+            }
+        </MudSelect>
+        @if (_message is not null)
+        {
+            <MudText Color="Color.Success" Class="mt-2">@_message</MudText>
+        }
+    </MudPaper>
+}
+
+@code {
+    private static readonly (int Seconds, string Label)[] TimeoutOptions =
+    {
+        (0, "Immediately"),
+        (60, "1 minute"),
+        (300, "5 minutes"),
+        (900, "15 minutes"),
+    };
+
+    private int _selectedSeconds;
+    private string? _message;
+
+    protected override void OnInitialized()
+    {
+        if (AppLockPreferences.IsSupported)
+        {
+            _selectedSeconds = (int)AppLockPreferences.GetIdleLockTimeout().TotalSeconds;
+        }
+    }
+
+    private Task OnTimeoutChangedAsync(int seconds)
+    {
+        _selectedSeconds = seconds;
+        AppLockPreferences.SetIdleLockTimeout(TimeSpan.FromSeconds(seconds));
+        _message = "Saved.";
+        return Task.CompletedTask;
+    }
+}

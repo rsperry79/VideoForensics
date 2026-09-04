@@ -2,10 +2,13 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Maui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
+using VideoForensics.Client.Common;
 using VideoForensics.Hosting;
+using VideoForensics.MauiApp.AppLock;
 
 namespace VideoForensics.MauiApp
 {
@@ -16,6 +19,7 @@ namespace VideoForensics.MauiApp
             var builder = Microsoft.Maui.Hosting.MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -42,6 +46,12 @@ namespace VideoForensics.MauiApp
             // (Minimal API + HTTP-based remote repositories) is separately scoped, later work.
             builder.Services.AddVideoForensicsDataLayer();
             builder.Services.AddVideoForensicsServerCore();
+
+            // Local app-lock (plan §5.9) - overrides the no-op IAppLockPreferencesStore default that
+            // AddVideoForensicsDataLayer() just registered for every host. Windows-only for now,
+            // matching this MAUI target's own scope.
+            builder.Services.AddSingleton<ILocalAuthGate, FingerprintLocalAuthGate>();
+            builder.Services.AddSingleton<IAppLockPreferencesStore, MauiAppLockPreferencesStore>();
 
             // NOT calling AddVideoForensicsClientApi() here (yet): it's built and proven working
             // (M5 - see VideoForensicsHostingExtensions.AddVideoForensicsClientApi and the Remote/

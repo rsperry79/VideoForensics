@@ -38,6 +38,12 @@ namespace VideoForensics.Hosting
             services.AddVideoForensicsSqlite();
             services.AddVideoForensicsDatabase();
             services.AddVideoForensicsDataCore();
+
+            // App-lock (plan §5.9) is device-local and only meaningful on MAUI - every host gets
+            // this no-op default; VideoForensics.MauiApp registers the real Preferences-backed
+            // implementation afterward, which wins by DI's last-registration-wins rule.
+            services.AddSingleton<IAppLockPreferencesStore, NullAppLockPreferencesStore>();
+
             return services;
         }
 
