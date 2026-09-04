@@ -20,7 +20,7 @@ namespace VideoForensics.WebApp.Api
         public static void MapMediaApiEndpoints(this WebApplication app)
         {
             app.MapGet("/api/devices", async (IDeviceRepository devices, CancellationToken ct) =>
-                Results.Ok(await devices.ListAsync(ct)));
+                Results.Ok(await devices.ListAsync(ct))).RequireRateLimiting("media");
 
             app.MapGet("/api/media-items", async (Guid? deviceId, IMediaItemRepository mediaItems, CancellationToken ct) =>
             {
@@ -28,7 +28,7 @@ namespace VideoForensics.WebApp.Api
                     ? await mediaItems.GetByDeviceIdAsync(deviceId.Value, ct)
                     : await mediaItems.ListAsync(ct);
                 return Results.Ok(items);
-            });
+            }).RequireRateLimiting("media");
 
             app.MapGet("/api/integrity-records", async (string mediaItemIds, IIntegrityRecordRepository integrityRecords, CancellationToken ct) =>
             {
@@ -41,7 +41,7 @@ namespace VideoForensics.WebApp.Api
 
                 var records = await integrityRecords.GetLatestByMediaItemIdsAsync(ids, ct);
                 return Results.Ok(records);
-            });
+            }).RequireRateLimiting("media");
 
             app.MapGet("/api/media/{id:guid}/content", async (Guid id, IMediaItemRepository mediaItems, IMediaStorageProvider storage, ILogger<Program> logger, CancellationToken ct) =>
             {
@@ -66,7 +66,7 @@ namespace VideoForensics.WebApp.Api
                 };
 
                 return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
-            });
+            }).RequireRateLimiting("media");
         }
     }
 }

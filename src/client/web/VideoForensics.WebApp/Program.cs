@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Hosting;
@@ -28,6 +30,43 @@ builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName
 
 builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
 
+// Rate limiting on auth/pairing endpoints (plan §5.7): keyed by the SAME network-tier-aware client
+// IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
+// AddVideoForensicsServerCore() below), so a request over the Cloudflare Tunnel is bucketed by the
+// real client behind it, not Cloudflare's shared edge IP - the escalation-flagged mistake the plan
+// calls out explicitly. A separate, more generous policy covers /api/media/* so an already-paired
+// device can't hammer it into a self-inflicted DoS.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("auth", httpContext =>
+    {
+        var resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+        var key = resolver.ResolveClientIp(httpContext);
+        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(15),
+            SegmentsPerWindow = 3,
+            QueueLimit = 0
+        });
+    });
+
+    options.AddPolicy("media", httpContext =>
+    {
+        var resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+        var key = resolver.ResolveClientIp(httpContext);
+        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 4,
+            QueueLimit = 0
+        });
+    });
+});
+
 // Shared data layer + server-tier provider/orchestrator registrations (session provider, Ring's
 // four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
 // VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. This is a deliberate, temporary
@@ -37,6 +76,7 @@ builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies()
 // is separately scoped, later work.
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -67,15 +107,20 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 
+app.MapVideoForensicsHealthEndpoints();
+
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
 app.MapPairingEndpoints();
+app.MapDeviceManagementEndpoints();
+app.MapSecurityAuditLogEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
