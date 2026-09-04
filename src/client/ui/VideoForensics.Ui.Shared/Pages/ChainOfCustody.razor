@@ -1,0 +1,124 @@
+@page "/analyze/chain-of-custody"
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@inject IProviderAuthService AuthService
+@inject IReportGenerationService ReportGenerationService
+@inject IDeviceRepository DeviceRepository
+
+<h1>Chain of Custody Report</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to view the chain of custody.</p>
+}
+else
+{
+    <p>
+        <label>
+            Device:
+            <select @bind="_selectedDeviceId">
+                <option value="">(All devices)</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            From: <input type="date" @bind="_fromDate" />
+        </label>
+        <label>
+            To: <input type="date" @bind="_toDate" />
+        </label>
+        <button @onclick="RunReportAsync">Run Report</button>
+    </p>
+
+    @if (_report is not null)
+    {
+        @if (_report.ChainIntegrityVerified)
+        {
+            <p style="color:green">Chain integrity verified</p>
+        }
+        else
+        {
+            <p style="color:red">Chain integrity FAILED: @_report.ChainVerificationStatus</p>
+        }
+
+        <h2>Audit Trail</h2>
+        @if (_report.AuditTrail.Count == 0)
+        {
+            <p>No audit trail entries found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Actor</th>
+                        <th>Actor Type</th>
+                        <th>Action</th>
+                        <th>Entity Type</th>
+                        <th>Entity ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in _report.AuditTrail)
+                    {
+                        <tr>
+                            <td>@entry.TimestampUtc</td>
+                            <td>@entry.Actor</td>
+                            <td>@entry.ActorType</td>
+                            <td>@entry.Action</td>
+                            <td>@entry.EntityType</td>
+                            <td>@(entry.EntityId?.ToString("N")[..8] ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceId = string.Empty;
+    private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
+    private DateTime _toDate = DateTime.UtcNow.Date;
+    private ChainOfCustodyReport? _report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+                await RunReportAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunReportAsync()
+    {
+        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
+        _report = await ReportGenerationService.BuildChainOfCustodyReportAsync(
+            deviceId,
+            _fromDate,
+            _toDate,
+            CancellationToken.None);
+    }
+}

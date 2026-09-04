@@ -1,0 +1,148 @@
+@page "/events"
+@using VideoForensics.Data.Common.Entities
+@inject IProviderAuthService AuthService
+@inject IDeviceRepository DeviceRepository
+@inject IEventRepository EventRepository
+
+<h1>Browse Events</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to browse events.</p>
+}
+else
+{
+    <div class="events-form">
+        <div>
+            <label for="deviceSelect">Device</label>
+            <select id="deviceSelect" @bind="_selectedDeviceIdStr">
+                <option value="">-- Select a device --</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="fromDate">From</label>
+            <input id="fromDate" type="date" @bind="_fromDate" disabled="@_onlyUnansweredOrFlagged" />
+        </div>
+        <div>
+            <label for="toDate">To</label>
+            <input id="toDate" type="date" @bind="_toDate" disabled="@_onlyUnansweredOrFlagged" />
+        </div>
+        <div>
+            <label for="onlyFlagged">
+                <input id="onlyFlagged" type="checkbox" @bind="_onlyUnansweredOrFlagged" />
+                Show only unanswered/flagged
+            </label>
+        </div>
+        <div>
+            <button @onclick="LoadEventsAsync" disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))">Load Events</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <p style="color: red;">@_error</p>
+        }
+    </div>
+
+    @if (_events is not null)
+    {
+        @if (_events.Count == 0)
+        {
+            <p>No events found.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Occurred At (UTC)</th>
+                        <th>Discovered At (UTC)</th>
+                        <th>Downloaded At (UTC)</th>
+                        <th>Snapshot URL</th>
+                        <th>Provider Event ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var evt in _events)
+                    {
+                        <tr>
+                            <td>@evt.EventType</td>
+                            <td>@evt.OccurredAtUtc</td>
+                            <td>@evt.DiscoveredAtUtc</td>
+                            <td>@(evt.DownloadedAtUtc?.ToString() ?? "-")</td>
+                            <td>@evt.SnapshotUrl</td>
+                            <td>@evt.ProviderEventId</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceIdStr = string.Empty;
+
+    private DateTime _fromDate = DateTime.Today.AddDays(-90);
+    private DateTime _toDate = DateTime.Today;
+    private bool _onlyUnansweredOrFlagged;
+
+    private bool _loadingEvents;
+    private string? _error;
+    private List<Event>? _events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+        {
+            return;
+        }
+
+        _loadingEvents = true;
+        _error = null;
+        try
+        {
+            var events = _onlyUnansweredOrFlagged
+                ? await EventRepository.ListUnansweredOrFlaggedAsync(deviceId, CancellationToken.None)
+                : await EventRepository.ListByDeviceAndDateRangeAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+
+            _events = events.ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load events: {ex.Message}";
+        }
+        finally
+        {
+            _loadingEvents = false;
+        }
+    }
+}

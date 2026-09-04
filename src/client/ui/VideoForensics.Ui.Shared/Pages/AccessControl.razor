@@ -1,0 +1,145 @@
+@page "/analyze/access-control"
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@inject IProviderAuthService AuthService
+@inject IReportGenerationService ReportGenerationService
+@inject IDeviceRepository DeviceRepository
+
+<h1>Access Control Report</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to view access control data.</p>
+}
+else
+{
+    <p>
+        <label>
+            Device:
+            <select @bind="_selectedDeviceId">
+                <option value="">(All devices)</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            From: <input type="date" @bind="_fromDate" />
+        </label>
+        <label>
+            To: <input type="date" @bind="_toDate" />
+        </label>
+        <button @onclick="RunReportAsync">Run Report</button>
+    </p>
+
+    @if (_report is not null)
+    {
+        <h2>Access Events</h2>
+        @if (_report.AccessEvents.Count == 0)
+        {
+            <p>No access events found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Accessed At</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Entity Type</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var accessEvent in _report.AccessEvents)
+                    {
+                        <tr>
+                            <td>@accessEvent.AccessedAtUtc</td>
+                            <td>@accessEvent.Actor</td>
+                            <td>@accessEvent.Action</td>
+                            <td>@accessEvent.EntityType</td>
+                            <td>@(accessEvent.Details ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>Export Events</h2>
+        @if (_report.ExportEvents.Count == 0)
+        {
+            <p>No export events found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Exported At</th>
+                        <th>Exported By</th>
+                        <th>Case Reference</th>
+                        <th>Recipient</th>
+                        <th>Item Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exportEvent in _report.ExportEvents)
+                    {
+                        <tr>
+                            <td>@exportEvent.ExportedAtUtc</td>
+                            <td>@exportEvent.ExportedByUserName</td>
+                            <td>@(exportEvent.CaseReference ?? "-")</td>
+                            <td>@(exportEvent.RecipientDescription ?? "-")</td>
+                            <td>@exportEvent.ItemCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceId = string.Empty;
+    private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
+    private DateTime _toDate = DateTime.UtcNow.Date;
+    private AccessControlReport? _report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+                await RunReportAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunReportAsync()
+    {
+        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
+        _report = await ReportGenerationService.BuildAccessControlReportAsync(
+            deviceId,
+            _fromDate,
+            _toDate,
+            CancellationToken.None);
+    }
+}

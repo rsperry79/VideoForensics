@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Wyze.Services
         /// Downloads videos for a device within a date range.
         /// </summary>
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
-            DateTime endDate, CancellationToken cancellationToken = default)
+            DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -52,7 +52,7 @@ namespace VideoForensics.Providers.Wyze.Services
         /// Downloads snapshots for a device within a date range.
         /// </summary>
         public async Task<DownloadResult> DownloadSnapshotsAsync(string deviceId, string outputPath, DateTime startDate,
-            DateTime endDate, CancellationToken cancellationToken = default)
+            DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
             try
             {
