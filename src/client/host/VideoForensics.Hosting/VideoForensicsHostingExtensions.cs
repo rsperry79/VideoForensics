@@ -12,6 +12,7 @@ using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
+using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
@@ -158,6 +159,20 @@ namespace VideoForensics.Hosting
 
             // Constructor-injected (all dependencies already registered above)
             services.AddScoped<JammingToolsOrchestrator>();
+            services.AddScoped<ConfigToolsOrchestrator>();
+
+            // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
+            // optional capability - Ring's is registered here the same way its other four services
+            // are; a future provider without health telemetry simply registers nothing and
+            // DeviceHealthSyncService skips it. IBatteryStatusProvider defaults to "always on AC" for
+            // every server-tier host (console, MCP, WebApp) - only a MAUI client would ever override
+            // this, and MAUI never runs this background service in the first place (see its own doc
+            // comment). AddHostedService is safe to call from every server-tier host's own
+            // AddVideoForensicsServerCore() call site; ASP.NET Core and the generic Host both already
+            // de-duplicate re-registrations of the same singleton BackgroundService type.
+            services.AddScoped<IProviderHealthSource, RingHealthSource>();
+            services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
+            services.AddHostedService<DeviceHealthSyncService>();
 
             return services;
         }

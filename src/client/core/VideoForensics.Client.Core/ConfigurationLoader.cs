@@ -36,6 +36,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
+                runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }
