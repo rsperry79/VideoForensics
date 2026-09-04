@@ -1,0 +1,225 @@
+@page "/analyze/jamming"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Client.Core.Tools
+@inject IProviderAuthService AuthService
+@inject IDeviceRepository DeviceRepository
+@inject JammingToolsOrchestrator JammingTools
+
+<h1>Jamming Analysis</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to analyze jamming.</p>
+}
+else
+{
+    <div class="jamming-form">
+        <div>
+            <label for="deviceSelect">Device</label>
+            <select id="deviceSelect" @bind="_selectedDeviceIdStr">
+                <option value="">-- Select a device --</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="fromDate">From</label>
+            <input id="fromDate" type="date" @bind="_fromDate" />
+        </div>
+        <div>
+            <label for="toDate">To</label>
+            <input id="toDate" type="date" @bind="_toDate" />
+        </div>
+        <div>
+            <button @onclick="AnalyzeAsync" disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))">Analyze</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_analyzeError))
+        {
+            <p style="color: red;">@_analyzeError</p>
+        }
+    </div>
+
+    @if (_report is not null)
+    {
+        <p><strong>@_report.Message</strong></p>
+
+        @if (_report.Incidents.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Affected Events</th>
+                        <th>Avg Degradation (dB)</th>
+                        <th>Confidence</th>
+                        <th>Source</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var incident in _report.Incidents)
+                    {
+                        <tr>
+                            <td>@incident.StartUtc</td>
+                            <td>@incident.EndUtc</td>
+                            <td>@incident.AffectedEventCount</td>
+                            <td>@incident.AverageDegradationDb.ToString("F1")</td>
+                            <td>@incident.Confidence</td>
+                            <td>@incident.Source</td>
+                            <td>@incident.Notes</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>Record Manual Incident</h2>
+        <div class="jamming-form">
+            <div>
+                <label for="startUtc">Start (UTC)</label>
+                <input id="startUtc" type="datetime-local" @bind="_manualStartUtc" />
+            </div>
+            <div>
+                <label for="endUtc">End (UTC)</label>
+                <input id="endUtc" type="datetime-local" @bind="_manualEndUtc" />
+            </div>
+            <div>
+                <label for="affectedEventCount">Affected Event Count</label>
+                <input id="affectedEventCount" type="number" @bind="_manualAffectedEventCount" />
+            </div>
+            <div>
+                <label for="avgDegradation">Average Degradation (dB)</label>
+                <input id="avgDegradation" type="number" step="0.1" @bind="_manualAverageDegradationDb" />
+            </div>
+            <div>
+                <label for="confidence">Confidence</label>
+                <select id="confidence" @bind="_manualConfidence">
+                    @foreach (var level in Enum.GetValues<JammingConfidenceLevel>())
+                    {
+                        <option value="@level">@level</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label for="notes">Notes</label>
+                <textarea id="notes" @bind="_manualNotes"></textarea>
+            </div>
+            <div>
+                <button @onclick="RecordIncidentAsync" disabled="@_recording">Record Incident</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_recordMessage))
+            {
+                <p style="color:@(_recordSuccess == true ? "green" : "red")">@_recordMessage</p>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceIdStr = string.Empty;
+
+    private DateTime _fromDate = DateTime.Today.AddDays(-90);
+    private DateTime _toDate = DateTime.Today;
+
+    private bool _analyzing;
+    private string? _analyzeError;
+    private JammingAnalysisReport? _report;
+
+    private DateTime _manualStartUtc = DateTime.UtcNow.AddHours(-1);
+    private DateTime _manualEndUtc = DateTime.UtcNow;
+    private int _manualAffectedEventCount = 1;
+    private double _manualAverageDegradationDb = 10;
+    private JammingConfidenceLevel _manualConfidence = JammingConfidenceLevel.Low;
+    private string _manualNotes = string.Empty;
+    private bool _recording;
+    private string? _recordMessage;
+    private bool? _recordSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AnalyzeAsync()
+    {
+        if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+        {
+            return;
+        }
+
+        _analyzing = true;
+        _analyzeError = null;
+        try
+        {
+            _report = await JammingTools.AnalyzeJammingAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+            if (!_report.Success)
+            {
+                _analyzeError = _report.ErrorMessage ?? "Analysis failed.";
+            }
+        }
+        finally
+        {
+            _analyzing = false;
+        }
+    }
+
+    private async Task RecordIncidentAsync()
+    {
+        if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+        {
+            return;
+        }
+
+        _recording = true;
+        _recordMessage = null;
+        _recordSuccess = null;
+        try
+        {
+            var (success, message, _) = await JammingTools.RecordJammingIncidentAsync(
+                deviceId,
+                _manualStartUtc,
+                _manualEndUtc,
+                _manualAffectedEventCount,
+                _manualAverageDegradationDb,
+                _manualConfidence,
+                string.IsNullOrWhiteSpace(_manualNotes) ? null : _manualNotes,
+                CancellationToken.None);
+
+            _recordSuccess = success;
+            _recordMessage = message;
+
+            if (success)
+            {
+                _report = await JammingTools.AnalyzeJammingAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+            }
+        }
+        finally
+        {
+            _recording = false;
+        }
+    }
+}

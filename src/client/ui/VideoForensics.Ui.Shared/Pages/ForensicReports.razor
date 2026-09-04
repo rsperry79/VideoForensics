@@ -1,0 +1,182 @@
+@page "/analyze/reports"
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@inject IProviderAuthService AuthService
+@inject IReportGenerationService ReportGenerationService
+@inject IDeviceRepository DeviceRepository
+
+<h1>Forensic Analysis Report</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to view forensic reports.</p>
+}
+else
+{
+    <p>
+        <label>
+            Device:
+            <select @bind="_selectedDeviceId">
+                <option value="">(All devices)</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            From: <input type="date" @bind="_fromDate" />
+        </label>
+        <label>
+            To: <input type="date" @bind="_toDate" />
+        </label>
+        <button @onclick="RunReportAsync">Run Report</button>
+    </p>
+
+    @if (_report is not null)
+    {
+        @if (!string.IsNullOrWhiteSpace(_report.Summary))
+        {
+            <p>@_report.Summary</p>
+        }
+
+        <h2>Evidence Items</h2>
+        @if (_report.EvidenceItems.Count == 0)
+        {
+            <p>No evidence items found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Evidence ID</th>
+                        <th>Device ID</th>
+                        <th>File Name</th>
+                        <th>Format</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _report.EvidenceItems)
+                    {
+                        <tr>
+                            <td>@item.Id.ToString("N")[..8]</td>
+                            <td>@item.DeviceId.ToString("N")[..8]</td>
+                            <td>@item.FileName</td>
+                            <td>@item.MediaFormat</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>Anomalous Health Snapshots</h2>
+        @if (_report.AnomalousHealthSnapshots.Count == 0)
+        {
+            <p>No anomalous health snapshots found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Captured At</th>
+                        <th>Device ID</th>
+                        <th>Connected</th>
+                        <th>Battery %</th>
+                        <th>RSSI</th>
+                        <th>Wifi</th>
+                        <th>Firmware</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var snapshot in _report.AnomalousHealthSnapshots)
+                    {
+                        <tr>
+                            <td>@snapshot.CapturedAtUtc</td>
+                            <td>@(snapshot.DeviceId?.ToString("N")[..8] ?? "-")</td>
+                            <td>@(snapshot.Connected?.ToString() ?? "-")</td>
+                            <td>@(snapshot.BatteryPercentage?.ToString() ?? "-")</td>
+                            <td>@(snapshot.Rssi?.ToString() ?? "-")</td>
+                            <td>@(snapshot.WifiName ?? "-")</td>
+                            <td>@(snapshot.FirmwareVersion ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>Significant Actions</h2>
+        @if (_report.SignificantActions.Count == 0)
+        {
+            <p>No significant actions found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Entity Type</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var action in _report.SignificantActions)
+                    {
+                        <tr>
+                            <td>@action.Actor</td>
+                            <td>@action.Action</td>
+                            <td>@action.EntityType</td>
+                            <td>@action.TimestampUtc</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceId = string.Empty;
+    private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
+    private DateTime _toDate = DateTime.UtcNow.Date;
+    private ForensicAnalysisReport? _report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+                await RunReportAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunReportAsync()
+    {
+        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
+        _report = await ReportGenerationService.BuildForensicAnalysisReportAsync(
+            deviceId,
+            _fromDate,
+            _toDate,
+            CancellationToken.None);
+    }
+}

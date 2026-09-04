@@ -1,0 +1,278 @@
+@page "/query"
+@inject IProviderAuthService AuthService
+@inject IDeviceDiscoveryService DeviceDiscoveryService
+@inject IEventAndConfigService EventAndConfigService
+
+<h1>Query API</h1>
+
+<section>
+    <h2>Account Status</h2>
+    <button @onclick="RunAccountStatus">Check Status</button>
+    @if (_accountStatus is not null)
+    {
+        <p>@_accountStatus</p>
+    }
+</section>
+
+<section>
+    <h2>Locations</h2>
+    <button @onclick="RunLocationsAsync" disabled="@_locationsLoading">Get Locations</button>
+    @if (!string.IsNullOrEmpty(_locationsError))
+    {
+        <p style="color: red;">@_locationsError</p>
+    }
+    @if (_locations is not null)
+    {
+        @if (_locations.Count == 0)
+        {
+            <p>No locations found.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr><th>Id</th><th>Name</th><th>Address</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var location in _locations)
+                    {
+                        <tr>
+                            <td>@location.Id</td>
+                            <td>@location.Name</td>
+                            <td>@(location.Address ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+<section>
+    <h2>Devices</h2>
+    <div>
+        <label for="locationId">Location Id</label>
+        <input id="locationId" type="text" @bind="_locationIdInput" />
+        <button @onclick="RunDevicesAsync" disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))">Get Devices</button>
+    </div>
+    @if (!string.IsNullOrEmpty(_devicesError))
+    {
+        <p style="color: red;">@_devicesError</p>
+    }
+    @if (_devices is not null)
+    {
+        @if (_devices.Count == 0)
+        {
+            <p>No devices found.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr><th>Id</th><th>Name</th><th>Type</th><th>Online</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var device in _devices)
+                    {
+                        <tr>
+                            <td>@device.Id</td>
+                            <td>@device.Name</td>
+                            <td>@device.Type</td>
+                            <td>@(device.IsOnline ? "Yes" : "No")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+<section>
+    <h2>Device Events</h2>
+    <div>
+        <label for="eventsDeviceId">Device Id</label>
+        <input id="eventsDeviceId" type="text" @bind="_eventsDeviceIdInput" />
+        <label for="eventsFrom">From</label>
+        <input id="eventsFrom" type="date" @bind="_eventsFromDate" />
+        <label for="eventsTo">To</label>
+        <input id="eventsTo" type="date" @bind="_eventsToDate" />
+        <button @onclick="RunEventsAsync" disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))">Get Events</button>
+    </div>
+    @if (!string.IsNullOrEmpty(_eventsError))
+    {
+        <p style="color: red;">@_eventsError</p>
+    }
+    @if (_events is not null)
+    {
+        @if (_events.Count == 0)
+        {
+            <p>No events found.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr><th>Id</th><th>Event Type</th><th>Timestamp</th><th>Snapshot URL</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var evt in _events)
+                    {
+                        <tr>
+                            <td>@evt.Id</td>
+                            <td>@evt.EventType</td>
+                            <td>@evt.Timestamp</td>
+                            <td>@(evt.SnapshotUrl ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+<section>
+    <h2>Device Config</h2>
+    <div>
+        <label for="configDeviceId">Device Id</label>
+        <input id="configDeviceId" type="text" @bind="_configDeviceIdInput" />
+        <button @onclick="RunDeviceConfigAsync" disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))">Get Config</button>
+    </div>
+    @if (!string.IsNullOrEmpty(_configError))
+    {
+        <p style="color: red;">@_configError</p>
+    }
+    @if (_configLoadedOnce)
+    {
+        @if (_config is null)
+        {
+            <p>No configuration found for this device.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr><th>Motion Detection Enabled</th><th>Motion Sensitivity</th><th>Recording Mode</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>@_config.MotionDetectionEnabled</td>
+                        <td>@_config.MotionSensitivity</td>
+                        <td>@(_config.RecordingMode ?? "-")</td>
+                    </tr>
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+@code {
+    // Account Status
+    private string? _accountStatus;
+
+    private void RunAccountStatus()
+    {
+        _accountStatus = AuthService.GetAuthStatus();
+    }
+
+    // Locations
+    private bool _locationsLoading;
+    private string? _locationsError;
+    private List<Location>? _locations;
+
+    private async Task RunLocationsAsync()
+    {
+        _locationsLoading = true;
+        _locationsError = null;
+        try
+        {
+            var locations = await DeviceDiscoveryService.GetLocationsAsync(CancellationToken.None);
+            _locations = locations.ToList();
+        }
+        catch (Exception ex)
+        {
+            _locationsError = $"Failed to get locations: {ex.Message}";
+        }
+        finally
+        {
+            _locationsLoading = false;
+        }
+    }
+
+    // Devices
+    private string _locationIdInput = string.Empty;
+    private bool _devicesLoading;
+    private string? _devicesError;
+    private List<Device>? _devices;
+
+    private async Task RunDevicesAsync()
+    {
+        _devicesLoading = true;
+        _devicesError = null;
+        try
+        {
+            var devices = await DeviceDiscoveryService.GetDevicesAsync(_locationIdInput, CancellationToken.None);
+            _devices = devices.ToList();
+        }
+        catch (Exception ex)
+        {
+            _devicesError = $"Failed to get devices: {ex.Message}";
+        }
+        finally
+        {
+            _devicesLoading = false;
+        }
+    }
+
+    // Device Events
+    private string _eventsDeviceIdInput = string.Empty;
+    private DateTime _eventsFromDate = DateTime.Today.AddDays(-90);
+    private DateTime _eventsToDate = DateTime.Today;
+    private bool _eventsLoading;
+    private string? _eventsError;
+    private List<DeviceEvent>? _events;
+
+    private async Task RunEventsAsync()
+    {
+        _eventsLoading = true;
+        _eventsError = null;
+        try
+        {
+            var events = await EventAndConfigService.GetEventsAsync(_eventsDeviceIdInput, _eventsFromDate, _eventsToDate, null, CancellationToken.None);
+            _events = events.ToList();
+        }
+        catch (Exception ex)
+        {
+            _eventsError = $"Failed to get events: {ex.Message}";
+        }
+        finally
+        {
+            _eventsLoading = false;
+        }
+    }
+
+    // Device Config
+    private string _configDeviceIdInput = string.Empty;
+    private bool _configLoading;
+    private bool _configLoadedOnce;
+    private string? _configError;
+    private VideoForensics.Providers.Common.Contracts.DeviceConfig? _config;
+
+    private async Task RunDeviceConfigAsync()
+    {
+        _configLoading = true;
+        _configError = null;
+        try
+        {
+            _config = await EventAndConfigService.GetDeviceConfigAsync(_configDeviceIdInput, CancellationToken.None);
+            _configLoadedOnce = true;
+        }
+        catch (Exception ex)
+        {
+            _configError = $"Failed to get device config: {ex.Message}";
+        }
+        finally
+        {
+            _configLoading = false;
+        }
+    }
+}

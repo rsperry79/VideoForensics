@@ -1,0 +1,151 @@
+@page "/analyze/signal-anomalies"
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@inject IProviderAuthService AuthService
+@inject IReportGenerationService ReportGenerationService
+@inject IDeviceRepository DeviceRepository
+
+<h1>Signal Anomaly Report</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to view signal anomalies.</p>
+}
+else
+{
+    <p>
+        <label>
+            Device:
+            <select @bind="_selectedDeviceId">
+                <option value="">(All devices)</option>
+                @foreach (var device in _devices)
+                {
+                    <option value="@device.Id">@device.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            From: <input type="date" @bind="_fromDate" />
+        </label>
+        <label>
+            To: <input type="date" @bind="_toDate" />
+        </label>
+        <button @onclick="RunReportAsync">Run Report</button>
+    </p>
+
+    @if (_report is not null)
+    {
+        <h2>Anomalies by Device</h2>
+        @if (_report.AnomaliesByDevice.Count == 0)
+        {
+            <p>No signal anomalies found in this range.</p>
+        }
+        else
+        {
+            @foreach (var deviceFindings in _report.AnomaliesByDevice)
+            {
+                <h3>@deviceFindings.DeviceName</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Occurred At</th>
+                            <th>Anomaly Type</th>
+                            <th>Description</th>
+                            <th>RSSI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var anomaly in deviceFindings.Anomalies)
+                        {
+                            <tr>
+                                <td>@anomaly.OccurredAtUtc</td>
+                                <td>@anomaly.AnomalyType</td>
+                                <td>@(anomaly.Description ?? "-")</td>
+                                <td>@(anomaly.RssiValue?.ToString() ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+
+        <h2>Jamming Summary</h2>
+        @if (_report.JammingByDevice.Count == 0)
+        {
+            <p>No jamming incidents found in this range.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Incident Count</th>
+                        <th>Total Jammed (min)</th>
+                        <th>Avg Degradation (dB)</th>
+                        <th>Max Degradation (dB)</th>
+                        <th>First Incident</th>
+                        <th>Last Incident</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var jamming in _report.JammingByDevice)
+                    {
+                        <tr>
+                            <td>@jamming.DeviceName</td>
+                            <td>@jamming.IncidentCount</td>
+                            <td>@jamming.TotalJammedDurationMinutes</td>
+                            <td>@jamming.AverageDegradationDb</td>
+                            <td>@jamming.MaxDegradationDb</td>
+                            <td>@(jamming.FirstIncidentUtc?.ToString() ?? "-")</td>
+                            <td>@(jamming.LastIncidentUtc?.ToString() ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceId = string.Empty;
+    private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
+    private DateTime _toDate = DateTime.UtcNow.Date;
+    private SignalAnomalyReport? _report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+                await RunReportAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunReportAsync()
+    {
+        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
+        _report = await ReportGenerationService.BuildSignalAnomalyReportAsync(
+            deviceId,
+            _fromDate,
+            _toDate,
+            CancellationToken.None);
+    }
+}
