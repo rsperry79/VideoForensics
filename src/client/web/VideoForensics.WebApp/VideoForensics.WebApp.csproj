@@ -16,6 +16,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <!-- WebAuthn/passkey attestation+assertion verification (plan §5.1/§6). Fido2NetLib does the
+         CBOR/COSE parsing and attestation-statement cryptographic verification - explicitly called
+         out in the plan as a "looks right and isn't" risk area not to hand-roll. -->
+    <PackageReference Include="Fido2" Version="4.0.1" />
+    <PackageReference Include="Fido2.AspNet" Version="4.0.1" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
   <ItemGroup>

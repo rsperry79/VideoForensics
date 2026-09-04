@@ -178,6 +178,15 @@ namespace VideoForensics.Hosting
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
             services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
 
+            // Pairing/RBAC/security-audit backbone (plan §5, M6). IPairingTokenService is
+            // per-process in-memory state (short-lived tokens), so it must be Singleton.
+            // ISessionTokenService only needs the already-registered IDataProtectionProvider.
+            services.AddSingleton<IPairingTokenService, PairingTokenService>();
+            services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
+            services.AddSingleton<ISessionTokenService, SessionTokenService>();
+            services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
+            services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
+
             return services;
         }
 
