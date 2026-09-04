@@ -174,6 +174,9 @@ namespace VideoForensics.Hosting
             services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             services.AddHostedService<DeviceHealthSyncService>();
 
+            // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
+            services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+
             return services;
         }
 

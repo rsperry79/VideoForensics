@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Hosting;
+using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +50,10 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
+// for the explicit "unauthenticated until M6" note.
+app.MapMediaApiEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
