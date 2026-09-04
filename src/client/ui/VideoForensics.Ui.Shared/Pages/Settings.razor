@@ -5,170 +5,155 @@
 @inject IForensicsConfigurationService ConfigService
 @inject ConfigToolsOrchestrator ConfigTools
 
-<h1>Settings</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to change settings.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to change settings.
+    </MudAlert>
 }
 else
 {
-    <h2>Reports</h2>
-    <div class="settings-group">
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableForensicAnalysisReports" @onchange='e => SaveReportToggleAsync("ForensicAnalysis", e.Value)' />
-                Forensic Analysis
-            </label>
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Reports</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack>
+            <MudSwitch T="bool" Value="Config.EnableForensicAnalysisReports" ValueChanged="SaveForensicAnalysisReportsAsync" Color="Color.Primary" Label="Forensic Analysis" />
             @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
             {
-                <span style="color:@(m1.Success ? "green" : "red")">@m1.Message</span>
+                <MudText Color="@(m1.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m1.Message</MudText>
             }
-        </div>
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableSignalAnomalyReports" @onchange='e => SaveReportToggleAsync("SignalAnomaly", e.Value)' />
-                Signal Anomaly
-            </label>
+            <MudSwitch T="bool" Value="Config.EnableSignalAnomalyReports" ValueChanged="SaveSignalAnomalyReportsAsync" Color="Color.Primary" Label="Signal Anomaly" />
             @if (_reportMessages.TryGetValue("SignalAnomaly", out var m2))
             {
-                <span style="color:@(m2.Success ? "green" : "red")">@m2.Message</span>
+                <MudText Color="@(m2.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m2.Message</MudText>
             }
-        </div>
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableChainOfCustodyReports" @onchange='e => SaveReportToggleAsync("ChainOfCustody", e.Value)' />
-                Chain of Custody
-            </label>
+            <MudSwitch T="bool" Value="Config.EnableChainOfCustodyReports" ValueChanged="SaveChainOfCustodyReportsAsync" Color="Color.Primary" Label="Chain of Custody" />
             @if (_reportMessages.TryGetValue("ChainOfCustody", out var m3))
             {
-                <span style="color:@(m3.Success ? "green" : "red")">@m3.Message</span>
+                <MudText Color="@(m3.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m3.Message</MudText>
             }
-        </div>
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableEvidenceValidationReports" @onchange='e => SaveReportToggleAsync("EvidenceValidation", e.Value)' />
-                Evidence Validation
-            </label>
+            <MudSwitch T="bool" Value="Config.EnableEvidenceValidationReports" ValueChanged="SaveEvidenceValidationReportsAsync" Color="Color.Primary" Label="Evidence Validation" />
             @if (_reportMessages.TryGetValue("EvidenceValidation", out var m4))
             {
-                <span style="color:@(m4.Success ? "green" : "red")">@m4.Message</span>
+                <MudText Color="@(m4.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m4.Message</MudText>
             }
-        </div>
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableAccessControlMonitoring" @onchange='e => SaveReportToggleAsync("AccessControl", e.Value)' />
-                Access Control
-            </label>
+            <MudSwitch T="bool" Value="Config.EnableAccessControlMonitoring" ValueChanged="SaveAccessControlReportsAsync" Color="Color.Primary" Label="Access Control" />
             @if (_reportMessages.TryGetValue("AccessControl", out var m5))
             {
-                <span style="color:@(m5.Success ? "green" : "red")">@m5.Message</span>
+                <MudText Color="@(m5.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m5.Message</MudText>
             }
-        </div>
-    </div>
+        </MudStack>
+    </MudPaper>
 
-    <h2>Health Sync</h2>
-    <div class="settings-group">
-        <div>
-            <label>
-                <input type="checkbox" checked="@Config.EnableHealthSync" @onchange="SaveHealthSyncAsync" />
-                Enable RSSI / device-health background sync
-            </label>
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Health Sync</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack>
+            <MudSwitch T="bool" Value="Config.EnableHealthSync" ValueChanged="SaveHealthSyncAsync" Color="Color.Primary" Label="Enable RSSI / device-health background sync" />
             @if (_healthSyncMessage is not null)
             {
-                <span style="color:@(_healthSyncSuccess ? "green" : "red")">@_healthSyncMessage</span>
+                <MudText Color="@(_healthSyncSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_healthSyncMessage</MudText>
             }
-        </div>
-    </div>
+        </MudStack>
+    </MudPaper>
 
-    <h2>Retention</h2>
-    <div class="settings-group">
-        <div>
-            <label for="retentionDays">Retention (days)</label>
-            <input id="retentionDays" type="number" @bind="_retentionDays" />
-            <button @onclick="SaveRetentionAsync">Save</button>
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Network Discovery</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack>
+            <MudSwitch T="bool" Value="Config.EnableMdnsAdvertisement" ValueChanged="SaveMdnsAdvertisementAsync" Color="Color.Primary" Label="Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP" />
+            @if (_mdnsMessage is not null)
+            {
+                <MudText Color="@(_mdnsSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_mdnsMessage</MudText>
+            }
+        </MudStack>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Retention</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudNumericField @bind-Value="_retentionDays" Label="Retention (days)" Variant="Variant.Outlined" Style="max-width: 200px;" />
+            <MudButton OnClick="SaveRetentionAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
             @if (_retentionMessage is not null)
             {
-                <span style="color:@(_retentionSuccess ? "green" : "red")">@_retentionMessage</span>
+                <MudText Color="@(_retentionSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_retentionMessage</MudText>
             }
-        </div>
-    </div>
+        </MudStack>
+    </MudPaper>
 
-    <h2>Downloads</h2>
-    <div class="settings-group">
-        <div>
-            <label for="maxConcurrent">Max Concurrent Downloads</label>
-            <input id="maxConcurrent" type="number" @bind="_maxConcurrentDownloads" />
-            <button @onclick="SaveMaxConcurrentAsync">Save</button>
-            @if (_maxConcurrentMessage is not null)
-            {
-                <span style="color:@(_maxConcurrentSuccess ? "green" : "red")">@_maxConcurrentMessage</span>
-            }
-        </div>
-        <div>
-            <label for="downloadLocation">Download Location</label>
-            <input id="downloadLocation" type="text" @bind="_downloadLocation" />
-            <button @onclick="SaveDownloadLocationAsync">Save</button>
-            @if (_downloadLocationMessage is not null)
-            {
-                <span style="color:@(_downloadLocationSuccess ? "green" : "red")">@_downloadLocationMessage</span>
-            }
-        </div>
-    </div>
-
-    <h2>Reporting Format &amp; Redaction</h2>
-    <div class="settings-group">
-        <div>
-            <label for="reportFormat">Report Format</label>
-            <select id="reportFormat" @bind="_reportFormat">
-                <option value="json">json</option>
-                <option value="xml">xml</option>
-                <option value="csv">csv</option>
-            </select>
-            <button @onclick="SaveReportFormatAsync">Save</button>
-            @if (_reportFormatMessage is not null)
-            {
-                <span style="color:@(_reportFormatSuccess ? "green" : "red")">@_reportFormatMessage</span>
-            }
-        </div>
-        <div>
-            <label for="redactionLevel">Redaction Level</label>
-            <select id="redactionLevel" @bind="_redactionLevel">
-                @foreach (var level in Enum.GetValues<RedactionLevel>())
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Downloads</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Spacing="3">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudNumericField @bind-Value="_maxConcurrentDownloads" Label="Max Concurrent Downloads" Variant="Variant.Outlined" Style="max-width: 260px;" />
+                <MudButton OnClick="SaveMaxConcurrentAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                @if (_maxConcurrentMessage is not null)
                 {
-                    <option value="@level">@level</option>
+                    <MudText Color="@(_maxConcurrentSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_maxConcurrentMessage</MudText>
                 }
-            </select>
-            <button @onclick="SaveRedactionLevelAsync">Save</button>
-            @if (_redactionLevelMessage is not null)
-            {
-                <span style="color:@(_redactionLevelSuccess ? "green" : "red")">@_redactionLevelMessage</span>
-            }
-        </div>
-    </div>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudTextField @bind-Value="_downloadLocation" Label="Download Location" Variant="Variant.Outlined" Style="max-width: 400px;" />
+                <MudButton OnClick="SaveDownloadLocationAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                @if (_downloadLocationMessage is not null)
+                {
+                    <MudText Color="@(_downloadLocationSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_downloadLocationMessage</MudText>
+                }
+            </MudStack>
+        </MudStack>
+    </MudPaper>
 
-    <h2>Logging</h2>
-    <div class="settings-group">
-        <div>
-            <label for="loggingLevel">Logging Level</label>
-            <select id="loggingLevel" @bind="_loggingLevel">
-                <option value="Debug">Debug</option>
-                <option value="Information">Information</option>
-                <option value="Warning">Warning</option>
-                <option value="Error">Error</option>
-                <option value="Critical">Critical</option>
-            </select>
-            <button @onclick="SaveLoggingLevelAsync">Save</button>
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Reporting Format &amp; Redaction</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Spacing="3">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudSelect T="string" @bind-Value="_reportFormat" Label="Report Format" Variant="Variant.Outlined" Style="max-width: 200px;">
+                    <MudSelectItem Value="@("json")">json</MudSelectItem>
+                    <MudSelectItem Value="@("xml")">xml</MudSelectItem>
+                    <MudSelectItem Value="@("csv")">csv</MudSelectItem>
+                </MudSelect>
+                <MudButton OnClick="SaveReportFormatAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                @if (_reportFormatMessage is not null)
+                {
+                    <MudText Color="@(_reportFormatSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_reportFormatMessage</MudText>
+                }
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudSelect T="RedactionLevel" @bind-Value="_redactionLevel" Label="Redaction Level" Variant="Variant.Outlined" Style="max-width: 200px;">
+                    @foreach (var level in Enum.GetValues<RedactionLevel>())
+                    {
+                        <MudSelectItem Value="@level">@level</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton OnClick="SaveRedactionLevelAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+                @if (_redactionLevelMessage is not null)
+                {
+                    <MudText Color="@(_redactionLevelSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_redactionLevelMessage</MudText>
+                }
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Logging</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudSelect T="string" @bind-Value="_loggingLevel" Label="Logging Level" Variant="Variant.Outlined" Style="max-width: 200px;">
+                <MudSelectItem Value="@("Debug")">Debug</MudSelectItem>
+                <MudSelectItem Value="@("Information")">Information</MudSelectItem>
+                <MudSelectItem Value="@("Warning")">Warning</MudSelectItem>
+                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                <MudSelectItem Value="@("Critical")">Critical</MudSelectItem>
+            </MudSelect>
+            <MudButton OnClick="SaveLoggingLevelAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
             @if (_loggingLevelMessage is not null)
             {
-                <span style="color:@(_loggingLevelSuccess ? "green" : "red")">@_loggingLevelMessage</span>
+                <MudText Color="@(_loggingLevelSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_loggingLevelMessage</MudText>
             }
-        </div>
-    </div>
+        </MudStack>
+    </MudPaper>
 }
 
 @code {
@@ -179,6 +164,9 @@ else
 
     private bool _healthSyncSuccess;
     private string? _healthSyncMessage;
+
+    private bool _mdnsSuccess;
+    private string? _mdnsMessage;
 
     private int _retentionDays;
     private bool _retentionSuccess;
@@ -225,16 +213,20 @@ else
         }
     }
 
-    private async Task SaveReportToggleAsync(string reportType, object? isChecked)
+    private Task SaveForensicAnalysisReportsAsync(bool enabled) => SaveReportToggleAsync("ForensicAnalysis", enabled);
+    private Task SaveSignalAnomalyReportsAsync(bool enabled) => SaveReportToggleAsync("SignalAnomaly", enabled);
+    private Task SaveChainOfCustodyReportsAsync(bool enabled) => SaveReportToggleAsync("ChainOfCustody", enabled);
+    private Task SaveEvidenceValidationReportsAsync(bool enabled) => SaveReportToggleAsync("EvidenceValidation", enabled);
+    private Task SaveAccessControlReportsAsync(bool enabled) => SaveReportToggleAsync("AccessControl", enabled);
+
+    private async Task SaveReportToggleAsync(string reportType, bool enabled)
     {
-        var enabled = isChecked is bool b && b;
         var (success, message) = await ConfigTools.SetReportEnabledAsync(Config, reportType, enabled, CancellationToken.None);
         _reportMessages[reportType] = (success, message);
     }
 
-    private async Task SaveHealthSyncAsync(ChangeEventArgs e)
+    private async Task SaveHealthSyncAsync(bool enabled)
     {
-        var enabled = e.Value is bool b && b;
         try
         {
             Config.EnableHealthSync = enabled;
@@ -246,6 +238,22 @@ else
         {
             _healthSyncSuccess = false;
             _healthSyncMessage = $"Failed to update health sync: {ex.Message}";
+        }
+    }
+
+    private async Task SaveMdnsAdvertisementAsync(bool enabled)
+    {
+        try
+        {
+            Config.EnableMdnsAdvertisement = enabled;
+            await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            _mdnsSuccess = true;
+            _mdnsMessage = $"mDNS advertisement {(enabled ? "enabled" : "disabled")}";
+        }
+        catch (Exception ex)
+        {
+            _mdnsSuccess = false;
+            _mdnsMessage = $"Failed to update mDNS advertisement: {ex.Message}";
         }
     }
 

@@ -5,87 +5,82 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 
-<h1>Operators</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Operators</MudText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <p><a href="/device-signin">Sign in with your passkey</a> to manage operators.</p>
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage operators.
+    </MudAlert>
 }
 
-<p>
-    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
-</p>
+<MudStack Row="true" Class="mb-2">
+    <MudButton OnClick="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
+</MudStack>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <p style="color:red">@_authError</p>
-    <p>
-        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - a Super Admin device
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
         signed in via the Local network tier is required to manage operators.
-    </p>
+    </MudText>
 }
 else if (_loadError is not null)
 {
-    <p style="color:red">@_loadError</p>
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
 }
 else if (_operators is null || _operators.Count == 0)
 {
-    <p>No operators found.</p>
+    <MudText>No operators found.</MudText>
 }
 else
 {
-    <table>
-        <thead>
-            <tr>
-                <th>Display Name</th>
-                <th>Created At (UTC)</th>
-                <th>Active</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var op in _operators)
-            {
-                <tr>
-                    <td>@op.DisplayName</td>
-                    <td>@op.CreatedAtUtc</td>
-                    <td>
-                        @if (op.Active)
-                        {
-                            <span style="color:green">Active</span>
-                        }
-                        else
-                        {
-                            <span style="color:red">Inactive</span>
-                        }
-                    </td>
-                    <td>
-                        @if (op.Active)
-                        {
-                            <button @onclick="() => BeginDeactivate(op.Id)">Deactivate</button>
-                            @if (_pendingDeactivateOperatorId == op.Id)
-                            {
-                                <div>
-                                    <input type="text" @bind="_reasonInput" @bind:event="oninput" placeholder="Reason for deactivation" />
-                                    <button @onclick="() => ConfirmDeactivate(op.Id)">Confirm</button>
-                                    <button @onclick="CancelPending">Cancel</button>
-                                </div>
-                            }
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudTable Items="@_operators" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Display Name</MudTh>
+            <MudTh>Created At (UTC)</MudTh>
+            <MudTh>Active</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
+            <MudTd DataLabel="Created At (UTC)">@context.CreatedAtUtc</MudTd>
+            <MudTd DataLabel="Active">
+                @if (context.Active)
+                {
+                    <MudText Color="Color.Success">Active</MudText>
+                }
+                else
+                {
+                    <MudText Color="Color.Error">Inactive</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.Active)
+                {
+                    <MudButton OnClick="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small">Deactivate</MudButton>
+                    @if (_pendingDeactivateOperatorId == context.Id)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                            <MudTextField @bind-Value="_reasonInput" Placeholder="Reason for deactivation" Variant="Variant.Outlined" Style="max-width: 260px;" Immediate="true" />
+                            <MudButton OnClick="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small">Confirm</MudButton>
+                            <MudButton OnClick="CancelPending" Variant="Variant.Outlined" Size="Size.Small">Cancel</MudButton>
+                        </MudStack>
+                    }
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
 }
 
 @if (_actionError is not null)
 {
-    <p style="color:red">@_actionError</p>
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_actionError</MudAlert>
 }
 
 @code {

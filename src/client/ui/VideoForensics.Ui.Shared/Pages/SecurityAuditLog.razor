@@ -4,61 +4,53 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 
-<h1>Security Audit Log</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Security Audit Log</MudText>
 
-<p>
-    <label for="operatorIdFilter">Operator Id</label>
-    <input id="operatorIdFilter" type="text" @bind="_operatorIdInput" @bind:event="oninput" placeholder="(optional) filter by operator id" />
-    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
-</p>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudTextField @bind-Value="_operatorIdInput" Label="Operator Id" Placeholder="(optional) filter by operator id" Variant="Variant.Outlined" Immediate="true" Style="max-width: 320px;" />
+    <MudButton OnClick="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
+</MudStack>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <p style="color:red">@_authError</p>
-    <p>
-        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - an Admin (or higher)
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - an Admin (or higher)
         device is required to view the security audit log.
-    </p>
+    </MudText>
 }
 else if (_loadError is not null)
 {
-    <p style="color:red">@_loadError</p>
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
 }
 else if (_entries is null || _entries.Count == 0)
 {
-    <p>No audit log entries found.</p>
+    <MudText>No audit log entries found.</MudText>
 }
 else
 {
-    <table>
-        <thead>
-            <tr>
-                <th>Timestamp (UTC)</th>
-                <th>Event Type</th>
-                <th>Operator Id</th>
-                <th>Paired Device Id</th>
-                <th>Source IP</th>
-                <th>Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in _entries.OrderByDescending(e => e.TimestampUtc))
-            {
-                <tr style="@(entry.IsUrgent ? "color:red;font-weight:bold" : null)">
-                    <td>@entry.TimestampUtc</td>
-                    <td>@entry.EventType</td>
-                    <td>@(entry.OperatorId?.ToString() ?? "-")</td>
-                    <td>@(entry.PairedDeviceId?.ToString() ?? "-")</td>
-                    <td>@(entry.SourceIp ?? "-")</td>
-                    <td>@(entry.Details ?? "-")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudTable Items="@_entries.OrderByDescending(e => e.TimestampUtc)" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Timestamp (UTC)</MudTh>
+            <MudTh>Event Type</MudTh>
+            <MudTh>Operator Id</MudTh>
+            <MudTh>Paired Device Id</MudTh>
+            <MudTh>Source IP</MudTh>
+            <MudTh>Details</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Timestamp (UTC)" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@context.TimestampUtc</MudTd>
+            <MudTd DataLabel="Event Type" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@context.EventType</MudTd>
+            <MudTd DataLabel="Operator Id" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.OperatorId?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Paired Device Id" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.PairedDeviceId?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Source IP" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.SourceIp ?? "-")</MudTd>
+            <MudTd DataLabel="Details" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.Details ?? "-")</MudTd>
+        </RowTemplate>
+    </MudTable>
 }
 
 @code {

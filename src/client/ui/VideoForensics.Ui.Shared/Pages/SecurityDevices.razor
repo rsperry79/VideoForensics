@@ -5,116 +5,111 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 
-<h1>Paired Devices</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Paired Devices</MudText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <p><a href="/device-signin">Sign in with your passkey</a> to manage paired devices.</p>
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage paired devices.
+    </MudAlert>
 }
 
-<h2>Add Client</h2>
-<p>
-    <button @onclick="InitiatePairingAsync" disabled="@_isInitiatingPairing">
+<MudText Typo="Typo.h6" Class="mt-4 mb-2">Add Client</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudButton OnClick="InitiatePairingAsync" Disabled="@_isInitiatingPairing" Variant="Variant.Filled" Color="Color.Primary">
         @(_isInitiatingPairing ? "Generating..." : "Generate Pairing QR Code")
-    </button>
-</p>
+    </MudButton>
+</MudStack>
 @if (_pairingError is not null)
 {
-    <p style="color:red">@_pairingError</p>
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_pairingError</MudAlert>
 }
 @if (_pairingToken is not null)
 {
-    <p>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
         <img src="@QrCodeUrl" alt="Pairing QR code" width="240" height="240" />
-    </p>
-    <p>Scan with the new device's camera, or open this link on it directly:</p>
-    <p><code>@PairingUrl</code></p>
-    <p>Expires at @_pairingExpiresAtUtc UTC (single use, ~2 minutes).</p>
+        <MudText Class="mt-2">Scan with the new device's camera, or open this link on it directly:</MudText>
+        <MudText Typo="Typo.body2"><code>@PairingUrl</code></MudText>
+        <MudText Typo="Typo.caption">Expires at @_pairingExpiresAtUtc UTC (single use, ~2 minutes).</MudText>
+    </MudPaper>
 }
 
-<h2>Currently Paired</h2>
-<p>
-    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
-</p>
+<MudText Typo="Typo.h6" Class="mt-4 mb-2">Currently Paired</MudText>
+<MudStack Row="true" Class="mb-2">
+    <MudButton OnClick="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
+</MudStack>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <p style="color:red">@_authError</p>
-    <p>
-        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - a Super Admin device
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
         signed in via the Local network tier is required to manage paired devices.
-    </p>
+    </MudText>
 }
 else if (_loadError is not null)
 {
-    <p style="color:red">@_loadError</p>
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
 }
 else if (_devices is null || _devices.Count == 0)
 {
-    <p>No paired devices found.</p>
+    <MudText>No paired devices found.</MudText>
 }
 else
 {
-    <table>
-        <thead>
-            <tr>
-                <th>Device Name</th>
-                <th>Role</th>
-                <th>Paired At (UTC)</th>
-                <th>Last Seen (UTC)</th>
-                <th>Last Seen IP</th>
-                <th>Last Seen Tier</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var device in _devices)
-            {
-                <tr>
-                    <td>@device.DeviceName</td>
-                    <td>@device.Role</td>
-                    <td>@device.PairedAtUtc</td>
-                    <td>@(device.LastSeenAtUtc?.ToString() ?? "-")</td>
-                    <td>@(device.LastSeenIp ?? "-")</td>
-                    <td>@(device.LastSeenTier?.ToString() ?? "-")</td>
-                    <td>
-                        @if (device.IsActive)
-                        {
-                            <span style="color:green">Active</span>
-                        }
-                        else
-                        {
-                            <span style="color:red">Revoked: @device.RevokedReason</span>
-                        }
-                    </td>
-                    <td>
-                        @if (device.IsActive)
-                        {
-                            <button @onclick="() => BeginRevoke(device.Id)">Revoke</button>
-                            @if (_pendingRevokeDeviceId == device.Id)
-                            {
-                                <div>
-                                    <input type="text" @bind="_reasonInput" @bind:event="oninput" placeholder="Reason for revocation" />
-                                    <button @onclick="() => ConfirmRevoke(device.Id)">Confirm</button>
-                                    <button @onclick="CancelPending">Cancel</button>
-                                </div>
-                            }
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <MudTable Items="@_devices" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Device Name</MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh>Paired At (UTC)</MudTh>
+            <MudTh>Last Seen (UTC)</MudTh>
+            <MudTh>Last Seen IP</MudTh>
+            <MudTh>Last Seen Tier</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Device Name">@context.DeviceName</MudTd>
+            <MudTd DataLabel="Role">@context.Role</MudTd>
+            <MudTd DataLabel="Paired At (UTC)">@context.PairedAtUtc</MudTd>
+            <MudTd DataLabel="Last Seen (UTC)">@(context.LastSeenAtUtc?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Last Seen IP">@(context.LastSeenIp ?? "-")</MudTd>
+            <MudTd DataLabel="Last Seen Tier">@(context.LastSeenTier?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive)
+                {
+                    <MudText Color="Color.Success">Active</MudText>
+                }
+                else
+                {
+                    <MudText Color="Color.Error">Revoked: @context.RevokedReason</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.IsActive)
+                {
+                    <MudButton OnClick="() => BeginRevoke(context.Id)" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small">Revoke</MudButton>
+                    @if (_pendingRevokeDeviceId == context.Id)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                            <MudTextField @bind-Value="_reasonInput" Placeholder="Reason for revocation" Variant="Variant.Outlined" Style="max-width: 260px;" Immediate="true" />
+                            <MudButton OnClick="() => ConfirmRevoke(context.Id)" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small">Confirm</MudButton>
+                            <MudButton OnClick="CancelPending" Variant="Variant.Outlined" Size="Size.Small">Cancel</MudButton>
+                        </MudStack>
+                    }
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
 }
 
 @if (_actionError is not null)
 {
-    <p style="color:red">@_actionError</p>
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_actionError</MudAlert>
 }
 
 @code {
