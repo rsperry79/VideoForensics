@@ -1,0 +1,85 @@
+@page "/pair"
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject WebAuthnClient WebAuthn
+
+<h1>Pair This Device</h1>
+
+@if (_token is null)
+{
+    <p style="color:red">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</p>
+}
+else if (_result is not null)
+{
+    <p style="color:green">
+        Device paired successfully as <strong>@_result.Value.Role</strong>.
+        You can now <a href="/device-signin">sign in with your passkey</a>.
+    </p>
+}
+else
+{
+    <p>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</p>
+
+    <p>
+        <label for="operatorName">Your name</label>
+        <input id="operatorName" type="text" @bind="_operatorDisplayName" @bind:event="oninput" placeholder="e.g. Jane Doe" />
+    </p>
+    <p>
+        <label for="deviceName">Device name</label>
+        <input id="deviceName" type="text" @bind="_deviceName" @bind:event="oninput" placeholder="e.g. Jane's Laptop" />
+    </p>
+
+    <button @onclick="PairAsync" disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))">
+        @(_isPairing ? "Waiting for passkey..." : "Pair Device")
+    </button>
+
+    @if (_error is not null)
+    {
+        <p style="color:red">@_error</p>
+    }
+}
+
+@code {
+    private string? _token;
+    private string _operatorDisplayName = string.Empty;
+    private string _deviceName = string.Empty;
+    private bool _isPairing;
+    private string? _error;
+    private (Guid OperatorId, Guid PairedDeviceId, string Role)? _result;
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _token = query["token"];
+    }
+
+    private async Task PairAsync()
+    {
+        if (_token is null)
+        {
+            return;
+        }
+
+        _isPairing = true;
+        _error = null;
+        try
+        {
+            if (!await WebAuthn.IsAvailableAsync())
+            {
+                _error = "This browser does not support WebAuthn/passkeys. Use a modern Chrome, Edge, Firefox, or Safari.";
+                return;
+            }
+
+            _result = await WebAuthn.CompleteRegistrationAsync(_token, _operatorDisplayName.Trim(), _deviceName.Trim());
+        }
+        catch (Exception ex)
+        {
+            _error = $"Pairing failed: {ex.Message}";
+        }
+        finally
+        {
+            _isPairing = false;
+        }
+    }
+}
