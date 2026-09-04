@@ -1,9 +1,38 @@
 @page "/settings/devices"
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
 
 <h1>Paired Devices</h1>
 
+@if (!SessionState.IsSignedIn)
+{
+    <p><a href="/device-signin">Sign in with your passkey</a> to manage paired devices.</p>
+}
+
+<h2>Add Client</h2>
+<p>
+    <button @onclick="InitiatePairingAsync" disabled="@_isInitiatingPairing">
+        @(_isInitiatingPairing ? "Generating..." : "Generate Pairing QR Code")
+    </button>
+</p>
+@if (_pairingError is not null)
+{
+    <p style="color:red">@_pairingError</p>
+}
+@if (_pairingToken is not null)
+{
+    <p>
+        <img src="@QrCodeUrl" alt="Pairing QR code" width="240" height="240" />
+    </p>
+    <p>Scan with the new device's camera, or open this link on it directly:</p>
+    <p><code>@PairingUrl</code></p>
+    <p>Expires at @_pairingExpiresAtUtc UTC (single use, ~2 minutes).</p>
+}
+
+<h2>Currently Paired</h2>
 <p>
     <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
 </p>
@@ -16,8 +45,8 @@ else if (_authError is not null)
 {
     <p style="color:red">@_authError</p>
     <p>
-        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
-        built) or you can test manually with a <code>sessionToken</code> you already have.
+        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - a Super Admin device
+        signed in via the Local network tier is required to manage paired devices.
     </p>
 }
 else if (_loadError is not null)
@@ -96,10 +125,60 @@ else
     private string? _actionError;
     private Guid? _pendingRevokeDeviceId;
     private string _reasonInput = string.Empty;
+    private bool _isInitiatingPairing;
+    private string? _pairingError;
+    private string? _pairingToken;
+    private DateTime? _pairingExpiresAtUtc;
+
+    private string PairingUrl => $"{NavigationManager.BaseUri.TrimEnd('/')}/pair?token={_pairingToken}";
+    private string QrCodeUrl => $"api/pairing/{_pairingToken}/qrcode.png";
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - the session (and
+        // therefore the Authorization header LoadAsync needs) can only be read from localStorage
+        // once the interactive circuit is actually connected, hence the re-load + re-fetch here
+        // rather than in OnInitializedAsync.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task InitiatePairingAsync()
+    {
+        _isInitiatingPairing = true;
+        _pairingError = null;
+        _pairingToken = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsync("api/pairing/initiate", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _pairingError = await SafeReadErrorAsync(response) ?? $"Could not start pairing: {response.StatusCode}";
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _pairingToken = body.GetProperty("token").GetString();
+            _pairingExpiresAtUtc = body.GetProperty("expiresAtUtc").GetDateTime();
+        }
+        catch (Exception ex)
+        {
+            _pairingError = $"Could not start pairing: {ex.Message}";
+        }
+        finally
+        {
+            _isInitiatingPairing = false;
+        }
     }
 
     private async Task LoadAsync()
@@ -152,10 +231,21 @@ else
             return;
         }
 
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = "Sign in with your passkey first.";
+            return;
+        }
+
         _actionError = null;
         try
         {
+            // Revocation is high-risk (plan §5.7) - a fresh passkey assertion is required at the
+            // moment of the action, not just an already-open session.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
             var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
             var response = await client.PostAsJsonAsync($"api/devices-management/paired-devices/{deviceId}/revoke", new { reason = _reasonInput });
             if (!response.IsSuccessStatusCode)
             {
@@ -188,7 +278,13 @@ else
 
     private HttpClient CreateClient()
     {
-        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };

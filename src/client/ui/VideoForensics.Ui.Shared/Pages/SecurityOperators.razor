@@ -1,8 +1,16 @@
 @page "/settings/operators"
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
 
 <h1>Operators</h1>
+
+@if (!SessionState.IsSignedIn)
+{
+    <p><a href="/device-signin">Sign in with your passkey</a> to manage operators.</p>
+}
 
 <p>
     <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
@@ -16,8 +24,8 @@ else if (_authError is not null)
 {
     <p style="color:red">@_authError</p>
     <p>
-        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
-        built) or you can test manually with a <code>sessionToken</code> you already have.
+        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - a Super Admin device
+        signed in via the Local network tier is required to manage operators.
     </p>
 }
 else if (_loadError is not null)
@@ -94,6 +102,18 @@ else
         await LoadAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
     private async Task LoadAsync()
     {
         _isLoading = true;
@@ -144,10 +164,21 @@ else
             return;
         }
 
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = "Sign in with your passkey first.";
+            return;
+        }
+
         _actionError = null;
         try
         {
+            // Deactivation is high-risk (plan §5.7) - a fresh passkey assertion is required at the
+            // moment of the action, not just an already-open session.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
             var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
             var response = await client.PostAsJsonAsync($"api/devices-management/operators/{operatorId}/deactivate", new { reason = _reasonInput });
             if (!response.IsSuccessStatusCode)
             {
@@ -180,7 +211,13 @@ else
 
     private HttpClient CreateClient()
     {
-        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };

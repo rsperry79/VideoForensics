@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
+using QRCoder;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -62,6 +63,29 @@ namespace VideoForensics.WebApp.Api
                 return info == null
                     ? Results.NotFound(new { valid = false })
                     : Results.Ok(new { valid = true, expiresAtUtc = info.ExpiresAtUtc });
+            }).RequireRateLimiting("auth");
+
+            // Deliberately unauthenticated/unauthorized beyond the token itself: the token is
+            // already short-lived, single-use, and high-entropy (IPairingTokenService), and the QR
+            // image only encodes the same pairing URL a SuperAdmin could otherwise read off-screen
+            // or copy as plain text - rendering it as an image is a UX convenience, not a new trust
+            // boundary.
+            app.MapGet("/api/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
+            {
+                var info = pairingTokens.Peek(token);
+                if (info == null)
+                {
+                    return Results.NotFound();
+                }
+
+                var pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}";
+
+                using var generator = new QRCodeGenerator();
+                using var data = generator.CreateQrCode(pairingUrl, QRCodeGenerator.ECCLevel.Q);
+                var pngQrCode = new PngByteQRCode(data);
+                var bytes = pngQrCode.GetGraphic(10);
+
+                return Results.File(bytes, "image/png");
             }).RequireRateLimiting("auth");
 
             app.MapPost("/api/pairing/{token}/register/options", async (

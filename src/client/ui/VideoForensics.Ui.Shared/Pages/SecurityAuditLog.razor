@@ -1,6 +1,8 @@
 @page "/settings/security-log"
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
 
 <h1>Security Audit Log</h1>
 
@@ -18,8 +20,8 @@ else if (_authError is not null)
 {
     <p style="color:red">@_authError</p>
     <p>
-        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
-        built) or you can test manually with a <code>sessionToken</code> you already have.
+        Not authorized. <a href="/device-signin">Sign in with your passkey</a> - an Admin (or higher)
+        device is required to view the security audit log.
     </p>
 }
 else if (_loadError is not null)
@@ -71,6 +73,18 @@ else
         await LoadAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
     private async Task LoadAsync()
     {
         _isLoading = true;
@@ -108,7 +122,13 @@ else
 
     private HttpClient CreateClient()
     {
-        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };

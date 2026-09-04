@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Hosting;
+using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
@@ -77,6 +78,12 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore();
 builder.Services.AddHealthChecks();
+
+// Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
+// the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
+// to the pairing/auth API in Api/PairingEndpoints.cs.
+builder.Services.AddScoped<PairedSessionState>();
+builder.Services.AddScoped<WebAuthnClient>();
 
 var app = builder.Build();
 
