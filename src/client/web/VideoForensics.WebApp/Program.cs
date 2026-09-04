@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
@@ -68,6 +69,17 @@ builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName
         PairedDeviceAuthenticationDefaults.SchemeName, _ => { });
 
 builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
+
+// AddPolicy() above only registers the requirement TYPES a policy needs satisfied - it does not
+// register the handler CLASSES that actually satisfy them. Without these, ASP.NET Core's
+// authorization system finds zero IAuthorizationHandler for MinimumRoleRequirement/
+// RequireLocalTierRequirement, so context.Succeed() is never called for ANY role or tier check and
+// every one of these policies (ReadOnly/Review/Admin/SuperAdmin/SuperAdminLocal - i.e. every
+// RBAC-gated endpoint in the app) fails unconditionally, regardless of the caller's actual role or
+// network tier. Found by live-testing an authenticated SuperAdmin-over-loopback request that still
+// 403'd despite both individual checks being correct by inspection.
+builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
