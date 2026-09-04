@@ -108,6 +108,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the security audit log entries (plan §5.5).</summary>
         public DbSet<SecurityAuditLogEntry> SecurityAuditLogEntries { get; set; }
 
+        /// <summary>Gets or sets the provider API call log (plan §5.12).</summary>
+        public DbSet<ProviderApiCallRecord> ProviderApiCallRecords { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

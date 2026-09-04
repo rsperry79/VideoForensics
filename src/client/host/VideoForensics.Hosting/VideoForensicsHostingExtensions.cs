@@ -184,8 +184,10 @@ namespace VideoForensics.Hosting
             services.AddSingleton<IPairingTokenService, PairingTokenService>();
             services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
             services.AddSingleton<ISessionTokenService, SessionTokenService>();
+            services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
             services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
             services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
+            services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
 
             return services;
         }

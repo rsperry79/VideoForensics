@@ -53,7 +53,8 @@ namespace VideoForensics.WebApp.Api
                     tierResolver.ResolveClientIp(context), $"role={requestedRole}, bootstrap={isBootstrap}", isUrgent: false, ct);
 
                 return Results.Ok(new { token = info.Token, expiresAtUtc = info.ExpiresAtUtc, role = info.Role.ToString() });
-            }).RequireAuthorization(policy => policy.RequireAssertion(_ => true)); // auth optional here - the handler above does the real gating (bootstrap case has no session at all)
+            }).RequireAuthorization(policy => policy.RequireAssertion(_ => true)) // auth optional here - the handler above does the real gating (bootstrap case has no session at all)
+              .RequireRateLimiting("auth");
 
             app.MapGet("/api/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
             {
@@ -61,7 +62,7 @@ namespace VideoForensics.WebApp.Api
                 return info == null
                     ? Results.NotFound(new { valid = false })
                     : Results.Ok(new { valid = true, expiresAtUtc = info.ExpiresAtUtc });
-            });
+            }).RequireRateLimiting("auth");
 
             app.MapPost("/api/pairing/{token}/register/options", async (
                 string token,
@@ -96,7 +97,7 @@ namespace VideoForensics.WebApp.Api
                 var nonce = ceremonyCache.Store(JsonSerializer.Serialize(pendingRegistration));
 
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
-            });
+            }).RequireRateLimiting("auth");
 
             app.MapPost("/api/pairing/{token}/register/complete", async (
                 string token,
@@ -177,7 +178,7 @@ namespace VideoForensics.WebApp.Api
                     tierResolver.ResolveClientIp(context), $"device={pending.DeviceName}, role={pending.Role}", isUrgent: true, ct);
 
                 return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString() });
-            });
+            }).RequireRateLimiting("auth");
 
             app.MapPost("/api/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
@@ -202,7 +203,7 @@ namespace VideoForensics.WebApp.Api
                 var nonce = ceremonyCache.Store(options.ToJson());
 
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
-            });
+            }).RequireRateLimiting("auth");
 
             app.MapPost("/api/auth/webauthn/assertion-complete", async (
                 AssertionCompleteRequest request,
@@ -273,7 +274,91 @@ namespace VideoForensics.WebApp.Api
                     tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
 
                 return Results.Ok(new { sessionToken = token, operatorId = device.OperatorId, role = device.Role.ToString() });
-            });
+            }).RequireRateLimiting("auth");
+
+            // Step-up re-authentication (plan §5.7) - a fresh assertion for the ALREADY-authenticated
+            // current session's own device (not a new device/session), issuing a short-lived token
+            // that protected endpoints require in addition to the normal session. See
+            // IStepUpAuthService's doc comment for why this is kept deliberately separate from
+            // session-start verification above.
+            app.MapPost("/api/auth/webauthn/stepup-complete", async (
+                AssertionCompleteRequest request,
+                IWebAuthnCeremonyCache ceremonyCache,
+                IPairedDeviceRepository pairedDevices,
+                IStepUpAuthService stepUpAuth,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                IFido2 fido2,
+                CancellationToken ct) =>
+            {
+                var currentDeviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+                if (!Guid.TryParse(currentDeviceIdClaim, out var currentDeviceId))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
+                if (cachedOptionsJson == null)
+                {
+                    return Results.BadRequest(new { error = "Step-up ceremony expired." });
+                }
+
+                var options = AssertionOptions.FromJson(cachedOptionsJson);
+                var device = await pairedDevices.GetAsync(currentDeviceId, ct);
+                if (device == null || !device.IsActive || device.WebAuthnPublicKey == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                AuthenticatorAssertionRawResponse assertionResponse;
+                try
+                {
+                    assertionResponse = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(
+                        JsonSerializer.Serialize(request.AssertionResponse))!;
+                }
+                catch (JsonException)
+                {
+                    return Results.BadRequest(new { error = "Malformed assertion response." });
+                }
+
+                // The assertion must be for THIS device's own credential - a step-up ceremony
+                // completed with a different device's credential must not satisfy it.
+                if (Convert.ToBase64String(assertionResponse.RawId) != device.WebAuthnCredentialId)
+                {
+                    await auditLog.LogAsync(SecurityAuditEventTypes.StepUpFailed, device.OperatorId, device.Id,
+                        tierResolver.ResolveClientIp(context), "Credential mismatch", isUrgent: true, ct);
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    var result = await fido2.MakeAssertionAsync(new MakeAssertionParams
+                    {
+                        AssertionResponse = assertionResponse,
+                        OriginalOptions = options,
+                        StoredPublicKey = device.WebAuthnPublicKey,
+                        StoredSignatureCounter = device.WebAuthnSignCount,
+                        IsUserHandleOwnerOfCredentialIdCallback = (_, _) => Task.FromResult(true)
+                    }, ct);
+
+                    await pairedDevices.RecordSuccessfulAuthAsync(device.Id, result.SignCount,
+                        tierResolver.ResolveClientIp(context), tierResolver.ResolveTier(context), ct);
+                }
+                catch (Fido2VerificationException ex)
+                {
+                    await auditLog.LogAsync(SecurityAuditEventTypes.StepUpFailed, device.OperatorId, device.Id,
+                        tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
+                    return Results.Unauthorized();
+                }
+
+                var stepUpToken = stepUpAuth.IssueToken(device.Id);
+                await auditLog.LogAsync(SecurityAuditEventTypes.StepUpVerified, device.OperatorId, device.Id,
+                    tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
+
+                return Results.Ok(new { stepUpToken });
+            }).RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+              .RequireRateLimiting("auth");
         }
     }
 

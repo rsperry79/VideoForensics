@@ -110,11 +110,26 @@ namespace VideoForensics.Hosting.BackgroundServices
                 .GroupBy(d => d.ProviderDeviceId)
                 .ToDictionary(g => g.Key, g => g.First());
 
+            var budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
+            var auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
+
             foreach (var healthSource in healthSources)
             {
+                var providerName = healthSource.GetType().Name;
+
+                // Provider API budget guard (plan §5.12): check BEFORE calling out to the provider,
+                // so a blown budget shows up as an explicit "skipped this tick" rather than a
+                // silent absence that a viewer could mistake for "confirmed no incidents".
+                if (!await budgetGuard.TryConsumeAsync(providerName, ct))
+                {
+                    _logger.LogWarning("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    continue;
+                }
+
                 try
                 {
                     var readings = await healthSource.FetchHealthAsync(ct);
+                    await budgetGuard.RecordCallAsync(providerName, ct);
                     var persisted = 0;
 
                     foreach (var reading in readings)
