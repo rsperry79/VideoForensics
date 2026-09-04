@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,6 +69,20 @@ builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName
 
 builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
 
+// Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
+// SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
+// Core's default key-storage heuristic (usually %LOCALAPPDATA%\ASP.NET\DataProtection-Keys on
+// Windows, keyed by content-root path) - explicit here so a signed-in session actually survives a
+// server restart instead of depending on that heuristic continuing to resolve the same way. Keys
+// live next to the app's own database rather than the OS default location, matching how every
+// other piece of this app's persistent state is already rooted at %AppData%\VideoForensics.
+var dataProtectionKeyPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "keys");
+Directory.CreateDirectory(dataProtectionKeyPath);
+builder.Services.AddDataProtection()
+    .SetApplicationName("VideoForensics")
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
 // paired clients (MAUI) - the WebApp's own UI doesn't consume this hub at all (see LiveHub's doc
 // comment). ILiveConnectionTracker is a singleton so DeviceManagementEndpoints' revoke handler can
@@ -90,6 +105,19 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("auth", httpContext =>
     {
         var resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+
+        // This limiter exists to stop a REMOTE attacker from brute-forcing pairing/auth (plan
+        // §5.7) - it was never meant to throttle the physically-present owner setting up their own
+        // server over loopback, which is exactly what it was doing (5 requests/15min shared across
+        // every pairing+auth call adds up fast across an initial pairing ceremony plus a sign-in:
+        // initiate, register/options, register/complete, then assertion-options, assertion-complete
+        // is already 5 on its own). Local-tier traffic is unlimited; Network/Internet keep the real
+        // limit, since THAT'S the traffic this defense is actually for.
+        if (resolver.ResolveTier(httpContext) == NetworkTier.Local)
+        {
+            return RateLimitPartition.GetNoLimiter(resolver.ResolveClientIp(httpContext));
+        }
+
         var key = resolver.ResolveClientIp(httpContext);
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
