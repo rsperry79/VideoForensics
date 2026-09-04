@@ -57,6 +57,7 @@ namespace VideoForensics.Client.Core
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
+                config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -88,6 +89,7 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }

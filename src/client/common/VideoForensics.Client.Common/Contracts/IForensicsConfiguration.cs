@@ -21,6 +21,8 @@ namespace VideoForensics.Client.Common
         Guid? ActiveProviderAccountId { get; set; }
         /// <summary>Toggles the periodic RSSI/device-health background sync (DeviceHealthSyncService). Default on.</summary>
         bool EnableHealthSync { get; set; }
+        /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
+        bool EnableMdnsAdvertisement { get; set; }
     }
 
     public enum RedactionLevel
@@ -58,5 +60,6 @@ namespace VideoForensics.Client.Common
         public string DownloadStartDate { get; set; } = "";
         public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
+        public bool EnableMdnsAdvertisement { get; set; } = true;
     }
 }

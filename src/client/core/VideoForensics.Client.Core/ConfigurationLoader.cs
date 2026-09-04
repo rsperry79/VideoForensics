@@ -37,6 +37,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
+                runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }
