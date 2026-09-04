@@ -1,0 +1,104 @@
+@page "/settings/infrastructure"
+@using VideoForensics.Client.Core.Tools
+@inject IProviderAuthService AuthService
+@inject IForensicsConfiguration Config
+@inject ConfigToolsOrchestrator ConfigTools
+
+<h1>Infrastructure Settings</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to change infrastructure settings.</p>
+}
+else
+{
+    <h2>Key Storage Provider</h2>
+    <div class="settings-group">
+        <div>
+            <label for="keyStorageProvider">Key Storage Provider</label>
+            <select id="keyStorageProvider" @bind="_keyStorageProvider">
+                @foreach (var provider in Enum.GetValues<KeyStorageProvider>())
+                {
+                    <option value="@provider">@provider</option>
+                }
+            </select>
+            <button @onclick="SaveKeyStorageProviderAsync">Save</button>
+            @if (_keyStorageProviderMessage is not null)
+            {
+                <span style="color:@(_keyStorageProviderSuccess ? "green" : "red")">@_keyStorageProviderMessage</span>
+            }
+        </div>
+    </div>
+
+    <h2>Factory Reset</h2>
+    <div class="settings-group">
+        @if (!_showFactoryResetConfirm)
+        {
+            <button @onclick="() => _showFactoryResetConfirm = true">Factory Reset</button>
+        }
+        else
+        {
+            <p style="color:red"><strong>This will permanently delete ALL data. This cannot be undone.</strong></p>
+            <button @onclick="ConfirmFactoryResetAsync" disabled="@_factoryResetting">Yes, delete everything</button>
+            <button @onclick="() => _showFactoryResetConfirm = false" disabled="@_factoryResetting">Cancel</button>
+        }
+
+        @if (_factoryResetMessage is not null)
+        {
+            <p style="color:@(_factoryResetSuccess ? "green" : "red")"><strong>@_factoryResetMessage</strong></p>
+        }
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+
+    private KeyStorageProvider _keyStorageProvider;
+    private bool _keyStorageProviderSuccess;
+    private string? _keyStorageProviderMessage;
+
+    private bool _showFactoryResetConfirm;
+    private bool _factoryResetting;
+    private bool _factoryResetSuccess;
+    private string? _factoryResetMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                _keyStorageProvider = Config.KeyStorageProvider;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveKeyStorageProviderAsync()
+    {
+        (_keyStorageProviderSuccess, _keyStorageProviderMessage) = await ConfigTools.SetKeyStorageProviderAsync(Config, _keyStorageProvider, CancellationToken.None);
+    }
+
+    private async Task ConfirmFactoryResetAsync()
+    {
+        _factoryResetting = true;
+        try
+        {
+            (_factoryResetSuccess, _factoryResetMessage) = await ConfigTools.FactoryResetAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _factoryResetting = false;
+            _showFactoryResetConfirm = false;
+        }
+    }
+}

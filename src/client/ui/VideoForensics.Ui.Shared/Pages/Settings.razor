@@ -1,0 +1,281 @@
+@page "/settings"
+@using VideoForensics.Client.Core.Tools
+@inject IProviderAuthService AuthService
+@inject IForensicsConfiguration Config
+@inject IForensicsConfigurationService ConfigService
+@inject ConfigToolsOrchestrator ConfigTools
+
+<h1>Settings</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to change settings.</p>
+}
+else
+{
+    <h2>Reports</h2>
+    <div class="settings-group">
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableForensicAnalysisReports" @onchange='e => SaveReportToggleAsync("ForensicAnalysis", e.Value)' />
+                Forensic Analysis
+            </label>
+            @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
+            {
+                <span style="color:@(m1.Success ? "green" : "red")">@m1.Message</span>
+            }
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableSignalAnomalyReports" @onchange='e => SaveReportToggleAsync("SignalAnomaly", e.Value)' />
+                Signal Anomaly
+            </label>
+            @if (_reportMessages.TryGetValue("SignalAnomaly", out var m2))
+            {
+                <span style="color:@(m2.Success ? "green" : "red")">@m2.Message</span>
+            }
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableChainOfCustodyReports" @onchange='e => SaveReportToggleAsync("ChainOfCustody", e.Value)' />
+                Chain of Custody
+            </label>
+            @if (_reportMessages.TryGetValue("ChainOfCustody", out var m3))
+            {
+                <span style="color:@(m3.Success ? "green" : "red")">@m3.Message</span>
+            }
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableEvidenceValidationReports" @onchange='e => SaveReportToggleAsync("EvidenceValidation", e.Value)' />
+                Evidence Validation
+            </label>
+            @if (_reportMessages.TryGetValue("EvidenceValidation", out var m4))
+            {
+                <span style="color:@(m4.Success ? "green" : "red")">@m4.Message</span>
+            }
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableAccessControlMonitoring" @onchange='e => SaveReportToggleAsync("AccessControl", e.Value)' />
+                Access Control
+            </label>
+            @if (_reportMessages.TryGetValue("AccessControl", out var m5))
+            {
+                <span style="color:@(m5.Success ? "green" : "red")">@m5.Message</span>
+            }
+        </div>
+    </div>
+
+    <h2>Health Sync</h2>
+    <div class="settings-group">
+        <div>
+            <label>
+                <input type="checkbox" checked="@Config.EnableHealthSync" @onchange="SaveHealthSyncAsync" />
+                Enable RSSI / device-health background sync
+            </label>
+            @if (_healthSyncMessage is not null)
+            {
+                <span style="color:@(_healthSyncSuccess ? "green" : "red")">@_healthSyncMessage</span>
+            }
+        </div>
+    </div>
+
+    <h2>Retention</h2>
+    <div class="settings-group">
+        <div>
+            <label for="retentionDays">Retention (days)</label>
+            <input id="retentionDays" type="number" @bind="_retentionDays" />
+            <button @onclick="SaveRetentionAsync">Save</button>
+            @if (_retentionMessage is not null)
+            {
+                <span style="color:@(_retentionSuccess ? "green" : "red")">@_retentionMessage</span>
+            }
+        </div>
+    </div>
+
+    <h2>Downloads</h2>
+    <div class="settings-group">
+        <div>
+            <label for="maxConcurrent">Max Concurrent Downloads</label>
+            <input id="maxConcurrent" type="number" @bind="_maxConcurrentDownloads" />
+            <button @onclick="SaveMaxConcurrentAsync">Save</button>
+            @if (_maxConcurrentMessage is not null)
+            {
+                <span style="color:@(_maxConcurrentSuccess ? "green" : "red")">@_maxConcurrentMessage</span>
+            }
+        </div>
+        <div>
+            <label for="downloadLocation">Download Location</label>
+            <input id="downloadLocation" type="text" @bind="_downloadLocation" />
+            <button @onclick="SaveDownloadLocationAsync">Save</button>
+            @if (_downloadLocationMessage is not null)
+            {
+                <span style="color:@(_downloadLocationSuccess ? "green" : "red")">@_downloadLocationMessage</span>
+            }
+        </div>
+    </div>
+
+    <h2>Reporting Format &amp; Redaction</h2>
+    <div class="settings-group">
+        <div>
+            <label for="reportFormat">Report Format</label>
+            <select id="reportFormat" @bind="_reportFormat">
+                <option value="json">json</option>
+                <option value="xml">xml</option>
+                <option value="csv">csv</option>
+            </select>
+            <button @onclick="SaveReportFormatAsync">Save</button>
+            @if (_reportFormatMessage is not null)
+            {
+                <span style="color:@(_reportFormatSuccess ? "green" : "red")">@_reportFormatMessage</span>
+            }
+        </div>
+        <div>
+            <label for="redactionLevel">Redaction Level</label>
+            <select id="redactionLevel" @bind="_redactionLevel">
+                @foreach (var level in Enum.GetValues<RedactionLevel>())
+                {
+                    <option value="@level">@level</option>
+                }
+            </select>
+            <button @onclick="SaveRedactionLevelAsync">Save</button>
+            @if (_redactionLevelMessage is not null)
+            {
+                <span style="color:@(_redactionLevelSuccess ? "green" : "red")">@_redactionLevelMessage</span>
+            }
+        </div>
+    </div>
+
+    <h2>Logging</h2>
+    <div class="settings-group">
+        <div>
+            <label for="loggingLevel">Logging Level</label>
+            <select id="loggingLevel" @bind="_loggingLevel">
+                <option value="Debug">Debug</option>
+                <option value="Information">Information</option>
+                <option value="Warning">Warning</option>
+                <option value="Error">Error</option>
+                <option value="Critical">Critical</option>
+            </select>
+            <button @onclick="SaveLoggingLevelAsync">Save</button>
+            @if (_loggingLevelMessage is not null)
+            {
+                <span style="color:@(_loggingLevelSuccess ? "green" : "red")">@_loggingLevelMessage</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+
+    private readonly Dictionary<string, (bool Success, string Message)> _reportMessages = new();
+
+    private bool _healthSyncSuccess;
+    private string? _healthSyncMessage;
+
+    private int _retentionDays;
+    private bool _retentionSuccess;
+    private string? _retentionMessage;
+
+    private int _maxConcurrentDownloads;
+    private bool _maxConcurrentSuccess;
+    private string? _maxConcurrentMessage;
+
+    private string _downloadLocation = string.Empty;
+    private bool _downloadLocationSuccess;
+    private string? _downloadLocationMessage;
+
+    private string _reportFormat = "json";
+    private bool _reportFormatSuccess;
+    private string? _reportFormatMessage;
+
+    private RedactionLevel _redactionLevel;
+    private bool _redactionLevelSuccess;
+    private string? _redactionLevelMessage;
+
+    private string _loggingLevel = "Information";
+    private bool _loggingLevelSuccess;
+    private string? _loggingLevelMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                _retentionDays = Config.RetentionDaysDefault;
+                _maxConcurrentDownloads = Config.MaxConcurrentDownloads;
+                _downloadLocation = Config.DownloadLocation ?? string.Empty;
+                _reportFormat = Config.ReportOutputFormat;
+                _redactionLevel = Config.RedactionLevel;
+                _loggingLevel = Config.LogLevel;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveReportToggleAsync(string reportType, object? isChecked)
+    {
+        var enabled = isChecked is bool b && b;
+        var (success, message) = await ConfigTools.SetReportEnabledAsync(Config, reportType, enabled, CancellationToken.None);
+        _reportMessages[reportType] = (success, message);
+    }
+
+    private async Task SaveHealthSyncAsync(ChangeEventArgs e)
+    {
+        var enabled = e.Value is bool b && b;
+        try
+        {
+            Config.EnableHealthSync = enabled;
+            await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            _healthSyncSuccess = true;
+            _healthSyncMessage = $"Health sync {(enabled ? "enabled" : "disabled")}";
+        }
+        catch (Exception ex)
+        {
+            _healthSyncSuccess = false;
+            _healthSyncMessage = $"Failed to update health sync: {ex.Message}";
+        }
+    }
+
+    private async Task SaveRetentionAsync()
+    {
+        (_retentionSuccess, _retentionMessage) = await ConfigTools.SetRetentionDaysAsync(Config, _retentionDays, CancellationToken.None);
+    }
+
+    private async Task SaveMaxConcurrentAsync()
+    {
+        (_maxConcurrentSuccess, _maxConcurrentMessage) = await ConfigTools.SetMaxConcurrentDownloadsAsync(Config, _maxConcurrentDownloads, CancellationToken.None);
+    }
+
+    private async Task SaveDownloadLocationAsync()
+    {
+        (_downloadLocationSuccess, _downloadLocationMessage) = await ConfigTools.SetDownloadLocationAsync(Config, _downloadLocation, CancellationToken.None);
+    }
+
+    private async Task SaveReportFormatAsync()
+    {
+        (_reportFormatSuccess, _reportFormatMessage) = await ConfigTools.SetReportFormatAsync(Config, _reportFormat, CancellationToken.None);
+    }
+
+    private async Task SaveRedactionLevelAsync()
+    {
+        (_redactionLevelSuccess, _redactionLevelMessage) = await ConfigTools.SetRedactionLevelAsync(Config, _redactionLevel, CancellationToken.None);
+    }
+
+    private async Task SaveLoggingLevelAsync()
+    {
+        (_loggingLevelSuccess, _loggingLevelMessage) = await ConfigTools.SetLoggingLevelAsync(Config, _loggingLevel, CancellationToken.None);
+    }
+}
