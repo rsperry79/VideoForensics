@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 using VideoForensics.Hosting;
 
 namespace VideoForensics.MauiApp
@@ -21,6 +22,7 @@ namespace VideoForensics.MauiApp
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddMudServices();
 
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
             // lands under %AppData%/VideoForensics/logs, matching the console app's pattern

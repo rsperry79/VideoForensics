@@ -4,68 +4,71 @@
 @inject IForensicsConfiguration Config
 @inject ConfigToolsOrchestrator ConfigTools
 
-<h1>Infrastructure Settings</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Infrastructure Settings</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to change infrastructure settings.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to change infrastructure settings.
+    </MudAlert>
 }
 else
 {
-    <h2>Data-at-Rest Encryption</h2>
-    <div class="settings-group">
-        <p style="color:goldenrod">
-            <strong>Neither the database nor downloaded media files are encrypted by this application.</strong>
-            An application-level database encryption approach (SQLCipher) was evaluated and found to
-            silently fail to apply schema changes under this platform's current SQLite provider version -
-            a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe
-            approach is available, protecting this data at rest is the owner's responsibility: enable
-            full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding
-            <code>%AppData%\VideoForensics</code> and your configured download location, and secure
-            physical access to this machine.
-        </p>
-    </div>
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Data-at-Rest Encryption</MudText>
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        <strong>Neither the database nor downloaded media files are encrypted by this application.</strong>
+        An application-level database encryption approach (SQLCipher) was evaluated and found to
+        silently fail to apply schema changes under this platform's current SQLite provider version -
+        a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe
+        approach is available, protecting this data at rest is the owner's responsibility: enable
+        full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding
+        <code>%AppData%\VideoForensics</code> and your configured download location, and secure
+        physical access to this machine.
+    </MudAlert>
 
-    <h2>Key Storage Provider</h2>
-    <div class="settings-group">
-        <div>
-            <label for="keyStorageProvider">Key Storage Provider</label>
-            <select id="keyStorageProvider" @bind="_keyStorageProvider">
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Key Storage Provider</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudSelect T="KeyStorageProvider" @bind-Value="_keyStorageProvider" Label="Key Storage Provider" Variant="Variant.Outlined" Style="max-width: 260px;">
                 @foreach (var provider in Enum.GetValues<KeyStorageProvider>())
                 {
-                    <option value="@provider">@provider</option>
+                    <MudSelectItem Value="@provider">@provider</MudSelectItem>
                 }
-            </select>
-            <button @onclick="SaveKeyStorageProviderAsync">Save</button>
+            </MudSelect>
+            <MudButton OnClick="SaveKeyStorageProviderAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
             @if (_keyStorageProviderMessage is not null)
             {
-                <span style="color:@(_keyStorageProviderSuccess ? "green" : "red")">@_keyStorageProviderMessage</span>
+                <MudText Color="@(_keyStorageProviderSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_keyStorageProviderMessage</MudText>
             }
-        </div>
-    </div>
+        </MudStack>
+    </MudPaper>
 
-    <h2>Factory Reset</h2>
-    <div class="settings-group">
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Factory Reset</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
         @if (!_showFactoryResetConfirm)
         {
-            <button @onclick="() => _showFactoryResetConfirm = true">Factory Reset</button>
+            <MudButton OnClick="() => _showFactoryResetConfirm = true" Variant="Variant.Filled" Color="Color.Error">Factory Reset</MudButton>
         }
         else
         {
-            <p style="color:red"><strong>This will permanently delete ALL data. This cannot be undone.</strong></p>
-            <button @onclick="ConfirmFactoryResetAsync" disabled="@_factoryResetting">Yes, delete everything</button>
-            <button @onclick="() => _showFactoryResetConfirm = false" disabled="@_factoryResetting">Cancel</button>
+            <MudAlert Severity="Severity.Error" Class="mb-2">
+                <strong>This will permanently delete ALL data. This cannot be undone.</strong>
+            </MudAlert>
+            <MudStack Row="true">
+                <MudButton OnClick="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" Variant="Variant.Filled" Color="Color.Error">Yes, delete everything</MudButton>
+                <MudButton OnClick="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined">Cancel</MudButton>
+            </MudStack>
         }
 
         @if (_factoryResetMessage is not null)
         {
-            <p style="color:@(_factoryResetSuccess ? "green" : "red")"><strong>@_factoryResetMessage</strong></p>
+            <MudText Color="@(_factoryResetSuccess ? Color.Success : Color.Error)" Class="mt-2"><strong>@_factoryResetMessage</strong></MudText>
         }
-    </div>
+    </MudPaper>
 }
 
 @code {

@@ -2,17 +2,21 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
+using VideoForensics.WebApp.Discovery;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddMudServices();
 
 // WebAuthn/passkey pairing (plan §5.1/M6). ServerDomain/Origins are dev defaults for the
 // local/LAN case (§5.2's Local and Network tiers, no tunnel) - the Internet tier (Cloudflare
@@ -78,6 +82,12 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore();
 builder.Services.AddHealthChecks();
+
+// LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
+// this server's address without the owner typing an IP. WebApp-only: console/MCP have no pairing
+// API to advertise, unlike DeviceHealthSyncService which genuinely does run on every server-tier
+// host.
+builder.Services.AddHostedService<MdnsAdvertisementService>();
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
