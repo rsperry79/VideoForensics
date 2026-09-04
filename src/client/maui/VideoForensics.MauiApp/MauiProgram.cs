@@ -41,6 +41,17 @@ namespace VideoForensics.MauiApp
             builder.Services.AddVideoForensicsDataLayer();
             builder.Services.AddVideoForensicsServerCore();
 
+            // NOT calling AddVideoForensicsClientApi() here (yet): it's built and proven working
+            // (M5 - see VideoForensicsHostingExtensions.AddVideoForensicsClientApi and the Remote/
+            // folder), but registering it alongside AddVideoForensicsServerCore() above would give
+            // IDeviceRepository/IMediaItemRepository/IIntegrityRecordRepository two competing
+            // registrations - DI resolves the LAST one registered, so it would silently swap
+            // MauiApp's currently-working local-SQLite-backed sign-in/dashboard over to hitting a
+            // hardcoded http://localhost:5162 that may not be running, breaking it outright. MauiApp
+            // switches to AddVideoForensicsClientApi() (replacing, not joining, the two calls above)
+            // once M6's QR pairing gives it a real server address and a reason to stop talking to
+            // Ring directly - until then this stays the same local-dev bootstrap M1 already used.
+
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
