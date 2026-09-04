@@ -6,57 +6,50 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<h1>Chain of Custody Report</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Chain of Custody Report</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to view the chain of custody.</p>
+    <MudAlert Severity="Severity.Warning">You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view the chain of custody.</MudAlert>
 }
 else
 {
-    <p>
-        <label>
-            Device:
-            <select @bind="_selectedDeviceId">
-                <option value="">(All devices)</option>
-                @foreach (var device in _devices)
-                {
-                    <option value="@device.Id">@device.Name</option>
-                }
-            </select>
-        </label>
-        <label>
-            From: <input type="date" @bind="_fromDate" />
-        </label>
-        <label>
-            To: <input type="date" @bind="_toDate" />
-        </label>
-        <button @onclick="RunReportAsync">Run Report</button>
-    </p>
+    <MudStack Row="false" Spacing="2" Class="mb-4">
+        <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device" Variant="Variant.Outlined">
+            <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
+            @foreach (var device in _devices)
+            {
+                <MudSelectItem Value="@(device.Id.ToString())">@device.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <label>From: <input type="date" @bind="_fromDate" /></label>
+        <label>To: <input type="date" @bind="_toDate" /></label>
+        <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
+    </MudStack>
 
     @if (_report is not null)
     {
         @if (_report.ChainIntegrityVerified)
         {
-            <p style="color:green">Chain integrity verified</p>
+            <MudAlert Severity="Severity.Success">Chain integrity verified</MudAlert>
         }
         else
         {
-            <p style="color:red">Chain integrity FAILED: @_report.ChainVerificationStatus</p>
+            <MudAlert Severity="Severity.Error">Chain integrity FAILED: @_report.ChainVerificationStatus</MudAlert>
         }
 
-        <h2>Audit Trail</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Audit Trail</MudText>
         @if (_report.AuditTrail.Count == 0)
         {
-            <p>No audit trail entries found in this range.</p>
+            <MudText>No audit trail entries found in this range.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true">
                 <thead>
                     <tr>
                         <th>Timestamp</th>
@@ -80,7 +73,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
 }

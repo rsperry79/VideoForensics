@@ -6,53 +6,50 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<h1>Forensic Analysis Report</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Forensic Analysis Report</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to view forensic reports.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view forensic reports.
+    </MudAlert>
 }
 else
 {
-    <p>
-        <label>
-            Device:
-            <select @bind="_selectedDeviceId">
-                <option value="">(All devices)</option>
-                @foreach (var device in _devices)
-                {
-                    <option value="@device.Id">@device.Name</option>
-                }
-            </select>
-        </label>
-        <label>
-            From: <input type="date" @bind="_fromDate" />
-        </label>
-        <label>
-            To: <input type="date" @bind="_toDate" />
-        </label>
-        <button @onclick="RunReportAsync">Run Report</button>
-    </p>
+    <MudStack Spacing="3" Class="mb-4">
+        <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device" Variant="Variant.Outlined">
+            <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
+            @foreach (var device in _devices)
+            {
+                <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <input type="date" @bind="_fromDate" />
+            <input type="date" @bind="_toDate" />
+            <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
+        </MudStack>
+    </MudStack>
 
     @if (_report is not null)
     {
         @if (!string.IsNullOrWhiteSpace(_report.Summary))
         {
-            <p>@_report.Summary</p>
+            <MudText>@_report.Summary</MudText>
         }
 
-        <h2>Evidence Items</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Evidence Items</MudText>
         @if (_report.EvidenceItems.Count == 0)
         {
-            <p>No evidence items found in this range.</p>
+            <MudText>No evidence items found in this range.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true">
                 <thead>
                     <tr>
                         <th>Evidence ID</th>
@@ -72,17 +69,17 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
 
-        <h2>Anomalous Health Snapshots</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Anomalous Health Snapshots</MudText>
         @if (_report.AnomalousHealthSnapshots.Count == 0)
         {
-            <p>No anomalous health snapshots found in this range.</p>
+            <MudText>No anomalous health snapshots found in this range.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true">
                 <thead>
                     <tr>
                         <th>Captured At</th>
@@ -108,17 +105,17 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
 
-        <h2>Significant Actions</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Significant Actions</MudText>
         @if (_report.SignificantActions.Count == 0)
         {
-            <p>No significant actions found in this range.</p>
+            <MudText>No significant actions found in this range.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true">
                 <thead>
                     <tr>
                         <th>Actor</th>
@@ -138,7 +135,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
 }

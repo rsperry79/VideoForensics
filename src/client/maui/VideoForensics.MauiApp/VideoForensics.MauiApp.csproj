@@ -45,6 +45,14 @@
     <Description>Windows MAUI Blazor Hybrid client for VideoForensics</Description>
     <Copyright>2026</Copyright>
     <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+
+    <!-- Microsoft.CodeAnalysis.Workspaces (pulled in transitively by Microsoft.CodeAnalysis) wants
+         SQLitePCLRaw.core 3.0.2, while EF Core Sqlite (via VideoForensics.Data.Database.Sqlite)
+         needs 2.1.12 - MSBuild picks 2.1.12 as primary since that's the one actually used for the
+         app's real SQLite access; Workspaces' own SQLite-backed cache is never exercised by this
+         app, so losing that reference is safe. Same rationale as the NU1608 suppression in
+         VideoForensics.Data.Database.Sqlite.csproj. -->
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -70,7 +78,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
     <PackageReference Include="Plugin.Fingerprint.MAUI" Version="2.0.1" />
   </ItemGroup>
 

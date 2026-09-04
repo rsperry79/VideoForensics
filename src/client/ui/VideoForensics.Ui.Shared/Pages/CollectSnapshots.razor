@@ -2,37 +2,32 @@
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 
-<h1>Collect Snapshots</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Collect Snapshots</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to collect snapshots.</p>
+    <MudAlert Severity="Severity.Warning">You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to collect snapshots.</MudAlert>
 }
 else
 {
-    <div class="collect-form">
-        <div>
-            <label for="outputPath">Output Path</label>
-            <input id="outputPath" type="text" @bind="_outputPath" disabled="@_isDownloading" style="width: 400px;" />
-        </div>
-        <div>
-            <button @onclick="StartDownloadAsync" disabled="@_isDownloading">Start Download</button>
-        </div>
+    <MudStack Row="false" Spacing="2" Class="mb-4">
+        <MudTextField @bind-Value="_outputPath" Label="Output Path" Variant="Variant.Outlined" Disabled="@_isDownloading" />
+        <MudButton OnClick="StartDownloadAsync" Disabled="@_isDownloading" Variant="Variant.Filled" Color="Color.Primary">Start Download</MudButton>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <p style="color: red;">@_errorMessage</p>
+            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
         }
 
         @if (_downloadCompleted)
         {
-            <p>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</p>
+            <MudText>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</MudText>
         }
-    </div>
+    </MudStack>
 
     <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
 }

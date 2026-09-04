@@ -3,52 +3,40 @@
 @inject IEvidenceExportService EvidenceExportService
 @inject NavigationManager NavigationManager
 
-<h1>Export Evidence</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Export Evidence</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to export evidence.</p>
+    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to export evidence.</MudText>
 }
 else if (_mediaItemIds.Count == 0)
 {
-    <p>No items selected - go to <a href="/review">Review Evidence</a> and select items to export.</p>
+    <MudText>No items selected - go to <MudLink Href="/review">Review Evidence</MudLink> and select items to export.</MudText>
 }
 else
 {
-    <p>@_mediaItemIds.Count item(s) selected for export.</p>
+    <MudText>@_mediaItemIds.Count item(s) selected for export.</MudText>
 
     <div>
-        <label>
-            Case reference:
-            <input type="text" @bind="_caseReference" disabled="@_isExporting" />
-        </label>
+        <MudTextField @bind-Value="_caseReference" Label="Case reference" Variant="Variant.Outlined" Disabled="@_isExporting" />
     </div>
     <div>
-        <label>
-            Recipient description:
-            <input type="text" @bind="_recipientDescription" disabled="@_isExporting" />
-        </label>
+        <MudTextField @bind-Value="_recipientDescription" Label="Recipient description" Variant="Variant.Outlined" Disabled="@_isExporting" />
     </div>
     <div>
-        <label>
-            Passphrase:
-            <input type="password" @bind="_passphrase" disabled="@_isExporting" />
-        </label>
+        <MudTextField @bind-Value="_passphrase" InputType="InputType.Password" Label="Passphrase" Variant="Variant.Outlined" Disabled="@_isExporting" />
     </div>
     <div>
-        <label>
-            Output directory:
-            <input type="text" @bind="_outputDirectory" disabled="@_isExporting" style="width: 30em;" />
-        </label>
+        <MudTextField @bind-Value="_outputDirectory" Label="Output directory" Variant="Variant.Outlined" Disabled="@_isExporting" />
     </div>
     <div>
-        <button @onclick="ExportAsync" disabled="@_isExporting">
+        <MudButton OnClick="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" Color="Color.Primary">
             @(_isExporting ? "Exporting..." : "Export")
-        </button>
+        </MudButton>
     </div>
 
     @if (_result is not null)
@@ -56,19 +44,19 @@ else
         @if (_result.Success)
         {
             <div>
-                <p>Export succeeded.</p>
-                <p>Archive path: @_result.ArchivePath</p>
-                <p>SHA-256 hash: @_result.ArchiveSha256Hash</p>
-                <p>Items included: @_result.ItemsIncluded</p>
+                <MudText>Export succeeded.</MudText>
+                <MudText>Archive path: @_result.ArchivePath</MudText>
+                <MudText>SHA-256 hash: @_result.ArchiveSha256Hash</MudText>
+                <MudText>Items included: @_result.ItemsIncluded</MudText>
                 @if (_result.ItemsExcludedForFailedIntegrity.Count > 0)
                 {
-                    <p>Items excluded for failed integrity: @_result.ItemsExcludedForFailedIntegrity.Count</p>
+                    <MudText>Items excluded for failed integrity: @_result.ItemsExcludedForFailedIntegrity.Count</MudText>
                 }
             </div>
         }
         else
         {
-            <p style="color:red">Export failed: @_result.ErrorMessage</p>
+            <MudAlert Severity="Severity.Error">Export failed: @_result.ErrorMessage</MudAlert>
         }
     }
 }
