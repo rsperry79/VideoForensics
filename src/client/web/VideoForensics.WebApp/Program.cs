@@ -89,6 +89,11 @@ builder.Services.AddHealthChecks();
 // host.
 builder.Services.AddHostedService<MdnsAdvertisementService>();
 
+// Cloudflare Tunnel management for the Remote Access screen (plan §5.3) - a singleton since it
+// wraps at most one managed cloudflared child process for the whole app, not a per-request or
+// per-circuit concern.
+builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelService>();
+
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
 // to the pairing/auth API in Api/PairingEndpoints.cs.
@@ -138,6 +143,7 @@ app.MapMediaApiEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceManagementEndpoints();
 app.MapSecurityAuditLogEndpoints();
+app.MapRemoteAccessEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
