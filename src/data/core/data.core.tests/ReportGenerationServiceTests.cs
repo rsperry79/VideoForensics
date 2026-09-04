@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IJammingRepository> _mockJammingRepository;
+        private readonly Mock<IIntegrityRecordRepository> _mockIntegrityRecordRepository;
         private readonly Mock<ILogger<ReportGenerationService>> _mockLogger;
         private readonly ReportGenerationService _service;
 
@@ -27,7 +28,12 @@ namespace VideoForensics.Data.Core.Tests
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockEventRepository = new Mock<IEventRepository>();
             _mockJammingRepository = new Mock<IJammingRepository>();
+            _mockIntegrityRecordRepository = new Mock<IIntegrityRecordRepository>();
             _mockLogger = new Mock<ILogger<ReportGenerationService>>();
+
+            _mockIntegrityRecordRepository
+                .Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<IntegrityRecord>());
 
             _service = new ReportGenerationService(
                 _mockMediaItemRepository.Object,
@@ -36,6 +42,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockActionLogRepository.Object,
                 _mockEventRepository.Object,
                 _mockJammingRepository.Object,
+                _mockIntegrityRecordRepository.Object,
                 _mockLogger.Object);
         }
 

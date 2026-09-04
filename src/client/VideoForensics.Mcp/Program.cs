@@ -7,25 +7,13 @@
 /// - Main README: see README.md in this directory
 /// </summary>
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Data.Core.DependencyInjection;
-using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Data.Database.Sqlite.DependencyInjection;
-using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Services;
-using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Client.Common;
-using VideoForensics.Client.Core;
-using VideoForensics.Client.Core.Tools;
+using VideoForensics.Hosting;
 
 namespace VideoForensics.Mcp
 {
@@ -42,108 +30,15 @@ namespace VideoForensics.Mcp
             var builder = Host.CreateApplicationBuilder(args);
             builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-            // Shared session provider
-            builder.Services.AddSingleton<ISessionProvider, SessionProvider>();
-            builder.Services.AddSingleton<ICredentialStore>(new CredentialStore());
+            // Shared data layer + server-tier provider/orchestrator registrations (session provider,
+            // Ring's four services, download/evidence orchestrators, JammingToolsOrchestrator) -
+            // see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. MCP remains a
+            // server-tier host (it talks to Ring directly), unaffected by the client/server split
+            // that only applies to the planned MAUI app.
+            builder.Services.AddVideoForensicsDataLayer();
+            builder.Services.AddVideoForensicsServerCore();
 
-            // Ring provider services
-            builder.Services.AddSingleton<IProviderAuthService>(provider =>
-                new RingAuthService(
-                    provider.GetRequiredService<ILogger<RingAuthService>>(),
-                    provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>(),
-                    provider.GetRequiredService<ICredentialRepository>(),
-                    provider.GetRequiredService<IRingAccountRepository>(),
-                    provider.GetRequiredService<IProviderAccountRepository>(),
-                    provider.GetRequiredService<IUserRepository>()
-                )
-            );
-            builder.Services.AddSingleton<IDeviceDiscoveryService>(provider =>
-                new RingDeviceDiscoveryService(
-                    provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                    provider.GetRequiredService<ISessionProvider>()
-                )
-            );
-            builder.Services.AddSingleton<IMediaDownloadService>(provider =>
-                new RingMediaDownloadService(
-                    provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
-                    provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<IVideoForensicsDataClient>()
-                )
-            );
-            builder.Services.AddSingleton<IEventAndConfigService>(provider =>
-                new RingEventAndConfigService(
-                    provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
-                    provider.GetRequiredService<ISessionProvider>()
-                )
-            );
-
-            // RingVideoProvider
-            builder.Services.AddSingleton<IVideoProvider>(provider =>
-                new RingVideoProvider(
-                    provider.GetRequiredService<ILogger<RingVideoProvider>>(),
-                    provider.GetRequiredService<IProviderAuthService>(),
-                    provider.GetRequiredService<IDeviceDiscoveryService>(),
-                    provider.GetRequiredService<IMediaDownloadService>(),
-                    provider.GetRequiredService<IEventAndConfigService>()
-                )
-            );
-
-            // Forensics configuration
-            var runtimeConfig = new ForensicsConfiguration();
-            builder.Services.AddSingleton<IForensicsConfiguration>(runtimeConfig);
-
-            // Data layer
-            builder.Services.AddVideoForensicsSqlite();
-            builder.Services.AddVideoForensicsDatabase();
-            builder.Services.AddVideoForensicsDataCore();
-
-            // Video download service
-            builder.Services.AddSingleton<IVideoDownloadService>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
-                var videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
-                var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-                var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
-                var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-                var dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
-                var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
-                return new VideoDownloadServiceAdapter(logger, videoProvider, authService, downloadService, deviceService, dataClient, forensicsConfig);
-            });
-
-            // Evidence validation service
-            builder.Services.AddSingleton<IEvidenceValidationService>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
-                var eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
-                var eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
-                var deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
-                var integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                var reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
-                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
-            });
-
-            // Evidence export service
-            builder.Services.AddSingleton<IEvidenceExportService>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
-                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                var integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                var actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
-                var exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
-            });
-
-            // Forensics configuration service
-            builder.Services.AddSingleton<IForensicsConfigurationService>(serviceProvider =>
-                new ForensicsConfigurationService(
-                    serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
-                    serviceProvider.GetRequiredService<IAppSettingRepository>()
-                )
-            );
-
-            // Forensics query repositories (Phases 1-4)
+            // Forensics query repositories (Phases 1-4) - MCP-specific, not shared with other hosts
             builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
             builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
             builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
@@ -154,6 +49,7 @@ namespace VideoForensics.Mcp
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.IntegrityTools>();
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
             builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
+            builder.Services.AddScoped<VideoForensics.Mcp.Tools.JammingTools>();
 
             // MCP server: stdio transport, attribute-discovered tools/resources
             builder.Services
@@ -175,76 +71,22 @@ namespace VideoForensics.Mcp
                 return;
             }
 
-            // LAZY: Initialize database in background without blocking MCP startup
-            var dbFactory = host.Services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-            var dbInitTask = DatabaseInitializer.InitializeAsync(dbFactory, initLogger, CancellationToken.None)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        initLogger.LogCritical(t.Exception, "Deferred database initialization failed.");
-                    }
-                    else
-                    {
-                        initLogger.LogInformation("Deferred database initialization completed.");
-                    }
-                }, TaskScheduler.Default);
-
-            initLogger.LogInformation("Database initialization started in background. MCP server can respond to requests immediately.");
-
-            // LAZY, ONE-TIME: backfill the Events table from existing DownloadEvents/MediaItems history.
-            // Events (independent of download status) is what all forensic Timeline/Integrity/Correlation/
-            // Audit tools read from, but historically nothing wrote to it. Runs once after DB init, gated
-            // by an AppSettings flag so subsequent startups skip it.
-            var eventsBackfillTask = dbInitTask.ContinueWith(async _ =>
-            {
-                const string backfillFlagKey = "EventsBackfillFromDownloadEventsCompleted";
-                try
-                {
-                    var appSettingRepo = host.Services.GetRequiredService<IAppSettingRepository>();
-                    var alreadyDone = await appSettingRepo.GetAsync(backfillFlagKey, CancellationToken.None);
-                    if (alreadyDone == "true")
-                    {
-                        initLogger.LogInformation("Events backfill already completed previously, skipping.");
-                        return;
-                    }
-
-                    var downloadEventRepo = host.Services.GetRequiredService<IDownloadEventRepository>();
-                    var mediaItemRepo = host.Services.GetRequiredService<IMediaItemRepository>();
-                    var eventRepo = host.Services.GetRequiredService<IEventRepository>();
-
-                    initLogger.LogInformation("Running one-time Events backfill from existing DownloadEvents...");
-                    var count = await EventBackfillService.BackfillFromDownloadEventsAsync(
-                        downloadEventRepo, mediaItemRepo, eventRepo, initLogger, CancellationToken.None);
-                    await appSettingRepo.SetAsync(backfillFlagKey, "true", CancellationToken.None);
-                    initLogger.LogInformation("Events backfill completed: {Count} record(s).", count);
-                }
-                catch (Exception ex)
-                {
-                    initLogger.LogError(ex, "Events backfill failed.");
-                }
-            }, TaskScheduler.Default).Unwrap();
-
-            // LAZY: Load persisted settings in background without blocking MCP startup
-            var configLoadTask = Task.Run(async () =>
+            // LAZY: DB init + Events backfill + persisted-config load, in that order, without
+            // blocking MCP startup - see VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync.
+            var initTask = Task.Run(async () =>
             {
                 try
                 {
-                    initLogger.LogInformation("Loading persisted settings from database (background)...");
-                    var configService = host.Services.GetRequiredService<IForensicsConfigurationService>();
-                    var appConfig = host.Services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
-                        ?? throw new InvalidOperationException("Configuration must be ForensicsConfiguration instance");
-                    var configLogger = host.Services.GetRequiredService<ILogger<Program>>();
-                    await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, configLogger, CancellationToken.None);
-                    initLogger.LogInformation("Configuration loaded successfully (background).");
+                    await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(host.Services, initLogger, CancellationToken.None);
+                    initLogger.LogInformation("Deferred initialization (DB, Events backfill, config) completed.");
                 }
                 catch (Exception ex)
                 {
-                    initLogger.LogError(ex, "Configuration loading failed in background.");
+                    initLogger.LogCritical(ex, "Deferred initialization failed.");
                 }
             });
 
-            initLogger.LogInformation("Configuration loading started in background.");
+            initLogger.LogInformation("Database initialization started in background. MCP server can respond to requests immediately.");
 
             initLogger.LogInformation("VideoForensics MCP Server ready.");
             initLogger.LogInformation("All 4 forensics query phases initialized with optimization:");
@@ -284,7 +126,7 @@ namespace VideoForensics.Mcp
                 Console.Error.WriteLine($"MCP CONFIG ERROR: {ex}");
                 throw;
             }
-            initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit) configured with [McpServerToolType]");
+            initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit, Jamming) configured with [McpServerToolType]");
             initLogger.LogInformation("Resource: jamming-analysis-instructions configured with [McpServerResourceType]");
             initLogger.LogInformation("");
             initLogger.LogInformation("MCP server runs on stdio transport when invoked by Claude Desktop via claude_desktop_config.json");

@@ -9,11 +9,16 @@ namespace VideoForensics.Data.Core.Services
     internal class IntegrityVerificationService : IIntegrityVerificationService
     {
         private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<IntegrityVerificationService> _logger;
 
-        public IntegrityVerificationService(IMediaItemRepository mediaItemRepository, ILogger<IntegrityVerificationService> logger)
+        public IntegrityVerificationService(
+            IMediaItemRepository mediaItemRepository,
+            IIntegrityRecordRepository integrityRecordRepository,
+            ILogger<IntegrityVerificationService> logger)
         {
             _mediaItemRepository = mediaItemRepository;
+            _integrityRecordRepository = integrityRecordRepository;
             _logger = logger;
         }
 
@@ -53,6 +58,7 @@ namespace VideoForensics.Data.Core.Services
             if (!File.Exists(mediaItem.FilePath))
             {
                 _logger.LogError("File not found during verification: {FilePath}", mediaItem.FilePath);
+                await RecordResultAsync(mediaItemId, mediaItem.Sha256Hash, passed: false, failureReason: "File not found", ct);
                 return false;
             }
 
@@ -68,12 +74,43 @@ namespace VideoForensics.Data.Core.Services
                     mediaItem.Sha256Hash,
                     currentHash);
 
+                await RecordResultAsync(
+                    mediaItemId,
+                    currentHash,
+                    passed,
+                    failureReason: passed ? null : "SHA-256 hash mismatch",
+                    ct);
+
                 return passed;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during integrity verification of {FilePath}", mediaItem.FilePath);
+                await RecordResultAsync(mediaItemId, mediaItem.Sha256Hash, passed: false, failureReason: ex.Message, ct);
                 return false;
+            }
+        }
+
+        private async Task RecordResultAsync(Guid mediaItemId, string sha256Hash, bool passed, string? failureReason, CancellationToken ct)
+        {
+            try
+            {
+                await _integrityRecordRepository.AddAsync(
+                    new IntegrityRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        MediaItemId = mediaItemId,
+                        Sha256Hash = sha256Hash,
+                        VerifiedAtUtc = DateTime.UtcNow,
+                        Passed = passed,
+                        FailureReason = failureReason,
+                        VerifiedBy = nameof(IntegrityVerificationService)
+                    },
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording integrity result for media item {MediaItemId}", mediaItemId);
             }
         }
 

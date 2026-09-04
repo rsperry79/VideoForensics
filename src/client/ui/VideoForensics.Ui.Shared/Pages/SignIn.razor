@@ -1,0 +1,52 @@
+@page "/signin"
+@inject IProviderAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<h1>Sign In</h1>
+
+@if (_restoringSession)
+{
+    <p>Checking for a saved session...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_restoreErrorMessage))
+    {
+        <p style="color:red">@_restoreErrorMessage</p>
+    }
+
+    <AuthForm IdPrefix="signin" SubmitLabel="Sign In" OnAuthenticated="HandleAuthenticated" />
+}
+
+@code {
+    private bool _restoringSession = true;
+    private string? _restoreErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (await AuthService.RestoreFromSavedCredentialsAsync())
+            {
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            // A fresh install legitimately has no saved credentials - RestoreFromSavedCredentialsAsync
+            // returning false is expected and not surfaced as an error. Only an actual exception here
+            // (e.g. a corrupt credential store) is worth telling the user about.
+            _restoreErrorMessage = $"Could not check for a saved session: {ex.Message}";
+        }
+        finally
+        {
+            _restoringSession = false;
+        }
+    }
+
+    private void HandleAuthenticated(AuthResult result)
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}

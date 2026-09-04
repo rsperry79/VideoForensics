@@ -29,10 +29,11 @@ namespace VideoForensics.Data.Core.DependencyInjection
             {
                 var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RetentionService>>();
                 var mediaItemRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IMediaItemRepository>();
+                var legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldRepository>();
                 var unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 var actionLogger = sp.GetRequiredService<IActionLogger>();
                 var days = retentionDays ?? 90;
-                return new RetentionService(mediaItemRepo, unitOfWork, actionLogger, logger, days);
+                return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days);
             });
 
             services.AddScoped<IRedactionService, RedactionService>();

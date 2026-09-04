@@ -70,10 +70,17 @@ namespace VideoForensics.Providers.Ring.Services
         private DateTime? _cachedHistoryEnd;
         private List<Entities.DoorbotHistoryEvent>? _cachedHistoryEvents;
 
-        // Cache the User/Account/Location identity resolution so we only do it once per process
+        // Cache the User/Account/Location identity resolution so we only do it once per process.
+        // _cachedProviderAccountId is primed by the caller via SetActiveProviderAccountId before any
+        // download starts - without that, this used to always fall back to finding-or-creating a
+        // synthetic "Ring"/"default" account, silently attributing every download to the wrong
+        // account regardless of which one was actually authenticated. _locationIdCache is keyed by
+        // the device's real provider location id (not a single field) since an account can have more
+        // than one location - a single cached value meant every device after the first got its DB
+        // record silently relocated to whichever location the first device resolved to.
         private readonly SemaphoreSlim _identityResolutionLock = new(1, 1);
         private Guid? _cachedProviderAccountId;
-        private Guid? _cachedLocationId;
+        private readonly ConcurrentDictionary<string, Guid> _locationIdCache = new();
 
         // Per-device Guid cache to avoid redundant EnsureDeviceAsync calls for the same providerDeviceId
         private readonly ConcurrentDictionary<string, Guid> _deviceIdCache = new();
@@ -131,7 +138,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
-            DateTime endDate, CancellationToken cancellationToken = default)
+            DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -176,7 +183,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
-                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, cancellationToken);
+                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, cancellationToken);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -613,7 +620,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// on demand. startDate/endDate are accepted for interface compatibility but have no effect here.
         /// </summary>
         public async Task<DownloadResult> DownloadSnapshotsAsync(string deviceId, string outputPath, DateTime startDate,
-            DateTime endDate, CancellationToken cancellationToken = default)
+            DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -692,7 +699,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize);
 
                 // Resolve device identity and record snapshot download
-                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, cancellationToken);
+                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
 
                 // Compute SHA-256 hash for snapshot
                 string? sha256Hash = null;
@@ -1034,7 +1041,9 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingCvProfile(string? Id, string? Name, double? Confidence);
         private record RingCvZone(string? Id, string? Name, double? Confidence);
 
-        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, CancellationToken ct)
+        public void SetActiveProviderAccountId(Guid accountId) => _cachedProviderAccountId = accountId;
+
+        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out var cachedDeviceId))
@@ -1042,13 +1051,29 @@ namespace VideoForensics.Providers.Ring.Services
                 return cachedDeviceId;
             }
 
-            // Resolve User/Account/Location once and cache them
+            // Falls back to a synthetic "default" location only when the caller genuinely has no
+            // real Ring location id for this device — matches VideoDownloadServiceAdapter's own
+            // fallback so both layers agree on the placeholder's identity instead of creating two
+            // different "default" locations.
+            var effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
+
+            // Resolve Account/Location once per effectiveLocationId and cache them
             await _identityResolutionLock.WaitAsync(ct);
+            Guid locationGuid;
             try
             {
+                if (_deviceIdCache.TryGetValue(providerDeviceId, out cachedDeviceId))
+                {
+                    return cachedDeviceId;
+                }
+
                 if (!_cachedProviderAccountId.HasValue)
                 {
-                    var (user, account) = await _dataClient.EnsureUserAndAccountAsync(
+                    // SetActiveProviderAccountId wasn't called before this - shouldn't normally
+                    // happen since the caller resolves the real active account first, but fall back
+                    // to a synthetic placeholder rather than failing the whole download outright.
+                    _logger.LogWarning("No active provider account set; falling back to a synthetic placeholder account for device identity resolution");
+                    var (_, account) = await _dataClient.EnsureUserAndAccountAsync(
                         "Ring",
                         "default",
                         "default",
@@ -1057,15 +1082,16 @@ namespace VideoForensics.Providers.Ring.Services
                     _cachedProviderAccountId = account.Id;
                 }
 
-                if (!_cachedLocationId.HasValue)
+                if (!_locationIdCache.TryGetValue(effectiveLocationId, out locationGuid))
                 {
                     var location = await _dataClient.EnsureLocationAsync(
                         _cachedProviderAccountId.Value,
-                        "default",
-                        "default",
+                        effectiveLocationId,
+                        effectiveLocationId,
                         null,
                         ct: ct);
-                    _cachedLocationId = location.Id;
+                    locationGuid = location.Id;
+                    _locationIdCache[effectiveLocationId] = locationGuid;
                 }
             }
             finally
@@ -1075,7 +1101,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             // Now resolve the device
             var device = await _dataClient.EnsureDeviceAsync(
-                _cachedLocationId.Value,
+                locationGuid,
                 providerDeviceId,
                 deviceName,
                 "camera",

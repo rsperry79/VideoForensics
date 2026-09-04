@@ -24,6 +24,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="VideoForensics" />
         <InternalsVisibleTo Include="VideoForensics.Mcp" />
+        <InternalsVisibleTo Include="VideoForensics.Hosting" />
         <InternalsVisibleTo Include="VideoForensics.Providers.Ring.Tests" />
         <!-- Lets Moq's Castle DynamicProxy build a mock of ILogger<T> closed over an internal T
              (e.g. Mock<ILogger<EvidenceExportOrchestrator>>) - without this, proxy generation

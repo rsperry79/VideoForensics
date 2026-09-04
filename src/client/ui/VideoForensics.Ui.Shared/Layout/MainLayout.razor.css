@@ -1,0 +1,17 @@
+.page {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background-color: #1b1f24;
+    color: #ffffff;
+    padding: 1rem;
+}
+
+main {
+    flex: 1;
+    padding: 1.5rem;
+}

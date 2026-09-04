@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IEventRepository _eventRepository;
         private readonly IJammingRepository _jammingRepository;
+        private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
 
         public ReportGenerationService(
@@ -25,6 +26,7 @@ namespace VideoForensics.Data.Core.Services
             IActionLogRepository actionLogRepository,
             IEventRepository eventRepository,
             IJammingRepository jammingRepository,
+            IIntegrityRecordRepository integrityRecordRepository,
             ILogger<ReportGenerationService> logger)
         {
             _mediaItemRepository = mediaItemRepository;
@@ -33,6 +35,7 @@ namespace VideoForensics.Data.Core.Services
             _actionLogRepository = actionLogRepository;
             _eventRepository = eventRepository;
             _jammingRepository = jammingRepository;
+            _integrityRecordRepository = integrityRecordRepository;
             _logger = logger;
         }
 
@@ -62,10 +65,14 @@ namespace VideoForensics.Data.Core.Services
                     items = allItems.Where(m => m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList();
                 }
 
+                var integrityRecords = await _integrityRecordRepository.GetLatestByMediaItemIdsAsync(
+                    items.Select(m => m.Id), ct);
+
                 report.MediaItems = items;
+                report.IntegrityRecords = integrityRecords;
                 report.TotalItemCount = items.Count;
                 report.VerifiedItemCount = items.Count(m => m.IntegrityVerified);
-                report.FailedVerificationCount = 0; // Would need IntegrityRecord lookup to populate accurately
+                report.FailedVerificationCount = integrityRecords.Count(r => !r.Passed);
 
                 _logger.LogInformation(
                     "Built evidence review report: {TotalCount} items, {VerifiedCount} verified",

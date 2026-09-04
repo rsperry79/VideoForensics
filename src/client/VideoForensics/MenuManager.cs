@@ -1243,8 +1243,11 @@ namespace VideoForensics
                     "videos",
                     cancellationToken);
 
+                // Files land in {outputPath}/{Location}/{Device}/*.mp4 (see PathUtilities.BuildSavePath),
+                // not directly under outputPath - without AllDirectories this always came back 0 and
+                // reported "No videos found" even after a fully successful download.
                 var downloadedCount = Directory.Exists(outputPath)
-                    ? Directory.GetFiles(outputPath, "*.mp4").Length
+                    ? Directory.GetFiles(outputPath, "*.mp4", SearchOption.AllDirectories).Length
                     : 0;
 
                 if (result)
@@ -1381,8 +1384,10 @@ namespace VideoForensics
                 "snapshots",
                 cancellationToken);
 
+            // Files land in {outputPath}/{Location}/{Device}/*.jpg (see PathUtilities.BuildSavePath),
+            // not directly under outputPath - without AllDirectories this always came back 0.
             var downloadedCount = Directory.Exists(outputPath)
-                ? Directory.GetFiles(outputPath, "*.jpg").Length
+                ? Directory.GetFiles(outputPath, "*.jpg", SearchOption.AllDirectories).Length
                 : 0;
 
             if (result)

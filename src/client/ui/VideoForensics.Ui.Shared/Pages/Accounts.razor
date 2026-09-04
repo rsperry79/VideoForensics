@@ -1,0 +1,175 @@
+@page "/accounts"
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject IUserRepository UserRepository
+@inject IProviderAuthService AuthService
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+
+<h1>Accounts</h1>
+
+@if (_isLoading)
+{
+    <p>Loading accounts...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <p>@_statusMessage</p>
+    }
+
+    @if (_rows.Count == 0)
+    {
+        <p>No accounts linked yet.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Display Name</th>
+                    <th>Provider</th>
+                    <th>Linked</th>
+                    <th>Last Auth</th>
+                    <th>Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _rows)
+                {
+                    <tr>
+                        <td>@row.DisplayName</td>
+                        <td>@row.Account.ProviderName</td>
+                        <td>@row.Account.LinkedUtc</td>
+                        <td>@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</td>
+                        <td>@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</td>
+                        <td>
+                            <button @onclick="() => SelectAccountAsync(row.Account.Id)" disabled="@_isBusy">Select</button>
+                            @if (_confirmingRemoveId == row.Account.Id)
+                            {
+                                <span>Are you sure?</span>
+                                <button @onclick="() => RemoveAccountAsync(row.Account.Id)" disabled="@_isBusy">Yes</button>
+                                <button @onclick="() => _confirmingRemoveId = null" disabled="@_isBusy">No</button>
+                            }
+                            else
+                            {
+                                <button @onclick="() => _confirmingRemoveId = row.Account.Id" disabled="@_isBusy">Remove</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+<h2>Add Account</h2>
+<AuthForm IdPrefix="addaccount" SubmitLabel="Add Account" OnAuthenticated="HandleAccountAddedAsync" />
+
+@code {
+    private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
+
+    private List<AccountRow> _rows = new();
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private string? _statusMessage;
+    private Guid? _confirmingRemoveId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountsAsync();
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
+            var rows = new List<AccountRow>();
+            foreach (var account in accounts)
+            {
+                string displayName = account.ProviderName;
+                try
+                {
+                    var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
+                    if (user is not null)
+                    {
+                        displayName = user.DisplayName;
+                    }
+                }
+                catch
+                {
+                    // Fall back to ProviderName if user lookup fails for any reason.
+                }
+
+                rows.Add(new AccountRow(account, displayName));
+            }
+
+            _rows = rows;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SelectAccountAsync(Guid accountId)
+    {
+        _isBusy = true;
+        _statusMessage = null;
+        try
+        {
+            ForensicsConfig.ActiveProviderAccountId = accountId;
+            await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+
+            var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
+            _statusMessage = resumed
+                ? "Switched active account and resumed session."
+                : "Switched active account, but the saved session could not be resumed. You may need to sign in again.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Could not switch account: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RemoveAccountAsync(Guid accountId)
+    {
+        _isBusy = true;
+        _confirmingRemoveId = null;
+        _statusMessage = null;
+        try
+        {
+            await ProviderAccountRepository.DeleteAsync(accountId, CancellationToken.None);
+
+            if (ForensicsConfig.ActiveProviderAccountId == accountId)
+            {
+                ForensicsConfig.ActiveProviderAccountId = null;
+                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+            }
+
+            await LoadAccountsAsync();
+            _statusMessage = "Account removed.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Could not remove account: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task HandleAccountAddedAsync(AuthResult result)
+    {
+        _statusMessage = "Account added.";
+        await LoadAccountsAsync();
+    }
+}

@@ -537,7 +537,14 @@ namespace VideoForensics.Providers.Ring
             // spanning months): without a delay here, an old start date can page through dozens of
             // 200-item batches back-to-back and trip Ring's rate limit before this single call even
             // returns, regardless of any delay callers add between devices.
-            const int InterPageDelayMs = 500;
+            //
+            // 500ms wasn't enough - observed in practice: a 6-month, several-thousand-event account
+            // sailed through 21 pages at ~700ms apart (roughly 2 req/s sustained) and only then hit a
+            // 429 on page 22. That's Ring's real limit being about sustained request rate over a
+            // whole walk, not just short-burst count, so consolidating N devices' history calls into
+            // one walk (see RingMediaDownloadService) doesn't help if that single walk itself still
+            // runs too fast once it has to cross dozens of pages.
+            const int InterPageDelayMs = 2000;
             const int MaxPageRetries = 3;
             const int InitialThrottleBackoffMs = 2000;
 

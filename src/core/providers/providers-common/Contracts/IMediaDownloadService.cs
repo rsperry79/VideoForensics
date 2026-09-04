@@ -4,22 +4,40 @@ namespace VideoForensics.Providers.Common.Contracts
     public interface IMediaDownloadService
     {
         /// <summary>Downloads videos for a device within a date range</summary>
+        /// <param name="providerLocationId">
+        /// The device's real provider-reported location id, so the provider can attribute the
+        /// resulting DB records to that location (and the caller's already-resolved account) instead
+        /// of falling back to a synthetic placeholder. Null only when the caller genuinely doesn't
+        /// know the device's location.
+        /// </param>
         Task<DownloadResult> DownloadVideosAsync(
             string deviceId,
             string outputPath,
             DateTime startDate,
             DateTime endDate,
+            string? providerLocationId = null,
             CancellationToken cancellationToken = default
         );
 
         /// <summary>Downloads snapshots for a device within a date range</summary>
+        /// <param name="providerLocationId">See DownloadVideosAsync's parameter of the same name.</param>
         Task<DownloadResult> DownloadSnapshotsAsync(
             string deviceId,
             string outputPath,
             DateTime startDate,
             DateTime endDate,
+            string? providerLocationId = null,
             CancellationToken cancellationToken = default
         );
+
+        /// <summary>
+        /// Tells the provider which account any device/media DB records it creates from here on
+        /// should be attributed to. Without this, a provider with no other way to know the currently
+        /// active account would otherwise have to fall back to a synthetic placeholder account - a
+        /// no-op for a provider that doesn't need this (e.g. it's given the account context another
+        /// way, or doesn't persist to a shared DB at all).
+        /// </summary>
+        void SetActiveProviderAccountId(Guid accountId) { }
 
         /// <summary>Gets current download status</summary>
         DownloadStatus GetStatus();

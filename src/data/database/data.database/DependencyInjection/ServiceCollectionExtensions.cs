@@ -39,6 +39,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IActionLogRepository, ActionLogRepository>();
             services.TryAddScoped<IAppSettingRepository, AppSettingRepository>();
             services.TryAddScoped<IJammingRepository, JammingRepository>();
+            services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
+            services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
 
             // Register unit of work
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();

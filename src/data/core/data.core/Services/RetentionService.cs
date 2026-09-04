@@ -10,6 +10,7 @@ namespace VideoForensics.Data.Core.Services
     internal class RetentionService : IRetentionService
     {
         private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly ILegalHoldRepository _legalHoldRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<RetentionService> _logger;
@@ -17,12 +18,14 @@ namespace VideoForensics.Data.Core.Services
 
         public RetentionService(
             IMediaItemRepository mediaItemRepository,
+            ILegalHoldRepository legalHoldRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<RetentionService> logger,
             int retentionDays = 90)
         {
             _mediaItemRepository = mediaItemRepository;
+            _legalHoldRepository = legalHoldRepository;
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
@@ -38,6 +41,16 @@ namespace VideoForensics.Data.Core.Services
                 var itemsToPurge = allItems
                     .Where(m => !m.IsPurged && m.DownloadedAtUtc < cutoffDate)
                     .ToList();
+
+                var activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(itemsToPurge.Select(i => i.Id), ct);
+                var heldMediaItemIds = activeHolds.Select(h => h.MediaItemId).ToHashSet();
+
+                if (heldMediaItemIds.Count > 0)
+                {
+                    var skippedCount = itemsToPurge.Count(i => heldMediaItemIds.Contains(i.Id));
+                    _logger.LogInformation("Skipping {SkippedCount} item(s) under active legal hold during retention purge", skippedCount);
+                    itemsToPurge = itemsToPurge.Where(i => !heldMediaItemIds.Contains(i.Id)).ToList();
+                }
 
                 int purgedCount = 0;
 

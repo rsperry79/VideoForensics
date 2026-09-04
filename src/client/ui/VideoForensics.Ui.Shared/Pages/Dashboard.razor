@@ -1,0 +1,68 @@
+@page "/"
+@inject IProviderAuthService AuthService
+@inject IDeviceRepository DeviceRepository
+
+<h1>VideoForensics</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to view your devices.</p>
+}
+else
+{
+    @if (_devices.Count == 0)
+    {
+        <p>No devices found yet.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Online</th>
+                    <th>Last Synced</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var device in _devices)
+                {
+                    <tr>
+                        <td>@device.Name</td>
+                        <td>@device.Type</td>
+                        <td>@(device.IsOnline ? "Yes" : "No")</td>
+                        <td>@(device.LastSyncedUtc?.ToString() ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

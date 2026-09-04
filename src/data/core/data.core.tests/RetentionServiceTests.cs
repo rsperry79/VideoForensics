@@ -12,6 +12,7 @@ namespace VideoForensics.Data.Core.Tests
     public class RetentionServiceTests
     {
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<ILegalHoldRepository> _mockLegalHoldRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IActionLogger> _mockActionLogger;
         private readonly Mock<ILogger<RetentionService>> _mockLogger;
@@ -21,6 +22,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             return new RetentionService(
                 _mockMediaItemRepository.Object,
+                _mockLegalHoldRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockActionLogger.Object,
                 _mockLogger.Object,
@@ -30,6 +32,10 @@ namespace VideoForensics.Data.Core.Tests
         public RetentionServiceTests()
         {
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockLegalHoldRepository = new Mock<ILegalHoldRepository>();
+            _mockLegalHoldRepository
+                .Setup(x => x.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<LegalHold>());
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
             _mockLogger = new Mock<ILogger<RetentionService>>();
@@ -333,6 +339,67 @@ namespace VideoForensics.Data.Core.Tests
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task PurgeExpiredAsync_SkipsItemsUnderActiveLegalHold()
+        {
+            // Arrange
+            var service = CreateService();
+            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            var heldItem = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                FileName = "held.mp4",
+                FilePath = Path.Combine(Path.GetTempPath(), "held.mp4"),
+                MediaFormat = "video/mp4",
+                Sha256Hash = "abc123",
+                RecordedAtUtc = cutoffDate.AddDays(-1),
+                DownloadedAtUtc = cutoffDate.AddDays(-1),
+                IsPurged = false
+            };
+
+            _mockMediaItemRepository
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem> { heldItem });
+
+            _mockLegalHoldRepository
+                .Setup(x => x.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<LegalHold>
+                {
+                    new LegalHold
+                    {
+                        Id = Guid.NewGuid(),
+                        MediaItemId = heldItem.Id,
+                        Reason = "Pending litigation",
+                        CreatedBy = "tester",
+                        CreatedAtUtc = DateTime.UtcNow
+                    }
+                });
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
+            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+
+            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+
+            _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<bool>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            var result = await service.PurgeExpiredAsync(CancellationToken.None);
+
+            // Assert
+            Assert.Equal(0, result);
+            mockMediaItemRepoInContext.Verify(
+                x => x.UpdateAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }

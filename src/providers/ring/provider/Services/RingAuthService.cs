@@ -19,7 +19,6 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IProviderAccountRepository? _providerAccountRepository;
         private readonly IUserRepository? _userRepository;
         private readonly ApiResponseNormalizer? _normalizer;
-        private bool _isAuthenticated;
 
         public RingAuthService(
             ILogger logger,
@@ -39,7 +38,6 @@ namespace VideoForensics.Providers.Ring.Services
             _providerAccountRepository = providerAccountRepository;
             _userRepository = userRepository;
             _normalizer = normalizer;
-            _isAuthenticated = false;
         }
 
         public async Task<AuthResult> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
@@ -64,7 +62,6 @@ namespace VideoForensics.Providers.Ring.Services
                 if (session?.OAuthToken != null)
                 {
                     _sessionProvider.SetSession(session);
-                    _isAuthenticated = true;
                     var expiresAt = DateTime.UtcNow.AddHours(24);
 
                     // Persist credentials to secure store
@@ -144,7 +141,6 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
-                _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: "Authentication failed - no token returned"
@@ -153,7 +149,6 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exceptions.TwoFactorAuthenticationIncorrectException)
             {
                 _logger.LogError("Two-factor authentication code was incorrect");
-                _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: "Two-factor authentication code was incorrect. Please try again."
@@ -162,7 +157,6 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 _logger.LogError("Two-factor authentication is required but no 2FA callback was provided");
-                _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: "Two-factor authentication is required. Please provide your 2FA code."
@@ -171,7 +165,6 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exceptions.AuthenticationFailedException ex)
             {
                 _logger.LogError(ex, "Authentication failed");
-                _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: "Invalid email or password"
@@ -180,7 +173,6 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Authentication error");
-                _isAuthenticated = false;
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -188,10 +180,20 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        /// <summary>
+        /// Checks whether there's a currently-valid Ring session. Deliberately derives this purely
+        /// from ISessionProvider (the shared, process-wide source of truth for session state) rather
+        /// than any per-instance flag - this class is registered Scoped (one instance per DI scope/
+        /// circuit), so a per-instance "am I authenticated" flag would incorrectly read false on a
+        /// fresh scope even when a valid session already exists, set by a different scope's instance.
+        /// Caught by actually running the Web app: a fresh page load (new circuit) reported "not
+        /// signed in" immediately after a successful sign-in in a different circuit, even though the
+        /// shared session was still valid.
+        /// </summary>
         public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
         {
             var session = _sessionProvider.GetSession();
-            if (session == null || !_isAuthenticated)
+            if (session == null)
                 return false;
 
             try
@@ -216,7 +218,6 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
 
                 await session.RefreshSession();
-                _isAuthenticated = true;
                 return true;
             }
             catch (Exception ex)
@@ -289,7 +290,6 @@ namespace VideoForensics.Providers.Ring.Services
                 if (credentials?.RefreshToken == null)
                 {
                     _logger.LogInformation("No saved refresh token found");
-                    _isAuthenticated = false;
                     return false;
                 }
 
@@ -298,7 +298,6 @@ namespace VideoForensics.Providers.Ring.Services
                 if (credentials.RefreshToken == null)
                 {
                     _logger.LogError("Cannot restore session: refresh token is null");
-                    _isAuthenticated = false;
                     return false;
                 }
 
@@ -307,12 +306,10 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (session?.OAuthToken == null)
                 {
-                    _isAuthenticated = false;
                     return false;
                 }
 
                 _sessionProvider.SetSession(session);
-                _isAuthenticated = true;
 
                 try
                 {
@@ -341,7 +338,6 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to restore session from saved credentials");
-                _isAuthenticated = false;
                 return false;
             }
         }
@@ -390,12 +386,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         public string GetAuthStatus()
         {
-            if (!_isAuthenticated)
-                return "Not authenticated";
-
             var session = _sessionProvider.GetSession();
             if (session?.OAuthToken == null)
-                return "No session";
+                return "Not authenticated";
 
             return "Authenticated";
         }
