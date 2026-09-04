@@ -99,6 +99,15 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the modification audit records.</summary>
         public DbSet<ModificationAuditRecordEntity> ModificationAuditRecords { get; set; }
 
+        /// <summary>Gets or sets the Operators (plan §5.11).</summary>
+        public DbSet<Operator> Operators { get; set; }
+
+        /// <summary>Gets or sets the paired devices (plan §5.1/§5.4).</summary>
+        public DbSet<PairedDevice> PairedDevices { get; set; }
+
+        /// <summary>Gets or sets the security audit log entries (plan §5.5).</summary>
+        public DbSet<SecurityAuditLogEntry> SecurityAuditLogEntries { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
