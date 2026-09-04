@@ -4,24 +4,24 @@
 @inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
 
-<MudText Typo="Typo.h4" Class="mb-4">Device Sign-In</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Device Sign-In</RadzenText>
 
 @if (SessionState.IsSignedIn)
 {
-    <MudAlert Severity="Severity.Success">Signed in as operator @SessionState.OperatorId (@SessionState.Role).</MudAlert>
-    <MudButton OnClick="SignOutAsync" Variant="Variant.Outlined" Color="Color.Secondary">Sign out</MudButton>
+    <RadzenAlert AlertStyle="AlertStyle.Success">Signed in as operator @SessionState.OperatorId (@SessionState.Role).</RadzenAlert>
+    <RadzenButton Text="Sign out" Click="SignOutAsync" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" />
 }
 else
 {
-    <MudText>Sign in on this already-paired device with your passkey. If this device has not been paired yet, ask a Super Admin to generate a pairing QR code from the Paired Devices screen.</MudText>
+    <RadzenText>Sign in on this already-paired device with your passkey. If this device has not been paired yet, ask a Super Admin to generate a pairing QR code from the Paired Devices screen.</RadzenText>
 
-    <MudButton OnClick="SignInAsync" Disabled="@_isSigningIn" Variant="Variant.Filled" Color="Color.Primary">
+    <RadzenButton Click="SignInAsync" Disabled="@_isSigningIn" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled">
         @(_isSigningIn ? "Waiting for passkey..." : "Sign in with Passkey")
-    </MudButton>
+    </RadzenButton>
 
     @if (_error is not null)
     {
-        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
     }
 }
 

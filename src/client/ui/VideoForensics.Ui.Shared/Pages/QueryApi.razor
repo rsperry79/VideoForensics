@@ -3,162 +3,140 @@
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
 
-<MudText Typo="Typo.h4" Class="mb-4">Query API</MudText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Query API</RadzenText>
 
-<MudPaper Class="pa-4 mb-4" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Account Status</MudText>
-    <MudButton OnClick="RunAccountStatus" Variant="Variant.Filled" Color="Color.Primary">Check Status</MudButton>
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Account Status</RadzenText>
+    <RadzenButton Text="Check Status" Click="RunAccountStatus" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
     @if (_accountStatus is not null)
     {
-        <MudText Class="mt-2">@_accountStatus</MudText>
+        <RadzenText Class="mt-2">@_accountStatus</RadzenText>
     }
-</MudPaper>
+</RadzenCard>
 
-<MudPaper Class="pa-4 mb-4" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Locations</MudText>
-    <MudButton OnClick="RunLocationsAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_locationsLoading">Get Locations</MudButton>
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Locations</RadzenText>
+    <RadzenButton Text="Get Locations" Click="RunLocationsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@_locationsLoading" />
     @if (!string.IsNullOrEmpty(_locationsError))
     {
-        <MudAlert Severity="Severity.Error" Class="mt-2">@_locationsError</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_locationsError</RadzenAlert>
     }
     @if (_locations is not null)
     {
         @if (_locations.Count == 0)
         {
-            <MudText Class="mt-2">No locations found.</MudText>
+            <RadzenText Class="mt-2">No locations found.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
-                <thead>
-                    <tr><th>Id</th><th>Name</th><th>Address</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var location in _locations)
-                    {
-                        <tr>
-                            <td>@location.Id</td>
-                            <td>@location.Name</td>
-                            <td>@(location.Address ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="Location" Data="@_locations" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+                <Columns>
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Id)" Title="Id" />
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Name)" Title="Name" />
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Address)" Title="Address" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
-</MudPaper>
+</RadzenCard>
 
-<MudPaper Class="pa-4 mb-4" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Devices</MudText>
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <MudTextField @bind-Value="_locationIdInput" Label="Location Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
-        <MudButton OnClick="RunDevicesAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))">Get Devices</MudButton>
-    </MudStack>
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Devices</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <label>Location Id</label>
+        <RadzenTextBox @bind-Value="_locationIdInput" Placeholder="Location Id" Style="max-width: 200px;" />
+        <RadzenButton Text="Get Devices" Click="RunDevicesAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
+    </RadzenStack>
     @if (!string.IsNullOrEmpty(_devicesError))
     {
-        <MudAlert Severity="Severity.Error" Class="mt-2">@_devicesError</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_devicesError</RadzenAlert>
     }
     @if (_devices is not null)
     {
         @if (_devices.Count == 0)
         {
-            <MudText Class="mt-2">No devices found.</MudText>
+            <RadzenText Class="mt-2">No devices found.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
-                <thead>
-                    <tr><th>Id</th><th>Name</th><th>Type</th><th>Online</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var device in _devices)
-                    {
-                        <tr>
-                            <td>@device.Id</td>
-                            <td>@device.Name</td>
-                            <td>@device.Type</td>
-                            <td>@(device.IsOnline ? "Yes" : "No")</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="Device" Data="@_devices" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+                <Columns>
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Id)" Title="Id" />
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Name)" Title="Name" />
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Type)" Title="Type" />
+                    <RadzenDataGridColumn TItem="Device" Title="Online">
+                        <Template Context="row">@(row.IsOnline ? "Yes" : "No")</Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
     }
-</MudPaper>
+</RadzenCard>
 
-<MudPaper Class="pa-4 mb-4" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Device Events</MudText>
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <MudTextField @bind-Value="_eventsDeviceIdInput" Label="Device Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
-        <input type="date" @bind="_eventsFromDate" />
-        <input type="date" @bind="_eventsToDate" />
-        <MudButton OnClick="RunEventsAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))">Get Events</MudButton>
-    </MudStack>
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Device Events</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <label>Device Id</label>
+        <RadzenTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="Device Id" Style="max-width: 200px;" />
+        <label>From</label>
+        <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsFromDate" />
+        <label>To</label>
+        <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsToDate" />
+        <RadzenButton Text="Get Events" Click="RunEventsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
+    </RadzenStack>
     @if (!string.IsNullOrEmpty(_eventsError))
     {
-        <MudAlert Severity="Severity.Error" Class="mt-2">@_eventsError</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_eventsError</RadzenAlert>
     }
     @if (_events is not null)
     {
         @if (_events.Count == 0)
         {
-            <MudText Class="mt-2">No events found.</MudText>
+            <RadzenText Class="mt-2">No events found.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
-                <thead>
-                    <tr><th>Id</th><th>Event Type</th><th>Timestamp</th><th>Snapshot URL</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var evt in _events)
-                    {
-                        <tr>
-                            <td>@evt.Id</td>
-                            <td>@evt.EventType</td>
-                            <td>@evt.Timestamp</td>
-                            <td>@(evt.SnapshotUrl ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="DeviceEvent" Data="@_events" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+                <Columns>
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Id)" Title="Id" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.EventType)" Title="Event Type" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Timestamp)" Title="Timestamp" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.SnapshotUrl)" Title="Snapshot URL" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
-</MudPaper>
+</RadzenCard>
 
-<MudPaper Class="pa-4 mb-4" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Device Config</MudText>
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <MudTextField @bind-Value="_configDeviceIdInput" Label="Device Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
-        <MudButton OnClick="RunDeviceConfigAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))">Get Config</MudButton>
-    </MudStack>
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Device Config</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <label>Device Id</label>
+        <RadzenTextBox @bind-Value="_configDeviceIdInput" Placeholder="Device Id" Style="max-width: 200px;" />
+        <RadzenButton Text="Get Config" Click="RunDeviceConfigAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+    </RadzenStack>
     @if (!string.IsNullOrEmpty(_configError))
     {
-        <MudAlert Severity="Severity.Error" Class="mt-2">@_configError</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_configError</RadzenAlert>
     }
     @if (_configLoadedOnce)
     {
         @if (_config is null)
         {
-            <MudText Class="mt-2">No configuration found for this device.</MudText>
+            <RadzenText Class="mt-2">No configuration found for this device.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
-                <thead>
-                    <tr><th>Motion Detection Enabled</th><th>Motion Sensitivity</th><th>Recording Mode</th></tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>@_config.MotionDetectionEnabled</td>
-                        <td>@_config.MotionSensitivity</td>
-                        <td>@(_config.RecordingMode ?? "-")</td>
-                    </tr>
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Data="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2">
+                <Columns>
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" Title="Motion Detection Enabled" />
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" Title="Motion Sensitivity" />
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" Title="Recording Mode" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
-</MudPaper>
+</RadzenCard>
 
 @code {
     // Account Status

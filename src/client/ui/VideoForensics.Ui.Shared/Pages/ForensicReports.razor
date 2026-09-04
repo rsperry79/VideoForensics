@@ -6,50 +6,45 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">Forensic Analysis Report</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Forensic Analysis Report</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view forensic reports.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view forensic reports.
+    </RadzenAlert>
 }
 else
 {
-    <MudStack Spacing="3" Class="mb-4">
-        <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device" Variant="Variant.Outlined">
-            <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
-            @foreach (var device in _devices)
-            {
-                <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
-            }
-        </MudSelect>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <RadzenStack>
+        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
+        <RadzenStack Orientation="Orientation.Horizontal">
             <input type="date" @bind="_fromDate" />
             <input type="date" @bind="_toDate" />
-            <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
-        </MudStack>
-    </MudStack>
+            <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+        </RadzenStack>
+    </RadzenStack>
 
     @if (_report is not null)
     {
         @if (!string.IsNullOrWhiteSpace(_report.Summary))
         {
-            <MudText>@_report.Summary</MudText>
+            <RadzenText>@_report.Summary</RadzenText>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Evidence Items</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Evidence Items</RadzenText>
         @if (_report.EvidenceItems.Count == 0)
         {
-            <MudText>No evidence items found in this range.</MudText>
+            <RadzenText>No evidence items found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table>
                 <thead>
                     <tr>
                         <th>Evidence ID</th>
@@ -69,17 +64,17 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Anomalous Health Snapshots</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Anomalous Health Snapshots</RadzenText>
         @if (_report.AnomalousHealthSnapshots.Count == 0)
         {
-            <MudText>No anomalous health snapshots found in this range.</MudText>
+            <RadzenText>No anomalous health snapshots found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table>
                 <thead>
                     <tr>
                         <th>Captured At</th>
@@ -105,17 +100,17 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Significant Actions</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Significant Actions</RadzenText>
         @if (_report.SignificantActions.Count == 0)
         {
-            <MudText>No significant actions found in this range.</MudText>
+            <RadzenText>No significant actions found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table>
                 <thead>
                     <tr>
                         <th>Actor</th>
@@ -135,7 +130,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
     }
 }
@@ -148,6 +143,9 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ForensicAnalysisReport? _report;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

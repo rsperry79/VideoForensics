@@ -6,123 +6,87 @@
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 
-<MudText Typo="Typo.h4" Class="mb-4">Validate Evidence</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Validate Evidence</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to validate evidence.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to validate evidence.
+    </RadzenAlert>
 }
 else
 {
-    <MudStack Row="true" Class="mb-4">
-        <MudButton OnClick='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' Color='@(_activeTab == "integrity" ? Color.Primary : Color.Default)'>Verify Integrity</MudButton>
-        <MudButton OnClick='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' Color='@(_activeTab == "reconcile" ? Color.Primary : Color.Default)'>Reconcile with Provider</MudButton>
-    </MudStack>
+    <RadzenStack Orientation="Orientation.Horizontal" class="mb-4">
+        <RadzenButton Text="Verify Integrity" Click='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "integrity" ? ButtonStyle.Primary : ButtonStyle.Light)' />
+        <RadzenButton Text="Reconcile with Provider" Click='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "reconcile" ? ButtonStyle.Primary : ButtonStyle.Light)' />
+    </RadzenStack>
 
     @if (_activeTab == "integrity")
     {
-        <MudPaper Class="pa-4 mb-4" Outlined="true">
-            <MudStack>
-                <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
-                    <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
-                    @foreach (var device in _devices)
-                    {
-                        <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudButton OnClick="VerifyIntegrityAsync" Variant="Variant.Filled" Color="Color.Primary">Verify</MudButton>
-            </MudStack>
-        </MudPaper>
+        <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+            <RadzenStack>
+                <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+                    TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
+                <RadzenButton Text="Verify" Click="VerifyIntegrityAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            </RadzenStack>
+        </RadzenCard>
 
         @if (_verificationResults is not null)
         {
             @if (_verificationResults.Count == 0)
             {
-                <MudText>No media items found to verify.</MudText>
+                <RadzenText>No media items found to verify.</RadzenText>
             }
             else
             {
-                <MudSimpleTable Hover="true" Dense="true">
-                    <thead>
-                        <tr>
-                            <th>File Name</th>
-                            <th>Status</th>
-                            <th>Failure Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var result in _verificationResults)
-                        {
-                            <tr>
-                                <td>@result.FileName</td>
-                                <td style="color:@StatusColor(result.Status)">@result.Status</td>
-                                <td>@(result.FailureReason ?? "-")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
+                <RadzenDataGrid TItem="MediaVerificationResult" Data="@_verificationResults" AllowPaging="true" PageSize="20" AllowSorting="true">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FileName)" Title="File Name" />
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Title="Status"><Template Context="result"><span style="color:@StatusColor(result.Status)">@result.Status</span></Template></RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FailureReason)" Title="Failure Reason" />
+                    </Columns>
+                </RadzenDataGrid>
             }
         }
     }
     else
     {
-        <MudPaper Class="pa-4 mb-4" Outlined="true">
-            <MudStack>
-                <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
-                    <MudSelectItem Value="@("")">(Select a device)</MudSelectItem>
-                    @foreach (var device in _devices)
-                    {
-                        <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudTextField @bind-Value="_providerDeviceId" Label="Provider Device ID" Variant="Variant.Outlined" />
+        <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+            <RadzenStack>
+                <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+                    TextProperty="Value" ValueProperty="Key" Placeholder="(Select a device)" />
+                <label>Provider Device ID</label> <RadzenTextBox @bind-Value="_providerDeviceId" Placeholder="Provider Device ID" />
                 <label>
-                    From: <input type="date" @bind="_fromDate" />
+                    From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
                 </label>
                 <label>
-                    To: <input type="date" @bind="_toDate" />
+                    To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
                 </label>
-                <MudButton OnClick="ReconcileAsync" Variant="Variant.Filled" Color="Color.Primary">Reconcile</MudButton>
-            </MudStack>
-        </MudPaper>
+                <RadzenButton Text="Reconcile" Click="ReconcileAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            </RadzenStack>
+        </RadzenCard>
 
         @if (_discrepancies is not null)
         {
             @if (_discrepancies.Count == 0)
             {
-                <MudText>No discrepancies found.</MudText>
+                <RadzenText>No discrepancies found.</RadzenText>
             }
             else
             {
-                <MudSimpleTable Hover="true" Dense="true">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Provider Event ID</th>
-                            <th>Field</th>
-                            <th>Stored Value</th>
-                            <th>Provider Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var discrepancy in _discrepancies)
-                        {
-                            <tr>
-                                <td>@discrepancy.Type</td>
-                                <td>@discrepancy.ProviderEventId</td>
-                                <td>@(discrepancy.FieldName ?? "-")</td>
-                                <td>@(discrepancy.StoredValue ?? "-")</td>
-                                <td>@(discrepancy.ProviderValue ?? "-")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
+                <RadzenDataGrid TItem="ReconciliationDiscrepancy" Data="@_discrepancies" AllowPaging="true" PageSize="20" AllowSorting="true">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.Type)" Title="Type" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderEventId)" Title="Provider Event ID" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.FieldName)" Title="Field" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.StoredValue)" Title="Stored Value" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderValue)" Title="Provider Value" />
+                    </Columns>
+                </RadzenDataGrid>
             }
         }
     }
@@ -139,6 +103,9 @@ else
     private string _activeTab = "integrity";
     private IReadOnlyList<MediaVerificationResult>? _verificationResults;
     private IReadOnlyList<ReconciliationDiscrepancy>? _discrepancies;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

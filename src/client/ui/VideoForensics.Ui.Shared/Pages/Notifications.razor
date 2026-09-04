@@ -3,104 +3,125 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 
-<MudText Typo="Typo.h4" Class="mb-4">Notifications</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Notifications</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage notification settings.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage notification settings.
+    </RadzenAlert>
 }
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (_authError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
-    <MudText>
-        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - an Admin (or higher)
+    <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
+    <RadzenText>
+        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - an Admin (or higher)
         device is required to manage notification settings.
-    </MudText>
+    </RadzenText>
 }
 else if (_loadError is not null)
 {
-    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
 }
 else
 {
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Email</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Spacing="3">
-            <MudText Typo="Typo.body2">
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Email</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack>
+            <RadzenText>
                 The reliable baseline channel - reaches you regardless of whether any client app is
                 open. Other channels (Web Push, MAUI toast) are planned but not yet built.
-            </MudText>
-            <MudSwitch T="bool" @bind-Value="_enableEmail" Color="Color.Primary" Label="Enable email notifications" />
-            <MudStack Row="true" Spacing="3">
-                <MudTextField @bind-Value="_smtpHost" Label="SMTP Host" Variant="Variant.Outlined" Style="max-width: 260px;" />
-                <MudNumericField @bind-Value="_smtpPort" Label="Port" Variant="Variant.Outlined" Style="max-width: 120px;" />
-                <MudSwitch T="bool" @bind-Value="_smtpUseTls" Color="Color.Primary" Label="Use STARTTLS" />
-            </MudStack>
-            <MudStack Row="true" Spacing="3">
-                <MudTextField @bind-Value="_smtpUsername" Label="SMTP Username" Variant="Variant.Outlined" Style="max-width: 260px;" />
-                <MudTextField @bind-Value="_smtpPassword" Label="SMTP Password" InputType="InputType.Password" Placeholder="(unchanged)" Variant="Variant.Outlined" Style="max-width: 260px;" />
-            </MudStack>
-            <MudStack Row="true" Spacing="3">
-                <MudTextField @bind-Value="_smtpFromAddress" Label="From Address" Variant="Variant.Outlined" Style="max-width: 300px;" />
-                <MudTextField @bind-Value="_recipientEmail" Label="Notify This Address" Variant="Variant.Outlined" Style="max-width: 300px;" />
-            </MudStack>
-            <MudStack Row="true" Spacing="3">
-                <MudButton OnClick="SaveSettingsAsync" Disabled="@_isSaving" Variant="Variant.Filled" Color="Color.Primary">
-                    @(_isSaving ? "Saving..." : "Save")
-                </MudButton>
-                <MudButton OnClick="SendTestEmailAsync" Disabled="@_isSendingTest" Variant="Variant.Outlined">
-                    @(_isSendingTest ? "Sending..." : "Send Test Email")
-                </MudButton>
-            </MudStack>
+            </RadzenText>
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_enableEmail" /> Enable email notifications</label>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <div>
+                    <label>SMTP Host</label>
+                    <RadzenTextBox @bind-Value="_smtpHost" style="max-width: 260px;" />
+                </div>
+                <div>
+                    <label>Port</label>
+                    <RadzenNumeric TValue="int" @bind-Value="_smtpPort" style="max-width: 120px;" />
+                </div>
+                <label><RadzenCheckBox TValue="bool" @bind-Value="_smtpUseTls" /> Use STARTTLS</label>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <div>
+                    <label>SMTP Username</label>
+                    <RadzenTextBox @bind-Value="_smtpUsername" style="max-width: 260px;" />
+                </div>
+                <div>
+                    <label>SMTP Password</label>
+                    <input type="password" @bind="_smtpPassword" placeholder="(unchanged)" style="max-width: 260px;" />
+                </div>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <div>
+                    <label>From Address</label>
+                    <RadzenTextBox @bind-Value="_smtpFromAddress" style="max-width: 300px;" />
+                </div>
+                <div>
+                    <label>Notify This Address</label>
+                    <RadzenTextBox @bind-Value="_recipientEmail" style="max-width: 300px;" />
+                </div>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenButton Text="@(_isSaving ? "Saving..." : "Save")" Click="SaveSettingsAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" />
+                <RadzenButton Text="@(_isSendingTest ? "Sending..." : "Send Test Email")" Click="SendTestEmailAsync" Variant="Variant.Outlined" Disabled="@_isSendingTest" />
+            </RadzenStack>
             @if (_settingsMessage is not null)
             {
-                <MudText Color="@(_settingsSuccess ? Color.Success : Color.Error)">@_settingsMessage</MudText>
+                <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Urgent Event Overrides</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudText Typo="Typo.body2" Class="mb-2">
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Urgent Event Overrides</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenText class="mb-2">
             Every security event type ships with a reviewed default urgency. Override one below if
             it should (or shouldn't) trigger a notification differently than the default.
-        </MudText>
+        </RadzenText>
         @if (_urgencyRows.Count == 0)
         {
-            <MudText>No event types found.</MudText>
+            <RadzenText>No event types found.</RadzenText>
         }
         else
         {
-            <MudTable Items="@_urgencyRows" Hover="true" Dense="true">
-                <HeaderContent>
-                    <MudTh>Event Type</MudTh>
-                    <MudTh>Default</MudTh>
-                    <MudTh>Effective</MudTh>
-                    <MudTh></MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Event Type">@context.EventType</MudTd>
-                    <MudTd DataLabel="Default">@(context.DefaultUrgent ? "Urgent" : "Routine")</MudTd>
-                    <MudTd DataLabel="Effective">
-                        <MudSwitch T="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" Color="Color.Primary" Label="@(context.EffectiveUrgent ? "Urgent" : "Routine")" />
-                    </MudTd>
-                    <MudTd>
-                        @if (context.OverrideUrgent is not null)
-                        {
-                            <MudButton OnClick="() => ClearOverrideAsync(context.EventType)" Variant="Variant.Text" Size="Size.Small">Reset to default</MudButton>
-                        }
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Default</th>
+                        <th>Effective</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var context in _urgencyRows)
+                    {
+                        <tr>
+                            <td>@context.EventType</td>
+                            <td>@(context.DefaultUrgent ? "Urgent" : "Routine")</td>
+                            <td>
+                                <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? "Urgent" : "Routine")</label>
+                            </td>
+                            <td>
+                                @if (context.OverrideUrgent is not null)
+                                {
+                                    <RadzenButton Text="Reset to default" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         }
-    </MudPaper>
+    </RadzenCard>
 }
 
 @code {

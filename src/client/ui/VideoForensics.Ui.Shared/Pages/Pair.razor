@@ -3,34 +3,38 @@
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
 
-<MudText Typo="Typo.h4" Class="mb-4">Pair This Device</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Pair This Device</RadzenText>
 
 @if (_token is null)
 {
-    <MudAlert Severity="Severity.Error">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</RadzenAlert>
 }
 else if (_result is not null)
 {
-    <MudAlert Severity="Severity.Success">
+    <RadzenAlert AlertStyle="AlertStyle.Success">
         Device paired successfully as <strong>@_result.Value.Role</strong>.
-        You can now <MudLink Href="/device-signin">sign in with your passkey</MudLink>.
-    </MudAlert>
+        You can now <RadzenLink Path="/device-signin" Text="sign in with your passkey" />.
+    </RadzenAlert>
 }
 else
 {
-    <MudStack Spacing="3" Class="mb-4">
-        <MudText>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</MudText>
-        <MudTextField @bind-Value="_operatorDisplayName" Label="Your name" Variant="Variant.Outlined" Placeholder="e.g. Jane Doe" @oninput="@((ChangeEventArgs e) => _operatorDisplayName = (string?)e.Value ?? string.Empty)" />
-        <MudTextField @bind-Value="_deviceName" Label="Device name" Variant="Variant.Outlined" Placeholder="e.g. Jane's Laptop" @oninput="@((ChangeEventArgs e) => _deviceName = (string?)e.Value ?? string.Empty)" />
-        <MudButton OnClick="PairAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))">
-            @(_isPairing ? "Waiting for passkey..." : "Pair Device")
-        </MudButton>
+    <RadzenStack>
+        <RadzenText>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</RadzenText>
+        <div>
+            <label>Your name</label>
+            <RadzenTextBox @bind-Value="_operatorDisplayName" Placeholder="e.g. Jane Doe" />
+        </div>
+        <div>
+            <label>Device name</label>
+            <RadzenTextBox @bind-Value="_deviceName" Placeholder="e.g. Jane's Laptop" />
+        </div>
+        <RadzenButton Text="@(_isPairing ? "Waiting for passkey..." : "Pair Device")" Click="PairAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
 
         @if (_error is not null)
         {
-            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
         }
-    </MudStack>
+    </RadzenStack>
 }
 
 @code {

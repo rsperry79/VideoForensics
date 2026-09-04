@@ -5,77 +5,79 @@
 @inject IProviderAuthService ProviderAuth
 @inject IAppLockPreferencesStore AppLockPreferences
 
-<MudThemeProvider />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<RadzenTheme Theme="material" />
+<RadzenComponents @rendermode="InteractiveServer" />
 
-<MudAppBar Dense="true" Elevation="2">
-    <MudText Typo="Typo.h6" Class="mr-6">VideoForensics</MudText>
+<RadzenLayout>
+    <RadzenHeader>
+        <div class="app-bar">
+            <RadzenText TextStyle="TextStyle.H6" class="app-bar-brand">VideoForensics</RadzenText>
 
-    <MudLink Href="/" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Dashboard</MudLink>
-    <MudLink Href="/workflow" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Full Workflow</MudLink>
+            <RadzenMenu class="app-bar-menu">
+                <RadzenMenuItem Text="Dashboard" Path="/" Match="NavLinkMatch.All" />
+                <RadzenMenuItem Text="Full Workflow" Path="/workflow" />
 
-    <MudMenu Label="Collect" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
-        <MudMenuItem Href="/collect/videos">Collect Videos</MudMenuItem>
-        <MudMenuItem Href="/collect/snapshots">Collect Snapshots</MudMenuItem>
-    </MudMenu>
+                <RadzenMenuItem Text="Collect">
+                    <RadzenMenuItem Text="Collect Videos" Path="/collect/videos" />
+                    <RadzenMenuItem Text="Collect Snapshots" Path="/collect/snapshots" />
+                </RadzenMenuItem>
 
-    <MudMenu Label="Analyze" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
-        <MudMenuItem Href="/analyze/reports">Forensic Reports</MudMenuItem>
-        <MudMenuItem Href="/analyze/signal-anomalies">Signal Anomalies</MudMenuItem>
-        <MudMenuItem Href="/analyze/access-control">Access Control</MudMenuItem>
-        <MudMenuItem Href="/analyze/chain-of-custody">Chain of Custody</MudMenuItem>
-        <MudMenuItem Href="/analyze/validate/integrity">Validate Evidence</MudMenuItem>
-        <MudMenuItem Href="/analyze/jamming">Jamming Analysis</MudMenuItem>
-    </MudMenu>
+                <RadzenMenuItem Text="Analyze">
+                    <RadzenMenuItem Text="Forensic Reports" Path="/analyze/reports" />
+                    <RadzenMenuItem Text="Signal Anomalies" Path="/analyze/signal-anomalies" />
+                    <RadzenMenuItem Text="Access Control" Path="/analyze/access-control" />
+                    <RadzenMenuItem Text="Chain of Custody" Path="/analyze/chain-of-custody" />
+                    <RadzenMenuItem Text="Validate Evidence" Path="/analyze/validate/integrity" />
+                    <RadzenMenuItem Text="Jamming Analysis" Path="/analyze/jamming" />
+                </RadzenMenuItem>
 
-    <MudMenu Label="Evidence" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
-        <MudMenuItem Href="/review">Review Evidence</MudMenuItem>
-        <MudMenuItem Href="/events">Browse Events</MudMenuItem>
-    </MudMenu>
+                <RadzenMenuItem Text="Events" Path="/events" />
 
-    <MudMenu Label="Devices" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
-        <MudMenuItem Href="/devices/config">Device Configuration</MudMenuItem>
-        @if (HasRole(OperatorRole.SuperAdmin))
-        {
-            <MudMenuItem Href="/settings/devices">Paired Devices</MudMenuItem>
-        }
-        @if (!SessionState.IsSignedIn)
-        {
-            <MudMenuItem Href="/device-signin">Device Sign-In</MudMenuItem>
-        }
-    </MudMenu>
+                <RadzenMenuItem Text="Devices">
+                    <RadzenMenuItem Text="Device Configuration" Path="/devices/config" />
+                    @if (HasRole(OperatorRole.SuperAdmin))
+                    {
+                        <RadzenMenuItem Text="Paired Devices" Path="/settings/devices" />
+                    }
+                    @if (!SessionState.IsSignedIn)
+                    {
+                        <RadzenMenuItem Text="Device Sign-In" Path="/device-signin" />
+                    }
+                </RadzenMenuItem>
 
-    <MudLink Href="/query" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Query API</MudLink>
+                <RadzenMenuItem Text="Query API" Path="/query" />
+            </RadzenMenu>
 
-    <MudSpacer />
-
-    <MudMenu Label="Settings" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-        <MudMenuItem Href="/settings">General</MudMenuItem>
-        <MudMenuItem Href="/accounts">Accounts</MudMenuItem>
-        <MudMenuItem Href="/settings/infrastructure">Infrastructure</MudMenuItem>
-        @if (HasRole(OperatorRole.SuperAdmin))
-        {
-            <MudMenuItem Href="/settings/operators">Operators</MudMenuItem>
-            <MudMenuItem Href="/settings/network">Network Access</MudMenuItem>
-            <MudMenuItem Href="/settings/remote-access">Remote Access</MudMenuItem>
-        }
-        @if (HasRole(OperatorRole.Admin))
-        {
-            <MudMenuItem Href="/settings/notifications">Notifications</MudMenuItem>
-            <MudMenuItem Href="/settings/security-log">Security Audit Log</MudMenuItem>
-        }
-        @if (AppLockPreferences.IsSupported)
-        {
-            <MudMenuItem Href="/settings/app-lock">App Lock</MudMenuItem>
-        }
-    </MudMenu>
-</MudAppBar>
-
-<main>
-    @Body
-</main>
+            <RadzenMenu class="app-bar-settings">
+                <RadzenMenuItem Text="Settings">
+                    <RadzenMenuItem Text="General" Path="/settings" />
+                    <RadzenMenuItem Text="Accounts" Path="/accounts" />
+                    <RadzenMenuItem Text="Infrastructure" Path="/settings/infrastructure" />
+                    @if (HasRole(OperatorRole.SuperAdmin))
+                    {
+                        <RadzenMenuItem Text="Operators" Path="/settings/operators" />
+                        <RadzenMenuItem Text="Network Access" Path="/settings/network" />
+                        <RadzenMenuItem Text="Remote Access" Path="/settings/remote-access" />
+                    }
+                    @if (HasRole(OperatorRole.Admin))
+                    {
+                        <RadzenMenuItem Text="Notifications" Path="/settings/notifications" />
+                        <RadzenMenuItem Text="Security Audit Log" Path="/settings/security-log" />
+                    }
+                    @if (AppLockPreferences.IsSupported)
+                    {
+                        <RadzenMenuItem Text="App Lock" Path="/settings/app-lock" />
+                    }
+                </RadzenMenuItem>
+            </RadzenMenu>
+        </div>
+    </RadzenHeader>
+    <RadzenBody>
+        <div class="app-body">
+            @Body
+        </div>
+    </RadzenBody>
+</RadzenLayout>
 
 @code {
     private OperatorRole? _role;

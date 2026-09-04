@@ -5,82 +5,89 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 
-<MudText Typo="Typo.h4" Class="mb-4">Operators</MudText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Operators</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage operators.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage operators.
+    </RadzenAlert>
 }
 
-<MudStack Row="true" Class="mb-2">
-    <MudButton OnClick="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
-</MudStack>
+<RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
+    <RadzenButton Text="Refresh" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+</RadzenStack>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (_authError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
-    <MudText>
-        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
+    <RadzenText>
+        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
         signed in via the Local network tier is required to manage operators.
-    </MudText>
+    </RadzenText>
 }
 else if (_loadError is not null)
 {
-    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
 }
 else if (_operators is null || _operators.Count == 0)
 {
-    <MudText>No operators found.</MudText>
+    <RadzenText>No operators found.</RadzenText>
 }
 else
 {
-    <MudTable Items="@_operators" Hover="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Display Name</MudTh>
-            <MudTh>Created At (UTC)</MudTh>
-            <MudTh>Active</MudTh>
-            <MudTh></MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
-            <MudTd DataLabel="Created At (UTC)">@context.CreatedAtUtc</MudTd>
-            <MudTd DataLabel="Active">
-                @if (context.Active)
-                {
-                    <MudText Color="Color.Success">Active</MudText>
-                }
-                else
-                {
-                    <MudText Color="Color.Error">Inactive</MudText>
-                }
-            </MudTd>
-            <MudTd>
-                @if (context.Active)
-                {
-                    <MudButton OnClick="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small">Deactivate</MudButton>
-                    @if (_pendingDeactivateOperatorId == context.Id)
-                    {
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
-                            <MudTextField @bind-Value="_reasonInput" Placeholder="Reason for deactivation" Variant="Variant.Outlined" Style="max-width: 260px;" Immediate="true" />
-                            <MudButton OnClick="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small">Confirm</MudButton>
-                            <MudButton OnClick="CancelPending" Variant="Variant.Outlined" Size="Size.Small">Cancel</MudButton>
-                        </MudStack>
-                    }
-                }
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Display Name</th>
+                <th>Created At (UTC)</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var context in _operators)
+            {
+                <tr>
+                    <td>@context.DisplayName</td>
+                    <td>@context.CreatedAtUtc</td>
+                    <td>
+                        @if (context.Active)
+                        {
+                            <span style="color: var(--rz-success);">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color: var(--rz-danger);">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        @if (context.Active)
+                        {
+                            <RadzenButton Text="Deactivate" Click="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                            @if (_pendingDeactivateOperatorId == context.Id)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
+                                    <RadzenTextBox @bind-Value="_reasonInput" Placeholder="Reason for deactivation" Style="max-width: 260px;" />
+                                    <RadzenButton Text="Confirm" Click="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                                    <RadzenButton Text="Cancel" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
+                                </RadzenStack>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 
 @if (_actionError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mt-4">@_actionError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-4">@_actionError</RadzenAlert>
 }
 
 @code {

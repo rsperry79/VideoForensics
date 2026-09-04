@@ -5,155 +5,140 @@
 @inject IForensicsConfigurationService ConfigService
 @inject ConfigToolsOrchestrator ConfigTools
 
-<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Settings</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to change settings.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to change settings.
+    </RadzenAlert>
 }
 else
 {
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Reports</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack>
-            <MudSwitch T="bool" Value="Config.EnableForensicAnalysisReports" ValueChanged="SaveForensicAnalysisReportsAsync" Color="Color.Primary" Label="Forensic Analysis" />
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Reports</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack>
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableForensicAnalysisReports" ValueChanged="@(async (bool v) => await SaveForensicAnalysisReportsAsync(v))" /> Forensic Analysis</label>
             @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
             {
-                <MudText Color="@(m1.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m1.Message</MudText>
+                <RadzenText TextStyle="TextStyle.Caption" style="@(m1.Success ? "color: green;" : "color: red;")">@m1.Message</RadzenText>
             }
-            <MudSwitch T="bool" Value="Config.EnableSignalAnomalyReports" ValueChanged="SaveSignalAnomalyReportsAsync" Color="Color.Primary" Label="Signal Anomaly" />
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableSignalAnomalyReports" ValueChanged="@(async (bool v) => await SaveSignalAnomalyReportsAsync(v))" /> Signal Anomaly</label>
             @if (_reportMessages.TryGetValue("SignalAnomaly", out var m2))
             {
-                <MudText Color="@(m2.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m2.Message</MudText>
+                <RadzenText TextStyle="TextStyle.Caption" style="@(m2.Success ? "color: green;" : "color: red;")">@m2.Message</RadzenText>
             }
-            <MudSwitch T="bool" Value="Config.EnableChainOfCustodyReports" ValueChanged="SaveChainOfCustodyReportsAsync" Color="Color.Primary" Label="Chain of Custody" />
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableChainOfCustodyReports" ValueChanged="@(async (bool v) => await SaveChainOfCustodyReportsAsync(v))" /> Chain of Custody</label>
             @if (_reportMessages.TryGetValue("ChainOfCustody", out var m3))
             {
-                <MudText Color="@(m3.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m3.Message</MudText>
+                <RadzenText TextStyle="TextStyle.Caption" style="@(m3.Success ? "color: green;" : "color: red;")">@m3.Message</RadzenText>
             }
-            <MudSwitch T="bool" Value="Config.EnableEvidenceValidationReports" ValueChanged="SaveEvidenceValidationReportsAsync" Color="Color.Primary" Label="Evidence Validation" />
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableEvidenceValidationReports" ValueChanged="@(async (bool v) => await SaveEvidenceValidationReportsAsync(v))" /> Evidence Validation</label>
             @if (_reportMessages.TryGetValue("EvidenceValidation", out var m4))
             {
-                <MudText Color="@(m4.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m4.Message</MudText>
+                <RadzenText TextStyle="TextStyle.Caption" style="@(m4.Success ? "color: green;" : "color: red;")">@m4.Message</RadzenText>
             }
-            <MudSwitch T="bool" Value="Config.EnableAccessControlMonitoring" ValueChanged="SaveAccessControlReportsAsync" Color="Color.Primary" Label="Access Control" />
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableAccessControlMonitoring" ValueChanged="@(async (bool v) => await SaveAccessControlReportsAsync(v))" /> Access Control</label>
             @if (_reportMessages.TryGetValue("AccessControl", out var m5))
             {
-                <MudText Color="@(m5.Success ? Color.Success : Color.Error)" Typo="Typo.caption">@m5.Message</MudText>
+                <RadzenText TextStyle="TextStyle.Caption" style="@(m5.Success ? "color: green;" : "color: red;")">@m5.Message</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Health Sync</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack>
-            <MudSwitch T="bool" Value="Config.EnableHealthSync" ValueChanged="SaveHealthSyncAsync" Color="Color.Primary" Label="Enable RSSI / device-health background sync" />
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Health Sync</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack>
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableHealthSync" ValueChanged="@(async (bool v) => await SaveHealthSyncAsync(v))" /> Enable RSSI / device-health background sync</label>
             @if (_healthSyncMessage is not null)
             {
-                <MudText Color="@(_healthSyncSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_healthSyncMessage</MudText>
+                <RadzenText style="@(_healthSyncSuccess ? "color: green;" : "color: red;")">@_healthSyncMessage</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Network Discovery</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack>
-            <MudSwitch T="bool" Value="Config.EnableMdnsAdvertisement" ValueChanged="SaveMdnsAdvertisementAsync" Color="Color.Primary" Label="Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP" />
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Network Discovery</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack>
+            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableMdnsAdvertisement" ValueChanged="@(async (bool v) => await SaveMdnsAdvertisementAsync(v))" /> Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP</label>
             @if (_mdnsMessage is not null)
             {
-                <MudText Color="@(_mdnsSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_mdnsMessage</MudText>
+                <RadzenText style="@(_mdnsSuccess ? "color: green;" : "color: red;")">@_mdnsMessage</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Retention</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Row="true" AlignItems="AlignItems.Center">
-            <MudNumericField @bind-Value="_retentionDays" Label="Retention (days)" Variant="Variant.Outlined" Style="max-width: 200px;" />
-            <MudButton OnClick="SaveRetentionAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Retention</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <label>Retention (days)</label> <RadzenNumeric TValue="int" @bind-Value="_retentionDays" Style="max-width: 200px;" />
+            <RadzenButton Text="Save" Click="SaveRetentionAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             @if (_retentionMessage is not null)
             {
-                <MudText Color="@(_retentionSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_retentionMessage</MudText>
+                <RadzenText style="@(_retentionSuccess ? "color: green;" : "color: red;")">@_retentionMessage</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Downloads</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Spacing="3">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudNumericField @bind-Value="_maxConcurrentDownloads" Label="Max Concurrent Downloads" Variant="Variant.Outlined" Style="max-width: 260px;" />
-                <MudButton OnClick="SaveMaxConcurrentAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Downloads</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack Spacing="3">
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <label>Max Concurrent Downloads</label> <RadzenNumeric TValue="int" @bind-Value="_maxConcurrentDownloads" Style="max-width: 260px;" />
+                <RadzenButton Text="Save" Click="SaveMaxConcurrentAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                 @if (_maxConcurrentMessage is not null)
                 {
-                    <MudText Color="@(_maxConcurrentSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_maxConcurrentMessage</MudText>
+                    <RadzenText style="@(_maxConcurrentSuccess ? "color: green;" : "color: red;")">@_maxConcurrentMessage</RadzenText>
                 }
-            </MudStack>
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudTextField @bind-Value="_downloadLocation" Label="Download Location" Variant="Variant.Outlined" Style="max-width: 400px;" />
-                <MudButton OnClick="SaveDownloadLocationAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <label>Download Location</label> <RadzenTextBox @bind-Value="_downloadLocation" Placeholder="Download Location" Style="max-width: 400px;" />
+                <RadzenButton Text="Save" Click="SaveDownloadLocationAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                 @if (_downloadLocationMessage is not null)
                 {
-                    <MudText Color="@(_downloadLocationSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_downloadLocationMessage</MudText>
+                    <RadzenText style="@(_downloadLocationSuccess ? "color: green;" : "color: red;")">@_downloadLocationMessage</RadzenText>
                 }
-            </MudStack>
-        </MudStack>
-    </MudPaper>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Reporting Format &amp; Redaction</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Spacing="3">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudSelect T="string" @bind-Value="_reportFormat" Label="Report Format" Variant="Variant.Outlined" Style="max-width: 200px;">
-                    <MudSelectItem Value="@("json")">json</MudSelectItem>
-                    <MudSelectItem Value="@("xml")">xml</MudSelectItem>
-                    <MudSelectItem Value="@("csv")">csv</MudSelectItem>
-                </MudSelect>
-                <MudButton OnClick="SaveReportFormatAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Reporting Format &amp; Redaction</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack Spacing="3">
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenDropDown TValue="string" @bind-Value="_reportFormat" Data="@(new[] { "json", "xml", "csv" })" Style="max-width: 200px;" />
+                <RadzenButton Text="Save" Click="SaveReportFormatAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                 @if (_reportFormatMessage is not null)
                 {
-                    <MudText Color="@(_reportFormatSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_reportFormatMessage</MudText>
+                    <RadzenText style="@(_reportFormatSuccess ? "color: green;" : "color: red;")">@_reportFormatMessage</RadzenText>
                 }
-            </MudStack>
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudSelect T="RedactionLevel" @bind-Value="_redactionLevel" Label="Redaction Level" Variant="Variant.Outlined" Style="max-width: 200px;">
-                    @foreach (var level in Enum.GetValues<RedactionLevel>())
-                    {
-                        <MudSelectItem Value="@level">@level</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudButton OnClick="SaveRedactionLevelAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenDropDown TValue="RedactionLevel" @bind-Value="_redactionLevel" Data="@(Enum.GetValues<RedactionLevel>())" Style="max-width: 200px;" />
+                <RadzenButton Text="Save" Click="SaveRedactionLevelAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                 @if (_redactionLevelMessage is not null)
                 {
-                    <MudText Color="@(_redactionLevelSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_redactionLevelMessage</MudText>
+                    <RadzenText style="@(_redactionLevelSuccess ? "color: green;" : "color: red;")">@_redactionLevelMessage</RadzenText>
                 }
-            </MudStack>
-        </MudStack>
-    </MudPaper>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Logging</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Row="true" AlignItems="AlignItems.Center">
-            <MudSelect T="string" @bind-Value="_loggingLevel" Label="Logging Level" Variant="Variant.Outlined" Style="max-width: 200px;">
-                <MudSelectItem Value="@("Debug")">Debug</MudSelectItem>
-                <MudSelectItem Value="@("Information")">Information</MudSelectItem>
-                <MudSelectItem Value="@("Warning")">Warning</MudSelectItem>
-                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
-                <MudSelectItem Value="@("Critical")">Critical</MudSelectItem>
-            </MudSelect>
-            <MudButton OnClick="SaveLoggingLevelAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Logging</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenDropDown TValue="string" @bind-Value="_loggingLevel" Data="@(new[] { "Debug", "Information", "Warning", "Error", "Critical" })" Style="max-width: 200px;" />
+            <RadzenButton Text="Save" Click="SaveLoggingLevelAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             @if (_loggingLevelMessage is not null)
             {
-                <MudText Color="@(_loggingLevelSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_loggingLevelMessage</MudText>
+                <RadzenText style="@(_loggingLevelSuccess ? "color: green;" : "color: red;")">@_loggingLevelMessage</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 }
 
 @code {

@@ -1,0 +1,92 @@
+@inject DialogService DialogService
+
+<RadzenStack Gap="0.75rem">
+    @if (MediaItemId.HasValue)
+    {
+        @if (IsImage)
+        {
+            <img src="@ContentUrl" alt="Snapshot" style="max-width: 100%; max-height: 320px; object-fit: contain;" />
+        }
+        else if (IsVideo)
+        {
+            <video controls src="@ContentUrl" style="max-width: 100%; max-height: 320px;"></video>
+        }
+    }
+
+    <RadzenText TextStyle="TextStyle.H6">Event</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Type:</RadzenText><RadzenText>@EventType</RadzenText></RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Occurred At (UTC):</RadzenText><RadzenText>@OccurredAtUtc</RadzenText></RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Discovered At (UTC):</RadzenText><RadzenText>@DiscoveredAtUtc</RadzenText></RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Downloaded At (UTC):</RadzenText><RadzenText>@(DownloadedAtUtc?.ToString() ?? "-")</RadzenText></RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Provider Event ID:</RadzenText><RadzenText>@ProviderEventId</RadzenText></RadzenStack>
+    @if (!string.IsNullOrEmpty(SnapshotUrl))
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Snapshot URL:</RadzenText><RadzenText>@SnapshotUrl</RadzenText></RadzenStack>
+    }
+
+    @if (MediaItemId.HasValue)
+    {
+        <RadzenText TextStyle="TextStyle.H6" class="mt-2">Downloaded Media</RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">File Name:</RadzenText><RadzenText>@FileName</RadzenText></RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Format:</RadzenText><RadzenText>@MediaFormat</RadzenText></RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">File Size:</RadzenText><RadzenText>@FormatFileSize(FileSizeBytes)</RadzenText></RadzenStack>
+        @if (!string.IsNullOrEmpty(Resolution))
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Resolution:</RadzenText><RadzenText>@Resolution</RadzenText></RadzenStack>
+        }
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Integrity:</RadzenText><RadzenText>@IntegrityStatusText</RadzenText></RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Legal Hold:</RadzenText><RadzenText>@LegalHoldStatusText</RadzenText></RadzenStack>
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="mt-3">
+        <RadzenButton Text="Close" Click="@(() => DialogService.Close())" ButtonStyle="ButtonStyle.Light" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public string EventType { get; set; } = string.Empty;
+    [Parameter] public DateTime OccurredAtUtc { get; set; }
+    [Parameter] public DateTime DiscoveredAtUtc { get; set; }
+    [Parameter] public DateTime? DownloadedAtUtc { get; set; }
+    [Parameter] public string ProviderEventId { get; set; } = string.Empty;
+    [Parameter] public string? SnapshotUrl { get; set; }
+
+    [Parameter] public Guid? MediaItemId { get; set; }
+    [Parameter] public string? FileName { get; set; }
+    [Parameter] public string? MediaFormat { get; set; }
+    [Parameter] public long FileSizeBytes { get; set; }
+    [Parameter] public string? Resolution { get; set; }
+    [Parameter] public string IntegrityStatusText { get; set; } = "-";
+    [Parameter] public string LegalHoldStatusText { get; set; } = "-";
+
+    private string ContentUrl => $"/api/media/{MediaItemId}/content";
+
+    private bool IsImage => MediaFormat is not null &&
+        (MediaFormat.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
+         MediaFormat.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
+         MediaFormat.Contains("png", StringComparison.OrdinalIgnoreCase) ||
+         MediaFormat.Contains("image", StringComparison.OrdinalIgnoreCase));
+
+    private bool IsVideo => MediaFormat is not null &&
+        (MediaFormat.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
+         MediaFormat.Contains("video", StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes <= 0)
+        {
+            return "-";
+        }
+
+        string[] units = { "B", "KB", "MB", "GB" };
+        double size = bytes;
+        var unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+
+        return $"{size:F1} {units[unitIndex]}";
+    }
+}

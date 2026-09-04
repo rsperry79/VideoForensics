@@ -4,53 +4,48 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 
-<MudText Typo="Typo.h4" Class="mb-4">Security Audit Log</MudText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Security Audit Log</RadzenText>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudTextField @bind-Value="_operatorIdInput" Label="Operator Id" Placeholder="(optional) filter by operator id" Variant="Variant.Outlined" Immediate="true" Style="max-width: 320px;" />
-    <MudButton OnClick="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
-</MudStack>
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mb-4">
+    <label>Operator Id</label>
+    <RadzenTextBox @bind-Value="_operatorIdInput" Placeholder="(optional) filter by operator id" Style="max-width: 320px;" />
+    <RadzenButton Text="Refresh" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+</RadzenStack>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (_authError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
-    <MudText>
-        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - an Admin (or higher)
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
+    <RadzenText>
+        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - an Admin (or higher)
         device is required to view the security audit log.
-    </MudText>
+    </RadzenText>
 }
 else if (_loadError is not null)
 {
-    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
 }
 else if (_entries is null || _entries.Count == 0)
 {
-    <MudText>No audit log entries found.</MudText>
+    <RadzenText>No audit log entries found.</RadzenText>
 }
 else
 {
-    <MudTable Items="@_entries.OrderByDescending(e => e.TimestampUtc)" Hover="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Timestamp (UTC)</MudTh>
-            <MudTh>Event Type</MudTh>
-            <MudTh>Operator Id</MudTh>
-            <MudTh>Paired Device Id</MudTh>
-            <MudTh>Source IP</MudTh>
-            <MudTh>Details</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Timestamp (UTC)" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@context.TimestampUtc</MudTd>
-            <MudTd DataLabel="Event Type" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@context.EventType</MudTd>
-            <MudTd DataLabel="Operator Id" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.OperatorId?.ToString() ?? "-")</MudTd>
-            <MudTd DataLabel="Paired Device Id" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.PairedDeviceId?.ToString() ?? "-")</MudTd>
-            <MudTd DataLabel="Source IP" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.SourceIp ?? "-")</MudTd>
-            <MudTd DataLabel="Details" Style="@(context.IsUrgent ? "color:var(--mud-palette-error);font-weight:bold" : null)">@(context.Details ?? "-")</MudTd>
-        </RowTemplate>
-    </MudTable>
+    <RadzenDataGrid TItem="SecurityAuditLogEntry" Data="@_entries.OrderByDescending(e => e.TimestampUtc)" AllowPaging="true" PageSize="20" AllowSorting="true">
+        <Columns>
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.TimestampUtc)" Title="Timestamp (UTC)" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.EventType)" Title="Event Type" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.OperatorId)" Title="Operator Id" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.PairedDeviceId)" Title="Paired Device Id" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.SourceIp)" Title="Source IP" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Title="Details">
+                <Template Context="row">@(row.Details ?? "-")</Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @code {

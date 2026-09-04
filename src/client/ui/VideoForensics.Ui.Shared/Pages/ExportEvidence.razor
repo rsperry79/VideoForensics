@@ -3,40 +3,40 @@
 @inject IEvidenceExportService EvidenceExportService
 @inject NavigationManager NavigationManager
 
-<MudText Typo="Typo.h4" Class="mb-4">Export Evidence</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Export Evidence</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to export evidence.</MudText>
+    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to export evidence.</RadzenText>
 }
 else if (_mediaItemIds.Count == 0)
 {
-    <MudText>No items selected - go to <MudLink Href="/review">Review Evidence</MudLink> and select items to export.</MudText>
+    <RadzenText>No items selected - go to <RadzenLink Path="/events" Text="Events" /> and select items to export.</RadzenText>
 }
 else
 {
-    <MudText>@_mediaItemIds.Count item(s) selected for export.</MudText>
+    <RadzenText>@_mediaItemIds.Count item(s) selected for export.</RadzenText>
 
     <div>
-        <MudTextField @bind-Value="_caseReference" Label="Case reference" Variant="Variant.Outlined" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_caseReference" Placeholder="Case reference" Disabled="@_isExporting" />
     </div>
     <div>
-        <MudTextField @bind-Value="_recipientDescription" Label="Recipient description" Variant="Variant.Outlined" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_recipientDescription" Placeholder="Recipient description" Disabled="@_isExporting" />
     </div>
     <div>
-        <MudTextField @bind-Value="_passphrase" InputType="InputType.Password" Label="Passphrase" Variant="Variant.Outlined" Disabled="@_isExporting" />
+        <input type="password" @bind="_passphrase" disabled="@_isExporting" />
     </div>
     <div>
-        <MudTextField @bind-Value="_outputDirectory" Label="Output directory" Variant="Variant.Outlined" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_outputDirectory" Placeholder="Output directory" Disabled="@_isExporting" />
     </div>
     <div>
-        <MudButton OnClick="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" Color="Color.Primary">
+        <RadzenButton Click="ExportAsync" Disabled="@_isExporting" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled">
             @(_isExporting ? "Exporting..." : "Export")
-        </MudButton>
+        </RadzenButton>
     </div>
 
     @if (_result is not null)
@@ -44,19 +44,19 @@ else
         @if (_result.Success)
         {
             <div>
-                <MudText>Export succeeded.</MudText>
-                <MudText>Archive path: @_result.ArchivePath</MudText>
-                <MudText>SHA-256 hash: @_result.ArchiveSha256Hash</MudText>
-                <MudText>Items included: @_result.ItemsIncluded</MudText>
+                <RadzenText>Export succeeded.</RadzenText>
+                <RadzenText>Archive path: @_result.ArchivePath</RadzenText>
+                <RadzenText>SHA-256 hash: @_result.ArchiveSha256Hash</RadzenText>
+                <RadzenText>Items included: @_result.ItemsIncluded</RadzenText>
                 @if (_result.ItemsExcludedForFailedIntegrity.Count > 0)
                 {
-                    <MudText>Items excluded for failed integrity: @_result.ItemsExcludedForFailedIntegrity.Count</MudText>
+                    <RadzenText>Items excluded for failed integrity: @_result.ItemsExcludedForFailedIntegrity.Count</RadzenText>
                 }
             </div>
         }
         else
         {
-            <MudAlert Severity="Severity.Error">Export failed: @_result.ErrorMessage</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">Export failed: @_result.ErrorMessage</RadzenAlert>
         }
     }
 }

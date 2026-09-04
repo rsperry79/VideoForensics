@@ -2,32 +2,32 @@
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 
-<MudText Typo="Typo.h4" Class="mb-4">Collect Snapshots</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Collect Snapshots</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Warning">You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to collect snapshots.</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to collect snapshots.</RadzenAlert>
 }
 else
 {
-    <MudStack Row="false" Spacing="2" Class="mb-4">
-        <MudTextField @bind-Value="_outputPath" Label="Output Path" Variant="Variant.Outlined" Disabled="@_isDownloading" />
-        <MudButton OnClick="StartDownloadAsync" Disabled="@_isDownloading" Variant="Variant.Filled" Color="Color.Primary">Start Download</MudButton>
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
+        <RadzenTextBox @bind-Value="_outputPath" Placeholder="Output Path" Disabled="@_isDownloading" />
+        <RadzenButton Text="Start Download" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_errorMessage</RadzenAlert>
         }
 
         @if (_downloadCompleted)
         {
-            <MudText>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</MudText>
+            <RadzenText>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</RadzenText>
         }
-    </MudStack>
+    </RadzenStack>
 
     <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
 }

@@ -1,4 +1,20 @@
-main {
+.app-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0 1rem;
+}
+
+.app-bar-brand {
+    margin-right: 1.5rem;
+    white-space: nowrap;
+}
+
+.app-bar-settings {
+    margin-left: auto;
+}
+
+.app-body {
     padding: 1.5rem;
-    padding-top: calc(48px + 1.5rem);
 }

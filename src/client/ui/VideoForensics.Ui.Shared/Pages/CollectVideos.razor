@@ -2,21 +2,21 @@
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 
-<MudText Typo="Typo.h4" Class="mb-4">Collect Videos</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Collect Videos</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to collect videos.</MudText>
+    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to collect videos.</RadzenText>
 }
 else
 {
     <div class="collect-form">
         <div>
-            <MudTextField @bind-Value="_outputPath" Label="Output Path" Variant="Variant.Outlined" Disabled="@_isDownloading" />
+            <RadzenTextBox @bind-Value="_outputPath" Placeholder="Output Path" Disabled="@_isDownloading" />
         </div>
         <div>
             <label for="startDate">Start Date</label>
@@ -27,20 +27,20 @@ else
             <input id="endDate" type="date" @bind="_endDate" disabled="@_isDownloading" />
         </div>
         <div>
-            <MudCheckBox @bind-Value="_force" Label="Force full re-scan" Disabled="@_isDownloading" />
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_force" /> Force full re-scan</label>
         </div>
         <div>
-            <MudButton OnClick="StartDownloadAsync" Disabled="@_isDownloading" Variant="Variant.Filled" Color="Color.Primary">Start Download</MudButton>
+            <RadzenButton Text="Start Download" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_errorMessage</RadzenAlert>
         }
 
         @if (_downloadCompleted)
         {
-            <MudText>@(_downloadSucceeded ? "Download completed." : "Download finished with errors.")</MudText>
+            <RadzenText>@(_downloadSucceeded ? "Download completed." : "Download finished with errors.")</RadzenText>
         }
     </div>
 
