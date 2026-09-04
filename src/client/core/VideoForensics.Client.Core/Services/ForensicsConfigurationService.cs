@@ -58,6 +58,13 @@ namespace VideoForensics.Client.Core
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
+                config.EnableEmailNotifications = await GetBoolSetting("EnableEmailNotifications", config.EnableEmailNotifications, cancellationToken);
+                config.SmtpHost = await GetStringSetting("SmtpHost", config.SmtpHost, cancellationToken);
+                config.SmtpPort = await GetIntSetting("SmtpPort", config.SmtpPort, cancellationToken);
+                config.SmtpUseTls = await GetBoolSetting("SmtpUseTls", config.SmtpUseTls, cancellationToken);
+                config.SmtpUsername = await GetStringSetting("SmtpUsername", config.SmtpUsername, cancellationToken);
+                config.SmtpFromAddress = await GetStringSetting("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
+                config.NotificationRecipientEmail = await GetStringSetting("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -90,6 +97,13 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableEmailNotifications", config.EnableEmailNotifications.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("SmtpHost", config.SmtpHost, cancellationToken);
+                await _settingRepository!.SetAsync("SmtpPort", config.SmtpPort.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("SmtpUseTls", config.SmtpUseTls.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("SmtpUsername", config.SmtpUsername, cancellationToken);
+                await _settingRepository!.SetAsync("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
+                await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }

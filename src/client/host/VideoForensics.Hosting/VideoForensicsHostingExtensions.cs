@@ -189,6 +189,17 @@ namespace VideoForensics.Hosting
             services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
             services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
 
+            // Urgent notifications (plan §5.6) - fanned out from SecurityAuditLogger itself, not
+            // from individual call sites, so a new urgent event type never needs a second wire-up.
+            // Email is the one channel built so far (the plan's stated reliable baseline); Web Push
+            // and MAUI toast are deliberately not yet implemented - see INotificationProvider's doc
+            // comment for why the extensibility point exists regardless.
+            services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
+            services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
+            services.AddScoped<INotificationProvider, EmailNotificationProvider>();
+            services.AddScoped<EmailNotificationProvider>();
+            services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+
             return services;
         }
 

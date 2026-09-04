@@ -144,6 +144,7 @@ app.MapPairingEndpoints();
 app.MapDeviceManagementEndpoints();
 app.MapSecurityAuditLogEndpoints();
 app.MapRemoteAccessEndpoints();
+app.MapNotificationEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
