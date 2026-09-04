@@ -1,3 +1,5 @@
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Client.Common
 {
     public interface IForensicsConfiguration
@@ -33,6 +35,17 @@ namespace VideoForensics.Client.Common
         string SmtpFromAddress { get; set; }
         /// <summary>Where urgent security notifications are sent - the server owner's own inbox, not tied to any Operator record.</summary>
         string NotificationRecipientEmail { get; set; }
+
+        /// <summary>
+        /// Which network tier the server is configured to be reachable at (plan §5.2) - Local-only
+        /// by default, each wider tier an explicit opt-in. Reuses NetworkTier, the SAME enum
+        /// INetworkTierResolver uses to classify an individual incoming request, per the plan's own
+        /// instruction not to invent a second concept. Read once at WebApp startup (before the host
+        /// is built - see Program.cs) to decide which interfaces Kestrel actually binds to; changing
+        /// it here takes effect only after a server restart, since a listen socket can't be rebound
+        /// live.
+        /// </summary>
+        NetworkTier ConfiguredNetworkTier { get; set; }
     }
 
     public enum RedactionLevel
@@ -78,5 +91,6 @@ namespace VideoForensics.Client.Common
         public string SmtpUsername { get; set; } = "";
         public string SmtpFromAddress { get; set; } = "";
         public string NotificationRecipientEmail { get; set; } = "";
+        public NetworkTier ConfiguredNetworkTier { get; set; } = NetworkTier.Local;
     }
 }

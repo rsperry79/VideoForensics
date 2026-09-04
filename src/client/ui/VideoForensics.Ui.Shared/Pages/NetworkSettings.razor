@@ -1,0 +1,235 @@
+@page "/settings/network"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
+
+<MudText Typo="Typo.h4" Class="mb-4">Network Access</MudText>
+
+@if (!SessionState.IsSignedIn)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage network access.
+    </MudAlert>
+}
+
+<MudAlert Severity="Severity.Warning" Class="mb-4">
+    Local is the safest default: the server is only reachable from its own machine, and pairing a
+    new device is impossible from anywhere else. Each wider tier is a deliberate choice - the app
+    never widens its own exposure on its own. Changing this setting takes effect only after the
+    server is restarted (Kestrel's listen addresses are fixed at startup).
+</MudAlert>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
+        signed in via the Local network tier is required to manage network access.
+    </MudText>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudRadioGroup T="NetworkTier" Value="_selectedTier" ValueChanged="OnTierChanged">
+            <MudRadio T="NetworkTier" Value="NetworkTier.Local">
+                <MudText><b>Local</b> - reachable only from this machine (loopback). Default.</MudText>
+            </MudRadio>
+            <MudRadio T="NetworkTier" Value="NetworkTier.Network">
+                <MudText><b>Network</b> - reachable on the local network (LAN).</MudText>
+            </MudRadio>
+            <MudRadio T="NetworkTier" Value="NetworkTier.Internet">
+                <MudText><b>Internet</b> - reachable on the LAN, and eligible to use the <MudLink Href="/settings/remote-access">Remote Access</MudLink> Cloudflare Tunnel for internet reachability.</MudText>
+            </MudRadio>
+        </MudRadioGroup>
+
+        @if (_pendingTier is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-3">
+                Widening from @_currentTier to @_pendingTier requires a fresh passkey confirmation.
+                <MudButton OnClick="ConfirmWidenAsync" Disabled="@_isSaving" Variant="Variant.Filled" Color="Color.Primary" Class="mt-2">
+                    @(_isSaving ? "Confirming..." : "Confirm with Passkey")
+                </MudButton>
+                <MudButton OnClick="CancelPendingWiden" Variant="Variant.Text" Class="mt-2">Cancel</MudButton>
+            </MudAlert>
+        }
+
+        @if (_message is not null)
+        {
+            <MudText Color="@(_success ? Color.Success : Color.Error)" Class="mt-3">@_message</MudText>
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _authError;
+    private string? _loadError;
+    private string? _message;
+    private bool _success;
+
+    private NetworkTier _currentTier;
+    private NetworkTier _selectedTier;
+    private NetworkTier? _pendingTier;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/network-settings");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view network settings.";
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _currentTier = Enum.Parse<NetworkTier>(body.GetProperty("configuredTier").GetString()!);
+            _selectedTier = _currentTier;
+            _pendingTier = null;
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load network settings: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnTierChanged(NetworkTier newTier)
+    {
+        _selectedTier = newTier;
+        _message = null;
+
+        if (newTier > _currentTier)
+        {
+            // Widening requires step-up confirmation before it takes effect.
+            _pendingTier = newTier;
+            return;
+        }
+
+        // Narrowing (or re-selecting the current tier) needs no confirmation.
+        await SaveAsync(newTier, stepUpToken: null);
+    }
+
+    private void CancelPendingWiden()
+    {
+        _pendingTier = null;
+        _selectedTier = _currentTier;
+    }
+
+    private async Task ConfirmWidenAsync()
+    {
+        if (_pendingTier is null || SessionState.SessionToken is null)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            await SaveAsync(_pendingTier.Value, stepUpToken);
+            _pendingTier = null;
+        }
+        catch (Exception ex)
+        {
+            _success = false;
+            _message = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveAsync(NetworkTier tier, string? stepUpToken)
+    {
+        try
+        {
+            var client = CreateClient();
+            if (stepUpToken is not null)
+            {
+                client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            }
+
+            var response = await client.PostAsJsonAsync("api/network-settings", new { tier });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _success = false;
+                _message = body ?? $"Save failed: {response.StatusCode}";
+                _selectedTier = _currentTier;
+                return;
+            }
+
+            _currentTier = tier;
+            _success = true;
+            _message = "Saved. Restart the server for this to take effect.";
+        }
+        catch (Exception ex)
+        {
+            _success = false;
+            _message = $"Save failed: {ex.Message}";
+            _selectedTier = _currentTier;
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+}

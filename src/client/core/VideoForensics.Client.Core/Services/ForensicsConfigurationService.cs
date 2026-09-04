@@ -65,6 +65,7 @@ namespace VideoForensics.Client.Core
                 config.SmtpUsername = await GetStringSetting("SmtpUsername", config.SmtpUsername, cancellationToken);
                 config.SmtpFromAddress = await GetStringSetting("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
                 config.NotificationRecipientEmail = await GetStringSetting("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
+                config.ConfiguredNetworkTier = await GetEnumSetting("ConfiguredNetworkTier", config.ConfiguredNetworkTier, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -104,6 +105,7 @@ namespace VideoForensics.Client.Core
                 await _settingRepository!.SetAsync("SmtpUsername", config.SmtpUsername, cancellationToken);
                 await _settingRepository!.SetAsync("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
                 await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
+                await _settingRepository!.SetAsync("ConfiguredNetworkTier", config.ConfiguredNetworkTier.ToString(), cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }
