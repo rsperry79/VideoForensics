@@ -2,45 +2,36 @@
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">VideoForensics</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">VideoForensics</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view your devices.</MudText>
+    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view your devices.</RadzenText>
 }
 else
 {
     @if (_devices.Count == 0)
     {
-        <MudText>No devices found yet.</MudText>
+        <RadzenText>No devices found yet.</RadzenText>
     }
     else
     {
-        <MudSimpleTable Hover="true" Dense="true">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Online</th>
-                    <th>Last Synced</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var device in _devices)
-                {
-                    <tr>
-                        <td>@device.Name</td>
-                        <td>@device.Type</td>
-                        <td>@(device.IsOnline ? "Yes" : "No")</td>
-                        <td>@(device.LastSyncedUtc?.ToString() ?? "-")</td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+        <RadzenDataGrid TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devices" AllowPaging="true" PageSize="20" AllowSorting="true">
+            <Columns>
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" Title="Name" />
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" Title="Type" />
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="Online">
+                    <Template Context="device">@(device.IsOnline ? "Yes" : "No")</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="Last Synced">
+                    <Template Context="device">@(device.LastSyncedUtc?.ToString() ?? "-")</Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     }
 }
 

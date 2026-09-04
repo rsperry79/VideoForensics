@@ -4,130 +4,122 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 
-<MudText Typo="Typo.h4" Class="mb-4">Remote Access</MudText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Remote Access</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage remote access.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage remote access.
+    </RadzenAlert>
 }
 
-<MudAlert Severity="Severity.Warning" Class="mb-4">
+<RadzenAlert AlertStyle="AlertStyle.Warning" Class="mb-4">
     A tunnel only changes network transport - it does not replace passkey pairing/sign-in.
     An unauthenticated request arriving over the tunnel still cannot reach any data. Starting a
     tunnel makes this server reachable from the internet, so it requires a fresh passkey
     confirmation (step-up) even in an already-signed-in session.
-</MudAlert>
+</RadzenAlert>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (_authError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
-    <MudText>
-        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
+    <RadzenText>
+        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
         signed in via the Local network tier is required to manage remote access.
-    </MudText>
+    </RadzenText>
 }
 else if (_loadError is not null)
 {
-    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
 }
 else
 {
-    <MudStack Row="true" Class="mb-2">
-        <MudButton OnClick="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined">Refresh</MudButton>
-    </MudStack>
+    <RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
+        <RadzenButton Text="Refresh" Click="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+    </RadzenStack>
 
     @if (!_installed)
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4">
-            <c>cloudflared</c> was not found on this server's PATH. Install it from
-            <MudLink Href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Target="_blank">Cloudflare's downloads page</MudLink>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-4">
+            <code>cloudflared</code> was not found on this server's PATH. Install it from
+            <RadzenLink Path="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Text="Cloudflare's downloads page" />
             and restart the server, then refresh this screen.
-        </MudAlert>
+        </RadzenAlert>
     }
     else
     {
-        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Current Status</MudText>
-        <MudPaper Class="pa-4 mb-4" Outlined="true">
-            <MudStack>
-                <MudText>
-                    Status: <MudChip T="string" Color="@StatusColor" Size="Size.Small">@_status</MudChip>
+        <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Current Status</RadzenText>
+        <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+            <RadzenStack>
+                <RadzenText>
+                    Status: <RadzenBadge BadgeStyle="@StatusBadgeStyle" Text="@_status" />
                     @if (_kind != "None")
                     {
                         <span>(@_kind)</span>
                     }
-                </MudText>
+                </RadzenText>
                 @if (_publicUrl is not null)
                 {
-                    <MudText>Public URL: <MudLink Href="@_publicUrl" Target="_blank">@_publicUrl</MudLink></MudText>
+                    <RadzenText>Public URL: <RadzenLink Path="@_publicUrl" Text="@_publicUrl" /></RadzenText>
                 }
                 @if (_tunnelErrorMessage is not null)
                 {
-                    <MudText Color="Color.Error">@_tunnelErrorMessage</MudText>
+                    <RadzenText>@_tunnelErrorMessage</RadzenText>
                 }
                 @if (_status is "Running" or "Starting")
                 {
-                    <MudButton OnClick="StopAsync" Variant="Variant.Filled" Color="Color.Error" Style="width: fit-content;">Stop Tunnel</MudButton>
+                    <RadzenButton Text="Stop Tunnel" Click="StopAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Style="width: fit-content;" />
                 }
                 @if (_recentLogLines.Count > 0)
                 {
-                    <MudText Typo="Typo.caption" Class="mt-2">Recent log output:</MudText>
-                    <pre style="max-height: 200px; overflow-y: auto; background: var(--mud-palette-background-grey); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="mt-2">Recent log output:</RadzenText>
+                    <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
                 }
-            </MudStack>
-        </MudPaper>
+            </RadzenStack>
+        </RadzenCard>
 
         @if (_status is "Stopped" or "Failed")
         {
-            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Quick Tunnel</MudText>
-            <MudPaper Class="pa-4 mb-4" Outlined="true">
-                <MudText Class="mb-2">
+            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Quick Tunnel</RadzenText>
+            <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+                <RadzenText Class="mb-2">
                     Starts an ephemeral <code>*.trycloudflare.com</code> URL - no Cloudflare account needed. Good for
                     short-term remote access; the URL changes every time you start a new one.
-                </MudText>
-                <MudButton OnClick="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" Color="Color.Primary">
-                    @(_isActing ? "Starting..." : "Start Quick Tunnel")
-                </MudButton>
-            </MudPaper>
+                </RadzenText>
+                <RadzenButton Text="@(_isActing ? "Starting..." : "Start Quick Tunnel")" Click="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+            </RadzenCard>
 
-            <MudText Typo="Typo.h6" Class="mt-4 mb-2">Named Tunnel</MudText>
-            <MudPaper Class="pa-4 mb-4" Outlined="true">
-                <MudText Class="mb-2">
+            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Named Tunnel</RadzenText>
+            <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+                <RadzenText Class="mb-2">
                     Runs a persistent tunnel you already configured at the command line
                     (<code>cloudflared tunnel login</code>, <code>cloudflared tunnel create &lt;name&gt;</code>, and a
                     DNS route) - that one-time setup is not automated here. Select an already-configured tunnel to run it.
-                </MudText>
+                </RadzenText>
                 @if (_namedTunnels.Count == 0)
                 {
-                    <MudText Typo="Typo.caption">No configured named tunnels found (or cloudflared is not logged in to a Cloudflare account).</MudText>
+                    <RadzenText TextStyle="TextStyle.Body2">No configured named tunnels found (or cloudflared is not logged in to a Cloudflare account).</RadzenText>
                 }
                 else
                 {
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudSelect T="string" @bind-Value="_selectedNamedTunnel" Label="Tunnel" Variant="Variant.Outlined" Style="max-width: 260px;">
-                            @foreach (var name in _namedTunnels)
-                            {
-                                <MudSelectItem Value="@name">@name</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudButton OnClick="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" Color="Color.Primary">
-                            @(_isActing ? "Starting..." : "Start Named Tunnel")
-                        </MudButton>
-                    </MudStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <label>Tunnel</label>
+                        <RadzenDropDown TValue="string" @bind-Value="_selectedNamedTunnel" Data="@_namedTunnels" Placeholder="Select tunnel" Style="max-width: 260px;" />
+                        <RadzenButton Text="@(_isActing ? "Starting..." : "Start Named Tunnel")" Click="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+                    </RadzenStack>
                 }
-            </MudPaper>
+            </RadzenCard>
         }
     }
 }
 
 @if (_actionError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mt-4">@_actionError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-4">@_actionError</RadzenAlert>
 }
 
 @code {
@@ -146,12 +138,12 @@ else
     private List<string> _namedTunnels = new();
     private string? _selectedNamedTunnel;
 
-    private Color StatusColor => _status switch
+    private BadgeStyle StatusBadgeStyle => _status switch
     {
-        "Running" => Color.Success,
-        "Starting" => Color.Info,
-        "Failed" => Color.Error,
-        _ => Color.Default
+        "Running" => BadgeStyle.Success,
+        "Starting" => BadgeStyle.Info,
+        "Failed" => BadgeStyle.Danger,
+        _ => BadgeStyle.Light
     };
 
     protected override async Task OnInitializedAsync()

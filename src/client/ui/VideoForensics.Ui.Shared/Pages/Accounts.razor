@@ -5,26 +5,26 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 
-<MudText Typo="Typo.h4" Class="mb-4">Accounts</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Accounts</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else
 {
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
-        <MudText>@_statusMessage</MudText>
+        <RadzenText>@_statusMessage</RadzenText>
     }
 
     @if (_rows.Count == 0)
     {
-        <MudText>No accounts linked yet.</MudText>
+        <RadzenText>No accounts linked yet.</RadzenText>
     }
     else
     {
-        <MudSimpleTable Hover="true" Dense="true">
+        <table class="rz-data-grid">
             <thead>
                 <tr>
                     <th>Display Name</th>
@@ -45,26 +45,26 @@ else
                         <td>@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</td>
                         <td>@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</td>
                         <td>
-                            <MudButton OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" Variant="Variant.Filled" Color="Color.Primary">Select</MudButton>
+                            <RadzenButton Text="Select" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                             @if (_confirmingRemoveId == row.Account.Id)
                             {
-                                <MudText>Are you sure?</MudText>
-                                <MudButton OnClick="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Success">Yes</MudButton>
-                                <MudButton OnClick="() => _confirmingRemoveId = null" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Default">No</MudButton>
+                                <RadzenText>Are you sure?</RadzenText>
+                                <RadzenButton Text="Yes" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
+                                <RadzenButton Text="No" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
                             }
                             else
                             {
-                                <MudButton OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Error">Remove</MudButton>
+                                <RadzenButton Text="Remove" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
                             }
                         </td>
                     </tr>
                 }
             </tbody>
-        </MudSimpleTable>
+        </table>
     }
 }
 
-<MudText Typo="Typo.h5" Class="mt-4 mb-2">Add Account</MudText>
+<RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Add Account</RadzenText>
 <AuthForm IdPrefix="addaccount" SubmitLabel="Add Account" OnAuthenticated="HandleAccountAddedAsync" />
 
 @code {

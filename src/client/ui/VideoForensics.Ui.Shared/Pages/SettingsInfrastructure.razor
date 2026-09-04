@@ -4,22 +4,22 @@
 @inject IForensicsConfiguration Config
 @inject ConfigToolsOrchestrator ConfigTools
 
-<MudText Typo="Typo.h4" Class="mb-4">Infrastructure Settings</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Infrastructure Settings</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to change infrastructure settings.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to change infrastructure settings.
+    </RadzenAlert>
 }
 else
 {
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Data-at-Rest Encryption</MudText>
-    <MudAlert Severity="Severity.Warning" Class="mb-4">
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Data-at-Rest Encryption</RadzenText>
+    <RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
         <strong>Neither the database nor downloaded media files are encrypted by this application.</strong>
         An application-level database encryption approach (SQLCipher) was evaluated and found to
         silently fail to apply schema changes under this platform's current SQLite provider version -
@@ -28,47 +28,42 @@ else
         full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding
         <code>%AppData%\VideoForensics</code> and your configured download location, and secure
         physical access to this machine.
-    </MudAlert>
+    </RadzenAlert>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Key Storage Provider</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack Row="true" AlignItems="AlignItems.Center">
-            <MudSelect T="KeyStorageProvider" @bind-Value="_keyStorageProvider" Label="Key Storage Provider" Variant="Variant.Outlined" Style="max-width: 260px;">
-                @foreach (var provider in Enum.GetValues<KeyStorageProvider>())
-                {
-                    <MudSelectItem Value="@provider">@provider</MudSelectItem>
-                }
-            </MudSelect>
-            <MudButton OnClick="SaveKeyStorageProviderAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Key Storage Provider</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenDropDown TValue="KeyStorageProvider" @bind-Value="_keyStorageProvider" Data="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
+            <RadzenButton Text="Save" Click="SaveKeyStorageProviderAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             @if (_keyStorageProviderMessage is not null)
             {
-                <MudText Color="@(_keyStorageProviderSuccess ? Color.Success : Color.Error)" Typo="Typo.caption">@_keyStorageProviderMessage</MudText>
+                <RadzenText style="@(_keyStorageProviderSuccess ? "color: green;" : "color: red;")">@_keyStorageProviderMessage</RadzenText>
             }
-        </MudStack>
-    </MudPaper>
+        </RadzenStack>
+    </RadzenCard>
 
-    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Factory Reset</MudText>
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Factory Reset</RadzenText>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         @if (!_showFactoryResetConfirm)
         {
-            <MudButton OnClick="() => _showFactoryResetConfirm = true" Variant="Variant.Filled" Color="Color.Error">Factory Reset</MudButton>
+            <RadzenButton Text="Factory Reset" Click="() => _showFactoryResetConfirm = true" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
         }
         else
         {
-            <MudAlert Severity="Severity.Error" Class="mb-2">
+            <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">
                 <strong>This will permanently delete ALL data. This cannot be undone.</strong>
-            </MudAlert>
-            <MudStack Row="true">
-                <MudButton OnClick="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" Variant="Variant.Filled" Color="Color.Error">Yes, delete everything</MudButton>
-                <MudButton OnClick="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined">Cancel</MudButton>
-            </MudStack>
+            </RadzenAlert>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenButton Text="Yes, delete everything" Click="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
+                <RadzenButton Text="Cancel" Click="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined" />
+            </RadzenStack>
         }
 
         @if (_factoryResetMessage is not null)
         {
-            <MudText Color="@(_factoryResetSuccess ? Color.Success : Color.Error)" Class="mt-2"><strong>@_factoryResetMessage</strong></MudText>
+            <RadzenText style="@(_factoryResetSuccess ? "color: green;" : "color: red;")" class="mt-2"><strong>@_factoryResetMessage</strong></RadzenText>
         }
-    </MudPaper>
+    </RadzenCard>
 }
 
 @code {

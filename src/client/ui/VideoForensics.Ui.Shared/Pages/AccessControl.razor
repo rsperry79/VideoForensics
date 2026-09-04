@@ -6,41 +6,36 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">Access Control Report</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Access Control Report</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Warning">You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view access control data.</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view access control data.</RadzenAlert>
 }
 else
 {
-    <MudStack Row="false" Spacing="2" Class="mb-4">
-        <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device" Variant="Variant.Outlined">
-            <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
-            @foreach (var device in _devices)
-            {
-                <MudSelectItem Value="@(device.Id.ToString())">@device.Name</MudSelectItem>
-            }
-        </MudSelect>
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
+        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
         <label>From: <input type="date" @bind="_fromDate" /></label>
         <label>To: <input type="date" @bind="_toDate" /></label>
-        <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
-    </MudStack>
+        <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    </RadzenStack>
 
     @if (_report is not null)
     {
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Access Events</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Access Events</RadzenText>
         @if (_report.AccessEvents.Count == 0)
         {
-            <MudText>No access events found in this range.</MudText>
+            <RadzenText>No access events found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table class="rz-data-grid">
                 <thead>
                     <tr>
                         <th>Accessed At</th>
@@ -62,17 +57,17 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Export Events</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Export Events</RadzenText>
         @if (_report.ExportEvents.Count == 0)
         {
-            <MudText>No export events found in this range.</MudText>
+            <RadzenText>No export events found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table class="rz-data-grid">
                 <thead>
                     <tr>
                         <th>Exported At</th>
@@ -94,7 +89,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
     }
 }
@@ -107,6 +102,9 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private AccessControlReport? _report;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

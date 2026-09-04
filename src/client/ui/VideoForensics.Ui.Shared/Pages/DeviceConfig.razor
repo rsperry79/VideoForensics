@@ -4,99 +4,81 @@
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceConfigRepository DeviceConfigRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">Device Configuration</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Device Configuration</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view device configuration.</MudText>
+    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view device configuration.</RadzenText>
 }
 else
 {
     <div class="device-config-form">
         <div>
-            <MudSelect T="string" @bind-Value="_selectedDeviceIdStr" Label="Device" Variant="Variant.Outlined">
-                <MudSelectItem Value="@("")">-- Select a device --</MudSelectItem>
-                @foreach (var device in _devices)
-                {
-                    <MudSelectItem Value="@(device.Id.ToString())">@device.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
+                TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" />
         </div>
         <div>
-            <MudButton OnClick="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" Variant="Variant.Filled" Color="Color.Primary">Load Configuration</MudButton>
+            <RadzenButton Text="Load Configuration" Click="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </div>
 
         @if (!string.IsNullOrEmpty(_error))
         {
-            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
         }
     </div>
 
     @if (_loadedOnce)
     {
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Latest Configuration</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Latest Configuration</RadzenText>
         @if (_latest is null)
         {
-            <MudText>No configuration snapshot found for this device.</MudText>
+            <RadzenText>No configuration snapshot found for this device.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
-                <thead>
-                    <tr>
-                        <th>Captured At (UTC)</th>
-                        <th>Motion Detection Enabled</th>
-                        <th>Motion Sensitivity</th>
-                        <th>Recording Mode</th>
-                        <th>Source</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>@_latest.CapturedAtUtc</td>
-                        <td>@(_latest.MotionDetectionEnabled?.ToString() ?? "-")</td>
-                        <td>@(_latest.MotionSensitivity ?? "-")</td>
-                        <td>@(_latest.RecordingMode ?? "-")</td>
-                        <td>@_latest.Source</td>
-                    </tr>
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@(new[] { _latest })" AllowPaging="false">
+                <Columns>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="Captured At (UTC)" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Detection Enabled">
+                        <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Sensitivity">
+                        <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Recording Mode">
+                        <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="Source" />
+                </Columns>
+            </RadzenDataGrid>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">History</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">History</RadzenText>
         @if (_history.Count == 0)
         {
-            <MudText>No configuration history found for this device.</MudText>
+            <RadzenText>No configuration history found for this device.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
-                <thead>
-                    <tr>
-                        <th>Captured At (UTC)</th>
-                        <th>Motion Detection Enabled</th>
-                        <th>Motion Sensitivity</th>
-                        <th>Recording Mode</th>
-                        <th>Source</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var snapshot in _history.OrderByDescending(s => s.CapturedAtUtc))
-                    {
-                        <tr>
-                            <td>@snapshot.CapturedAtUtc</td>
-                            <td>@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</td>
-                            <td>@(snapshot.MotionSensitivity ?? "-")</td>
-                            <td>@(snapshot.RecordingMode ?? "-")</td>
-                            <td>@snapshot.Source</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@_history.OrderByDescending(s => s.CapturedAtUtc)" AllowPaging="true" PageSize="20" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="Captured At (UTC)" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Detection Enabled">
+                        <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Sensitivity">
+                        <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Recording Mode">
+                        <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="Source" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
 }
@@ -112,6 +94,9 @@ else
     private string? _error;
     private DeviceConfigSnapshot? _latest;
     private List<DeviceConfigSnapshot> _history = new();
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

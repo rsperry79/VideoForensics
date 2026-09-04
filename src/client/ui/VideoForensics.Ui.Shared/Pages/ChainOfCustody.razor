@@ -6,50 +6,45 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">Chain of Custody Report</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Chain of Custody Report</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Warning">You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view the chain of custody.</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view the chain of custody.</RadzenAlert>
 }
 else
 {
-    <MudStack Row="false" Spacing="2" Class="mb-4">
-        <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device" Variant="Variant.Outlined">
-            <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
-            @foreach (var device in _devices)
-            {
-                <MudSelectItem Value="@(device.Id.ToString())">@device.Name</MudSelectItem>
-            }
-        </MudSelect>
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
+        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
         <label>From: <input type="date" @bind="_fromDate" /></label>
         <label>To: <input type="date" @bind="_toDate" /></label>
-        <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
-    </MudStack>
+        <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    </RadzenStack>
 
     @if (_report is not null)
     {
         @if (_report.ChainIntegrityVerified)
         {
-            <MudAlert Severity="Severity.Success">Chain integrity verified</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Success">Chain integrity verified</RadzenAlert>
         }
         else
         {
-            <MudAlert Severity="Severity.Error">Chain integrity FAILED: @_report.ChainVerificationStatus</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">Chain integrity FAILED: @_report.ChainVerificationStatus</RadzenAlert>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Audit Trail</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Audit Trail</RadzenText>
         @if (_report.AuditTrail.Count == 0)
         {
-            <MudText>No audit trail entries found in this range.</MudText>
+            <RadzenText>No audit trail entries found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table class="rz-data-grid">
                 <thead>
                     <tr>
                         <th>Timestamp</th>
@@ -73,7 +68,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
     }
 }
@@ -86,6 +81,9 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ChainOfCustodyReport? _report;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

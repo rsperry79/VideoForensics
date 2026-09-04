@@ -5,69 +5,70 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 
-<MudText Typo="Typo.h4" Class="mb-4">Network Access</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Network Access</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage network access.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage network access.
+    </RadzenAlert>
 }
 
-<MudAlert Severity="Severity.Warning" Class="mb-4">
+<RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
     Local is the safest default: the server is only reachable from its own machine, and pairing a
     new device is impossible from anywhere else. Each wider tier is a deliberate choice - the app
     never widens its own exposure on its own. Changing this setting takes effect only after the
     server is restarted (Kestrel's listen addresses are fixed at startup).
-</MudAlert>
+</RadzenAlert>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (_authError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
-    <MudText>
-        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - a Super Admin device
+    <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
+    <RadzenText>
+        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
         signed in via the Local network tier is required to manage network access.
-    </MudText>
+    </RadzenText>
 }
 else if (_loadError is not null)
 {
-    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
 }
 else
 {
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudRadioGroup T="NetworkTier" Value="_selectedTier" ValueChanged="OnTierChanged">
-            <MudRadio T="NetworkTier" Value="NetworkTier.Local">
-                <MudText><b>Local</b> - reachable only from this machine (loopback). Default.</MudText>
-            </MudRadio>
-            <MudRadio T="NetworkTier" Value="NetworkTier.Network">
-                <MudText><b>Network</b> - reachable on the local network (LAN).</MudText>
-            </MudRadio>
-            <MudRadio T="NetworkTier" Value="NetworkTier.Internet">
-                <MudText><b>Internet</b> - reachable on the LAN, and eligible to use the <MudLink Href="/settings/remote-access">Remote Access</MudLink> Cloudflare Tunnel for internet reachability.</MudText>
-            </MudRadio>
-        </MudRadioGroup>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <div>
+            <div>
+                <input type="radio" id="tierLocal" name="tier" value="local" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Local))" @checked="_selectedTier == NetworkTier.Local" />
+                <label for="tierLocal"><b>Local</b> - reachable only from this machine (loopback). Default.</label>
+            </div>
+            <div>
+                <input type="radio" id="tierNetwork" name="tier" value="network" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Network))" @checked="_selectedTier == NetworkTier.Network" />
+                <label for="tierNetwork"><b>Network</b> - reachable on the local network (LAN).</label>
+            </div>
+            <div>
+                <input type="radio" id="tierInternet" name="tier" value="internet" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Internet))" @checked="_selectedTier == NetworkTier.Internet" />
+                <label for="tierInternet"><b>Internet</b> - reachable on the LAN, and eligible to use the <RadzenLink Path="/settings/remote-access" Text="Remote Access" /> Cloudflare Tunnel for internet reachability.</label>
+            </div>
+        </div>
 
         @if (_pendingTier is not null)
         {
-            <MudAlert Severity="Severity.Info" Class="mt-3">
+            <RadzenAlert AlertStyle="AlertStyle.Info" class="mt-3">
                 Widening from @_currentTier to @_pendingTier requires a fresh passkey confirmation.
-                <MudButton OnClick="ConfirmWidenAsync" Disabled="@_isSaving" Variant="Variant.Filled" Color="Color.Primary" Class="mt-2">
-                    @(_isSaving ? "Confirming..." : "Confirm with Passkey")
-                </MudButton>
-                <MudButton OnClick="CancelPendingWiden" Variant="Variant.Text" Class="mt-2">Cancel</MudButton>
-            </MudAlert>
+                <RadzenButton Text="@(_isSaving ? "Confirming..." : "Confirm with Passkey")" Click="ConfirmWidenAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" class="mt-2" />
+                <RadzenButton Text="Cancel" Click="CancelPendingWiden" Variant="Variant.Text" class="mt-2" />
+            </RadzenAlert>
         }
 
         @if (_message is not null)
         {
-            <MudText Color="@(_success ? Color.Success : Color.Error)" Class="mt-3">@_message</MudText>
+            <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
-    </MudPaper>
+    </RadzenCard>
 }
 
 @code {

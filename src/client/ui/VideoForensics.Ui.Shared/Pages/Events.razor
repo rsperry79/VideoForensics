@@ -1,0 +1,413 @@
+@page "/events"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Client.Common
+@inject IProviderAuthService AuthService
+@inject IDeviceRepository DeviceRepository
+@inject IEventRepository EventRepository
+@inject IReportGenerationService ReportGenerationService
+@inject ILegalHoldRepository LegalHoldRepository
+@inject IEvidenceValidationService EvidenceValidationService
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject ContextMenuService ContextMenuService
+@inject DialogService DialogService
+
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Events</RadzenText>
+
+@if (_isLoading)
+{
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+}
+else if (!_isAuthenticated)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to browse events.</RadzenAlert>
+}
+else
+{
+    <RadzenStack Gap="0.75rem" class="mb-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
+            <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
+                TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" Style="min-width: 220px;" />
+            <label>From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
+            <label>To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_onlyUnansweredOrFlagged" /> Show only unanswered/flagged</label>
+            <RadzenButton Text="Load Events" Click="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" />
+        </RadzenStack>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
+        }
+
+        @if (_pendingHoldRow is not null || _pendingReleaseRow is not null)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenTextBox @bind-Value="_holdReasonInput" Placeholder="@(_pendingHoldRow is not null ? "Reason for hold" : "Reason for release")" Style="max-width: 260px;" />
+                <RadzenButton Text="Confirm" Click="ConfirmPendingHoldActionAsync" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
+                <RadzenButton Text="Cancel" Click="CancelPendingHoldAction" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" />
+            </RadzenStack>
+        }
+    </RadzenStack>
+
+    @if (_rows is not null)
+    {
+        @if (_rows.Count == 0)
+        {
+            <RadzenText>No events found.</RadzenText>
+        }
+        else
+        {
+            <RadzenDataGrid @ref="_grid" TItem="EventRow" Data="@_rows" AllowPaging="true" PageSize="20"
+                AllowSorting="true" AllowFiltering="true" SelectionMode="DataGridSelectionMode.Multiple"
+                @bind-Value="@_selectedRows" CellContextMenu="@ShowRowContextMenu">
+                <Columns>
+                    <RadzenDataGridColumn TItem="EventRow" Title="" Width="60px" Sortable="false" Filterable="false">
+                        <Template Context="row">
+                            @if (row.MediaItem is not null && IsImageFormat(row.MediaItem.MediaFormat))
+                            {
+                                <img src="@MediaContentUrl(row.MediaItem.Id)" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                            }
+                            else if (row.MediaItem is not null && IsVideoFormat(row.MediaItem.MediaFormat))
+                            {
+                                <RadzenIcon Icon="videocam" />
+                            }
+                            else
+                            {
+                                <RadzenIcon Icon="event" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Title="" Width="60px" Sortable="false" Filterable="false">
+                        <Template Context="row">
+                            <RadzenButton Icon="play_arrow" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                                Disabled="@(row.MediaItem is null)" Click="@(() => OpenDetailsDialogAsync(row))" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.EventType)" Title="Event Type" Width="140px" />
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.OccurredAtUtc)" Title="Occurred At (UTC)" Width="170px" />
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.DiscoveredAtUtc)" Title="Discovered At (UTC)" Width="170px" />
+                    <RadzenDataGridColumn TItem="EventRow" Title="Downloaded At (UTC)" Width="170px">
+                        <Template Context="row">@(row.DownloadedAtUtc?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Title="Media Format" Width="110px">
+                        <Template Context="row">@(row.MediaItem?.MediaFormat ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Title="Integrity" Width="120px">
+                        <Template Context="row">
+                            @{
+                                var (statusText, statusColor) = row.MediaItem is null
+                                    ? ("-", "inherit")
+                                    : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
+                            }
+                            <RadzenText TextStyle="TextStyle.Body2" Style="@($"color:{statusColor}")">@statusText</RadzenText>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Title="Legal Hold" Width="110px">
+                        <Template Context="row">
+                            @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? "On Hold" : "-")
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.ProviderEventId)" Title="Provider Event ID" Width="140px" />
+                </Columns>
+            </RadzenDataGrid>
+        }
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _selectedDeviceIdStr = string.Empty;
+
+    private DateTime _fromDate = DateTime.Today.AddDays(-90);
+    private DateTime _toDate = DateTime.Today;
+    private bool _onlyUnansweredOrFlagged;
+
+    private bool _loadingEvents;
+    private string? _error;
+    private List<EventRow>? _rows;
+    private IList<EventRow>? _selectedRows;
+    private RadzenDataGrid<EventRow>? _grid;
+
+    private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
+    private IReadOnlyList<IntegrityRecord> _integrityRecords = new List<IntegrityRecord>();
+    private EventRow? _pendingHoldRow;
+    private EventRow? _pendingReleaseRow;
+    private string _holdReasonInput = string.Empty;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+
+    private sealed class EventRow
+    {
+        public required Event Event { get; init; }
+        public MediaItem? MediaItem { get; set; }
+
+        public string EventType => Event.EventType;
+        public DateTime OccurredAtUtc => Event.OccurredAtUtc;
+        public DateTime DiscoveredAtUtc => Event.DiscoveredAtUtc;
+        public DateTime? DownloadedAtUtc => Event.DownloadedAtUtc;
+        public string ProviderEventId => Event.ProviderEventId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+        {
+            return;
+        }
+
+        _loadingEvents = true;
+        _error = null;
+        _selectedRows = null;
+        try
+        {
+            var events = _onlyUnansweredOrFlagged
+                ? await EventRepository.ListUnansweredOrFlaggedAsync(deviceId, CancellationToken.None)
+                : await EventRepository.ListByDeviceAndDateRangeAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+
+            var rows = events.Select(e => new EventRow { Event = e }).ToList();
+
+            // The "unanswered/flagged" filter has no natural date range, so the evidence-review
+            // join (which requires one) is skipped there - those rows show media/hold columns as
+            // "-" until the operator switches to a date-range load.
+            if (!_onlyUnansweredOrFlagged)
+            {
+                var report = await ReportGenerationService.BuildEvidenceReviewAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+                var mediaByDownloadEventId = report.MediaItems
+                    .Where(m => m.DownloadEventId.HasValue)
+                    .ToDictionary(m => m.DownloadEventId!.Value);
+
+                foreach (var row in rows)
+                {
+                    if (mediaByDownloadEventId.TryGetValue(row.Event.Id, out var mediaItem))
+                    {
+                        row.MediaItem = mediaItem;
+                    }
+                }
+
+                var mediaItemIds = rows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
+                var activeHolds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+                _activeHoldsByMediaItemId = activeHolds.ToDictionary(h => h.MediaItemId);
+                _integrityRecords = report.IntegrityRecords;
+            }
+            else
+            {
+                _activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
+                _integrityRecords = new List<IntegrityRecord>();
+            }
+
+            _rows = rows;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load events: {ex.Message}";
+        }
+        finally
+        {
+            _loadingEvents = false;
+        }
+    }
+
+    private void ShowRowContextMenu(DataGridCellMouseEventArgs<EventRow> args)
+    {
+        var row = args.Data;
+        var hasMediaItem = row.MediaItem is not null;
+        var hasHold = hasMediaItem && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem!.Id);
+
+        var items = new List<ContextMenuItem>
+        {
+            new ContextMenuItem { Text = "View Details", Value = "details" },
+            new ContextMenuItem { Text = "Export Selected", Value = "export", Disabled = !hasMediaItem && (_selectedRows?.Count ?? 0) == 0 },
+        };
+
+        if (hasMediaItem && !hasHold)
+        {
+            items.Add(new ContextMenuItem { Text = "Place Legal Hold", Value = "hold" });
+        }
+        else if (hasMediaItem && hasHold)
+        {
+            items.Add(new ContextMenuItem { Text = "Release Legal Hold", Value = "release" });
+        }
+
+        items.Add(new ContextMenuItem { Text = "Verify Integrity (device)", Value = "verify", Disabled = !hasMediaItem });
+
+        ContextMenuService.Open(args, items, e => OnContextMenuItemClick(e, row));
+    }
+
+    private async void OnContextMenuItemClick(MenuItemEventArgs args, EventRow row)
+    {
+        ContextMenuService.Close();
+
+        switch (args.Value)
+        {
+            case "details":
+                await OpenDetailsDialogAsync(row);
+                break;
+            case "export":
+                ExportRows(row);
+                break;
+            case "hold":
+                BeginPlaceHold(row);
+                break;
+            case "release":
+                BeginRelease(row);
+                break;
+            case "verify":
+                await VerifyIntegrityForDeviceAsync(row);
+                break;
+        }
+
+        StateHasChanged();
+    }
+
+    private void ExportRows(EventRow contextRow)
+    {
+        var ids = (_selectedRows is { Count: > 0 } ? _selectedRows : new List<EventRow> { contextRow })
+            .Where(r => r.MediaItem is not null)
+            .Select(r => r.MediaItem!.Id)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Nothing to export", "None of the selected rows have downloaded media.");
+            return;
+        }
+
+        var idsParam = string.Join(",", ids);
+        NavigationManager.NavigateTo($"/review/export?ids={Uri.EscapeDataString(idsParam)}");
+    }
+
+    private void BeginPlaceHold(EventRow row)
+    {
+        _pendingHoldRow = row;
+        _pendingReleaseRow = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void BeginRelease(EventRow row)
+    {
+        _pendingReleaseRow = row;
+        _pendingHoldRow = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void CancelPendingHoldAction()
+    {
+        _pendingHoldRow = null;
+        _pendingReleaseRow = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private async Task ConfirmPendingHoldActionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_holdReasonInput))
+        {
+            return;
+        }
+
+        if (_pendingHoldRow?.MediaItem is not null)
+        {
+            var hold = await LegalHoldRepository.PlaceAsync(_pendingHoldRow.MediaItem.Id, _holdReasonInput, Environment.UserName, CancellationToken.None);
+            _activeHoldsByMediaItemId[_pendingHoldRow.MediaItem.Id] = hold;
+            NotificationService.Notify(NotificationSeverity.Success, "Legal hold placed");
+        }
+        else if (_pendingReleaseRow?.MediaItem is not null && _activeHoldsByMediaItemId.TryGetValue(_pendingReleaseRow.MediaItem.Id, out var activeHold))
+        {
+            await LegalHoldRepository.ReleaseAsync(activeHold.Id, Environment.UserName, _holdReasonInput, CancellationToken.None);
+            _activeHoldsByMediaItemId.Remove(_pendingReleaseRow.MediaItem.Id);
+            NotificationService.Notify(NotificationSeverity.Success, "Legal hold released");
+        }
+
+        CancelPendingHoldAction();
+    }
+
+    private static string MediaContentUrl(Guid mediaItemId) => $"/api/media/{mediaItemId}/content";
+
+    private static bool IsImageFormat(string format) =>
+        format.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
+        format.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
+        format.Contains("png", StringComparison.OrdinalIgnoreCase) ||
+        format.Contains("image", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsVideoFormat(string format) =>
+        format.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
+        format.Contains("video", StringComparison.OrdinalIgnoreCase);
+
+    private async Task OpenDetailsDialogAsync(EventRow row)
+    {
+        var (statusText, _) = row.MediaItem is null ? ("-", "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
+        var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? "On Hold" : "-";
+
+        await DialogService.OpenAsync<EventDetailsDialog>("Event Details", new Dictionary<string, object?>
+        {
+            { nameof(EventDetailsDialog.EventType), row.EventType },
+            { nameof(EventDetailsDialog.OccurredAtUtc), row.OccurredAtUtc },
+            { nameof(EventDetailsDialog.DiscoveredAtUtc), row.DiscoveredAtUtc },
+            { nameof(EventDetailsDialog.DownloadedAtUtc), row.DownloadedAtUtc },
+            { nameof(EventDetailsDialog.ProviderEventId), row.ProviderEventId },
+            { nameof(EventDetailsDialog.SnapshotUrl), row.Event.SnapshotUrl },
+            { nameof(EventDetailsDialog.MediaItemId), row.MediaItem?.Id },
+            { nameof(EventDetailsDialog.FileName), row.MediaItem?.FileName },
+            { nameof(EventDetailsDialog.MediaFormat), row.MediaItem?.MediaFormat },
+            { nameof(EventDetailsDialog.FileSizeBytes), row.MediaItem?.FileSizeBytes ?? 0L },
+            { nameof(EventDetailsDialog.Resolution), row.MediaItem?.Resolution },
+            { nameof(EventDetailsDialog.IntegrityStatusText), statusText },
+            { nameof(EventDetailsDialog.LegalHoldStatusText), holdText },
+        }, new DialogOptions { Width = "600px", Resizable = true, Draggable = true });
+    }
+
+    private async Task VerifyIntegrityForDeviceAsync(EventRow row)
+    {
+        if (row.MediaItem is null)
+        {
+            return;
+        }
+
+        var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(row.Event.DeviceId, CancellationToken.None);
+        var failed = results.Count(r => r.Status != "verified");
+        NotificationService.Notify(
+            failed == 0 ? NotificationSeverity.Success : NotificationSeverity.Warning,
+            "Integrity verification complete",
+            $"{results.Count - failed} of {results.Count} file(s) verified for this device.");
+    }
+
+    // Mirrors ForensicReportRenderer.DetermineMediaStatus (src/client/VideoForensics/ForensicReportRenderer.cs)
+    private static (string Text, string Color) DetermineMediaStatus(Guid mediaId, IReadOnlyList<IntegrityRecord> integrityRecords)
+    {
+        var record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
+
+        if (record == null)
+        {
+            return ("Not verified", "goldenrod");
+        }
+
+        if (!record.Passed)
+        {
+            return ("Integrity failed", "red");
+        }
+
+        return ("Verified", "green");
+    }
+}

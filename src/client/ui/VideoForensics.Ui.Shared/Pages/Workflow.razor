@@ -2,56 +2,56 @@
 @inject IProviderAuthService AuthService
 @inject NavigationManager NavigationManager
 
-<MudText Typo="Typo.h4" Class="mb-4">Full Forensic Workflow</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Full Forensic Workflow</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to use the workflow.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to use the workflow.
+    </RadzenAlert>
 }
 else
 {
     <ol class="workflow-steps">
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">1. Sign in / select account</MudText>
-            <MudText>Choose which provider account this session works against.</MudText>
-            <MudLink Href="/accounts">Go to Accounts</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">1. Sign in / select account</RadzenText>
+            <RadzenText>Choose which provider account this session works against.</RadzenText>
+            <RadzenLink Path="/accounts" Text="Go to Accounts" />
         </li>
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">2. Collect evidence</MudText>
-            <MudText>Download videos and snapshots from your devices.</MudText>
-            <MudLink Href="/collect/videos">Collect Videos</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">2. Collect evidence</RadzenText>
+            <RadzenText>Download videos and snapshots from your devices.</RadzenText>
+            <RadzenLink Path="/collect/videos" Text="Collect Videos" />
             &nbsp;|&nbsp;
-            <MudLink Href="/collect/snapshots">Collect Snapshots</MudLink>
+            <RadzenLink Path="/collect/snapshots" Text="Collect Snapshots" />
         </li>
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">3. Review evidence</MudText>
-            <MudText>Review collected evidence and manage legal holds.</MudText>
-            <MudLink Href="/review">Go to Review</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">3. Review evidence</RadzenText>
+            <RadzenText>Review collected evidence and manage legal holds.</RadzenText>
+            <RadzenLink Path="/events" Text="Go to Events" />
         </li>
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">4. Validate evidence</MudText>
-            <MudText>Verify the integrity of collected evidence.</MudText>
-            <MudLink Href="/analyze/validate/integrity">Go to Integrity Validation</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">4. Validate evidence</RadzenText>
+            <RadzenText>Verify the integrity of collected evidence.</RadzenText>
+            <RadzenLink Path="/analyze/validate/integrity" Text="Go to Integrity Validation" />
         </li>
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">5. Analyze</MudText>
-            <MudText>Generate reports and analyze jamming and signal anomalies.</MudText>
-            <MudLink Href="/analyze/reports">Reports</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">5. Analyze</RadzenText>
+            <RadzenText>Generate reports and analyze jamming and signal anomalies.</RadzenText>
+            <RadzenLink Path="/analyze/reports" Text="Reports" />
             &nbsp;|&nbsp;
-            <MudLink Href="/analyze/jamming">Jamming Analysis</MudLink>
+            <RadzenLink Path="/analyze/jamming" Text="Jamming Analysis" />
             &nbsp;|&nbsp;
-            <MudLink Href="/analyze/signal-anomalies">Signal Anomalies</MudLink>
+            <RadzenLink Path="/analyze/signal-anomalies" Text="Signal Anomalies" />
         </li>
         <li>
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">6. Export</MudText>
-            <MudText>Export the reviewed evidence for delivery.</MudText>
-            <MudLink Href="/review/export">Go to Export</MudLink>
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">6. Export</RadzenText>
+            <RadzenText>Export the reviewed evidence for delivery.</RadzenText>
+            <RadzenLink Path="/review/export" Text="Go to Export" />
         </li>
     </ol>
 }

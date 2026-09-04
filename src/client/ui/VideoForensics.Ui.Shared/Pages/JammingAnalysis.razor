@@ -5,47 +5,42 @@
 @inject IDeviceRepository DeviceRepository
 @inject JammingToolsOrchestrator JammingTools
 
-<MudText Typo="Typo.h4" Class="mb-4">Jamming Analysis</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Jamming Analysis</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to analyze jamming.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to analyze jamming.
+    </RadzenAlert>
 }
 else
 {
-    <MudStack Spacing="3" Class="mb-4">
-        <MudSelect T="string" @bind-Value="_selectedDeviceIdStr" Label="Device" Variant="Variant.Outlined">
-            <MudSelectItem Value="@("")">-- Select a device --</MudSelectItem>
-            @foreach (var device in _devices)
-            {
-                <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
-            }
-        </MudSelect>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <RadzenStack>
+        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
+            TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" />
+        <RadzenStack Orientation="Orientation.Horizontal">
             <input type="date" @bind="_fromDate" />
             <input type="date" @bind="_toDate" />
-            <MudButton OnClick="AnalyzeAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))">Analyze</MudButton>
-        </MudStack>
+            <RadzenButton Text="Analyze" Click="AnalyzeAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
+        </RadzenStack>
 
         @if (!string.IsNullOrEmpty(_analyzeError))
         {
-            <MudAlert Severity="Severity.Error">@_analyzeError</MudAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@_analyzeError</RadzenAlert>
         }
-    </MudStack>
+    </RadzenStack>
 
     @if (_report is not null)
     {
-        <MudText><strong>@_report.Message</strong></MudText>
+        <RadzenText><strong>@_report.Message</strong></RadzenText>
 
         @if (_report.Incidents.Count > 0)
         {
-            <MudSimpleTable Hover="true" Dense="true">
+            <table>
                 <thead>
                     <tr>
                         <th>Start</th>
@@ -71,35 +66,36 @@ else
                         </tr>
                     }
                 </tbody>
-            </MudSimpleTable>
+            </table>
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Record Manual Incident</MudText>
-        <MudStack Spacing="3" Class="mb-4">
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Record Manual Incident</RadzenText>
+        <RadzenStack>
             <div>
                 <label for="startUtc">Start (UTC)</label>
-                <input id="startUtc" type="datetime-local" @bind="_manualStartUtc" />
+                <RadzenDatePicker TValue="DateTime" @bind-Value="_manualStartUtc" ShowTime="true" />
             </div>
             <div>
                 <label for="endUtc">End (UTC)</label>
-                <input id="endUtc" type="datetime-local" @bind="_manualEndUtc" />
+                <RadzenDatePicker TValue="DateTime" @bind-Value="_manualEndUtc" ShowTime="true" />
             </div>
-            <MudNumericField @bind-Value="_manualAffectedEventCount" Label="Affected Event Count" Variant="Variant.Outlined" />
-            <MudNumericField @bind-Value="_manualAverageDegradationDb" Label="Average Degradation (dB)" Variant="Variant.Outlined" />
-            <MudSelect T="JammingConfidenceLevel" @bind-Value="_manualConfidence" Label="Confidence" Variant="Variant.Outlined">
-                @foreach (var level in Enum.GetValues<JammingConfidenceLevel>())
-                {
-                    <MudSelectItem Value="@level">@level</MudSelectItem>
-                }
-            </MudSelect>
-            <MudTextField @bind-Value="_manualNotes" Label="Notes" Variant="Variant.Outlined" Lines="3" />
-            <MudButton OnClick="RecordIncidentAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_recording">Record Incident</MudButton>
+            <div>
+                <label>Affected Event Count</label>
+                <RadzenNumeric TValue="int" @bind-Value="_manualAffectedEventCount" />
+            </div>
+            <div>
+                <label>Average Degradation (dB)</label>
+                <RadzenNumeric TValue="double" @bind-Value="_manualAverageDegradationDb" />
+            </div>
+            <RadzenDropDown TValue="JammingConfidenceLevel" @bind-Value="_manualConfidence" Data="@(Enum.GetValues<JammingConfidenceLevel>())" />
+            <RadzenTextArea @bind-Value="_manualNotes" Rows="3" Placeholder="Notes" />
+            <RadzenButton Text="Record Incident" Click="RecordIncidentAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_recording" />
 
             @if (!string.IsNullOrEmpty(_recordMessage))
             {
-                <MudAlert Severity="@(_recordSuccess == true ? Severity.Success : Severity.Error)">@_recordMessage</MudAlert>
+                <RadzenAlert AlertStyle="@(_recordSuccess == true ? AlertStyle.Success : AlertStyle.Danger)">@_recordMessage</RadzenAlert>
             }
-        </MudStack>
+        </RadzenStack>
     }
 }
 
@@ -108,6 +104,9 @@ else
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
     private string _selectedDeviceIdStr = string.Empty;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     private DateTime _fromDate = DateTime.Today.AddDays(-90);
     private DateTime _toDate = DateTime.Today;

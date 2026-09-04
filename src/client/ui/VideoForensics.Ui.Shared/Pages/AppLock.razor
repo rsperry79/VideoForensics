@@ -1,35 +1,32 @@
 @page "/settings/app-lock"
 @inject IAppLockPreferencesStore AppLockPreferences
 
-<MudText Typo="Typo.h4" Class="mb-4">App Lock</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">App Lock</RadzenText>
 
 @if (!AppLockPreferences.IsSupported)
 {
-    <MudAlert Severity="Severity.Info">
+    <RadzenAlert AlertStyle="AlertStyle.Info">
         App Lock is a device-local setting for the Windows MAUI app - it does not apply here.
-    </MudAlert>
+    </RadzenAlert>
 }
 else
 {
-    <MudText Typo="Typo.body2" Class="mb-4">
+    <RadzenText class="mb-4">
         VideoForensics requires Windows Hello (or your device PIN) to view its content, on every
         cold launch and again after this much time spent in the background. This is separate from
         signing in to the server - it protects an already-signed-in device from anyone who simply
         picks it up.
-    </MudText>
+    </RadzenText>
 
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudSelect T="int" Value="_selectedSeconds" ValueChanged="OnTimeoutChangedAsync" Label="Lock after this long in the background" Variant="Variant.Outlined" Style="max-width: 320px;">
-            @foreach (var option in TimeoutOptions)
-            {
-                <MudSelectItem Value="@option.Seconds">@option.Label</MudSelectItem>
-            }
-        </MudSelect>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenDropDown TValue="int" Value="_selectedSeconds" ValueChanged="OnTimeoutChangedAsync"
+            Data="@(TimeoutOptions.Select(o => new { Value = o.Seconds, Text = o.Label }).ToList())"
+            ValueProperty="Value" TextProperty="Text" Placeholder="Lock after this long in the background" Style="max-width: 320px;" />
         @if (_message is not null)
         {
-            <MudText Color="Color.Success" Class="mt-2">@_message</MudText>
+            <RadzenText class="mt-2">@_message</RadzenText>
         }
-    </MudPaper>
+    </RadzenCard>
 }
 
 @code {

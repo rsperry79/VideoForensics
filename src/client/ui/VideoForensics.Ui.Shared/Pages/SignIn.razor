@@ -2,17 +2,17 @@
 @inject IProviderAuthService AuthService
 @inject NavigationManager NavigationManager
 
-<MudText Typo="Typo.h4" Class="mb-4">Sign In</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Sign In</RadzenText>
 
 @if (_restoringSession)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else
 {
     @if (!string.IsNullOrEmpty(_restoreErrorMessage))
     {
-        <MudAlert Severity="Severity.Error">@_restoreErrorMessage</MudAlert>
+        <RadzenAlert AlertStyle="AlertStyle.Danger">@_restoreErrorMessage</RadzenAlert>
     }
 
     <AuthForm IdPrefix="signin" SubmitLabel="Sign In" OnAuthenticated="HandleAuthenticated" />

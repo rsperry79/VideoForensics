@@ -6,109 +6,75 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<MudText Typo="Typo.h4" Class="mb-4">Signal Anomaly Report</MudText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">Signal Anomaly Report</RadzenText>
 
 @if (_isLoading)
 {
-    <MudProgressCircular Indeterminate="true" />
+    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
 }
 else if (!_isAuthenticated)
 {
-    <MudAlert Severity="Severity.Info">
-        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view signal anomalies.
-    </MudAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Info">
+        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view signal anomalies.
+    </RadzenAlert>
 }
 else
 {
-    <MudPaper Class="pa-4 mb-4" Outlined="true">
-        <MudStack>
-            <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
-                <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
-                @foreach (var device in _devices)
-                {
-                    <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
-                }
-            </MudSelect>
+    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+        <RadzenStack>
+            <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
+                TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
             <label>
-                From: <input type="date" @bind="_fromDate" />
+                From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
             </label>
             <label>
-                To: <input type="date" @bind="_toDate" />
+                To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
             </label>
-            <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
-        </MudStack>
-    </MudPaper>
+            <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+        </RadzenStack>
+    </RadzenCard>
 
     @if (_report is not null)
     {
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Anomalies by Device</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Anomalies by Device</RadzenText>
         @if (_report.AnomaliesByDevice.Count == 0)
         {
-            <MudText>No signal anomalies found in this range.</MudText>
+            <RadzenText>No signal anomalies found in this range.</RadzenText>
         }
         else
         {
             @foreach (var deviceFindings in _report.AnomaliesByDevice)
             {
-                <MudText Typo="Typo.h6">@deviceFindings.DeviceName</MudText>
-                <MudSimpleTable Hover="true" Dense="true">
-                    <thead>
-                        <tr>
-                            <th>Occurred At</th>
-                            <th>Anomaly Type</th>
-                            <th>Description</th>
-                            <th>RSSI</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var anomaly in deviceFindings.Anomalies)
-                        {
-                            <tr>
-                                <td>@anomaly.OccurredAtUtc</td>
-                                <td>@anomaly.AnomalyType</td>
-                                <td>@(anomaly.Description ?? "-")</td>
-                                <td>@(anomaly.RssiValue?.ToString() ?? "-")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
+                <RadzenText TextStyle="TextStyle.H6">@deviceFindings.DeviceName</RadzenText>
+                <RadzenDataGrid TItem="SignalAnomalyReport.SignalAnomaly" Data="@deviceFindings.Anomalies" AllowPaging="true" PageSize="20" AllowSorting="true">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" Title="Occurred At" />
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" Title="Anomaly Type" />
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="Description"><Template Context="anomaly">@(anomaly.Description ?? "-")</Template></RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="RSSI"><Template Context="anomaly">@(anomaly.RssiValue?.ToString() ?? "-")</Template></RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
             }
         }
 
-        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Jamming Summary</MudText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Jamming Summary</RadzenText>
         @if (_report.JammingByDevice.Count == 0)
         {
-            <MudText>No jamming incidents found in this range.</MudText>
+            <RadzenText>No jamming incidents found in this range.</RadzenText>
         }
         else
         {
-            <MudSimpleTable Hover="true" Dense="true">
-                <thead>
-                    <tr>
-                        <th>Device</th>
-                        <th>Incident Count</th>
-                        <th>Total Jammed (min)</th>
-                        <th>Avg Degradation (dB)</th>
-                        <th>Max Degradation (dB)</th>
-                        <th>First Incident</th>
-                        <th>Last Incident</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var jamming in _report.JammingByDevice)
-                    {
-                        <tr>
-                            <td>@jamming.DeviceName</td>
-                            <td>@jamming.IncidentCount</td>
-                            <td>@jamming.TotalJammedDurationMinutes</td>
-                            <td>@jamming.AverageDegradationDb</td>
-                            <td>@jamming.MaxDegradationDb</td>
-                            <td>@(jamming.FirstIncidentUtc?.ToString() ?? "-")</td>
-                            <td>@(jamming.LastIncidentUtc?.ToString() ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <RadzenDataGrid TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_report.JammingByDevice" AllowPaging="true" PageSize="20" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" Title="Device" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" Title="Incident Count" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" Title="Total Jammed (min)" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" Title="Avg Degradation (dB)" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" Title="Max Degradation (dB)" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="First Incident"><Template Context="jamming">@(jamming.FirstIncidentUtc?.ToString() ?? "-")</Template></RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="Last Incident"><Template Context="jamming">@(jamming.LastIncidentUtc?.ToString() ?? "-")</Template></RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
     }
 }
@@ -121,6 +87,9 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private SignalAnomalyReport? _report;
+
+    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
+        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
 
     protected override async Task OnInitializedAsync()
     {

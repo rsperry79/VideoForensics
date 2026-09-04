@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MudBlazor.Services;
+using Radzen;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;
@@ -51,7 +51,7 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
 
-builder.Services.AddMudServices();
+builder.Services.AddRadzenComponents();
 
 // WebAuthn/passkey pairing (plan §5.1/M6). ServerDomain/Origins are dev defaults for the
 // local/LAN case (§5.2's Local and Network tiers, no tunnel) - the Internet tier (Cloudflare
