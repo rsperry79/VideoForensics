@@ -24,4 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\VideoForensics.Providers.Wyze.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.0" />
+  </ItemGroup>
 </Project>

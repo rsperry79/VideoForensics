@@ -22,4 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\providers-common\VideoForensics.Providers.Common.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.0" />
+  </ItemGroup>
 </Project>

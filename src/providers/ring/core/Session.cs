@@ -544,7 +544,20 @@ namespace VideoForensics.Providers.Ring
             // whole walk, not just short-burst count, so consolidating N devices' history calls into
             // one walk (see RingMediaDownloadService) doesn't help if that single walk itself still
             // runs too fast once it has to cross dozens of pages.
+            //
+            // 2s/page alone still wasn't enough for a larger account (11 devices/3 locations): it got
+            // 5 more pages further (25 vs 21) but still eventually hit the same wall - this isn't
+            // about location count, it's raw event volume needing more pages than any flat per-page
+            // delay can outrun forever. So on top of the per-page delay, walk the requested range in
+            // 30-day chunks with a much longer breather between each one, so whatever sliding window
+            // Ring uses actually gets a chance to reset mid-walk instead of sustaining request
+            // pressure indefinitely for however many pages a big backlog needs. This chunking is by
+            // date span covered, not a fixed page count, and happens automatically within this one
+            // call - the caller's requested date range (e.g. 6 months) is unchanged, this just walks
+            // it in smaller bounded passes instead of one continuous burst.
             const int InterPageDelayMs = 2000;
+            var chunkSpan = TimeSpan.FromDays(30);
+            const int BreatherDelayMs = 20000;
             const int MaxPageRetries = 3;
             const int InitialThrottleBackoffMs = 2000;
 
@@ -553,12 +566,21 @@ namespace VideoForensics.Providers.Ring
             var doorbotHistory = new List<DoorbotHistoryEvent>();
             DateTime? lastItemDateTime = null;
             var isFirstPage = true;
+            var lastChunkBoundary = effectiveEndDate;
 
             do
             {
                 if (!isFirstPage)
                 {
-                    await Task.Delay(InterPageDelayMs);
+                    if (lastItemDateTime.HasValue && lastChunkBoundary - lastItemDateTime.Value >= chunkSpan)
+                    {
+                        await Task.Delay(BreatherDelayMs);
+                        lastChunkBoundary = lastItemDateTime.Value;
+                    }
+                    else
+                    {
+                        await Task.Delay(InterPageDelayMs);
+                    }
                 }
                 isFirstPage = false;
 

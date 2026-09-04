@@ -3,33 +3,33 @@
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
 
-<h1>Query API</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Query API</MudText>
 
-<section>
-    <h2>Account Status</h2>
-    <button @onclick="RunAccountStatus">Check Status</button>
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Account Status</MudText>
+    <MudButton OnClick="RunAccountStatus" Variant="Variant.Filled" Color="Color.Primary">Check Status</MudButton>
     @if (_accountStatus is not null)
     {
-        <p>@_accountStatus</p>
+        <MudText Class="mt-2">@_accountStatus</MudText>
     }
-</section>
+</MudPaper>
 
-<section>
-    <h2>Locations</h2>
-    <button @onclick="RunLocationsAsync" disabled="@_locationsLoading">Get Locations</button>
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Locations</MudText>
+    <MudButton OnClick="RunLocationsAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_locationsLoading">Get Locations</MudButton>
     @if (!string.IsNullOrEmpty(_locationsError))
     {
-        <p style="color: red;">@_locationsError</p>
+        <MudAlert Severity="Severity.Error" Class="mt-2">@_locationsError</MudAlert>
     }
     @if (_locations is not null)
     {
         @if (_locations.Count == 0)
         {
-            <p>No locations found.</p>
+            <MudText Class="mt-2">No locations found.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
                 <thead>
                     <tr><th>Id</th><th>Name</th><th>Address</th></tr>
                 </thead>
@@ -43,31 +43,30 @@
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
-</section>
+</MudPaper>
 
-<section>
-    <h2>Devices</h2>
-    <div>
-        <label for="locationId">Location Id</label>
-        <input id="locationId" type="text" @bind="_locationIdInput" />
-        <button @onclick="RunDevicesAsync" disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))">Get Devices</button>
-    </div>
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Devices</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudTextField @bind-Value="_locationIdInput" Label="Location Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
+        <MudButton OnClick="RunDevicesAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))">Get Devices</MudButton>
+    </MudStack>
     @if (!string.IsNullOrEmpty(_devicesError))
     {
-        <p style="color: red;">@_devicesError</p>
+        <MudAlert Severity="Severity.Error" Class="mt-2">@_devicesError</MudAlert>
     }
     @if (_devices is not null)
     {
         @if (_devices.Count == 0)
         {
-            <p>No devices found.</p>
+            <MudText Class="mt-2">No devices found.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
                 <thead>
                     <tr><th>Id</th><th>Name</th><th>Type</th><th>Online</th></tr>
                 </thead>
@@ -82,35 +81,32 @@
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
-</section>
+</MudPaper>
 
-<section>
-    <h2>Device Events</h2>
-    <div>
-        <label for="eventsDeviceId">Device Id</label>
-        <input id="eventsDeviceId" type="text" @bind="_eventsDeviceIdInput" />
-        <label for="eventsFrom">From</label>
-        <input id="eventsFrom" type="date" @bind="_eventsFromDate" />
-        <label for="eventsTo">To</label>
-        <input id="eventsTo" type="date" @bind="_eventsToDate" />
-        <button @onclick="RunEventsAsync" disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))">Get Events</button>
-    </div>
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Device Events</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudTextField @bind-Value="_eventsDeviceIdInput" Label="Device Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
+        <input type="date" @bind="_eventsFromDate" />
+        <input type="date" @bind="_eventsToDate" />
+        <MudButton OnClick="RunEventsAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))">Get Events</MudButton>
+    </MudStack>
     @if (!string.IsNullOrEmpty(_eventsError))
     {
-        <p style="color: red;">@_eventsError</p>
+        <MudAlert Severity="Severity.Error" Class="mt-2">@_eventsError</MudAlert>
     }
     @if (_events is not null)
     {
         @if (_events.Count == 0)
         {
-            <p>No events found.</p>
+            <MudText Class="mt-2">No events found.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
                 <thead>
                     <tr><th>Id</th><th>Event Type</th><th>Timestamp</th><th>Snapshot URL</th></tr>
                 </thead>
@@ -125,31 +121,30 @@
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
-</section>
+</MudPaper>
 
-<section>
-    <h2>Device Config</h2>
-    <div>
-        <label for="configDeviceId">Device Id</label>
-        <input id="configDeviceId" type="text" @bind="_configDeviceIdInput" />
-        <button @onclick="RunDeviceConfigAsync" disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))">Get Config</button>
-    </div>
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mt-4 mb-2">Device Config</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudTextField @bind-Value="_configDeviceIdInput" Label="Device Id" Variant="Variant.Outlined" Style="max-width: 200px;" />
+        <MudButton OnClick="RunDeviceConfigAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))">Get Config</MudButton>
+    </MudStack>
     @if (!string.IsNullOrEmpty(_configError))
     {
-        <p style="color: red;">@_configError</p>
+        <MudAlert Severity="Severity.Error" Class="mt-2">@_configError</MudAlert>
     }
     @if (_configLoadedOnce)
     {
         @if (_config is null)
         {
-            <p>No configuration found for this device.</p>
+            <MudText Class="mt-2">No configuration found for this device.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true" Class="mt-2">
                 <thead>
                     <tr><th>Motion Detection Enabled</th><th>Motion Sensitivity</th><th>Recording Mode</th></tr>
                 </thead>
@@ -160,10 +155,10 @@
                         <td>@(_config.RecordingMode ?? "-")</td>
                     </tr>
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
-</section>
+</MudPaper>
 
 @code {
     // Account Status

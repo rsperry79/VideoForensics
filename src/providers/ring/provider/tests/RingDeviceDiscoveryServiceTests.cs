@@ -160,7 +160,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
+            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
@@ -196,7 +196,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
+            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
@@ -232,7 +232,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
+            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
@@ -272,7 +272,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
+            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
@@ -313,7 +313,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid>()))
+            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();

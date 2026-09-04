@@ -6,51 +6,52 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 
-<h1>Signal Anomaly Report</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Signal Anomaly Report</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to view signal anomalies.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view signal anomalies.
+    </MudAlert>
 }
 else
 {
-    <p>
-        <label>
-            Device:
-            <select @bind="_selectedDeviceId">
-                <option value="">(All devices)</option>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack>
+            <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
+                <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
                 @foreach (var device in _devices)
                 {
-                    <option value="@device.Id">@device.Name</option>
+                    <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
                 }
-            </select>
-        </label>
-        <label>
-            From: <input type="date" @bind="_fromDate" />
-        </label>
-        <label>
-            To: <input type="date" @bind="_toDate" />
-        </label>
-        <button @onclick="RunReportAsync">Run Report</button>
-    </p>
+            </MudSelect>
+            <label>
+                From: <input type="date" @bind="_fromDate" />
+            </label>
+            <label>
+                To: <input type="date" @bind="_toDate" />
+            </label>
+            <MudButton OnClick="RunReportAsync" Variant="Variant.Filled" Color="Color.Primary">Run Report</MudButton>
+        </MudStack>
+    </MudPaper>
 
     @if (_report is not null)
     {
-        <h2>Anomalies by Device</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Anomalies by Device</MudText>
         @if (_report.AnomaliesByDevice.Count == 0)
         {
-            <p>No signal anomalies found in this range.</p>
+            <MudText>No signal anomalies found in this range.</MudText>
         }
         else
         {
             @foreach (var deviceFindings in _report.AnomaliesByDevice)
             {
-                <h3>@deviceFindings.DeviceName</h3>
-                <table>
+                <MudText Typo="Typo.h6">@deviceFindings.DeviceName</MudText>
+                <MudSimpleTable Hover="true" Dense="true">
                     <thead>
                         <tr>
                             <th>Occurred At</th>
@@ -70,18 +71,18 @@ else
                             </tr>
                         }
                     </tbody>
-                </table>
+                </MudSimpleTable>
             }
         }
 
-        <h2>Jamming Summary</h2>
+        <MudText Typo="Typo.h5" Class="mt-4 mb-2">Jamming Summary</MudText>
         @if (_report.JammingByDevice.Count == 0)
         {
-            <p>No jamming incidents found in this range.</p>
+            <MudText>No jamming incidents found in this range.</MudText>
         }
         else
         {
-            <table>
+            <MudSimpleTable Hover="true" Dense="true">
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -107,7 +108,7 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </MudSimpleTable>
         }
     }
 }

@@ -8,28 +8,28 @@
 @inject ILegalHoldRepository LegalHoldRepository
 @inject NavigationManager NavigationManager
 
-<h1>Review Evidence</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Review Evidence</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to review evidence.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to review evidence.
+    </MudAlert>
 }
 else
 {
     @if (_report is null || _report.MediaItems.Count == 0)
     {
-        <p>No evidence found in the last 90 days.</p>
+        <MudText>No evidence found in the last 90 days.</MudText>
     }
     else
     {
-        <p>
-            <button @onclick="ExportSelected" disabled="@(_selectedIds.Count == 0)">Export Selected</button>
-        </p>
-        <table>
+        <MudButton OnClick="ExportSelected" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4" Disabled="@(_selectedIds.Count == 0)">Export Selected</MudButton>
+        <MudSimpleTable Hover="true" Dense="true">
             <thead>
                 <tr>
                     <th>
@@ -59,33 +59,33 @@ else
                             @if (hasHold)
                             {
                                 <span style="color:purple">On Hold</span>
-                                <button @onclick="() => BeginRelease(activeHold!.Id)">Release</button>
+                                <MudButton OnClick="() => BeginRelease(activeHold!.Id)" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="ms-2">Release</MudButton>
                             }
                             else
                             {
-                                <button @onclick="() => BeginPlaceHold(item.Id)">Place Hold</button>
+                                <MudButton OnClick="() => BeginPlaceHold(item.Id)" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">Place Hold</MudButton>
                             }
                             @if (_pendingHoldMediaItemId == item.Id && !hasHold)
                             {
-                                <div>
-                                    <input type="text" @bind="_holdReasonInput" @bind:event="oninput" placeholder="Reason for hold" />
-                                    <button @onclick="() => ConfirmPlaceHold(item.Id)">Confirm</button>
-                                    <button @onclick="CancelPendingHold">Cancel</button>
-                                </div>
+                                <MudStack Row="true" Spacing="1" Class="mt-2">
+                                    <MudTextField @bind-Value="_holdReasonInput" Placeholder="Reason for hold" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px;" />
+                                    <MudButton OnClick="() => ConfirmPlaceHold(item.Id)" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Confirm</MudButton>
+                                    <MudButton OnClick="CancelPendingHold" Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small">Cancel</MudButton>
+                                </MudStack>
                             }
                             @if (hasHold && _pendingReleaseHoldId == activeHold!.Id)
                             {
-                                <div>
-                                    <input type="text" @bind="_holdReasonInput" @bind:event="oninput" placeholder="Reason for release" />
-                                    <button @onclick="() => ConfirmRelease(activeHold.Id, item.Id)">Confirm</button>
-                                    <button @onclick="CancelPendingHold">Cancel</button>
-                                </div>
+                                <MudStack Row="true" Spacing="1" Class="mt-2">
+                                    <MudTextField @bind-Value="_holdReasonInput" Placeholder="Reason for release" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px;" />
+                                    <MudButton OnClick="() => ConfirmRelease(activeHold.Id, item.Id)" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Confirm</MudButton>
+                                    <MudButton OnClick="CancelPendingHold" Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small">Cancel</MudButton>
+                                </MudStack>
                             }
                         </td>
                     </tr>
                 }
             </tbody>
-        </table>
+        </MudSimpleTable>
     }
 }
 

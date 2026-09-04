@@ -6,48 +6,49 @@
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 
-<h1>Validate Evidence</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Validate Evidence</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to validate evidence.</p>
+    <MudAlert Severity="Severity.Info">
+        You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to validate evidence.
+    </MudAlert>
 }
 else
 {
-    <p>
-        <button @onclick='() => _activeTab = "integrity"' disabled="@(_activeTab == "integrity")">Verify Integrity</button>
-        <button @onclick='() => _activeTab = "reconcile"' disabled="@(_activeTab == "reconcile")">Reconcile with Provider</button>
-    </p>
+    <MudStack Row="true" Class="mb-4">
+        <MudButton OnClick='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' Color='@(_activeTab == "integrity" ? Color.Primary : Color.Default)'>Verify Integrity</MudButton>
+        <MudButton OnClick='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' Color='@(_activeTab == "reconcile" ? Color.Primary : Color.Default)'>Reconcile with Provider</MudButton>
+    </MudStack>
 
     @if (_activeTab == "integrity")
     {
-        <p>
-            <label>
-                Device:
-                <select @bind="_selectedDeviceId">
-                    <option value="">(All devices)</option>
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudStack>
+                <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
+                    <MudSelectItem Value="@("")">(All devices)</MudSelectItem>
                     @foreach (var device in _devices)
                     {
-                        <option value="@device.Id">@device.Name</option>
+                        <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
                     }
-                </select>
-            </label>
-            <button @onclick="VerifyIntegrityAsync">Verify</button>
-        </p>
+                </MudSelect>
+                <MudButton OnClick="VerifyIntegrityAsync" Variant="Variant.Filled" Color="Color.Primary">Verify</MudButton>
+            </MudStack>
+        </MudPaper>
 
         @if (_verificationResults is not null)
         {
             @if (_verificationResults.Count == 0)
             {
-                <p>No media items found to verify.</p>
+                <MudText>No media items found to verify.</MudText>
             }
             else
             {
-                <table>
+                <MudSimpleTable Hover="true" Dense="true">
                     <thead>
                         <tr>
                             <th>File Name</th>
@@ -65,44 +66,41 @@ else
                             </tr>
                         }
                     </tbody>
-                </table>
+                </MudSimpleTable>
             }
         }
     }
     else
     {
-        <p>
-            <label>
-                Device:
-                <select @bind="_selectedDeviceId">
-                    <option value="">(Select a device)</option>
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudStack>
+                <MudSelect T="string" @bind-Value="_selectedDeviceId" Label="Device">
+                    <MudSelectItem Value="@("")">(Select a device)</MudSelectItem>
                     @foreach (var device in _devices)
                     {
-                        <option value="@device.Id">@device.Name</option>
+                        <MudSelectItem Value="@device.Id.ToString()">@device.Name</MudSelectItem>
                     }
-                </select>
-            </label>
-            <label>
-                Provider Device ID: <input type="text" @bind="_providerDeviceId" />
-            </label>
-            <label>
-                From: <input type="date" @bind="_fromDate" />
-            </label>
-            <label>
-                To: <input type="date" @bind="_toDate" />
-            </label>
-            <button @onclick="ReconcileAsync">Reconcile</button>
-        </p>
+                </MudSelect>
+                <MudTextField @bind-Value="_providerDeviceId" Label="Provider Device ID" Variant="Variant.Outlined" />
+                <label>
+                    From: <input type="date" @bind="_fromDate" />
+                </label>
+                <label>
+                    To: <input type="date" @bind="_toDate" />
+                </label>
+                <MudButton OnClick="ReconcileAsync" Variant="Variant.Filled" Color="Color.Primary">Reconcile</MudButton>
+            </MudStack>
+        </MudPaper>
 
         @if (_discrepancies is not null)
         {
             @if (_discrepancies.Count == 0)
             {
-                <p>No discrepancies found.</p>
+                <MudText>No discrepancies found.</MudText>
             }
             else
             {
-                <table>
+                <MudSimpleTable Hover="true" Dense="true">
                     <thead>
                         <tr>
                             <th>Type</th>
@@ -124,7 +122,7 @@ else
                             </tr>
                         }
                     </tbody>
-                </table>
+                </MudSimpleTable>
             }
         }
     }

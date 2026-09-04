@@ -4,24 +4,24 @@
 @inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
 
-<h1>Device Sign-In</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Device Sign-In</MudText>
 
 @if (SessionState.IsSignedIn)
 {
-    <p style="color:green">Signed in as operator @SessionState.OperatorId (@SessionState.Role).</p>
-    <button @onclick="SignOutAsync">Sign out</button>
+    <MudAlert Severity="Severity.Success">Signed in as operator @SessionState.OperatorId (@SessionState.Role).</MudAlert>
+    <MudButton OnClick="SignOutAsync" Variant="Variant.Outlined" Color="Color.Secondary">Sign out</MudButton>
 }
 else
 {
-    <p>Sign in on this already-paired device with your passkey. If this device has not been paired yet, ask a Super Admin to generate a pairing QR code from the Paired Devices screen.</p>
+    <MudText>Sign in on this already-paired device with your passkey. If this device has not been paired yet, ask a Super Admin to generate a pairing QR code from the Paired Devices screen.</MudText>
 
-    <button @onclick="SignInAsync" disabled="@_isSigningIn">
+    <MudButton OnClick="SignInAsync" Disabled="@_isSigningIn" Variant="Variant.Filled" Color="Color.Primary">
         @(_isSigningIn ? "Waiting for passkey..." : "Sign in with Passkey")
-    </button>
+    </MudButton>
 
     @if (_error is not null)
     {
-        <p style="color:red">@_error</p>
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
     }
 }
 

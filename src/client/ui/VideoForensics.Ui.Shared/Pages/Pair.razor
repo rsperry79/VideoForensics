@@ -3,40 +3,34 @@
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
 
-<h1>Pair This Device</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Pair This Device</MudText>
 
 @if (_token is null)
 {
-    <p style="color:red">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</p>
+    <MudAlert Severity="Severity.Error">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</MudAlert>
 }
 else if (_result is not null)
 {
-    <p style="color:green">
+    <MudAlert Severity="Severity.Success">
         Device paired successfully as <strong>@_result.Value.Role</strong>.
-        You can now <a href="/device-signin">sign in with your passkey</a>.
-    </p>
+        You can now <MudLink Href="/device-signin">sign in with your passkey</MudLink>.
+    </MudAlert>
 }
 else
 {
-    <p>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</p>
+    <MudStack Spacing="3" Class="mb-4">
+        <MudText>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</MudText>
+        <MudTextField @bind-Value="_operatorDisplayName" Label="Your name" Variant="Variant.Outlined" Placeholder="e.g. Jane Doe" @oninput="@((ChangeEventArgs e) => _operatorDisplayName = (string?)e.Value ?? string.Empty)" />
+        <MudTextField @bind-Value="_deviceName" Label="Device name" Variant="Variant.Outlined" Placeholder="e.g. Jane's Laptop" @oninput="@((ChangeEventArgs e) => _deviceName = (string?)e.Value ?? string.Empty)" />
+        <MudButton OnClick="PairAsync" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))">
+            @(_isPairing ? "Waiting for passkey..." : "Pair Device")
+        </MudButton>
 
-    <p>
-        <label for="operatorName">Your name</label>
-        <input id="operatorName" type="text" @bind="_operatorDisplayName" @bind:event="oninput" placeholder="e.g. Jane Doe" />
-    </p>
-    <p>
-        <label for="deviceName">Device name</label>
-        <input id="deviceName" type="text" @bind="_deviceName" @bind:event="oninput" placeholder="e.g. Jane's Laptop" />
-    </p>
-
-    <button @onclick="PairAsync" disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))">
-        @(_isPairing ? "Waiting for passkey..." : "Pair Device")
-    </button>
-
-    @if (_error is not null)
-    {
-        <p style="color:red">@_error</p>
-    }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+    </MudStack>
 }
 
 @code {

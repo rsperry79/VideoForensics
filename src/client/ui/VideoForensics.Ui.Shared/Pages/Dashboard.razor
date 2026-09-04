@@ -2,25 +2,25 @@
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 
-<h1>VideoForensics</h1>
+<MudText Typo="Typo.h4" Class="mb-4">VideoForensics</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to view your devices.</p>
+    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to view your devices.</MudText>
 }
 else
 {
     @if (_devices.Count == 0)
     {
-        <p>No devices found yet.</p>
+        <MudText>No devices found yet.</MudText>
     }
     else
     {
-        <table>
+        <MudSimpleTable Hover="true" Dense="true">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -40,7 +40,7 @@ else
                     </tr>
                 }
             </tbody>
-        </table>
+        </MudSimpleTable>
     }
 }
 

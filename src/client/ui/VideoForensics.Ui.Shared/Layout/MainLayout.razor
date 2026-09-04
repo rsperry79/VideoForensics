@@ -1,43 +1,96 @@
 @inherits LayoutComponentBase
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
+@inject IProviderAuthService ProviderAuth
+@inject IAppLockPreferencesStore AppLockPreferences
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <h2>VideoForensics</h2>
-        <nav>
-            <a href="/">Dashboard</a>
-            <a href="/workflow">Full Workflow</a>
-            <a href="/accounts">Accounts</a>
-            <a href="/collect/videos">Collect Videos</a>
-            <a href="/collect/snapshots">Collect Snapshots</a>
-            <a href="/review">Review Evidence</a>
-            <a href="/analyze/reports">Forensic Reports</a>
-            <a href="/analyze/signal-anomalies">Signal Anomalies</a>
-            <a href="/analyze/access-control">Access Control</a>
-            <a href="/analyze/chain-of-custody">Chain of Custody</a>
-            <a href="/analyze/validate/integrity">Validate Evidence</a>
-            <a href="/analyze/jamming">Jamming Analysis</a>
-            <a href="/events">Browse Events</a>
-            <a href="/devices/config">Device Configuration</a>
-            <a href="/query">Query API</a>
-            <a href="/settings">Settings</a>
-            <a href="/settings/infrastructure">Infrastructure</a>
-            <a href="/settings/devices">Paired Devices</a>
-            <a href="/settings/operators">Operators</a>
-            <a href="/settings/security-log">Security Audit Log</a>
-            <a href="/settings/network">Network Access</a>
-            <a href="/settings/remote-access">Remote Access</a>
-            <a href="/settings/notifications">Notifications</a>
-            <a href="/settings/app-lock">App Lock</a>
-            <a href="/device-signin">Device Sign-In</a>
-        </nav>
-    </div>
+<MudAppBar Dense="true" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mr-6">VideoForensics</MudText>
 
-    <main>
-        @Body
-    </main>
-</div>
+    <MudLink Href="/" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Dashboard</MudLink>
+    <MudLink Href="/workflow" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Full Workflow</MudLink>
+
+    <MudMenu Label="Collect" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
+        <MudMenuItem Href="/collect/videos">Collect Videos</MudMenuItem>
+        <MudMenuItem Href="/collect/snapshots">Collect Snapshots</MudMenuItem>
+    </MudMenu>
+
+    <MudMenu Label="Analyze" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
+        <MudMenuItem Href="/analyze/reports">Forensic Reports</MudMenuItem>
+        <MudMenuItem Href="/analyze/signal-anomalies">Signal Anomalies</MudMenuItem>
+        <MudMenuItem Href="/analyze/access-control">Access Control</MudMenuItem>
+        <MudMenuItem Href="/analyze/chain-of-custody">Chain of Custody</MudMenuItem>
+        <MudMenuItem Href="/analyze/validate/integrity">Validate Evidence</MudMenuItem>
+        <MudMenuItem Href="/analyze/jamming">Jamming Analysis</MudMenuItem>
+    </MudMenu>
+
+    <MudMenu Label="Evidence" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
+        <MudMenuItem Href="/review">Review Evidence</MudMenuItem>
+        <MudMenuItem Href="/events">Browse Events</MudMenuItem>
+    </MudMenu>
+
+    <MudMenu Label="Devices" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomLeft">
+        <MudMenuItem Href="/devices/config">Device Configuration</MudMenuItem>
+        @if (HasRole(OperatorRole.SuperAdmin))
+        {
+            <MudMenuItem Href="/settings/devices">Paired Devices</MudMenuItem>
+        }
+        @if (!SessionState.IsSignedIn)
+        {
+            <MudMenuItem Href="/device-signin">Device Sign-In</MudMenuItem>
+        }
+    </MudMenu>
+
+    <MudLink Href="/query" Underline="Underline.None" Color="Color.Inherit" Class="px-3">Query API</MudLink>
+
+    <MudSpacer />
+
+    <MudMenu Label="Settings" Color="Color.Inherit" Variant="Variant.Text" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+        <MudMenuItem Href="/settings">General</MudMenuItem>
+        <MudMenuItem Href="/accounts">Accounts</MudMenuItem>
+        <MudMenuItem Href="/settings/infrastructure">Infrastructure</MudMenuItem>
+        @if (HasRole(OperatorRole.SuperAdmin))
+        {
+            <MudMenuItem Href="/settings/operators">Operators</MudMenuItem>
+            <MudMenuItem Href="/settings/network">Network Access</MudMenuItem>
+            <MudMenuItem Href="/settings/remote-access">Remote Access</MudMenuItem>
+        }
+        @if (HasRole(OperatorRole.Admin))
+        {
+            <MudMenuItem Href="/settings/notifications">Notifications</MudMenuItem>
+            <MudMenuItem Href="/settings/security-log">Security Audit Log</MudMenuItem>
+        }
+        @if (AppLockPreferences.IsSupported)
+        {
+            <MudMenuItem Href="/settings/app-lock">App Lock</MudMenuItem>
+        }
+    </MudMenu>
+</MudAppBar>
+
+<main>
+    @Body
+</main>
+
+@code {
+    private OperatorRole? _role;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // IJSRuntime is unavailable during Blazor's static prerender pass, so the session can
+            // only be resolved once the circuit is connected (same pattern as SecurityOperators.razor).
+            await SessionState.EnsureLoadedAsync();
+            _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+            StateHasChanged();
+        }
+    }
+
+    private bool HasRole(OperatorRole minimum) => SessionState.IsSignedIn && _role is not null && _role >= minimum;
+}

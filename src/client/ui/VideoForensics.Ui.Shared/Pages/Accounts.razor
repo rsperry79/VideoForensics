@@ -5,26 +5,26 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 
-<h1>Accounts</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Accounts</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading accounts...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else
 {
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
-        <p>@_statusMessage</p>
+        <MudText>@_statusMessage</MudText>
     }
 
     @if (_rows.Count == 0)
     {
-        <p>No accounts linked yet.</p>
+        <MudText>No accounts linked yet.</MudText>
     }
     else
     {
-        <table>
+        <MudSimpleTable Hover="true" Dense="true">
             <thead>
                 <tr>
                     <th>Display Name</th>
@@ -45,26 +45,26 @@ else
                         <td>@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</td>
                         <td>@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</td>
                         <td>
-                            <button @onclick="() => SelectAccountAsync(row.Account.Id)" disabled="@_isBusy">Select</button>
+                            <MudButton OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" Variant="Variant.Filled" Color="Color.Primary">Select</MudButton>
                             @if (_confirmingRemoveId == row.Account.Id)
                             {
-                                <span>Are you sure?</span>
-                                <button @onclick="() => RemoveAccountAsync(row.Account.Id)" disabled="@_isBusy">Yes</button>
-                                <button @onclick="() => _confirmingRemoveId = null" disabled="@_isBusy">No</button>
+                                <MudText>Are you sure?</MudText>
+                                <MudButton OnClick="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Success">Yes</MudButton>
+                                <MudButton OnClick="() => _confirmingRemoveId = null" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Default">No</MudButton>
                             }
                             else
                             {
-                                <button @onclick="() => _confirmingRemoveId = row.Account.Id" disabled="@_isBusy">Remove</button>
+                                <MudButton OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" Variant="Variant.Outlined" Color="Color.Error">Remove</MudButton>
                             }
                         </td>
                     </tr>
                 }
             </tbody>
-        </table>
+        </MudSimpleTable>
     }
 }
 
-<h2>Add Account</h2>
+<MudText Typo="Typo.h5" Class="mt-4 mb-2">Add Account</MudText>
 <AuthForm IdPrefix="addaccount" SubmitLabel="Add Account" OnAuthenticated="HandleAccountAddedAsync" />
 
 @code {

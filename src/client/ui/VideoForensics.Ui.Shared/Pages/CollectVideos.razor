@@ -2,22 +2,21 @@
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 
-<h1>Collect Videos</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Collect Videos</MudText>
 
 @if (_isLoading)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <p>You are not signed in. <a href="/signin">Sign in</a> to collect videos.</p>
+    <MudText>You are not signed in. <MudLink Href="/signin">Sign in</MudLink> to collect videos.</MudText>
 }
 else
 {
     <div class="collect-form">
         <div>
-            <label for="outputPath">Output Path</label>
-            <input id="outputPath" type="text" @bind="_outputPath" disabled="@_isDownloading" style="width: 400px;" />
+            <MudTextField @bind-Value="_outputPath" Label="Output Path" Variant="Variant.Outlined" Disabled="@_isDownloading" />
         </div>
         <div>
             <label for="startDate">Start Date</label>
@@ -28,23 +27,20 @@ else
             <input id="endDate" type="date" @bind="_endDate" disabled="@_isDownloading" />
         </div>
         <div>
-            <label for="forceRescan">
-                <input id="forceRescan" type="checkbox" @bind="_force" disabled="@_isDownloading" />
-                Force full re-scan
-            </label>
+            <MudCheckBox @bind-Value="_force" Label="Force full re-scan" Disabled="@_isDownloading" />
         </div>
         <div>
-            <button @onclick="StartDownloadAsync" disabled="@_isDownloading">Start Download</button>
+            <MudButton OnClick="StartDownloadAsync" Disabled="@_isDownloading" Variant="Variant.Filled" Color="Color.Primary">Start Download</MudButton>
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <p style="color: red;">@_errorMessage</p>
+            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
         }
 
         @if (_downloadCompleted)
         {
-            <p>@(_downloadSucceeded ? "Download completed." : "Download finished with errors.")</p>
+            <MudText>@(_downloadSucceeded ? "Download completed." : "Download finished with errors.")</MudText>
         }
     </div>
 

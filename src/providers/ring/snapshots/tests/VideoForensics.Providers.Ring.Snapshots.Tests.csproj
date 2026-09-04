@@ -33,4 +33,7 @@
     <ProjectReference Include="../VideoForensics.Providers.Ring.Snapshots.csproj" />
     <ProjectReference Include="../../core/VideoForensics.Providers.Ring.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.0" />
+  </ItemGroup>
 </Project>

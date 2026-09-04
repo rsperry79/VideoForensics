@@ -2,17 +2,17 @@
 @inject IProviderAuthService AuthService
 @inject NavigationManager NavigationManager
 
-<h1>Sign In</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Sign In</MudText>
 
 @if (_restoringSession)
 {
-    <p>Checking for a saved session...</p>
+    <MudProgressCircular Indeterminate="true" />
 }
 else
 {
     @if (!string.IsNullOrEmpty(_restoreErrorMessage))
     {
-        <p style="color:red">@_restoreErrorMessage</p>
+        <MudAlert Severity="Severity.Error">@_restoreErrorMessage</MudAlert>
     }
 
     <AuthForm IdPrefix="signin" SubmitLabel="Sign In" OnAuthenticated="HandleAuthenticated" />
