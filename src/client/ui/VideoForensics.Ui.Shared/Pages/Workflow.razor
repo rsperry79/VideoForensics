@@ -1,0 +1,72 @@
+@page "/workflow"
+@inject IProviderAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<h1>Full Forensic Workflow</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to use the workflow.</p>
+}
+else
+{
+    <ol class="workflow-steps">
+        <li>
+            <h2>1. Sign in / select account</h2>
+            <p>Choose which provider account this session works against.</p>
+            <a href="/accounts">Go to Accounts</a>
+        </li>
+        <li>
+            <h2>2. Collect evidence</h2>
+            <p>Download videos and snapshots from your devices.</p>
+            <a href="/collect/videos">Collect Videos</a>
+            &nbsp;|&nbsp;
+            <a href="/collect/snapshots">Collect Snapshots</a>
+        </li>
+        <li>
+            <h2>3. Review evidence</h2>
+            <p>Review collected evidence and manage legal holds.</p>
+            <a href="/review">Go to Review</a>
+        </li>
+        <li>
+            <h2>4. Validate evidence</h2>
+            <p>Verify the integrity of collected evidence.</p>
+            <a href="/analyze/validate/integrity">Go to Integrity Validation</a>
+        </li>
+        <li>
+            <h2>5. Analyze</h2>
+            <p>Generate reports and analyze jamming and signal anomalies.</p>
+            <a href="/analyze/reports">Reports</a>
+            &nbsp;|&nbsp;
+            <a href="/analyze/jamming">Jamming Analysis</a>
+            &nbsp;|&nbsp;
+            <a href="/analyze/signal-anomalies">Signal Anomalies</a>
+        </li>
+        <li>
+            <h2>6. Export</h2>
+            <p>Export the reviewed evidence for delivery.</p>
+            <a href="/review/export">Go to Export</a>
+        </li>
+    </ol>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
