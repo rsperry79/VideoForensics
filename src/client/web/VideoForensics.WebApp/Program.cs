@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
+using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// WebAuthn/passkey pairing (plan §5.1/M6). ServerDomain/Origins are dev defaults for the
+// local/LAN case (§5.2's Local and Network tiers, no tunnel) - the Internet tier (Cloudflare
+// Tunnel, M6's later network-tier work) will need this to reflect the tunnel's public origin
+// instead, which is a configuration concern for that work, not this registration.
+builder.Services.AddFido2(options =>
+{
+    options.ServerDomain = "localhost";
+    options.ServerName = "VideoForensics";
+    options.Origins = new HashSet<string> { "https://localhost:5162", "http://localhost:5162" };
+});
+
+builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName)
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, PairedDeviceAuthenticationHandler>(
+        PairedDeviceAuthenticationDefaults.SchemeName, _ => { });
+
+builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
 
 // Shared data layer + server-tier provider/orchestrator registrations (session provider, Ring's
 // four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
@@ -47,6 +65,9 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
@@ -54,6 +75,7 @@ app.MapStaticAssets();
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
+app.MapPairingEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
