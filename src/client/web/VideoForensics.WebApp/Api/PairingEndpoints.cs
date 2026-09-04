@@ -113,7 +113,20 @@ namespace VideoForensics.WebApp.Api
                 {
                     User = fido2User,
                     ExcludeCredentials = new List<PublicKeyCredentialDescriptor>(),
-                    AuthenticatorSelection = AuthenticatorSelection.Default,
+                    // AuthenticatorSelection.Default leaves AuthenticatorAttachment unset and
+                    // UserVerification "discouraged" - that's why registration wasn't going
+                    // straight to Windows Hello: an unset attachment lets the browser offer ANY
+                    // authenticator (a USB security key qualifies just as well as the platform
+                    // one), and "discouraged" means even a passwordless authenticator can skip the
+                    // actual biometric/PIN prompt. Explicit here since this app's whole security
+                    // model assumes a verified platform authenticator, not merely "some key was
+                    // present."
+                    AuthenticatorSelection = new AuthenticatorSelection
+                    {
+                        AuthenticatorAttachment = AuthenticatorAttachment.Platform,
+                        ResidentKey = ResidentKeyRequirement.Preferred,
+                        UserVerification = UserVerificationRequirement.Required
+                    },
                     AttestationPreference = AttestationConveyancePreference.None
                 });
 
@@ -222,7 +235,11 @@ namespace VideoForensics.WebApp.Api
                 var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
                 {
                     AllowedCredentials = allowedCredentials,
-                    UserVerification = UserVerificationRequirement.Preferred
+                    // Required, not Preferred/Discouraged - used for both sign-in and step-up
+                    // (§5.7), and step-up specifically exists to re-confirm "is it still really
+                    // them, right now" - that guarantee is meaningless if the authenticator can
+                    // satisfy it with mere presence instead of an actual biometric/PIN check.
+                    UserVerification = UserVerificationRequirement.Required
                 });
                 var nonce = ceremonyCache.Store(options.ToJson());
 
