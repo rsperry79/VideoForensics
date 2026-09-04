@@ -1,0 +1,195 @@
+@page "/settings/devices"
+@using VideoForensics.Data.Common.Entities
+@inject NavigationManager NavigationManager
+
+<h1>Paired Devices</h1>
+
+<p>
+    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
+</p>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (_authError is not null)
+{
+    <p style="color:red">@_authError</p>
+    <p>
+        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
+        built) or you can test manually with a <code>sessionToken</code> you already have.
+    </p>
+}
+else if (_loadError is not null)
+{
+    <p style="color:red">@_loadError</p>
+}
+else if (_devices is null || _devices.Count == 0)
+{
+    <p>No paired devices found.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Device Name</th>
+                <th>Role</th>
+                <th>Paired At (UTC)</th>
+                <th>Last Seen (UTC)</th>
+                <th>Last Seen IP</th>
+                <th>Last Seen Tier</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var device in _devices)
+            {
+                <tr>
+                    <td>@device.DeviceName</td>
+                    <td>@device.Role</td>
+                    <td>@device.PairedAtUtc</td>
+                    <td>@(device.LastSeenAtUtc?.ToString() ?? "-")</td>
+                    <td>@(device.LastSeenIp ?? "-")</td>
+                    <td>@(device.LastSeenTier?.ToString() ?? "-")</td>
+                    <td>
+                        @if (device.IsActive)
+                        {
+                            <span style="color:green">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:red">Revoked: @device.RevokedReason</span>
+                        }
+                    </td>
+                    <td>
+                        @if (device.IsActive)
+                        {
+                            <button @onclick="() => BeginRevoke(device.Id)">Revoke</button>
+                            @if (_pendingRevokeDeviceId == device.Id)
+                            {
+                                <div>
+                                    <input type="text" @bind="_reasonInput" @bind:event="oninput" placeholder="Reason for revocation" />
+                                    <button @onclick="() => ConfirmRevoke(device.Id)">Confirm</button>
+                                    <button @onclick="CancelPending">Cancel</button>
+                                </div>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_actionError is not null)
+{
+    <p style="color:red">@_actionError</p>
+}
+
+@code {
+    private bool _isLoading = true;
+    private List<PairedDevice>? _devices;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionError;
+    private Guid? _pendingRevokeDeviceId;
+    private string _reasonInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/devices-management/paired-devices");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view paired devices.";
+                _devices = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            _devices = await response.Content.ReadFromJsonAsync<List<PairedDevice>>(JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load paired devices: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BeginRevoke(Guid deviceId)
+    {
+        _pendingRevokeDeviceId = deviceId;
+        _reasonInput = string.Empty;
+        _actionError = null;
+    }
+
+    private void CancelPending()
+    {
+        _pendingRevokeDeviceId = null;
+        _reasonInput = string.Empty;
+    }
+
+    private async Task ConfirmRevoke(Guid deviceId)
+    {
+        if (string.IsNullOrWhiteSpace(_reasonInput))
+        {
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync($"api/devices-management/paired-devices/{deviceId}/revoke", new { reason = _reasonInput });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? $"Revoke failed: {response.StatusCode}";
+                return;
+            }
+
+            CancelPending();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Revoke failed: {ex.Message}";
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}
