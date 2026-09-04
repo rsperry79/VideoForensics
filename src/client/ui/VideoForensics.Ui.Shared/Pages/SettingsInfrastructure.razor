@@ -16,6 +16,20 @@ else if (!_isAuthenticated)
 }
 else
 {
+    <h2>Data-at-Rest Encryption</h2>
+    <div class="settings-group">
+        <p style="color:goldenrod">
+            <strong>Neither the database nor downloaded media files are encrypted by this application.</strong>
+            An application-level database encryption approach (SQLCipher) was evaluated and found to
+            silently fail to apply schema changes under this platform's current SQLite provider version -
+            a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe
+            approach is available, protecting this data at rest is the owner's responsibility: enable
+            full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding
+            <code>%AppData%\VideoForensics</code> and your configured download location, and secure
+            physical access to this machine.
+        </p>
+    </div>
+
     <h2>Key Storage Provider</h2>
     <div class="settings-group">
         <div>
