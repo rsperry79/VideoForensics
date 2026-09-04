@@ -1,0 +1,115 @@
+@page "/settings/security-log"
+@using VideoForensics.Data.Common.Entities
+@inject NavigationManager NavigationManager
+
+<h1>Security Audit Log</h1>
+
+<p>
+    <label for="operatorIdFilter">Operator Id</label>
+    <input id="operatorIdFilter" type="text" @bind="_operatorIdInput" @bind:event="oninput" placeholder="(optional) filter by operator id" />
+    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
+</p>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (_authError is not null)
+{
+    <p style="color:red">@_authError</p>
+    <p>
+        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
+        built) or you can test manually with a <code>sessionToken</code> you already have.
+    </p>
+}
+else if (_loadError is not null)
+{
+    <p style="color:red">@_loadError</p>
+}
+else if (_entries is null || _entries.Count == 0)
+{
+    <p>No audit log entries found.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Event Type</th>
+                <th>Operator Id</th>
+                <th>Paired Device Id</th>
+                <th>Source IP</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in _entries.OrderByDescending(e => e.TimestampUtc))
+            {
+                <tr style="@(entry.IsUrgent ? "color:red;font-weight:bold" : null)">
+                    <td>@entry.TimestampUtc</td>
+                    <td>@entry.EventType</td>
+                    <td>@(entry.OperatorId?.ToString() ?? "-")</td>
+                    <td>@(entry.PairedDeviceId?.ToString() ?? "-")</td>
+                    <td>@(entry.SourceIp ?? "-")</td>
+                    <td>@(entry.Details ?? "-")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _isLoading = true;
+    private List<SecurityAuditLogEntry>? _entries;
+    private string? _authError;
+    private string? _loadError;
+    private string _operatorIdInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            var client = CreateClient();
+            var url = "api/security-audit-log";
+            if (Guid.TryParse(_operatorIdInput, out var operatorId))
+            {
+                url += $"?operatorId={operatorId}";
+            }
+
+            var response = await client.GetAsync(url);
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view the security audit log.";
+                _entries = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            _entries = await response.Content.ReadFromJsonAsync<List<SecurityAuditLogEntry>>(JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load security audit log: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}

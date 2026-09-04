@@ -1,0 +1,187 @@
+@page "/settings/operators"
+@using VideoForensics.Data.Common.Entities
+@inject NavigationManager NavigationManager
+
+<h1>Operators</h1>
+
+<p>
+    <button @onclick="LoadAsync" disabled="@_isLoading">Refresh</button>
+</p>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (_authError is not null)
+{
+    <p style="color:red">@_authError</p>
+    <p>
+        Not authorized. Pairing/sign-in via this page requires a completed passkey ceremony (not yet
+        built) or you can test manually with a <code>sessionToken</code> you already have.
+    </p>
+}
+else if (_loadError is not null)
+{
+    <p style="color:red">@_loadError</p>
+}
+else if (_operators is null || _operators.Count == 0)
+{
+    <p>No operators found.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Display Name</th>
+                <th>Created At (UTC)</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var op in _operators)
+            {
+                <tr>
+                    <td>@op.DisplayName</td>
+                    <td>@op.CreatedAtUtc</td>
+                    <td>
+                        @if (op.Active)
+                        {
+                            <span style="color:green">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:red">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        @if (op.Active)
+                        {
+                            <button @onclick="() => BeginDeactivate(op.Id)">Deactivate</button>
+                            @if (_pendingDeactivateOperatorId == op.Id)
+                            {
+                                <div>
+                                    <input type="text" @bind="_reasonInput" @bind:event="oninput" placeholder="Reason for deactivation" />
+                                    <button @onclick="() => ConfirmDeactivate(op.Id)">Confirm</button>
+                                    <button @onclick="CancelPending">Cancel</button>
+                                </div>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_actionError is not null)
+{
+    <p style="color:red">@_actionError</p>
+}
+
+@code {
+    private bool _isLoading = true;
+    private List<Operator>? _operators;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionError;
+    private Guid? _pendingDeactivateOperatorId;
+    private string _reasonInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/devices-management/operators");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view operators.";
+                _operators = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            _operators = await response.Content.ReadFromJsonAsync<List<Operator>>(JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load operators: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BeginDeactivate(Guid operatorId)
+    {
+        _pendingDeactivateOperatorId = operatorId;
+        _reasonInput = string.Empty;
+        _actionError = null;
+    }
+
+    private void CancelPending()
+    {
+        _pendingDeactivateOperatorId = null;
+        _reasonInput = string.Empty;
+    }
+
+    private async Task ConfirmDeactivate(Guid operatorId)
+    {
+        if (string.IsNullOrWhiteSpace(_reasonInput))
+        {
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync($"api/devices-management/operators/{operatorId}/deactivate", new { reason = _reasonInput });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? $"Deactivate failed: {response.StatusCode}";
+                return;
+            }
+
+            CancelPending();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Deactivate failed: {ex.Message}";
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        return new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}
