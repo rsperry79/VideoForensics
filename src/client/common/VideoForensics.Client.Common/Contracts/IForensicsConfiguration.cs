@@ -23,6 +23,16 @@ namespace VideoForensics.Client.Common
         bool EnableHealthSync { get; set; }
         /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
         bool EnableMdnsAdvertisement { get; set; }
+
+        /// <summary>Toggles the email notification channel for urgent security events (plan §5.6). The SMTP password itself is NOT stored here - see ISmtpPasswordStore, which routes it through ICredentialEncryptionProvider per plan §4.1.</summary>
+        bool EnableEmailNotifications { get; set; }
+        string SmtpHost { get; set; }
+        int SmtpPort { get; set; }
+        bool SmtpUseTls { get; set; }
+        string SmtpUsername { get; set; }
+        string SmtpFromAddress { get; set; }
+        /// <summary>Where urgent security notifications are sent - the server owner's own inbox, not tied to any Operator record.</summary>
+        string NotificationRecipientEmail { get; set; }
     }
 
     public enum RedactionLevel
@@ -61,5 +71,12 @@ namespace VideoForensics.Client.Common
         public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
         public bool EnableMdnsAdvertisement { get; set; } = true;
+        public bool EnableEmailNotifications { get; set; } = false;
+        public string SmtpHost { get; set; } = "";
+        public int SmtpPort { get; set; } = 587;
+        public bool SmtpUseTls { get; set; } = true;
+        public string SmtpUsername { get; set; } = "";
+        public string SmtpFromAddress { get; set; } = "";
+        public string NotificationRecipientEmail { get; set; } = "";
     }
 }

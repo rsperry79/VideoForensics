@@ -40,5 +40,32 @@ namespace VideoForensics.Data.Common.Entities
         public const string TunnelStopped = nameof(TunnelStopped);
         public const string ProviderRateLimitHit = nameof(ProviderRateLimitHit);
         public const string ProviderApiVolumeAnomaly = nameof(ProviderApiVolumeAnomaly);
+
+        /// <summary>
+        /// The urgency each event type is logged with today at its actual call site, absent any
+        /// operator override (plan §5.6's per-event-type notification toggle reads this as the
+        /// baseline). Kept next to the constants it describes so the two never drift apart - if a
+        /// call site's own <c>isUrgent:</c> argument changes, this table should change with it.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, bool> DefaultUrgency = new Dictionary<string, bool>
+        {
+            [PairingInitiated] = false,
+            [PairingCompleted] = true,
+            [PairingRevoked] = true,
+            [OperatorDeactivated] = true,
+            [AuthSuccess] = false,
+            [AuthFailure] = true,
+            [SessionVerified] = false,
+            [StepUpVerified] = false,
+            [StepUpFailed] = true,
+            [RateLimitLockout] = true,
+            [NetworkTierChanged] = true,
+            [SuperAdminActionDeniedRemote] = true,
+            [CertificateFingerprintMismatch] = true,
+            [TunnelStarted] = true,
+            [TunnelStopped] = true,
+            [ProviderRateLimitHit] = true,
+            [ProviderApiVolumeAnomaly] = true,
+        };
     }
 }

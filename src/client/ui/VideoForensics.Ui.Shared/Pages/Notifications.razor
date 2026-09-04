@@ -1,0 +1,317 @@
+@page "/settings/notifications"
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+
+<MudText Typo="Typo.h4" Class="mb-4">Notifications</MudText>
+
+@if (!SessionState.IsSignedIn)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudLink Href="/device-signin">Sign in with your passkey</MudLink> to manage notification settings.
+    </MudAlert>
+}
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_authError</MudAlert>
+    <MudText>
+        Not authorized. <MudLink Href="/device-signin">Sign in with your passkey</MudLink> - an Admin (or higher)
+        device is required to manage notification settings.
+    </MudText>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Email</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                The reliable baseline channel - reaches you regardless of whether any client app is
+                open. Other channels (Web Push, MAUI toast) are planned but not yet built.
+            </MudText>
+            <MudSwitch T="bool" @bind-Value="_enableEmail" Color="Color.Primary" Label="Enable email notifications" />
+            <MudStack Row="true" Spacing="3">
+                <MudTextField @bind-Value="_smtpHost" Label="SMTP Host" Variant="Variant.Outlined" Style="max-width: 260px;" />
+                <MudNumericField @bind-Value="_smtpPort" Label="Port" Variant="Variant.Outlined" Style="max-width: 120px;" />
+                <MudSwitch T="bool" @bind-Value="_smtpUseTls" Color="Color.Primary" Label="Use STARTTLS" />
+            </MudStack>
+            <MudStack Row="true" Spacing="3">
+                <MudTextField @bind-Value="_smtpUsername" Label="SMTP Username" Variant="Variant.Outlined" Style="max-width: 260px;" />
+                <MudTextField @bind-Value="_smtpPassword" Label="SMTP Password" InputType="InputType.Password" Placeholder="(unchanged)" Variant="Variant.Outlined" Style="max-width: 260px;" />
+            </MudStack>
+            <MudStack Row="true" Spacing="3">
+                <MudTextField @bind-Value="_smtpFromAddress" Label="From Address" Variant="Variant.Outlined" Style="max-width: 300px;" />
+                <MudTextField @bind-Value="_recipientEmail" Label="Notify This Address" Variant="Variant.Outlined" Style="max-width: 300px;" />
+            </MudStack>
+            <MudStack Row="true" Spacing="3">
+                <MudButton OnClick="SaveSettingsAsync" Disabled="@_isSaving" Variant="Variant.Filled" Color="Color.Primary">
+                    @(_isSaving ? "Saving..." : "Save")
+                </MudButton>
+                <MudButton OnClick="SendTestEmailAsync" Disabled="@_isSendingTest" Variant="Variant.Outlined">
+                    @(_isSendingTest ? "Sending..." : "Send Test Email")
+                </MudButton>
+            </MudStack>
+            @if (_settingsMessage is not null)
+            {
+                <MudText Color="@(_settingsSuccess ? Color.Success : Color.Error)">@_settingsMessage</MudText>
+            }
+        </MudStack>
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Urgent Event Overrides</MudText>
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Every security event type ships with a reviewed default urgency. Override one below if
+            it should (or shouldn't) trigger a notification differently than the default.
+        </MudText>
+        @if (_urgencyRows.Count == 0)
+        {
+            <MudText>No event types found.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_urgencyRows" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Event Type</MudTh>
+                    <MudTh>Default</MudTh>
+                    <MudTh>Effective</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Event Type">@context.EventType</MudTd>
+                    <MudTd DataLabel="Default">@(context.DefaultUrgent ? "Urgent" : "Routine")</MudTd>
+                    <MudTd DataLabel="Effective">
+                        <MudSwitch T="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" Color="Color.Primary" Label="@(context.EffectiveUrgent ? "Urgent" : "Routine")" />
+                    </MudTd>
+                    <MudTd>
+                        @if (context.OverrideUrgent is not null)
+                        {
+                            <MudButton OnClick="() => ClearOverrideAsync(context.EventType)" Variant="Variant.Text" Size="Size.Small">Reset to default</MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isSendingTest;
+    private string? _authError;
+    private string? _loadError;
+    private string? _settingsMessage;
+    private bool _settingsSuccess;
+
+    private bool _enableEmail;
+    private string _smtpHost = "";
+    private int _smtpPort = 587;
+    private bool _smtpUseTls = true;
+    private string _smtpUsername = "";
+    private string _smtpPassword = "";
+    private string _smtpFromAddress = "";
+    private string _recipientEmail = "";
+
+    private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
+    private List<UrgencyRow> _urgencyRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            var client = CreateClient();
+
+            var settingsResponse = await client.GetAsync("api/notifications/settings");
+            if (settingsResponse.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = "Not authorized to view notification settings.";
+                return;
+            }
+
+            settingsResponse.EnsureSuccessStatusCode();
+            var settings = await settingsResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _enableEmail = settings.GetProperty("enableEmailNotifications").GetBoolean();
+            _smtpHost = settings.GetProperty("smtpHost").GetString() ?? "";
+            _smtpPort = settings.GetProperty("smtpPort").GetInt32();
+            _smtpUseTls = settings.GetProperty("smtpUseTls").GetBoolean();
+            _smtpUsername = settings.GetProperty("smtpUsername").GetString() ?? "";
+            _smtpFromAddress = settings.GetProperty("smtpFromAddress").GetString() ?? "";
+            _recipientEmail = settings.GetProperty("notificationRecipientEmail").GetString() ?? "";
+            _smtpPassword = "";
+
+            var overridesResponse = await client.GetAsync("api/notifications/urgency-overrides");
+            if (overridesResponse.IsSuccessStatusCode)
+            {
+                var rows = await overridesResponse.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>();
+                _urgencyRows = (rows ?? new()).Select(r => new UrgencyRow(
+                    r.GetProperty("eventType").GetString()!,
+                    r.GetProperty("defaultUrgent").GetBoolean(),
+                    r.GetProperty("overrideUrgent").ValueKind == System.Text.Json.JsonValueKind.Null ? null : r.GetProperty("overrideUrgent").GetBoolean(),
+                    r.GetProperty("effectiveUrgent").GetBoolean()
+                )).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load notification settings: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _isSaving = true;
+        _settingsMessage = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync("api/notifications/settings", new
+            {
+                enableEmailNotifications = _enableEmail,
+                smtpHost = _smtpHost,
+                smtpPort = _smtpPort,
+                smtpUseTls = _smtpUseTls,
+                smtpUsername = _smtpUsername,
+                smtpPassword = string.IsNullOrEmpty(_smtpPassword) ? null : _smtpPassword,
+                smtpFromAddress = _smtpFromAddress,
+                notificationRecipientEmail = _recipientEmail
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _settingsSuccess = false;
+                _settingsMessage = $"Save failed: {response.StatusCode}";
+                return;
+            }
+
+            _smtpPassword = "";
+            _settingsSuccess = true;
+            _settingsMessage = "Saved.";
+        }
+        catch (Exception ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = $"Save failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SendTestEmailAsync()
+    {
+        _isSendingTest = true;
+        _settingsMessage = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsync("api/notifications/test-email", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _settingsSuccess = false;
+                _settingsMessage = body ?? $"Test email failed: {response.StatusCode}";
+                return;
+            }
+
+            _settingsSuccess = true;
+            _settingsMessage = "Test email sent.";
+        }
+        catch (Exception ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = $"Test email failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSendingTest = false;
+        }
+    }
+
+    private async Task SetOverrideAsync(string eventType, bool isUrgent)
+    {
+        try
+        {
+            var client = CreateClient();
+            await client.PostAsJsonAsync("api/notifications/urgency-overrides/set", new { eventType, isUrgent });
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = $"Failed to update override: {ex.Message}";
+        }
+    }
+
+    private async Task ClearOverrideAsync(string eventType)
+    {
+        try
+        {
+            var client = CreateClient();
+            await client.PostAsJsonAsync("api/notifications/urgency-overrides/clear", new { eventType });
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = $"Failed to clear override: {ex.Message}";
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+}

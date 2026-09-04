@@ -38,6 +38,13 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
+                runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;
+                runtimeConfig.SmtpHost = loadedConfig.SmtpHost;
+                runtimeConfig.SmtpPort = loadedConfig.SmtpPort;
+                runtimeConfig.SmtpUseTls = loadedConfig.SmtpUseTls;
+                runtimeConfig.SmtpUsername = loadedConfig.SmtpUsername;
+                runtimeConfig.SmtpFromAddress = loadedConfig.SmtpFromAddress;
+                runtimeConfig.NotificationRecipientEmail = loadedConfig.NotificationRecipientEmail;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }
