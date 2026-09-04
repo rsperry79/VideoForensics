@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VideoForensics.MauiApp.AppLock.AppLockPage"
+             BackgroundColor="#1E1E1E">
+
+    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20" Padding="40">
+        <Label Text="VideoForensics is locked"
+               FontSize="22"
+               TextColor="White"
+               HorizontalOptions="Center" />
+        <Label Text="Verify your identity to continue."
+               FontSize="14"
+               TextColor="#AAAAAA"
+               HorizontalOptions="Center" />
+        <Button x:Name="UnlockButton"
+                Text="Unlock"
+                Clicked="OnUnlockClicked"
+                HorizontalOptions="Center"
+                WidthRequest="160" />
+        <Label x:Name="ErrorLabel"
+               TextColor="#FF6B6B"
+               FontSize="13"
+               HorizontalOptions="Center"
+               IsVisible="False" />
+    </VerticalStackLayout>
+
+</ContentPage>

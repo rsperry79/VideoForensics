@@ -17,6 +17,12 @@
 
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
+    <!-- Pin to the latest Microsoft.Maui.Controls NuGet release (10.0.100) rather than the
+         version implied by the installed maui-windows workload manifest (10.0.20) - the NuGet
+         package itself ships ahead of the workload manifest, and CommunityToolkit.Maui's latest
+         release requires a newer Microsoft.Maui.Controls than the workload-implied default. -->
+    <MauiVersion>10.0.100</MauiVersion>
+
     <!-- Display name -->
     <ApplicationTitle>VideoForensics</ApplicationTitle>
 
@@ -60,10 +66,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Plugin.Fingerprint.MAUI" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>
