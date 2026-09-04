@@ -34,6 +34,7 @@
         <ProjectReference Include="..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
         <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
         <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
+        <ProjectReference Include="..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
     </ItemGroup>
 
 </Project>

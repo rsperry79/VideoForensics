@@ -364,6 +364,15 @@ namespace VideoForensics.Client.Core
                     return false;
                 }
 
+                // Without this, the provider service has no way to know which account is currently
+                // active and falls back to a synthetic placeholder account for every device/media
+                // record it creates - silently mis-attributing real downloads regardless of which
+                // Ring account is actually logged in.
+                if (_currentBatchAccountId.HasValue)
+                {
+                    _downloadService.SetActiveProviderAccountId(_currentBatchAccountId.Value);
+                }
+
                 // Get available devices
                 var uniqueDevices = await DiscoverUniqueDevicesAsync();
 
@@ -437,7 +446,8 @@ namespace VideoForensics.Client.Core
                         device.Id,
                         deviceOutputPath,
                         effectiveStartDate,
-                        endDate
+                        endDate,
+                        device.LocationId
                     );
 
                     if (result?.Success == true)
@@ -593,6 +603,12 @@ namespace VideoForensics.Client.Core
                     return false;
                 }
 
+                // See DownloadVideosAsync's identical call for why this matters.
+                if (_forensicsConfig.ActiveProviderAccountId is { } activeAccountId)
+                {
+                    _downloadService.SetActiveProviderAccountId(activeAccountId);
+                }
+
                 // Get available devices
                 var locations = await _deviceService.GetLocationsAsync();
                 if (locations == null || locations.Count == 0)
@@ -662,7 +678,8 @@ namespace VideoForensics.Client.Core
                         device.Id,
                         deviceOutputPath,
                         startDate,
-                        endDate
+                        endDate,
+                        device.LocationId
                     );
 
                     if (result?.Success == true)

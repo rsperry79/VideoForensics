@@ -1,0 +1,111 @@
+@* Shared credentials + 2FA flow used by both Pages/SignIn.razor and Pages/Accounts.razor's
+   "Add Account" section. Encapsulates the TaskCompletionSource-based 2FA callback pattern
+   described in IProviderAuthService.AuthenticateWithTwoFactorAsync, plus the
+   ActiveProviderAccountId bookkeeping that must happen on a successful login (see
+   MenuManager.AuthenticateWithTwoFactorAsync in the console app for the equivalent flow). *@
+@inject IProviderAuthService AuthService
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <p style="color:red">@_errorMessage</p>
+}
+
+@if (!_needsTwoFactor)
+{
+    <EditForm Model="this" OnValidSubmit="SubmitCredentialsAsync">
+        <div>
+            <label for="@($"{IdPrefix}-email")">Email:</label>
+            <InputText id="@($"{IdPrefix}-email")" @bind-Value="_email" />
+        </div>
+        <div>
+            <label for="@($"{IdPrefix}-password")">Password:</label>
+            <input id="@($"{IdPrefix}-password")" type="password" @bind="_password" @bind:event="oninput" />
+        </div>
+        <button type="submit" disabled="@_isBusy">@(_isBusy ? "Signing in..." : SubmitLabel)</button>
+    </EditForm>
+}
+else
+{
+    <EditForm Model="this" OnValidSubmit="SubmitTwoFactorAsync">
+        <div>
+            <label for="@($"{IdPrefix}-2fa")">Enter your 2FA code:</label>
+            <InputText id="@($"{IdPrefix}-2fa")" @bind-Value="_twoFactorCode" />
+        </div>
+        <button type="submit" disabled="@_isBusy">@(_isBusy ? "Verifying..." : "Verify")</button>
+    </EditForm>
+}
+
+@code {
+    /// <summary>Prefix for element ids, so multiple instances of this component can coexist on one page.</summary>
+    [Parameter] public string IdPrefix { get; set; } = "auth";
+
+    /// <summary>Label for the credentials submit button.</summary>
+    [Parameter] public string SubmitLabel { get; set; } = "Sign In";
+
+    /// <summary>Raised after a successful login, once ActiveProviderAccountId has been set/saved when applicable.</summary>
+    [Parameter] public EventCallback<AuthResult> OnAuthenticated { get; set; }
+
+    private string _email = "";
+    private string _password = "";
+    private string _twoFactorCode = "";
+    private bool _needsTwoFactor;
+    private bool _isBusy;
+    private string? _errorMessage;
+    private TaskCompletionSource<string>? _twoFactorTcs;
+
+    private async Task SubmitCredentialsAsync()
+    {
+        _errorMessage = null;
+        _isBusy = true;
+        try
+        {
+            var result = await AuthService.AuthenticateWithTwoFactorAsync(_email, _password, TwoFactorCodeCallback);
+            if (result.Success)
+            {
+                if (result.ProviderAccountId.HasValue && ForensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
+                {
+                    ForensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
+                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+                }
+
+                _needsTwoFactor = false;
+                _email = "";
+                _password = "";
+                _twoFactorCode = "";
+                await OnAuthenticated.InvokeAsync(result);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Authentication failed.";
+                _needsTwoFactor = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Authentication failed: {ex.Message}";
+            _needsTwoFactor = false;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private Task<string> TwoFactorCodeCallback()
+    {
+        _twoFactorTcs = new TaskCompletionSource<string>();
+        _needsTwoFactor = true;
+        _isBusy = false;
+        InvokeAsync(StateHasChanged);
+        return _twoFactorTcs.Task;
+    }
+
+    private Task SubmitTwoFactorAsync()
+    {
+        _isBusy = true;
+        _twoFactorTcs?.TrySetResult(_twoFactorCode);
+        return Task.CompletedTask;
+    }
+}

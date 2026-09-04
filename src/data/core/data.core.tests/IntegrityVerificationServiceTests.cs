@@ -11,14 +11,19 @@ namespace VideoForensics.Data.Core.Tests
     public class IntegrityVerificationServiceTests
     {
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
+        private readonly Mock<IIntegrityRecordRepository> _mockIntegrityRecordRepository;
         private readonly Mock<ILogger<IntegrityVerificationService>> _mockLogger;
         private readonly IntegrityVerificationService _service;
 
         public IntegrityVerificationServiceTests()
         {
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
+            _mockIntegrityRecordRepository = new Mock<IIntegrityRecordRepository>();
             _mockLogger = new Mock<ILogger<IntegrityVerificationService>>();
-            _service = new IntegrityVerificationService(_mockMediaItemRepository.Object, _mockLogger.Object);
+            _service = new IntegrityVerificationService(
+                _mockMediaItemRepository.Object,
+                _mockIntegrityRecordRepository.Object,
+                _mockLogger.Object);
         }
 
         [Fact]

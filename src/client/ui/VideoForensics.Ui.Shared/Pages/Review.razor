@@ -1,0 +1,226 @@
+@page "/review"
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Data.Common.Contracts
+@inject IProviderAuthService AuthService
+@inject IReportGenerationService ReportGenerationService
+@inject ILegalHoldRepository LegalHoldRepository
+@inject NavigationManager NavigationManager
+
+<h1>Review Evidence</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to review evidence.</p>
+}
+else
+{
+    @if (_report is null || _report.MediaItems.Count == 0)
+    {
+        <p>No evidence found in the last 90 days.</p>
+    }
+    else
+    {
+        <p>
+            <button @onclick="ExportSelected" disabled="@(_selectedIds.Count == 0)">Export Selected</button>
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" checked="@_allSelected" @onchange="ToggleSelectAll" />
+                    </th>
+                    <th>Evidence ID</th>
+                    <th>Device ID</th>
+                    <th>Format</th>
+                    <th>Status</th>
+                    <th>Legal Hold</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _report.MediaItems)
+                {
+                    var (statusText, statusColor) = DetermineMediaStatus(item.Id, _report.IntegrityRecords);
+                    var hasHold = _activeHoldsByMediaItemId.TryGetValue(item.Id, out var activeHold);
+                    <tr>
+                        <td>
+                            <input type="checkbox" checked="@_selectedIds.Contains(item.Id)" @onchange="e => ToggleSelected(item.Id, e.Value)" />
+                        </td>
+                        <td>@item.Id.ToString("N")[..8]</td>
+                        <td>@item.DeviceId.ToString("N")[..8]</td>
+                        <td>@item.MediaFormat</td>
+                        <td style="color:@statusColor">@statusText</td>
+                        <td>
+                            @if (hasHold)
+                            {
+                                <span style="color:purple">On Hold</span>
+                                <button @onclick="() => BeginRelease(activeHold!.Id)">Release</button>
+                            }
+                            else
+                            {
+                                <button @onclick="() => BeginPlaceHold(item.Id)">Place Hold</button>
+                            }
+                            @if (_pendingHoldMediaItemId == item.Id && !hasHold)
+                            {
+                                <div>
+                                    <input type="text" @bind="_holdReasonInput" @bind:event="oninput" placeholder="Reason for hold" />
+                                    <button @onclick="() => ConfirmPlaceHold(item.Id)">Confirm</button>
+                                    <button @onclick="CancelPendingHold">Cancel</button>
+                                </div>
+                            }
+                            @if (hasHold && _pendingReleaseHoldId == activeHold!.Id)
+                            {
+                                <div>
+                                    <input type="text" @bind="_holdReasonInput" @bind:event="oninput" placeholder="Reason for release" />
+                                    <button @onclick="() => ConfirmRelease(activeHold.Id, item.Id)">Confirm</button>
+                                    <button @onclick="CancelPendingHold">Cancel</button>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private EvidenceReviewReport? _report;
+    private readonly HashSet<Guid> _selectedIds = new();
+    private bool _allSelected;
+    private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
+    private Guid? _pendingHoldMediaItemId;
+    private Guid? _pendingReleaseHoldId;
+    private string _holdReasonInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                _report = await ReportGenerationService.BuildEvidenceReviewAsync(
+                    deviceId: null,
+                    fromUtc: DateTime.UtcNow.AddDays(-90),
+                    toUtc: DateTime.UtcNow,
+                    CancellationToken.None);
+
+                if (_report is not null)
+                {
+                    var activeHolds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(
+                        _report.MediaItems.Select(m => m.Id),
+                        CancellationToken.None);
+                    _activeHoldsByMediaItemId = activeHolds.ToDictionary(h => h.MediaItemId);
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BeginPlaceHold(Guid mediaItemId)
+    {
+        _pendingHoldMediaItemId = mediaItemId;
+        _pendingReleaseHoldId = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void BeginRelease(Guid legalHoldId)
+    {
+        _pendingReleaseHoldId = legalHoldId;
+        _pendingHoldMediaItemId = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void CancelPendingHold()
+    {
+        _pendingHoldMediaItemId = null;
+        _pendingReleaseHoldId = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private async Task ConfirmPlaceHold(Guid mediaItemId)
+    {
+        if (string.IsNullOrWhiteSpace(_holdReasonInput))
+        {
+            return;
+        }
+
+        var hold = await LegalHoldRepository.PlaceAsync(mediaItemId, _holdReasonInput, Environment.UserName, CancellationToken.None);
+        _activeHoldsByMediaItemId[mediaItemId] = hold;
+        CancelPendingHold();
+    }
+
+    private async Task ConfirmRelease(Guid legalHoldId, Guid mediaItemId)
+    {
+        if (string.IsNullOrWhiteSpace(_holdReasonInput))
+        {
+            return;
+        }
+
+        await LegalHoldRepository.ReleaseAsync(legalHoldId, Environment.UserName, _holdReasonInput, CancellationToken.None);
+        _activeHoldsByMediaItemId.Remove(mediaItemId);
+        CancelPendingHold();
+    }
+
+    // Mirrors ForensicReportRenderer.DetermineMediaStatus (src/client/VideoForensics/ForensicReportRenderer.cs)
+    private static (string Text, string Color) DetermineMediaStatus(Guid mediaId, IReadOnlyList<IntegrityRecord> integrityRecords)
+    {
+        var record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
+
+        if (record == null)
+        {
+            return ("Not verified", "goldenrod");
+        }
+
+        if (!record.Passed)
+        {
+            return ("Integrity failed", "red");
+        }
+
+        return ("Verified", "green");
+    }
+
+    private void ToggleSelected(Guid id, object? isChecked)
+    {
+        var check = isChecked is bool b && b;
+        if (check)
+        {
+            _selectedIds.Add(id);
+        }
+        else
+        {
+            _selectedIds.Remove(id);
+            _allSelected = false;
+        }
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        _allSelected = e.Value is bool b && b;
+        _selectedIds.Clear();
+        if (_allSelected && _report is not null)
+        {
+            foreach (var item in _report.MediaItems)
+            {
+                _selectedIds.Add(item.Id);
+            }
+        }
+    }
+
+    private void ExportSelected()
+    {
+        var ids = string.Join(",", _selectedIds.Select(id => id.ToString()));
+        NavigationManager.NavigateTo($"/review/export?ids={Uri.EscapeDataString(ids)}");
+    }
+}

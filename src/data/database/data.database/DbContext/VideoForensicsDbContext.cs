@@ -45,6 +45,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the integrity records.</summary>
         public DbSet<IntegrityRecord> IntegrityRecords { get; set; }
 
+        /// <summary>Gets or sets the legal holds.</summary>
+        public DbSet<LegalHold> LegalHolds { get; set; }
+
         /// <summary>Gets or sets the events.</summary>
         public DbSet<Event> Events { get; set; }
 

@@ -174,7 +174,8 @@ namespace VideoForensics.Client.Core.Tools
                 {
                     Success = true,
                     DeviceId = deviceId,
-                    AnalysisWindowUtc = (fromUtc, toUtc),
+                    AnalysisFromUtc = fromUtc,
+                    AnalysisToUtc = toUtc,
                     Summary = stats ?? new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 },
                     Incidents = incidents ?? new List<JammingIncidentRecord>(),
                     AnalyzedAtUtc = DateTime.UtcNow,
@@ -307,7 +308,8 @@ namespace VideoForensics.Client.Core.Tools
         public bool Success { get; set; }
         public string? ErrorMessage { get; set; }
         public Guid DeviceId { get; set; }
-        public (DateTime From, DateTime To) AnalysisWindowUtc { get; set; }
+        public DateTime AnalysisFromUtc { get; set; }
+        public DateTime AnalysisToUtc { get; set; }
         public JammingStatsSummary Summary { get; set; } = new();
         public IReadOnlyList<JammingIncidentRecord> Incidents { get; set; } = new List<JammingIncidentRecord>();
         public DateTime AnalyzedAtUtc { get; set; }

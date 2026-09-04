@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <AssemblyName>VideoForensics.WebApp</AssemblyName>
+    <RootNamespace>VideoForensics.WebApp</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>DV Victim Protection Team</Authors>
+    <Description>ASP.NET Core Blazor Server host for VideoForensics</Description>
+    <Copyright>2026</Copyright>
+    <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
+    <ProjectReference Include="..\..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

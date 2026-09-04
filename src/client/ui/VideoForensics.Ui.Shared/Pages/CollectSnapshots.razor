@@ -1,0 +1,106 @@
+@page "/collect/snapshots"
+@inject IProviderAuthService AuthService
+@inject IVideoDownloadService DownloadService
+
+<h1>Collect Snapshots</h1>
+
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!_isAuthenticated)
+{
+    <p>You are not signed in. <a href="/signin">Sign in</a> to collect snapshots.</p>
+}
+else
+{
+    <div class="collect-form">
+        <div>
+            <label for="outputPath">Output Path</label>
+            <input id="outputPath" type="text" @bind="_outputPath" disabled="@_isDownloading" style="width: 400px;" />
+        </div>
+        <div>
+            <button @onclick="StartDownloadAsync" disabled="@_isDownloading">Start Download</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <p style="color: red;">@_errorMessage</p>
+        }
+
+        @if (_downloadCompleted)
+        {
+            <p>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</p>
+        }
+    </div>
+
+    <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private bool _isDownloading;
+    private bool _downloadCompleted;
+    private bool _downloadSucceeded;
+    private string? _errorMessage;
+
+    private string _outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "VideoForensics", "Downloads");
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task StartDownloadAsync()
+    {
+        _errorMessage = null;
+        _downloadCompleted = false;
+        _isDownloading = true;
+
+        var outputPath = _outputPath;
+        // Ring only exposes each device's current/latest snapshot - there is no historical,
+        // per-event snapshot API - so "now" for both bounds matches the console app's convention
+        // (see MenuManager.DownloadSnapshots).
+        var startDate = DateTime.Now;
+        var endDate = DateTime.Now;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var success = await DownloadService.DownloadSnapshotsAsync(outputPath, startDate, endDate);
+
+                await InvokeAsync(() =>
+                {
+                    _downloadSucceeded = success;
+                    _downloadCompleted = true;
+                    if (!success)
+                    {
+                        _errorMessage = DownloadService.GetLastError() ?? "Download failed.";
+                    }
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() =>
+                {
+                    _errorMessage = $"Download failed: {ex.Message}";
+                    _downloadCompleted = true;
+                    _downloadSucceeded = false;
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+        });
+    }
+}

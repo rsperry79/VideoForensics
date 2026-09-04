@@ -1,0 +1,181 @@
+@implements IAsyncDisposable
+
+@if (IsActive || _hasEverStarted)
+{
+    <div class="download-progress-panel">
+        <h3>Download Progress</h3>
+
+        @{
+            var progress = _progress;
+            var currentDevice = _currentDevice;
+        }
+
+        @if (progress is not null)
+        {
+            <p>
+                Files: @progress.FilesCompleted / @progress.FilesTotal
+                (@FormatBytes(progress.BytesDownloaded) downloaded)
+            </p>
+            @if (!string.IsNullOrEmpty(progress.CurrentFile))
+            {
+                <p>Current file: @progress.CurrentFile</p>
+            }
+        }
+
+        @if (currentDevice.Total > 0)
+        {
+            <p>Device: @currentDevice.Name (@currentDevice.Index / @currentDevice.Total)</p>
+        }
+
+        @if (_preScanCounts.Count > 0)
+        {
+            <p>Pre-scan matched items: @_preScanCounts.Values.Sum()</p>
+        }
+
+        @if (_remainingCount > 0)
+        {
+            <p>
+                Remaining: @_remainingCount item(s)
+                @if (!string.IsNullOrEmpty(_remainingReason))
+                {
+                    <text> (@_remainingReason)</text>
+                }
+            </p>
+        }
+
+        @if (!string.IsNullOrEmpty(_lastError))
+        {
+            <p style="color: red;">Error: @_lastError</p>
+        }
+
+        <div class="activity-log" style="height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 4px; font-family: monospace; font-size: 0.85em;">
+            @foreach (var line in _activityLog)
+            {
+                <div>@line</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private const int MaxActivityLogLines = 200;
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
+
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public IVideoDownloadService? DownloadService { get; set; }
+
+    private PeriodicTimer? _timer;
+    private Task? _pollLoopTask;
+    private bool _hasEverStarted;
+
+    private DownloadStatus? _progress;
+    private (int Index, int Total, string Name) _currentDevice;
+    private IReadOnlyDictionary<string, int> _preScanCounts = new Dictionary<string, int>();
+    private int _remainingCount;
+    private string? _remainingReason;
+    private string? _lastError;
+    private readonly List<string> _activityLog = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsActive && _timer is null && DownloadService is not null)
+        {
+            _hasEverStarted = true;
+            StartPolling();
+        }
+        else if (!IsActive && _timer is not null)
+        {
+            await StopPollingAsync();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void StartPolling()
+    {
+        _timer = new PeriodicTimer(PollInterval);
+        _pollLoopTask = RunPollLoopAsync(_timer);
+    }
+
+    private async Task RunPollLoopAsync(PeriodicTimer timer)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync())
+            {
+                PollOnce();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Timer disposed while awaiting a tick - normal shutdown path.
+        }
+    }
+
+    private void PollOnce()
+    {
+        if (DownloadService is null)
+        {
+            return;
+        }
+
+        _progress = DownloadService.GetProgress();
+        _currentDevice = DownloadService.GetCurrentDevice();
+        _preScanCounts = DownloadService.GetPreScanCounts();
+        _remainingCount = DownloadService.GetRemainingCount();
+        _remainingReason = DownloadService.GetRemainingReason();
+        _lastError = DownloadService.GetLastError();
+
+        var drained = DownloadService.DrainActivityLog();
+        if (drained.Count > 0)
+        {
+            _activityLog.AddRange(drained);
+            if (_activityLog.Count > MaxActivityLogLines)
+            {
+                _activityLog.RemoveRange(0, _activityLog.Count - MaxActivityLogLines);
+            }
+        }
+    }
+
+    private async Task StopPollingAsync()
+    {
+        var timer = _timer;
+        _timer = null;
+        timer?.Dispose();
+
+        if (_pollLoopTask is not null)
+        {
+            try
+            {
+                await _pollLoopTask;
+            }
+            catch
+            {
+                // Swallow - polling loop already logged/handled its own exceptions via disposal.
+            }
+            _pollLoopTask = null;
+        }
+
+        // One last poll to pick up any final status/activity after the download finished.
+        PollOnce();
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        double value = bytes;
+        string[] units = { "B", "KB", "MB", "GB" };
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+        return $"{value:0.##} {units[unitIndex]}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopPollingAsync();
+    }
+}
