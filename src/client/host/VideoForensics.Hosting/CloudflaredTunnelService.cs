@@ -1,8 +1,10 @@
-using System.Text.RegularExpressions;
 using CliWrap;
 using CliWrap.Buffered;
 using CliWrap.EventStream;
+
 using Microsoft.Extensions.Logging;
+
+using System.Text.RegularExpressions;
 
 namespace VideoForensics.Hosting
 {
@@ -86,7 +88,7 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                var result = await Cli.Wrap("cloudflared")
+                BufferedCommandResult result = await Cli.Wrap("cloudflared")
                     .WithArguments("--version")
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteBufferedAsync(ct);
@@ -102,7 +104,7 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                var result = await Cli.Wrap("cloudflared")
+                BufferedCommandResult result = await Cli.Wrap("cloudflared")
                     .WithArguments("tunnel list")
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteBufferedAsync(ct);
@@ -132,10 +134,14 @@ namespace VideoForensics.Hosting
         }
 
         public Task StartQuickTunnelAsync(int localPort, CancellationToken ct)
-            => StartAsync(TunnelKind.Quick, $"tunnel --url http://localhost:{localPort}");
+        {
+            return StartAsync(TunnelKind.Quick, $"tunnel --url http://localhost:{localPort}");
+        }
 
         public Task StartNamedTunnelAsync(string tunnelName, CancellationToken ct)
-            => StartAsync(TunnelKind.Named, $"tunnel run {tunnelName}");
+        {
+            return StartAsync(TunnelKind.Named, $"tunnel run {tunnelName}");
+        }
 
         private Task StartAsync(TunnelKind kind, string arguments)
         {
@@ -166,13 +172,13 @@ namespace VideoForensics.Hosting
 
         private async Task RunAsync(TunnelKind kind, string arguments, CancellationTokenSource cts)
         {
-            var command = Cli.Wrap("cloudflared")
+            Command command = Cli.Wrap("cloudflared")
                 .WithArguments(arguments)
                 .WithValidation(CommandResultValidation.None);
 
             try
             {
-                await foreach (var cmdEvent in command.ListenAsync(cts.Token))
+                await foreach (CommandEvent cmdEvent in command.ListenAsync(cts.Token))
                 {
                     switch (cmdEvent)
                     {
@@ -184,6 +190,7 @@ namespace VideoForensics.Hosting
                                     _status = TunnelStatus.Running;
                                 }
                             }
+
                             break;
 
                         case StandardOutputCommandEvent stdOut:
@@ -204,6 +211,7 @@ namespace VideoForensics.Hosting
                                     _cts = null;
                                 }
                             }
+
                             break;
                     }
                 }
@@ -242,7 +250,7 @@ namespace VideoForensics.Hosting
                     return;
                 }
 
-                _logLines.AddLast(line);
+                _ = _logLines.AddLast(line);
                 while (_logLines.Count > MaxLogLines)
                 {
                     _logLines.RemoveFirst();
@@ -250,7 +258,7 @@ namespace VideoForensics.Hosting
 
                 if (_publicUrl is null)
                 {
-                    var match = QuickTunnelUrlPattern.Match(line);
+                    Match match = QuickTunnelUrlPattern.Match(line);
                     if (match.Success)
                     {
                         _publicUrl = match.Value;

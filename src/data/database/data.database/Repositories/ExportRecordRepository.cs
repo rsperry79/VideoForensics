@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,14 +23,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets an export record by ID.</summary>
         public async Task<ExportRecord?> GetAsync(Guid recordId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ExportRecords.FirstOrDefaultAsync(er => er.Id == recordId, ct);
         }
 
         /// <summary>Gets export record items for an export record.</summary>
         public async Task<IReadOnlyList<ExportRecordItem>> GetItemsForRecordAsync(Guid exportRecordId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ExportRecordItems
                 .Where(eri => eri.ExportRecordId == exportRecordId)
                 .ToListAsync(ct);
@@ -39,12 +40,12 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<ExportRecord> AppendAsync(
             ExportRecord record, IReadOnlyList<ExportRecordItem> items, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.ExportRecords.Add(record);
+                _ = db.ExportRecords.Add(record);
                 db.ExportRecordItems.AddRange(items);
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Export record appended: {ExportRecordId} (items: {ItemCount})",
                     record.Id, items.Count);
                 return record;
@@ -59,7 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets export history for a specific media item.</summary>
         public async Task<IReadOnlyList<ExportRecord>> GetHistoryForMediaItemAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ExportRecordItems
                 .Where(eri => eri.MediaItemId == mediaItemId)
                 .Select(eri => eri.ExportRecordId)
@@ -76,7 +77,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets export history for a specific device.</summary>
         public async Task<IReadOnlyList<ExportRecord>> GetHistoryForDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ExportRecords
                 .OrderByDescending(er => er.ExportedAtUtc)
                 .ToListAsync(ct);
@@ -85,7 +86,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all export records.</summary>
         public async Task<IReadOnlyList<ExportRecord>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ExportRecords.ToListAsync(ct);
         }
     }

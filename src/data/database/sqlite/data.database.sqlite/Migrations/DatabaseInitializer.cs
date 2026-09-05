@@ -1,6 +1,9 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using System.Data.Common;
+
 using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Sqlite.Migrations
@@ -30,10 +33,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         {
             try
             {
-                await using var db = await factory.CreateDbContextAsync(cancellationToken);
+                await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(cancellationToken);
 
                 // Check for pending migrations
-                var pendingMigrations = await db.Database.GetPendingMigrationsAsync(cancellationToken);
+                IEnumerable<string> pendingMigrations = await db.Database.GetPendingMigrationsAsync(cancellationToken);
                 var hasPendingMigrations = pendingMigrations.Any();
 
                 // Backup database before migration if needed
@@ -46,10 +49,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 await db.Database.MigrateAsync(cancellationToken);
 
                 // Enable WAL mode for better concurrency
-                await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
+                _ = await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
 
                 // Quick optimization: analyze table statistics (fast ~5-50ms, improves query planner)
-                await db.Database.ExecuteSqlRawAsync("ANALYZE;", cancellationToken);
+                _ = await db.Database.ExecuteSqlRawAsync("ANALYZE;", cancellationToken);
 
                 // Skip integrity check for performance - it scans the entire database
                 // If corruption is suspected, run: PRAGMA integrity_check; manually
@@ -120,13 +123,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         {
             try
             {
-                var connection = db.Database.GetDbConnection();
+                DbConnection connection = db.Database.GetDbConnection();
                 if (connection.State != System.Data.ConnectionState.Open)
                 {
                     await connection.OpenAsync(cancellationToken);
                 }
 
-                using var command = connection.CreateCommand();
+                using DbCommand command = connection.CreateCommand();
                 command.CommandText = "PRAGMA integrity_check;";
 
                 var result = await command.ExecuteScalarAsync(cancellationToken) as string;

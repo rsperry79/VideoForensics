@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -11,9 +12,9 @@ public class ReconciliationAndExportEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var ranAtUtc = DateTime.UtcNow;
+        DateTime ranAtUtc = DateTime.UtcNow;
         var providerEventId = "event-999";
-        var discrepancyType = DiscrepancyType.MetadataChanged;
+        DiscrepancyType discrepancyType = DiscrepancyType.MetadataChanged;
         var fieldName = "EventType";
         var storedValue = "motion";
         var providerValue = "doorbell";
@@ -94,7 +95,7 @@ public class ReconciliationAndExportEntityTests
     public void ReconciliationDiscrepancy_PropertiesRoundTrip_ReturnsSetValues()
     {
         // Arrange
-        var type = DiscrepancyType.MetadataChanged;
+        DiscrepancyType type = DiscrepancyType.MetadataChanged;
         var providerEventId = "event-123";
         var fieldName = "Timestamp";
         var storedValue = "2024-01-15T10:00:00Z";
@@ -142,7 +143,7 @@ public class ReconciliationAndExportEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var exportedAtUtc = DateTime.UtcNow;
+        DateTime exportedAtUtc = DateTime.UtcNow;
         var exportedByUserName = "operator";
         var caseReference = "CASE-2024-001";
         var recipientDescription = "Law Enforcement Agency";

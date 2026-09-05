@@ -1,11 +1,11 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Entities;
+
 using VideoForensics.Forensics;
 using VideoForensics.Forensics.Models;
+using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Forensics
+namespace VideoForensics.Providers.Ring.Interfaces
 {
     /// <summary>
     /// Defines operations for extracting forensic evidence from Ring device data.

@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
 
-#nullable enable
+using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// No-operation metadata writer that validates files without modifying them.
@@ -43,7 +42,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 throw new ArgumentNullException(nameof(metadata));
             }
 
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
             if (!_fileSystem.File.Exists(videoFilePath))
             {
@@ -86,7 +85,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 throw new ArgumentException("Video file path cannot be null or empty.", nameof(videoFilePath));
             }
 
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
             if (!_fileSystem.File.Exists(videoFilePath))
             {
@@ -98,17 +97,14 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                     errorMessage: $"Video file not found: {videoFilePath}");
             }
 
-            if (!IsValidVideoFile(videoFilePath))
-            {
-                return CreateResult(
+            return !IsValidVideoFile(videoFilePath)
+                ? CreateResult(
                     startTime,
                     status: MetadataStatus.Corrupt,
                     wasWritten: false,
                     isValid: false,
-                    errorMessage: "File does not appear to be a valid video format.");
-            }
-
-            return CreateResult(
+                    errorMessage: "File does not appear to be a valid video format.")
+                : CreateResult(
                 startTime,
                 status: MetadataStatus.Valid,
                 wasWritten: false,
@@ -133,7 +129,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             // Check file header for invalid file format signatures
             try
             {
-                using var file = _fileSystem.FileStream.New(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+                using FileSystemStream file = _fileSystem.FileStream.New(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
                 var headerBytes = new byte[4];
                 var bytesRead = file.Read(headerBytes, 0, 4);
 

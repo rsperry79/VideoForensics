@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -24,7 +25,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Places a new legal hold on a media item, recording the reason and actor. Also appends a chain-of-custody ActionLog entry ("PlaceLegalHold") in the same operation.</summary>
         public async Task<LegalHold> PlaceAsync(Guid mediaItemId, string reason, string createdBy, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var hold = new LegalHold
@@ -36,10 +37,10 @@ namespace VideoForensics.Data.Database.Repositories
                     CreatedAtUtc = DateTime.UtcNow
                 };
 
-                db.LegalHolds.Add(hold);
-                await db.SaveChangesAsync(ct);
+                _ = db.LegalHolds.Add(hold);
+                _ = await db.SaveChangesAsync(ct);
 
-                await _actionLogRepository.AppendAsync(
+                _ = await _actionLogRepository.AppendAsync(
                     createdBy,
                     ActorType.Human,
                     "PlaceLegalHold",
@@ -62,10 +63,10 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Releases an active legal hold, recording who released it and why. Also appends a chain-of-custody ActionLog entry ("ReleaseLegalHold") in the same operation. Throws InvalidOperationException if the hold does not exist or is already released.</summary>
         public async Task ReleaseAsync(Guid legalHoldId, string releasedBy, string releaseReason, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var hold = await db.LegalHolds.FirstOrDefaultAsync(h => h.Id == legalHoldId, ct);
+                LegalHold? hold = await db.LegalHolds.FirstOrDefaultAsync(h => h.Id == legalHoldId, ct);
                 if (hold is null || hold.ReleasedAtUtc is not null)
                 {
                     throw new InvalidOperationException($"Legal hold {legalHoldId} does not exist or is already released.");
@@ -75,9 +76,9 @@ namespace VideoForensics.Data.Database.Repositories
                 hold.ReleasedAtUtc = DateTime.UtcNow;
                 hold.ReleaseReason = releaseReason;
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
 
-                await _actionLogRepository.AppendAsync(
+                _ = await _actionLogRepository.AppendAsync(
                     releasedBy,
                     ActorType.Human,
                     "ReleaseLegalHold",
@@ -102,7 +103,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the currently-active legal hold (ReleasedAtUtc == null) for each of the given media items that has one. Media items with no active hold are simply absent from the result.</summary>
         public async Task<IReadOnlyList<LegalHold>> GetActiveByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var ids = mediaItemIds.ToList();
 
             return await db.LegalHolds

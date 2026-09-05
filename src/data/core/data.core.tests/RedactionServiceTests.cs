@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -30,7 +33,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.None);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.None);
 
             // Assert
             Assert.Equal("test@example.com", result.Email);
@@ -52,7 +55,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Light);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Light);
 
             // Assert
             // Email should be masked (first char + *** + last char @ domain)
@@ -81,7 +84,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Medium);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Medium);
 
             // Assert
             // Medium level includes Light (email/phone) and Medium (address/coordinates)
@@ -103,7 +106,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Heavy);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Heavy);
 
             // Assert
             // Heavy level includes everything
@@ -130,7 +133,7 @@ namespace VideoForensics.Data.Core.Tests
             var originalName = original.PersonName;
 
             // Act
-            var redacted = _service.RedactForExport(original, RedactionLevel.Heavy);
+            TestReportDto redacted = _service.RedactForExport(original, RedactionLevel.Heavy);
 
             // Assert - verify original is unchanged
             Assert.Equal(originalEmail, original.Email);
@@ -156,7 +159,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Light);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Light);
 
             // Assert
             // Null should remain null or be handled
@@ -173,7 +176,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Light);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Light);
 
             // Assert
             Assert.Contains("@example.com", result.Email);
@@ -190,7 +193,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Light);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Light);
 
             // Assert
             // Short phone should be fully redacted
@@ -214,7 +217,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Heavy);
+            TestReportWithNestedDto result = _service.RedactForExport(original, RedactionLevel.Heavy);
 
             // Assert
             Assert.Contains("***", result.Email);
@@ -234,7 +237,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act
-            var result = _service.RedactForExport(original, RedactionLevel.Medium);
+            TestReportDto result = _service.RedactForExport(original, RedactionLevel.Medium);
 
             // Assert
             Assert.NotNull(result);

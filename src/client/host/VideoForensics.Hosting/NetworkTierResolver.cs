@@ -1,5 +1,8 @@
-using System.Net;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
+
+using System.Net;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
@@ -53,11 +56,11 @@ namespace VideoForensics.Hosting
 
         public string ResolveClientIp(HttpContext context)
         {
-            var remoteIp = context.Connection.RemoteIpAddress;
+            IPAddress? remoteIp = context.Connection.RemoteIpAddress;
 
             if (remoteIp != null && IsCloudflareEdgeIp(remoteIp) &&
-                context.Request.Headers.TryGetValue("CF-Connecting-IP", out var headerValue) &&
-                IPAddress.TryParse(headerValue.ToString(), out var realClientIp))
+                context.Request.Headers.TryGetValue("CF-Connecting-IP", out StringValues headerValue) &&
+                IPAddress.TryParse(headerValue.ToString(), out IPAddress? realClientIp))
             {
                 return realClientIp.ToString();
             }
@@ -69,7 +72,7 @@ namespace VideoForensics.Hosting
 
         public NetworkTier ResolveTier(HttpContext context)
         {
-            var remoteIp = context.Connection.RemoteIpAddress;
+            IPAddress? remoteIp = context.Connection.RemoteIpAddress;
 
             if (remoteIp != null && IsCloudflareEdgeIp(remoteIp))
             {
@@ -89,30 +92,25 @@ namespace VideoForensics.Hosting
                 return NetworkTier.Local;
             }
 
-            var mapped = remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp;
-            if (IPAddress.IsLoopback(mapped))
-            {
-                return NetworkTier.Local;
-            }
-
-            return NetworkTier.Network;
+            IPAddress mapped = remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp;
+            return IPAddress.IsLoopback(mapped) ? NetworkTier.Local : NetworkTier.Network;
         }
 
         private static bool IsCloudflareEdgeIp(IPAddress address)
         {
-            var mapped = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+            IPAddress mapped = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
             if (mapped.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
             {
                 return false;
             }
 
             var addressBytes = mapped.GetAddressBytes();
-            var addressInt = (uint)(addressBytes[0] << 24 | addressBytes[1] << 16 | addressBytes[2] << 8 | addressBytes[3]);
+            var addressInt = (uint)((addressBytes[0] << 24) | (addressBytes[1] << 16) | (addressBytes[2] << 8) | addressBytes[3]);
 
-            foreach (var (network, prefixLength) in CloudflareIpv4Ranges)
+            foreach ((IPAddress? network, int prefixLength) in CloudflareIpv4Ranges)
             {
                 var networkBytes = network.GetAddressBytes();
-                var networkInt = (uint)(networkBytes[0] << 24 | networkBytes[1] << 16 | networkBytes[2] << 8 | networkBytes[3]);
+                var networkInt = (uint)((networkBytes[0] << 24) | (networkBytes[1] << 16) | (networkBytes[2] << 8) | networkBytes[3]);
                 var mask = prefixLength == 0 ? 0u : uint.MaxValue << (32 - prefixLength);
                 if ((addressInt & mask) == (networkInt & mask))
                 {

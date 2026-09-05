@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// One raw HTTP request/response captured via ApiRawLogger while a single endpoint call ran.
@@ -54,7 +54,7 @@ namespace VideoForensics.Providers.Ring.Utils
         public string? Error { get; set; }
         /// <summary>Path to the raw response body file, relative to index.json's own directory.</summary>
         public string? ResultFile { get; set; }
-        public List<HttpCallRecord> HttpCalls { get; set; } = new();
+        public List<HttpCallRecord> HttpCalls { get; set; } = [];
         /// <summary>Human-readable snapshot of the original value(s) captured before this destructive call ran, if any.</summary>
         public string? OriginalValue { get; set; }
         public bool RestoreAttempted { get; set; }
@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Utils
         /// <summary>Set when no original value could be captured, so restore was skipped by design rather than attempted and failed.</summary>
         public string? RestoreSkippedReason { get; set; }
         /// <summary>Schema validation issues found when comparing the actual API response against the declared entity schema.</summary>
-        public List<SchemaIssueRecord> SchemaIssues { get; set; } = new();
+        public List<SchemaIssueRecord> SchemaIssues { get; set; } = [];
     }
 
     public sealed class SchemaIssueRecord
@@ -87,7 +87,7 @@ namespace VideoForensics.Providers.Ring.Utils
         public string CredentialSource { get; set; } = "";
         public string OutputDirectory { get; set; } = "";
         public SummaryRecord Summary { get; set; } = new();
-        public List<CallRecord> Calls { get; set; } = new();
+        public List<CallRecord> Calls { get; set; } = [];
     }
 
     public sealed class SummaryRecord

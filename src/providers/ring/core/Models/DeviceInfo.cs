@@ -13,28 +13,30 @@ namespace VideoForensics.Providers.Ring.Models
 
     public class DeviceList
     {
-        public List<DeviceInfo> Devices { get; } = new();
+        public List<DeviceInfo> Devices { get; } = [];
         public DeviceList ExtractDevices(Devices ringDevices)
         {
-            foreach (var x in ringDevices.Doorbots)
+            foreach (Doorbot x in ringDevices.Doorbots)
             {
                 Devices.Add(new DeviceInfo() { Id = x.Id, Name = x.Description, DeviceId = x.DeviceId });
             }
-            foreach (var x in ringDevices.Chimes)
+
+            foreach (Chime x in ringDevices.Chimes)
             {
                 Devices.Add(new DeviceInfo() { Id = x.Id, Name = x.Description, DeviceId = x.DeviceId });
             }
-            foreach (var x in ringDevices.AuthorizedDoorbots)
+
+            foreach (Doorbot x in ringDevices.AuthorizedDoorbots)
             {
                 Devices.Add(new DeviceInfo() { Id = x.Id, Name = x.Description, DeviceId = x.DeviceId });
             }
-            foreach (var x in ringDevices.StickupCams)
+
+            foreach (StickupCam x in ringDevices.StickupCams)
             {
                 Devices.Add(new DeviceInfo() { Id = x.Id.Value, Name = x.Description, DeviceId = x.DeviceId });
             }
 
             return this;
         }
-
     }
 }

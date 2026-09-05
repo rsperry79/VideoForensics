@@ -1,5 +1,7 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
@@ -38,7 +40,7 @@ namespace VideoForensics.Hosting
 
         public string Issue(Guid operatorId, Guid pairedDeviceId, OperatorRole role)
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var principal = new SessionPrincipal(operatorId, pairedDeviceId, role, now, now + SessionLifetime);
             var json = JsonSerializer.Serialize(principal);
             return _protector.Protect(json);
@@ -49,13 +51,8 @@ namespace VideoForensics.Hosting
             try
             {
                 var json = _protector.Unprotect(token);
-                var principal = JsonSerializer.Deserialize<SessionPrincipal>(json);
-                if (principal == null || principal.ExpiresAtUtc < DateTime.UtcNow)
-                {
-                    return null;
-                }
-
-                return principal;
+                SessionPrincipal? principal = JsonSerializer.Deserialize<SessionPrincipal>(json);
+                return principal == null || principal.ExpiresAtUtc < DateTime.UtcNow ? null : principal;
             }
             catch
             {

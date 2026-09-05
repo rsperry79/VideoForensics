@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
@@ -31,7 +32,7 @@ namespace VideoForensics.Hosting
         {
             PruneExpired();
 
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+            string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
                 .Replace('+', '-').Replace('/', '_').TrimEnd('=');
             var info = new PairingTokenInfo(token, role, DateTime.UtcNow + TokenLifetime);
             _tokens[token] = info;
@@ -40,12 +41,7 @@ namespace VideoForensics.Hosting
 
         public PairingTokenInfo? Peek(string token)
         {
-            if (_tokens.TryGetValue(token, out var info) && info.ExpiresAtUtc > DateTime.UtcNow)
-            {
-                return info;
-            }
-
-            return null;
+            return _tokens.TryGetValue(token, out var info) && info.ExpiresAtUtc > DateTime.UtcNow ? info : null;
         }
 
         public bool TryConsume(string token, out OperatorRole role)
@@ -67,7 +63,7 @@ namespace VideoForensics.Hosting
             {
                 if (kvp.Value.ExpiresAtUtc <= now)
                 {
-                    _tokens.TryRemove(kvp.Key, out _);
+                    _ = _tokens.TryRemove(kvp.Key, out _);
                 }
             }
         }

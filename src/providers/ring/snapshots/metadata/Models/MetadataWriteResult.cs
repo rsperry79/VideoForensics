@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Models
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Result of metadata writing/validation operation on a snapshot.
@@ -31,7 +33,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Models
         /// <summary>
         /// List of corrections applied to the file.
         /// </summary>
-        public List<string> CorrectionsApplied { get; set; } = new();
+        public List<string> CorrectionsApplied { get; set; } = [];
 
         /// <summary>
         /// Error message if processing failed.

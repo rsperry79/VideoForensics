@@ -1,5 +1,7 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+
+using System.Security.Cryptography;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -32,7 +34,7 @@ namespace VideoForensics.Data.Core.Services
                     throw new FileNotFoundException($"File not found: {filePath}");
                 }
 
-                using var fileStream = File.OpenRead(filePath);
+                using FileStream fileStream = File.OpenRead(filePath);
                 var hash = await SHA256.HashDataAsync(fileStream, ct);
                 var hashHex = Convert.ToHexString(hash).ToLowerInvariant();
 
@@ -48,7 +50,7 @@ namespace VideoForensics.Data.Core.Services
 
         public async Task<bool> VerifyAsync(Guid mediaItemId, CancellationToken ct)
         {
-            var mediaItem = await _mediaItemRepository.GetAsync(mediaItemId, ct);
+            MediaItem? mediaItem = await _mediaItemRepository.GetAsync(mediaItemId, ct);
             if (mediaItem == null)
             {
                 _logger.LogWarning("MediaItem {MediaItemId} not found during integrity verification", mediaItemId);
@@ -116,12 +118,12 @@ namespace VideoForensics.Data.Core.Services
 
         public async Task<int> VerifyAllForDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            var mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(deviceId, ct);
+            IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(deviceId, ct);
             int verifiedCount = 0;
 
-            foreach (var mediaItem in mediaItems)
+            foreach (MediaItem mediaItem in mediaItems)
             {
-                await VerifyAsync(mediaItem.Id, ct);
+                _ = await VerifyAsync(mediaItem.Id, ct);
                 verifiedCount++;
             }
 

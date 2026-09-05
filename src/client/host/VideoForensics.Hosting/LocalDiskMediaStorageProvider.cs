@@ -14,14 +14,17 @@ namespace VideoForensics.Hosting
             return Task.FromResult(stream);
         }
 
-        public Task<bool> ExistsAsync(string path, CancellationToken ct) => Task.FromResult(File.Exists(path));
+        public Task<bool> ExistsAsync(string path, CancellationToken ct)
+        {
+            return Task.FromResult(File.Exists(path));
+        }
 
         public async Task SaveAsync(string path, Stream content, CancellationToken ct)
         {
-            var directory = Path.GetDirectoryName(path);
+            string? directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                Directory.CreateDirectory(directory);
+                _ = Directory.CreateDirectory(directory);
             }
 
             await using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);

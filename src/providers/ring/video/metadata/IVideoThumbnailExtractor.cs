@@ -1,8 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Interface for extracting and processing video thumbnails from snapshot data.

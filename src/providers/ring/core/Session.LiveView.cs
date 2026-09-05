@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring.Alarm;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Sockets;
 using VideoForensics.Providers.Ring.Streaming;
@@ -29,8 +28,10 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public Task<RingLiveViewSession> StartLiveView(long doorbotId, CancellationToken cancellationToken = default) =>
-            StartLiveView(doorbotId, new ClientWebSocketTransport(), cancellationToken);
+        public Task<RingLiveViewSession> StartLiveView(long doorbotId, CancellationToken cancellationToken = default)
+        {
+            return StartLiveView(doorbotId, new ClientWebSocketTransport(), cancellationToken);
+        }
 
         /// <summary>
         /// Overload accepting an explicit IWebSocketTransport - used by tests to inject a fake
@@ -42,7 +43,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var ticketUri = new Uri(RingAppApiBaseUrl, "clap/ticket/request/signalsocket");
-            var response = await _httpUtility.SendRequest(ticketUri, System.Net.Http.HttpMethod.Post, null, AuthenticationToken, cancellationToken);
+            string response = await _httpUtility.SendRequest(ticketUri, System.Net.Http.HttpMethod.Post, null, AuthenticationToken, cancellationToken);
             var ticketResponse = JsonSerializer.Deserialize<ClapSignalingTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Ticket))
@@ -50,8 +51,8 @@ namespace VideoForensics.Providers.Ring
                 throw new InvalidOperationException("Ring did not return a valid signaling ticket for this camera.");
             }
 
-            var dialogId = Guid.NewGuid().ToString();
-            var clientId = $"ring_site-{Guid.NewGuid()}";
+            string dialogId = Guid.NewGuid().ToString();
+            string clientId = $"ring_site-{Guid.NewGuid()}";
 
             // Security Note: Token passed in URL is logged by proxies/servers. Future improvement:
             // Pass token via WebSocket headers or first message after connection instead.

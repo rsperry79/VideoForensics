@@ -53,7 +53,10 @@ namespace VideoForensics.Providers.Common.Contracts
             DateTime startDate,
             DateTime endDate,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult(0);
+        )
+        {
+            return Task.FromResult(0);
+        }
 
         /// <summary>
         /// True when a GetMatchedEventCountAsync/DownloadVideosAsync call for this exact range
@@ -62,7 +65,10 @@ namespace VideoForensics.Providers.Common.Contracts
         /// call that will actually hit the network. Defaults to false (assume not cached) so a
         /// provider that hasn't implemented this keeps the conservative delay.
         /// </summary>
-        bool IsHistoryCached(DateTime startDate, DateTime endDate) => false;
+        bool IsHistoryCached(DateTime startDate, DateTime endDate)
+        {
+            return false;
+        }
 
         /// <summary>
         /// If the provider's API has hard-banned this account (repeated rate-limit violations), the
@@ -71,7 +77,10 @@ namespace VideoForensics.Providers.Common.Contracts
         /// loop runs to exhaustion first. Defaults to null (no ban tracking) for a provider that
         /// hasn't implemented this.
         /// </summary>
-        DateTime? GetRateLimitBanUntilUtc() => null;
+        DateTime? GetRateLimitBanUntilUtc()
+        {
+            return null;
+        }
 
         /// <summary>
         /// Explicitly lifts an active rate-limit ban for one more attempt, at the caller's request
@@ -91,7 +100,10 @@ namespace VideoForensics.Providers.Common.Contracts
         /// queued since the last call, so a caller can poll this alongside GetStatus() to show a
         /// live feed of individual file outcomes during a download in progress.
         /// </summary>
-        IReadOnlyList<string> DrainActivityLog() => Array.Empty<string>();
+        IReadOnlyList<string> DrainActivityLog()
+        {
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>Result of a download operation</summary>

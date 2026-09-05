@@ -19,15 +19,14 @@ namespace VideoForensics.Client.Core.Utilities
         public static DateTime? TryParseDate(string? dateString)
         {
             if (string.IsNullOrWhiteSpace(dateString))
-                return null;
-
-            if (DateTime.TryParseExact(dateString, SupportedDateFormats,
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
             {
-                return result;
+                return null;
             }
 
-            return null;
+            return DateTime.TryParseExact(dateString, SupportedDateFormats,
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result)
+                ? result
+                : null;
         }
 
         /// <summary>Parses a date string with a fallback value if parsing fails.</summary>

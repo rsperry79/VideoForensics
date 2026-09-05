@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -31,9 +34,9 @@ namespace VideoForensics.Data.Core.Tests
             _mockIntegrityRecordRepository = new Mock<IIntegrityRecordRepository>();
             _mockLogger = new Mock<ILogger<ReportGenerationService>>();
 
-            _mockIntegrityRecordRepository
+            _ = _mockIntegrityRecordRepository
                 .Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<IntegrityRecord>());
+                .ReturnsAsync([]);
 
             _service = new ReportGenerationService(
                 _mockMediaItemRepository.Object,
@@ -56,8 +59,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var mediaItems = new List<MediaItem>
             {
-                new MediaItem
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceId,
                     FileName = "video1.mp4",
@@ -68,8 +70,7 @@ namespace VideoForensics.Data.Core.Tests
                     DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc),
                     IntegrityVerified = true
                 },
-                new MediaItem
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceId,
                     FileName = "video2.mp4",
@@ -82,12 +83,12 @@ namespace VideoForensics.Data.Core.Tests
                 }
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mediaItems);
 
             // Act
-            var result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -107,8 +108,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var mediaItems = new List<MediaItem>
             {
-                new MediaItem
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = Guid.NewGuid(),
                     FileName = "video1.mp4",
@@ -121,12 +121,12 @@ namespace VideoForensics.Data.Core.Tests
                 }
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mediaItems);
 
             // Act
-            var result = await _service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -144,8 +144,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var mediaItems = new List<MediaItem>
             {
-                new MediaItem
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceId,
                     FileName = "evidence.mp4",
@@ -157,12 +156,12 @@ namespace VideoForensics.Data.Core.Tests
                 }
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mediaItems);
 
             // Act
-            var result = await _service.BuildForensicAnalysisReportAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            ForensicAnalysisReport result = await _service.BuildForensicAnalysisReportAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -187,12 +186,12 @@ namespace VideoForensics.Data.Core.Tests
                 IsOnline = true
             };
 
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _service.BuildSignalAnomalyReportAsync(
+            SignalAnomalyReport result = await _service.BuildSignalAnomalyReportAsync(
                 deviceId,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -200,7 +199,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result.AnomaliesByDevice);
+            _ = Assert.Single(result.AnomaliesByDevice);
             Assert.Equal(deviceId, result.AnomaliesByDevice[0].DeviceId);
             Assert.Equal("Front Door", result.AnomaliesByDevice[0].DeviceName);
         }
@@ -211,8 +210,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var devices = new List<Device>
             {
-                new Device
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
                     Name = "Front Door",
@@ -220,8 +218,7 @@ namespace VideoForensics.Data.Core.Tests
                     Type = "Doorbell",
                     IsOnline = true
                 },
-                new Device
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     LocationId = Guid.NewGuid(),
                     Name = "Back Door",
@@ -231,12 +228,12 @@ namespace VideoForensics.Data.Core.Tests
                 }
             };
 
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
             // Act
-            var result = await _service.BuildSignalAnomalyReportAsync(
+            SignalAnomalyReport result = await _service.BuildSignalAnomalyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -256,8 +253,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var actionLogEntries = new List<ActionLogEntry>
             {
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -268,8 +264,7 @@ namespace VideoForensics.Data.Core.Tests
                     DetailsJson = null
                 ,
                 EntryHash = "test_hash"},
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -282,12 +277,12 @@ namespace VideoForensics.Data.Core.Tests
                 EntryHash = "test_hash"}
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(actionLogEntries);
 
             // Act
-            var result = await _service.BuildAccessControlReportAsync(
+            AccessControlReport result = await _service.BuildAccessControlReportAsync(
                 null,
                 fromUtc,
                 toUtc,
@@ -309,8 +304,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var actionLogEntries = new List<ActionLogEntry>
             {
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -322,16 +316,16 @@ namespace VideoForensics.Data.Core.Tests
                 EntryHash = "test_hash"}
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(actionLogEntries);
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 fromUtc,
                 toUtc,
@@ -340,7 +334,7 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             Assert.NotNull(result);
             Assert.True(result.ChainIntegrityVerified);
-            Assert.Single(result.AuditTrail);
+            _ = Assert.Single(result.AuditTrail);
             Assert.Equal("Valid hash chain", result.ChainVerificationStatus);
         }
 
@@ -350,16 +344,16 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var actionLogEntries = new List<ActionLogEntry>();
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(actionLogEntries);
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _service.BuildChainOfCustodyReportAsync(
+            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
                 null,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -376,7 +370,7 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var tempDir = Path.Combine(Path.GetTempPath(), $"reports_{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
 
             var report = new EvidenceReviewReport
             {
@@ -404,7 +398,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, recursive: true);
+                }
             }
         }
 
@@ -419,7 +415,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(
+            _ = await Assert.ThrowsAsync<ArgumentException>(
                 () => _service.WriteReportAsync(report, "pdf", CancellationToken.None));
         }
 
@@ -429,16 +425,16 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(
                     deviceId,
                     It.IsAny<DateTime>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem>());
+                .ReturnsAsync([]);
 
             // Act
-            var result = await _service.BuildEvidenceReviewAsync(
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(
                 deviceId,
                 DateTime.UtcNow.AddDays(-7),
                 DateTime.UtcNow,
@@ -460,8 +456,7 @@ namespace VideoForensics.Data.Core.Tests
 
             var allActions = new List<ActionLogEntry>
             {
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -470,8 +465,7 @@ namespace VideoForensics.Data.Core.Tests
                     TimestampUtc = new DateTime(2024, 1, 5, 12, 0, 0, DateTimeKind.Utc) // Before range
                 ,
                 EntryHash = "test_hash"},
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -480,8 +474,7 @@ namespace VideoForensics.Data.Core.Tests
                     TimestampUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc) // In range
                 ,
                 EntryHash = "test_hash"},
-                new ActionLogEntry
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     Actor = "user1",
                     ActorType = ActorType.Human,
@@ -492,12 +485,12 @@ namespace VideoForensics.Data.Core.Tests
                 EntryHash = "test_hash"}
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(allActions);
 
             // Act
-            var result = await _service.BuildAccessControlReportAsync(
+            AccessControlReport result = await _service.BuildAccessControlReportAsync(
                 null,
                 fromUtc,
                 toUtc,
@@ -505,7 +498,7 @@ namespace VideoForensics.Data.Core.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result.AccessEvents);
+            _ = Assert.Single(result.AccessEvents);
             Assert.Equal("Action2", result.AccessEvents[0].Action);
         }
     }

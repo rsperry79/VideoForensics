@@ -1,7 +1,6 @@
-using System;
 using System.Threading.Tasks;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Interface for validating snapshot image integrity and format.

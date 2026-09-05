@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, "profile");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             // Confirmed via a live ApiTester run: the response is wrapped in a top-level "profile"
             // key. Deserializing straight into Profile (as this originally did) silently produced
@@ -46,7 +46,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, "device");
-            var bodyContent = JsonSerializer.Serialize(new
+            string bodyContent = JsonSerializer.Serialize(new
             {
                 device = new
                 {
@@ -65,16 +65,16 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, "ringtones");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<RingtonesResponse>(response);
-            return parsed?.Ringtones ?? new List<Ringtone>();
+            return parsed?.Ringtones ?? [];
         }
 
         /// <summary>
         /// Base Uri for Ring's third-party integrations API.
         /// </summary>
-        public Uri RingIntegrationsApiBaseUrl => new Uri("https://api.ring.com/integrations/");
+        public Uri RingIntegrationsApiBaseUrl => new("https://api.ring.com/integrations/");
 
         /// <summary>
         /// Returns the Amazon Key lock associations for this account. Response shape is not
@@ -85,7 +85,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingIntegrationsApiBaseUrl, "amazonkey/v2/devices/lock_associations");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }

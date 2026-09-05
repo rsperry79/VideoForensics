@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -25,7 +26,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("LogAccessAsync entry: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}", evidenceId, userId, action);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var entry = new ActionLogEntry
@@ -39,11 +40,11 @@ namespace VideoForensics.Data.Database.Repositories
                     DetailsJson = null,
                     TimestampUtc = accessAtUtc,
                     PreviousEntryHash = null,
-                    EntryHash = Guid.NewGuid().ToString("N").Substring(0, 8)
+                    EntryHash = Guid.NewGuid().ToString("N")[..8]
                 };
 
-                context.ActionLogEntries.Add(entry);
-                await context.SaveChangesAsync(ct);
+                _ = context.ActionLogEntries.Add(entry);
+                _ = await context.SaveChangesAsync(ct);
 
                 _logger.LogInformation("LogAccessAsync exit: successfully logged access for EvidenceId={EvidenceId}", evidenceId);
             }
@@ -59,7 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("LogExportAsync entry: ExportId={ExportId}, LocationId={LocationId}, ExportedBy={ExportedBy}", exportId, locationId, exportedBy);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var entry = new ActionLogEntry
@@ -73,11 +74,11 @@ namespace VideoForensics.Data.Database.Repositories
                     DetailsJson = $"{{\"exportId\":\"{exportId}\",\"eventCount\":{eventCount}}}",
                     TimestampUtc = DateTime.UtcNow,
                     PreviousEntryHash = null,
-                    EntryHash = Guid.NewGuid().ToString("N").Substring(0, 8)
+                    EntryHash = Guid.NewGuid().ToString("N")[..8]
                 };
 
-                context.ActionLogEntries.Add(entry);
-                await context.SaveChangesAsync(ct);
+                _ = context.ActionLogEntries.Add(entry);
+                _ = await context.SaveChangesAsync(ct);
 
                 _logger.LogInformation("LogExportAsync exit: successfully logged export for ExportId={ExportId}", exportId);
             }
@@ -93,10 +94,10 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("GetAccessHistoryAsync entry: EvidenceId={EvidenceId}", evidenceId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var entries = await context.ActionLogEntries
+                List<ActionLogEntry> entries = await context.ActionLogEntries
                     .Where(ale => ale.EntityId == evidenceId && ale.EntityType == "Evidence")
                     .OrderByDescending(ale => ale.TimestampUtc)
                     .ToListAsync(ct);
@@ -127,11 +128,11 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("GetLocationAccessHistoryAsync entry: LocationId={LocationId}", locationId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 // Get all devices for this location
-                var deviceIds = await context.Devices
+                List<Guid> deviceIds = await context.Devices
                     .Where(d => d.LocationId == locationId)
                     .Select(d => d.Id)
                     .ToListAsync(ct);
@@ -139,17 +140,17 @@ namespace VideoForensics.Data.Database.Repositories
                 if (deviceIds.Count == 0)
                 {
                     _logger.LogInformation("GetLocationAccessHistoryAsync exit: no devices found for LocationId={LocationId}", locationId);
-                    return new List<AccessAuditLog>();
+                    return [];
                 }
 
                 // Get all events for these devices
-                var eventIds = await context.Events
+                List<Guid> eventIds = await context.Events
                     .Where(e => deviceIds.Contains(e.DeviceId))
                     .Select(e => e.Id)
                     .ToListAsync(ct);
 
                 // Get access logs for these events
-                var entries = await context.ActionLogEntries
+                List<ActionLogEntry> entries = await context.ActionLogEntries
                     .Where(ale => eventIds.Contains(ale.EntityId ?? Guid.Empty) && ale.EntityType == "Event")
                     .OrderByDescending(ale => ale.TimestampUtc)
                     .ToListAsync(ct);
@@ -181,14 +182,14 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("GetAccessHistoryPaginatedAsync entry: EvidenceId={EvidenceId}, Page={PageNumber}, Size={PageSize}", evidenceId, pageNumber, pageSize);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var totalCount = await context.ActionLogEntries
                     .Where(ale => ale.EntityId == evidenceId && ale.EntityType == "Evidence")
                     .CountAsync(ct);
 
-                var entries = await context.ActionLogEntries
+                List<ActionLogEntry> entries = await context.ActionLogEntries
                     .Where(ale => ale.EntityId == evidenceId && ale.EntityType == "Evidence")
                     .OrderByDescending(ale => ale.TimestampUtc)
                     .Skip((pageNumber - 1) * pageSize)
@@ -230,7 +231,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("GetExportHistoryCursorAsync entry: LocationId={LocationId}, Cursor={Cursor}, PageSize={PageSize}", locationId, cursor ?? "null", pageSize);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 // Parse cursor (base64-encoded datetime offset)
@@ -253,7 +254,7 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 // Get device IDs for location
-                var deviceIds = await context.Devices
+                List<Guid> deviceIds = await context.Devices
                     .Where(d => d.LocationId == locationId)
                     .Select(d => d.Id)
                     .ToListAsync(ct);
@@ -261,11 +262,11 @@ namespace VideoForensics.Data.Database.Repositories
                 if (deviceIds.Count == 0)
                 {
                     _logger.LogInformation("GetExportHistoryCursorAsync exit: no devices found for LocationId={LocationId}", locationId);
-                    return new CursorPaginatedResult<ExportAuditRecord> { Items = new List<ExportAuditRecord>() };
+                    return new CursorPaginatedResult<ExportAuditRecord> { Items = [] };
                 }
 
                 // Get all export records that contain media from devices at this location
-                var allExports = await context.ExportRecordItems
+                List<ExportRecord> allExports = await context.ExportRecordItems
                     .Join(context.MediaItems,
                         eri => eri.MediaItemId,
                         mi => mi.Id,
@@ -325,17 +326,17 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("VerifyChainOfCustodyAsync entry: LocationId={LocationId}", locationId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 // Get all devices for location
-                var deviceIds = await context.Devices
+                List<Guid> deviceIds = await context.Devices
                     .Where(d => d.LocationId == locationId)
                     .Select(d => d.Id)
                     .ToListAsync(ct);
 
                 // Get all events for these devices
-                var eventIds = await context.Events
+                List<Guid> eventIds = await context.Events
                     .Where(e => deviceIds.Contains(e.DeviceId))
                     .Select(e => e.Id)
                     .ToListAsync(ct);
@@ -343,7 +344,7 @@ namespace VideoForensics.Data.Database.Repositories
                 var totalEventsTracked = eventIds.Count;
 
                 // Get access records
-                var accessEntries = await context.ActionLogEntries
+                List<ActionLogEntry> accessEntries = await context.ActionLogEntries
                     .Where(ale => eventIds.Contains(ale.EntityId ?? Guid.Empty) && ale.EntityType == "Event")
                     .OrderBy(ale => ale.TimestampUtc)
                     .ToListAsync(ct);
@@ -367,7 +368,7 @@ namespace VideoForensics.Data.Database.Repositories
                     var sortedByTime = accessEntries.OrderBy(e => e.TimestampUtc).ToList();
                     for (int i = 1; i < sortedByTime.Count; i++)
                     {
-                        var gap = sortedByTime[i].TimestampUtc - sortedByTime[i - 1].TimestampUtc;
+                        TimeSpan gap = sortedByTime[i].TimestampUtc - sortedByTime[i - 1].TimestampUtc;
                         if (gap.TotalHours > 24)
                         {
                             isComplete = false;
@@ -401,13 +402,13 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("FlagUnauthorizedAccessAsync entry: LocationId={LocationId}", locationId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var flags = new List<UnauthorizedAccessFlag>();
 
                 // Get all devices for location
-                var deviceIds = await context.Devices
+                List<Guid> deviceIds = await context.Devices
                     .Where(d => d.LocationId == locationId)
                     .Select(d => d.Id)
                     .ToListAsync(ct);
@@ -418,36 +419,36 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 // Get all events for these devices
-                var eventIds = await context.Events
+                List<Guid> eventIds = await context.Events
                     .Where(e => deviceIds.Contains(e.DeviceId))
                     .Select(e => e.Id)
                     .ToListAsync(ct);
 
                 // Get all access logs
-                var accessEntries = await context.ActionLogEntries
+                List<ActionLogEntry> accessEntries = await context.ActionLogEntries
                     .Where(ale => eventIds.Contains(ale.EntityId ?? Guid.Empty) && ale.EntityType == "Event")
                     .ToListAsync(ct);
 
                 // Group by day and user to detect excessive access
                 var dailyAccessCounts = accessEntries
-                    .GroupBy(e => new { Date = e.TimestampUtc.Date, User = e.Actor })
+                    .GroupBy(e => new { e.TimestampUtc.Date, User = e.Actor })
                     .ToDictionary(g => g.Key, g => g.Count());
 
-                foreach (var entry in accessEntries)
+                foreach (ActionLogEntry? entry in accessEntries)
                 {
                     int suspicionScore = 0;
                     var flagReasons = new List<string>();
 
                     // Check for off-hours access (22:00 - 06:00)
                     var hour = entry.TimestampUtc.Hour;
-                    if (hour >= 22 || hour < 6)
+                    if (hour is >= 22 or < 6)
                     {
                         suspicionScore += 30;
                         flagReasons.Add("OffHours");
                     }
 
                     // Check for excessive access (>100/day)
-                    var dailyKey = new { Date = entry.TimestampUtc.Date, User = entry.Actor };
+                    var dailyKey = new { entry.TimestampUtc.Date, User = entry.Actor };
                     if (dailyAccessCounts.TryGetValue(dailyKey, out var count) && count > 100)
                     {
                         suspicionScore += 40;
@@ -484,22 +485,22 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("GetExportHistoryAsync entry: LocationId={LocationId}", locationId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
                 // Get device IDs for location
-                var deviceIds = await context.Devices
+                List<Guid> deviceIds = await context.Devices
                     .Where(d => d.LocationId == locationId)
                     .Select(d => d.Id)
                     .ToListAsync(ct);
 
                 if (deviceIds.Count == 0)
                 {
-                    return new List<ExportAuditRecord>();
+                    return [];
                 }
 
                 // Get export records that contain media from devices at this location
-                var exportRecords = await context.ExportRecordItems
+                List<ExportRecord> exportRecords = await context.ExportRecordItems
                     .Join(context.MediaItems,
                         eri => eri.MediaItemId,
                         mi => mi.Id,
@@ -540,10 +541,10 @@ namespace VideoForensics.Data.Database.Repositories
         {
             _logger.LogInformation("VerifyExportIntegrityAsync entry: ExportId={ExportId}", exportId);
 
-            await using var context = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var exportRecord = await context.ExportRecords.FirstOrDefaultAsync(er => er.Id == exportId, ct);
+                ExportRecord? exportRecord = await context.ExportRecords.FirstOrDefaultAsync(er => er.Id == exportId, ct);
                 if (exportRecord == null)
                 {
                     _logger.LogWarning("Export record not found: {ExportId}", exportId);
@@ -558,16 +559,16 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 // Get all export items for this export
-                var exportItems = await context.ExportRecordItems
+                List<ExportRecordItem> exportItems = await context.ExportRecordItems
                     .Where(eri => eri.ExportRecordId == exportId)
                     .ToListAsync(ct);
 
                 int intactCount = 0;
 
                 // Verify each exported media item's hash
-                foreach (var item in exportItems)
+                foreach (ExportRecordItem? item in exportItems)
                 {
-                    var mediaItem = await context.MediaItems.FirstOrDefaultAsync(mi => mi.Id == item.MediaItemId, ct);
+                    MediaItem? mediaItem = await context.MediaItems.FirstOrDefaultAsync(mi => mi.Id == item.MediaItemId, ct);
                     if (mediaItem != null && mediaItem.Sha256Hash == item.MediaItemSha256HashAtExport)
                     {
                         intactCount++;
@@ -601,13 +602,13 @@ namespace VideoForensics.Data.Database.Repositories
 
             try
             {
-                var accessHistory = await GetLocationAccessHistoryAsync(locationId, ct);
-                var exports = await GetExportHistoryAsync(locationId, ct);
-                var custody = await VerifyChainOfCustodyAsync(locationId, ct);
-                var unauthorized = await FlagUnauthorizedAccessAsync(locationId, ct);
+                IReadOnlyList<AccessAuditLog> accessHistory = await GetLocationAccessHistoryAsync(locationId, ct);
+                IReadOnlyList<ExportAuditRecord> exports = await GetExportHistoryAsync(locationId, ct);
+                AccessAuditReport custody = await VerifyChainOfCustodyAsync(locationId, ct);
+                IReadOnlyList<UnauthorizedAccessFlag> unauthorized = await FlagUnauthorizedAccessAsync(locationId, ct);
 
-                var lastAccessUtc = accessHistory.Count > 0 ? accessHistory.Max(a => a.AccessedAtUtc) : DateTime.MinValue;
-                var lastExportUtc = exports.Count > 0 ? exports.Max(e => e.ExportedAtUtc) : DateTime.MinValue;
+                DateTime lastAccessUtc = accessHistory.Count > 0 ? accessHistory.Max(a => a.AccessedAtUtc) : DateTime.MinValue;
+                DateTime lastExportUtc = exports.Count > 0 ? exports.Max(e => e.ExportedAtUtc) : DateTime.MinValue;
 
                 var summary = new AuditTrailSummary
                 {

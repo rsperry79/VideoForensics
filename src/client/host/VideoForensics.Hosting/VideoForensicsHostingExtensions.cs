@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
@@ -35,14 +38,14 @@ namespace VideoForensics.Hosting
         /// </summary>
         public static IServiceCollection AddVideoForensicsDataLayer(this IServiceCollection services)
         {
-            services.AddVideoForensicsSqlite();
-            services.AddVideoForensicsDatabase();
-            services.AddVideoForensicsDataCore();
+            _ = services.AddVideoForensicsSqlite();
+            _ = services.AddVideoForensicsDatabase();
+            _ = services.AddVideoForensicsDataCore();
 
             // App-lock (plan §5.9) is device-local and only meaningful on MAUI - every host gets
             // this no-op default; VideoForensics.MauiApp registers the real Preferences-backed
             // implementation afterward, which wins by DI's last-registration-wins rule.
-            services.AddSingleton<IAppLockPreferencesStore, NullAppLockPreferencesStore>();
+            _ = services.AddSingleton<IAppLockPreferencesStore, NullAppLockPreferencesStore>();
 
             return services;
         }
@@ -59,8 +62,8 @@ namespace VideoForensics.Hosting
             // Shared session provider (must be singleton so all services/scopes observe the same
             // keyed session map - see ISessionProvider's per-account redesign). ICredentialStore is
             // a plain file-based store with no Scoped dependency of its own, safe to stay Singleton.
-            services.AddSingleton<ISessionProvider, SessionProvider>();
-            services.AddSingleton<ICredentialStore>(new CredentialStore());
+            _ = services.AddSingleton<ISessionProvider, SessionProvider>();
+            _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
 
             // Ring provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
@@ -69,7 +72,7 @@ namespace VideoForensics.Hosting
             // the same captive-dependency problem as the services below. Scoped-depending-on-Singleton
             // (ISessionProvider, ICredentialStore) is fine; only the reverse is the bug. For today's
             // single-root-scope console/MCP hosts this is observably identical to Singleton.
-            services.AddScoped<IProviderAuthService>(provider =>
+            _ = services.AddScoped<IProviderAuthService>(provider =>
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
@@ -80,26 +83,26 @@ namespace VideoForensics.Hosting
                     provider.GetRequiredService<IUserRepository>()
                 )
             );
-            services.AddScoped<IDeviceDiscoveryService>(provider =>
+            _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
                 new RingDeviceDiscoveryService(
                     provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                     provider.GetRequiredService<ISessionProvider>()
                 )
             );
-            services.AddScoped<IMediaDownloadService>(provider =>
+            _ = services.AddScoped<IMediaDownloadService>(provider =>
                 new RingMediaDownloadService(
                     provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
                     provider.GetRequiredService<IVideoForensicsDataClient>()
                 )
             );
-            services.AddScoped<IEventAndConfigService>(provider =>
+            _ = services.AddScoped<IEventAndConfigService>(provider =>
                 new RingEventAndConfigService(
                     provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
                     provider.GetRequiredService<ISessionProvider>()
                 )
             );
-            services.AddScoped<IVideoProvider>(provider =>
+            _ = services.AddScoped<IVideoProvider>(provider =>
                 new RingVideoProvider(
                     provider.GetRequiredService<ILogger<RingVideoProvider>>(),
                     provider.GetRequiredService<IProviderAuthService>(),
@@ -112,7 +115,7 @@ namespace VideoForensics.Hosting
             // Runtime configuration. Starts out holding class defaults; the caller loads persisted
             // settings into this same singleton via InitializeVideoForensicsDataAsync below, once the
             // DB is ready - every service already holding a reference observes the loaded values too.
-            services.AddSingleton<IForensicsConfiguration>(new ForensicsConfiguration());
+            _ = services.AddSingleton<IForensicsConfiguration>(new ForensicsConfiguration());
 
             // Scoped, not Singleton, for these four: caught by a DI-graph smoke test during M1 -
             // every one of them transitively depends on a Scoped repository (IAppSettingRepository,
@@ -123,41 +126,41 @@ namespace VideoForensics.Hosting
             // would silently break (or, once ValidateOnBuild is on, fail outright) the moment a real
             // per-circuit-scoped host (Blazor Server, per the MAUI/Web plan) exists. Matching
             // JammingToolsOrchestrator's already-Scoped registration below for the same reason.
-            services.AddScoped<IVideoDownloadService>(serviceProvider =>
+            _ = services.AddScoped<IVideoDownloadService>(serviceProvider =>
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
-                var videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
-                var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-                var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
-                var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-                var dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
-                var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+                ILogger<VideoDownloadServiceAdapter> logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
+                IVideoProvider videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
+                IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+                IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+                IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+                IVideoForensicsDataClient dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
+                IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
                 return new VideoDownloadServiceAdapter(logger, videoProvider, authService, downloadService, deviceService, dataClient, forensicsConfig);
             });
 
-            services.AddScoped<IEvidenceValidationService>(serviceProvider =>
+            _ = services.AddScoped<IEvidenceValidationService>(serviceProvider =>
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
-                var eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
-                var eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
-                var deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
-                var integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                var reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
+                ILogger<EvidenceValidationOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
+                IEventAndConfigService eventAndConfigService = serviceProvider.GetRequiredService<IEventAndConfigService>();
+                IEventRepository eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
+                IDeviceRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
+                IIntegrityVerificationService integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
+                IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
                 return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
             });
 
-            services.AddScoped<IEvidenceExportService>(serviceProvider =>
+            _ = services.AddScoped<IEvidenceExportService>(serviceProvider =>
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
-                var mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
-                var integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
-                var actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
-                var exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
+                ILogger<EvidenceExportOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<EvidenceExportOrchestrator>>();
+                IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IIntegrityVerificationService integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
+                IActionLogRepository actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
+                IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
                 return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
             });
 
-            services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
+            _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
                     serviceProvider.GetRequiredService<IAppSettingRepository>()
@@ -165,8 +168,8 @@ namespace VideoForensics.Hosting
             );
 
             // Constructor-injected (all dependencies already registered above)
-            services.AddScoped<JammingToolsOrchestrator>();
-            services.AddScoped<ConfigToolsOrchestrator>();
+            _ = services.AddScoped<JammingToolsOrchestrator>();
+            _ = services.AddScoped<ConfigToolsOrchestrator>();
 
             // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
             // optional capability - Ring's is registered here the same way its other four services
@@ -177,34 +180,34 @@ namespace VideoForensics.Hosting
             // comment). AddHostedService is safe to call from every server-tier host's own
             // AddVideoForensicsServerCore() call site; ASP.NET Core and the generic Host both already
             // de-duplicate re-registrations of the same singleton BackgroundService type.
-            services.AddScoped<IProviderHealthSource, RingHealthSource>();
-            services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
-            services.AddHostedService<DeviceHealthSyncService>();
+            _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
+            _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
+            _ = services.AddHostedService<DeviceHealthSyncService>();
 
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
-            services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
+            _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
 
             // Pairing/RBAC/security-audit backbone (plan §5, M6). IPairingTokenService is
             // per-process in-memory state (short-lived tokens), so it must be Singleton.
             // ISessionTokenService only needs the already-registered IDataProtectionProvider.
-            services.AddSingleton<IPairingTokenService, PairingTokenService>();
-            services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
-            services.AddSingleton<ISessionTokenService, SessionTokenService>();
-            services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
-            services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
-            services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
-            services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
+            _ = services.AddSingleton<IPairingTokenService, PairingTokenService>();
+            _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
+            _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
+            _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
+            _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
+            _ = services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
+            _ = services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
 
             // Urgent notifications (plan §5.6) - fanned out from SecurityAuditLogger itself, not
             // from individual call sites, so a new urgent event type never needs a second wire-up.
             // Email is the one channel built so far (the plan's stated reliable baseline); Web Push
             // and MAUI toast are deliberately not yet implemented - see INotificationProvider's doc
             // comment for why the extensibility point exists regardless.
-            services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
-            services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
-            services.AddScoped<INotificationProvider, EmailNotificationProvider>();
-            services.AddScoped<EmailNotificationProvider>();
-            services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+            _ = services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
+            _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
+            _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
+            _ = services.AddScoped<EmailNotificationProvider>();
+            _ = services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
 
             return services;
         }
@@ -218,9 +221,9 @@ namespace VideoForensics.Hosting
         /// </summary>
         public static IServiceCollection AddVideoForensicsClientApi(this IServiceCollection services, Uri serverAddress)
         {
-            services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
-            services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
-            services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             return services;
         }
 
@@ -231,7 +234,7 @@ namespace VideoForensics.Hosting
         /// </summary>
         public static async Task InitializeVideoForensicsDataAsync(IServiceProvider services, ILogger logger, CancellationToken ct)
         {
-            var dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+            IDbContextFactory<VideoForensicsDbContext> dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
             await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct);
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
@@ -241,25 +244,25 @@ namespace VideoForensics.Hosting
             // "Cannot resolve scoped service ... from root provider" under strict scope validation,
             // which ASP.NET Core enables by default in the Development environment - caught by
             // actually running VideoForensics.WebApp, not by any build). Create an explicit scope.
-            using var scope = services.CreateScope();
-            var sp = scope.ServiceProvider;
+            using IServiceScope scope = services.CreateScope();
+            IServiceProvider sp = scope.ServiceProvider;
 
             const string backfillFlagKey = "EventsBackfillFromDownloadEventsCompleted";
-            var appSettingRepo = sp.GetRequiredService<IAppSettingRepository>();
+            IAppSettingRepository appSettingRepo = sp.GetRequiredService<IAppSettingRepository>();
             var alreadyDone = await appSettingRepo.GetAsync(backfillFlagKey, ct);
             if (alreadyDone != "true")
             {
-                var downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
-                var mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
-                var eventRepo = sp.GetRequiredService<IEventRepository>();
+                IDownloadEventRepository downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
+                IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
+                IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
                 var count = await EventBackfillService.BackfillFromDownloadEventsAsync(
                     downloadEventRepo, mediaItemRepo, eventRepo, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);
             }
 
-            var configService = sp.GetRequiredService<IForensicsConfigurationService>();
-            var appConfig = services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
+            IForensicsConfigurationService configService = sp.GetRequiredService<IForensicsConfigurationService>();
+            ForensicsConfiguration appConfig = services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
                 ?? throw new InvalidOperationException("Configuration must be a ForensicsConfiguration instance");
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, logger, ct);
         }

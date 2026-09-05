@@ -1,7 +1,5 @@
 using System;
 
-#nullable enable
-
 namespace VideoForensics.Providers.Common.Helpers.Contracts
 {
     /// <summary>Modes for JSON serialization and deserialization</summary>

@@ -9,17 +9,21 @@ namespace VideoForensics.Client.Core.Utilities
         public static string GetDefaultDownloadLocation()
         {
             // Try to detect OneDrive path first (Windows)
-            var oneDrivePath = GetOneDrivePath();
+            string? oneDrivePath = GetOneDrivePath();
             if (!string.IsNullOrEmpty(oneDrivePath))
             {
                 // Prefer Videos folder if it exists in OneDrive, otherwise use Pictures, otherwise use root
-                var videosPath = Path.Combine(oneDrivePath, "Videos");
+                string videosPath = Path.Combine(oneDrivePath, "Videos");
                 if (Directory.Exists(videosPath))
+                {
                     return Path.Combine(videosPath, "VideoForensics");
+                }
 
-                var picturesPath = Path.Combine(oneDrivePath, "Pictures");
+                string picturesPath = Path.Combine(oneDrivePath, "Pictures");
                 if (Directory.Exists(picturesPath))
+                {
                     return Path.Combine(picturesPath, "VideoForensics");
+                }
 
                 // Fallback to OneDrive root
                 return Path.Combine(oneDrivePath, "VideoForensics");
@@ -35,12 +39,14 @@ namespace VideoForensics.Client.Core.Utilities
         /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Documents/VideoForensics.</summary>
         public static string GetDefaultQueryExportLocation()
         {
-            var oneDrivePath = GetOneDrivePath();
+            string? oneDrivePath = GetOneDrivePath();
             if (!string.IsNullOrEmpty(oneDrivePath))
             {
-                var documentsPath = Path.Combine(oneDrivePath, "Documents");
+                string documentsPath = Path.Combine(oneDrivePath, "Documents");
                 if (Directory.Exists(documentsPath))
+                {
                     return Path.Combine(documentsPath, "VideoForensics");
+                }
 
                 // Fallback to OneDrive root
                 return Path.Combine(oneDrivePath, "VideoForensics");
@@ -55,12 +61,16 @@ namespace VideoForensics.Client.Core.Utilities
         public static string? GetOneDrivePath()
         {
             // Check environment variable (OneDrive sets this when OneDrive is running)
-            var oneDriveEnv = Environment.GetEnvironmentVariable("OneDrive");
+            string? oneDriveEnv = Environment.GetEnvironmentVariable("OneDrive");
             if (!string.IsNullOrEmpty(oneDriveEnv) && Directory.Exists(oneDriveEnv))
+            {
                 return oneDriveEnv;
+            }
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
                 return null;
+            }
 
             try
             {
@@ -69,10 +79,12 @@ namespace VideoForensics.Client.Core.Utilities
                 if (shellFoldersKey != null)
                 {
                     // Try OneDrive first, then OneDriveCommercial
-                    foreach (var valueName in new[] { "OneDrive", "OneDriveCommercial", "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" })
+                    foreach (string? valueName in new[] { "OneDrive", "OneDriveCommercial", "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" })
                     {
                         if (shellFoldersKey.GetValue(valueName) is string folderPath && Directory.Exists(folderPath))
+                        {
                             return folderPath;
+                        }
                     }
                 }
 
@@ -80,11 +92,13 @@ namespace VideoForensics.Client.Core.Utilities
                 using var accountsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts");
                 if (accountsKey != null)
                 {
-                    foreach (var accountName in accountsKey.GetSubKeyNames())
+                    foreach (string accountName in accountsKey.GetSubKeyNames())
                     {
                         using var accountKey = accountsKey.OpenSubKey(accountName);
                         if (accountKey?.GetValue("UserFolder") is string userFolder && Directory.Exists(userFolder))
+                        {
                             return userFolder;
+                        }
                     }
                 }
 
@@ -93,7 +107,9 @@ namespace VideoForensics.Client.Core.Utilities
                 if (shellKey != null)
                 {
                     if (shellKey.GetValue("OneDrive") is string oneDriveShell && Directory.Exists(oneDriveShell))
+                    {
                         return oneDriveShell;
+                    }
                 }
             }
             catch
@@ -108,8 +124,8 @@ namespace VideoForensics.Client.Core.Utilities
         public static string BuildSavePath(string basePath, string locationName, string cameraName)
         {
             // Sanitize location and camera names for file paths
-            var sanitizedLocation = SanitizePathSegment(locationName);
-            var sanitizedCamera = SanitizePathSegment(cameraName);
+            string sanitizedLocation = SanitizePathSegment(locationName);
+            string sanitizedCamera = SanitizePathSegment(cameraName);
             return Path.Combine(basePath, sanitizedLocation, sanitizedCamera);
         }
 
@@ -117,10 +133,12 @@ namespace VideoForensics.Client.Core.Utilities
         private static string SanitizePathSegment(string segment)
         {
             if (string.IsNullOrWhiteSpace(segment))
+            {
                 return "Unknown";
+            }
 
-            var invalidChars = Path.GetInvalidPathChars();
-            var sanitized = new string(segment
+            char[] invalidChars = Path.GetInvalidPathChars();
+            string sanitized = new(segment
                 .Where(c => !invalidChars.Contains(c) && c != ':' && c != '|' && c != '?')
                 .ToArray());
 

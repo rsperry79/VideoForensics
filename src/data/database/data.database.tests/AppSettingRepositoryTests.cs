@@ -1,5 +1,6 @@
-using Xunit;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -26,7 +27,7 @@ namespace VideoForensics.Data.Database.Tests
 
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
 
-            var value = await repository.GetAsync("TestKey", CancellationToken.None);
+            string? value = await repository.GetAsync("TestKey", CancellationToken.None);
             Assert.Equal("TestValue", value);
         }
 
@@ -39,7 +40,7 @@ namespace VideoForensics.Data.Database.Tests
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
             await repository.SetAsync("TestKey", "Value2", CancellationToken.None);
 
-            var value = await repository.GetAsync("TestKey", CancellationToken.None);
+            string? value = await repository.GetAsync("TestKey", CancellationToken.None);
             Assert.Equal("Value2", value);
         }
 
@@ -49,7 +50,7 @@ namespace VideoForensics.Data.Database.Tests
             await ClearSettingsAsync();
             var repository = new AppSettingRepository(_fixture.Factory);
 
-            var value = await repository.GetAsync("NonExistent", CancellationToken.None);
+            string? value = await repository.GetAsync("NonExistent", CancellationToken.None);
             Assert.Null(value);
         }
 
@@ -79,7 +80,7 @@ namespace VideoForensics.Data.Database.Tests
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
             await repository.DeleteAsync("TestKey", CancellationToken.None);
 
-            var value = await repository.GetAsync("TestKey", CancellationToken.None);
+            string? value = await repository.GetAsync("TestKey", CancellationToken.None);
             Assert.Null(value);
         }
 
@@ -157,7 +158,7 @@ namespace VideoForensics.Data.Database.Tests
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
             var settings2 = await repository.ListAsync(CancellationToken.None);
 
-            Assert.Single(settings2);
+            _ = Assert.Single(settings2);
             Assert.Equal(updatedAt1, settings2.First().UpdatedAtUtc);
         }
     }

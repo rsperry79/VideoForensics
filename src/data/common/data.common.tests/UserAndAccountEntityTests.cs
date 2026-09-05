@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -10,9 +11,9 @@ public class UserAndAccountEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var providerUserKey = "ring:user123";
-        var displayName = "John Doe";
-        var email = "john@example.com";
+        string providerUserKey = "ring:user123";
+        string displayName = "John Doe";
+        string email = "john@example.com";
         var createdUtc = DateTime.UtcNow;
 
         // Act
@@ -56,10 +57,10 @@ public class UserAndAccountEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var providerName = "Ring";
+        string providerName = "Ring";
         var linkedUtc = DateTime.UtcNow;
         var lastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1);
-        var isActive = true;
+        bool isActive = true;
 
         // Act
         var providerAccount = new ProviderAccount

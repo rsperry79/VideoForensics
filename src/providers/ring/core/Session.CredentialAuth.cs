@@ -61,7 +61,7 @@ namespace VideoForensics.Providers.Ring
 
                 try
                 {
-                    await session.Authenticate();
+                    _ = await session.Authenticate();
                 }
                 catch (Exceptions.TwoFactorAuthenticationRequiredException)
                 {
@@ -71,8 +71,8 @@ namespace VideoForensics.Providers.Ring
                     }
 
                     progress?.Report(new AuthProgressEventArgs("Two-factor authentication required"));
-                    var code = await twoFactorAuthCodeProvider();
-                    await session.Authenticate(twoFactorAuthCode: code);
+                    string code = await twoFactorAuthCodeProvider();
+                    _ = await session.Authenticate(twoFactorAuthCode: code);
                 }
             }
 

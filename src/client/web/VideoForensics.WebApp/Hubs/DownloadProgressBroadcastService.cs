@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.WebApp.Hubs
 {
@@ -36,13 +39,13 @@ namespace VideoForensics.WebApp.Hubs
             {
                 try
                 {
-                    using var scope = _scopeFactory.CreateScope();
-                    var downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
+                    using IServiceScope scope = _scopeFactory.CreateScope();
+                    IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
 
-                    var progress = downloadService.GetProgress();
-                    var (index, total, name) = downloadService.GetCurrentDevice();
-                    var activity = downloadService.DrainActivityLog();
-                    var preScanCounts = downloadService.GetPreScanCounts();
+                    DownloadStatus progress = downloadService.GetProgress();
+                    (int index, int total, string? name) = downloadService.GetCurrentDevice();
+                    IReadOnlyList<string> activity = downloadService.DrainActivityLog();
+                    IReadOnlyDictionary<string, int> preScanCounts = downloadService.GetPreScanCounts();
 
                     await _hubContext.Clients.All.SendAsync("DownloadProgress", new
                     {

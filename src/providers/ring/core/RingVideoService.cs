@@ -10,12 +10,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using VideoForensics.Providers.Common.Helpers.Contracts;
+using VideoForensics.Providers.Common.Helpers.Media;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Models;
-using VideoForensics.Providers.Common.Helpers.Contracts;
-using VideoForensics.Providers.Common.Helpers.Json;
-using VideoForensics.Providers.Common.Helpers.Media;
+
 using static VideoForensics.Providers.Common.Helpers.Contracts.JsonSerializationMode;
 
 namespace VideoForensics.Providers.Ring
@@ -42,10 +42,10 @@ namespace VideoForensics.Providers.Ring
         /// Signature: async Task (DoorbotHistoryEvent event, string filePath)
         /// </summary>
         public Func<DoorbotHistoryEvent, string, Task> OnFileDownloadedAsync { get; set; }
-        private static SemaphoreSlim semaphore = new SemaphoreSlim(10, 10);
+        private static readonly SemaphoreSlim semaphore = new(10, 10);
         private static int activeDls = 0;
         private static long totalBytesDownloaded = 0;
-        private static DateTime downloadStartTime = DateTime.Now;
+        private static readonly DateTime downloadStartTime = DateTime.Now;
         public Filter Filter { get; set; } = new();
         public RingCredentials Auth { get; set; } = new();
         public readonly string SavedSettingsFolder;
@@ -53,14 +53,14 @@ namespace VideoForensics.Providers.Ring
         public readonly string AuthFile;
         private readonly IMediaValidator mediaValidator;
         private readonly IJsonSerializer jsonSerializer;
-        private ConcurrentBag<FailedDownload> newFailures = new();
-        private HashSet<string> loadedEventIds = new();
+        private readonly ConcurrentBag<FailedDownload> newFailures = [];
+        private readonly HashSet<string> loadedEventIds = [];
         private string reportsDirectory;
         private string logsDirectory;
         public static volatile bool IsRunActive = false;
-        private static readonly object rawApiLogLock = new object();
-        private Dictionary<Guid, string> locationNameCache = new();
-        private Dictionary<long, Guid> deviceIdToLocationId = new();
+        private static readonly object rawApiLogLock = new();
+        private readonly Dictionary<Guid, string> locationNameCache = [];
+        private readonly Dictionary<long, Guid> deviceIdToLocationId = [];
         private Devices cachedDevices = null;  // For enriching downloads with current device health
 
         public RingVideoService(
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring
             IMediaValidator mediaValidator = null,
             IJsonSerializer jsonSerializer = null)
         {
-            this.log = logger;
+            log = logger;
             this.reporter = reporter;
             this.credentialStore = credentialStore;
             this.configLocationNames = configLocationNames;
@@ -81,9 +81,9 @@ namespace VideoForensics.Providers.Ring
             this.mediaValidator = mediaValidator ?? new MediaValidator();
             this.jsonSerializer = jsonSerializer ?? new VideoForensics.Providers.Common.Helpers.Json.JsonSerializer();
 
-            this.SavedSettingsFolder = dataDirectory;
-            this.SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");
-            this.AuthFile = Path.Combine(dataDirectory, "auth.json");
+            SavedSettingsFolder = dataDirectory;
+            SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");
+            AuthFile = Path.Combine(dataDirectory, "auth.json");
 
             try
             {
@@ -102,16 +102,16 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 contents = System.IO.File.ReadAllText(SavedSettingsFile);
-                var settings = jsonSerializer.Deserialize<Config>(contents);
-                this.Filter = settings.Filter ?? new Filter();
+                Config? settings = jsonSerializer.Deserialize<Config>(contents);
+                Filter = settings.Filter ?? new Filter();
             }
             catch (Exception)
             {
-                this.Filter = defaultFilter ?? new Filter();
+                Filter = defaultFilter ?? new Filter();
             }
 
-            this.Auth = credentialStore.Load(AuthFile);
-            if (string.IsNullOrWhiteSpace(this.Auth.RefreshToken) && string.IsNullOrWhiteSpace(this.Auth.Password))
+            Auth = credentialStore.Load(AuthFile);
+            if (string.IsNullOrWhiteSpace(Auth.RefreshToken) && string.IsNullOrWhiteSpace(Auth.Password))
             {
                 MigrateLegacyAuth(contents);
             }
@@ -131,19 +131,23 @@ namespace VideoForensics.Providers.Ring
         private void MigrateLegacyAuth(string savedSettingsContents)
         {
             if (string.IsNullOrEmpty(savedSettingsContents))
+            {
                 return;
+            }
 
             try
             {
                 using var doc = JsonDocument.Parse(savedSettingsContents);
-                if (!doc.RootElement.TryGetProperty("Authentication", out var authElement))
+                if (!doc.RootElement.TryGetProperty("Authentication", out JsonElement authElement))
+                {
                     return;
+                }
 
-                var legacyAuth = credentialStore.LoadFromJson(authElement.GetRawText());
+                RingCredentials legacyAuth = credentialStore.LoadFromJson(authElement.GetRawText());
                 if (!string.IsNullOrWhiteSpace(legacyAuth.RefreshToken) || !string.IsNullOrWhiteSpace(legacyAuth.Password))
                 {
-                    this.Auth = legacyAuth;
-                    credentialStore.Save(AuthFile, this.Auth);
+                    Auth = legacyAuth;
+                    credentialStore.Save(AuthFile, Auth);
                     log.LogInformation("Migrated saved credentials from {oldFile} to {authFile}", SavedSettingsFile, AuthFile);
                 }
             }
@@ -169,19 +173,19 @@ namespace VideoForensics.Providers.Ring
                 Filter.EndDateTime = null;
             }
 
-            if (!Directory.Exists(this.SavedSettingsFolder))
+            if (!Directory.Exists(SavedSettingsFolder))
             {
-                Directory.CreateDirectory(this.SavedSettingsFolder);
+                _ = Directory.CreateDirectory(SavedSettingsFolder);
             }
 
             var conf = new Config()
             {
-                Filter = this.Filter
+                Filter = Filter
             };
             var config = jsonSerializer.Serialize(conf, Pretty);
 
-            System.IO.File.WriteAllText(this.SavedSettingsFile, config);
-            log.LogInformation("Settings saved to {settingsFile}", this.SavedSettingsFile);
+            System.IO.File.WriteAllText(SavedSettingsFile, config);
+            log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
             log.LogInformation($"Saved refresh token (length: {Auth.RefreshToken?.Length ?? 0})");
         }
 
@@ -195,7 +199,9 @@ namespace VideoForensics.Providers.Ring
         private void LogRawApiCall(RawApiCall call)
         {
             if (string.IsNullOrEmpty(logsDirectory))
+            {
                 return;
+            }
 
             try
             {
@@ -232,7 +238,9 @@ namespace VideoForensics.Providers.Ring
         private void LogApiLifecycleEvent(ApiLifecycleEvent evt)
         {
             if (string.IsNullOrEmpty(logsDirectory))
+            {
                 return;
+            }
 
             try
             {
@@ -257,11 +265,13 @@ namespace VideoForensics.Providers.Ring
         private void LogRingEventsBatch(RingEventsBatch batch)
         {
             if (string.IsNullOrEmpty(logsDirectory))
+            {
                 return;
+            }
 
             try
             {
-                var localTime = batch.Timestamp.ToLocalTime();
+                DateTime localTime = batch.Timestamp.ToLocalTime();
                 var seq = Interlocked.Increment(ref ringEventsFileCounter);
                 var fileName = $"events-{localTime:yyyy-MM-dd}-T{localTime:HH_mm_ss}-{seq}.json";
                 var filePath = Path.Combine(logsDirectory, fileName);
@@ -281,40 +291,46 @@ namespace VideoForensics.Providers.Ring
         public string GetFilterMessage()
         {
             var expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath ?? string.Empty);
-            StringBuilder message = new StringBuilder();
-            message.AppendLine("----------------------------");
+            var message = new StringBuilder();
+            _ = message.AppendLine("----------------------------");
             if (Filter.StartDateTime.HasValue)
             {
-                message.AppendLine($"Start Date:\t{Filter.StartDateTime.Value} [UTC: {Filter.StartDateTimeUtc.Value}]");
+                _ = message.AppendLine($"Start Date:\t{Filter.StartDateTime.Value} [UTC: {Filter.StartDateTimeUtc.Value}]");
             }
+
             if (Filter.EndDateTime.HasValue)
             {
-                message.AppendLine($"End Date:\t{Filter.EndDateTime.Value} [UTC: {Filter.EndDateTimeUtc.Value}]");
+                _ = message.AppendLine($"End Date:\t{Filter.EndDateTime.Value} [UTC: {Filter.EndDateTimeUtc.Value}]");
             }
             else
             {
-                message.AppendLine($"End Date:\tCurrent Time");
+                _ = message.AppendLine($"End Date:\tCurrent Time");
             }
+
             if (Filter.VideoCount != 10000)
             {
-                message.AppendLine($"Max downloads:\t{Filter.VideoCount}");
+                _ = message.AppendLine($"Max downloads:\t{Filter.VideoCount}");
             }
-            message.AppendLine($"Only Starred:\t{Filter.OnlyStarred}");
-            message.AppendLine($"Only Person:\t{Filter.OnlyPersonDetected}");
+
+            _ = message.AppendLine($"Only Starred:\t{Filter.OnlyStarred}");
+            _ = message.AppendLine($"Only Person:\t{Filter.OnlyPersonDetected}");
             if (!string.IsNullOrWhiteSpace(Filter.Kind))
             {
-                message.AppendLine($"Event Kind:\t{Filter.Kind}");
+                _ = message.AppendLine($"Event Kind:\t{Filter.Kind}");
             }
+
             if (!string.IsNullOrWhiteSpace(Filter.DetectionType))
             {
-                message.AppendLine($"Detection:\t{Filter.DetectionType}");
+                _ = message.AppendLine($"Detection:\t{Filter.DetectionType}");
             }
-            message.AppendLine($"Snapshots:\t{Filter.Snapshots}");
+
+            _ = message.AppendLine($"Snapshots:\t{Filter.Snapshots}");
             if (!string.IsNullOrWhiteSpace(expandedPath))
             {
-                message.AppendLine($"Download Path:\t{expandedPath}");
+                _ = message.AppendLine($"Download Path:\t{expandedPath}");
             }
-            message.AppendLine("----------------------------");
+
+            _ = message.AppendLine("----------------------------");
             return message.ToString();
         }
 
@@ -341,7 +357,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     var progress = new Progress<AuthProgressEventArgs>(e =>
                     {
-                        updateStatus(e.Message);
+                        _ = updateStatus(e.Message);
                         if (e.IsWarning)
                         {
                             reporter.Warning(e.Message);
@@ -353,8 +369,8 @@ namespace VideoForensics.Providers.Ring
                         }
                     });
 
-                    var s = await Session.AuthenticateWithCredentials(
-                        this.Auth,
+                    Session s = await Session.AuthenticateWithCredentials(
+                        Auth,
                         twoFactorAuthCodeProvider: async () =>
                         {
                             // Two factor authentication is enabled on the account - a text message with a
@@ -365,6 +381,7 @@ namespace VideoForensics.Providers.Ring
                             {
                                 log.LogInformation("2FA token received");
                             }
+
                             return token;
                         },
                         progress: progress);
@@ -394,6 +411,7 @@ namespace VideoForensics.Providers.Ring
             {
                 SaveSettings(null, null);
             }
+
             return session;
         }
 
@@ -414,13 +432,14 @@ namespace VideoForensics.Providers.Ring
                 DateTime? lastSuccess = null;
                 DateTime? firstFailure = null;
                 int failedCount = 0;
-                List<(bool success, DoorbotHistoryEvent ding)> results = new();
-                this.ringSession = await Authenticate();
-                if (this.ringSession == null || !this.ringSession.IsAuthenticated)
+                List<(bool success, DoorbotHistoryEvent ding)> results = [];
+                ringSession = await Authenticate();
+                if (ringSession == null || !ringSession.IsAuthenticated)
                 {
                     reporter.Error("Authentication failed. Please check your credentials.");
                     return 999;
                 }
+
                 if (Filter.DownloadPath == null)
                 {
                     reporter.Error("A valid download path '--path' argument is required");
@@ -432,7 +451,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     if (!Directory.Exists(expandedPath))
                     {
-                        Directory.CreateDirectory(expandedPath);
+                        _ = Directory.CreateDirectory(expandedPath);
                     }
                 }
                 else
@@ -445,14 +464,14 @@ namespace VideoForensics.Providers.Ring
                 reportsDirectory = Path.Combine(expandedPath, "reports");
                 if (!Directory.Exists(reportsDirectory))
                 {
-                    Directory.CreateDirectory(reportsDirectory);
+                    _ = Directory.CreateDirectory(reportsDirectory);
                 }
 
                 // Initialize logs directory
                 logsDirectory = Path.Combine(expandedPath, "logs");
                 if (!Directory.Exists(logsDirectory))
                 {
-                    Directory.CreateDirectory(logsDirectory);
+                    _ = Directory.CreateDirectory(logsDirectory);
                 }
 
                 // Capture every raw API response for this run so we can inspect what Ring actually
@@ -468,7 +487,7 @@ namespace VideoForensics.Providers.Ring
                 // Load existing failures to check for duplicates
                 LoadExistingFailures(reportsDirectory);
 
-                this.PrintFilterMessage("Fetching videos with the following settings:");
+                PrintFilterMessage("Fetching videos with the following settings:");
                 if (!Filter.Snapshots)
                 {
                     DeviceList deviceList = new();
@@ -485,25 +504,36 @@ namespace VideoForensics.Providers.Ring
                     // each device's LocationId to organize downloads
                     var allDevices = new Devices
                     {
-                        Doorbots = new List<Doorbot>(),
-                        AuthorizedDoorbots = new List<Doorbot>(),
-                        Chimes = new List<Chime>(),
-                        StickupCams = new List<StickupCam>()
+                        Doorbots = [],
+                        AuthorizedDoorbots = [],
+                        Chimes = [],
+                        StickupCams = []
                     };
 
                     try
                     {
-                        var allDeviceResponse = await this.ringSession.GetRingDevices();
+                        Devices allDeviceResponse = await ringSession.GetRingDevices();
                         if (allDeviceResponse != null)
                         {
                             if (allDeviceResponse.Doorbots != null)
+                            {
                                 allDevices.Doorbots.AddRange(allDeviceResponse.Doorbots);
+                            }
+
                             if (allDeviceResponse.AuthorizedDoorbots != null)
+                            {
                                 allDevices.AuthorizedDoorbots.AddRange(allDeviceResponse.AuthorizedDoorbots);
+                            }
+
                             if (allDeviceResponse.Chimes != null)
+                            {
                                 allDevices.Chimes.AddRange(allDeviceResponse.Chimes);
+                            }
+
                             if (allDeviceResponse.StickupCams != null)
+                            {
                                 allDevices.StickupCams.AddRange(allDeviceResponse.StickupCams);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -515,7 +545,7 @@ namespace VideoForensics.Providers.Ring
                     reporter.Highlight($"Found {(allDevices.Doorbots?.Count ?? 0) + (allDevices.Chimes?.Count ?? 0) + (allDevices.StickupCams?.Count ?? 0)} total devices across all locations");
 
                     // Cache devices for enriching downloaded events with health data
-                    this.cachedDevices = allDevices;
+                    cachedDevices = allDevices;
 
                     // Camera/doorbell health (connectivity, battery, wifi signal) comes embedded directly in
                     // the ring_devices response already fetched above - no separate health API call needed.
@@ -529,54 +559,84 @@ namespace VideoForensics.Providers.Ring
 
                         var parts = new List<string>();
                         if (health.Connected.HasValue)
+                        {
                             parts.Add(health.Connected.Value ? "connected" : "DISCONNECTED");
+                        }
+
                         if (!string.IsNullOrEmpty(health.RssiCategory))
+                        {
                             parts.Add($"wifi {health.RssiCategory}" + (health.Rssi.HasValue ? $" ({health.Rssi}dBm)" : ""));
+                        }
+
                         if (health.BatteryPercentage.HasValue && health.BatteryPercentage.Value > 0)
+                        {
                             parts.Add($"battery {health.BatteryPercentage}%");
+                        }
                         else if (!string.IsNullOrEmpty(health.BatteryVoltageCategory))
+                        {
                             parts.Add($"battery voltage {health.BatteryVoltageCategory}");
+                        }
+
                         if (!string.IsNullOrEmpty(health.FirmwareVersionStatus))
+                        {
                             parts.Add(health.FirmwareVersionStatus);
+                        }
 
                         var line = $"    {name}: {(parts.Count > 0 ? string.Join(", ", parts) : "no telemetry")}";
                         var isConcern = health.Connected == false ||
                            string.Equals(health.RssiCategory, "poor", StringComparison.OrdinalIgnoreCase) ||
                            string.Equals(health.BatteryVoltageCategory, "poor", StringComparison.OrdinalIgnoreCase);
                         if (isConcern)
+                        {
                             reporter.Warning(line);
+                        }
                         else
+                        {
                             reporter.Info(line);
+                        }
                     }
 
                     if (allDevices.StickupCams.Count > 0 || allDevices.Doorbots.Count > 0 || allDevices.AuthorizedDoorbots.Count > 0)
                     {
                         reporter.Info("Camera health:");
-                        foreach (var d in allDevices.StickupCams)
+                        foreach (StickupCam d in allDevices.StickupCams)
+                        {
                             PrintDeviceHealth(d.Description ?? $"Device {d.Id}", d.Health);
-                        foreach (var d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                        }
+
+                        foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                        {
                             PrintDeviceHealth(d.Description ?? $"Device {d.Id}", d.Health);
+                        }
                     }
 
                     // Build a device-id -> location-id lookup. The doorbot history API (used per-download)
                     // does not embed location_id on its nested doorbot object, only the device-list APIs do -
                     // so downloads must resolve location via this lookup keyed on device id, not ding.Doorbot.LocationId.
                     deviceIdToLocationId.Clear();
-                    foreach (var d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots).Where(d => d.LocationId.HasValue))
+                    foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots).Where(d => d.LocationId.HasValue))
+                    {
                         deviceIdToLocationId[d.Id] = d.LocationId.Value;
-                    foreach (var d in allDevices.Chimes.Where(d => d.LocationId.HasValue))
+                    }
+
+                    foreach (Chime? d in allDevices.Chimes.Where(d => d.LocationId.HasValue))
+                    {
                         deviceIdToLocationId[d.Id] = d.LocationId.Value;
-                    foreach (var d in allDevices.StickupCams.Where(d => d.LocationId.HasValue))
+                    }
+
+                    foreach (StickupCam? d in allDevices.StickupCams.Where(d => d.LocationId.HasValue))
+                    {
                         deviceIdToLocationId[d.Id.Value] = d.LocationId.Value;
+                    }
 
                     // Populate location name cache from the API
                     reporter.Info("Loading location names...");
                     try
                     {
-                        var locations = await this.ringSession.GetLocations();
+                        List<Location> locations = await ringSession.GetLocations();
                         if (locations != null && locations.Count > 0)
                         {
-                            foreach (var loc in locations)
+                            foreach (Location loc in locations)
                             {
                                 if (loc.Id.HasValue && !string.IsNullOrEmpty(loc.Name))
                                 {
@@ -606,9 +666,9 @@ namespace VideoForensics.Providers.Ring
                     // Fall back to config-supplied names for any location the API didn't cover
                     if (configLocationNames != null)
                     {
-                        foreach (var kvp in configLocationNames)
+                        foreach (KeyValuePair<string, string> kvp in configLocationNames)
                         {
-                            if (Guid.TryParse(kvp.Key, out var locId) && !locationNameCache.ContainsKey(locId))
+                            if (Guid.TryParse(kvp.Key, out Guid locId) && !locationNameCache.ContainsKey(locId))
                             {
                                 locationNameCache[locId] = kvp.Value;
                                 reporter.Info($"  {kvp.Value} ({locId}) [from config]");
@@ -619,16 +679,16 @@ namespace VideoForensics.Providers.Ring
                     GenerateCameraHealthReport(reportsDirectory, allDevices, locationNameCache);
 
                     // Build device list from all locations
-                    var allDeviceList = new DeviceList().ExtractDevices(allDevices);
+                    DeviceList allDeviceList = new DeviceList().ExtractDevices(allDevices);
 
-                    List<DoorbotHistoryEvent> dings = new();
+                    List<DoorbotHistoryEvent> dings = [];
                     try
                     {
-                        foreach (var dev in allDeviceList.Devices)
+                        foreach (DeviceInfo dev in allDeviceList.Devices)
                         {
                             dings.AddRange(await reporter.RunWithStatusAsync($"Querying for videos to download from {dev.Name}...", async updateStatus =>
                             {
-                                var events = await ringSession.GetDoorbotsHistory(Filter.StartDateTimeUtc.Value, Filter.EndDateTimeUtc, dev.Id);
+                                List<DoorbotHistoryEvent> events = await ringSession.GetDoorbotsHistory(Filter.StartDateTimeUtc.Value, Filter.EndDateTimeUtc, dev.Id);
                                 await Task.Delay(500);
                                 return events;
                             }));
@@ -645,12 +705,14 @@ namespace VideoForensics.Providers.Ring
                     {
                         dings = dings.Where(d => d.Favorite == true).ToList();
                     }
+
                     if (Filter.OnlyPersonDetected)
                     {
                         dings = dings.Where(d => d.CvProperties != null &&
                                                  (d.CvProperties.PersonDetected == true ||
                                                   string.Equals(d.CvProperties.DetectionType, "human", StringComparison.OrdinalIgnoreCase))).ToList();
                     }
+
                     if (!string.IsNullOrWhiteSpace(Filter.DetectionType))
                     {
                         var detType = Filter.DetectionType.Trim();
@@ -658,6 +720,7 @@ namespace VideoForensics.Providers.Ring
                                                  (string.Equals(d.CvProperties.DetectionType, detType, StringComparison.OrdinalIgnoreCase) ||
                                                   (string.Equals(detType, "human", StringComparison.OrdinalIgnoreCase) && d.CvProperties.PersonDetected == true))).ToList();
                     }
+
                     if (!string.IsNullOrWhiteSpace(Filter.Kind))
                     {
                         var kind = Filter.Kind.Trim();
@@ -672,15 +735,7 @@ namespace VideoForensics.Providers.Ring
                     // Track event telemetry (battery, signal strength, AI detections)
                     TrackEventTelemetry(dings, reportsDirectory, locationNameCache);
 
-                    int videoCount = 0;
-                    if (dings.Count >= Filter.VideoCount)
-                    {
-                        videoCount = Filter.VideoCount;
-                    }
-                    else
-                    {
-                        videoCount = dings.Count;
-                    }
+                    int videoCount = dings.Count >= Filter.VideoCount ? Filter.VideoCount : dings.Count;
 
                     // Print summary BEFORE starting downloads
                     string limitmessage = "";
@@ -689,6 +744,7 @@ namespace VideoForensics.Providers.Ring
                     {
                         limitmessage = $" (Will download {Filter.VideoCount} of {dings.Count()} based on MaxCount setting)";
                     }
+
                     reporter.Info("");
                     reporter.Highlight($"📊 Total Media: {dings.Count()} | Downloading: {totalToDownload}{limitmessage}");
 
@@ -697,7 +753,7 @@ namespace VideoForensics.Providers.Ring
                     StringBuilder sb = new();
                     if (!Filter.DeviceId.HasValue)
                     {
-                        foreach (var grp in byDevice)
+                        foreach (IGrouping<int, DoorbotHistoryEvent>? grp in byDevice)
                         {
                             var name = deviceList.Devices.Where(d => d.Id == grp.FirstOrDefault().Doorbot.Id).FirstOrDefault().Name;
                             var count = grp.Count();
@@ -706,12 +762,14 @@ namespace VideoForensics.Providers.Ring
                             {
                                 s = "s";
                             }
-                            sb.Append($"{grp.Count()} video{s} from {name} and ");
+
+                            _ = sb.Append($"{grp.Count()} video{s} from {name} and ");
                         }
+
                         if (sb.Length > 4)
                         {
-                            sb.Length = sb.Length - 4;
-                            reporter.Info($"Will download {sb.ToString()}");
+                            sb.Length -= 4;
+                            reporter.Info($"Will download {sb}");
                         }
                     }
 
@@ -722,7 +780,7 @@ namespace VideoForensics.Providers.Ring
                     reporter.EnsureCapacity(videoCount);
 
                     // NOW start the downloads
-                    List<Task<(bool success, DoorbotHistoryEvent ding)>> tasks = new();
+                    List<Task<(bool success, DoorbotHistoryEvent ding)>> tasks = [];
                     for (int i = 0; i < videoCount; i++)
                     {
                         if (ct.IsCancellationRequested)
@@ -730,12 +788,13 @@ namespace VideoForensics.Providers.Ring
                             reporter.Warning($"Stopped queuing new downloads at {i}/{videoCount} (shutdown requested). Waiting for in-flight downloads to finish...");
                             break;
                         }
+
                         tasks.Add(SaveRecordingAsync(i + 1, dings[i], Filter, ct));
                     }
 
                     // Start background task to update speed every 5 seconds
                     using var speedUpdateCancellation = new CancellationTokenSource();
-                    var speedUpdateTask = UpdateSpeedPeriodically(speedUpdateCancellation.Token);
+                    Task speedUpdateTask = UpdateSpeedPeriodically(speedUpdateCancellation.Token);
 
                     results = (await Task.WhenAll(tasks.ToArray())).ToList();
 
@@ -752,7 +811,7 @@ namespace VideoForensics.Providers.Ring
                 }
                 else
                 {
-                    await DownloadSnapshots(Filter);
+                    _ = await DownloadSnapshots(Filter);
                 }
 
                 SaveSettings(lastSuccess, firstFailure);
@@ -763,14 +822,14 @@ namespace VideoForensics.Providers.Ring
                     firstFailure = failedCreatedDates.Any() ? failedCreatedDates.Min() : null;
                     if (firstFailure.HasValue)
                     {
-                        TimeZoneInfo.Local.GetUtcOffset(firstFailure.Value);
-                        var est = firstFailure.Value.ToLocalTime();
+                        _ = TimeZoneInfo.Local.GetUtcOffset(firstFailure.Value);
+                        DateTime est = firstFailure.Value.ToLocalTime();
                         reporter.Warning($"Date of first failed download recorded ({est}). Rerun without a --start value to retry the downloads starting at that point");
                     }
                 }
 
                 // Generate failure report
-                var existingFailures = LoadExistingFailuresList(reportsDirectory);
+                List<FailedDownload> existingFailures = LoadExistingFailuresList(reportsDirectory);
                 GenerateFailureReport(reportsDirectory, existingFailures);
 
                 reporter.Info($"{Environment.NewLine}Done!");
@@ -796,55 +855,58 @@ namespace VideoForensics.Providers.Ring
             string fileNameFormat = Path.Combine(expandedPath,
                 $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}-T{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}" + "--{0}.jpg");
 
-            string fileName = string.Empty;
-            var devices = await this.ringSession.GetRingDevices();
+            Devices devices = await ringSession.GetRingDevices();
             if (devices == null)
+            {
                 return false;
+            }
 
+
+            string fileName;
             if (devices.Doorbots != null)
             {
-                foreach (var d in devices.Doorbots)
+                foreach (Doorbot d in devices.Doorbots)
                 {
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, fileName);
                     }
                 }
             }
 
             if (devices.Chimes != null)
             {
-                foreach (var d in devices.Chimes)
+                foreach (Chime d in devices.Chimes)
                 {
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, fileName);
                     }
                 }
             }
 
             if (devices.AuthorizedDoorbots != null)
             {
-                foreach (var d in devices.AuthorizedDoorbots)
+                foreach (Doorbot d in devices.AuthorizedDoorbots)
                 {
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, fileName);
                     }
                 }
             }
 
             if (devices.StickupCams != null)
             {
-                foreach (var d in devices.StickupCams)
+                foreach (StickupCam d in devices.StickupCams)
                 {
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        await GetSnapshot((int)d.Id, fileName);
+                        _ = await GetSnapshot((int)d.Id, fileName);
                     }
                 }
             }
@@ -856,8 +918,8 @@ namespace VideoForensics.Providers.Ring
         {
             try
             {
-                await this.ringSession.UpdateSnapshot(doorbotId);
-                await this.ringSession.GetLatestSnapshot(doorbotId, fileName);
+                await ringSession.UpdateSnapshot(doorbotId);
+                await ringSession.GetLatestSnapshot(doorbotId, fileName);
                 reporter.Info($"Downloaded snapshot {fileName}");
                 log.LogInformation($"Downloaded snapshot {fileName}");
                 return true;
@@ -875,15 +937,15 @@ namespace VideoForensics.Providers.Ring
 
             await semaphore.WaitAsync();
             var item = reporter.BeginItem("");
-            Interlocked.Increment(ref activeDls);
+            _ = Interlocked.Increment(ref activeDls);
             try
             {
 
                 string filename = string.Empty;
                 var expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
 
-                TimeZoneInfo.Local.GetUtcOffset(ding.CreatedAtDateTime.Value);
-                var est = ding.CreatedAtDateTime.Value.ToLocalTime();
+                _ = TimeZoneInfo.Local.GetUtcOffset(ding.CreatedAtDateTime.Value);
+                DateTime est = ding.CreatedAtDateTime.Value.ToLocalTime();
                 var date = $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}";
                 var time = $"{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}";
                 var shortFileName = $"{date}-{time}-{ding.Kind}.mp4";
@@ -894,13 +956,15 @@ namespace VideoForensics.Providers.Ring
                 var locationDir = Path.Combine(expandedPath, locationName);
                 var cameraDir = Path.Combine(locationDir, ding.Doorbot.Description);
                 if (!Directory.Exists(cameraDir))
-                    Directory.CreateDirectory(cameraDir);
+                {
+                    _ = Directory.CreateDirectory(cameraDir);
+                }
 
                 filename = Path.Combine(cameraDir, shortFileName);
 
                 LogEventJson(ding, date, time);
 
-                string msg = $"{index.ToString().PadLeft(3, '0')}) {locationName}/{ding.Doorbot.Description}/{shortFileName} | {ding.CreatedAtDateTime.Value.ToLocalTime().ToString("MM/dd/yyyy hh:mm:ss tt")} | {ding.Kind} :: ";
+                string msg = $"{index.ToString().PadLeft(3, '0')}) {locationName}/{ding.Doorbot.Description}/{shortFileName} | {ding.CreatedAtDateTime.Value.ToLocalTime():MM/dd/yyyy hh:mm:ss tt} | {ding.Kind} :: ";
                 reporter.WriteItem(item, msg);
                 reporter.UpdateItem(item, "Downloading");
 
@@ -917,10 +981,7 @@ namespace VideoForensics.Providers.Ring
                         // Fetching the download info (URL + size, when the Ring service provides it) is a
                         // required round-trip before we can download the bytes either way, so this doubles
                         // as the check for whether the file we'd end up with already exists on disk.
-                        if (downloadInfo == null)
-                        {
-                            downloadInfo = await this.ringSession.GetDoorbotHistoryRecordingInfo(ding);
-                        }
+                        downloadInfo ??= await ringSession.GetDoorbotHistoryRecordingInfo(ding);
 
                         if (mediaValidator.ValidateMediaExists(filename, downloadInfo.Size))
                         {
@@ -929,11 +990,11 @@ namespace VideoForensics.Providers.Ring
                             return (true, ding);
                         }
 
-                        var downloadStart = DateTime.UtcNow;
-                        await this.ringSession.GetDoorbotHistoryRecording(downloadInfo, filename);
-                        var downloadEnd = DateTime.UtcNow;
+                        DateTime downloadStart = DateTime.UtcNow;
+                        await ringSession.GetDoorbotHistoryRecording(downloadInfo, filename);
+                        DateTime downloadEnd = DateTime.UtcNow;
                         long fileSizeBytes = new FileInfo(filename).Length;
-                        Interlocked.Add(ref totalBytesDownloaded, fileSizeBytes);
+                        _ = Interlocked.Add(ref totalBytesDownloaded, fileSizeBytes);
                         reporter.CompleteItem(item, $"Complete - ({fileSizeBytes / 1048576} MB)");
                         UpdateFooterStatus();
                         await WriteMetadataAsync(ding, filename, downloadStart, downloadEnd, attempt - 1);
@@ -949,6 +1010,7 @@ namespace VideoForensics.Providers.Ring
                             {
                                 lastWebResponseBody = streamReader.ReadToEnd();
                             }
+
                             reporter.ErrorItem(item, $"Failed: ({(e.InnerException != null ? e.InnerException.Message : e.Message)} - {lastWebResponseBody})");
                         }
                         else
@@ -974,7 +1036,6 @@ namespace VideoForensics.Providers.Ring
                     {
                         reporter.WarnItem(item, $"Retrying: {attempt + 1}/10.");
                     }
-
                 } while (attempt < 10 && !ct.IsCancellationRequested);
 
                 return (true, ding);
@@ -982,8 +1043,8 @@ namespace VideoForensics.Providers.Ring
             finally
             {
                 reporter.ReleaseItem(item);
-                Interlocked.Decrement(ref activeDls);
-                semaphore.Release();
+                _ = Interlocked.Decrement(ref activeDls);
+                _ = semaphore.Release();
             }
         }
 
@@ -996,11 +1057,12 @@ namespace VideoForensics.Providers.Ring
                     // Enrich event with current device health data if available
                     if (cachedDevices != null && ding?.Doorbot != null)
                     {
-                        var device = FindDevice(cachedDevices, ding.Doorbot.Id);
+                        Doorbot? device = FindDevice(cachedDevices, ding.Doorbot.Id);
                         if (device?.Health != null)
                         {
                             ding.Doorbot.Health = device.Health;
                         }
+
                         if (device?.Features != null)
                         {
                             ding.Doorbot.Features = device.Features;
@@ -1020,18 +1082,26 @@ namespace VideoForensics.Providers.Ring
         private Doorbot FindDevice(Devices devices, int deviceId)
         {
             if (devices == null)
+            {
                 return null;
+            }
 
             if (devices.Doorbots != null)
             {
-                var device = devices.Doorbots.FirstOrDefault(d => d.Id == deviceId);
-                if (device != null) return device;
+                Doorbot? device = devices.Doorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null)
+                {
+                    return device;
+                }
             }
 
             if (devices.AuthorizedDoorbots != null)
             {
-                var device = devices.AuthorizedDoorbots.FirstOrDefault(d => d.Id == deviceId);
-                if (device != null) return device;
+                Doorbot? device = devices.AuthorizedDoorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null)
+                {
+                    return device;
+                }
             }
 
             return null;
@@ -1039,9 +1109,11 @@ namespace VideoForensics.Providers.Ring
 
         private string GetDownloadSpeed()
         {
-            var elapsed = DateTime.Now - downloadStartTime;
+            TimeSpan elapsed = DateTime.Now - downloadStartTime;
             if (elapsed.TotalSeconds < 1)
+            {
                 return "calculating...";
+            }
 
             double bytesPerSec = totalBytesDownloaded / elapsed.TotalSeconds;
             double mbPerSec = bytesPerSec / (1024 * 1024);
@@ -1079,11 +1151,15 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 if (!Directory.Exists(reportsDir))
+                {
                     return;
+                }
 
                 string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
                 if (!System.IO.File.Exists(tsvPath))
+                {
                     return;
+                }
 
                 using (var reader = new StreamReader(tsvPath))
                 {
@@ -1100,10 +1176,11 @@ namespace VideoForensics.Providers.Ring
                         var parts = line.Split('\t');
                         if (parts.Length >= 5)
                         {
-                            loadedEventIds.Add(parts[4]); // EventId is at index 4
+                            _ = loadedEventIds.Add(parts[4]); // EventId is at index 4
                         }
                     }
                 }
+
                 log.LogInformation($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
             }
             catch (Exception exe)
@@ -1119,12 +1196,16 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         private string ResolveLocationName(long deviceId)
         {
-            if (deviceIdToLocationId.TryGetValue(deviceId, out var locationId))
+            if (deviceIdToLocationId.TryGetValue(deviceId, out Guid locationId))
             {
                 if (locationNameCache.TryGetValue(locationId, out var name))
+                {
                     return name;
-                return locationId.ToString().Substring(0, 8); // Fallback: first 8 chars of GUID
+                }
+
+                return locationId.ToString()[..8]; // Fallback: first 8 chars of GUID
             }
+
             return "Unknown Location";
         }
 
@@ -1135,7 +1216,9 @@ namespace VideoForensics.Providers.Ring
         private void LogEventJson(DoorbotHistoryEvent ding, string date, string time)
         {
             if (string.IsNullOrEmpty(logsDirectory))
+            {
                 return;
+            }
 
             try
             {
@@ -1184,7 +1267,7 @@ namespace VideoForensics.Providers.Ring
                 };
 
                 newFailures.Add(failure);
-                loadedEventIds.Add(eventId); // Mark as recorded for this session
+                _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
                 log.LogInformation($"Recorded failed download for EventId {eventId}: {errorDesc}");
             }
             catch (Exception exe)
@@ -1196,12 +1279,11 @@ namespace VideoForensics.Providers.Ring
         private string ExtractErrorMessage(Exception exception, string webResponseBody = null)
         {
             if (webResponseBody != null)
-                return webResponseBody.Length > 200 ? webResponseBody.Substring(0, 200) : webResponseBody;
+            {
+                return webResponseBody.Length > 200 ? webResponseBody[..200] : webResponseBody;
+            }
 
-            if (exception?.InnerException != null)
-                return exception.InnerException.Message;
-
-            return exception?.Message ?? "Unknown error";
+            return exception?.InnerException != null ? exception.InnerException.Message : exception?.Message ?? "Unknown error";
         }
 
         private void GenerateFailureReport(string reportsDir, List<FailedDownload> existingFailures)
@@ -1209,7 +1291,9 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 if (!Directory.Exists(reportsDir))
-                    Directory.CreateDirectory(reportsDir);
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
 
                 string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
 
@@ -1219,7 +1303,9 @@ namespace VideoForensics.Providers.Ring
                    .ToList();
 
                 if (allFailures.Count == 0)
+                {
                     return;
+                }
 
                 using (var writer = new StreamWriter(tsvPath, false, Encoding.UTF8))
                 {
@@ -1227,10 +1313,10 @@ namespace VideoForensics.Providers.Ring
                     writer.WriteLine("Date\tTime\tTimezone\tLocationName\tCameraName\tCameraId\tEventId\tEventType\tErrorDescription");
 
                     // Write rows
-                    foreach (var failure in allFailures)
+                    foreach (FailedDownload? failure in allFailures)
                     {
-                        var eventTime = failure.CreatedAt.ToLocalTime();
-                        var tzInfo = TimeZoneInfo.Local.GetUtcOffset(failure.CreatedAt);
+                        DateTime eventTime = failure.CreatedAt.ToLocalTime();
+                        TimeSpan tzInfo = TimeZoneInfo.Local.GetUtcOffset(failure.CreatedAt);
                         string tzStr = $"UTC{(tzInfo.TotalHours >= 0 ? "+" : "")}{tzInfo.TotalHours:F0}";
                         string line = $"{eventTime:yyyy-MM-dd}\t{eventTime:HH:mm:ss}\t{tzStr}\t{failure.LocationName}\t{failure.CameraName}\t{failure.CameraId}\t{failure.EventId}\t{failure.EventType}\t{failure.ErrorDescription}";
                         writer.WriteLine(line);
@@ -1238,7 +1324,9 @@ namespace VideoForensics.Providers.Ring
                 }
 
                 if (newFailures.Count > 0)
+                {
                     log.LogInformation($"Generated failure report with {allFailures.Count} total entries ({newFailures.Count} new)");
+                }
             }
             catch (Exception exe)
             {
@@ -1257,7 +1345,9 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 if (!Directory.Exists(reportsDir))
-                    Directory.CreateDirectory(reportsDir);
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
 
                 string tsvPath = Path.Combine(reportsDir, "camera_health.tsv");
                 bool writeHeader = !System.IO.File.Exists(tsvPath);
@@ -1277,20 +1367,32 @@ namespace VideoForensics.Providers.Ring
                     rows.Add($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}\t{locName}\t{name}\t{id}\t{kind}\t{connected}\t{batteryPct}\t{batteryVoltCat}\t{rssiCat}\t{rssi}\t{fwStatus}\t{ota}");
                 }
 
-                foreach (var d in allDevices.StickupCams)
+                foreach (StickupCam d in allDevices.StickupCams)
+                {
                     AddRow(d.Description ?? $"Device {d.Id}", d.Id, d.Kind, d.LocationId, d.Health);
-                foreach (var d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                }
+
+                foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                {
                     AddRow(d.Description ?? $"Device {d.Id}", d.Id, d.Kind, d.LocationId, d.Health);
+                }
 
                 if (rows.Count == 0)
+                {
                     return;
+                }
 
                 using (var writer = new StreamWriter(tsvPath, append: true, Encoding.UTF8))
                 {
                     if (writeHeader)
+                    {
                         writer.WriteLine("Timestamp\tLocationName\tCameraName\tCameraId\tKind\tConnected\tBatteryPercentage\tBatteryVoltageCategory\tWifiRssiCategory\tRssi\tFirmwareStatus\tOtaStatus");
+                    }
+
                     foreach (var row in rows)
+                    {
                         writer.WriteLine(row);
+                    }
                 }
 
                 log.LogInformation($"Appended {rows.Count} camera health entries to {tsvPath}");
@@ -1306,19 +1408,23 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 if (!Directory.Exists(reportsDir))
-                    Directory.CreateDirectory(reportsDir);
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
 
                 string tsvPath = Path.Combine(reportsDir, "event_tracking.tsv");
                 bool writeHeader = !System.IO.File.Exists(tsvPath);
 
                 var rows = new List<string>();
 
-                foreach (var evt in events)
+                foreach (DoorbotHistoryEvent evt in events)
                 {
                     if (evt?.Doorbot?.Health == null)
+                    {
                         continue;
+                    }
 
-                    var health = evt.Doorbot.Health;
+                    DeviceHealth health = evt.Doorbot.Health;
                     string timestamp = evt.CreatedAtDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? evt.CreatedAt ?? "";
                     string eventId = evt.Id?.ToString() ?? "";
                     string cameraId = evt.Doorbot.Id.ToString();
@@ -1341,14 +1447,21 @@ namespace VideoForensics.Providers.Ring
                 }
 
                 if (rows.Count == 0)
+                {
                     return;
+                }
 
                 using (var writer = new StreamWriter(tsvPath, append: true, Encoding.UTF8))
                 {
                     if (writeHeader)
+                    {
                         writer.WriteLine("Timestamp\tEventId\tCameraId\tCameraName\tKind\tBatteryPercentage\tBatteryCategory\tSignalStrength\tSignalCategory\tPacketLoss\tConnected\tWifiName\tFirmwareVersion\tPersonDetected\tDetectionType\tConfidence");
+                    }
+
                     foreach (var row in rows)
+                    {
                         writer.WriteLine(row);
+                    }
                 }
 
                 log.LogInformation($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
@@ -1365,53 +1478,55 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 if (!Directory.Exists(reportsDir))
+                {
                     return existing;
+                }
 
                 string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
                 if (!System.IO.File.Exists(tsvPath))
-                    return existing;
-
-                using (var reader = new StreamReader(tsvPath))
                 {
-                    string line;
-                    bool isHeader = true;
-                    while ((line = reader.ReadLine()) != null)
+                    return existing;
+                }
+
+                using var reader = new StreamReader(tsvPath);
+                string line;
+                bool isHeader = true;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (isHeader)
                     {
-                        if (isHeader)
-                        {
-                            isHeader = false;
-                            continue;
-                        }
+                        isHeader = false;
+                        continue;
+                    }
 
-                        var parts = line.Split('\t');
-                        if (parts.Length >= 8)
-                        {
-                            // Handle both old format (8 columns) and new format (9 columns with LocationName)
-                            bool isNewFormat = parts.Length >= 9;
+                    var parts = line.Split('\t');
+                    if (parts.Length >= 8)
+                    {
+                        // Handle both old format (8 columns) and new format (9 columns with LocationName)
+                        bool isNewFormat = parts.Length >= 9;
 
-                            if (DateTime.TryParse($"{parts[0]} {parts[1]}", out var eventTime))
+                        if (DateTime.TryParse($"{parts[0]} {parts[1]}", out DateTime eventTime))
+                        {
+                            string locationName = isNewFormat ? parts[3] : "Unknown Location";
+                            string cameraName = isNewFormat ? parts[4] : parts[3];
+                            string cameraIdStr = isNewFormat ? parts[5] : parts[4];
+                            string eventId = isNewFormat ? parts[6] : parts[5];
+                            string eventType = isNewFormat ? parts[7] : parts[6];
+                            string errorDesc = isNewFormat ? parts[8] : parts[7];
+
+                            if (int.TryParse(cameraIdStr, out var cameraId))
                             {
-                                string locationName = isNewFormat ? parts[3] : "Unknown Location";
-                                string cameraName = isNewFormat ? parts[4] : parts[3];
-                                string cameraIdStr = isNewFormat ? parts[5] : parts[4];
-                                string eventId = isNewFormat ? parts[6] : parts[5];
-                                string eventType = isNewFormat ? parts[7] : parts[6];
-                                string errorDesc = isNewFormat ? parts[8] : parts[7];
-
-                                if (int.TryParse(cameraIdStr, out var cameraId))
+                                existing.Add(new FailedDownload
                                 {
-                                    existing.Add(new FailedDownload
-                                    {
-                                        Timestamp = eventTime,
-                                        LocationName = locationName,
-                                        CameraName = cameraName,
-                                        CameraId = cameraId,
-                                        EventId = eventId,
-                                        EventType = eventType,
-                                        CreatedAt = eventTime,
-                                        ErrorDescription = errorDesc
-                                    });
-                                }
+                                    Timestamp = eventTime,
+                                    LocationName = locationName,
+                                    CameraName = cameraName,
+                                    CameraId = cameraId,
+                                    EventId = eventId,
+                                    EventType = eventType,
+                                    CreatedAt = eventTime,
+                                    ErrorDescription = errorDesc
+                                });
                             }
                         }
                     }
@@ -1421,24 +1536,27 @@ namespace VideoForensics.Providers.Ring
             {
                 log.LogError(exe, "Failed to load existing failures list");
             }
+
             return existing;
         }
 
         public async Task<DeviceList> GetDevicesList(string username = "", string password = "")
         {
-            if (this.ringSession == null)
+            if (ringSession == null)
             {
                 if (!string.IsNullOrEmpty(username))
                 {
-                    this.Auth.UserName = username;
+                    Auth.UserName = username;
                 }
+
                 if (!string.IsNullOrEmpty(password))
                 {
                     // Keep as a fallback credential only - don't discard a cached refresh token here,
                     // see the matching note in Worker.SetFilterAndAuthValues.
-                    this.Auth.Password = password;
+                    Auth.Password = password;
                 }
-                this.ringSession = await Authenticate();
+
+                ringSession = await Authenticate();
             }
 
             Devices devices = new();
@@ -1446,7 +1564,7 @@ namespace VideoForensics.Providers.Ring
             {
                 devices = await reporter.RunWithStatusAsync("Getting list of registered devices...", async updateStatus =>
                 {
-                    var d = await ringSession.GetRingDevices();
+                    Devices d = await ringSession.GetRingDevices();
                     await Task.Delay(500);
                     return d;
                 });
@@ -1460,7 +1578,7 @@ namespace VideoForensics.Providers.Ring
 
             DeviceList deviceList = new DeviceList().ExtractDevices(devices);
             reporter.Highlight("Found registered devices:");
-            foreach (var x in deviceList.Devices)
+            foreach (DeviceInfo x in deviceList.Devices)
             {
                 reporter.Info($"{x.Name}\tId: {x.Id}");
             }
@@ -1486,12 +1604,7 @@ namespace VideoForensics.Providers.Ring
                 return "A Ring username is required";
             }
 
-            if (string.IsNullOrWhiteSpace(auth.Password))
-            {
-                return "A Ring password is required";
-            }
-
-            return null;
+            return string.IsNullOrWhiteSpace(auth.Password) ? "A Ring password is required" : null;
         }
     }
 }

@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Client.Common;
-using VideoForensics.Client.Core;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -56,12 +60,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
             try
             {
-                _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<MediaItem> { mediaItem1, mediaItem2 });
+                _ = _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([mediaItem1, mediaItem2]);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem1.Id, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem1.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
-                _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem2.Id, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem2.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
 
                 var orchestrator = new EvidenceValidationOrchestrator(
@@ -74,7 +78,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockReconciliationService.Object);
 
                 // Act
-                var results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+                IReadOnlyList<MediaVerificationResult> results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
                 // Assert
                 Assert.NotNull(results);
@@ -85,9 +89,14 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 // Cleanup
                 if (File.Exists(mediaItem1.FilePath))
+                {
                     File.Delete(mediaItem1.FilePath);
+                }
+
                 if (File.Exists(mediaItem2.FilePath))
+                {
                     File.Delete(mediaItem2.FilePath);
+                }
             }
         }
 
@@ -111,10 +120,10 @@ namespace VideoForensics.Providers.Ring.Tests
 
             try
             {
-                _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<MediaItem> { mediaItem });
+                _ = _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([mediaItem]);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem.Id, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItem.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(false); // Verification fails
 
                 var orchestrator = new EvidenceValidationOrchestrator(
@@ -127,17 +136,19 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockReconciliationService.Object);
 
                 // Act
-                var results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+                IReadOnlyList<MediaVerificationResult> results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
                 // Assert
-                Assert.Single(results);
+                _ = Assert.Single(results);
                 Assert.Equal("failed", results[0].Status);
                 Assert.Equal("SHA-256 mismatch against stored hash", results[0].FailureReason);
             }
             finally
             {
                 if (File.Exists(mediaItem.FilePath))
+                {
                     File.Delete(mediaItem.FilePath);
+                }
             }
         }
 
@@ -157,8 +168,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { mediaItem });
+            _ = _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([mediaItem]);
 
             var orchestrator = new EvidenceValidationOrchestrator(
                 _mockLogger.Object,
@@ -170,10 +181,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            var results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<MediaVerificationResult> results = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
             // Assert
-            Assert.Single(results);
+            _ = Assert.Single(results);
             Assert.Equal("missing", results[0].Status);
             Assert.Contains("not found", results[0].FailureReason, StringComparison.OrdinalIgnoreCase);
         }
@@ -184,8 +195,8 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
             var providerDeviceId = "ring-device-123";
-            var fromUtc = DateTime.UtcNow.AddDays(-1);
-            var toUtc = DateTime.UtcNow;
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
 
             var storedEvent = new Event
             {
@@ -199,13 +210,13 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var liveEvents = new List<DeviceEvent>(); // Empty - event missing from provider
 
-            _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Event> { storedEvent });
+            _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([storedEvent]);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(liveEvents);
 
-            _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
+            _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var orchestrator = new EvidenceValidationOrchestrator(
@@ -218,10 +229,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            var discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
-            Assert.Single(discrepancies);
+            _ = Assert.Single(discrepancies);
             Assert.Equal(DiscrepancyType.MissingFromProvider, discrepancies[0].Type);
             Assert.Equal("evt-123", discrepancies[0].ProviderEventId);
         }
@@ -232,8 +243,8 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
             var providerDeviceId = "ring-device-123";
-            var fromUtc = DateTime.UtcNow.AddDays(-1);
-            var toUtc = DateTime.UtcNow;
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
             var fixedTime = new DateTime(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
 
             var storedEvent = new Event
@@ -254,13 +265,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 SnapshotUrl: "https://example.com/snapshot.jpg"
             );
 
-            _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Event> { storedEvent });
+            _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([storedEvent]);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent> { liveEvent });
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([liveEvent]);
 
-            _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
+            _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var orchestrator = new EvidenceValidationOrchestrator(
@@ -273,10 +284,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            var discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
-            var eventTypeDiscrepancy = discrepancies.FirstOrDefault(d => d.FieldName == "EventType");
+            ReconciliationDiscrepancy? eventTypeDiscrepancy = discrepancies.FirstOrDefault(d => d.FieldName == "EventType");
             Assert.NotNull(eventTypeDiscrepancy);
             Assert.Equal(DiscrepancyType.MetadataChanged, eventTypeDiscrepancy.Type);
             Assert.Equal("motion", eventTypeDiscrepancy.StoredValue);
@@ -289,8 +300,8 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
             var providerDeviceId = "ring-device-123";
-            var fromUtc = DateTime.UtcNow.AddDays(-1);
-            var toUtc = DateTime.UtcNow;
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
 
             var storedEvents = new List<Event>(); // No stored events
 
@@ -302,13 +313,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 SnapshotUrl: "https://example.com/snapshot.jpg"
             );
 
-            _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+            _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(storedEvents);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent> { liveEvent });
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([liveEvent]);
 
-            _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
+            _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var orchestrator = new EvidenceValidationOrchestrator(
@@ -321,10 +332,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            var discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
-            Assert.Single(discrepancies);
+            _ = Assert.Single(discrepancies);
             Assert.Equal(DiscrepancyType.NewEventFoundOnProvider, discrepancies[0].Type);
             Assert.Equal("evt-999", discrepancies[0].ProviderEventId);
         }
@@ -335,9 +346,9 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
             var providerDeviceId = "ring-device-123";
-            var fromUtc = DateTime.UtcNow.AddDays(-1);
-            var toUtc = DateTime.UtcNow;
-            var eventTime = DateTime.UtcNow.AddHours(-2);
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
+            DateTime eventTime = DateTime.UtcNow.AddHours(-2);
 
             var storedEvent = new Event
             {
@@ -357,13 +368,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 SnapshotUrl: "https://example.com/snapshot.jpg"
             );
 
-            _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Event> { storedEvent });
+            _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([storedEvent]);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent> { liveEvent });
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([liveEvent]);
 
-            _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
+            _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var orchestrator = new EvidenceValidationOrchestrator(
@@ -376,7 +387,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockReconciliationService.Object);
 
             // Act
-            var discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
 
             // Assert
             Assert.Empty(discrepancies);

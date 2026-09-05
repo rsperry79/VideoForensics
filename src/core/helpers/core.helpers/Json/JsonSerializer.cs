@@ -2,9 +2,8 @@ using System;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Json
 {
@@ -37,7 +36,7 @@ namespace VideoForensics.Providers.Common.Helpers.Json
 
         public string Serialize<T>(T obj, JsonSerializationMode mode = JsonSerializationMode.Default)
         {
-            var options = mode switch
+            JsonSerializerOptions options = mode switch
             {
                 JsonSerializationMode.Pretty => PrettyOptions,
                 JsonSerializationMode.Raw => RawOptions,
@@ -51,7 +50,7 @@ namespace VideoForensics.Providers.Common.Helpers.Json
         {
             try
             {
-                var options = mode switch
+                JsonSerializerOptions options = mode switch
                 {
                     JsonSerializationMode.Pretty => PrettyOptions,
                     JsonSerializationMode.Raw => RawOptions,
@@ -70,7 +69,7 @@ namespace VideoForensics.Providers.Common.Helpers.Json
         {
             try
             {
-                var options = mode switch
+                JsonSerializerOptions options = mode switch
                 {
                     JsonSerializationMode.Pretty => PrettyOptions,
                     JsonSerializationMode.Raw => RawOptions,

@@ -24,9 +24,9 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, "dings/active");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
-            return JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response) ?? new List<DoorbotHistoryEvent>();
+            return JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response) ?? [];
         }
     }
 }

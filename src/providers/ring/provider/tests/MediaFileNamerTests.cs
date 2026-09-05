@@ -1,5 +1,6 @@
-using Xunit;
 using VideoForensics.Providers.Ring.Services;
+
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -14,7 +15,7 @@ namespace VideoForensics.Providers.Ring.Tests
             string mediaType, string extension, string expected)
         {
             var timestamp = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
-            var result = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, mediaType, extension);
+            string result = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, mediaType, extension);
             Assert.Equal(expected, result);
         }
 
@@ -31,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [InlineData("Kitchen   Cam", "Kitchen_Cam")] // Multiple spaces collapsed and replaced
         public void SanitizeForFilePath_RemovesInvalidCharacters(string input, string expected)
         {
-            var result = MediaFileNamer.SanitizeForFilePath(input);
+            string result = MediaFileNamer.SanitizeForFilePath(input);
             Assert.Equal(expected, result);
         }
 
@@ -42,8 +43,8 @@ namespace VideoForensics.Providers.Ring.Tests
             // digits, which greedily consumes following hex-digit-looking letters) - \x00Door
             // would parse as \x00D (a 3-digit hex escape, 0x0D) followed by "oor", silently
             // swallowing the "D" from "Door".
-            var input = "Front\u0000Door\u0001Monitor\u001F";
-            var result = MediaFileNamer.SanitizeForFilePath(input);
+            string input = "Front\u0000Door\u0001Monitor\u001F";
+            string result = MediaFileNamer.SanitizeForFilePath(input);
             // Control characters are stripped entirely, not replaced with underscore - see
             // MediaFileNamer.SanitizeForFilePath's regex, which maps them to string.Empty.
             Assert.Equal("FrontDoorMonitor", result);
@@ -56,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [InlineData(null)]
         public void SanitizeForFilePath_ReturnsFallback_WhenInputIsEmpty(string input)
         {
-            var result = MediaFileNamer.SanitizeForFilePath(input ?? "");
+            string result = MediaFileNamer.SanitizeForFilePath(input ?? "");
             Assert.Equal("device", result);
         }
 
@@ -67,15 +68,15 @@ namespace VideoForensics.Providers.Ring.Tests
         [InlineData("\u0000\u0001\u0002")]
         public void SanitizeForFilePath_ReturnsFallback_WhenAllCharactersAreInvalid(string input)
         {
-            var result = MediaFileNamer.SanitizeForFilePath(input);
+            string result = MediaFileNamer.SanitizeForFilePath(input);
             Assert.Equal("device", result);
         }
 
         [Fact]
         public void SanitizeForFilePath_TrimsTrailingWhitespace()
         {
-            var input = "  Front Door  ";
-            var result = MediaFileNamer.SanitizeForFilePath(input);
+            string input = "  Front Door  ";
+            string result = MediaFileNamer.SanitizeForFilePath(input);
             Assert.Equal("Front_Door", result);
         }
 
@@ -83,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void FormatMediaFileName_WithSpecialCharactersInName()
         {
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
-            var result = MediaFileNamer.FormatMediaFileName("Front<>Door:Home", timestamp, "video", "mp4");
+            string result = MediaFileNamer.FormatMediaFileName("Front<>Door:Home", timestamp, "video", "mp4");
             Assert.Equal("FrontDoorHome_20260827_143022_video.mp4", result);
         }
 
@@ -91,7 +92,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void FormatMediaFileName_WithoutDotInExtension()
         {
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
-            var result = MediaFileNamer.FormatMediaFileName("Front Door", timestamp, "video", ".mp4");
+            string result = MediaFileNamer.FormatMediaFileName("Front Door", timestamp, "video", ".mp4");
             Assert.Equal("Front_Door_20260827_143022_video.mp4", result);
         }
 
@@ -99,7 +100,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void FormatMediaFileName_PreservesLowercaseExtension()
         {
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
-            var result = MediaFileNamer.FormatMediaFileName("Front Door", timestamp, "video", "mp4");
+            string result = MediaFileNamer.FormatMediaFileName("Front Door", timestamp, "video", "mp4");
             Assert.Equal("Front_Door_20260827_143022_video.mp4", result);
         }
 
@@ -111,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void FormatMediaFileName_AcceptsMultipleMediaTypes(string mediaType)
         {
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
-            var result = MediaFileNamer.FormatMediaFileName("Camera", timestamp, mediaType, "ext");
+            string result = MediaFileNamer.FormatMediaFileName("Camera", timestamp, mediaType, "ext");
             Assert.Contains($"_{mediaType}.", result);
         }
 
@@ -120,8 +121,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // OneDrive doesn't allow: < > : " / \ | ? *
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
-            var problematicName = "Front<Door>:Home/Garden|Cam?*Device";
-            var result = MediaFileNamer.FormatMediaFileName(problematicName, timestamp, "video", "mp4");
+            string problematicName = "Front<Door>:Home/Garden|Cam?*Device";
+            string result = MediaFileNamer.FormatMediaFileName(problematicName, timestamp, "video", "mp4");
 
             // Should not contain any forbidden characters
             Assert.DoesNotContain("<", result);
@@ -138,14 +139,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void FormatMediaFileName_ConsistencyAcrossTypes()
         {
-            var cameraName = "Front Door";
+            string cameraName = "Front Door";
             var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
 
-            var videoFile = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, "video", "mp4");
-            var metadataFile = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, "metadata", "json");
+            string videoFile = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, "video", "mp4");
+            string metadataFile = MediaFileNamer.FormatMediaFileName(cameraName, timestamp, "metadata", "json");
 
             // Both should have same prefix (name_date_time_)
-            var prefix = "Front_Door_20260827_143022_";
+            string prefix = "Front_Door_20260827_143022_";
             Assert.StartsWith(prefix, videoFile);
             Assert.StartsWith(prefix, metadataFile);
 

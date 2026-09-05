@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+
 namespace VideoForensics.Client.Core.Tools
 {
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Client.Common;
-    using VideoForensics.Data.Common.Contracts;
-
     public class ConfigToolsOrchestrator
     {
         private readonly ILogger<ConfigToolsOrchestrator> _logger;
@@ -29,7 +31,9 @@ namespace VideoForensics.Client.Core.Tools
             CancellationToken ct = default)
         {
             if (days <= 0)
+            {
                 return (false, "Retention days must be greater than 0");
+            }
 
             config.RetentionDaysDefault = days;
             await _configService.SaveConfigurationAsync(config, ct);
@@ -43,7 +47,9 @@ namespace VideoForensics.Client.Core.Tools
             CancellationToken ct = default)
         {
             if (count < 1)
+            {
                 return (false, "Max concurrent downloads must be at least 1");
+            }
 
             config.MaxConcurrentDownloads = count;
             await _configService.SaveConfigurationAsync(config, ct);
@@ -59,7 +65,9 @@ namespace VideoForensics.Client.Core.Tools
             try
             {
                 if (!Directory.Exists(path))
-                    Directory.CreateDirectory(path);
+                {
+                    _ = Directory.CreateDirectory(path);
+                }
 
                 config.DownloadLocation = path;
                 await _configService.SaveConfigurationAsync(config, ct);
@@ -79,7 +87,7 @@ namespace VideoForensics.Client.Core.Tools
             bool enabled,
             CancellationToken ct = default)
         {
-            var property = reportType switch
+            string? property = reportType switch
             {
                 "ForensicAnalysis" => nameof(IForensicsConfiguration.EnableForensicAnalysisReports),
                 "SignalAnomaly" => nameof(IForensicsConfiguration.EnableSignalAnomalyReports),
@@ -90,7 +98,9 @@ namespace VideoForensics.Client.Core.Tools
             };
 
             if (property == null)
+            {
                 return (false, $"Unknown report type: {reportType}");
+            }
 
             var configObj = (ForensicsConfiguration)config;
             var propInfo = typeof(ForensicsConfiguration).GetProperty(property);
@@ -144,7 +154,9 @@ namespace VideoForensics.Client.Core.Tools
             CancellationToken ct = default)
         {
             if (!new[] { "json", "xml", "csv" }.Contains(format, StringComparer.OrdinalIgnoreCase))
+            {
                 return (false, "Report format must be json, xml, or csv");
+            }
 
             config.ReportOutputFormat = format;
             await _configService.SaveConfigurationAsync(config, ct);
@@ -165,7 +177,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                var downloadDir = downloadDirOverride ?? Path.Combine(
+                string downloadDir = downloadDirOverride ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Pictures",
                     "VideoForensics");
@@ -176,7 +188,7 @@ namespace VideoForensics.Client.Core.Tools
                     Directory.Delete(downloadDir, recursive: true);
                 }
 
-                var dbPath = dbPathOverride ?? Path.Combine(
+                string dbPath = dbPathOverride ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics",
                     "videoforensics.db");
@@ -199,7 +211,7 @@ namespace VideoForensics.Client.Core.Tools
 
                     // WAL mode leaves -wal/-shm sidecar files alongside the main database file;
                     // deleting only the main file leaves stale ones behind.
-                    foreach (var sidecar in new[] { $"{dbPath}-wal", $"{dbPath}-shm" })
+                    foreach (string? sidecar in new[] { $"{dbPath}-wal", $"{dbPath}-shm" })
                     {
                         if (File.Exists(sidecar))
                         {

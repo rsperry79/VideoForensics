@@ -35,7 +35,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
-            var bodyContent = JsonSerializer.Serialize(new { motion_zones = zones });
+            string bodyContent = JsonSerializer.Serialize(new { motion_zones = zones });
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Patch, null, bodyContent, AuthenticationToken);
         }
     }

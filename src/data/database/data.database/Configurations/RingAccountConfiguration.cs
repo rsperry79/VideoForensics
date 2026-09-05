@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,22 +10,22 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<RingAccount> builder)
         {
-            builder.HasKey(ra => ra.Id);
+            _ = builder.HasKey(ra => ra.Id);
 
-            builder.Property(ra => ra.SubscriptionLevel)
+            _ = builder.Property(ra => ra.SubscriptionLevel)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(ra => ra.Features)
+            _ = builder.Property(ra => ra.Features)
                 .HasMaxLength(2000);
 
-            builder.Property(ra => ra.AccountEmail)
+            _ = builder.Property(ra => ra.AccountEmail)
                 .HasMaxLength(256);
 
-            builder.Property(ra => ra.ApiResponseHash)
+            _ = builder.Property(ra => ra.ApiResponseHash)
                 .HasMaxLength(256);
 
-            builder.HasIndex(ra => ra.ProviderAccountId)
+            _ = builder.HasIndex(ra => ra.ProviderAccountId)
                 .IsUnique();
         }
     }

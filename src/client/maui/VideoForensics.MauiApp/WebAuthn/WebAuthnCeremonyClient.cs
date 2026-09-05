@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
 using static VideoForensics.MauiApp.WebAuthn.WebAuthnNative;
 
 namespace VideoForensics.MauiApp.WebAuthn
@@ -35,7 +35,7 @@ namespace VideoForensics.MauiApp.WebAuthn
             var pinnedHandles = new List<GCHandle>();
             try
             {
-                var rpInfo = new WEBAUTHN_RP_ENTITY_INFORMATION
+                WEBAUTHN_RP_ENTITY_INFORMATION rpInfo = new()
                 {
                     dwVersion = 1,
                     pwszId = rp.GetProperty("id").GetString()!,
@@ -44,7 +44,7 @@ namespace VideoForensics.MauiApp.WebAuthn
 
                 var userIdBytes = Base64UrlDecode(userIdB64Url);
                 var userIdHandle = PinBytes(userIdBytes, pinnedHandles);
-                var userInfo = new WEBAUTHN_USER_ENTITY_INFORMATION
+                WEBAUTHN_USER_ENTITY_INFORMATION userInfo = new()
                 {
                     dwVersion = 1,
                     cbId = userIdBytes.Length,
@@ -62,7 +62,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                     new WEBAUTHN_COSE_CREDENTIAL_PARAMETER { dwVersion = 1, pwszCredentialType = "public-key", lAlg = -257 }
                 };
                 var coseParamsPtr = MarshalArray(coseParams, pinnedHandles);
-                var pubKeyCredParams = new WEBAUTHN_COSE_CREDENTIAL_PARAMETERS
+                WEBAUTHN_COSE_CREDENTIAL_PARAMETERS pubKeyCredParams = new()
                 {
                     cCredentialParameters = coseParams.Length,
                     pCredentialParameters = coseParamsPtr
@@ -71,7 +71,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                 var clientDataJson = BuildClientDataJson("webauthn.create", challengeB64Url, origin);
                 var clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
                 var clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
-                var clientData = new WEBAUTHN_CLIENT_DATA
+                WEBAUTHN_CLIENT_DATA clientData = new()
                 {
                     dwVersion = 1,
                     cbClientDataJSON = clientDataBytes.Length,
@@ -79,7 +79,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                     pwszHashAlgId = "SHA-256"
                 };
 
-                var options = new WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS
+                WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS options = new()
                 {
                     dwVersion = 1,
                     dwTimeoutMilliseconds = 60000,
@@ -130,7 +130,10 @@ namespace VideoForensics.MauiApp.WebAuthn
             {
                 foreach (var handle in pinnedHandles)
                 {
-                    if (handle.IsAllocated) handle.Free();
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
                 }
             }
         }
@@ -151,7 +154,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                 var clientDataJson = BuildClientDataJson("webauthn.get", challengeB64Url, origin);
                 var clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
                 var clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
-                var clientData = new WEBAUTHN_CLIENT_DATA
+                WEBAUTHN_CLIENT_DATA clientData = new()
                 {
                     dwVersion = 1,
                     cbClientDataJSON = clientDataBytes.Length,
@@ -180,7 +183,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                     allowList = new WEBAUTHN_CREDENTIALS { cCredentials = creds.Length, pCredentials = credsPtr };
                 }
 
-                var options = new WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS
+                WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS options = new()
                 {
                     dwVersion = 1,
                     dwTimeoutMilliseconds = 60000,
@@ -231,17 +234,26 @@ namespace VideoForensics.MauiApp.WebAuthn
             {
                 foreach (var handle in pinnedHandles)
                 {
-                    if (handle.IsAllocated) handle.Free();
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
                 }
             }
         }
 
-        private static string BuildClientDataJson(string type, string challengeB64Url, string origin) =>
-            JsonSerializer.Serialize(new { type, challenge = challengeB64Url, origin, crossOrigin = false });
+        private static string BuildClientDataJson(string type, string challengeB64Url, string origin)
+        {
+            return JsonSerializer.Serialize(new { type, challenge = challengeB64Url, origin, crossOrigin = false });
+        }
 
         private static byte[] CopyBytes(IntPtr ptr, int length)
         {
-            if (ptr == IntPtr.Zero || length == 0) return Array.Empty<byte>();
+            if (ptr == IntPtr.Zero || length == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
             var bytes = new byte[length];
             Marshal.Copy(ptr, bytes, 0, length);
             return bytes;
@@ -282,11 +294,14 @@ namespace VideoForensics.MauiApp.WebAuthn
                 case 2: s += "=="; break;
                 case 3: s += "="; break;
             }
+
             return Convert.FromBase64String(s);
         }
 
-        private static string Base64UrlEncode(byte[] bytes) =>
-            Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        private static string Base64UrlEncode(byte[] bytes)
+        {
+            return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        }
     }
 
     public class WebAuthnCeremonyException : Exception

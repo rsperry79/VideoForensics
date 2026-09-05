@@ -1,9 +1,8 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Json.Converters
 {
@@ -19,7 +18,7 @@ namespace VideoForensics.Providers.Common.Helpers.Json.Converters
             return reader.TokenType switch
             {
                 JsonTokenType.Number => reader.GetInt32(),
-                JsonTokenType.String => int.TryParse(reader.GetString(), out var result) ? result : null,
+                JsonTokenType.String => int.TryParse(reader.GetString(), out int result) ? result : null,
                 JsonTokenType.Null => null,
                 _ => null
             };
@@ -28,12 +27,18 @@ namespace VideoForensics.Providers.Common.Helpers.Json.Converters
         public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
         {
             if (value.HasValue)
+            {
                 writer.WriteNumberValue(value.Value);
+            }
             else
+            {
                 writer.WriteNullValue();
+            }
         }
 
-        public override bool CanConvert(Type typeToConvert) =>
-            typeToConvert == typeof(int?) || typeToConvert == typeof(int);
+        public override bool CanConvert(Type typeToConvert)
+        {
+            return typeToConvert == typeof(int?) || typeToConvert == typeof(int);
+        }
     }
 }

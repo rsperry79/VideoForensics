@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Alarm;
+using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 
-using VideoForensics.Providers.Ring.Tests.Mocks;
-
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
     /// Confirms every API call surfaces through ApiRawLogger.OnRawResponse - the same channel the
@@ -17,16 +13,16 @@ namespace VideoForensics.Providers.Ring.Tests
     /// </summary>
     public class RawApiLoggingTests : IDisposable
     {
-        private MockSessionHelper _mockHelper = null!;
-        private Session _mockSession = null!;
-        private List<RawApiCall> _captured = null!;
-        private Action<RawApiCall> _handler = null!;
+        private readonly MockSessionHelper _mockHelper = null!;
+        private readonly Session _mockSession = null!;
+        private readonly List<RawApiCall> _captured = null!;
+        private readonly Action<RawApiCall> _handler = null!;
 
         public RawApiLoggingTests()
         {
             _mockHelper = new MockSessionHelper();
             _mockSession = _mockHelper.CreateSessionWithMockHandler();
-            _captured = new List<RawApiCall>();
+            _captured = [];
             _handler = call => { lock (_captured) { _captured.Add(call); } };
             ApiRawLogger.OnRawResponse += _handler;
         }
@@ -39,15 +35,15 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task SetLight_RaisesApiRawLoggerEvent()
         {
-            var mockHandler = _mockHelper.GetMockHandler();
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_on", System.Net.HttpStatusCode.OK, "");
-            await _mockSession.Authenticate();
+            _ = await _mockSession.Authenticate();
 
             await _mockSession.SetLight(123456, true);
 
             lock (_captured)
             {
-                var call = _captured.Find(c => c.Url.Contains("floodlight_light_on"));
+                RawApiCall? call = _captured.Find(c => c.Url.Contains("floodlight_light_on"));
                 Assert.NotNull(call);
                 Assert.Equal("PUT", call.Method);
                 Assert.Equal(200, call.StatusCode);
@@ -57,15 +53,15 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task SetVolume_RaisesApiRawLoggerEventWithRequestAndResponseBody()
         {
-            var mockHandler = _mockHelper.GetMockHandler();
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
-            await _mockSession.Authenticate();
+            _ = await _mockSession.Authenticate();
 
             await _mockSession.SetVolume(123456, 7);
 
             lock (_captured)
             {
-                var call = _captured.Find(c => c.Url.EndsWith("doorbots/123456") && c.Method == "PUT");
+                RawApiCall? call = _captured.Find(c => c.Url.EndsWith("doorbots/123456") && c.Method == "PUT");
                 Assert.NotNull(call);
                 Assert.True(call.Body.Contains("doorbell_volume"), "Expected the request body to be captured in the log entry");
             }
@@ -75,17 +71,17 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ArmAway_RaisesWsSendAndWsRecvEvents()
         {
             var locationId = Guid.NewGuid();
-            var mockHandler = _mockHelper.GetMockHandler();
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
                 $"api.ring.com/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
                 System.Net.HttpStatusCode.OK,
                 @"{ ""assets"": [""asset-1""], ""ticket"": ""ticket-abc"", ""host"": ""asset-host.ring.com"" }");
-            await _mockSession.Authenticate();
+            _ = await _mockSession.Authenticate();
 
             var transport = new FakeWebSocketTransport();
             transport.OnMessageSent = sent =>
             {
-                var root = JsonDocument.Parse(sent).RootElement;
+                JsonElement root = JsonDocument.Parse(sent).RootElement;
                 var msgType = root.GetProperty("msg").GetProperty("msg").GetString();
                 if (msgType == "DeviceInfoDocGetList")
                 {
@@ -97,7 +93,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 }
             };
 
-            var socket = await _mockSession.ConnectAssetSocket(locationId, transport);
+            RingAssetSocket socket = await _mockSession.ConnectAssetSocket(locationId, transport);
             await socket.ArmAway();
             await socket.CloseAsync();
 

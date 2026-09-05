@@ -1,6 +1,7 @@
 using Plugin.Fingerprint;
 using Plugin.Fingerprint.Abstractions;
-using VideoForensics.Client.Common;
+
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.MauiApp.AppLock
 {
@@ -14,7 +15,10 @@ namespace VideoForensics.MauiApp.AppLock
     /// </summary>
     public class FingerprintLocalAuthGate : ILocalAuthGate
     {
-        public Task<bool> IsAvailableAsync() => CrossFingerprint.Current.IsAvailableAsync(allowAlternativeAuthentication: true);
+        public Task<bool> IsAvailableAsync()
+        {
+            return CrossFingerprint.Current.IsAvailableAsync(allowAlternativeAuthentication: true);
+        }
 
         public async Task<bool> AuthenticateAsync(string reason, CancellationToken ct)
         {

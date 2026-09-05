@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,40 +10,40 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<MediaItem> builder)
         {
-            builder.HasKey(m => m.Id);
+            _ = builder.HasKey(m => m.Id);
 
-            builder.Property(m => m.FileName)
+            _ = builder.Property(m => m.FileName)
                 .IsRequired()
                 .HasMaxLength(512);
 
-            builder.Property(m => m.FilePath)
+            _ = builder.Property(m => m.FilePath)
                 .IsRequired()
                 .HasMaxLength(1024);
 
-            builder.Property(m => m.MediaFormat)
+            _ = builder.Property(m => m.MediaFormat)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.Property(m => m.Sha256Hash)
+            _ = builder.Property(m => m.Sha256Hash)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.Property(m => m.VideoCodec)
+            _ = builder.Property(m => m.VideoCodec)
                 .HasMaxLength(64);
 
-            builder.Property(m => m.AudioCodec)
+            _ = builder.Property(m => m.AudioCodec)
                 .HasMaxLength(64);
 
-            builder.Property(m => m.Resolution)
+            _ = builder.Property(m => m.Resolution)
                 .HasMaxLength(64);
 
-            builder.Property(m => m.PurgeReason)
+            _ = builder.Property(m => m.PurgeReason)
                 .HasMaxLength(256);
 
-            builder.HasIndex(m => m.Sha256Hash);
+            _ = builder.HasIndex(m => m.Sha256Hash);
 
-            builder.HasIndex(m => m.DeviceId);
-            builder.HasIndex(m => m.DownloadEventId);
+            _ = builder.HasIndex(m => m.DeviceId);
+            _ = builder.HasIndex(m => m.DownloadEventId);
         }
     }
 }

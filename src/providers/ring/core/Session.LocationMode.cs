@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Location Mode API.
         /// </summary>
-        public Uri RingModeApiBaseUrl => new Uri("https://api.ring.com/rs/mode/");
+        public Uri RingModeApiBaseUrl => new("https://api.ring.com/rs/mode/");
 
         /// <summary>
         /// Returns the current Location Mode ("home", "away" or "disarmed") for the given location.
@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return JsonSerializer.Deserialize<LocationMode>(response);
         }
@@ -55,7 +55,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}");
-            var bodyContent = JsonSerializer.Serialize(new { mode });
+            string bodyContent = JsonSerializer.Serialize(new { mode });
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken);
         }
 
@@ -70,7 +70,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}/settings");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }
@@ -123,7 +123,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}/sharing");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }

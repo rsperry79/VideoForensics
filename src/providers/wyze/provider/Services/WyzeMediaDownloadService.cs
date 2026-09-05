@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Wyze.Services
@@ -82,6 +83,9 @@ namespace VideoForensics.Providers.Wyze.Services
         /// <summary>
         /// Gets current download status for progress tracking.
         /// </summary>
-        public DownloadStatus GetStatus() => _currentStatus;
+        public DownloadStatus GetStatus()
+        {
+            return _currentStatus;
+        }
     }
 }

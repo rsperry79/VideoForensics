@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using VideoForensics.Forensics.Models;
 
-namespace VideoForensics.Forensics
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Controls and audits access to evidence with anomaly detection.
@@ -59,7 +60,7 @@ namespace VideoForensics.Forensics
         public int FailedAccessAttempts { get; set; }
         public int OffHoursAccessCount { get; set; }
         public int RapidAccessCount { get; set; }
-        public List<string> FlaggedAccessReasons { get; set; } = new();
+        public List<string> FlaggedAccessReasons { get; set; } = [];
         public DateTime? LastSuspiciousActivity { get; set; }
         public string? RecommendedAction { get; set; }
     }

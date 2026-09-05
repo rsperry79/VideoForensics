@@ -1,5 +1,5 @@
-using System.Text.Json.Serialization;
 using System;
+using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -20,15 +20,14 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("token_type")]
         public string TokenType { get; set; }
 
-        private int _expiresInSeconds;
         /// <summary>
         /// Gets the amount of seconds after creation of this OAuth token after which it expires
         /// </summary>
         [JsonPropertyName("expires_in")]
         public int ExpiresInSeconds
         {
-            get { return _expiresInSeconds; }
-            set { _expiresInSeconds = value; ExpiresAt = DateTime.Now.AddSeconds(value); }
+            get;
+            set { field = value; ExpiresAt = DateTime.Now.AddSeconds(value); }
         }
 
         /// <summary>
@@ -57,9 +56,6 @@ namespace VideoForensics.Providers.Ring.Entities
         /// <summary>
         /// Date and time at which this OAuth Token was created
         /// </summary>
-        public DateTime CreatedAt
-        {
-            get { return new DateTime(1970, 1, 1).AddSeconds(CreatedAtTicks); }
-        }
+        public DateTime CreatedAt => new DateTime(1970, 1, 1).AddSeconds(CreatedAtTicks);
     }
 }

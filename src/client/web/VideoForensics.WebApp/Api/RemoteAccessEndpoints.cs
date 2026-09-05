@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
@@ -26,12 +28,12 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapRemoteAccessEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/remote-access").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/remote-access").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
-            group.MapGet("/status", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
+            _ = group.MapGet("/status", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
             {
                 var installed = await tunnels.IsInstalledAsync(ct);
-                var state = tunnels.GetState();
+                TunnelState state = tunnels.GetState();
                 return Results.Ok(new
                 {
                     installed,
@@ -43,10 +45,10 @@ namespace VideoForensics.WebApp.Api
                 });
             });
 
-            group.MapGet("/named-tunnels", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
+            _ = group.MapGet("/named-tunnels", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
                 Results.Ok(await tunnels.ListNamedTunnelsAsync(ct)));
 
-            group.MapPost("/quick-tunnel/start", async (
+            _ = group.MapPost("/quick-tunnel/start", async (
                 ICloudflaredTunnelService tunnels,
                 IServer server,
                 IForensicsConfiguration config,
@@ -71,7 +73,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok();
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
-            group.MapPost("/named-tunnel/start", async (
+            _ = group.MapPost("/named-tunnel/start", async (
                 StartNamedTunnelRequest request,
                 ICloudflaredTunnelService tunnels,
                 IForensicsConfiguration config,
@@ -95,7 +97,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok();
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
-            group.MapPost("/stop", async (
+            _ = group.MapPost("/stop", async (
                 ICloudflaredTunnelService tunnels,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -113,13 +115,13 @@ namespace VideoForensics.WebApp.Api
         {
             var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             return auditLog.LogAsync(eventType,
-                Guid.TryParse(operatorIdClaim, out var operatorId) ? operatorId : null,
+                Guid.TryParse(operatorIdClaim, out Guid operatorId) ? operatorId : null,
                 null, tierResolver.ResolveClientIp(context), details, isUrgent: true, ct);
         }
 
         private static int? ResolveListeningPort(IServer server)
         {
-            var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+            ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
             if (addresses is null)
             {
                 return null;
@@ -127,7 +129,7 @@ namespace VideoForensics.WebApp.Api
 
             foreach (var address in addresses)
             {
-                if (Uri.TryCreate(address, UriKind.Absolute, out var uri))
+                if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
                 {
                     return uri.Port;
                 }

@@ -1,10 +1,9 @@
 using System.Threading.Tasks;
+
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
+using VideoForensics.Providers.Ring.Models;
 
-#nullable enable
-
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Extracts standardized metadata from Ring event DTOs for writing to video files.

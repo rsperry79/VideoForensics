@@ -1,4 +1,3 @@
-#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -6,8 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring.Interfaces;
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Interfaces;
 
 namespace VideoForensics.Providers.Ring.Clients;
 
@@ -34,7 +33,7 @@ public class VideoDownloadClient : IVideoDownloadClient
         string? eventKind = null,
         CancellationToken cancellationToken = default)
     {
-        var recordings = await _recordingService.GetDoorbotHistory(
+        List<DoorbotHistoryEvent> recordings = await _recordingService.GetDoorbotHistory(
             limit ?? 100,
             dateRange,
             deviceId,
@@ -65,7 +64,7 @@ public class VideoDownloadClient : IVideoDownloadClient
 
         try
         {
-            await _recordingService.GetDoorbotHistoryRecording(recording, outputPath, cancellationToken);
+            _ = await _recordingService.GetDoorbotHistoryRecording(recording, outputPath, cancellationToken);
             return true;
         }
         catch
@@ -91,15 +90,15 @@ public class VideoDownloadClient : IVideoDownloadClient
 
         try
         {
-            var devices = await _deviceService.GetRingDevices(null, cancellationToken);
-            var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
+            List<Doorbot> devices = await _deviceService.GetRingDevices(null, cancellationToken);
+            Doorbot? device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
             if (device == null)
             {
                 return false;
             }
 
-            await _recordingService.GetLatestSnapshot(device, outputPath, cancellationToken);
+            _ = await _recordingService.GetLatestSnapshot(device, outputPath, cancellationToken);
             return true;
         }
         catch
@@ -112,21 +111,15 @@ public class VideoDownloadClient : IVideoDownloadClient
         DoorbotHistoryEvent recording,
         CancellationToken cancellationToken = default)
     {
-        if (recording == null)
-        {
-            throw new ArgumentNullException(nameof(recording));
-        }
-
-        return await _recordingService.GetDoorbotHistoryRecordingInfo(recording, cancellationToken);
+        return recording == null
+            ? throw new ArgumentNullException(nameof(recording))
+            : await _recordingService.GetDoorbotHistoryRecordingInfo(recording, cancellationToken);
     }
 
     public async Task<string> ShareRecordingAsync(string recordingId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(recordingId))
-        {
-            throw new ArgumentException("Recording ID is required", nameof(recordingId));
-        }
-
-        return await _recordingService.ShareRecording(recordingId, cancellationToken);
+        return string.IsNullOrEmpty(recordingId)
+            ? throw new ArgumentException("Recording ID is required", nameof(recordingId))
+            : await _recordingService.ShareRecording(recordingId, cancellationToken);
     }
 }

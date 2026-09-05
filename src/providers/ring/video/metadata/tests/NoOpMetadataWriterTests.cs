@@ -1,13 +1,12 @@
 using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {
     public class NoOpMetadataWriterTests : IDisposable
     {
-        private IMetadataWriter _writer = null!;
-        private string _testFilePath = null!;
-        private IFileSystem _fileSystem = null!;
+        private readonly IMetadataWriter _writer = null!;
+        private readonly string _testFilePath = null!;
+        private readonly IFileSystem _fileSystem = null!;
 
         public NoOpMetadataWriterTests()
         {
@@ -39,7 +38,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
                 PersonDetected = true
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result);
             Assert.Equal(MetadataStatus.Valid, result.Status);
@@ -55,7 +54,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                _writer.WriteMetadata(null!, metadata);
+                _ = _writer.WriteMetadata(null!, metadata);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -71,7 +70,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                _writer.WriteMetadata("", metadata);
+                _ = _writer.WriteMetadata("", metadata);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -87,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                _writer.WriteMetadata(_testFilePath, null!);
+                _ = _writer.WriteMetadata(_testFilePath, null!);
                 Assert.Fail("Expected ArgumentNullException to be thrown");
             }
             catch (ArgumentNullException)
@@ -102,7 +101,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
             var metadata = new VideoMetadata { DeviceName = "Test" };
 
-            var result = _writer.WriteMetadata(nonExistentPath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(nonExistentPath, metadata);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
             Assert.False(result.IsValid);
@@ -119,7 +118,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             try
             {
                 var metadata = new VideoMetadata { DeviceName = "Test" };
-                var result = _writer.WriteMetadata(invalidPath, metadata);
+                MetadataWriteResult result = _writer.WriteMetadata(invalidPath, metadata);
 
                 Assert.Equal(MetadataStatus.Failed, result.Status);
                 Assert.False(result.IsValid);
@@ -127,7 +126,9 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             finally
             {
                 if (File.Exists(invalidPath))
+                {
                     File.Delete(invalidPath);
+                }
             }
         }
 
@@ -137,7 +138,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             var metadata = new VideoMetadata { PersonDetected = true };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(result.DurationMs >= 0);
             Assert.True(result.ProcessedAt <= DateTime.UtcNow);
@@ -155,7 +156,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var metadata = new VideoMetadata { DeviceName = "Test Camera" };
 
-            var result = await _writer.WriteMetadataAsync(_testFilePath, metadata);
+            MetadataWriteResult result = await _writer.WriteMetadataAsync(_testFilePath, metadata);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -167,7 +168,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
             var metadata = new VideoMetadata { DeviceName = "Test" };
 
-            var result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
+            MetadataWriteResult result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
         }
@@ -181,7 +182,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
-            var result = _writer.ValidateVideo(_testFilePath);
+            MetadataWriteResult result = _writer.ValidateVideo(_testFilePath);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -194,7 +195,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
-            var result = _writer.ValidateVideo(nonExistentPath);
+            MetadataWriteResult result = _writer.ValidateVideo(nonExistentPath);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
             Assert.False(result.IsValid);
@@ -208,7 +209,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                var result = _writer.ValidateVideo(invalidPath);
+                MetadataWriteResult result = _writer.ValidateVideo(invalidPath);
 
                 Assert.Equal(MetadataStatus.Corrupt, result.Status);
                 Assert.False(result.IsValid);
@@ -216,7 +217,9 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             finally
             {
                 if (File.Exists(invalidPath))
+                {
                     File.Delete(invalidPath);
+                }
             }
         }
 
@@ -225,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         {
             try
             {
-                _writer.ValidateVideo(null!);
+                _ = _writer.ValidateVideo(null!);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -243,7 +246,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         {
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
-            var result = await _writer.ValidateVideoAsync(_testFilePath);
+            MetadataWriteResult result = await _writer.ValidateVideoAsync(_testFilePath);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -254,7 +257,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         {
             var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
-            var result = await _writer.ValidateVideoAsync(nonExistentPath);
+            MetadataWriteResult result = await _writer.ValidateVideoAsync(nonExistentPath);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
         }
@@ -274,7 +277,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
                 EventType = "person"
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result.PhotoPrismTags);
             Assert.True(result.PhotoPrismTags.Contains("person"));
@@ -291,7 +294,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
                 EventType = "motion"
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result.PhotoPrismTags);
             Assert.True(result.PhotoPrismTags.Contains("motion"));
@@ -304,7 +307,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             var metadata = new VideoMetadata { DeviceName = "Inactive Camera" };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             // Tags can be null or empty
             var hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
@@ -323,12 +326,15 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                var result = _writer.ValidateVideo(path);
+                MetadataWriteResult result = _writer.ValidateVideo(path);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
-                if (_fileSystem.File.Exists(path)) _fileSystem.File.Delete(path);
+                if (_fileSystem.File.Exists(path))
+                {
+                    _fileSystem.File.Delete(path);
+                }
             }
         }
 
@@ -340,12 +346,15 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                var result = _writer.ValidateVideo(path);
+                MetadataWriteResult result = _writer.ValidateVideo(path);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
-                if (_fileSystem.File.Exists(path)) _fileSystem.File.Delete(path);
+                if (_fileSystem.File.Exists(path))
+                {
+                    _fileSystem.File.Delete(path);
+                }
             }
         }
 
@@ -357,12 +366,15 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             try
             {
-                var result = _writer.ValidateVideo(path);
+                MetadataWriteResult result = _writer.ValidateVideo(path);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
             {
-                if (_fileSystem.File.Exists(path)) _fileSystem.File.Delete(path);
+                if (_fileSystem.File.Exists(path))
+                {
+                    _fileSystem.File.Delete(path);
+                }
             }
         }
 
@@ -376,7 +388,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             var metadata = new VideoMetadata { DeviceName = "Test" };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(result.DurationMs < 1000, "Operation should complete in less than 1 second");
         }
@@ -387,9 +399,9 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             var metadata = new VideoMetadata { DeviceName = "Test" };
-            var beforeTime = DateTime.UtcNow;
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
-            var afterTime = DateTime.UtcNow;
+            DateTime beforeTime = DateTime.UtcNow;
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
+            DateTime afterTime = DateTime.UtcNow;
 
             Assert.True(result.ProcessedAt >= beforeTime, "ProcessedAt should be after operation start");
             Assert.True(result.ProcessedAt <= afterTime.AddSeconds(1), "ProcessedAt should be close to operation end");

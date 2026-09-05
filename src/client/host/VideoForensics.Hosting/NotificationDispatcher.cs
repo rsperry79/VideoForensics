@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting
@@ -29,7 +30,7 @@ namespace VideoForensics.Hosting
 
         public async Task DispatchAsync(NotificationEvent notificationEvent, CancellationToken ct)
         {
-            foreach (var provider in _providers)
+            foreach (INotificationProvider provider in _providers)
             {
                 try
                 {

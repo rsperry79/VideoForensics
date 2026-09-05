@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Smart Lighting groups API.
         /// </summary>
-        public Uri GroupsApiBaseUrl => new Uri("https://api.ring.com/groups/v1/");
+        public Uri GroupsApiBaseUrl => new("https://api.ring.com/groups/v1/");
 
         /// <summary>
         /// Returns the Smart Lighting groups configured at the given location.
@@ -31,10 +31,10 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             var parsed = JsonSerializer.Deserialize<GroupsResponse>(response);
-            return parsed?.DeviceGroups ?? new List<Group>();
+            return parsed?.DeviceGroups ?? [];
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups/{groupId}/devices");
-            var bodyContent = JsonSerializer.Serialize(new
+            string bodyContent = JsonSerializer.Serialize(new
             {
                 lights_on = new { enabled = on, duration_seconds = durationSeconds }
             });

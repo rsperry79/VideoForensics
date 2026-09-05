@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     public interface IVideoDownloadService
     {
@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Common
         IReadOnlyDictionary<string, int> GetPreScanCounts();
         string GetDownloadStatus();
         /// <summary>Live per-file progress for the download currently in flight (files completed/total, bytes, current file).</summary>
-        VideoForensics.Providers.Common.Contracts.DownloadStatus GetProgress();
+        Providers.Common.Contracts.DownloadStatus GetProgress();
         /// <summary>Drains and returns any per-file activity messages queued since the last call (e.g. "✓ file.mp4 (5.2 MB)", "✗ event 123: 404").</summary>
         IReadOnlyList<string> DrainActivityLog();
         /// <summary>How many matched items from the last download call weren't actually downloaded (e.g. a rate limit cut the run short), aggregated across all devices processed.</summary>
@@ -39,7 +39,11 @@ namespace VideoForensics.Client.Common
         /// bail out immediately with a clear message instead of only finding out after every device's
         /// own retry loop runs to exhaustion. Defaults to null for a provider without ban tracking.
         /// </summary>
-        DateTime? GetRateLimitBanUntilUtc() => null;
+        DateTime? GetRateLimitBanUntilUtc()
+        {
+            return null;
+        }
+
         /// <summary>
         /// Explicitly lifts an active rate-limit ban for one more attempt, at the caller's request.
         /// A no-op for a provider without ban tracking.

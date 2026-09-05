@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -9,7 +10,7 @@ public class EnumTests
     public void ActorType_HasHumanMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(ActorType), ActorType.Human);
+        bool isDefined = Enum.IsDefined(typeof(ActorType), ActorType.Human);
 
         // Assert
         Assert.True(isDefined);
@@ -19,7 +20,7 @@ public class EnumTests
     public void ActorType_HasSystemMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(ActorType), ActorType.System);
+        bool isDefined = Enum.IsDefined(typeof(ActorType), ActorType.System);
 
         // Assert
         Assert.True(isDefined);
@@ -29,7 +30,7 @@ public class EnumTests
     public void ActorType_HasMcpToolMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(ActorType), ActorType.McpTool);
+        bool isDefined = Enum.IsDefined(typeof(ActorType), ActorType.McpTool);
 
         // Assert
         Assert.True(isDefined);
@@ -52,7 +53,7 @@ public class EnumTests
     public void DiscrepancyType_HasMissingFromProviderMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.MissingFromProvider);
+        bool isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.MissingFromProvider);
 
         // Assert
         Assert.True(isDefined);
@@ -62,7 +63,7 @@ public class EnumTests
     public void DiscrepancyType_HasMetadataChangedMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.MetadataChanged);
+        bool isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.MetadataChanged);
 
         // Assert
         Assert.True(isDefined);
@@ -72,7 +73,7 @@ public class EnumTests
     public void DiscrepancyType_HasNewEventFoundOnProviderMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.NewEventFoundOnProvider);
+        bool isDefined = Enum.IsDefined(typeof(DiscrepancyType), DiscrepancyType.NewEventFoundOnProvider);
 
         // Assert
         Assert.True(isDefined);
@@ -95,7 +96,7 @@ public class EnumTests
     public void DeviceConfigSource_HasFetchedMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(DeviceConfigSource), DeviceConfigSource.Fetched);
+        bool isDefined = Enum.IsDefined(typeof(DeviceConfigSource), DeviceConfigSource.Fetched);
 
         // Assert
         Assert.True(isDefined);
@@ -105,7 +106,7 @@ public class EnumTests
     public void DeviceConfigSource_HasAppliedMember_Defined()
     {
         // Act
-        var isDefined = Enum.IsDefined(typeof(DeviceConfigSource), DeviceConfigSource.Applied);
+        bool isDefined = Enum.IsDefined(typeof(DeviceConfigSource), DeviceConfigSource.Applied);
 
         // Assert
         Assert.True(isDefined);
@@ -127,9 +128,9 @@ public class EnumTests
     public void ActorType_CanConvertToInt_AndBack()
     {
         // Act
-        var humanInt = (int)ActorType.Human;
-        var systemInt = (int)ActorType.System;
-        var toolInt = (int)ActorType.McpTool;
+        int humanInt = (int)ActorType.Human;
+        int systemInt = (int)ActorType.System;
+        int toolInt = (int)ActorType.McpTool;
 
         // Assert
         Assert.Equal(ActorType.Human, (ActorType)humanInt);
@@ -141,9 +142,9 @@ public class EnumTests
     public void DiscrepancyType_CanConvertToInt_AndBack()
     {
         // Act
-        var missingInt = (int)DiscrepancyType.MissingFromProvider;
-        var changedInt = (int)DiscrepancyType.MetadataChanged;
-        var newInt = (int)DiscrepancyType.NewEventFoundOnProvider;
+        int missingInt = (int)DiscrepancyType.MissingFromProvider;
+        int changedInt = (int)DiscrepancyType.MetadataChanged;
+        int newInt = (int)DiscrepancyType.NewEventFoundOnProvider;
 
         // Assert
         Assert.Equal(DiscrepancyType.MissingFromProvider, (DiscrepancyType)missingInt);
@@ -155,8 +156,8 @@ public class EnumTests
     public void DeviceConfigSource_CanConvertToInt_AndBack()
     {
         // Act
-        var fetchedInt = (int)DeviceConfigSource.Fetched;
-        var appliedInt = (int)DeviceConfigSource.Applied;
+        int fetchedInt = (int)DeviceConfigSource.Fetched;
+        int appliedInt = (int)DeviceConfigSource.Applied;
 
         // Assert
         Assert.Equal(DeviceConfigSource.Fetched, (DeviceConfigSource)fetchedInt);

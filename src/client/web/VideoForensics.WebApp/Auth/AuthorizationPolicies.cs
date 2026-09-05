@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
+
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
 
 namespace VideoForensics.WebApp.Auth
 {
     /// <summary>Requires the caller's OperatorRole to be at least <see cref="MinimumRole"/> (roles are ordered, so this is a numeric >= comparison - plan §5.10).</summary>
     public class MinimumRoleRequirement : IAuthorizationRequirement
     {
-        public MinimumRoleRequirement(OperatorRole minimumRole) => MinimumRole = minimumRole;
+        public MinimumRoleRequirement(OperatorRole minimumRole)
+        {
+            MinimumRole = minimumRole;
+        }
+
         public OperatorRole MinimumRole { get; }
     }
 
@@ -15,7 +19,7 @@ namespace VideoForensics.WebApp.Auth
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MinimumRoleRequirement requirement)
         {
-            var roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
+            string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
             if (roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role >= requirement.MinimumRole)
             {
                 context.Succeed(requirement);
@@ -41,7 +45,7 @@ namespace VideoForensics.WebApp.Auth
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RequireLocalTierRequirement requirement)
         {
-            var tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+            string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
             if (tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local)
             {
                 context.Succeed(requirement);

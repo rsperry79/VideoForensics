@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata.Models
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Extracted video metadata from Ring event data, ready to be written to video files.

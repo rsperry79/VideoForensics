@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.DbContext
@@ -115,7 +116,7 @@ namespace VideoForensics.Data.Database.DbContext
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(VideoForensicsDbContext).Assembly);
+            _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(VideoForensicsDbContext).Assembly);
         }
     }
 }

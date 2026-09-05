@@ -1,26 +1,23 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Spectre.Console;
+
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Client.Common;
-using VideoForensics.Client.Core;
-using VideoForensics.Client.Core.Tools;
 using VideoForensics.Hosting;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics
 {
-    class Program
+    internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
-            var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics");
-            Directory.CreateDirectory(configDir);
+            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics");
+            _ = Directory.CreateDirectory(configDir);
 
             // Run demo mode if launched with --demo flag
             if (args.Length > 0 && args[0] == "--demo")
@@ -34,22 +31,22 @@ namespace VideoForensics
 
             // Register logging. Writes to a file rather than the console since this is an
             // interactive Spectre.Console TUI - console logging would corrupt the menu rendering.
-            var logFilePath = Path.Combine(configDir, "logs", $"videoforensics-{DateTime.Now:yyyy-MM-dd}.log");
-            services.AddLogging(builder =>
+            string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-{DateTime.Now:yyyy-MM-dd}.log");
+            _ = services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Information);
-                builder.AddProvider(new VideoForensics.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
+                _ = builder.SetMinimumLevel(LogLevel.Information);
+                _ = builder.AddProvider(new VideoForensics.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
             });
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
             // Ring's four services, download/evidence orchestrators, IForensicsConfigurationService,
             // JammingToolsOrchestrator) - see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs.
-            services.AddVideoForensicsDataLayer();
-            services.AddVideoForensicsServerCore();
+            _ = services.AddVideoForensicsDataLayer();
+            _ = services.AddVideoForensicsServerCore();
 
             // Register configuration and report rendering services (console-only; not part of the
             // shared server-core registration)
-            services.AddSingleton<IForensicReportRenderer>(serviceProvider =>
+            _ = services.AddSingleton<IForensicReportRenderer>(serviceProvider =>
                 new ForensicReportRenderer(
                     serviceProvider.GetRequiredService<IForensicsConfiguration>(),
                     serviceProvider.GetRequiredService<IReportGenerationService>(),
@@ -58,7 +55,7 @@ namespace VideoForensics
             );
 
             // Register tool orchestrators for shared use
-            services.AddSingleton<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(serviceProvider =>
+            _ = services.AddSingleton<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(serviceProvider =>
                 new VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator(
                     serviceProvider.GetRequiredService<ILogger<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>>(),
                     serviceProvider.GetRequiredService<IForensicsConfigurationService>(),
@@ -72,7 +69,7 @@ namespace VideoForensics
             // child scopes, so it behaves identically to Singleton here).
 
             // Register MenuManager with injected dependencies
-            services.AddSingleton<MenuManager>(serviceProvider =>
+            _ = services.AddSingleton<MenuManager>(serviceProvider =>
             {
                 return new MenuManager(
                     serviceProvider.GetRequiredService<ILogger<MenuManager>>(),

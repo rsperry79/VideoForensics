@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -50,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 mockEventService.Object);
 
             // Assert
-            Assert.IsAssignableFrom<IVideoProvider>(provider);
+            _ = Assert.IsAssignableFrom<IVideoProvider>(provider);
         }
 
         [Fact]
@@ -77,10 +80,10 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(provider.DownloadService);
             Assert.NotNull(provider.EventService);
 
-            Assert.IsAssignableFrom<IProviderAuthService>(provider.AuthService);
-            Assert.IsAssignableFrom<IDeviceDiscoveryService>(provider.DeviceService);
-            Assert.IsAssignableFrom<IMediaDownloadService>(provider.DownloadService);
-            Assert.IsAssignableFrom<IEventAndConfigService>(provider.EventService);
+            _ = Assert.IsAssignableFrom<IProviderAuthService>(provider.AuthService);
+            _ = Assert.IsAssignableFrom<IDeviceDiscoveryService>(provider.DeviceService);
+            _ = Assert.IsAssignableFrom<IMediaDownloadService>(provider.DownloadService);
+            _ = Assert.IsAssignableFrom<IEventAndConfigService>(provider.EventService);
         }
 
         [Fact]
@@ -92,10 +95,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var mockDataClient = new Mock<IVideoForensicsDataClient>();
             var mockCredentialStore = new Mock<ICredentialStore>();
 
-            var authService = new RingAuthService(mockLogger.Object, sessionProvider, mockCredentialStore.Object);
-            var deviceService = new RingDeviceDiscoveryService(mockLogger.Object, sessionProvider);
-            var downloadService = new RingMediaDownloadService(mockLogger.Object, sessionProvider, mockDataClient.Object);
-            var eventService = new RingEventAndConfigService(mockLogger.Object, sessionProvider);
+            _ = new RingAuthService(mockLogger.Object, sessionProvider, mockCredentialStore.Object);
+
+            _ = new RingDeviceDiscoveryService(mockLogger.Object, sessionProvider);
+
+            _ = new RingMediaDownloadService(mockLogger.Object, sessionProvider, mockDataClient.Object);
+
+            _ = new RingEventAndConfigService(mockLogger.Object, sessionProvider);
 
             // Assert - before authentication
             Assert.Null(sessionProvider.GetSession());
@@ -105,7 +111,7 @@ namespace VideoForensics.Providers.Ring.Tests
             sessionProvider.SetSession(testSession);
 
             // Assert - all services should see the same authenticated session
-            var sessionFromProvider = sessionProvider.GetSession();
+            Session? sessionFromProvider = sessionProvider.GetSession();
             Assert.NotNull(sessionFromProvider);
             Assert.Same(testSession, sessionFromProvider);
         }

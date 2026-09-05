@@ -1,22 +1,15 @@
-using System;
-using System.IO;
-using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-using Microsoft.EntityFrameworkCore;
-
-using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Auth;
-using VideoForensics.Providers.Ring.Auth.Implementations;
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Utils;
-using VideoForensics.Providers.Ring.Services;
-using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Common.Entities;
-using Microsoft.Extensions.Logging;
+using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Implementations;
+using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring.SelfTester
 {
@@ -25,12 +18,20 @@ namespace VideoForensics.Providers.Ring.SelfTester
         // Simple logger for RingAuthService
         private class ConsoleLogger : ILogger
         {
-            public IDisposable BeginScope<TState>(TState state) where TState : notnull => null!;
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null!;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
+
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
-                var message = formatter(state, exception);
-                if (logLevel == LogLevel.Error || logLevel == LogLevel.Warning)
+                string message = formatter(state, exception);
+                if (logLevel is LogLevel.Error or LogLevel.Warning)
                 {
                     Console.Error.WriteLine($"[{logLevel}] {message}");
                 }
@@ -91,7 +92,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             try
             {
                 // Try to restore from saved credentials (file-based or database)
-                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 if (!restored)
                 {
                     // If no saved credentials, try explicit options
@@ -101,7 +102,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         WriteNoCredentialsError();
                         return 2;
                     }
-                    var result = await AuthenticateWithCredentialsAsync(credentials, authService);
+
+                    bool result = await AuthenticateWithCredentialsAsync(credentials, authService);
                     if (!result)
                     {
                         Console.Error.WriteLine("Authentication failed");
@@ -132,8 +134,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return 2;
             }
 
-            var outputDir = options.OutputDir ?? Path.Combine("SelfTesterResults", DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
-            Directory.CreateDirectory(outputDir);
+            string outputDir = options.OutputDir ?? Path.Combine("SelfTesterResults", DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
+            _ = Directory.CreateDirectory(outputDir);
 
             IndexDocument index;
             try
@@ -154,7 +156,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return 2;
             }
 
-            var indexPath = Path.Combine(outputDir, "index.json");
+            string indexPath = Path.Combine(outputDir, "index.json");
             await File.WriteAllTextAsync(indexPath, JsonSerializer.Serialize(index, IndexJsonOptions));
 
             if (!options.Quiet)
@@ -162,6 +164,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 Console.WriteLine();
                 Console.WriteLine($"{index.Summary.Succeeded}/{index.Summary.TotalCalls} calls succeeded.");
             }
+
             Console.WriteLine(indexPath);
 
             if (options.VerifyDb)
@@ -181,15 +184,15 @@ namespace VideoForensics.Providers.Ring.SelfTester
         /// </summary>
         private static async Task RunDbCompletenessCheckAsync(Session session, CliOptions options, string outputDir)
         {
-            var dbPath = options.DbPath;
+            string? dbPath = options.DbPath;
 
             // If no path specified, try ProgramData first, then AppData
             if (dbPath == null)
             {
-                var programDataPath = Path.Combine(
+                string programDataPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics", "videoforensics.db");
-                var appDataPath = Path.Combine(
+                string appDataPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics", "videoforensics.db");
 
@@ -232,7 +235,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return;
             }
 
-            var reportPath = Path.Combine(outputDir, "db-completeness.json");
+            string reportPath = Path.Combine(outputDir, "db-completeness.json");
             await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, IndexJsonOptions));
 
             if (!options.Quiet)
@@ -241,10 +244,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 {
                     Console.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
                 }
+
                 foreach (var missing in report.Locations.Where(l => !l.FoundInDb))
                 {
                     Console.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
                 }
+
                 Console.WriteLine($"Devices: {report.Devices.Count - report.MissingDeviceCount}/{report.Devices.Count} found in DB. " +
                     $"Locations: {report.Locations.Count - report.MissingLocationCount}/{report.Locations.Count} found in DB.");
 
@@ -258,6 +263,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                     }
                 }
             }
+
             Console.WriteLine(reportPath);
         }
 
@@ -290,7 +296,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
         {
             try
             {
-                var authJsonPath = Path.Combine(
+                string authJsonPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics", "auth.json");
 
@@ -299,13 +305,13 @@ namespace VideoForensics.Providers.Ring.SelfTester
                     return;
                 }
 
-                var dbPath = options.DbPath;
+                string? dbPath = options.DbPath;
                 if (dbPath == null)
                 {
-                    var programDataPath = Path.Combine(
+                    string programDataPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                         "VideoForensics", "videoforensics.db");
-                    var appDataPath = Path.Combine(
+                    string appDataPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                         "VideoForensics", "videoforensics.db");
                     dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
@@ -317,18 +323,18 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 }
 
                 // Try to load credentials from auth.json
-                var authJsonContent = await File.ReadAllTextAsync(authJsonPath);
+                string authJsonContent = await File.ReadAllTextAsync(authJsonPath);
                 var authJsonDoc = JsonDocument.Parse(authJsonContent);
                 var authRoot = authJsonDoc.RootElement;
 
-                var username = authRoot.TryGetProperty("UserName", out var userProp) ? userProp.GetString() : null;
+                string? username = authRoot.TryGetProperty("UserName", out var userProp) ? userProp.GetString() : null;
                 if (string.IsNullOrEmpty(username))
                 {
                     return;
                 }
 
                 var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
                     b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
 
                 await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
@@ -351,14 +357,14 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 // Try to migrate the refresh token
                 if (authRoot.TryGetProperty("RefreshToken", out var tokenProp))
                 {
-                    var encryptedToken = tokenProp.GetString();
+                    string? encryptedToken = tokenProp.GetString();
                     if (!string.IsNullOrEmpty(encryptedToken))
                     {
-                        var decrypted = await DecryptCredentialAsync(encryptedToken);
+                        string? decrypted = await DecryptCredentialAsync(encryptedToken);
                         if (!string.IsNullOrEmpty(decrypted))
                         {
                             var encryptWithAes = new AesEncryption();
-                            var aesEncrypted = encryptWithAes.Encrypt(decrypted);
+                            string aesEncrypted = encryptWithAes.Encrypt(decrypted);
 
                             if (!string.IsNullOrEmpty(aesEncrypted))
                             {
@@ -371,8 +377,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
                                     EncryptionProvider = "AES-256",
                                     CreatedUtc = DateTime.UtcNow
                                 };
-                                db.Credentials.Add(credential);
-                                await db.SaveChangesAsync();
+                                _ = db.Credentials.Add(credential);
+                                _ = await db.SaveChangesAsync();
                                 Console.Error.WriteLine("Migrated refresh token from auth.json to database");
                             }
                         }
@@ -392,19 +398,19 @@ namespace VideoForensics.Providers.Ring.SelfTester
         {
             try
             {
-                var newRefreshToken = session.OAuthToken?.RefreshToken;
+                string? newRefreshToken = session.OAuthToken?.RefreshToken;
                 if (string.IsNullOrEmpty(newRefreshToken))
                 {
                     return;
                 }
 
-                var dbPath = options.DbPath;
+                string? dbPath = options.DbPath;
                 if (dbPath == null)
                 {
-                    var programDataPath = Path.Combine(
+                    string programDataPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                         "VideoForensics", "videoforensics.db");
-                    var appDataPath = Path.Combine(
+                    string appDataPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                         "VideoForensics", "videoforensics.db");
                     dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
@@ -416,7 +422,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 }
 
                 var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
                     b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
 
                 await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
@@ -429,7 +435,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
                 // Encrypt the refresh token
                 var aesEncryption = new AesEncryption();
-                var encryptedToken = aesEncryption.Encrypt(newRefreshToken);
+                string encryptedToken = aesEncryption.Encrypt(newRefreshToken);
 
                 if (string.IsNullOrEmpty(encryptedToken))
                 {
@@ -451,16 +457,16 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         EncryptionProvider = "AES-256",
                         CreatedUtc = DateTime.UtcNow
                     };
-                    db.Credentials.Add(credential);
+                    _ = db.Credentials.Add(credential);
                 }
                 else
                 {
                     credential.EncryptedValue = encryptedToken;
                     credential.RotatedUtc = DateTime.UtcNow;
-                    db.Credentials.Update(credential);
+                    _ = db.Credentials.Update(credential);
                 }
 
-                await db.SaveChangesAsync();
+                _ = await db.SaveChangesAsync();
                 Console.Error.WriteLine("Refresh token persisted to database");
             }
             catch (Exception ex)
@@ -479,15 +485,15 @@ namespace VideoForensics.Providers.Ring.SelfTester
             // First, try to migrate credentials from auth.json to the database
             await MigrateAuthJsonToDbAsync(options);
 
-            var dbPath = options.DbPath;
+            string? dbPath = options.DbPath;
 
             // If no path specified, try ProgramData first, then AppData
             if (dbPath == null)
             {
-                var programDataPath = Path.Combine(
+                string programDataPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics", "videoforensics.db");
-                var appDataPath = Path.Combine(
+                string appDataPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics", "videoforensics.db");
 
@@ -502,7 +508,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             try
             {
                 var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
+                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
                     b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
 
                 await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
@@ -533,7 +539,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 Console.Error.WriteLine($"Found RefreshToken credential, attempting decryption...");
 
                 // Decrypt the refresh token
-                var decrypted = await DecryptCredentialAsync(refreshTokenCred.EncryptedValue);
+                string? decrypted = await DecryptCredentialAsync(refreshTokenCred.EncryptedValue);
                 if (string.IsNullOrEmpty(decrypted))
                 {
                     Console.Error.WriteLine("Failed to decrypt RefreshToken");
@@ -564,7 +570,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             {
                 // Try AES decryption (cross-platform)
                 var aesEncryption = new AesEncryption();
-                var decrypted = aesEncryption.Decrypt(encryptedValue);
+                string decrypted = aesEncryption.Decrypt(encryptedValue);
                 if (!string.IsNullOrEmpty(decrypted))
                 {
                     return decrypted;
@@ -588,7 +594,6 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return null;
             }
         }
-
 
         private const string ReadmePointer = "Run 'dotnet run -- --auth' first to set up authentication.";
 
@@ -614,23 +619,25 @@ namespace VideoForensics.Providers.Ring.SelfTester
             Console.WriteLine("Ring interactive login - saves a reusable refresh token so future runs");
             Console.WriteLine($"don't need this again. Credentials are written to:\n  {CredentialResolver.AuthPath}\n");
 
-            var userName = options.UserName;
+            string? userName = options.UserName;
             if (string.IsNullOrWhiteSpace(userName))
             {
                 Console.Write("Ring username/email: ");
                 userName = Console.ReadLine();
             }
+
             if (string.IsNullOrWhiteSpace(userName))
             {
                 Console.Error.WriteLine("Error: a username is required.");
                 return 2;
             }
 
-            var password = options.Password;
+            string? password = options.Password;
             if (string.IsNullOrWhiteSpace(password))
             {
                 password = ReadPassword("Ring password: ");
             }
+
             if (string.IsNullOrWhiteSpace(password))
             {
                 Console.Error.WriteLine("Error: a password is required.");
@@ -689,7 +696,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return Console.ReadLine() ?? "";
             }
 
-            var password = "";
+            string password = "";
             ConsoleKeyInfo key;
             do
             {
@@ -735,7 +742,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             Console.WriteLine();
             foreach (var e in EndpointRegistry.All)
             {
-                var tags = string.Concat(e.Destructive ? " [destructive]" : "", e.Physical ? " [physical]" : "");
+                string tags = string.Concat(e.Destructive ? " [destructive]" : "", e.Physical ? " [physical]" : "");
                 Console.WriteLine($"  {e.Key,-22} {e.DisplayName}{tags}");
                 Console.WriteLine($"  {"",22} {e.SessionMethod} -> {e.HttpMethod} {e.ApiPath}");
                 Console.WriteLine($"  {"",22} {e.Description}");

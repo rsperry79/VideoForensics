@@ -1,6 +1,3 @@
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Forensics.Models;
-
 namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 {
     /// <summary>
@@ -8,8 +5,8 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
     /// </summary>
     public class ForensicTestDataBuilder
     {
-        private EvidenceMetadata _evidence = new();
-        private List<DoorbotHistoryEvent> _events = new();
+        private readonly EvidenceMetadata _evidence = new();
+        private readonly List<DoorbotHistoryEvent> _events = [];
 
         public ForensicTestDataBuilder WithDeviceId(string deviceId)
         {

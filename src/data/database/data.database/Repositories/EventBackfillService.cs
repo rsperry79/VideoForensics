@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -21,27 +22,27 @@ namespace VideoForensics.Data.Database.Repositories
             ILogger logger,
             CancellationToken ct)
         {
-            var downloadEvents = await downloadEventRepository.ListAsync(ct);
+            IReadOnlyList<DownloadEvent> downloadEvents = await downloadEventRepository.ListAsync(ct);
             if (downloadEvents.Count == 0)
             {
                 logger.LogInformation("Events backfill: no DownloadEvents found, nothing to backfill.");
                 return 0;
             }
 
-            var mediaItems = await mediaItemRepository.ListAsync(ct);
+            IReadOnlyList<MediaItem> mediaItems = await mediaItemRepository.ListAsync(ct);
             var hashByDownloadEventId = mediaItems
                 .Where(m => m.DownloadEventId.HasValue)
                 .GroupBy(m => m.DownloadEventId!.Value)
                 .ToDictionary(g => g.Key, g => g.First().Sha256Hash);
 
             var backfilled = 0;
-            foreach (var downloadEvent in downloadEvents)
+            foreach (DownloadEvent downloadEvent in downloadEvents)
             {
                 ct.ThrowIfCancellationRequested();
 
-                hashByDownloadEventId.TryGetValue(downloadEvent.Id, out var hash);
+                _ = hashByDownloadEventId.TryGetValue(downloadEvent.Id, out var hash);
 
-                await eventRepository.UpsertAsync(new Event
+                _ = await eventRepository.UpsertAsync(new Event
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = downloadEvent.DeviceId,

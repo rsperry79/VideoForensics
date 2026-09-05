@@ -1,15 +1,17 @@
-﻿using Xunit;
 using System.IO.Abstractions;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
+
+using VideoForensics.Providers.Ring.Models;
+
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
     public class ImageMetadataWriterTests : IDisposable
     {
-        private IMetadataWriter _writer = null!;
-        private IMetadataValidator _validator = null!;
-        private string _testFilePath = null!;
-        private IFileSystem _fileSystem = null!;
+        private readonly IMetadataWriter _writer = null!;
+        private readonly IMetadataValidator _validator = null!;
+        private readonly string _testFilePath = null!;
+        private readonly IFileSystem _fileSystem = null!;
 
         public ImageMetadataWriterTests()
         {
@@ -32,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithValidJpegAndMetadata_ReturnsSuccessResult()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata
@@ -57,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             try
             {
-                _writer.WriteMetadata(null!, metadata);
+                _ = _writer.WriteMetadata(null!, metadata);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -72,7 +74,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             try
             {
-                _writer.WriteMetadata("", metadata);
+                _ = _writer.WriteMetadata("", metadata);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -83,12 +85,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithNullMetadata_ThrowsArgumentNullException()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             try
             {
-                _writer.WriteMetadata(_testFilePath, null!);
+                _ = _writer.WriteMetadata(_testFilePath, null!);
                 Assert.Fail("Expected ArgumentNullException to be thrown");
             }
             catch (ArgumentNullException)
@@ -99,7 +101,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
 
             var result = _writer.WriteMetadata(nonExistentPath, metadata);
@@ -113,7 +115,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithInvalidFileExtension_ReturnsFailed()
         {
-            var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
+            string invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
             File.WriteAllBytes(invalidPath, new byte[] { 0xFF, 0xD8 });
 
             try
@@ -127,14 +129,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             finally
             {
                 if (File.Exists(invalidPath))
+                {
                     File.Delete(invalidPath);
+                }
             }
         }
 
         [Fact]
         public void WriteMetadata_ResultHasValidProperties()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { PersonDetected = true };
@@ -152,7 +156,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public async Task WriteMetadataAsync_WithValidFile_ReturnsSuccessResult()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test Camera" };
@@ -166,7 +170,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public async Task WriteMetadataAsync_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
 
             var result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
@@ -181,7 +185,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void ValidateImage_WithValidFile_ReturnsValid()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var result = _writer.ValidateImage(_testFilePath);
@@ -195,7 +199,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void ValidateImage_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
 
             var result = _writer.ValidateImage(nonExistentPath);
 
@@ -206,7 +210,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void ValidateImage_WithInvalidFileFormat_ReturnsCorrupt()
         {
-            var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpg");
+            string invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpg");
             File.WriteAllBytes(invalidPath, new byte[] { 0x47, 0x49, 0x46 }); // GIF header, not JPEG
 
             try
@@ -219,7 +223,9 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             finally
             {
                 if (File.Exists(invalidPath))
+                {
                     File.Delete(invalidPath);
+                }
             }
         }
 
@@ -228,7 +234,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         {
             try
             {
-                _writer.ValidateImage(null!);
+                _ = _writer.ValidateImage(null!);
                 Assert.Fail("Expected ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -243,7 +249,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public async Task ValidateImageAsync_WithValidFile_ReturnsValid()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var result = await _writer.ValidateImageAsync(_testFilePath);
@@ -255,7 +261,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public async Task ValidateImageAsync_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
 
             var result = await _writer.ValidateImageAsync(nonExistentPath);
 
@@ -269,7 +275,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithPersonDetected_IncludesPhotoPrismTags()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata
@@ -287,7 +293,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithMotionDetected_IncludesMotionTag()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata
@@ -305,14 +311,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithoutEvents_NoPhotoPrismTags()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Inactive Camera" };
 
             var result = _writer.WriteMetadata(_testFilePath, metadata);
 
-            var hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
+            bool hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
             Assert.True(hasRelevantTags);
         }
 
@@ -323,7 +329,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_SupportsJpeg()
         {
-            var jpegPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpeg");
+            string jpegPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.jpeg");
             File.WriteAllBytes(jpegPath, new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 });
 
             try
@@ -335,14 +341,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             finally
             {
                 if (_fileSystem.File.Exists(jpegPath))
+                {
                     _fileSystem.File.Delete(jpegPath);
+                }
             }
         }
 
         [Fact]
         public void WriteMetadata_SupportsPng()
         {
-            var pngPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.png");
+            string pngPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.png");
             File.WriteAllBytes(pngPath, new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
 
             try
@@ -354,14 +362,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             finally
             {
                 if (_fileSystem.File.Exists(pngPath))
+                {
                     _fileSystem.File.Delete(pngPath);
+                }
             }
         }
 
         [Fact]
         public void WriteMetadata_SupportsWebp()
         {
-            var webpPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.webp");
+            string webpPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.webp");
             File.WriteAllBytes(webpPath, new byte[] { 0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50 });
 
             try
@@ -373,7 +383,9 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             finally
             {
                 if (_fileSystem.File.Exists(webpPath))
+                {
                     _fileSystem.File.Delete(webpPath);
+                }
             }
         }
 
@@ -384,7 +396,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_ResultDurationIsReasonable()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
@@ -396,7 +408,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_ProcessedAtIsRecent()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
@@ -415,11 +427,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_ExtractsImageFormat()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+
+            _ = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(metadata.ImageFormat);
             Assert.Equal("JPEG", metadata.ImageFormat);
@@ -428,11 +441,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_ExtractsImageFileSize()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x00, 0x00, 0x00 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x00, 0x00, 0x00 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+
+            _ = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(metadata.ImageFileSize >= 0);
         }
@@ -440,11 +454,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void WriteMetadata_EstimatesImageQuality()
         {
-            var jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+            byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+
+            _ = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(metadata.ImageQualityScore >= 0);
             Assert.True(metadata.ImageQualityScore <= 100);

@@ -1,5 +1,6 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+
+using System.Text.Json;
 
 namespace VideoForensics.Hosting
 {
@@ -47,7 +48,7 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                var payload = JsonSerializer.Deserialize<StepUpPayload>(_protector.Unprotect(token));
+                StepUpPayload? payload = JsonSerializer.Deserialize<StepUpPayload>(_protector.Unprotect(token));
                 return payload != null && payload.PairedDeviceId == pairedDeviceId && payload.ExpiresAtUtc > DateTime.UtcNow;
             }
             catch

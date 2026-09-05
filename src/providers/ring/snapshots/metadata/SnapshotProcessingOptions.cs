@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Configuration options for snapshot metadata processing.

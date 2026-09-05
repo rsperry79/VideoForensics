@@ -1,10 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models;
-using VideoForensics.Forensics.Models.Reports;
 
-namespace VideoForensics.Forensics
+using VideoForensics.Forensics.Models;
+
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Maintains chain of custody records for evidence handling, tracking

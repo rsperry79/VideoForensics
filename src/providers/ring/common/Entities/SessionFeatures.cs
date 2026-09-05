@@ -1,5 +1,3 @@
-
-using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -122,6 +120,6 @@ namespace VideoForensics.Providers.Ring.Entities
         /// 1,300+ feature flags; this captures any that don't have dedicated properties.
         /// </summary>
         [JsonExtensionData]
-        public Dictionary<string, object> AdditionalFeatures { get; set; } = new();
+        public Dictionary<string, object> AdditionalFeatures { get; set; } = [];
     }
 }

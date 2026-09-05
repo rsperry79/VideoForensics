@@ -6,7 +6,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateCompletenessAsync_WithCompleteEvidence_ReturnsValid()
         {
             // Arrange
-            var evidence = new EvidenceMetadata
+            _ = new EvidenceMetadata
             {
                 SourceDeviceId = "device-001",
                 EventTimestamp = DateTime.UtcNow,
@@ -26,7 +26,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateIntegrityAsync_WithIntactData_ReturnsValid()
         {
             // Arrange
-            var evidence = new EvidenceMetadata
+            _ = new EvidenceMetadata
             {
                 Checksums = new Dictionary<string, string>
                 {
@@ -46,7 +46,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateComplianceAsync_WithCompliantEvidence_ReturnsValid()
         {
             // Arrange
-            var evidence = new EvidenceMetadata
+            _ = new EvidenceMetadata
             {
                 ExtractionHandler = "certified-examiner",
                 ExtractionTimestamp = DateTime.UtcNow
@@ -64,7 +64,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateCompletenessAsync_WithMissingFields_ReturnsErrors()
         {
             // Arrange
-            var evidence = new EvidenceMetadata
+            _ = new EvidenceMetadata
             {
                 // Missing required fields
             };

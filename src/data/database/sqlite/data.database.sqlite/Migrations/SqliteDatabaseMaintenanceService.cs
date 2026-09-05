@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 
@@ -28,19 +29,18 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // and truncates the WAL back to zero bytes - a plain PASSIVE checkpoint (used by
                 // routine maintenance) can leave data in the WAL if a reader is active, which would
                 // still block deleting the file cleanly afterward.
-                await using (var db = await _factory.CreateDbContextAsync(ct))
+                await using (VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct))
                 {
-                    var connection = db.Database.GetDbConnection() as SqliteConnection;
-                    if (connection != null)
+                    if (db.Database.GetDbConnection() is SqliteConnection connection)
                     {
                         if (connection.State != System.Data.ConnectionState.Open)
                         {
                             await connection.OpenAsync(ct);
                         }
 
-                        using var command = connection.CreateCommand();
+                        using SqliteCommand command = connection.CreateCommand();
                         command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
-                        await command.ExecuteScalarAsync(ct);
+                        _ = await command.ExecuteScalarAsync(ct);
                     }
                 }
 

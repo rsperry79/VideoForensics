@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,9 +10,9 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<ProviderApiCallRecord> builder)
         {
-            builder.HasKey(r => r.Id);
-            builder.Property(r => r.ProviderName).IsRequired().HasMaxLength(64);
-            builder.HasIndex(r => new { r.ProviderName, r.TimestampUtc });
+            _ = builder.HasKey(r => r.Id);
+            _ = builder.Property(r => r.ProviderName).IsRequired().HasMaxLength(64);
+            _ = builder.HasIndex(r => new { r.ProviderName, r.TimestampUtc });
         }
     }
 }

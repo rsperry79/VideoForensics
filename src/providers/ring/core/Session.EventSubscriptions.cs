@@ -18,16 +18,28 @@ namespace VideoForensics.Providers.Ring
     public partial class Session
     {
         /// <summary>Subscribes the current session to ding (doorbell press) push events for a doorbot.</summary>
-        public Task SubscribeToDingEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "subscribe", cancellationToken);
+        public Task SubscribeToDingEvents(long doorbotId, CancellationToken cancellationToken = default)
+        {
+            return PostDoorbotEventToggle(doorbotId, "subscribe", cancellationToken);
+        }
 
         /// <summary>Unsubscribes the current session from ding push events for a doorbot.</summary>
-        public Task UnsubscribeFromDingEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "unsubscribe", cancellationToken);
+        public Task UnsubscribeFromDingEvents(long doorbotId, CancellationToken cancellationToken = default)
+        {
+            return PostDoorbotEventToggle(doorbotId, "unsubscribe", cancellationToken);
+        }
 
         /// <summary>Subscribes the current session to motion push events for a doorbot.</summary>
-        public Task SubscribeToMotionEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "motions_subscribe", cancellationToken);
+        public Task SubscribeToMotionEvents(long doorbotId, CancellationToken cancellationToken = default)
+        {
+            return PostDoorbotEventToggle(doorbotId, "motions_subscribe", cancellationToken);
+        }
 
         /// <summary>Unsubscribes the current session from motion push events for a doorbot.</summary>
-        public Task UnsubscribeFromMotionEvents(long doorbotId, CancellationToken cancellationToken = default) => PostDoorbotEventToggle(doorbotId, "motions_unsubscribe", cancellationToken);
+        public Task UnsubscribeFromMotionEvents(long doorbotId, CancellationToken cancellationToken = default)
+        {
+            return PostDoorbotEventToggle(doorbotId, "motions_unsubscribe", cancellationToken);
+        }
 
         private async Task PostDoorbotEventToggle(long doorbotId, string action, CancellationToken cancellationToken = default)
         {

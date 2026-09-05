@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -18,22 +18,16 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("created_at")]
         public string CreatedAt { get; set; }
 
-        /// <summary>
-        /// DateTime at which this event occurred 
-        /// </summary>
-        private DateTime? _createdAtDateTime;
         public DateTime? CreatedAtDateTime
         {
             get
             {
-                if (_createdAtDateTime.HasValue) return _createdAtDateTime.Value;
-
-                if (!DateTime.TryParse(CreatedAt, out DateTime result))
+                if (field.HasValue)
                 {
-                    return null;
+                    return field.Value;
                 }
 
-                return _createdAtDateTime = result;
+                return !DateTime.TryParse(CreatedAt, out DateTime result) ? null : (field = result);
             }
         }
 

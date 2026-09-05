@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,23 +10,23 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<Credential> builder)
         {
-            builder.HasKey(c => c.Id);
+            _ = builder.HasKey(c => c.Id);
 
-            builder.Property(c => c.CredentialType)
+            _ = builder.Property(c => c.CredentialType)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.Property(c => c.EncryptedValue)
+            _ = builder.Property(c => c.EncryptedValue)
                 .IsRequired();
 
-            builder.Property(c => c.EncryptionProvider)
+            _ = builder.Property(c => c.EncryptionProvider)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.HasIndex(c => new { c.ProviderAccountId, c.CredentialType })
+            _ = builder.HasIndex(c => new { c.ProviderAccountId, c.CredentialType })
                 .IsUnique();
 
-            builder.HasIndex(c => c.ProviderAccountId);
+            _ = builder.HasIndex(c => c.ProviderAccountId);
         }
     }
 }

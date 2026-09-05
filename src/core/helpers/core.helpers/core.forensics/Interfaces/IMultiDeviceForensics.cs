@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models;
-using VideoForensics.Forensics.Models.Reports;
 
-namespace VideoForensics.Forensics
+using VideoForensics.Forensics.Models;
+
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Analyzes forensic evidence across multiple devices to identify coordinated attacks.
@@ -45,7 +45,7 @@ namespace VideoForensics.Forensics
 
     public class BaselineCorrelation
     {
-        public List<string> DeviceIds { get; set; } = new();
+        public List<string> DeviceIds { get; set; } = [];
         public double AverageCorrelation { get; set; }
         public double StandardDeviation { get; set; }
         public double MinObservedCorrelation { get; set; }

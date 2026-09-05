@@ -1,13 +1,13 @@
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
-using VideoForensics.Providers.Ring.Utils;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -24,7 +24,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public RingIntegrationTests()
         {
             // Auto-discover credentials from standard location
-            var credentialDir = Path.Combine(
+            string credentialDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "VideoForensics"
             );
@@ -35,15 +35,31 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private sealed class DiagnosticConsoleLoggerProvider : ILoggerProvider
         {
-            public ILogger CreateLogger(string categoryName) => new DiagnosticConsoleLogger(categoryName);
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new DiagnosticConsoleLogger(categoryName);
+            }
+
             public void Dispose() { }
 
             private sealed class DiagnosticConsoleLogger : ILogger
             {
                 private readonly string _category;
-                public DiagnosticConsoleLogger(string category) => _category = category;
-                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-                public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+                public DiagnosticConsoleLogger(string category)
+                {
+                    _category = category;
+                }
+
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                {
+                    return null;
+                }
+
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return logLevel >= LogLevel.Information;
+                }
+
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {
                     Console.WriteLine($"[{logLevel}] {_category}: {formatter(state, exception)}");
@@ -60,33 +76,33 @@ namespace VideoForensics.Providers.Ring.Tests
             var services = new ServiceCollection();
 
             // Register logging
-            services.AddLogging(builder =>
+            _ = services.AddLogging(builder =>
             {
-                builder.AddProvider(new DiagnosticConsoleLoggerProvider());
-                builder.SetMinimumLevel(LogLevel.Information);
+                _ = builder.AddProvider(new DiagnosticConsoleLoggerProvider());
+                _ = builder.SetMinimumLevel(LogLevel.Information);
             });
 
             // Register the shared session provider (must be singleton so all services observe same session)
-            services.AddSingleton<ISessionProvider, SessionProvider>();
+            _ = services.AddSingleton<ISessionProvider, SessionProvider>();
 
             // Register credential store for persisting auth tokens
-            services.AddSingleton<ICredentialStore>(new CredentialStore());
+            _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
 
             // Register Ring provider services with factories that provide typed loggers
-            services.AddSingleton<IProviderAuthService>(provider =>
+            _ = services.AddSingleton<IProviderAuthService>(provider =>
                 new RingAuthService(
                     provider.GetRequiredService<ILogger<RingAuthService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
                     provider.GetRequiredService<ICredentialStore>()
                 )
             );
-            services.AddSingleton<IDeviceDiscoveryService>(provider =>
+            _ = services.AddSingleton<IDeviceDiscoveryService>(provider =>
                 new RingDeviceDiscoveryService(
                     provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                     provider.GetRequiredService<ISessionProvider>()
                 )
             );
-            services.AddSingleton<IMediaDownloadService>(provider =>
+            _ = services.AddSingleton<IMediaDownloadService>(provider =>
             {
                 var mockDataClient = new Mock<IVideoForensicsDataClient>().Object;
                 return new RingMediaDownloadService(
@@ -95,7 +111,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     mockDataClient
                 );
             });
-            services.AddSingleton<IEventAndConfigService>(provider =>
+            _ = services.AddSingleton<IEventAndConfigService>(provider =>
                 new RingEventAndConfigService(
                     provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
                     provider.GetRequiredService<ISessionProvider>()
@@ -120,17 +136,17 @@ namespace VideoForensics.Providers.Ring.Tests
             var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
             var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
-            var outputDir = Path.Combine(Path.GetTempPath(), "ring_test_videos");
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), "ring_test_videos");
+            _ = Directory.CreateDirectory(outputDir);
 
             try
             {
                 // Act 1: Restore authentication from persisted credentials
-                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 Assert.True(restored, "Failed to restore authentication from saved credentials");
 
                 // Act 2: Verify session is authenticated
-                var isAuthenticated = await authService.IsAuthenticatedAsync();
+                bool isAuthenticated = await authService.IsAuthenticatedAsync();
                 Assert.True(isAuthenticated, "Session is not authenticated after restoration");
 
                 // Act 3: Get locations
@@ -139,6 +155,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     throw new InvalidOperationException("No locations found on Ring account. Account may not have any locations configured, or API credentials may be incomplete.");
                 }
+
                 Assert.NotEmpty(locations);
                 logger.LogInformation("Found {LocationCount} locations: {Locations}", locations.Count, string.Join(", ", locations.Select(l => l.Name)));
 
@@ -152,6 +169,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     {
                         logger.LogInformation("  - Device: {DeviceName} ({DeviceId}), Type: {DeviceType}, Online: {IsOnline}", device.Name, device.Id, device.Type, device.IsOnline);
                     }
+
                     allDevices.AddRange(devices);
                 }
 
@@ -159,6 +177,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     throw new InvalidOperationException($"No devices found across {locations.Count} location(s). Account may have locations but no cameras/doorbells registered.");
                 }
+
                 Assert.NotEmpty(allDevices);
 
                 // Act 5: Download video from first online device
@@ -179,7 +198,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     Assert.NotNull(result);
                     if (result.Success && result.FilesDownloaded > 0)
                     {
-                        var downloadedFiles = Directory.GetFiles(outputDir, "*.mp4", SearchOption.AllDirectories);
+                        string[] downloadedFiles = Directory.GetFiles(outputDir, "*.mp4", SearchOption.AllDirectories);
                         Assert.NotEmpty(downloadedFiles);
                     }
                 }
@@ -213,13 +232,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
             var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
-            var outputDir = Path.Combine(Path.GetTempPath(), "ring_video_by_type");
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), "ring_video_by_type");
+            _ = Directory.CreateDirectory(outputDir);
 
             try
             {
                 // Restore auth
-                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 Assert.True(restored);
 
                 // Get all devices
@@ -232,6 +251,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     var devices = await deviceService.GetDevicesAsync(location.Id);
                     allDevices.AddRange(devices);
                 }
+
                 Assert.NotEmpty(allDevices);
 
                 // Group devices by type
@@ -251,8 +271,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 foreach (var (deviceType, devicesOfType) in devicesByType)
                 {
                     var device = devicesOfType.First();
-                    var typeOutputDir = Path.Combine(outputDir, deviceType);
-                    Directory.CreateDirectory(typeOutputDir);
+                    string typeOutputDir = Path.Combine(outputDir, deviceType);
+                    _ = Directory.CreateDirectory(typeOutputDir);
 
                     logger.LogInformation("Downloading from {DeviceType}: {DeviceName} ({DeviceId})",
                         deviceType, device.Name, device.Id);
@@ -304,13 +324,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
             var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
-            var outputDir = Path.Combine(Path.GetTempPath(), "ring_metadata_validation");
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), "ring_metadata_validation");
+            _ = Directory.CreateDirectory(outputDir);
 
             try
             {
                 // Restore auth
-                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 Assert.True(restored);
 
                 // Get devices
@@ -323,6 +343,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     var devices = await deviceService.GetDevicesAsync(location.Id);
                     allDevices.AddRange(devices);
                 }
+
                 Assert.NotEmpty(allDevices);
 
                 var onlineDevices = allDevices.Where(d => d.IsOnline).ToList();
@@ -363,16 +384,16 @@ namespace VideoForensics.Providers.Ring.Tests
                         "MediaFilesValidated should be non-negative");
 
                     // Check that actual files were created
-                    var allFiles = Directory.GetFiles(outputDir, "*", SearchOption.AllDirectories);
+                    string[] allFiles = Directory.GetFiles(outputDir, "*", SearchOption.AllDirectories);
                     logger.LogInformation("Downloaded {FileCount} total files", allFiles.Length);
 
                     // Should have video files (.mp4)
-                    var videoFiles = Directory.GetFiles(outputDir, "*.mp4", SearchOption.AllDirectories);
+                    string[] videoFiles = Directory.GetFiles(outputDir, "*.mp4", SearchOption.AllDirectories);
                     Assert.True(videoFiles.Length == result.FilesDownloaded,
                         $"Video file count ({videoFiles.Length}) should match FilesDownloaded ({result.FilesDownloaded})");
 
                     // Should have metadata files (.json) for each video
-                    var metadataFiles = Directory.GetFiles(outputDir, "*.json", SearchOption.AllDirectories);
+                    string[] metadataFiles = Directory.GetFiles(outputDir, "*.json", SearchOption.AllDirectories);
                     logger.LogInformation("Found {VideoCount} videos and {MetadataCount} metadata files",
                         videoFiles.Length, metadataFiles.Length);
 
@@ -383,10 +404,10 @@ namespace VideoForensics.Providers.Ring.Tests
                             "Metadata files should be written for downloaded videos");
 
                         // Each video should have corresponding metadata
-                        foreach (var videoFile in videoFiles)
+                        foreach (string videoFile in videoFiles)
                         {
-                            var baseName = Path.GetFileNameWithoutExtension(videoFile);
-                            var metadataFile = Directory.GetFiles(outputDir, $"{baseName}.json", SearchOption.AllDirectories).FirstOrDefault();
+                            string baseName = Path.GetFileNameWithoutExtension(videoFile);
+                            string? metadataFile = Directory.GetFiles(outputDir, $"{baseName}.json", SearchOption.AllDirectories).FirstOrDefault();
                             Assert.NotNull(metadataFile);
                             logger.LogInformation("Video {VideoName} has metadata: {MetadataName}",
                                 Path.GetFileName(videoFile), Path.GetFileName(metadataFile));
@@ -429,8 +450,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
 
             // Act
-            var restored = await authService.RestoreFromSavedCredentialsAsync();
-            var isAuthenticated = await authService.IsAuthenticatedAsync();
+            bool restored = await authService.RestoreFromSavedCredentialsAsync();
+            bool isAuthenticated = await authService.IsAuthenticatedAsync();
 
             // Assert
             Assert.True(restored, "Failed to restore from persisted credentials");
@@ -451,7 +472,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
 
             // Act
-            await authService.RestoreFromSavedCredentialsAsync();
+            _ = await authService.RestoreFromSavedCredentialsAsync();
             var locations = await deviceService.GetLocationsAsync();
 
             // Assert
@@ -478,7 +499,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
 
             // Restore session
-            var restored = await authService.RestoreFromSavedCredentialsAsync();
+            bool restored = await authService.RestoreFromSavedCredentialsAsync();
             Assert.True(restored, "Failed to restore authentication");
 
             // Get the session from the provider
@@ -486,8 +507,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = sessionProvider.GetSession();
             Assert.NotNull(session);
 
-            var outputDir = Path.Combine(Path.GetTempPath(), "ring_api_test");
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), "ring_api_test");
+            _ = Directory.CreateDirectory(outputDir);
 
             try
             {
@@ -513,11 +534,11 @@ namespace VideoForensics.Providers.Ring.Tests
                     indexDoc.Calls.Count, successfulCalls.Count);
 
                 // All calls should succeed
-                var hasErrors = false;
+                bool hasErrors = false;
                 foreach (var call in indexDoc.Calls)
                 {
-                    var statusCode = call.HttpCalls.FirstOrDefault()?.StatusCode ?? 0;
-                    var status = call.Success ? "OK" : "FAIL";
+                    int statusCode = call.HttpCalls.FirstOrDefault()?.StatusCode ?? 0;
+                    string status = call.Success ? "OK" : "FAIL";
                     logger.LogInformation("  {Endpoint}: {Status} HTTP {StatusCode}",
                         call.DisplayName, status, statusCode);
 
@@ -546,6 +567,7 @@ namespace VideoForensics.Providers.Ring.Tests
                                 logger.LogError("      {Path}: {IssueType} (expected: {Expected}, actual: {Actual})",
                                     issue.Path, issue.IssueType, issue.Expected, issue.Actual);
                             }
+
                             hasErrors = true;
                         }
                     }
@@ -582,13 +604,13 @@ namespace VideoForensics.Providers.Ring.Tests
             var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
             var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
-            var outputDir = Path.Combine(Path.GetTempPath(), "ring_test_snapshots");
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), "ring_test_snapshots");
+            _ = Directory.CreateDirectory(outputDir);
 
             try
             {
                 // Act - Restore and discover devices
-                var restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 Assert.True(restored, "Failed to restore credentials");
 
                 var locations = await deviceService.GetLocationsAsync();
@@ -597,23 +619,25 @@ namespace VideoForensics.Providers.Ring.Tests
                 var startDate = DateTime.Now.AddDays(-30);  // Look back 30 days for more data
                 var endDate = DateTime.Now;
 
-                var downloadedSnapshotCount = 0;
-                var deviceCount = 0;
+                int downloadedSnapshotCount = 0;
+                int deviceCount = 0;
                 var cameraTypesFound = new HashSet<string>();
 
                 foreach (var location in locations)
                 {
                     var devices = await deviceService.GetDevicesAsync(location.Id.ToString());
                     if (devices == null || devices.Count == 0)
+                    {
                         continue;
+                    }
 
                     foreach (var device in devices)
                     {
                         deviceCount++;
-                        cameraTypesFound.Add(device.Type);
+                        _ = cameraTypesFound.Add(device.Type);
 
-                        var deviceOutputDir = Path.Combine(outputDir, $"{device.Name}_{device.Id}");
-                        Directory.CreateDirectory(deviceOutputDir);
+                        string deviceOutputDir = Path.Combine(outputDir, $"{device.Name}_{device.Id}");
+                        _ = Directory.CreateDirectory(deviceOutputDir);
 
                         var result = await downloadService.DownloadSnapshotsAsync(
                             device.Id,
@@ -643,7 +667,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     logger.LogInformation("Downloaded {Total} snapshot(s)", downloadedSnapshotCount);
                     // Verify files exist
-                    var jpgFiles = Directory.GetFiles(outputDir, "*.jpg", SearchOption.AllDirectories);
+                    string[] jpgFiles = Directory.GetFiles(outputDir, "*.jpg", SearchOption.AllDirectories);
                     Assert.Equal(downloadedSnapshotCount, jpgFiles.Length);
                 }
             }

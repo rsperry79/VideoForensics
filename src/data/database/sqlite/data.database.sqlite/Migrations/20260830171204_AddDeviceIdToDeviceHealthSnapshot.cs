@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<Guid>(
+            _ = migrationBuilder.AlterColumn<Guid>(
                 name: "DownloadEventId",
                 table: "DeviceHealthSnapshots",
                 type: "TEXT",
@@ -19,13 +18,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 oldClrType: typeof(Guid),
                 oldType: "TEXT");
 
-            migrationBuilder.AddColumn<Guid>(
+            _ = migrationBuilder.AddColumn<Guid>(
                 name: "DeviceId",
                 table: "DeviceHealthSnapshots",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceHealthSnapshots_DeviceId_CapturedAtUtc",
                 table: "DeviceHealthSnapshots",
                 columns: new[] { "DeviceId", "CapturedAtUtc" });
@@ -34,15 +33,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
+            _ = migrationBuilder.DropIndex(
                 name: "IX_DeviceHealthSnapshots_DeviceId_CapturedAtUtc",
                 table: "DeviceHealthSnapshots");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "DeviceId",
                 table: "DeviceHealthSnapshots");
 
-            migrationBuilder.AlterColumn<Guid>(
+            _ = migrationBuilder.AlterColumn<Guid>(
                 name: "DownloadEventId",
                 table: "DeviceHealthSnapshots",
                 type: "TEXT",

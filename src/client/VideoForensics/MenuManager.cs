@@ -1,21 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+
 using Spectre.Console;
-using VideoForensics.Providers.Common.Contracts;
+
+using System.Text.Json;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
-using VideoForensics.Data;
+using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Core.Utilities;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics
 {
@@ -89,7 +87,7 @@ namespace VideoForensics
         /// <summary>Formats an account for display as its user's email/display name, falling back to the provider name if the user record is missing.</summary>
         private async Task<string> FormatAccountLabelAsync(ProviderAccount account, CancellationToken ct)
         {
-            var user = await _userRepository.GetAsync(account.UserId, ct);
+            User? user = await _userRepository.GetAsync(account.UserId, ct);
             var identity = user?.Email ?? user?.DisplayName;
             return string.IsNullOrEmpty(identity) ? account.ProviderName : identity;
         }
@@ -221,28 +219,28 @@ namespace VideoForensics
             Console.Write("Enter passphrase for AES-256 encryption (optional): ");
             var passphrase = Console.ReadLine();
 
-            var exportDevices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> exportDevices = await _deviceRepository.ListAsync(ct);
             Guid? deviceId = PromptSelectDeviceOrAll("Select device to export (or All Devices)", exportDevices);
 
             Console.Write("Enter start date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime fromDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter end date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var toDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime toDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
-            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+            DateTime adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            DateTime adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
 
             // Get media items for the date range and device
             IReadOnlyList<MediaItem> mediaItems;
@@ -257,7 +255,7 @@ namespace VideoForensics
             else
             {
                 // Get all media items and filter by date range
-                var allItems = await _mediaItemRepository.ListAsync(ct);
+                IReadOnlyList<MediaItem> allItems = await _mediaItemRepository.ListAsync(ct);
                 mediaItems = allItems
                     .Where(m => m.RecordedAtUtc >= adjustedFromDate && m.RecordedAtUtc <= adjustedToDate)
                     .ToList();
@@ -268,7 +266,7 @@ namespace VideoForensics
             if (!mediaItemIds.Any())
             {
                 Console.WriteLine("No media items found for the specified criteria.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
@@ -279,7 +277,7 @@ namespace VideoForensics
                 "VideoForensics",
                 "Exports");
 
-            var result = await _evidenceExportService.ExportEvidenceAsync(
+            ExportResult result = await _evidenceExportService.ExportEvidenceAsync(
                 mediaItemIds,
                 outputDir,
                 caseReference,
@@ -306,7 +304,7 @@ namespace VideoForensics
             }
 
             Console.WriteLine("\nPress any key to return...");
-            Console.ReadKey();
+            _ = Console.ReadKey();
         }
 
         private async Task ShowValidateEvidenceMenu(CancellationToken ct)
@@ -341,23 +339,25 @@ namespace VideoForensics
             Console.WriteLine("Check File Integrity");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            var integrityDevices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> integrityDevices = await _deviceRepository.ListAsync(ct);
             Guid? deviceId = PromptSelectDeviceOrAll("Select device to verify (or All Devices)", integrityDevices);
 
             Console.WriteLine("Running integrity verification...");
-            var results = await _evidenceValidationService.VerifyLocalIntegrityAsync(deviceId, ct);
+            IReadOnlyList<MediaVerificationResult> results = await _evidenceValidationService.VerifyLocalIntegrityAsync(deviceId, ct);
 
             Console.WriteLine($"\nVerification Results: {results.Count} item(s)");
             Console.WriteLine("───────────────────────────────────────────────────────────");
-            foreach (var result in results)
+            foreach (MediaVerificationResult result in results)
             {
                 Console.WriteLine($"Status: {result.Status} | File: {result.FileName}");
                 if (!string.IsNullOrEmpty(result.FailureReason))
+                {
                     Console.WriteLine($"  Reason: {result.FailureReason}");
+                }
             }
 
             Console.WriteLine("\nPress any key to return...");
-            Console.ReadKey();
+            _ = Console.ReadKey();
         }
 
         private async Task ReconcileWithProviderAsync(CancellationToken ct)
@@ -366,52 +366,56 @@ namespace VideoForensics
             Console.WriteLine("Reconcile With Provider");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            var reconcileDevices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> reconcileDevices = await _deviceRepository.ListAsync(ct);
             if (!reconcileDevices.Any())
             {
                 Console.WriteLine("No devices found.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
-            var device = PromptSelect("Select device", reconcileDevices, d => d.Name);
+            Data.Common.Entities.Device? device = PromptSelect("Select device", reconcileDevices, d => d.Name);
             if (device == null)
             {
                 return;
             }
-            var deviceId = device.Id;
+
+            Guid deviceId = device.Id;
 
             Console.Write("Enter start date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime fromDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter end date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var toDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime toDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
-            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+            DateTime adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            DateTime adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
 
             Console.WriteLine("Running provider reconciliation...");
-            var discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
                 deviceId, device.ProviderDeviceId, adjustedFromDate, adjustedToDate, ct);
 
             Console.WriteLine($"\nDiscrepancies Found: {discrepancies.Count}");
             Console.WriteLine("───────────────────────────────────────────────────────────");
-            foreach (var disc in discrepancies)
+            foreach (ReconciliationDiscrepancy disc in discrepancies)
             {
                 Console.WriteLine($"Type: {disc.Type} | Event ID: {disc.ProviderEventId}");
                 if (!string.IsNullOrEmpty(disc.FieldName))
+                {
                     Console.WriteLine($"  Field: {disc.FieldName}");
+                }
+
                 if (!string.IsNullOrEmpty(disc.StoredValue) || !string.IsNullOrEmpty(disc.ProviderValue))
                 {
                     Console.WriteLine($"  Stored: {disc.StoredValue ?? "(null)"}");
@@ -420,7 +424,7 @@ namespace VideoForensics
             }
 
             Console.WriteLine("\nPress any key to return...");
-            Console.ReadKey();
+            _ = Console.ReadKey();
         }
 
         private async Task ShowVideoDownloads(CancellationToken cancellationToken = default)
@@ -503,55 +507,58 @@ namespace VideoForensics
             Console.WriteLine("BROWSE EVENTS");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-            var devices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
                 Console.WriteLine("No devices found.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
-            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            Data.Common.Entities.Device? selectedDevice = PromptSelect("Select device", devices, d => d.Name);
             if (selectedDevice == null)
             {
                 return;
             }
 
             Console.Write("\nEnter start date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var fromDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime fromDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter end date (yyyy-MM-dd): ");
-            if (!DateTime.TryParse(Console.ReadLine(), out var toDate))
+            if (!DateTime.TryParse(Console.ReadLine(), out DateTime toDate))
             {
                 Console.WriteLine("Invalid date format.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
-            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+            DateTime adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            DateTime adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
 
-            var events = await _eventRepository.ListByDeviceAndDateRangeAsync(selectedDevice.Id, adjustedFromDate, adjustedToDate, ct);
+            IReadOnlyList<Event> events = await _eventRepository.ListByDeviceAndDateRangeAsync(selectedDevice.Id, adjustedFromDate, adjustedToDate, ct);
 
             Console.WriteLine($"\n{events.Count} event(s) found:");
             Console.WriteLine("───────────────────────────────────────────────────────────");
-            foreach (var evt in events)
+            foreach (Event evt in events)
             {
                 Console.WriteLine($"Type: {evt.EventType} | Occurred: {evt.OccurredAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
                 Console.WriteLine($"  Provider Event ID: {evt.ProviderEventId}");
                 if (!string.IsNullOrEmpty(evt.SnapshotUrl))
+                {
                     Console.WriteLine($"  Snapshot: {evt.SnapshotUrl}");
+                }
+
                 Console.WriteLine();
             }
 
             Console.WriteLine("Press any key to return...");
-            Console.ReadKey();
+            _ = Console.ReadKey();
         }
 
         private async Task ShowQueryApiMenu(CancellationToken ct)
@@ -608,7 +615,7 @@ namespace VideoForensics
 
                 AnsiConsole.MarkupLine("");
                 AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey();
+                _ = Console.ReadKey();
             }
         }
 
@@ -619,7 +626,7 @@ namespace VideoForensics
             {
                 AuthStatus = _authService.GetAuthStatus(),
                 IsAuthenticated = isAuthenticated,
-                ActiveProviderAccountId = _forensicsConfig.ActiveProviderAccountId
+                _forensicsConfig.ActiveProviderAccountId
             };
 
             await WriteQueryResultAsync("account-status", result, ct);
@@ -633,7 +640,7 @@ namespace VideoForensics
                 return;
             }
 
-            var locations = await _deviceService.GetLocationsAsync(ct);
+            IReadOnlyList<Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync(ct);
             AnsiConsole.MarkupLine("[green]✓ {0} location(s) retrieved[/]", locations.Count);
             await WriteQueryResultAsync("locations", locations, ct);
         }
@@ -646,20 +653,20 @@ namespace VideoForensics
                 return;
             }
 
-            var locations = await _deviceService.GetLocationsAsync(ct);
+            IReadOnlyList<Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync(ct);
             if (locations.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No locations found on the account.[/]");
                 return;
             }
 
-            var selectedLocation = PromptSelect("Select location", locations, l => l.Name);
+            Providers.Common.Contracts.Location? selectedLocation = PromptSelect("Select location", locations, l => l.Name);
             if (selectedLocation == null)
             {
                 return;
             }
 
-            var devices = await _deviceService.GetDevicesAsync(selectedLocation.Id, ct);
+            IReadOnlyList<Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(selectedLocation.Id, ct);
             AnsiConsole.MarkupLine("[green]✓ {0} device(s) retrieved for {1}[/]", devices.Count, EscapeMarkup(selectedLocation.Name));
             await WriteQueryResultAsync($"devices_{selectedLocation.Name}", devices, ct);
         }
@@ -672,35 +679,35 @@ namespace VideoForensics
                 return;
             }
 
-            var devices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
                 Console.WriteLine("No devices found.");
                 return;
             }
 
-            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            Data.Common.Entities.Device? selectedDevice = PromptSelect("Select device", devices, d => d.Name);
             if (selectedDevice == null)
             {
                 return;
             }
 
-            var defaultStartDate = DateTime.Now.AddDays(-1);
-            var defaultEndDate = DateTime.Now;
+            DateTime defaultStartDate = DateTime.Now.AddDays(-1);
+            DateTime defaultEndDate = DateTime.Now;
 
-            var fromDate = AskDateWithEditableDefault(
+            DateTime fromDate = AskDateWithEditableDefault(
                 "[yellow]Start date (M-d-yy, yyyy-MM-dd):[/]",
                 defaultStartDate);
 
-            var toDate = AskDateWithEditableDefault(
+            DateTime toDate = AskDateWithEditableDefault(
                 "[yellow]End date (M-d-yy, yyyy-MM-dd):[/]",
                 defaultEndDate);
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
-            var adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
+            DateTime adjustedFromDate = fromDate.Date.AddSeconds(1).ToUniversalTime();
+            DateTime adjustedToDate = toDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToUniversalTime();
 
-            var events = await _eventAndConfigService.GetEventsAsync(selectedDevice.ProviderDeviceId, adjustedFromDate, adjustedToDate, cancellationToken: ct);
+            IReadOnlyList<DeviceEvent> events = await _eventAndConfigService.GetEventsAsync(selectedDevice.ProviderDeviceId, adjustedFromDate, adjustedToDate, cancellationToken: ct);
             AnsiConsole.MarkupLine("[green]✓ {0} event(s) retrieved for {1}[/]", events.Count, EscapeMarkup(selectedDevice.Name));
             await WriteQueryResultAsync($"device-events_{selectedDevice.Name}", events, ct);
         }
@@ -713,20 +720,20 @@ namespace VideoForensics
                 return;
             }
 
-            var devices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
                 Console.WriteLine("No devices found.");
                 return;
             }
 
-            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            Data.Common.Entities.Device? selectedDevice = PromptSelect("Select device", devices, d => d.Name);
             if (selectedDevice == null)
             {
                 return;
             }
 
-            var config = await _eventAndConfigService.GetDeviceConfigAsync(selectedDevice.ProviderDeviceId, ct);
+            DeviceConfig? config = await _eventAndConfigService.GetDeviceConfigAsync(selectedDevice.ProviderDeviceId, ct);
             if (config == null)
             {
                 AnsiConsole.MarkupLine("[yellow]No configuration returned for {0}[/]", EscapeMarkup(selectedDevice.Name));
@@ -765,7 +772,10 @@ namespace VideoForensics
                 try
                 {
                     if (!Directory.Exists(_forensicsConfig.QueryExportLocation))
-                        Directory.CreateDirectory(_forensicsConfig.QueryExportLocation);
+                    {
+                        _ = Directory.CreateDirectory(_forensicsConfig.QueryExportLocation);
+                    }
+
                     return _forensicsConfig.QueryExportLocation;
                 }
                 catch (Exception ex)
@@ -782,7 +792,7 @@ namespace VideoForensics
             {
                 try
                 {
-                    Directory.CreateDirectory(defaultPath);
+                    _ = Directory.CreateDirectory(defaultPath);
                     _forensicsConfig.QueryExportLocation = defaultPath;
                     await SaveConfiguration(ct);
                     return defaultPath;
@@ -796,7 +806,9 @@ namespace VideoForensics
 
             var newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for query results:[/]");
             if (string.IsNullOrEmpty(newPath))
+            {
                 return null;
+            }
 
             newPath = newPath.Trim();
             var validationError = ValidateDownloadPath(newPath);
@@ -808,7 +820,7 @@ namespace VideoForensics
 
             try
             {
-                Directory.CreateDirectory(newPath);
+                _ = Directory.CreateDirectory(newPath);
                 _forensicsConfig.QueryExportLocation = newPath;
                 await SaveConfiguration(ct);
                 return newPath;
@@ -828,21 +840,21 @@ namespace VideoForensics
             Console.WriteLine("DEVICE CONFIGURATION");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-            var devices = await _deviceRepository.ListAsync(ct);
+            IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
             if (!devices.Any())
             {
                 Console.WriteLine("No devices found.");
-                Console.ReadKey();
+                _ = Console.ReadKey();
                 return;
             }
 
-            var selectedDevice = PromptSelect("Select device", devices, d => d.Name);
+            Data.Common.Entities.Device? selectedDevice = PromptSelect("Select device", devices, d => d.Name);
             if (selectedDevice == null)
             {
                 return;
             }
 
-            var latestConfig = await _deviceConfigRepository.GetLatestAsync(selectedDevice.Id, ct);
+            DeviceConfigSnapshot? latestConfig = await _deviceConfigRepository.GetLatestAsync(selectedDevice.Id, ct);
 
             Console.WriteLine($"\nLatest Configuration for {selectedDevice.Name}:");
             Console.WriteLine("───────────────────────────────────────────────────────────");
@@ -860,7 +872,7 @@ namespace VideoForensics
             }
 
             Console.WriteLine("\nPress any key to return...");
-            Console.ReadKey();
+            _ = Console.ReadKey();
         }
 
         private async Task RunFullForensicWorkflow(CancellationToken cancellationToken = default)
@@ -878,10 +890,16 @@ namespace VideoForensics
 
             // Download* prompts for authentication itself if needed, so accounts aren't
             // forced to log in when this step is skipped or when only analyzing existing evidence.
-            if (collectChoice == "Videos" || collectChoice == "Both")
+            if (collectChoice is "Videos" or "Both")
+            {
                 await DownloadVideos(cancellationToken);
-            if (collectChoice == "Snapshots" || collectChoice == "Both")
+            }
+
+            if (collectChoice is "Snapshots" or "Both")
+            {
                 await DownloadSnapshots(cancellationToken);
+            }
+
             AnsiConsole.MarkupLine("");
 
             AnsiConsole.MarkupLine("[bold]Step 2 of 3: Analyze Evidence[/]");
@@ -917,11 +935,11 @@ namespace VideoForensics
                 return true;
             }
 
-            var accounts = await _providerAccountRepository.ListAsync(cancellationToken);
+            IReadOnlyList<ProviderAccount> accounts = await _providerAccountRepository.ListAsync(cancellationToken);
             if (accounts.Count > 0)
             {
-                var activeAccountId = _forensicsConfig.ActiveProviderAccountId;
-                var active = accounts.FirstOrDefault(a => a.Id == activeAccountId) ?? accounts[0];
+                Guid? activeAccountId = _forensicsConfig.ActiveProviderAccountId;
+                ProviderAccount active = accounts.FirstOrDefault(a => a.Id == activeAccountId) ?? accounts[0];
                 AnsiConsole.MarkupLine($"[dim]Found {accounts.Count} saved account(s); resuming {active.ProviderName} session...[/]");
 
                 if (await _authService.RestoreFromSavedCredentialsAsync(active.Id, cancellationToken))
@@ -932,6 +950,7 @@ namespace VideoForensics
                         _forensicsConfig.ActiveProviderAccountId = active.Id;
                         await SaveConfiguration(cancellationToken);
                     }
+
                     return true;
                 }
 
@@ -960,16 +979,16 @@ namespace VideoForensics
                 }
 
                 // Provide 2FA callback that prompts the user for the code
-                Func<Task<string>> twoFactorCodeProvider = async () =>
+                static async Task<string> twoFactorCodeProvider()
                 {
                     AnsiConsole.MarkupLine("[yellow]Two-factor authentication required[/]");
                     var code = AnsiConsole.Prompt(
                         new TextPrompt<string>("[yellow]Enter the 2FA code (SMS or authenticator app):[/]").Secret()
                     );
                     return code;
-                };
+                }
 
-                var result = await _authService.AuthenticateWithTwoFactorAsync(username, password, twoFactorCodeProvider, cancellationToken);
+                AuthResult result = await _authService.AuthenticateWithTwoFactorAsync(username, password, twoFactorCodeProvider, cancellationToken);
                 if (result.Success)
                 {
                     AnsiConsole.MarkupLine("[green]✓ Authentication successful[/]");
@@ -1008,13 +1027,13 @@ namespace VideoForensics
         /// </summary>
         private async Task<bool> ShouldProceedDespiteRateLimitBanAsync(CancellationToken cancellationToken)
         {
-            var bannedUntilUtc = _downloadService.GetRateLimitBanUntilUtc();
+            DateTime? bannedUntilUtc = _downloadService.GetRateLimitBanUntilUtc();
             if (!bannedUntilUtc.HasValue)
             {
                 return true;
             }
 
-            var remaining = bannedUntilUtc.Value - DateTime.UtcNow;
+            TimeSpan remaining = bannedUntilUtc.Value - DateTime.UtcNow;
             var localRetryTime = bannedUntilUtc.Value.ToLocalTime().ToString("t");
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -1052,8 +1071,8 @@ namespace VideoForensics
                     while (DateTime.UtcNow < bannedUntilUtc)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var remaining = bannedUntilUtc - DateTime.UtcNow;
-                        ctx.Status($"Waiting for the rate limit ban to expire... {remaining.TotalMinutes:F0} minute(s) remaining");
+                        TimeSpan remaining = bannedUntilUtc - DateTime.UtcNow;
+                        _ = ctx.Status($"Waiting for the rate limit ban to expire... {remaining.TotalMinutes:F0} minute(s) remaining");
                         var delay = TimeSpan.FromSeconds(Math.Clamp(remaining.TotalSeconds, 1, 30));
                         await Task.Delay(delay, cancellationToken);
                     }
@@ -1084,7 +1103,7 @@ namespace VideoForensics
             }
 
             // Discover devices
-            var devices = await DiscoverDevicesAsync();
+            List<(string Id, string Name, string Location)>? devices = await DiscoverDevicesAsync();
             if (devices == null)
             {
                 return;
@@ -1092,7 +1111,7 @@ namespace VideoForensics
 
             // Check if any device has prior download history by querying the device repository
             var hasAnyPriorDownloads = false;
-            var allDevices = await _deviceRepository.ListAsync(cancellationToken);
+            IReadOnlyList<Data.Common.Entities.Device> allDevices = await _deviceRepository.ListAsync(cancellationToken);
             if (allDevices != null)
             {
                 hasAnyPriorDownloads = allDevices.Any(d => d.LastSuccessfulPullAtUtc.HasValue);
@@ -1106,13 +1125,13 @@ namespace VideoForensics
             // this used to do) meant the watermark default was dead: every run's prompt defaulted
             // back to whatever date was first ever entered, permanently re-scanning the full
             // history instead of narrowing to what's actually new.
-            var defaultStartDate = DateTime.Today.AddDays(-181);
+            DateTime defaultStartDate = DateTime.Today.AddDays(-181);
             var watermarkResolved = false;
             if (_forensicsConfig.ActiveProviderAccountId.HasValue)
             {
                 try
                 {
-                    var accountWatermark = await _videoForensicsDataClient.GetAccountDownloadWatermarkAsync(_forensicsConfig.ActiveProviderAccountId.Value, cancellationToken);
+                    DateTime accountWatermark = await _videoForensicsDataClient.GetAccountDownloadWatermarkAsync(_forensicsConfig.ActiveProviderAccountId.Value, cancellationToken);
                     defaultStartDate = accountWatermark;
                     watermarkResolved = true;
                     _logger.LogInformation("Using account download watermark as default start date: {WatermarkDate:yyyy-MM-dd}", accountWatermark);
@@ -1130,7 +1149,8 @@ namespace VideoForensics
             {
                 defaultStartDate = parsed;
             }
-            var startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
+
+            DateTime startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
             var startDateString = startDate.ToString("yyyy-MM-dd");
             if (startDateString != _forensicsConfig.DownloadStartDate)
             {
@@ -1141,9 +1161,9 @@ namespace VideoForensics
             }
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedStartDate = startDate.Date.AddSeconds(1);
-            var endDate = DateTime.Now;
-            var adjustedEndDate = endDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+            DateTime adjustedStartDate = startDate.Date.AddSeconds(1);
+            DateTime endDate = DateTime.Now;
+            DateTime adjustedEndDate = endDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
             // If no prior downloads, force a full re-scan to fetch all data. If there are prior downloads,
             // ask whether to fetch incrementally (since last pull) or force a full re-scan.
@@ -1166,12 +1186,12 @@ namespace VideoForensics
             // count per device) runs — before any actual downloading starts.
             AnsiConsole.MarkupLine("[cyan]Devices to download from:[/]");
             var table = new Table();
-            table.AddColumn("Device");
-            table.AddColumn("Location");
-            table.AddColumn("Items");
-            foreach (var (id, name, location) in devices)
+            _ = table.AddColumn("Device");
+            _ = table.AddColumn("Location");
+            _ = table.AddColumn("Items");
+            foreach ((string? id, string? name, string? location) in devices)
             {
-                table.AddRow(name, location, "[dim]…[/]");
+                _ = table.AddRow(name, location, "[dim]…[/]");
             }
 
             await AnsiConsole.Live(table).StartAsync(async ctx =>
@@ -1191,14 +1211,15 @@ namespace VideoForensics
 
                 while (!preScanTask.IsCompleted)
                 {
-                    var counts = _downloadService.GetPreScanCounts();
+                    IReadOnlyDictionary<string, int> counts = _downloadService.GetPreScanCounts();
                     for (var i = 0; i < devices.Count; i++)
                     {
                         if (counts.TryGetValue(devices[i].Id, out var count))
                         {
-                            table.UpdateCell(i, 2, new Markup(count.ToString()));
+                            _ = table.UpdateCell(i, 2, new Markup(count.ToString()));
                         }
                     }
+
                     ctx.Refresh();
                     await Task.Delay(200, cancellationToken);
                 }
@@ -1212,11 +1233,12 @@ namespace VideoForensics
                     _logger.LogWarning(ex, "Pre-scan failed; Items column may be incomplete");
                 }
 
-                var finalCounts = _downloadService.GetPreScanCounts();
+                IReadOnlyDictionary<string, int> finalCounts = _downloadService.GetPreScanCounts();
                 for (var i = 0; i < devices.Count; i++)
                 {
-                    table.UpdateCell(i, 2, new Markup(finalCounts.TryGetValue(devices[i].Id, out var count) ? count.ToString() : "[dim]?[/]"));
+                    _ = table.UpdateCell(i, 2, new Markup(finalCounts.TryGetValue(devices[i].Id, out var count) ? count.ToString() : "[dim]?[/]"));
                 }
+
                 ctx.Refresh();
             });
             AnsiConsole.MarkupLine("");
@@ -1226,7 +1248,7 @@ namespace VideoForensics
 
             // Build device ID to location name mapping and pass it to the adapter
             var deviceIdToLocationMapping = new Dictionary<string, string>();
-            foreach (var (deviceId, deviceName, locationName) in devices)
+            foreach ((string? deviceId, string? deviceName, string? locationName) in devices)
             {
                 deviceIdToLocationMapping[deviceId] = locationName;
             }
@@ -1266,12 +1288,13 @@ namespace VideoForensics
                     AnsiConsole.MarkupLine("[yellow]Devices:[/]");
 
                     var summaryTable = new Table();
-                    summaryTable.AddColumn("Device");
-                    summaryTable.AddColumn("Location");
-                    foreach (var (id, name, location) in devices)
+                    _ = summaryTable.AddColumn("Device");
+                    _ = summaryTable.AddColumn("Location");
+                    foreach ((string? id, string? name, string? location) in devices)
                     {
-                        summaryTable.AddRow(name, location);
+                        _ = summaryTable.AddRow(name, location);
                     }
+
                     AnsiConsole.Write(summaryTable);
 
                     AnsiConsole.MarkupLine("");
@@ -1283,6 +1306,7 @@ namespace VideoForensics
                     {
                         AnsiConsole.MarkupLine("[green]✓ Total Videos Downloaded: {0}[/]", downloadedCount);
                     }
+
                     AnsiConsole.MarkupLine("[green]✓ Saved to: {0}[/]", outputPath);
 
                     var remaining = _downloadService.GetRemainingCount();
@@ -1342,11 +1366,11 @@ namespace VideoForensics
             // database dedup still applies (see RingMediaDownloadService.DownloadSnapshotsAsync).
             // Ring only exposes each device's current/latest snapshot — there's no historical,
             // per-event snapshot API — so there's no date range to ask for here.
-            var startDate = DateTime.Now;
-            var endDate = DateTime.Now;
+            DateTime startDate = DateTime.Now;
+            DateTime endDate = DateTime.Now;
 
             // Discover devices
-            var devices = await DiscoverDevicesAsync();
+            List<(string Id, string Name, string Location)>? devices = await DiscoverDevicesAsync();
             if (devices == null)
             {
                 return;
@@ -1355,12 +1379,13 @@ namespace VideoForensics
             // Display devices
             AnsiConsole.MarkupLine("[cyan]Devices to capture a snapshot from:[/]");
             var table = new Table();
-            table.AddColumn("Device");
-            table.AddColumn("Location");
-            foreach (var (id, name, location) in devices)
+            _ = table.AddColumn("Device");
+            _ = table.AddColumn("Location");
+            foreach ((string? id, string? name, string? location) in devices)
             {
-                table.AddRow(name, location);
+                _ = table.AddRow(name, location);
             }
+
             AnsiConsole.Write(table);
             AnsiConsole.MarkupLine("");
 
@@ -1369,7 +1394,7 @@ namespace VideoForensics
 
             // Build device ID to location name mapping and pass it to the adapter
             var deviceIdToLocationMapping = new Dictionary<string, string>();
-            foreach (var (deviceId, deviceName, locationName) in devices)
+            foreach ((string? deviceId, string? deviceName, string? locationName) in devices)
             {
                 deviceIdToLocationMapping[deviceId] = locationName;
             }
@@ -1403,12 +1428,13 @@ namespace VideoForensics
                 AnsiConsole.MarkupLine("[yellow]Devices:[/]");
 
                 var summaryTable = new Table();
-                summaryTable.AddColumn("Device");
-                summaryTable.AddColumn("Location");
-                foreach (var (id, name, location) in devices)
+                _ = summaryTable.AddColumn("Device");
+                _ = summaryTable.AddColumn("Location");
+                foreach ((string? id, string? name, string? location) in devices)
                 {
-                    summaryTable.AddRow(name, location);
+                    _ = summaryTable.AddRow(name, location);
                 }
+
                 AnsiConsole.Write(summaryTable);
 
                 AnsiConsole.MarkupLine("");
@@ -1420,6 +1446,7 @@ namespace VideoForensics
                 {
                     AnsiConsole.MarkupLine("[green]✓ Total Snapshots Downloaded: {0}[/]", downloadedCount);
                 }
+
                 AnsiConsole.MarkupLine("[green]✓ Saved to: {0}[/]", outputPath);
             }
             else
@@ -1441,8 +1468,9 @@ namespace VideoForensics
                     if (!Directory.Exists(_forensicsConfig.DownloadLocation))
                     {
                         _logger.LogInformation("Creating download directory: {DownloadPath}", _forensicsConfig.DownloadLocation);
-                        Directory.CreateDirectory(_forensicsConfig.DownloadLocation);
+                        _ = Directory.CreateDirectory(_forensicsConfig.DownloadLocation);
                     }
+
                     _logger.LogInformation("Using download location: {DownloadPath}", _forensicsConfig.DownloadLocation);
                     AnsiConsole.MarkupLine("[cyan]Download location:[/] {0}", _forensicsConfig.DownloadLocation);
                     return _forensicsConfig.DownloadLocation;
@@ -1464,8 +1492,9 @@ namespace VideoForensics
                     if (!Directory.Exists(defaultPath))
                     {
                         _logger.LogInformation("Creating download directory: {DownloadPath}", defaultPath);
-                        Directory.CreateDirectory(defaultPath);
+                        _ = Directory.CreateDirectory(defaultPath);
                     }
+
                     _forensicsConfig.DownloadLocation = defaultPath;
                     _logger.LogInformation("Download location configured: {DownloadPath}", defaultPath);
                     await SaveConfiguration(cancellationToken);
@@ -1495,7 +1524,7 @@ namespace VideoForensics
                 try
                 {
                     _logger.LogInformation("Creating new download directory: {DownloadPath}", newPath);
-                    Directory.CreateDirectory(newPath);
+                    _ = Directory.CreateDirectory(newPath);
                     _forensicsConfig.DownloadLocation = newPath;
                     _logger.LogInformation("Download location configured: {DownloadPath}", newPath);
                     await SaveConfiguration(cancellationToken);
@@ -1652,14 +1681,14 @@ namespace VideoForensics
                         _forensicsConfig.EnablePiiRedaction = !_forensicsConfig.EnablePiiRedaction;
                         break;
                     case var c when c.StartsWith("Redaction Level"):
-                        var level = AnsiConsole.Prompt(
-                            new SelectionPrompt<VideoForensics.Client.Common.RedactionLevel>()
+                        Client.Common.Contracts.RedactionLevel level = AnsiConsole.Prompt(
+                            new SelectionPrompt<VideoForensics.Client.Common.Contracts.RedactionLevel>()
                                 .Title("Select redaction level")
                                 .AddChoices(
-                                    VideoForensics.Client.Common.RedactionLevel.None,
-                                    VideoForensics.Client.Common.RedactionLevel.Light,
-                                    VideoForensics.Client.Common.RedactionLevel.Medium,
-                                    VideoForensics.Client.Common.RedactionLevel.Heavy));
+                                    VideoForensics.Client.Common.Contracts.RedactionLevel.None,
+                                    VideoForensics.Client.Common.Contracts.RedactionLevel.Light,
+                                    VideoForensics.Client.Common.Contracts.RedactionLevel.Medium,
+                                    VideoForensics.Client.Common.Contracts.RedactionLevel.Heavy));
                         _forensicsConfig.RedactionLevel = level;
                         break;
                     case "Back":
@@ -1689,7 +1718,7 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case var c when c.StartsWith("Storage Provider"):
-                        var provider = AnsiConsole.Prompt(
+                        KeyStorageProvider provider = AnsiConsole.Prompt(
                             new SelectionPrompt<KeyStorageProvider>()
                                 .Title("Select key storage provider")
                                 .HighlightStyle("green")
@@ -1740,7 +1769,7 @@ namespace VideoForensics
                 {
                     case var c when c.StartsWith("Retention Period"):
                         var days = AnsiConsole.Ask<int>("[yellow]Enter retention period (days):[/]");
-                        var (success, message) = await _configToolsOrchestrator.SetRetentionDaysAsync(_forensicsConfig, days);
+                        (bool success, string? message) = await _configToolsOrchestrator.SetRetentionDaysAsync(_forensicsConfig, days);
                         if (success)
                         {
                             AnsiConsole.MarkupLine("[green]{0}[/]", message);
@@ -1749,6 +1778,7 @@ namespace VideoForensics
                         {
                             AnsiConsole.MarkupLine("[red]{0}[/]", message);
                         }
+
                         break;
                     case "Back":
                         return;
@@ -1778,7 +1808,7 @@ namespace VideoForensics
                 {
                     case var c when c.StartsWith("Concurrent Downloads"):
                         var count = AnsiConsole.Ask<int>("[yellow]Enter max concurrent downloads (per device):[/]");
-                        var (success, message) = await _configToolsOrchestrator.SetMaxConcurrentDownloadsAsync(_forensicsConfig, count);
+                        (bool success, string? message) = await _configToolsOrchestrator.SetMaxConcurrentDownloadsAsync(_forensicsConfig, count);
                         if (success)
                         {
                             AnsiConsole.MarkupLine("[green]{0}[/]", message);
@@ -1787,6 +1817,7 @@ namespace VideoForensics
                         {
                             AnsiConsole.MarkupLine("[red]{0}[/]", message);
                         }
+
                         break;
                     case "Back":
                         return;
@@ -1802,7 +1833,7 @@ namespace VideoForensics
             {
                 var downloadChoices = new[]
                 {
-                    EscapeMarkup($"Download Directory [{(_forensicsConfig.DownloadLocation ?? "Not set")}]"),
+                    EscapeMarkup($"Download Directory [{_forensicsConfig.DownloadLocation ?? "Not set"}]"),
                     "Back"
                 };
 
@@ -1830,7 +1861,7 @@ namespace VideoForensics
                         {
                             try
                             {
-                                Directory.CreateDirectory(newPath);
+                                _ = Directory.CreateDirectory(newPath);
                                 _forensicsConfig.DownloadLocation = newPath;
                             }
                             catch (Exception ex)
@@ -1838,6 +1869,7 @@ namespace VideoForensics
                                 AnsiConsole.MarkupLine("[red]✗ Failed to set location: {0}[/]", ex.Message);
                             }
                         }
+
                         break;
                     case "Back":
                         return;
@@ -1853,7 +1885,7 @@ namespace VideoForensics
             {
                 var exportChoices = new[]
                 {
-                    EscapeMarkup($"Export Directory [{(_forensicsConfig.QueryExportLocation ?? "Not set - defaults to " + PathUtilities.GetDefaultQueryExportLocation())}]"),
+                    EscapeMarkup($"Export Directory [{_forensicsConfig.QueryExportLocation ?? ("Not set - defaults to " + PathUtilities.GetDefaultQueryExportLocation())}]"),
                     "Back"
                 };
 
@@ -1879,7 +1911,7 @@ namespace VideoForensics
 
                             try
                             {
-                                Directory.CreateDirectory(newPath);
+                                _ = Directory.CreateDirectory(newPath);
                                 _forensicsConfig.QueryExportLocation = newPath;
                                 await SaveConfiguration();
                             }
@@ -1888,6 +1920,7 @@ namespace VideoForensics
                                 AnsiConsole.MarkupLine("[red]✗ Failed to set location: {0}[/]", ex.Message);
                             }
                         }
+
                         break;
                     case "Back":
                         return;
@@ -1965,7 +1998,7 @@ namespace VideoForensics
             try
             {
                 // Use orchestrator for the core reset logic
-                var (success, message) = await _configToolsOrchestrator.FactoryResetAsync();
+                (bool success, string? message) = await _configToolsOrchestrator.FactoryResetAsync();
 
                 if (success)
                 {
@@ -2003,17 +2036,23 @@ namespace VideoForensics
         private string? ValidateDownloadPath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))
+            {
                 return "Path cannot be empty";
+            }
 
             try
             {
                 // Reject relative paths with .. traversal attempts
                 if (path.Contains(".."))
+                {
                     return "Path traversal (..) not allowed";
+                }
 
                 // Reject paths with null characters
                 if (path.Contains('\0'))
+                {
                     return "Path contains invalid characters";
+                }
 
                 // Convert to full path to normalize and validate
                 var fullPath = Path.GetFullPath(path);
@@ -2026,7 +2065,9 @@ namespace VideoForensics
                 if (fullPath.StartsWith(systemRoot, StringComparison.OrdinalIgnoreCase) ||
                     fullPath.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase) ||
                     fullPath.StartsWith(windows, StringComparison.OrdinalIgnoreCase))
+                {
                     return "Cannot use system directories";
+                }
 
                 return null; // Valid
             }
@@ -2038,10 +2079,9 @@ namespace VideoForensics
 
         private static string EscapeMarkup(string? text)
         {
-            if (string.IsNullOrEmpty(text))
-                return string.Empty;
-
-            return text
+            return string.IsNullOrEmpty(text)
+                ? string.Empty
+                : text
                 .Replace("[", "[[")
                 .Replace("]", "]]");
         }
@@ -2054,13 +2094,20 @@ namespace VideoForensics
         private static T? PromptSelect<T>(string title, IReadOnlyList<T> items, Func<T, string> labelSelector, bool allowCancel = true) where T : class
         {
             if (items.Count == 0)
+            {
                 return null;
+            }
 
             var choices = new List<string>(items.Count + 1);
             for (var i = 0; i < items.Count; i++)
+            {
                 choices.Add($"{i + 1}. {EscapeMarkup(labelSelector(items[i]))}");
+            }
+
             if (allowCancel)
+            {
                 choices.Add("Cancel");
+            }
 
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -2069,17 +2116,16 @@ namespace VideoForensics
                     .PageSize(15)
                     .AddChoices(choices));
 
-            if (allowCancel && choice == "Cancel")
-                return null;
-
-            return items[choices.IndexOf(choice)];
+            return allowCancel && choice == "Cancel" ? null : items[choices.IndexOf(choice)];
         }
 
         /// <summary>Arrow-selectable device picker with a leading "All Devices" entry; returns null for that entry.</summary>
         private static Guid? PromptSelectDeviceOrAll(string title, IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices)
         {
             if (devices.Count == 0)
+            {
                 return null;
+            }
 
             var choices = new List<string> { "All Devices" };
             choices.AddRange(devices.Select(d => EscapeMarkup(d.Name)));
@@ -2107,7 +2153,7 @@ namespace VideoForensics
 
             try
             {
-                var locations = await _deviceService.GetLocationsAsync();
+                IReadOnlyList<Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync();
                 if (locations != null && locations.Count > 0)
                 {
                     // Ring's legacy ring_devices endpoint doesn't reliably filter by the location_id
@@ -2122,12 +2168,12 @@ namespace VideoForensics
                     // rather than under a real but wrong location.
                     var locationNamesById = locations.ToDictionary(l => l.Id, l => l.Name);
 
-                    foreach (var location in locations)
+                    foreach (Providers.Common.Contracts.Location location in locations)
                     {
-                        var locationDevices = await _deviceService.GetDevicesAsync(location.Id);
+                        IReadOnlyList<Providers.Common.Contracts.Device> locationDevices = await _deviceService.GetDevicesAsync(location.Id);
                         if (locationDevices != null)
                         {
-                            foreach (var device in locationDevices)
+                            foreach (Providers.Common.Contracts.Device device in locationDevices)
                             {
                                 if (!deviceDict.ContainsKey(device.Id))
                                 {
@@ -2164,8 +2210,8 @@ namespace VideoForensics
         private async Task<bool> RunDownloadWithProgressAsync(Func<Task<bool>> startDownload, string mediaLabel, CancellationToken cancellationToken)
         {
             var result = false;
-            var globalStartTime = DateTime.Now;
-            var deviceStartTime = DateTime.Now;
+            DateTime globalStartTime = DateTime.Now;
+            DateTime deviceStartTime = DateTime.Now;
             var lastDeviceIndex = 0;
 
             await AnsiConsole.Progress()
@@ -2176,20 +2222,20 @@ namespace VideoForensics
                     new PercentageColumn())
                 .StartAsync(async ctx =>
                 {
-                    var deviceTask = ctx.AddTask("[cyan]Current Device[/]", maxValue: 1);
-                    var totalTask = ctx.AddTask("[cyan]Total Progress[/]", maxValue: 1);
-                    var speedTask = ctx.AddTask("[cyan]Speed & Connections[/]", maxValue: 1);
+                    ProgressTask deviceTask = ctx.AddTask("[cyan]Current Device[/]", maxValue: 1);
+                    ProgressTask totalTask = ctx.AddTask("[cyan]Total Progress[/]", maxValue: 1);
+                    ProgressTask speedTask = ctx.AddTask("[cyan]Speed & Connections[/]", maxValue: 1);
 
                     deviceTask.IsIndeterminate = true;
                     totalTask.IsIndeterminate = true;
                     speedTask.IsIndeterminate = true;
 
-                    var downloadTask = startDownload();
+                    Task<bool> downloadTask = startDownload();
 
                     while (!downloadTask.IsCompleted)
                     {
-                        var progress = _downloadService.GetProgress();
-                        var (deviceIndex, deviceTotal, deviceName) = _downloadService.GetCurrentDevice();
+                        DownloadStatus progress = _downloadService.GetProgress();
+                        (int deviceIndex, int deviceTotal, string? deviceName) = _downloadService.GetCurrentDevice();
 
                         // Reset per-device timer when moving to a new device
                         if (deviceIndex != lastDeviceIndex)
@@ -2204,7 +2250,7 @@ namespace VideoForensics
                             deviceTask.IsIndeterminate = false;
                             deviceTask.MaxValue = progress.FilesTotal;
                             deviceTask.Value = progress.FilesCompleted;
-                            var deviceElapsed = DateTime.Now - deviceStartTime;
+                            TimeSpan deviceElapsed = DateTime.Now - deviceStartTime;
                             var deviceTimeStr = $"{deviceElapsed.Hours:D2}:{deviceElapsed.Minutes:D2}:{deviceElapsed.Seconds:D2}";
                             deviceTask.Description = $"[cyan]Device {deviceIndex}/{deviceTotal}[/] {EscapeMarkup(deviceName)}: {progress.FilesCompleted}/{progress.FilesTotal} ({FormatBytes(progress.BytesDownloaded)}) {deviceTimeStr}";
                         }
@@ -2227,7 +2273,7 @@ namespace VideoForensics
                             totalTask.MaxValue = aggregateTotal;
                             totalTask.Value = progress.TotalFilesCompleted + progress.FilesCompleted;
                             var aggregateCompleted = progress.TotalFilesCompleted + progress.FilesCompleted;
-                            var globalElapsed = DateTime.Now - globalStartTime;
+                            TimeSpan globalElapsed = DateTime.Now - globalStartTime;
                             var globalTimeStr = $"{globalElapsed.Hours:D2}:{globalElapsed.Minutes:D2}:{globalElapsed.Seconds:D2}";
                             totalTask.Description = $"[cyan]Across All Devices[/]: {aggregateCompleted}/{aggregateTotal} ({FormatBytes(progress.TotalBytesDownloaded + progress.BytesDownloaded)}) {globalTimeStr}";
                         }
@@ -2270,10 +2316,11 @@ namespace VideoForensics
             const double kb = 1024;
             const double mb = kb * 1024;
             if (bytes >= mb)
+            {
                 return $"{bytes / mb:F1} MB";
-            if (bytes >= kb)
-                return $"{bytes / kb:F1} KB";
-            return $"{bytes} bytes";
+            }
+
+            return bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
         }
 
         private async Task ShowManageAccountsMenu(CancellationToken ct)
@@ -2285,8 +2332,8 @@ namespace VideoForensics
                 Console.WriteLine("MANAGE ACCOUNTS");
                 Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-                var accounts = await _providerAccountRepository.ListAsync(ct);
-                var activeAccountId = _forensicsConfig.ActiveProviderAccountId;
+                IReadOnlyList<ProviderAccount> accounts = await _providerAccountRepository.ListAsync(ct);
+                Guid? activeAccountId = _forensicsConfig.ActiveProviderAccountId;
 
                 if (accounts.Count == 0)
                 {
@@ -2297,7 +2344,7 @@ namespace VideoForensics
                     Console.WriteLine("\nConfigured Accounts:");
                     for (int i = 0; i < accounts.Count; i++)
                     {
-                        var account = accounts[i];
+                        ProviderAccount account = accounts[i];
                         var label = await FormatAccountLabelAsync(account, ct);
                         var isActive = account.Id == activeAccountId ? " [ACTIVE]" : "";
                         var lastAuth = account.LastSuccessfulAuthUtc.HasValue
@@ -2317,22 +2364,32 @@ namespace VideoForensics
                 {
                     case "Select Active Account":
                         if (accounts.Count > 0)
+                        {
                             await SelectActiveAccountAsync(accounts, ct);
+                        }
                         else
+                        {
                             Console.WriteLine("No accounts available to select.");
+                        }
+
                         Console.WriteLine("\nPress any key to continue...");
-                        Console.ReadKey();
+                        _ = Console.ReadKey();
                         break;
                     case "Add Account":
                         await AddNewAccountAsync(ct);
                         break;
                     case "Remove Account":
                         if (accounts.Count > 0)
+                        {
                             await RemoveAccountAsync(accounts, ct);
+                        }
                         else
+                        {
                             Console.WriteLine("No accounts available to remove.");
+                        }
+
                         Console.WriteLine("\nPress any key to continue...");
-                        Console.ReadKey();
+                        _ = Console.ReadKey();
                         break;
                     case "Back to Main Menu":
                         return;
@@ -2347,12 +2404,12 @@ namespace VideoForensics
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
             var labels = new Dictionary<ProviderAccount, string>();
-            foreach (var account in accounts)
+            foreach (ProviderAccount account in accounts)
             {
                 labels[account] = await FormatAccountLabelAsync(account, ct);
             }
 
-            var selected = PromptSelect("Select active account", accounts, a => labels[a]);
+            ProviderAccount? selected = PromptSelect("Select active account", accounts, a => labels[a]);
             if (selected != null)
             {
                 var selectedLabel = labels[selected];
@@ -2381,12 +2438,12 @@ namespace VideoForensics
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
             var removeLabels = new Dictionary<ProviderAccount, string>();
-            foreach (var account in accounts)
+            foreach (ProviderAccount account in accounts)
             {
                 removeLabels[account] = await FormatAccountLabelAsync(account, ct);
             }
 
-            var selected = PromptSelect("Select account to remove", accounts, a => removeLabels[a]);
+            ProviderAccount? selected = PromptSelect("Select account to remove", accounts, a => removeLabels[a]);
             if (selected != null)
             {
                 var selectedLabel = removeLabels[selected];
@@ -2413,7 +2470,7 @@ namespace VideoForensics
             Console.WriteLine("Add New Account");
             Console.WriteLine("───────────────────────────────────────────────────────────");
 
-            AnsiConsole.Prompt(
+            _ = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Select provider")
                     .HighlightStyle("green")
@@ -2431,7 +2488,8 @@ namespace VideoForensics
             {
                 Console.WriteLine("Failed to add account.");
             }
-            Console.ReadKey();
+
+            _ = Console.ReadKey();
         }
 
         /// <summary>
@@ -2462,7 +2520,9 @@ namespace VideoForensics
             {
                 // Move to start of buffer, from wherever the terminal actually is
                 if (termCursor > 0)
+                {
                     Console.Write(new string('\b', termCursor));
+                }
 
                 // Clear from here to end of line
                 Console.Write("\x1b[K");
@@ -2473,7 +2533,9 @@ namespace VideoForensics
                 // Position cursor at the correct spot within the buffer
                 var trailing = buffer.Length - cursor;
                 if (trailing > 0)
+                {
                     Console.Write(new string('\b', trailing));
+                }
 
                 termCursor = cursor;
             }
@@ -2483,7 +2545,7 @@ namespace VideoForensics
 
             while (true)
             {
-                var key = Console.ReadKey(intercept: true);
+                ConsoleKeyInfo key = Console.ReadKey(intercept: true);
 
                 if (key.Key == ConsoleKey.Enter)
                 {
@@ -2496,10 +2558,11 @@ namespace VideoForensics
                     defaultConsumed = true;
                     if (cursor > 0)
                     {
-                        buffer.Remove(cursor - 1, 1);
+                        _ = buffer.Remove(cursor - 1, 1);
                         cursor--;
                         Redraw();
                     }
+
                     continue;
                 }
 
@@ -2508,9 +2571,10 @@ namespace VideoForensics
                     defaultConsumed = true;
                     if (cursor < buffer.Length)
                     {
-                        buffer.Remove(cursor, 1);
+                        _ = buffer.Remove(cursor, 1);
                         Redraw();
                     }
+
                     continue;
                 }
 
@@ -2523,6 +2587,7 @@ namespace VideoForensics
                         termCursor--;
                         Console.Write("\b");
                     }
+
                     continue;
                 }
 
@@ -2535,6 +2600,7 @@ namespace VideoForensics
                         cursor++;
                         termCursor++;
                     }
+
                     continue;
                 }
 
@@ -2542,11 +2608,12 @@ namespace VideoForensics
                 {
                     if (!defaultConsumed)
                     {
-                        buffer.Clear();
+                        _ = buffer.Clear();
                         cursor = 0;
                         defaultConsumed = true;
                     }
-                    buffer.Insert(cursor, key.KeyChar);
+
+                    _ = buffer.Insert(cursor, key.KeyChar);
                     cursor++;
                     Redraw();
                 }
@@ -2586,7 +2653,7 @@ namespace VideoForensics
                         DateInputFormats,
                         System.Globalization.CultureInfo.InvariantCulture,
                         System.Globalization.DateTimeStyles.None,
-                        out var parsed))
+                        out DateTime parsed))
                 {
                     return parsed;
                 }

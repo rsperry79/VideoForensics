@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -12,20 +13,20 @@ public class MediaEntityTests
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         var downloadEventId = Guid.NewGuid();
-        var fileName = "video.mp4";
-        var filePath = "/path/to/video.mp4";
-        var mediaFormat = "video/mp4";
-        var fileSizeBytes = 1024000L;
+        string fileName = "video.mp4";
+        string filePath = "/path/to/video.mp4";
+        string mediaFormat = "video/mp4";
+        long fileSizeBytes = 1024000L;
         var recordedAtUtc = DateTime.UtcNow.AddHours(-2);
         var downloadedAtUtc = DateTime.UtcNow;
-        var sha256Hash = "abc123def456";
-        var videoCodec = "h264";
-        var audioCodec = "aac";
-        var resolution = "1920x1080";
-        var frameRate = 30.0m;
-        var integrityVerified = true;
+        string sha256Hash = "abc123def456";
+        string videoCodec = "h264";
+        string audioCodec = "aac";
+        string resolution = "1920x1080";
+        decimal frameRate = 30.0m;
+        bool integrityVerified = true;
         var lastVerifiedAtUtc = DateTime.UtcNow;
-        var isPurged = false;
+        bool isPurged = false;
 
         // Act
         var mediaItem = new MediaItem
@@ -112,7 +113,7 @@ public class MediaEntityTests
     {
         // Arrange
         var purgedAtUtc = DateTime.UtcNow;
-        var purgeReason = "Retention policy expired";
+        string purgeReason = "Retention policy expired";
 
         // Act
         var mediaItem = new MediaItem
@@ -150,17 +151,17 @@ public class MediaEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var providerEventId = "event-789";
-        var eventType = "motion";
-        var answered = true;
-        var favorite = false;
+        string providerEventId = "event-789";
+        string eventType = "motion";
+        bool answered = true;
+        bool favorite = false;
         var eventOccurredAtUtc = DateTime.UtcNow.AddHours(-1);
-        var recordingStatus = "ready";
+        string recordingStatus = "ready";
         var downloadStartedUtc = DateTime.UtcNow.AddMinutes(-30);
         var downloadCompletedUtc = DateTime.UtcNow;
-        var success = true;
-        var attemptCount = 1;
-        var appVersion = "1.0.0";
+        bool success = true;
+        int attemptCount = 1;
+        string appVersion = "1.0.0";
 
         // Act
         var downloadEvent = new DownloadEvent
@@ -201,7 +202,7 @@ public class MediaEntityTests
     public void DownloadEvent_FailedDownload_ContainsErrorMessage()
     {
         // Arrange
-        var errorMessage = "File not found on provider";
+        string errorMessage = "File not found on provider";
 
         // Act
         var downloadEvent = new DownloadEvent
@@ -235,11 +236,11 @@ public class MediaEntityTests
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         var downloadEventId = Guid.NewGuid();
-        var connected = true;
-        var batteryPercentage = 75.5m;
-        var rssi = -45;
-        var wifiName = "HomeNetwork";
-        var firmwareVersion = "2.8.32";
+        bool connected = true;
+        decimal batteryPercentage = 75.5m;
+        int rssi = -45;
+        string wifiName = "HomeNetwork";
+        string firmwareVersion = "2.8.32";
         var capturedAtUtc = DateTime.UtcNow;
 
         // Act
@@ -298,11 +299,11 @@ public class MediaEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var downloadEventId = Guid.NewGuid();
-        var personDetected = true;
-        var confidenceScore = 0.95m;
-        var fullDescription = "Person detected at front door";
-        var tagsJson = "[\"person\", \"adult\"]";
-        var motionZonesJson = "[{\"x\": 0, \"y\": 0, \"width\": 100, \"height\": 100}]";
+        bool personDetected = true;
+        decimal confidenceScore = 0.95m;
+        string fullDescription = "Person detected at front door";
+        string tagsJson = "[\"person\", \"adult\"]";
+        string motionZonesJson = "[{\"x\": 0, \"y\": 0, \"width\": 100, \"height\": 100}]";
 
         // Act
         var snapshot = new AiAnalysisSnapshot

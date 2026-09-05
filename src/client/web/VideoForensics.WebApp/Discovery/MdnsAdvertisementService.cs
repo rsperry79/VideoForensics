@@ -1,8 +1,10 @@
 using Makaretu.Dns;
+
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.Extensions.Hosting;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.WebApp.Discovery
 {
@@ -77,7 +79,7 @@ namespace VideoForensics.WebApp.Discovery
         private async Task WaitForApplicationStartedAsync(CancellationToken ct)
         {
             var startedSource = new TaskCompletionSource();
-            using var registration = _lifetime.ApplicationStarted.Register(() => startedSource.TrySetResult());
+            using CancellationTokenRegistration registration = _lifetime.ApplicationStarted.Register(() => startedSource.TrySetResult());
             if (_lifetime.ApplicationStarted.IsCancellationRequested)
             {
                 return;
@@ -130,7 +132,7 @@ namespace VideoForensics.WebApp.Discovery
 
         private int? ResolveListeningPort()
         {
-            var addresses = _server.Features.Get<IServerAddressesFeature>()?.Addresses;
+            ICollection<string>? addresses = _server.Features.Get<IServerAddressesFeature>()?.Addresses;
             if (addresses is null)
             {
                 return null;
@@ -138,7 +140,7 @@ namespace VideoForensics.WebApp.Discovery
 
             foreach (var address in addresses)
             {
-                if (Uri.TryCreate(address, UriKind.Absolute, out var uri))
+                if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
                 {
                     return uri.Port;
                 }

@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     /// <summary>
@@ -15,7 +11,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
         public bool ListEndpoints;
         public bool ListEndpointsJson;
         public bool InteractiveAuth;
-        public List<string> Endpoints { get; } = new();
+        public List<string> Endpoints { get; } = [];
         public string? OutputDir;
         public Guid? LocationId;
         public long? DoorbotId;
@@ -42,9 +38,9 @@ namespace VideoForensics.Providers.Ring.SelfTester
         {
             var o = new CliOptions();
 
-            for (var i = 0; i < args.Length; i++)
+            for (int i = 0; i < args.Length; i++)
             {
-                var arg = args[i];
+                string arg = args[i];
                 switch (arg.ToLowerInvariant())
                 {
                     case "-h":
@@ -67,7 +63,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         break;
 
                     case "--endpoints":
-                        if (!TryTakeValue(args, ref i, arg, out var epValue, out var epErr)) return (null, epErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? epValue, out string? epErr))
+                        {
+                            return (null, epErr);
+                        }
+
                         o.Endpoints.AddRange(epValue!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
 
@@ -76,31 +76,67 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         break;
 
                     case "--output-dir":
-                        if (!TryTakeValue(args, ref i, arg, out var outValue, out var outErr)) return (null, outErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? outValue, out string? outErr))
+                        {
+                            return (null, outErr);
+                        }
+
                         o.OutputDir = outValue;
                         break;
 
                     case "--location-id":
-                        if (!TryTakeValue(args, ref i, arg, out var locValue, out var locErr)) return (null, locErr);
-                        if (!Guid.TryParse(locValue, out var locGuid)) return (null, $"--location-id value '{locValue}' is not a valid GUID");
+                        if (!TryTakeValue(args, ref i, arg, out string? locValue, out string? locErr))
+                        {
+                            return (null, locErr);
+                        }
+
+                        if (!Guid.TryParse(locValue, out var locGuid))
+                        {
+                            return (null, $"--location-id value '{locValue}' is not a valid GUID");
+                        }
+
                         o.LocationId = locGuid;
                         break;
 
                     case "--doorbot-id":
-                        if (!TryTakeValue(args, ref i, arg, out var dbValue, out var dbErr)) return (null, dbErr);
-                        if (!long.TryParse(dbValue, out var dbId)) return (null, $"--doorbot-id value '{dbValue}' is not a valid integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? dbValue, out string? dbErr))
+                        {
+                            return (null, dbErr);
+                        }
+
+                        if (!long.TryParse(dbValue, out long dbId))
+                        {
+                            return (null, $"--doorbot-id value '{dbValue}' is not a valid integer");
+                        }
+
                         o.DoorbotId = dbId;
                         break;
 
                     case "--chime-id":
-                        if (!TryTakeValue(args, ref i, arg, out var chValue, out var chErr)) return (null, chErr);
-                        if (!long.TryParse(chValue, out var chId)) return (null, $"--chime-id value '{chValue}' is not a valid integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? chValue, out string? chErr))
+                        {
+                            return (null, chErr);
+                        }
+
+                        if (!long.TryParse(chValue, out long chId))
+                        {
+                            return (null, $"--chime-id value '{chValue}' is not a valid integer");
+                        }
+
                         o.ChimeId = chId;
                         break;
 
                     case "--history-limit":
-                        if (!TryTakeValue(args, ref i, arg, out var hlValue, out var hlErr)) return (null, hlErr);
-                        if (!int.TryParse(hlValue, out var hl) || hl <= 0) return (null, $"--history-limit value '{hlValue}' must be a positive integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? hlValue, out string? hlErr))
+                        {
+                            return (null, hlErr);
+                        }
+
+                        if (!int.TryParse(hlValue, out int hl) || hl <= 0)
+                        {
+                            return (null, $"--history-limit value '{hlValue}' must be a positive integer");
+                        }
+
                         o.HistoryLimit = hl;
                         break;
 
@@ -113,62 +149,126 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         break;
 
                     case "--siren-duration-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out var sdValue, out var sdErr)) return (null, sdErr);
-                        if (!int.TryParse(sdValue, out var sd) || sd <= 0) return (null, $"--siren-duration-seconds value '{sdValue}' must be a positive integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? sdValue, out string? sdErr))
+                        {
+                            return (null, sdErr);
+                        }
+
+                        if (!int.TryParse(sdValue, out int sd) || sd <= 0)
+                        {
+                            return (null, $"--siren-duration-seconds value '{sdValue}' must be a positive integer");
+                        }
+
                         o.SirenDurationSeconds = sd;
                         break;
 
                     case "--volume-level":
-                        if (!TryTakeValue(args, ref i, arg, out var volValue, out var volErr)) return (null, volErr);
-                        if (!int.TryParse(volValue, out var vol) || vol < 0) return (null, $"--volume-level value '{volValue}' must be a non-negative integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? volValue, out string? volErr))
+                        {
+                            return (null, volErr);
+                        }
+
+                        if (!int.TryParse(volValue, out int vol) || vol < 0)
+                        {
+                            return (null, $"--volume-level value '{volValue}' must be a non-negative integer");
+                        }
+
                         o.VolumeLevel = vol;
                         break;
 
                     case "--chime-type-value":
-                        if (!TryTakeValue(args, ref i, arg, out var ctValue, out var ctErr)) return (null, ctErr);
-                        if (!int.TryParse(ctValue, out var ct) || ct is < 0 or > 2) return (null, $"--chime-type-value value '{ctValue}' must be 0, 1 or 2");
+                        if (!TryTakeValue(args, ref i, arg, out string? ctValue, out string? ctErr))
+                        {
+                            return (null, ctErr);
+                        }
+
+                        if (!int.TryParse(ctValue, out int ct) || ct is < 0 or > 2)
+                        {
+                            return (null, $"--chime-type-value value '{ctValue}' must be 0, 1 or 2");
+                        }
+
                         o.ChimeTypeValue = ct;
                         break;
 
                     case "--dnd-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out var dndValue, out var dndErr)) return (null, dndErr);
-                        if (!int.TryParse(dndValue, out var dnd) || dnd <= 0) return (null, $"--dnd-seconds value '{dndValue}' must be a positive integer");
+                        if (!TryTakeValue(args, ref i, arg, out string? dndValue, out string? dndErr))
+                        {
+                            return (null, dndErr);
+                        }
+
+                        if (!int.TryParse(dndValue, out int dnd) || dnd <= 0)
+                        {
+                            return (null, $"--dnd-seconds value '{dndValue}' must be a positive integer");
+                        }
+
                         o.DndSeconds = dnd;
                         break;
 
                     case "--location-mode-value":
-                        if (!TryTakeValue(args, ref i, arg, out var lmValue, out var lmErr)) return (null, lmErr);
-                        if (lmValue is not ("home" or "away" or "disarmed")) return (null, $"--location-mode-value value '{lmValue}' must be one of: home, away, disarmed");
+                        if (!TryTakeValue(args, ref i, arg, out string? lmValue, out string? lmErr))
+                        {
+                            return (null, lmErr);
+                        }
+
+                        if (lmValue is not ("home" or "away" or "disarmed"))
+                        {
+                            return (null, $"--location-mode-value value '{lmValue}' must be one of: home, away, disarmed");
+                        }
+
                         o.LocationModeValue = lmValue;
                         break;
 
                     case "--ding-id":
-                        if (!TryTakeValue(args, ref i, arg, out var dingValue, out var dingErr)) return (null, dingErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? dingValue, out string? dingErr))
+                        {
+                            return (null, dingErr);
+                        }
+
                         o.DingId = dingValue;
                         break;
 
                     case "--asset-uuid":
-                        if (!TryTakeValue(args, ref i, arg, out var assetValue, out var assetErr)) return (null, assetErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? assetValue, out string? assetErr))
+                        {
+                            return (null, assetErr);
+                        }
+
                         o.AssetUuid = assetValue;
                         break;
 
                     case "--push-token":
-                        if (!TryTakeValue(args, ref i, arg, out var pushValue, out var pushErr)) return (null, pushErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? pushValue, out string? pushErr))
+                        {
+                            return (null, pushErr);
+                        }
+
                         o.PushToken = pushValue;
                         break;
 
                     case "--username":
-                        if (!TryTakeValue(args, ref i, arg, out var userValue, out var userErr)) return (null, userErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? userValue, out string? userErr))
+                        {
+                            return (null, userErr);
+                        }
+
                         o.UserName = userValue;
                         break;
 
                     case "--password":
-                        if (!TryTakeValue(args, ref i, arg, out var passValue, out var passErr)) return (null, passErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? passValue, out string? passErr))
+                        {
+                            return (null, passErr);
+                        }
+
                         o.Password = passValue;
                         break;
 
                     case "--refresh-token":
-                        if (!TryTakeValue(args, ref i, arg, out var rtValue, out var rtErr)) return (null, rtErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? rtValue, out string? rtErr))
+                        {
+                            return (null, rtErr);
+                        }
+
                         o.RefreshToken = rtValue;
                         break;
 
@@ -181,7 +281,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
                         break;
 
                     case "--db-path":
-                        if (!TryTakeValue(args, ref i, arg, out var dbPathValue, out var dbPathErr)) return (null, dbPathErr);
+                        if (!TryTakeValue(args, ref i, arg, out string? dbPathValue, out string? dbPathErr))
+                        {
+                            return (null, dbPathErr);
+                        }
+
                         o.DbPath = dbPathValue;
                         break;
 
@@ -206,6 +310,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 error = $"Missing value for {flag}";
                 return false;
             }
+
             i++;
             value = args[i];
             error = null;

@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Logging
@@ -21,10 +19,13 @@ namespace VideoForensics.Logging
         {
             _filePath = filePath;
             _minLevel = minLevel;
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _filePath, _minLevel, _writeLock);
+        public ILogger CreateLogger(string categoryName)
+        {
+            return new FileLogger(categoryName, _filePath, _minLevel, _writeLock);
+        }
 
         public void Dispose()
         {
@@ -45,9 +46,15 @@ namespace VideoForensics.Logging
                 _writeLock = writeLock;
             }
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= _minLevel;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return logLevel != LogLevel.None && logLevel >= _minLevel;
+            }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
@@ -56,7 +63,7 @@ namespace VideoForensics.Logging
                     return;
                 }
 
-                var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{logLevel}] {_categoryName}: {formatter(state, exception)}";
+                string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{logLevel}] {_categoryName}: {formatter(state, exception)}";
                 if (exception != null)
                 {
                     line += Environment.NewLine + exception;

@@ -10,11 +10,14 @@ namespace VideoForensics.Client.Common
 
     public static class ProviderTypeExtensions
     {
-        public static string DisplayName(this ProviderType provider) => provider switch
+        public static string DisplayName(this ProviderType provider)
         {
-            ProviderType.Ring => "Ring",
-            ProviderType.Wyze => "Wyze",
-            _ => provider.ToString()
-        };
+            return provider switch
+            {
+                ProviderType.Ring => "Ring",
+                ProviderType.Wyze => "Wyze",
+                _ => provider.ToString()
+            };
+        }
     }
 }

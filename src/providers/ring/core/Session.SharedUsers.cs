@@ -39,9 +39,9 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/users");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            return JsonSerializer.Deserialize<List<SharedUser>>(response) ?? new List<SharedUser>();
+            return JsonSerializer.Deserialize<List<SharedUser>>(response) ?? [];
         }
 
         /// <summary>
@@ -57,10 +57,10 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/invitations");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<InvitationsResponse>(response);
-            return parsed?.Invitations ?? new List<Invitation>();
+            return parsed?.Invitations ?? [];
         }
     }
 }

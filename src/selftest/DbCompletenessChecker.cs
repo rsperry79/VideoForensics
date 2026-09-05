@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
 using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Database.DbContext;
@@ -29,8 +24,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
     {
         public string DbPath { get; set; } = "";
         public DateTime GeneratedAtUtc { get; set; }
-        public List<DbCompletenessRecord> Devices { get; set; } = new();
-        public List<DbCompletenessRecord> Locations { get; set; } = new();
+        public List<DbCompletenessRecord> Devices { get; set; } = [];
+        public List<DbCompletenessRecord> Locations { get; set; } = [];
         public int MissingDeviceCount => Devices.Count(d => !d.FoundInDb);
         public int MissingLocationCount => Locations.Count(l => !l.FoundInDb);
 
@@ -47,10 +42,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
             get
             {
                 if (TotalEvents == 0 && TotalMediaItems == 0)
+                {
                     return "No events/media items to verify";
+                }
 
-                var eventPct = TotalEvents > 0 ? (EventsWithMetadata * 100) / TotalEvents : 100;
-                var mediaPct = TotalMediaItems > 0 ? (MediaItemsWithMetadata * 100) / TotalMediaItems : 100;
+                int eventPct = TotalEvents > 0 ? EventsWithMetadata * 100 / TotalEvents : 100;
+                int mediaPct = TotalMediaItems > 0 ? MediaItemsWithMetadata * 100 / TotalMediaItems : 100;
                 return $"Events: {eventPct}% ({EventsWithMetadata}/{TotalEvents}), MediaItems: {mediaPct}% ({MediaItemsWithMetadata}/{TotalMediaItems})";
             }
         }
@@ -65,9 +62,9 @@ namespace VideoForensics.Providers.Ring.SelfTester
         {
             var report = new DbCompletenessReport { DbPath = dbPath, GeneratedAtUtc = DateTime.UtcNow };
 
-            var connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
+            string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
             var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-            optionsBuilder.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
+            _ = optionsBuilder.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
 
             await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
 
@@ -76,7 +73,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
             var dbLocationIdSet = new HashSet<string>(
                 await db.Locations.Select(l => l.ProviderLocationId).ToListAsync(), StringComparer.Ordinal);
 
-            void AddDevice(string kind, string providerId, string? name) =>
+            void AddDevice(string kind, string providerId, string? name)
+            {
                 report.Devices.Add(new DbCompletenessRecord
                 {
                     Kind = kind,
@@ -84,6 +82,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                     Name = name,
                     FoundInDb = dbDeviceIdSet.Contains(providerId)
                 });
+            }
 
             if (devices?.Doorbots != null)
             {
@@ -124,7 +123,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             {
                 foreach (var l in locations.Where(l => l.Id.HasValue))
                 {
-                    var providerId = l.Id!.Value.ToString();
+                    string providerId = l.Id!.Value.ToString();
                     report.Locations.Add(new DbCompletenessRecord
                     {
                         Kind = "Location",
@@ -138,12 +137,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
             // Verify metadata capture for forensics audit trail
             try
             {
-                var devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
-                var locationsWithMeta = await db.Locations.CountAsync(l => l.MetadataJson != null);
-                var eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
-                var totalEvents = await db.Events.CountAsync();
-                var mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
-                var totalMediaItems = await db.MediaItems.CountAsync();
+                int devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
+                int locationsWithMeta = await db.Locations.CountAsync(l => l.MetadataJson != null);
+                int eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
+                int totalEvents = await db.Events.CountAsync();
+                int mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
+                int totalMediaItems = await db.MediaItems.CountAsync();
 
                 report.DevicesWithMetadata = devicesWithMeta;
                 report.LocationsWithMetadata = locationsWithMeta;

@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -11,9 +12,9 @@ public class CredentialEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var providerAccountId = Guid.NewGuid();
-        var credentialType = "Password";
-        var encryptedValue = "encrypted_base64_value";
-        var encryptionProvider = "DPAPI";
+        string credentialType = "Password";
+        string encryptedValue = "encrypted_base64_value";
+        string encryptionProvider = "DPAPI";
         var createdUtc = DateTime.UtcNow;
         var rotatedUtc = DateTime.UtcNow.AddDays(-7);
 

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -20,23 +21,23 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<DeviceHealth?> GetAsync(Guid id, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == id, ct);
         }
 
         public async Task<DeviceHealth?> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.DeviceId == deviceId, ct);
         }
 
         public async Task AddAsync(DeviceHealth health, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DeviceHealthRecords.Add(health);
-                await db.SaveChangesAsync(ct);
+                _ = db.DeviceHealthRecords.Add(health);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Device health record added for device {DeviceId}", health.DeviceId);
             }
             catch (Exception ex)
@@ -48,11 +49,11 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task UpdateAsync(DeviceHealth health, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DeviceHealthRecords.Update(health);
-                await db.SaveChangesAsync(ct);
+                _ = db.DeviceHealthRecords.Update(health);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Device health updated for device {DeviceId}", health.DeviceId);
             }
             catch (Exception ex)
@@ -64,14 +65,14 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task DeleteAsync(Guid id, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var health = await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == id, ct);
+                DeviceHealth? health = await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == id, ct);
                 if (health != null)
                 {
-                    db.DeviceHealthRecords.Remove(health);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.DeviceHealthRecords.Remove(health);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Device health record deleted: {HealthId}", id);
                 }
             }

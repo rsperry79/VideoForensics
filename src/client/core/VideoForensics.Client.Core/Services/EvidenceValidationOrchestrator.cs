@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
-using VideoForensics.Client.Common;
-using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Client.Core
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Common.Contracts;
+
+namespace VideoForensics.Client.Core.Services
 {
     /// <summary>
     /// CLI-layer adapter combining IEventAndConfigService (provider) and IVideoForensicsDataClient (data)
@@ -12,12 +15,12 @@ namespace VideoForensics.Client.Core
     public class EvidenceValidationOrchestrator : IEvidenceValidationService
     {
         private readonly ILogger<EvidenceValidationOrchestrator> _logger;
-        private readonly VideoForensics.Providers.Common.Contracts.IEventAndConfigService _eventAndConfigService;
-        private readonly VideoForensics.Data.Common.Contracts.IEventRepository _eventRepository;
-        private readonly VideoForensics.Data.Common.Contracts.IDeviceRepository _deviceRepository;
-        private readonly VideoForensics.Data.Common.Contracts.IIntegrityVerificationService _integrityService;
-        private readonly VideoForensics.Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
-        private readonly VideoForensics.Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
+        private readonly IEventAndConfigService _eventAndConfigService;
+        private readonly Data.Common.Contracts.IEventRepository _eventRepository;
+        private readonly Data.Common.Contracts.IDeviceRepository _deviceRepository;
+        private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
+        private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
+        private readonly Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
 
         /// <summary>Retry configuration for transient provider API failures.</summary>
         private const int MaxRetries = 3;
@@ -26,12 +29,12 @@ namespace VideoForensics.Client.Core
 
         public EvidenceValidationOrchestrator(
             ILogger<EvidenceValidationOrchestrator> logger,
-            VideoForensics.Providers.Common.Contracts.IEventAndConfigService eventAndConfigService,
-            VideoForensics.Data.Common.Contracts.IEventRepository eventRepository,
-            VideoForensics.Data.Common.Contracts.IDeviceRepository deviceRepository,
-            VideoForensics.Data.Common.Contracts.IIntegrityVerificationService integrityService,
-            VideoForensics.Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
-            VideoForensics.Data.Core.Contracts.IProviderReconciliationService reconciliationService)
+            IEventAndConfigService eventAndConfigService,
+            Data.Common.Contracts.IEventRepository eventRepository,
+            Data.Common.Contracts.IDeviceRepository deviceRepository,
+            Data.Common.Contracts.IIntegrityVerificationService integrityService,
+            Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
+            Data.Core.Contracts.IProviderReconciliationService reconciliationService)
         {
             _logger = logger;
             _eventAndConfigService = eventAndConfigService;
@@ -55,15 +58,15 @@ namespace VideoForensics.Client.Core
                 }
                 else
                 {
-                    var devices = await _deviceRepository.ListAsync(ct);
+                    IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
                     deviceIds = devices.Select(d => d.Id).ToList();
                     _logger.LogInformation("Starting integrity verification across {DeviceCount} device(s)", deviceIds.Count);
                 }
 
-                foreach (var id in deviceIds)
+                foreach (Guid id in deviceIds)
                 {
-                    var mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(id, ct);
-                    foreach (var item in mediaItems.Where(m => !m.IsPurged))
+                    IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(id, ct);
+                    foreach (MediaItem? item in mediaItems.Where(m => !m.IsPurged))
                     {
                         // VerifyAsync itself swallows a missing file as a plain `false` (no
                         // exception, see IntegrityVerificationService.VerifyAsync) - check
@@ -90,6 +93,7 @@ namespace VideoForensics.Client.Core
                             FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
                         });
                     }
+
                     _logger.LogInformation("Verified {Count} media item(s) for device {DeviceId}", mediaItems.Count, id);
                 }
 
@@ -121,7 +125,7 @@ namespace VideoForensics.Client.Core
                     deviceId, providerDeviceId, fromUtc, toUtc);
 
                 // Fetch live events from provider with retry
-                IReadOnlyList<VideoForensics.Providers.Common.Contracts.DeviceEvent>? liveEvents = null;
+                IReadOnlyList<DeviceEvent>? liveEvents = null;
                 try
                 {
                     liveEvents = await RetryWithBackoffAsync(
@@ -139,7 +143,7 @@ namespace VideoForensics.Client.Core
                     liveEvents?.Count ?? 0, providerDeviceId);
 
                 // Fetch stored events from database
-                var storedEvents = await _eventRepository.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
+                IReadOnlyList<Event> storedEvents = await _eventRepository.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
                 _logger.LogInformation("Database has {EventCount} stored event(s) for device {DeviceId}", storedEvents.Count, deviceId);
 
                 // Diff: build discrepancies
@@ -148,7 +152,7 @@ namespace VideoForensics.Client.Core
                 if (liveEvents == null || liveEvents.Count == 0)
                 {
                     // No live events from provider
-                    foreach (var storedEvent in storedEvents)
+                    foreach (Event storedEvent in storedEvents)
                     {
                         discrepancies.Add(new ReconciliationDiscrepancy
                         {
@@ -163,9 +167,9 @@ namespace VideoForensics.Client.Core
                 else
                 {
                     // Check each stored event against live events
-                    foreach (var storedEvent in storedEvents)
+                    foreach (Event storedEvent in storedEvents)
                     {
-                        var liveEvent = liveEvents.FirstOrDefault(e => e.Id == storedEvent.ProviderEventId);
+                        DeviceEvent? liveEvent = liveEvents.FirstOrDefault(e => e.Id == storedEvent.ProviderEventId);
 
                         if (liveEvent == null)
                         {
@@ -222,7 +226,7 @@ namespace VideoForensics.Client.Core
 
                     // Check for new events on provider (not yet in stored)
                     var storedEventIds = new HashSet<string>(storedEvents.Select(e => e.ProviderEventId));
-                    foreach (var liveEvent in liveEvents)
+                    foreach (DeviceEvent liveEvent in liveEvents)
                     {
                         if (!storedEventIds.Contains(liveEvent.Id))
                         {
@@ -298,10 +302,11 @@ namespace VideoForensics.Client.Core
         private static bool StringEquals(string? a, string? b)
         {
             if (a == null && b == null)
+            {
                 return true;
-            if (a == null || b == null)
-                return false;
-            return a.Equals(b, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return a != null && b != null && a.Equals(b, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

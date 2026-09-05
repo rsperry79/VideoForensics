@@ -1,5 +1,4 @@
 using Xunit;
-using VideoForensics.Providers.Ring.Utils;
 
 namespace VideoForensics.Providers.Ring.Utils.Tests
 {
@@ -8,7 +7,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void Runner_RequiresSession()
         {
-            var outputDir = Path.Combine(Path.GetTempPath(), "test");
+            string outputDir = Path.Combine(Path.GetTempPath(), "test");
             try
             {
                 var runner = new Runner(null!, outputDir, quiet: true);
@@ -24,7 +23,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void Runner_CanBeConstructedWithValidSession()
         {
             var session = new VideoForensics.Providers.Ring.Session("user", "pass");
-            var outputDir = Path.Combine(Path.GetTempPath(), "test");
+            string outputDir = Path.Combine(Path.GetTempPath(), "test");
             var runner = new Runner(session, outputDir, quiet: true);
             Assert.NotNull(runner);
         }

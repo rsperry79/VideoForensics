@@ -24,7 +24,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }

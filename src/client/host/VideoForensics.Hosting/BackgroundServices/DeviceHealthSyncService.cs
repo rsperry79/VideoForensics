@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -55,13 +57,13 @@ namespace VideoForensics.Hosting.BackgroundServices
                     continue;
                 }
 
-                var onBattery = _batteryStatusProvider.GetStatus() == BatteryStatus.OnBattery;
+                bool onBattery = _batteryStatusProvider.GetStatus() == BatteryStatus.OnBattery;
                 if (onBattery)
                 {
                     // Skip most ticks while on battery rather than running a separate slower timer,
                     // so the effective interval is roughly BaseInterval * OnBatteryIntervalMultiplier
                     // without restarting the PeriodicTimer.
-                    var shouldRun = System.Threading.Interlocked.Increment(ref _tickCount) % OnBatteryIntervalMultiplier == 0;
+                    bool shouldRun = System.Threading.Interlocked.Increment(ref _tickCount) % OnBatteryIntervalMultiplier == 0;
                     if (!shouldRun)
                     {
                         continue;
@@ -115,7 +117,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             foreach (var healthSource in healthSources)
             {
-                var providerName = healthSource.GetType().Name;
+                string providerName = healthSource.GetType().Name;
 
                 // Provider API budget guard (plan §5.12): check BEFORE calling out to the provider,
                 // so a blown budget shows up as an explicit "skipped this tick" rather than a
@@ -130,7 +132,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     var readings = await healthSource.FetchHealthAsync(ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
-                    var persisted = 0;
+                    int persisted = 0;
 
                     foreach (var reading in readings)
                     {
@@ -151,7 +153,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                             CapturedAtUtc = DateTime.UtcNow
                         };
 
-                        await dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
+                        _ = await dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
                         persisted++;
                     }
 

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using ModelContextProtocol.Server;
+
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Entities;
 
@@ -41,7 +43,7 @@ namespace VideoForensics.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("RecordJammingIncident: device={DeviceId}", deviceId);
-            var (success, message, record) = await _orchestrator.RecordJammingIncidentAsync(
+            (bool success, string? message, JammingIncidentRecord? record) = await _orchestrator.RecordJammingIncidentAsync(
                 deviceId, startUtc, endUtc, affectedEventCount, averageDegradationDb, confidence, notes, cancellationToken);
             return new RecordIncidentResult { Success = success, Message = message, Record = record };
         }
@@ -53,7 +55,7 @@ namespace VideoForensics.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("GetJammingStats: device={DeviceId}", deviceId);
-            var (_, stats) = await _orchestrator.GetJammingStatsAsync(deviceId, cancellationToken);
+            (bool _, JammingStatsSummary? stats) = await _orchestrator.GetJammingStatsAsync(deviceId, cancellationToken);
             return stats;
         }
 
@@ -66,8 +68,8 @@ namespace VideoForensics.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("GetJammingIncidents: device={DeviceId}", deviceId);
-            var (_, incidents) = await _orchestrator.GetJammingIncidentsAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            return incidents ?? new List<JammingIncidentRecord>();
+            (bool _, IReadOnlyList<JammingIncidentRecord>? incidents) = await _orchestrator.GetJammingIncidentsAsync(deviceId, fromUtc, toUtc, cancellationToken);
+            return incidents ?? [];
         }
 
         /// <summary>Result of a manual jamming incident record attempt.</summary>

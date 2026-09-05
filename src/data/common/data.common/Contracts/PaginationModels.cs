@@ -3,7 +3,7 @@ namespace VideoForensics.Data.Common.Contracts
     /// <summary>Offset-based pagination result for large datasets.</summary>
     public class PaginatedResult<T>
     {
-        public IReadOnlyList<T> Items { get; set; } = new List<T>();
+        public IReadOnlyList<T> Items { get; set; } = [];
         public int TotalCount { get; set; }
         public int PageNumber { get; set; }
         public int PageSize { get; set; }
@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Common.Contracts
     /// <summary>Cursor-based pagination result for streamable/live data.</summary>
     public class CursorPaginatedResult<T>
     {
-        public IReadOnlyList<T> Items { get; set; } = new List<T>();
+        public IReadOnlyList<T> Items { get; set; } = [];
         public string? NextCursor { get; set; }
         public bool HasMore { get; set; }
         public int Count => Items.Count;
@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int TotalCount { get; set; }
         public string Status { get; set; } = string.Empty; // "Healthy", "Anomalies", "Critical"
         public double? ComplianceScore { get; set; } // 0-100 for integrity/health metrics
-        public Dictionary<string, int> TopIssues { get; set; } = new(); // Issue type → count
+        public Dictionary<string, int> TopIssues { get; set; } = []; // Issue type → count
         public DateTime AnalyzedAtUtc { get; set; } = DateTime.UtcNow;
         public string DetailQueryMethod { get; set; } = string.Empty; // Which method to call for full data
     }

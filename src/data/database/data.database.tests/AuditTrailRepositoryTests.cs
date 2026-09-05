@@ -1,7 +1,8 @@
-using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -22,23 +23,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetAuditTrailSummaryAsync_ReturnsComplete_WhenAllGood()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
+            AuditTrailSummary summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.NotNull(summary.Status);
-            Assert.True(summary.ChainOfCustodyIntact == false || summary.ChainOfCustodyIntact == true);
         }
 
         [Fact]
         public async Task GetAuditTrailSummaryAsync_ReturnsSuspicious_WhenAccessFlagged()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
+            AuditTrailSummary summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
         }
@@ -46,10 +46,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetAuditTrailSummaryAsync_ReturnsCompromised_WhenIntegrityBroken()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
+            AuditTrailSummary summary = await _repository.GetAuditTrailSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.False(summary.ChainOfCustodyIntact);
@@ -60,7 +60,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evidenceId = Guid.NewGuid();
 
-            var result = await _repository.GetAccessHistoryPaginatedAsync(
+            PaginatedResult<AccessAuditLog> result = await _repository.GetAccessHistoryPaginatedAsync(
                 evidenceId, pageNumber: 1, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -73,7 +73,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evidenceId = Guid.NewGuid();
 
-            var result = await _repository.GetAccessHistoryPaginatedAsync(
+            PaginatedResult<AccessAuditLog> result = await _repository.GetAccessHistoryPaginatedAsync(
                 evidenceId, pageNumber: 2, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evidenceId = Guid.NewGuid();
 
-            var result = await _repository.GetAccessHistoryPaginatedAsync(
+            PaginatedResult<AccessAuditLog> result = await _repository.GetAccessHistoryPaginatedAsync(
                 evidenceId, pageNumber: 1, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -95,10 +95,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetExportHistoryCursorAsync_ReturnsCursorResult_FirstPage()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var result = await _repository.GetExportHistoryCursorAsync(
+            CursorPaginatedResult<ExportAuditRecord> result = await _repository.GetExportHistoryCursorAsync(
                 location.Id, cursor: null, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -108,10 +108,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetExportHistoryCursorAsync_VerifyHasMoreFlag()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var result = await _repository.GetExportHistoryCursorAsync(
+            CursorPaginatedResult<ExportAuditRecord> result = await _repository.GetExportHistoryCursorAsync(
                 location.Id, cursor: null, pageSize: 100, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -121,10 +121,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task VerifyChainOfCustodyAsync_ReturnsIntact_WhenAllAccounted()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var report = await _repository.VerifyChainOfCustodyAsync(location.Id, CancellationToken.None);
+            AccessAuditReport report = await _repository.VerifyChainOfCustodyAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(report);
             Assert.Equal(location.Id, report.LocationId);
@@ -133,10 +133,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task FlagUnauthorizedAccessAsync_ReturnsEmpty_NoUnauthorized()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<UnauthorizedAccessFlag> flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(flags);
         }
@@ -144,10 +144,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task FlagUnauthorizedAccessAsync_ReturnsFlagged_WhenOffHours()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<UnauthorizedAccessFlag> flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(flags);
         }
@@ -155,10 +155,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task FlagUnauthorizedAccessAsync_ReturnsFlagged_WhenExcessiveAccess()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<UnauthorizedAccessFlag> flags = await _repository.FlagUnauthorizedAccessAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(flags);
         }
@@ -166,10 +166,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetExportHistoryAsync_ReturnsEmpty_NoExports()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var history = await _repository.GetExportHistoryAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<ExportAuditRecord> history = await _repository.GetExportHistoryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(history);
             Assert.Empty(history);
@@ -180,7 +180,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var exportId = Guid.NewGuid();
 
-            var report = await _repository.VerifyExportIntegrityAsync(exportId, CancellationToken.None);
+            ExportIntegrityReport report = await _repository.VerifyExportIntegrityAsync(exportId, CancellationToken.None);
 
             Assert.NotNull(report);
             Assert.Equal(exportId, report.ExportId);
@@ -192,13 +192,13 @@ namespace VideoForensics.Data.Database.Tests
             var evidenceId = Guid.NewGuid();
             var userId = "test_user";
             var action = "View";
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             await _repository.LogAccessAsync(evidenceId, userId, action, now, CancellationToken.None);
 
-            var history = await _repository.GetAccessHistoryAsync(evidenceId, CancellationToken.None);
+            IReadOnlyList<AccessAuditLog> history = await _repository.GetAccessHistoryAsync(evidenceId, CancellationToken.None);
             Assert.NotEmpty(history);
-            Assert.Single(history);
+            _ = Assert.Single(history);
             Assert.Equal(userId, history[0].UserId);
             Assert.Equal(action, history[0].Action);
         }
@@ -207,12 +207,12 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetAccessHistoryAsync_ReturnsAllAccesses()
         {
             var evidenceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             await _repository.LogAccessAsync(evidenceId, "user1", "View", now, CancellationToken.None);
             await _repository.LogAccessAsync(evidenceId, "user2", "Download", now.AddSeconds(10), CancellationToken.None);
 
-            var history = await _repository.GetAccessHistoryAsync(evidenceId, CancellationToken.None);
+            IReadOnlyList<AccessAuditLog> history = await _repository.GetAccessHistoryAsync(evidenceId, CancellationToken.None);
 
             Assert.Equal(2, history.Count);
         }
@@ -220,10 +220,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetLocationAccessHistoryAsync_ReturnsAccessesForLocation()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var history = await _repository.GetLocationAccessHistoryAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<AccessAuditLog> history = await _repository.GetLocationAccessHistoryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(history);
         }
@@ -231,10 +231,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRedactionHistoryAsync_ReturnsEmpty_NoRedactions()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var history = await _repository.GetRedactionHistoryAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<RedactionAuditRecord> history = await _repository.GetRedactionHistoryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(history);
             Assert.Empty(history);
@@ -245,7 +245,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var eventId = Guid.NewGuid();
 
-            var history = await _repository.TraceModificationHistoryAsync(eventId, CancellationToken.None);
+            IReadOnlyList<ModificationAuditRecord> history = await _repository.TraceModificationHistoryAsync(eventId, CancellationToken.None);
 
             Assert.NotNull(history);
             Assert.Empty(history);

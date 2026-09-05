@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
+
 using Xunit;
 
 namespace VideoForensics.Data.Database.Sqlite.Tests
@@ -16,9 +18,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             var services = new ServiceCollection();
 
             // Act
-            services.AddVideoForensicsSqlite();
-            var provider = services.BuildServiceProvider();
-            var factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
+            _ = services.AddVideoForensicsSqlite();
+            ServiceProvider provider = services.BuildServiceProvider();
+            IDbContextFactory<VideoForensicsDbContext>? factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
 
             // Assert
             Assert.NotNull(factory);
@@ -35,14 +37,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             try
             {
                 // Act
-                services.AddVideoForensicsSqlite(dbPath);
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext>? factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
 
                 Assert.NotNull(factory);
 
                 // Create a context and verify connection string references the expected path
-                using var context = factory!.CreateDbContext();
+                using VideoForensicsDbContext context = factory!.CreateDbContext();
                 var connectionString = context.Database.GetDbConnection().ConnectionString;
 
                 // Assert
@@ -66,7 +68,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }
@@ -87,7 +91,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 Assert.False(Directory.Exists(nestedDir));
 
                 // Act
-                services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddVideoForensicsSqlite(dbPath);
 
                 // Assert
                 Assert.True(Directory.Exists(nestedDir), "Expected directory to be created");

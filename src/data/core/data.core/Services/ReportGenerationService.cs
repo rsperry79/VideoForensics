@@ -1,5 +1,7 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -61,11 +63,11 @@ namespace VideoForensics.Data.Core.Services
                 }
                 else
                 {
-                    var allItems = await _mediaItemRepository.ListAsync(ct);
+                    IReadOnlyList<MediaItem> allItems = await _mediaItemRepository.ListAsync(ct);
                     items = allItems.Where(m => m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList();
                 }
 
-                var integrityRecords = await _integrityRecordRepository.GetLatestByMediaItemIdsAsync(
+                IReadOnlyList<IntegrityRecord> integrityRecords = await _integrityRecordRepository.GetLatestByMediaItemIdsAsync(
                     items.Select(m => m.Id), ct);
 
                 report.MediaItems = items;
@@ -109,7 +111,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 else
                 {
-                    var allItems = await _mediaItemRepository.ListAsync(ct);
+                    IReadOnlyList<MediaItem> allItems = await _mediaItemRepository.ListAsync(ct);
                     items = allItems.Where(m => m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList();
                 }
 
@@ -144,8 +146,8 @@ namespace VideoForensics.Data.Core.Services
                 List<Device> devices;
                 if (deviceId.HasValue)
                 {
-                    var device = await _deviceRepository.GetAsync(deviceId.Value, ct);
-                    devices = device != null ? new List<Device> { device } : new List<Device>();
+                    Device? device = await _deviceRepository.GetAsync(deviceId.Value, ct);
+                    devices = device != null ? [device] : [];
                 }
                 else
                 {
@@ -155,7 +157,7 @@ namespace VideoForensics.Data.Core.Services
                 var anomaliesList = new List<SignalAnomalyReport.AnomalyFindings>();
                 var jammingList = new List<SignalAnomalyReport.JammingSummaryEntry>();
 
-                foreach (var device in devices)
+                foreach (Device device in devices)
                 {
                     var findings = new SignalAnomalyReport.AnomalyFindings
                     {
@@ -165,7 +167,7 @@ namespace VideoForensics.Data.Core.Services
                     };
                     anomaliesList.Add(findings);
 
-                    var jammingStats = await _jammingRepository.GetStatsAsync(device.Id, ct);
+                    JammingStatsSummary? jammingStats = await _jammingRepository.GetStatsAsync(device.Id, ct);
                     if (jammingStats != null)
                     {
                         jammingList.Add(new SignalAnomalyReport.JammingSummaryEntry
@@ -209,7 +211,7 @@ namespace VideoForensics.Data.Core.Services
 
             try
             {
-                var allActions = await _actionLogRepository.ListAsync(ct);
+                IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
                     .ToList();
@@ -252,7 +254,7 @@ namespace VideoForensics.Data.Core.Services
 
             try
             {
-                var allActions = await _actionLogRepository.ListAsync(ct);
+                IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
                     .OrderBy(a => a.TimestampUtc)
@@ -290,7 +292,7 @@ namespace VideoForensics.Data.Core.Services
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "VideoForensics",
                     "Reports");
-                Directory.CreateDirectory(reportsDir);
+                _ = Directory.CreateDirectory(reportsDir);
 
                 var filePath = Path.Combine(reportsDir, fileName);
 
@@ -308,6 +310,7 @@ namespace VideoForensics.Data.Core.Services
                         {
                             xmlSerializer.Serialize(xmlWriter, reportDto);
                         }
+
                         break;
 
                     case "csv":

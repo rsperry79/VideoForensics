@@ -1,9 +1,8 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Json.Converters
 {

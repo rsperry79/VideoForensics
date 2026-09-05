@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+
 using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities

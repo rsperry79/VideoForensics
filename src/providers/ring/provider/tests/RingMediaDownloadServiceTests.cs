@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -26,13 +28,13 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
 
             // Act
-            var result = await service.DownloadVideosAsync(
+            DownloadResult result = await service.DownloadVideosAsync(
                 "device123",
                 "/tmp/videos",
                 DateTime.Now.AddDays(-7),
@@ -50,12 +52,12 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
 
             // Act
-            var result = await service.DownloadVideosAsync(
+            DownloadResult result = await service.DownloadVideosAsync(
                 "device123",
                 "/tmp/videos",
                 DateTime.Now.AddDays(-7),
@@ -64,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.IsType<DownloadResult>(result);
+            _ = Assert.IsType<DownloadResult>(result);
             // Should return a result even if session is null - graceful error handling
         }
 
@@ -73,13 +75,13 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
 
             // Act
-            var result = await service.DownloadSnapshotsAsync(
+            DownloadResult result = await service.DownloadSnapshotsAsync(
                 "device123",
                 "/tmp/snapshots",
                 DateTime.Now.AddDays(-7),
@@ -96,12 +98,12 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
 
             // Act
-            var result = await service.DownloadSnapshotsAsync(
+            DownloadResult result = await service.DownloadSnapshotsAsync(
                 "device123",
                 "/tmp/snapshots",
                 DateTime.Now.AddDays(-7),
@@ -110,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.IsType<DownloadResult>(result);
+            _ = Assert.IsType<DownloadResult>(result);
         }
 
         [Fact]
@@ -118,16 +120,16 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
 
             // Act
-            var status = service.GetStatus();
+            DownloadStatus status = service.GetStatus();
 
             // Assert
             Assert.NotNull(status);
-            Assert.IsType<DownloadStatus>(status);
+            _ = Assert.IsType<DownloadStatus>(status);
             Assert.False(status.IsDownloading);
         }
 
@@ -135,11 +137,11 @@ namespace VideoForensics.Providers.Ring.Tests
         public void ConstructorThrowsOnNullSessionProvider()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new RingMediaDownloadService(logger, null!, dataClient));
+            _ = Assert.Throws<ArgumentNullException>(() => new RingMediaDownloadService(logger, null!, dataClient));
         }
 
         [Fact]
@@ -147,14 +149,14 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
-            var dataClient = CreateMockDataClient();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
             var startDate = new DateTime(2024, 1, 1);
             var endDate = new DateTime(2024, 1, 31);
 
             // Act
-            var result = await service.DownloadVideosAsync(
+            DownloadResult result = await service.DownloadVideosAsync(
                 "device123",
                 "/tmp/videos",
                 startDate,

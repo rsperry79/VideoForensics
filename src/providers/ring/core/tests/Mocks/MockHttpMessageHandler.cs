@@ -1,23 +1,21 @@
-using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
-using System.Threading.Tasks;
 
-namespace VideoForensics.Providers.Ring.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>
     /// Mock HTTP message handler that returns predefined responses instead of making real HTTP calls
     /// </summary>
     public class MockHttpMessageHandler : HttpMessageHandler
     {
-        private readonly Dictionary<string, (HttpStatusCode statusCode, string content)> _responses = new();
+        private readonly Dictionary<string, (HttpStatusCode statusCode, string content)> _responses = [];
 
         /// <summary>
         /// Records every request made through this handler (method + full url) so tests can assert
         /// which endpoint and HTTP verb a Session method actually called.
         /// </summary>
-        public List<(HttpMethod Method, string Url)> RequestLog { get; } = new();
+        public List<(HttpMethod Method, string Url)> RequestLog { get; } = [];
 
         public MockHttpMessageHandler()
         {
@@ -38,7 +36,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         private void SetupDefaultResponses()
         {
             // Mock OAuth authentication response
-            var authResponse = @"{
+            string authResponse = @"{
                 ""access_token"": ""mock_access_token_12345"",
                 ""refresh_token"": ""mock_refresh_token_12345"",
                 ""expires_in"": 3600,
@@ -48,7 +46,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
             SetupResponse("https://oauth.ring.com/oauth/token", HttpStatusCode.OK, authResponse);
 
             // Mock devices response
-            var devicesResponse = @"{
+            string devicesResponse = @"{
                 ""doorbots"": [
                     {
                         ""id"": 123456,
@@ -74,7 +72,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
             SetupResponse("https://api.ring.com/clients_api/v1/user/devices", HttpStatusCode.OK, devicesResponse);
 
             // Mock history response
-            var historyResponse = @"{
+            string historyResponse = @"{
                 ""events"": [
                     {
                         ""id"": ""aabbccdd"",
@@ -96,11 +94,11 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var requestUrl = request.RequestUri?.ToString().ToLower() ?? string.Empty;
+            string requestUrl = request.RequestUri?.ToString().ToLower() ?? string.Empty;
             RequestLog.Add((request.Method, request.RequestUri?.ToString() ?? string.Empty));
 
             // Find matching response
-            var matchingKey = _responses.Keys.FirstOrDefault(k => requestUrl.Contains(k.Replace("https://", "").Replace("http://", "")));
+            string? matchingKey = _responses.Keys.FirstOrDefault(k => requestUrl.Contains(k.Replace("https://", "").Replace("http://", "")));
 
             if (matchingKey != null && _responses.TryGetValue(matchingKey, out var response))
             {

@@ -29,13 +29,13 @@ namespace VideoForensics.Providers.Ring
 
         public async Task<Stream> OpenStreamAsync(string url)
         {
-            var bytes = await DownloadBytesAsync(url);
+            byte[] bytes = await DownloadBytesAsync(url);
             return new MemoryStream(bytes);
         }
 
         public async Task DownloadToFileAsync(string url, string saveAsPath)
         {
-            var bytes = await DownloadBytesAsync(url);
+            byte[] bytes = await DownloadBytesAsync(url);
             await File.WriteAllBytesAsync(saveAsPath, bytes);
         }
 
@@ -60,6 +60,7 @@ namespace VideoForensics.Providers.Ring
             {
                 _httpClient?.Dispose();
             }
+
             GC.SuppressFinalize(this);
         }
     }

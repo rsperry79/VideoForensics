@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for timeline analysis and forensic gap detection.</summary>
@@ -77,7 +75,7 @@ namespace VideoForensics.Data.Common.Contracts
         public Guid LocationId { get; set; }
         public DateTime AnalysisFromUtc { get; set; }
         public DateTime AnalysisToUtc { get; set; }
-        public List<DeviceTimelineIntegrity> DeviceReports { get; set; } = new();
+        public List<DeviceTimelineIntegrity> DeviceReports { get; set; } = [];
     }
 
     /// <summary>One device's own timeline integrity numbers - never blended with any other device's.</summary>
@@ -90,7 +88,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int LargestGapMinutes { get; set; }
         public decimal CoveragePercentage { get; set; }
         public IReadOnlyList<TimelineGap> SignificantGaps { get; set; } = new List<TimelineGap>();
-        public Dictionary<string, int> EventTypeDistribution { get; set; } = new();
+        public Dictionary<string, int> EventTypeDistribution { get; set; } = [];
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Gaps", "Critical"
     }
 
@@ -116,7 +114,7 @@ namespace VideoForensics.Data.Common.Contracts
         public DateTime ClusterTimeUtc { get; set; }
         public int DeviceCount { get; set; }
         public int TotalEventCount { get; set; }
-        public List<ClusterEvent> Events { get; set; } = new();
+        public List<ClusterEvent> Events { get; set; } = [];
     }
 
     /// <summary>A device involved in a <see cref="SuspiciousActivityFlag"/>.</summary>
@@ -134,6 +132,6 @@ namespace VideoForensics.Data.Common.Contracts
         public string ActivityType { get; set; } = string.Empty; // "SimultaneousMotion", "CameraDisabledDuringMotion", "MultipleDeviceGap"
         public string Description { get; set; } = string.Empty;
         public int SuspicionScore { get; set; } // 1-100
-        public List<InvolvedDevice> InvolvedDevices { get; set; } = new();
+        public List<InvolvedDevice> InvolvedDevices { get; set; } = [];
     }
 }

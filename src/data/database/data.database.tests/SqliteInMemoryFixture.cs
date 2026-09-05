@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
-using Xunit;
+using Microsoft.EntityFrameworkCore;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.Configurations;
 using VideoForensics.Data.Database.DbContext;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -14,13 +16,12 @@ namespace VideoForensics.Data.Database.Tests
         private SqliteConnection? _connection;
         private IDbContextFactory<VideoForensicsDbContext>? _factory;
         private IDataProtectionProvider? _dataProtectionProvider;
-        private ICredentialEncryptionProvider? _encryptionProvider;
 
         /// <summary>Gets the DbContext factory for this fixture.</summary>
         public IDbContextFactory<VideoForensicsDbContext> Factory => _factory ?? throw new InvalidOperationException("Fixture not initialized");
 
         /// <summary>Gets the credential encryption provider for this fixture.</summary>
-        public ICredentialEncryptionProvider EncryptionProvider => _encryptionProvider ?? throw new InvalidOperationException("Fixture not initialized");
+        public ICredentialEncryptionProvider EncryptionProvider { get => field ?? throw new InvalidOperationException("Fixture not initialized"); private set; }
 
         /// <summary>Gets the data protection provider for this fixture.</summary>
         public IDataProtectionProvider DataProtectionProvider => _dataProtectionProvider ?? throw new InvalidOperationException("Fixture not initialized");
@@ -33,7 +34,7 @@ namespace VideoForensics.Data.Database.Tests
             await _connection.OpenAsync();
 
             // Create DbContextOptions that use the open connection
-            var options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+            DbContextOptions<VideoForensicsDbContext> options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
                 .UseSqlite(_connection)
                 .Options;
 
@@ -42,11 +43,11 @@ namespace VideoForensics.Data.Database.Tests
 
             // Set up data protection using an ephemeral provider (no filesystem needed)
             _dataProtectionProvider = new EphemeralDataProtectionProvider();
-            _encryptionProvider = new CredentialEncryptionProvider(_dataProtectionProvider);
+            EncryptionProvider = new CredentialEncryptionProvider(_dataProtectionProvider);
 
             // Create the schema using EnsureCreated
-            await using var db = _factory.CreateDbContext();
-            await db.Database.EnsureCreatedAsync();
+            await using VideoForensicsDbContext db = _factory.CreateDbContext();
+            _ = await db.Database.EnsureCreatedAsync();
         }
 
         /// <summary>Cleans up the fixture by closing and disposing the connection.</summary>

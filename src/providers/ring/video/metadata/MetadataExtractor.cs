@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
+using VideoForensics.Providers.Ring.Models;
 
-#nullable enable
-
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <inheritdoc cref="IMetadataExtractor"/>
     public class MetadataExtractor : IMetadataExtractor
@@ -274,14 +273,12 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             {
                 metadata.EventType = EventTypeMotion;
             }
-            else if (string.Equals(ringEvent.Kind, "doorbell", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(ringEvent.Kind, "button", StringComparison.OrdinalIgnoreCase))
-            {
-                metadata.EventType = EventTypeDoorbell;
-            }
             else
             {
-                metadata.EventType = EventTypeRing;
+                metadata.EventType = string.Equals(ringEvent.Kind, "doorbell", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(ringEvent.Kind, "button", StringComparison.OrdinalIgnoreCase)
+                    ? EventTypeDoorbell
+                    : EventTypeRing;
             }
         }
 

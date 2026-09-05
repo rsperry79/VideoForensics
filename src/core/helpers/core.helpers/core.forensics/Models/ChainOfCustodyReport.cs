@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace VideoForensics.Forensics.Models.Reports
+namespace VideoForensics.Forensics.Models
 {
     /// <summary>
     /// Strongly-typed report documenting chain of custody for evidence.
@@ -13,14 +13,14 @@ namespace VideoForensics.Forensics.Models.Reports
         public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
         public string EvidenceId { get; set; } = string.Empty;
         public bool CustodyIntegrityVerified { get; set; }
-        public List<ChainOfCustodyEntry> CustodyHistory { get; set; } = new();
+        public List<ChainOfCustodyEntry> CustodyHistory { get; set; } = [];
         public DateTime? EvidenceInitiallyReceived { get; set; }
         public DateTime? EvidenceLastAccessed { get; set; }
         public int TotalHandlers { get; set; }
         public int TotalAccessCount { get; set; }
-        public List<string> IntegrityIssues { get; set; } = new();
+        public List<string> IntegrityIssues { get; set; } = [];
         public string? LegalStatement { get; set; }
-        public Dictionary<string, object> Metadata { get; set; } = new();
+        public Dictionary<string, object> Metadata { get; set; } = [];
 
         public string? DigitalSignature { get; set; }
         public DateTime? ReportSignedAt { get; set; }

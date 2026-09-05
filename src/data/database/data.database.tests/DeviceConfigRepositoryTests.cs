@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -13,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new DeviceConfigRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceConfigRepository>());
         }
 
@@ -27,10 +30,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceConfigRepository_AppendSnapshotAsync_CreatesSnapshot()
         {
             var deviceId = Guid.NewGuid();
-            var snapshot = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snapshot = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
 
-            await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
-            var retrieved = await _repository.GetAsync(snapshot.Id, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
+            DeviceConfigSnapshot? retrieved = await _repository.GetAsync(snapshot.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(deviceId, retrieved.DeviceId);
@@ -41,22 +44,22 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceConfigRepository_GetLatestAsync_ReturnsNewest()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap1.CapturedAtUtc = now.AddHours(-2);
 
-            var snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap2.CapturedAtUtc = now.AddHours(-1);
 
-            var snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap3.CapturedAtUtc = now;
 
-            await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
 
-            var latest = await _repository.GetLatestAsync(deviceId, CancellationToken.None);
+            DeviceConfigSnapshot? latest = await _repository.GetLatestAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(latest);
             Assert.Equal(snap3.Id, latest.Id);
@@ -66,22 +69,22 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceConfigRepository_GetHistoryAsync_ReturnsInReverseOrder()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap1.CapturedAtUtc = now.AddHours(-2);
 
-            var snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap2.CapturedAtUtc = now.AddHours(-1);
 
-            var snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
             snap3.CapturedAtUtc = now;
 
-            await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
 
-            var history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<DeviceConfigSnapshot> history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(3, history.Count);
             Assert.Equal(snap3.Id, history[0].Id);
@@ -92,13 +95,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task DeviceConfigRepository_ListAsync_ReturnsAll()
         {
-            var snap1 = TestDataBuilder.BuildDeviceConfigSnapshot();
-            var snap2 = TestDataBuilder.BuildDeviceConfigSnapshot();
+            DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot();
+            DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot();
 
-            await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
 
-            var list = await _repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<DeviceConfigSnapshot> list = await _repository.ListAsync(CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
@@ -107,15 +110,15 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            var snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-            var snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-            var snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
+            DeviceConfigSnapshot snap3 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
 
-            await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
 
-            var history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<DeviceConfigSnapshot> history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
             Assert.Equal(3, history.Count);
         }
     }

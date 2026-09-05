@@ -1,10 +1,10 @@
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Client.Core.Tools
 {
-    using System.Linq;
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Data.Common.Contracts;
-    using VideoForensics.Data.Common.Entities;
-
     public class JammingToolsOrchestrator
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
@@ -38,8 +38,8 @@ namespace VideoForensics.Client.Core.Tools
             try
             {
                 _logger.LogInformation("Recording jamming detection notification for device {deviceId}", deviceId);
-                await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
-                var stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
+                _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
+                JammingStatsSummary? stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
 
                 var message = stats?.IncidentCount > 0
                     ? $"Jamming detection summary: {stats.IncidentCount} incident(s), {stats.TotalJammedDurationMinutes:F1} minutes total duration, avg degradation {stats.AverageDegradationDb:F1} dB"
@@ -67,10 +67,14 @@ namespace VideoForensics.Client.Core.Tools
             try
             {
                 if (startUtc >= endUtc)
+                {
                     return (false, "Start time must be before end time", null);
+                }
 
                 if (averageDegradationDb < 0)
+                {
                     return (false, "Average degradation must be non-negative", null);
+                }
 
                 var record = new JammingIncidentRecord
                 {
@@ -86,8 +90,8 @@ namespace VideoForensics.Client.Core.Tools
                     Source = JammingIncidentSource.ManuallyRecorded
                 };
 
-                var persisted = await _jammingRepository.UpsertIncidentAsync(record, ct);
-                await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
+                JammingIncidentRecord persisted = await _jammingRepository.UpsertIncidentAsync(record, ct);
+                _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
                 _logger.LogInformation("Recorded manual jamming incident for device {deviceId}", deviceId);
 
                 return (true, "Jamming incident recorded successfully", persisted);
@@ -105,7 +109,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                var stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
+                JammingStatsSummary? stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
                 return stats != null
                     ? (true, stats)
                     : (true, new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 });
@@ -125,7 +129,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                var incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+                IReadOnlyList<JammingIncidentRecord> incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
                 return (true, incidents);
             }
             catch (Exception ex)
@@ -154,21 +158,23 @@ namespace VideoForensics.Client.Core.Tools
             try
             {
                 if (fromUtc >= toUtc)
+                {
                     return new JammingAnalysisReport
                     {
                         Success = false,
                         ErrorMessage = "Start time must be before end time"
                     };
+                }
 
                 _logger.LogInformation("Starting jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
                     deviceId, fromUtc, toUtc);
 
                 var detectedCount = await DetectAndPersistIncidentsAsync(deviceId, fromUtc, toUtc, ct);
 
-                await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
+                _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
 
-                var stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
-                var incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+                JammingStatsSummary? stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
+                IReadOnlyList<JammingIncidentRecord> incidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
 
                 return new JammingAnalysisReport
                 {
@@ -177,7 +183,7 @@ namespace VideoForensics.Client.Core.Tools
                     AnalysisFromUtc = fromUtc,
                     AnalysisToUtc = toUtc,
                     Summary = stats ?? new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 },
-                    Incidents = incidents ?? new List<JammingIncidentRecord>(),
+                    Incidents = incidents ?? [],
                     AnalyzedAtUtc = DateTime.UtcNow,
                     Message = stats?.IncidentCount > 0
                         ? $"Found {stats.IncidentCount} incident(s) ({detectedCount} newly detected this run): " +
@@ -205,7 +211,7 @@ namespace VideoForensics.Client.Core.Tools
         /// </summary>
         private async Task<int> DetectAndPersistIncidentsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            var history = await _healthSnapshotRepository.GetHistoryAsync(deviceId, ct);
+            IReadOnlyList<DeviceHealthSnapshot> history = await _healthSnapshotRepository.GetHistoryAsync(deviceId, ct);
 
             var readings = history
                 .Where(s => s.Rssi.HasValue && s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)
@@ -223,7 +229,7 @@ namespace VideoForensics.Client.Core.Tools
 
             var baselineRssi = Median(readings.Select(r => (double)r.Rssi!.Value));
 
-            var existingIncidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+            IReadOnlyList<JammingIncidentRecord> existingIncidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
             var alreadyDetectedStarts = existingIncidents
                 .Where(i => i.Source == JammingIncidentSource.AutoDetected)
                 .Select(i => i.StartUtc)
@@ -245,14 +251,14 @@ namespace VideoForensics.Client.Core.Tools
                     var runLength = i - runStart;
                     if (runLength >= MinConsecutiveReadingsForIncident)
                     {
-                        var runReadings = readings.GetRange(runStart, runLength);
-                        var incidentStart = runReadings[0].CapturedAtUtc;
+                        List<DeviceHealthSnapshot> runReadings = readings.GetRange(runStart, runLength);
+                        DateTime incidentStart = runReadings[0].CapturedAtUtc;
 
                         if (!alreadyDetectedStarts.Contains(incidentStart))
                         {
                             var avgDegradation = baselineRssi - runReadings.Average(r => r.Rssi!.Value);
 
-                            await _jammingRepository.UpsertIncidentAsync(new JammingIncidentRecord
+                            _ = await _jammingRepository.UpsertIncidentAsync(new JammingIncidentRecord
                             {
                                 Id = Guid.NewGuid(),
                                 DeviceId = deviceId,
@@ -284,12 +290,16 @@ namespace VideoForensics.Client.Core.Tools
         private static JammingConfidenceLevel ClassifyConfidence(int runLength, double avgDegradationDb)
         {
             if (runLength >= 5 && avgDegradationDb >= 20)
+            {
                 return JammingConfidenceLevel.Definite;
+            }
+
             if (runLength >= 3 && avgDegradationDb >= 15)
+            {
                 return JammingConfidenceLevel.High;
-            if (runLength >= 2 && avgDegradationDb >= 10)
-                return JammingConfidenceLevel.Medium;
-            return JammingConfidenceLevel.Low;
+            }
+
+            return runLength >= 2 && avgDegradationDb >= 10 ? JammingConfidenceLevel.Medium : JammingConfidenceLevel.Low;
         }
 
         private static double Median(IEnumerable<double> values)
@@ -311,7 +321,7 @@ namespace VideoForensics.Client.Core.Tools
         public DateTime AnalysisFromUtc { get; set; }
         public DateTime AnalysisToUtc { get; set; }
         public JammingStatsSummary Summary { get; set; } = new();
-        public IReadOnlyList<JammingIncidentRecord> Incidents { get; set; } = new List<JammingIncidentRecord>();
+        public IReadOnlyList<JammingIncidentRecord> Incidents { get; set; } = [];
         public DateTime AnalyzedAtUtc { get; set; }
         public string Message { get; set; } = string.Empty;
 
@@ -319,10 +329,14 @@ namespace VideoForensics.Client.Core.Tools
         public override string ToString()
         {
             if (!Success)
+            {
                 return $"Analysis failed: {ErrorMessage}";
+            }
 
             if (Summary.IncidentCount == 0)
+            {
                 return "No jamming incidents detected";
+            }
 
             var high = Summary.HighConfidenceCount;
             var medium = Summary.MediumConfidenceCount;

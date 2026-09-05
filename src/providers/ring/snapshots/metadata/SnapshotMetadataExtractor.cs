@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Extracts metadata from snapshot events into SnapshotMetadata objects.
@@ -28,7 +29,9 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
         public SnapshotMetadata ExtractMetadata(DoorbotHistoryEvent snapshotEvent)
         {
             if (snapshotEvent == null)
+            {
                 throw new ArgumentNullException(nameof(snapshotEvent));
+            }
 
             var metadata = new SnapshotMetadata
             {
@@ -68,9 +71,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
         private void ExtractLocationInfo(DoorbotHistoryEvent snapshotEvent, SnapshotMetadata metadata)
         {
-            var doorbot = snapshotEvent.Doorbot;
+            Doorbot doorbot = snapshotEvent.Doorbot;
             if (doorbot == null)
+            {
                 return;
+            }
 
             if (doorbot.Latitude.HasValue && doorbot.Longitude.HasValue)
             {
@@ -91,9 +96,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
         private void ExtractDeviceHealth(DoorbotHistoryEvent snapshotEvent, SnapshotMetadata metadata)
         {
-            var doorbot = snapshotEvent.Doorbot;
+            Doorbot doorbot = snapshotEvent.Doorbot;
             if (doorbot == null)
+            {
                 return;
+            }
 
             if (doorbot.Health != null)
             {
@@ -104,16 +111,18 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
                 if (doorbot.Health.BatteryPercentage.HasValue)
                 {
-                    metadata.BatteryPercentage = (int)doorbot.Health.BatteryPercentage.Value;
+                    metadata.BatteryPercentage = doorbot.Health.BatteryPercentage.Value;
                 }
             }
         }
 
         private void ExtractDeviceInfo(DoorbotHistoryEvent snapshotEvent, SnapshotMetadata metadata)
         {
-            var doorbot = snapshotEvent.Doorbot;
+            Doorbot doorbot = snapshotEvent.Doorbot;
             if (doorbot == null)
+            {
                 return;
+            }
 
             metadata.DeviceName = doorbot.Description ?? doorbot.Kind;
             metadata.DeviceManufacturer = "Amazon";
@@ -175,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
         private void ExtractCvProperties(DoorbotHistoryEvent snapshotEvent, SnapshotMetadata metadata)
         {
-            var cvProperties = snapshotEvent.CvProperties;
+            CvProperties cvProperties = snapshotEvent.CvProperties;
             if (cvProperties == null)
             {
                 metadata.MotionDetected = true;
@@ -276,17 +285,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
         private string? DetermineEventType(DoorbotHistoryEvent snapshotEvent)
         {
-            if (snapshotEvent.Kind == null)
-                return null;
-
-            return snapshotEvent.Kind.ToLowerInvariant() switch
-            {
-                "motion" => "motion",
-                "person" => "person",
-                "package" => "package",
-                "visitor" => "visitor",
-                _ => snapshotEvent.Kind.ToLowerInvariant()
-            };
+            return snapshotEvent.Kind == null
+                ? null
+                : snapshotEvent.Kind.ToLowerInvariant() switch
+                {
+                    "motion" => "motion",
+                    "person" => "person",
+                    "package" => "package",
+                    "visitor" => "visitor",
+                    _ => snapshotEvent.Kind.ToLowerInvariant()
+                };
         }
 
         private string? DetermineDeviceModel(string? deviceKind, string? deviceType)
@@ -296,21 +304,20 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                 return deviceType;
             }
 
-            if (string.IsNullOrWhiteSpace(deviceKind))
-                return null;
-
-            return deviceKind.ToLowerInvariant() switch
-            {
-                "doorbot" => "Doorbell",
-                "stickupcam" or "stickup" => "Stick Up Cam",
-                "stickupcam_pro" => "Stick Up Cam Pro",
-                "indoor_camera" => "Indoor Cam",
-                "outdoor_camera" => "Outdoor Cam",
-                "floodlight_camera" => "Floodlight Cam",
-                "chime" => "Chime",
-                "beams_lightgroup_v3" => "Smart Lighting",
-                _ => deviceKind
-            };
+            return string.IsNullOrWhiteSpace(deviceKind)
+                ? null
+                : deviceKind.ToLowerInvariant() switch
+                {
+                    "doorbot" => "Doorbell",
+                    "stickupcam" or "stickup" => "Stick Up Cam",
+                    "stickupcam_pro" => "Stick Up Cam Pro",
+                    "indoor_camera" => "Indoor Cam",
+                    "outdoor_camera" => "Outdoor Cam",
+                    "floodlight_camera" => "Floodlight Cam",
+                    "chime" => "Chime",
+                    "beams_lightgroup_v3" => "Smart Lighting",
+                    _ => deviceKind
+                };
         }
 
         private List<string>? BuildKeywords(SnapshotMetadata metadata)

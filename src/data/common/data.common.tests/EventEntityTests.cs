@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -11,11 +12,11 @@ public class EventEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var providerEventId = "ring_event_123";
-        var eventType = "motion";
+        string providerEventId = "ring_event_123";
+        string eventType = "motion";
         var occurredAtUtc = DateTime.UtcNow.AddHours(-1);
-        var snapshotUrl = "https://example.com/snapshot.jpg";
-        var metadataJson = "{\"zone\": \"front_door\"}";
+        string snapshotUrl = "https://example.com/snapshot.jpg";
+        string metadataJson = "{\"zone\": \"front_door\"}";
         var discoveredAtUtc = DateTime.UtcNow;
 
         // Act
@@ -104,10 +105,10 @@ public class EventEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var motionDetectionEnabled = true;
-        var motionSensitivity = "high";
-        var recordingMode = "continuous";
-        var customSettingsJson = "{\"nightVision\": true}";
+        bool motionDetectionEnabled = true;
+        string motionSensitivity = "high";
+        string recordingMode = "continuous";
+        string customSettingsJson = "{\"nightVision\": true}";
         var capturedAtUtc = DateTime.UtcNow;
         var source = DeviceConfigSource.Fetched;
 

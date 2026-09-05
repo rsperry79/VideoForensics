@@ -1,5 +1,5 @@
-using System.Text.Json.Serialization;
 using System;
+using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -23,6 +23,6 @@ namespace VideoForensics.Providers.Ring.Entities
         /// <summary>
         /// The Date and Time to which the TimestampEpoch translates
         /// </summary>
-        public DateTime? Timestamp => !TimestampEpoch.HasValue ? null : (DateTime?)new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(TimestampEpoch.Value).ToLocalTime();
+        public DateTime? Timestamp => !TimestampEpoch.HasValue ? null : new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(TimestampEpoch.Value).ToLocalTime();
     }
 }

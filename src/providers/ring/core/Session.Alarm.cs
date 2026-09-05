@@ -20,7 +20,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's newer "api/v1" endpoints, used for asset socket tickets.
         /// </summary>
-        public Uri RingAppApiBaseUrl => new Uri("https://api.ring.com/api/v1/");
+        public Uri RingAppApiBaseUrl => new("https://api.ring.com/api/v1/");
 
         /// <summary>
         /// Requests a ticket and opens a persistent device-command websocket ("asset socket") for the
@@ -31,8 +31,10 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public Task<RingAssetSocket> ConnectAssetSocket(Guid locationId) =>
-            ConnectAssetSocket(locationId, new ClientWebSocketTransport());
+        public Task<RingAssetSocket> ConnectAssetSocket(Guid locationId)
+        {
+            return ConnectAssetSocket(locationId, new ClientWebSocketTransport());
+        }
 
         /// <summary>
         /// Overload accepting an explicit IWebSocketTransport - used by tests to inject a fake
@@ -45,7 +47,7 @@ namespace VideoForensics.Providers.Ring
 
             var ticketUri = new Uri(RingAppApiBaseUrl,
                 $"clap/tickets?locationID={locationId:D}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws");
-            var response = await _httpUtility.GetContents(ticketUri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(ticketUri, AuthenticationToken, _hardwareId);
             var ticketResponse = JsonSerializer.Deserialize<ClapTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Host) || string.IsNullOrEmpty(ticketResponse.Ticket))

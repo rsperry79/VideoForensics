@@ -1,4 +1,4 @@
-using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.MauiApp.AppLock
 {

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -23,7 +25,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<IReadOnlyList<DeviceHealthReading>> FetchHealthAsync(CancellationToken ct)
         {
-            var session = _sessionProvider.GetSession();
+            Session? session = _sessionProvider.GetSession();
             if (session == null)
             {
                 _logger.LogDebug("No active Ring session; skipping health fetch for this account");
@@ -32,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                var devices = await session.GetRingDevices();
+                Devices devices = await session.GetRingDevices();
                 if (devices == null)
                 {
                     return Array.Empty<DeviceHealthReading>();
@@ -63,10 +65,10 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
-            foreach (var device in source)
+            foreach (T? device in source)
             {
                 var providerDeviceId = idSelector(device);
-                var health = healthSelector(device);
+                DeviceHealth? health = healthSelector(device);
                 if (providerDeviceId == null || health == null)
                 {
                     continue;
@@ -75,7 +77,7 @@ namespace VideoForensics.Providers.Ring.Services
                 readings.Add(new DeviceHealthReading(
                     ProviderDeviceId: providerDeviceId,
                     Connected: health.Connected,
-                    BatteryPercentage: health.BatteryPercentage.HasValue ? (decimal)health.BatteryPercentage.Value : null,
+                    BatteryPercentage: health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
                     Rssi: health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
                     WifiName: health.WifiName,
                     FirmwareVersion: health.FirmwareVersion

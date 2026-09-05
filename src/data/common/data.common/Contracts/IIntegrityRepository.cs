@@ -88,7 +88,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int DownloadedEvents { get; set; }
         public int MissingEvents { get; set; }
         public decimal CompletenessPercentage { get; set; }
-        public List<MissingDownloadRecord> MissingRecords { get; set; } = new();
+        public List<MissingDownloadRecord> MissingRecords { get; set; } = [];
         public string Status { get; set; } = "Complete"; // "Complete", "Incomplete", "Critical"
     }
 

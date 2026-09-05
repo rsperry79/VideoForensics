@@ -31,18 +31,13 @@ namespace VideoForensics.Providers.Ring.Converters
 
             if (reader.TokenType == JsonTokenType.String)
             {
-                var value = reader.GetString();
+                string? value = reader.GetString();
                 if (string.IsNullOrEmpty(value))
                 {
                     return null;
                 }
 
-                if (Guid.TryParse(value, out var guid))
-                {
-                    return guid;
-                }
-
-                return DerivePseudoGuid(value);
+                return Guid.TryParse(value, out var guid) ? guid : DerivePseudoGuid(value);
             }
 
             return null;
@@ -50,7 +45,7 @@ namespace VideoForensics.Providers.Ring.Converters
 
         private static Guid DerivePseudoGuid(string value)
         {
-            var hash = MD5.HashData(Encoding.UTF8.GetBytes(value));
+            byte[] hash = MD5.HashData(Encoding.UTF8.GetBytes(value));
             return new Guid(hash);
         }
 

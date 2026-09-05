@@ -16,7 +16,7 @@ namespace VideoForensics.Forensics.Models
         public TimeSpan Duration => IncidentEndTime - IncidentStartTime;
         public int AffectedEventCount { get; set; }
         public double AverageDegradation { get; set; }
-        public List<string> AffectedEventIds { get; set; } = new();
+        public List<string> AffectedEventIds { get; set; } = [];
         public string? IncidentDescription { get; set; }
         public JammingConfidence ConfidenceLevel { get; set; }
     }

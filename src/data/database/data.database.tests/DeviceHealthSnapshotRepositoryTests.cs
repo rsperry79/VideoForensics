@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -13,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new DeviceHealthSnapshotRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceHealthSnapshotRepository>());
         }
 
@@ -27,13 +30,13 @@ namespace VideoForensics.Data.Database.Tests
         public async Task AppendSnapshotAsync_CreatesSnapshot()
         {
             var deviceId = Guid.NewGuid();
-            var snapshot = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot snapshot = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
 
-            var result = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
+            DeviceHealthSnapshot result = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
 
             Assert.Equal(snapshot.Id, result.Id);
-            var history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
-            var stored = Assert.Single(history);
+            IReadOnlyList<DeviceHealthSnapshot> history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
+            DeviceHealthSnapshot stored = Assert.Single(history);
             Assert.Equal(deviceId, stored.DeviceId);
             Assert.True(stored.Connected);
         }
@@ -42,25 +45,25 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetLatestBeforeAsync_ReturnsNearestPriorSnapshot_NotFutureOne()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var early = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot early = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             early.CapturedAtUtc = now.AddHours(-3);
             early.BatteryPercentage = 90m;
 
-            var justBefore = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot justBefore = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             justBefore.CapturedAtUtc = now.AddMinutes(-10);
             justBefore.BatteryPercentage = 8m;
 
-            var future = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot future = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             future.CapturedAtUtc = now.AddHours(1);
             future.BatteryPercentage = 100m;
 
-            await _repository.AppendSnapshotAsync(early, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(justBefore, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(future, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(early, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(justBefore, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(future, CancellationToken.None);
 
-            var result = await _repository.GetLatestBeforeAsync(deviceId, now, CancellationToken.None);
+            DeviceHealthSnapshot? result = await _repository.GetLatestBeforeAsync(deviceId, now, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(justBefore.Id, result!.Id);
@@ -71,13 +74,13 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetLatestBeforeAsync_ReturnsNull_WhenNoPriorSnapshotExists()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var future = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot future = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             future.CapturedAtUtc = now.AddHours(1);
-            await _repository.AppendSnapshotAsync(future, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(future, CancellationToken.None);
 
-            var result = await _repository.GetLatestBeforeAsync(deviceId, now, CancellationToken.None);
+            DeviceHealthSnapshot? result = await _repository.GetLatestBeforeAsync(deviceId, now, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -86,20 +89,20 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetHistoryAsync_PreservesMultipleSnapshotsPerDevice_NewestFirst()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var snap1 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot snap1 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             snap1.CapturedAtUtc = now.AddHours(-2);
-            var snap2 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot snap2 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             snap2.CapturedAtUtc = now.AddHours(-1);
-            var snap3 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
+            DeviceHealthSnapshot snap3 = TestDataBuilder.BuildDeviceHealthSnapshot(deviceId);
             snap3.CapturedAtUtc = now;
 
-            await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
-            await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap1, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap2, CancellationToken.None);
+            _ = await _repository.AppendSnapshotAsync(snap3, CancellationToken.None);
 
-            var history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<DeviceHealthSnapshot> history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(3, history.Count);
             Assert.Equal(snap3.Id, history[0].Id);
@@ -118,7 +121,7 @@ namespace VideoForensics.Data.Database.Tests
                 CapturedAtUtc = DateTime.UtcNow
             };
 
-            var result = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
+            DeviceHealthSnapshot result = await _repository.AppendSnapshotAsync(snapshot, CancellationToken.None);
 
             Assert.Null(result.DeviceId);
             Assert.Null(result.DownloadEventId);

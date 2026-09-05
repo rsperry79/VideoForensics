@@ -1,7 +1,10 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -14,7 +17,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
         }
 
@@ -28,10 +31,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task LocationRepository_AddAndGet_RoundTrips()
         {
             var accountId = Guid.NewGuid();
-            var location = TestDataBuilder.BuildLocation(accountId, "loc_123", "Front Door");
+            Location location = TestDataBuilder.BuildLocation(accountId, "loc_123", "Front Door");
 
             await _repository.AddAsync(location, CancellationToken.None);
-            var retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
+            Location? retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(location.Id, retrieved.Id);
@@ -44,10 +47,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task LocationRepository_GetByProviderLocationId_FindsLocation()
         {
             var accountId = Guid.NewGuid();
-            var location = TestDataBuilder.BuildLocation(accountId, "loc_456");
+            Location location = TestDataBuilder.BuildLocation(accountId, "loc_456");
 
             await _repository.AddAsync(location, CancellationToken.None);
-            var retrieved = await _repository.GetByProviderLocationIdAsync(accountId, "loc_456", CancellationToken.None);
+            Location? retrieved = await _repository.GetByProviderLocationIdAsync(accountId, "loc_456", CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(location.Id, retrieved.Id);
@@ -59,28 +62,28 @@ namespace VideoForensics.Data.Database.Tests
             var accountId = Guid.NewGuid();
             var otherAccountId = Guid.NewGuid();
 
-            var loc1 = TestDataBuilder.BuildLocation(accountId);
-            var loc2 = TestDataBuilder.BuildLocation(accountId);
-            var loc3 = TestDataBuilder.BuildLocation(otherAccountId);
+            Location loc1 = TestDataBuilder.BuildLocation(accountId);
+            Location loc2 = TestDataBuilder.BuildLocation(accountId);
+            Location loc3 = TestDataBuilder.BuildLocation(otherAccountId);
 
             await _repository.AddAsync(loc1, CancellationToken.None);
             await _repository.AddAsync(loc2, CancellationToken.None);
             await _repository.AddAsync(loc3, CancellationToken.None);
 
-            var list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+            IReadOnlyList<Location> list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
         [Fact]
         public async Task LocationRepository_UpdateAsync_ModifiesData()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _repository.AddAsync(location, CancellationToken.None);
 
             location.Name = "Updated Location";
             await _repository.UpdateAsync(location, CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
+            Location? retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
             Assert.Equal("Updated Location", retrieved.Name);
         }
@@ -88,25 +91,25 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationRepository_DeleteAsync_RemovesLocation()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _repository.AddAsync(location, CancellationToken.None);
 
             await _repository.DeleteAsync(location.Id, CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
+            Location? retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
             Assert.Null(retrieved);
         }
 
         [Fact]
         public async Task LocationRepository_ListAsync_ReturnsAll()
         {
-            var loc1 = TestDataBuilder.BuildLocation();
-            var loc2 = TestDataBuilder.BuildLocation();
+            Location loc1 = TestDataBuilder.BuildLocation();
+            Location loc2 = TestDataBuilder.BuildLocation();
 
             await _repository.AddAsync(loc1, CancellationToken.None);
             await _repository.AddAsync(loc2, CancellationToken.None);
 
-            var list = await _repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<Location> list = await _repository.ListAsync(CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
@@ -114,12 +117,12 @@ namespace VideoForensics.Data.Database.Tests
         public async Task LocationRepository_UniqueConstraint_DuplicateAccountLocationComboThrows()
         {
             var accountId = Guid.NewGuid();
-            var loc1 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
-            var loc2 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
+            Location loc1 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
+            Location loc2 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
 
             await _repository.AddAsync(loc1, CancellationToken.None);
 
-            await Assert.ThrowsAsync<DbUpdateException>(async () =>
+            _ = await Assert.ThrowsAsync<DbUpdateException>(async () =>
                 await _repository.AddAsync(loc2, CancellationToken.None));
         }
     }

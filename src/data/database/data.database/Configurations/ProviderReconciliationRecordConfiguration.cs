@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,25 +10,25 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<ProviderReconciliationRecord> builder)
         {
-            builder.HasKey(prr => prr.Id);
+            _ = builder.HasKey(prr => prr.Id);
 
-            builder.Property(prr => prr.ProviderEventId)
+            _ = builder.Property(prr => prr.ProviderEventId)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(prr => prr.FieldName)
+            _ = builder.Property(prr => prr.FieldName)
                 .HasMaxLength(256);
 
-            builder.Property(prr => prr.StoredValue)
+            _ = builder.Property(prr => prr.StoredValue)
                 .HasMaxLength(2048);
 
-            builder.Property(prr => prr.ProviderValue)
+            _ = builder.Property(prr => prr.ProviderValue)
                 .HasMaxLength(2048);
 
-            builder.Property(prr => prr.Notes)
+            _ = builder.Property(prr => prr.Notes)
                 .HasMaxLength(512);
 
-            builder.HasIndex(prr => prr.DeviceId);
+            _ = builder.HasIndex(prr => prr.DeviceId);
         }
     }
 }

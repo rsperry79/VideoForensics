@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
@@ -22,9 +24,9 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<DownloadAuditRecord>> GetDownloadHistoryAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            var events = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            List<Event> events = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc)
@@ -46,7 +48,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<DownloadAuditRecord>> GetLocationDownloadHistoryAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Join(db.Devices.Where(d => d.LocationId == locationId),
                       e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
@@ -69,8 +71,8 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MissingDownloadRecord>> GetMissingDownloadsAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var missing = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<MissingDownloadRecord> missing = await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
                             x.Event.OccurredAtUtc >= fromUtc &&
@@ -94,7 +96,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<DownloadCompletenessReport> VerifyDownloadCompletenessAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var allEvents = await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -103,7 +105,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
 
             var downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
-            var missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
+            IReadOnlyList<MissingDownloadRecord> missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
 
             var completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
 
@@ -124,9 +126,9 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<TamperingIndicator>> VerifyEventHashesAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            var events = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            List<Event> events = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc &&
@@ -134,7 +136,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
 
             var indicators = new List<TamperingIndicator>();
-            foreach (var e in events)
+            foreach (Event? e in events)
             {
                 if (e.ApiSourceHash != e.EventIntegrityHash && e.EventIntegrityHash != null)
                 {
@@ -145,7 +147,7 @@ namespace VideoForensics.Data.Database.Repositories
                         DeviceName = device?.Name ?? "Unknown",
                         OccurredAtUtc = e.OccurredAtUtc,
                         IndicatorType = "HashMismatch",
-                        Description = $"Event hash mismatch: API={e.ApiSourceHash?.Substring(0, 8)}... vs Local={e.EventIntegrityHash?.Substring(0, 8)}...",
+                        Description = $"Event hash mismatch: API={e.ApiSourceHash?[..8]}... vs Local={e.EventIntegrityHash?[..8]}...",
                         TamperingScore = 85
                     });
                 }
@@ -157,13 +159,13 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<TamperingIndicator>> GetTamperingIndicatorsAsync(
             Guid locationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
             var allIndicators = new List<TamperingIndicator>();
 
-            foreach (var device in devices)
+            foreach (Device? device in devices)
             {
-                var indicators = await VerifyEventHashesAsync(device.Id, DateTime.MinValue, DateTime.MaxValue, ct);
+                IReadOnlyList<TamperingIndicator> indicators = await VerifyEventHashesAsync(device.Id, DateTime.MinValue, DateTime.MaxValue, ct);
                 allIndicators.AddRange(indicators);
             }
 
@@ -172,8 +174,8 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<int> ComputeEventIntegrityScoreAsync(Guid locationId, CancellationToken ct)
         {
-            var tampering = await GetTamperingIndicatorsAsync(locationId, ct);
-            var completeness = await VerifyDownloadCompletenessAsync(
+            IReadOnlyList<TamperingIndicator> tampering = await GetTamperingIndicatorsAsync(locationId, ct);
+            DownloadCompletenessReport completeness = await VerifyDownloadCompletenessAsync(
                 locationId, DateTime.UtcNow.AddDays(-180), DateTime.UtcNow, ct);
 
             var tamperingPenalty = Math.Min(50, tampering.Count * 5);
@@ -190,9 +192,9 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<AnomalousGap>> DetectMissingEventsByPatternAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            var events = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            List<Event> events = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc)
@@ -230,25 +232,34 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<RecordingFailure>> IdentifyRecordingFailuresAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var failures = new List<RecordingFailure>();
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
 
-            foreach (var device in devices)
+            foreach (Device? device in devices)
             {
-                var gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
-                foreach (var gap in gaps)
+                IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
+                foreach (AnomalousGap gap in gaps)
                 {
-                    var health = await db.DeviceHealthRecords
+                    DeviceHealth? health = await db.DeviceHealthRecords
                         .Where(h => h.DeviceId == device.Id &&
                                     h.LastHeartbeatUtc >= gap.StartUtc &&
                                     h.LastHeartbeatUtc <= gap.EndUtc)
                         .FirstOrDefaultAsync(ct);
 
                     var failureType = "Unknown";
-                    if (health?.IsOnline == false) failureType = "DeviceOffline";
-                    else if (health?.BatteryPercentage < 10m) failureType = "LowBattery";
-                    else if (health?.WifiSignalRssi < -80) failureType = "NoConnectivity";
+                    if (health?.IsOnline == false)
+                    {
+                        failureType = "DeviceOffline";
+                    }
+                    else if (health?.BatteryPercentage < 10m)
+                    {
+                        failureType = "LowBattery";
+                    }
+                    else if (health?.WifiSignalRssi < -80)
+                    {
+                        failureType = "NoConnectivity";
+                    }
 
                     failures.Add(new RecordingFailure
                     {
@@ -268,14 +279,14 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<SuspiciousGap>> FlagSuspiciousGapsAsync(Guid locationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var suspiciousGaps = new List<SuspiciousGap>();
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
 
-            foreach (var device in devices)
+            foreach (Device? device in devices)
             {
-                var gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
-                foreach (var gap in gaps)
+                IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
+                foreach (AnomalousGap gap in gaps)
                 {
                     var suspicion = gap.StartUtc.Hour switch
                     {
@@ -303,10 +314,10 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IntegritySummary> GetIntegritySummaryAsync(Guid locationId, CancellationToken ct)
         {
             var integrityScore = await ComputeEventIntegrityScoreAsync(locationId, ct);
-            var tampering = await GetTamperingIndicatorsAsync(locationId, ct);
-            var completeness = await VerifyDownloadCompletenessAsync(
+            IReadOnlyList<TamperingIndicator> tampering = await GetTamperingIndicatorsAsync(locationId, ct);
+            DownloadCompletenessReport completeness = await VerifyDownloadCompletenessAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
-            var failures = await IdentifyRecordingFailuresAsync(
+            IReadOnlyList<RecordingFailure> failures = await IdentifyRecordingFailuresAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
 
             var compromisedDevices = tampering
@@ -323,7 +334,7 @@ namespace VideoForensics.Data.Database.Repositories
                 TamperingIndicators = tampering.Count,
                 MissingDownloads = completeness.MissingEvents,
                 FailedRecordings = failures.Count,
-                IntegrityScore = (decimal)integrityScore,
+                IntegrityScore = integrityScore,
                 CompromisedDevices = compromisedDevices,
                 DetailQueryMethod = "GetTamperingIndicatorsAsync"
             };
@@ -338,7 +349,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<PaginatedResult<TamperingIndicator>> GetTamperingIndicatorsPaginatedAsync(
             Guid locationId, int pageNumber, int pageSize, CancellationToken ct)
         {
-            var allIndicators = await GetTamperingIndicatorsAsync(locationId, ct);
+            IReadOnlyList<TamperingIndicator> allIndicators = await GetTamperingIndicatorsAsync(locationId, ct);
             var orderedIndicators = allIndicators.OrderByDescending(i => i.TamperingScore).ToList();
 
             var totalCount = orderedIndicators.Count;
@@ -359,7 +370,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<CursorPaginatedResult<DownloadAuditRecord>> GetDownloadHistoryCursorAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct)
         {
-            var allRecords = await GetDownloadHistoryAsync(deviceId, fromUtc, toUtc, ct);
+            IReadOnlyList<DownloadAuditRecord> allRecords = await GetDownloadHistoryAsync(deviceId, fromUtc, toUtc, ct);
             var orderedRecords = allRecords.OrderBy(r => r.OccurredAtUtc).ToList();
 
             int startIndex = 0;

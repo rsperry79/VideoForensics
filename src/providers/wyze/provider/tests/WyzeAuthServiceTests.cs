@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Wyze.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Wyze.Tests
@@ -16,11 +19,11 @@ namespace VideoForensics.Providers.Wyze.Tests
         public async Task AuthenticateAsync_Stub_ReturnsFailureResult()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new WyzeAuthService(logger);
 
             // Act
-            var result = await service.AuthenticateAsync("user@example.com", "password");
+            AuthResult result = await service.AuthenticateAsync("user@example.com", "password");
 
             // Assert
             Assert.NotNull(result);
@@ -32,7 +35,7 @@ namespace VideoForensics.Providers.Wyze.Tests
         public async Task RefreshAuthAsync_Stub_ReturnsFalse()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new WyzeAuthService(logger);
 
             // Act
@@ -46,7 +49,7 @@ namespace VideoForensics.Providers.Wyze.Tests
         public async Task IsAuthenticatedAsync_Stub_ReturnsFalse()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new WyzeAuthService(logger);
 
             // Act
@@ -60,7 +63,7 @@ namespace VideoForensics.Providers.Wyze.Tests
         public void GetAuthStatus_Stub_ReturnsNotAuthenticatedMessage()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new WyzeAuthService(logger);
 
             // Act
@@ -75,7 +78,7 @@ namespace VideoForensics.Providers.Wyze.Tests
         public void Constructor_WithLogger_CreatesService()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
 
             // Act
             var service = new WyzeAuthService(logger);
@@ -88,11 +91,11 @@ namespace VideoForensics.Providers.Wyze.Tests
         public async Task AuthenticateAsync_WithAnyCredentials_ReturnsFailureResult()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new WyzeAuthService(logger);
 
             // Act
-            var result = await service.AuthenticateAsync("test", "test123");
+            AuthResult result = await service.AuthenticateAsync("test", "test123");
 
             // Assert
             Assert.NotNull(result);

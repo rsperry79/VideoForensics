@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,14 +23,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets an annotation by ID.</summary>
         public async Task<Annotation?> GetAsync(Guid annotationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Annotations.FirstOrDefaultAsync(a => a.Id == annotationId, ct);
         }
 
         /// <summary>Adds a new annotation.</summary>
         public async Task<Annotation> AddAsync(string entityType, Guid entityId, string source, string key, string value, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var annotation = new Annotation
@@ -43,8 +44,8 @@ namespace VideoForensics.Data.Database.Repositories
                     CreatedAtUtc = DateTime.UtcNow
                 };
 
-                db.Annotations.Add(annotation);
-                await db.SaveChangesAsync(ct);
+                _ = db.Annotations.Add(annotation);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Annotation added: {AnnotationId} ({EntityType}:{EntityId})",
                     annotation.Id, entityType, entityId);
                 return annotation;
@@ -59,7 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets all annotations for a specific entity.</summary>
         public async Task<IReadOnlyList<Annotation>> GetForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Annotations
                 .Where(a => a.EntityType == entityType && a.EntityId == entityId)
                 .ToListAsync(ct);
@@ -68,8 +69,8 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Searches for annotations by key and optional value (cross-entity lookup).</summary>
         public async Task<IReadOnlyList<Annotation>> SearchAsync(string key, string? value, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var query = db.Annotations.Where(a => a.Key == key);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<Annotation> query = db.Annotations.Where(a => a.Key == key);
 
             if (!string.IsNullOrEmpty(value))
             {
@@ -82,14 +83,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes an annotation.</summary>
         public async Task DeleteAsync(Guid annotationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var annotation = await db.Annotations.FirstOrDefaultAsync(a => a.Id == annotationId, ct);
+                Annotation? annotation = await db.Annotations.FirstOrDefaultAsync(a => a.Id == annotationId, ct);
                 if (annotation != null)
                 {
-                    db.Annotations.Remove(annotation);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.Annotations.Remove(annotation);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Annotation deleted: {AnnotationId}", annotationId);
                 }
             }
@@ -103,17 +104,17 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes all annotations for a specific entity.</summary>
         public async Task DeleteForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var annotations = await db.Annotations
+                List<Annotation> annotations = await db.Annotations
                     .Where(a => a.EntityType == entityType && a.EntityId == entityId)
                     .ToListAsync(ct);
 
                 if (annotations.Count > 0)
                 {
                     db.Annotations.RemoveRange(annotations);
-                    await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Annotations deleted for {EntityType}:{EntityId} (count: {Count})",
                         entityType, entityId, annotations.Count);
                 }

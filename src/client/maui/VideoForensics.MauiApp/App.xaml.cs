@@ -1,5 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.MauiApp.AppLock;
 
 namespace VideoForensics.MauiApp;
@@ -48,7 +47,7 @@ public partial class App : Application
     private ContentPage BuildLockPage(Window window)
     {
         var authGate = _services.GetRequiredService<ILocalAuthGate>();
-        var lockPage = new AppLockPage(authGate);
+        AppLockPage lockPage = new(authGate);
         lockPage.Unlocked += (_, _) => window.Page = new MainPage();
         return lockPage;
     }

@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Forensics.Models;
 
 namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 {
@@ -38,7 +33,8 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
             double? baselineRssi = -50)
         {
             var events = new List<DoorbotHistoryEvent>();
-            var now = DateTime.UtcNow;
+
+            _ = DateTime.UtcNow;
 
             for (int i = 0; i < eventCount; i++)
             {
@@ -91,7 +87,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 
             for (int i = 0; i < 64; i++)
             {
-                result.Append(chars[random.Next(chars.Length)]);
+                _ = result.Append(chars[random.Next(chars.Length)]);
             }
 
             return result.ToString();

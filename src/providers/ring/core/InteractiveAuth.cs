@@ -28,12 +28,12 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                await session.Authenticate();
+                _ = await session.Authenticate();
             }
             catch (Exceptions.TwoFactorAuthenticationRequiredException)
             {
-                var code = await getTwoFactorCode();
-                await session.Authenticate(twoFactorAuthCode: code);
+                string code = await getTwoFactorCode();
+                _ = await session.Authenticate(twoFactorAuthCode: code);
             }
 
             return session;

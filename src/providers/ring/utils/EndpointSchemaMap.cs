@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Maps each API endpoint to its expected entity type(s) for schema validation.

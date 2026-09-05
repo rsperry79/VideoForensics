@@ -1,9 +1,8 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Json.Converters
 {
@@ -42,9 +41,13 @@ namespace VideoForensics.Providers.Common.Helpers.Json.Converters
         public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
         {
             if (value == null)
+            {
                 writer.WriteNullValue();
+            }
             else
+            {
                 writer.WriteStringValue(value);
+            }
         }
     }
 }

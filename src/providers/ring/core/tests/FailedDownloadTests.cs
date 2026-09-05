@@ -1,17 +1,15 @@
 #nullable disable
-using System.Collections.Generic;
-
 using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     public class FailedDownloadTests
     {
         [Fact]
         public void FailedDownloadCanBeCreatedWithAllProperties()
         {
-            var timestamp = DateTime.UtcNow;
-            var createdAt = DateTime.UtcNow.AddMinutes(-5);
+            DateTime timestamp = DateTime.UtcNow;
+            DateTime createdAt = DateTime.UtcNow.AddMinutes(-5);
 
             var download = new FailedDownload
             {
@@ -58,7 +56,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void FailedDownloadCanBeDeduplicatedByEventAndCamera()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var downloads = new List<FailedDownload>
             {
                 new() { EventId = "1", CameraId = 10, Timestamp = now, CreatedAt = now, ErrorDescription = "Error 1" },
@@ -96,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var header = "Timestamp\tLocationName\tCameraName\tCameraId\tEventId\tEventType\tCreatedAt\tErrorDescription";
             var lines = new List<string> { header };
 
-            foreach (var d in downloads)
+            foreach (FailedDownload d in downloads)
             {
                 var line = $"{d.Timestamp}\t{d.LocationName}\t{d.CameraName}\t{d.CameraId}\t{d.EventId}\t{d.EventType}\t{d.CreatedAt}\t{d.ErrorDescription}";
                 lines.Add(line);

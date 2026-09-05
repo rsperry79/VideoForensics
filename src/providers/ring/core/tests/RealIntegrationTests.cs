@@ -1,11 +1,6 @@
-using System;
-using System.Threading.Tasks;
+using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 
-using VideoForensics.Providers.Ring;
-
-using VideoForensics.Providers.Ring.Tests.Mocks;
-
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
     /// Real Ring API integration tests using credentials from RingVideos app config.
@@ -60,14 +55,20 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies session can be created with valid credentials")]
         public void RealSession_CanBeCreatedWithCredentials()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
             // CreateSessionWithoutAuth specifically needs username/password - a refresh-token-only
             // credential set (the common case after the SelfTester's 2FA `--auth` flow) can't
             // satisfy it even though _credentialsAvailable is true.
-            if (!RealSessionHelper.UsernamePasswordAvailable()) Assert.Skip("Saved credentials are refresh-token-only; this test needs username/password");
+            if (!RealSessionHelper.UsernamePasswordAvailable())
+            {
+                Assert.Skip("Saved credentials are refresh-token-only; this test needs username/password");
+            }
 
             // Arrange & Act
-            var session = RealSessionHelper.CreateSessionWithoutAuth();
+            Session session = RealSessionHelper.CreateSessionWithoutAuth();
 
             // Assert
             Assert.NotNull(session);
@@ -78,8 +79,15 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies session authentication succeeds with valid credentials")]
         public async Task RealSession_CanAuthenticateWithValidCredentials()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
             var isAuthenticated = _session.IsAuthenticated;
@@ -94,13 +102,20 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies session properties are accessible")]
         public void RealSession_PropertiesAreAccessible()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
             var username = _session.Username;
-            var oauthUrl = _session.OAuthUrl;
-            var baseUrl = _session.BaseUrl;
+            Uri oauthUrl = _session.OAuthUrl;
+            Uri baseUrl = _session.BaseUrl;
 
             // Assert
             // Username is only populated when the session was constructed from username/password
@@ -110,6 +125,7 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 Assert.NotNull(username);
             }
+
             Assert.NotNull(oauthUrl);
             Assert.NotNull(baseUrl);
             Assert.True(oauthUrl.ToString().Contains("oauth.ring.com"));
@@ -120,11 +136,18 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies GetRingDevices works with authenticated session")]
         public async Task RealSession_CanGetRingDevices()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
-            var devices = await _session.GetRingDevices();
+            Entities.Devices devices = await _session.GetRingDevices();
 
             // Assert
             Assert.NotNull(devices);
@@ -135,11 +158,18 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies GetLocations works with authenticated session")]
         public async Task RealSession_CanGetLocations()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
-            var locations = await _session.GetLocations();
+            List<Entities.Location> locations = await _session.GetLocations();
 
             // Assert
             Assert.NotNull(locations);
@@ -150,11 +180,18 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies GetDoorbotsHistory works with authenticated session")]
         public async Task RealSession_CanGetDoorbotsHistory()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
-            var history = await _session.GetDoorbotsHistory();
+            List<Entities.DoorbotHistoryEvent> history = await _session.GetDoorbotsHistory();
 
             // Assert
             Assert.NotNull(history);
@@ -165,14 +202,21 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies session remains authenticated for multiple calls")]
         public async Task RealSession_RemainsAuthenticatedAcrossMultipleCalls()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
             var auth1 = _session.IsAuthenticated;
-            await _session.GetRingDevices(); // Make API call
+            _ = await _session.GetRingDevices(); // Make API call
             var auth2 = _session.IsAuthenticated;
-            await _session.GetLocations(); // Make another API call
+            _ = await _session.GetLocations(); // Make another API call
             var auth3 = _session.IsAuthenticated;
 
             // Assert
@@ -183,12 +227,19 @@ namespace VideoForensics.Providers.Ring.Tests
         [Trait("Description", "Real API: Verifies authentication token persists")]
         public async Task RealSession_AuthenticationTokenPersists()
         {
-            if (!_credentialsAvailable) Assert.Skip("Ring API credentials not configured in AppData");
-            if (_session == null) Assert.Skip("Failed to create authenticated session");
+            if (!_credentialsAvailable)
+            {
+                Assert.Skip("Ring API credentials not configured in AppData");
+            }
+
+            if (_session == null)
+            {
+                Assert.Skip("Failed to create authenticated session");
+            }
 
             // Act
             var token1 = _session.AuthenticationToken;
-            await _session.GetRingDevices();
+            _ = await _session.GetRingDevices();
             var token2 = _session.AuthenticationToken;
 
             // Assert

@@ -1,12 +1,9 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Sockets;
 
-namespace VideoForensics.Providers.Ring.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>
     /// Fake IWebSocketTransport for unit testing RingAssetSocket and RingSignalingClient without a
@@ -15,7 +12,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
     /// </summary>
     public class FakeWebSocketTransport : IWebSocketTransport
     {
-        public List<string> SentMessages { get; } = new();
+        public List<string> SentMessages { get; } = [];
 
         public Uri? ConnectedUri { get; private set; }
 
@@ -27,7 +24,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// </summary>
         public Action<string>? OnMessageSent { get; set; }
 
-        private readonly BlockingCollection<string> _incoming = new();
+        private readonly BlockingCollection<string> _incoming = [];
 
         public Task ConnectAsync(Uri uri, CancellationToken cancellationToken)
         {
@@ -41,6 +38,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
             {
                 SentMessages.Add(message);
             }
+
             OnMessageSent?.Invoke(message);
             return Task.CompletedTask;
         }
@@ -48,7 +46,10 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// <summary>
         /// Queues a message to be returned by the next ReceiveAsync call.
         /// </summary>
-        public void Enqueue(string message) => _incoming.Add(message);
+        public void Enqueue(string message)
+        {
+            _incoming.Add(message);
+        }
 
         public Task<string?> ReceiveAsync(CancellationToken cancellationToken)
         {
@@ -65,7 +66,10 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
             }, cancellationToken);
         }
 
-        public Task CloseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task CloseAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
 
         public void Dispose()
         {

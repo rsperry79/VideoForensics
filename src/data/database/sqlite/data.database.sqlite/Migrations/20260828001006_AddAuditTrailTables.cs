@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "AccessAuditLogs",
                 columns: table => new
                 {
@@ -26,10 +25,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
+                    _ = table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ExportAuditRecords",
                 columns: table => new
                 {
@@ -43,10 +42,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RedactionAuditRecords",
                 columns: table => new
                 {
@@ -60,10 +59,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RedactionAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_RedactionAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ModificationAuditRecords",
                 columns: table => new
                 {
@@ -77,50 +76,50 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ModificationAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_ModificationAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_AccessedAtUtc",
                 table: "AccessAuditLogs",
                 column: "AccessedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_EvidenceId",
                 table: "AccessAuditLogs",
                 column: "EvidenceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_UserId",
                 table: "AccessAuditLogs",
                 column: "UserId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_ExportedAtUtc",
                 table: "ExportAuditRecords",
                 column: "ExportedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_LocationId",
                 table: "ExportAuditRecords",
                 column: "LocationId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RedactionAuditRecords_EvidenceId",
                 table: "RedactionAuditRecords",
                 column: "EvidenceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RedactionAuditRecords_RedactedAtUtc",
                 table: "RedactionAuditRecords",
                 column: "RedactedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ModificationAuditRecords_EventId",
                 table: "ModificationAuditRecords",
                 column: "EventId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ModificationAuditRecords_ModifiedAtUtc",
                 table: "ModificationAuditRecords",
                 column: "ModifiedAtUtc");
@@ -129,16 +128,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "AccessAuditLogs");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ExportAuditRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RedactionAuditRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ModificationAuditRecords");
         }
     }

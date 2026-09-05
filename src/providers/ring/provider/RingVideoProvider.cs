@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Core;
-using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring
 {

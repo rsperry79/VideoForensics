@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -21,11 +22,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Appends a new device health snapshot.</summary>
         public async Task<DeviceHealthSnapshot> AppendSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DeviceHealthSnapshots.Add(snapshot);
-                await db.SaveChangesAsync(ct);
+                _ = db.DeviceHealthSnapshots.Add(snapshot);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Device health snapshot appended: {SnapshotId} (device: {DeviceId})",
                     snapshot.Id, snapshot.DeviceId);
                 return snapshot;
@@ -40,7 +41,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the nearest snapshot at or before the given time - the "last known state" going into a gap.</summary>
         public async Task<DeviceHealthSnapshot?> GetLatestBeforeAsync(Guid deviceId, DateTime atOrBeforeUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DeviceHealthSnapshots
                 .Where(s => s.DeviceId == deviceId && s.CapturedAtUtc <= atOrBeforeUtc)
                 .OrderByDescending(s => s.CapturedAtUtc)
@@ -50,7 +51,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the full snapshot history for a device, newest first.</summary>
         public async Task<IReadOnlyList<DeviceHealthSnapshot>> GetHistoryAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DeviceHealthSnapshots
                 .Where(s => s.DeviceId == deviceId)
                 .OrderByDescending(s => s.CapturedAtUtc)

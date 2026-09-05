@@ -1,6 +1,6 @@
 using System;
 
-namespace VideoForensics.Forensics
+namespace VideoForensics.Forensics.Exceptions
 {
     /// <summary>
     /// Thrown when evidence integrity checks fail, indicating potential data tampering

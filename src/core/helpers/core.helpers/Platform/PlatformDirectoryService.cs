@@ -1,8 +1,7 @@
 using System;
 using System.IO;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Platform
 {
@@ -26,14 +25,11 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
                 return GetXdgDataHome();
             }
 
-            if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsMacOS()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Application Support", AppName);
-            }
-
-            throw new PlatformNotSupportedException($"Unsupported platform");
+                    "Library", "Application Support", AppName)
+                : throw new PlatformNotSupportedException($"Unsupported platform");
         }
 
         public string GetLogsDirectory()
@@ -50,14 +46,11 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
                 return GetXdgStateHome();
             }
 
-            if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsMacOS()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Logs", AppName);
-            }
-
-            throw new PlatformNotSupportedException($"Unsupported platform");
+                    "Library", "Logs", AppName)
+                : throw new PlatformNotSupportedException($"Unsupported platform");
         }
 
         public string GetConfigDirectory()
@@ -74,51 +67,39 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
                 return GetXdgConfigHome();
             }
 
-            if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsMacOS()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Preferences", AppName);
-            }
-
-            throw new PlatformNotSupportedException($"Unsupported platform");
+                    "Library", "Preferences", AppName)
+                : throw new PlatformNotSupportedException($"Unsupported platform");
         }
 
         private string GetXdgDataHome()
         {
-            var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
-            if (!string.IsNullOrEmpty(xdgDataHome))
-            {
-                return Path.Combine(xdgDataHome, AppDirName);
-            }
-
-            return Path.Combine(
+            string? xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            return !string.IsNullOrEmpty(xdgDataHome)
+                ? Path.Combine(xdgDataHome, AppDirName)
+                : Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".local", "share", AppDirName);
         }
 
         private string GetXdgStateHome()
         {
-            var xdgStateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
-            if (!string.IsNullOrEmpty(xdgStateHome))
-            {
-                return Path.Combine(xdgStateHome, AppDirName);
-            }
-
-            return Path.Combine(
+            string? xdgStateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
+            return !string.IsNullOrEmpty(xdgStateHome)
+                ? Path.Combine(xdgStateHome, AppDirName)
+                : Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".local", "state", AppDirName);
         }
 
         private string GetXdgConfigHome()
         {
-            var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-            if (!string.IsNullOrEmpty(xdgConfigHome))
-            {
-                return Path.Combine(xdgConfigHome, AppDirName);
-            }
-
-            return Path.Combine(
+            string? xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            return !string.IsNullOrEmpty(xdgConfigHome)
+                ? Path.Combine(xdgConfigHome, AppDirName)
+                : Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".config", AppDirName);
         }

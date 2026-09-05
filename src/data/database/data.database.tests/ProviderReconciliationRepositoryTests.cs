@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -13,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new ProviderReconciliationRepository(_fixture.Factory, loggerFactory.CreateLogger<ProviderReconciliationRepository>());
         }
 
@@ -27,10 +30,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ProviderReconciliationRepository_AppendAsync_CreatesRecord()
         {
             var deviceId = Guid.NewGuid();
-            var record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_001");
+            ProviderReconciliationRecord record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_001");
 
-            await _repository.AppendAsync(record, CancellationToken.None);
-            var retrieved = await _repository.GetAsync(record.Id, CancellationToken.None);
+            _ = await _repository.AppendAsync(record, CancellationToken.None);
+            ProviderReconciliationRecord? retrieved = await _repository.GetAsync(record.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(deviceId, retrieved.DeviceId);
@@ -41,22 +44,22 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ProviderReconciliationRepository_GetHistoryForDevice_ReturnsInReverseOrder()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var rec1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
+            ProviderReconciliationRecord rec1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
             rec1.RanAtUtc = now.AddHours(-2);
 
-            var rec2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
+            ProviderReconciliationRecord rec2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
             rec2.RanAtUtc = now.AddHours(-1);
 
-            var rec3 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
+            ProviderReconciliationRecord rec3 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
             rec3.RanAtUtc = now;
 
-            await _repository.AppendAsync(rec1, CancellationToken.None);
-            await _repository.AppendAsync(rec2, CancellationToken.None);
-            await _repository.AppendAsync(rec3, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec1, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec2, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec3, CancellationToken.None);
 
-            var history = await _repository.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> history = await _repository.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(3, history.Count);
             Assert.Equal(rec3.Id, history[0].Id);
@@ -67,26 +70,26 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ProviderReconciliationRepository_ListAsync_ReturnsAll()
         {
-            var rec1 = TestDataBuilder.BuildProviderReconciliationRecord();
-            var rec2 = TestDataBuilder.BuildProviderReconciliationRecord();
+            ProviderReconciliationRecord rec1 = TestDataBuilder.BuildProviderReconciliationRecord();
+            ProviderReconciliationRecord rec2 = TestDataBuilder.BuildProviderReconciliationRecord();
 
-            await _repository.AppendAsync(rec1, CancellationToken.None);
-            await _repository.AppendAsync(rec2, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec1, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec2, CancellationToken.None);
 
-            var list = await _repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> list = await _repository.ListAsync(CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
         [Fact]
         public async Task ProviderReconciliationRepository_GetOpenDiscrepanciesAsync_ReturnsAll()
         {
-            var rec1 = TestDataBuilder.BuildProviderReconciliationRecord();
-            var rec2 = TestDataBuilder.BuildProviderReconciliationRecord();
+            ProviderReconciliationRecord rec1 = TestDataBuilder.BuildProviderReconciliationRecord();
+            ProviderReconciliationRecord rec2 = TestDataBuilder.BuildProviderReconciliationRecord();
 
-            await _repository.AppendAsync(rec1, CancellationToken.None);
-            await _repository.AppendAsync(rec2, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec1, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec2, CancellationToken.None);
 
-            var discrepancies = await _repository.GetOpenDiscrepanciesAsync(CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> discrepancies = await _repository.GetOpenDiscrepanciesAsync(CancellationToken.None);
             Assert.Equal(2, discrepancies.Count);
         }
 
@@ -95,15 +98,15 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            var rec1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_1");
-            var rec2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_2");
-            var rec3 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_3");
+            ProviderReconciliationRecord rec1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_1");
+            ProviderReconciliationRecord rec2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_2");
+            ProviderReconciliationRecord rec3 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId, "evt_3");
 
-            await _repository.AppendAsync(rec1, CancellationToken.None);
-            await _repository.AppendAsync(rec2, CancellationToken.None);
-            await _repository.AppendAsync(rec3, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec1, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec2, CancellationToken.None);
+            _ = await _repository.AppendAsync(rec3, CancellationToken.None);
 
-            var history = await _repository.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> history = await _repository.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
             Assert.Equal(3, history.Count);
         }
     }

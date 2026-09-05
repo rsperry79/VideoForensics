@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,63 +10,63 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "ApiResponseHash",
                 table: "Locations",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "LastSyncedUtc",
                 table: "Locations",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "SyncStatus",
                 table: "Locations",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "ApiSourceHash",
                 table: "Events",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "DownloadedAtUtc",
                 table: "Events",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "EventIntegrityHash",
                 table: "Events",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "ApiResponseHash",
                 table: "Devices",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
+            _ = migrationBuilder.AddColumn<DateTime>(
                 name: "LastSyncedUtc",
                 table: "Devices",
                 type: "TEXT",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "SyncStatus",
                 table: "Devices",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "AccessAuditLogs",
                 columns: table => new
                 {
@@ -82,10 +81,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
+                    _ = table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceCapabilities",
                 columns: table => new
                 {
@@ -107,10 +106,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceCapabilities", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceCapabilities", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceHealthRecords",
                 columns: table => new
                 {
@@ -129,10 +128,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceHealthRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceHealthRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ExportAuditRecords",
                 columns: table => new
                 {
@@ -146,10 +145,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "LocationMetadata",
                 columns: table => new
                 {
@@ -170,10 +169,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_LocationMetadata", x => x.Id);
+                    _ = table.PrimaryKey("PK_LocationMetadata", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ModificationAuditRecords",
                 columns: table => new
                 {
@@ -187,10 +186,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ModificationAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_ModificationAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RedactionAuditRecords",
                 columns: table => new
                 {
@@ -204,10 +203,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RedactionAuditRecords", x => x.Id);
+                    _ = table.PrimaryKey("PK_RedactionAuditRecords", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "RingAccounts",
                 columns: table => new
                 {
@@ -226,73 +225,73 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RingAccounts", x => x.Id);
+                    _ = table.PrimaryKey("PK_RingAccounts", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_AccessedAtUtc",
                 table: "AccessAuditLogs",
                 column: "AccessedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_EvidenceId",
                 table: "AccessAuditLogs",
                 column: "EvidenceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_UserId",
                 table: "AccessAuditLogs",
                 column: "UserId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceCapabilities_DeviceId",
                 table: "DeviceCapabilities",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceHealthRecords_DeviceId",
                 table: "DeviceHealthRecords",
                 column: "DeviceId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_ExportedAtUtc",
                 table: "ExportAuditRecords",
                 column: "ExportedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_LocationId",
                 table: "ExportAuditRecords",
                 column: "LocationId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_LocationMetadata_LocationId",
                 table: "LocationMetadata",
                 column: "LocationId",
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ModificationAuditRecords_EventId",
                 table: "ModificationAuditRecords",
                 column: "EventId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ModificationAuditRecords_ModifiedAtUtc",
                 table: "ModificationAuditRecords",
                 column: "ModifiedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RedactionAuditRecords_EvidenceId",
                 table: "RedactionAuditRecords",
                 column: "EvidenceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RedactionAuditRecords_RedactedAtUtc",
                 table: "RedactionAuditRecords",
                 column: "RedactedAtUtc");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_RingAccounts_ProviderAccountId",
                 table: "RingAccounts",
                 column: "ProviderAccountId",
@@ -302,63 +301,63 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "AccessAuditLogs");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceCapabilities");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceHealthRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ExportAuditRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "LocationMetadata");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ModificationAuditRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RedactionAuditRecords");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "RingAccounts");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ApiResponseHash",
                 table: "Locations");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LastSyncedUtc",
                 table: "Locations");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SyncStatus",
                 table: "Locations");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ApiSourceHash",
                 table: "Events");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "DownloadedAtUtc",
                 table: "Events");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "EventIntegrityHash",
                 table: "Events");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ApiResponseHash",
                 table: "Devices");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LastSyncedUtc",
                 table: "Devices");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SyncStatus",
                 table: "Devices");
         }

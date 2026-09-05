@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace VideoForensics.Providers.Common.Helpers.Contracts
 {

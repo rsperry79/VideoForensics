@@ -1,11 +1,11 @@
+using SIPSorcery.Net;
+
+using SIPSorceryMedia.Abstractions;
+
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
-
-using SIPSorcery.Net;
-
-using SIPSorceryMedia.Abstractions;
 
 namespace VideoForensics.Providers.Ring.Streaming
 {
@@ -58,20 +58,20 @@ namespace VideoForensics.Providers.Ring.Streaming
 
             var config = new RTCConfiguration
             {
-                iceServers = new List<RTCIceServer>
-                {
+                iceServers =
+                [
                     new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
-                }
+                ]
             };
             _pc = new RTCPeerConnection(config);
 
             var videoFormats = new List<VideoFormat>
             {
-                new VideoFormat(VideoCodecsEnum.H264, 96, 90000, "packetization-mode=1")
+                new(VideoCodecsEnum.H264, 96, 90000, "packetization-mode=1")
             };
             var audioFormats = new List<AudioFormat>
             {
-                new AudioFormat(AudioCodecsEnum.OPUS, 111, 48000, 2, string.Empty)
+                new(AudioCodecsEnum.OPUS, 111, 48000, 2, string.Empty)
             };
 
             _pc.addTrack(new MediaStreamTrack(videoFormats, MediaStreamStatusEnum.RecvOnly));
@@ -104,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Streaming
         /// </summary>
         internal async Task StartAsync()
         {
-            var offer = _pc.createOffer(null);
+            RTCSessionDescriptionInit offer = _pc.createOffer(null);
             await _pc.setLocalDescription(offer);
             await _signaling.SendOfferAsync(_doorbotId, offer.sdp);
         }

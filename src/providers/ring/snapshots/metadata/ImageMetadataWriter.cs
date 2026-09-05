@@ -1,14 +1,14 @@
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
+
 using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
-using MetadataExtractor;
-using MetadataExtractor.Formats.Exif;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
 
-#nullable enable
+using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Writes EXIF metadata to snapshot image files.
@@ -33,12 +33,16 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
         public MetadataWriteResult WriteMetadata(string snapshotFilePath, SnapshotMetadata metadata)
         {
             if (string.IsNullOrWhiteSpace(snapshotFilePath))
+            {
                 throw new ArgumentException("File path cannot be null or empty.", nameof(snapshotFilePath));
+            }
 
             if (metadata == null)
+            {
                 throw new ArgumentNullException(nameof(metadata));
+            }
 
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
             if (!_fileSystem.File.Exists(snapshotFilePath))
             {
@@ -69,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
 
                 var wasWritten = WriteExifData(snapshotFilePath, metadata);
 
-                var tags = BuildPhotoPrismTags(metadata);
+                List<string>? tags = BuildPhotoPrismTags(metadata);
 
                 return CreateResult(
                     startTime,
@@ -97,9 +101,11 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
         public MetadataWriteResult ValidateImage(string snapshotFilePath)
         {
             if (string.IsNullOrWhiteSpace(snapshotFilePath))
+            {
                 throw new ArgumentException("File path cannot be null or empty.", nameof(snapshotFilePath));
+            }
 
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
             if (!_fileSystem.File.Exists(snapshotFilePath))
             {
@@ -111,17 +117,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                     errorMessage: $"Image file not found: {snapshotFilePath}");
             }
 
-            if (!_validator.Validate(snapshotFilePath))
-            {
-                return CreateResult(
+            return !_validator.Validate(snapshotFilePath)
+                ? CreateResult(
                     startTime,
                     status: MetadataStatus.Corrupt,
                     wasWritten: false,
                     isValid: false,
-                    errorMessage: "File does not appear to be a valid image format.");
-            }
-
-            return CreateResult(
+                    errorMessage: "File does not appear to be a valid image format.")
+                : CreateResult(
                 startTime,
                 status: MetadataStatus.Valid,
                 wasWritten: false,
@@ -132,9 +135,9 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
         {
             try
             {
-                var directories = ImageMetadataReader.ReadMetadata(snapshotFilePath);
+                IReadOnlyList<Directory> directories = ImageMetadataReader.ReadMetadata(snapshotFilePath);
 
-                foreach (var directory in directories)
+                foreach (Directory directory in directories)
                 {
                     if (directory is ExifSubIfdDirectory exifDirectory)
                     {
@@ -142,11 +145,12 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                         {
                             metadata.ExifOrientation = orientation;
                         }
+
                         metadata.HasExif = true;
                     }
                 }
 
-                var fileInfo = _fileSystem.FileInfo.New(snapshotFilePath);
+                IFileInfo fileInfo = _fileSystem.FileInfo.New(snapshotFilePath);
                 metadata.ImageFileSize = fileInfo.Length;
                 metadata.ImageQualityScore = EstimateImageQuality(snapshotFilePath, metadata.ImageFormat);
             }
@@ -161,14 +165,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
             {
                 var format = metadata.ImageFormat?.ToUpperInvariant();
 
-                if (format != "JPEG" && format != "PNG" && format != "WEBP")
+                if (format is not "JPEG" and not "PNG" and not "WEBP")
                 {
                     return false;
                 }
 
                 try
                 {
-                    var directories = ImageMetadataReader.ReadMetadata(snapshotFilePath);
+                    IReadOnlyList<Directory> directories = ImageMetadataReader.ReadMetadata(snapshotFilePath);
                     bool modified = false;
 
                     if (metadata.EventDateTime.HasValue && format == "JPEG")
@@ -176,7 +180,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                         modified = true;
                     }
 
-                    if ((metadata.Latitude.HasValue && metadata.Longitude.HasValue) && format == "JPEG")
+                    if (metadata.Latitude.HasValue && metadata.Longitude.HasValue && format == "JPEG")
                     {
                         modified = true;
                     }
@@ -198,28 +202,35 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
         {
             try
             {
-                var fileInfo = _fileSystem.FileInfo.New(snapshotFilePath);
+                IFileInfo fileInfo = _fileSystem.FileInfo.New(snapshotFilePath);
                 long fileSize = fileInfo.Length;
 
                 if (fileSize == 0)
+                {
                     return 0;
+                }
 
                 if (fileSize > 5_000_000)
+                {
                     return 95;
+                }
 
                 if (fileSize > 2_000_000)
+                {
                     return 85;
+                }
 
                 if (fileSize > 1_000_000)
+                {
                     return 75;
+                }
 
                 if (fileSize > 500_000)
+                {
                     return 65;
+                }
 
-                if (fileSize > 100_000)
-                    return 50;
-
-                return 30;
+                return fileSize > 100_000 ? 50 : 30;
             }
             catch
             {

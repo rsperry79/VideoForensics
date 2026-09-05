@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,11 +23,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Adds a new integrity record.</summary>
         public async Task AddAsync(IntegrityRecord record, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.IntegrityRecords.Add(record);
-                await db.SaveChangesAsync(ct);
+                _ = db.IntegrityRecords.Add(record);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Integrity record added for media item {MediaItemId}: passed={Passed}", record.MediaItemId, record.Passed);
             }
             catch (Exception ex)
@@ -39,7 +40,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the most recent integrity record for each of the given media items.</summary>
         public async Task<IReadOnlyList<IntegrityRecord>> GetLatestByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var ids = mediaItemIds.ToList();
 
             return await db.IntegrityRecords

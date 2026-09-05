@@ -1,9 +1,4 @@
-using System;
-using System.IO;
-
-using VideoForensics.Providers.Ring;
-
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
     /// Discovers and decrypts credentials saved by the VideoForensics database.
@@ -17,7 +12,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
         public static bool TryLoad(out string? userName, out string? password, out string? refreshToken)
         {
-            var saved = new CredentialStore().Load(AuthPath);
+            RingCredentials saved = new CredentialStore().Load(AuthPath);
             userName = saved.UserName;
             password = saved.Password;
             refreshToken = saved.RefreshToken;

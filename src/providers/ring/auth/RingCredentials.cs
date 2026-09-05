@@ -9,20 +9,8 @@ namespace VideoForensics.Providers.Ring
     public class RingCredentials : IDisposable
     {
         public string UserName { get; set; }
-
-        private string _password;
-        public string Password
-        {
-            get => _password;
-            set => _password = value;
-        }
-
-        private string _refreshToken;
-        public string RefreshToken
-        {
-            get => _refreshToken;
-            set => _refreshToken = value;
-        }
+        public string Password { get; set; }
+        public string RefreshToken { get; set; }
 
         public void Dispose()
         {
@@ -37,15 +25,16 @@ namespace VideoForensics.Providers.Ring
 
         private void ClearSensitiveData()
         {
-            if (_password != null)
+            if (Password != null)
             {
-                Array.Clear(_password.ToCharArray(), 0, _password.Length);
-                _password = null;
+                Array.Clear(Password.ToCharArray(), 0, Password.Length);
+                Password = null;
             }
-            if (_refreshToken != null)
+
+            if (RefreshToken != null)
             {
-                Array.Clear(_refreshToken.ToCharArray(), 0, _refreshToken.Length);
-                _refreshToken = null;
+                Array.Clear(RefreshToken.ToCharArray(), 0, RefreshToken.Length);
+                RefreshToken = null;
             }
         }
     }

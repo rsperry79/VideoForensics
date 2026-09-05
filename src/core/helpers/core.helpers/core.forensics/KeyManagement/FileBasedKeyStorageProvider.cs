@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+using VideoForensics.Forensics.Exceptions;
+
 namespace VideoForensics.Forensics.KeyManagement
 {
     /// <summary>
@@ -29,7 +31,7 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             _keyStorePath = storagePath;
             _masterKeyPath = Path.Combine(_keyStorePath, MasterKeyFile);
-            Directory.CreateDirectory(_keyStorePath);
+            _ = Directory.CreateDirectory(_keyStorePath);
         }
 
         public async Task<string> GenerateKeyPairAsync(string keyId)
@@ -37,17 +39,17 @@ namespace VideoForensics.Forensics.KeyManagement
             return await Task.Run(() =>
             {
                 using var rsa = RSA.Create(2048);
-                var publicKey = rsa.ExportSubjectPublicKeyInfo();
-                var privateKey = rsa.ExportPkcs8PrivateKey();
+                byte[] publicKey = rsa.ExportSubjectPublicKeyInfo();
+                byte[] privateKey = rsa.ExportPkcs8PrivateKey();
 
-                var thumbprint = ComputeThumbprint(publicKey);
+                string thumbprint = ComputeThumbprint(publicKey);
 
-                var encryptedPrivateKey = EncryptKey(privateKey, keyId);
+                byte[] encryptedPrivateKey = EncryptKey(privateKey, keyId);
 
-                var keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
+                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
                 File.WriteAllBytes(keyPath, encryptedPrivateKey);
 
-                var pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
+                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
                 File.WriteAllBytes(pubKeyPath, publicKey);
 
                 StoreKeyMetadata(keyId, thumbprint);
@@ -60,12 +62,8 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                var pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
-                if (File.Exists(pubKeyPath))
-                {
-                    return File.ReadAllBytes(pubKeyPath);
-                }
-                return Array.Empty<byte>();
+                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
+                return File.Exists(pubKeyPath) ? File.ReadAllBytes(pubKeyPath) : Array.Empty<byte>();
             });
         }
 
@@ -73,19 +71,19 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                var keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
+                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
                 if (!File.Exists(keyPath))
                 {
                     throw new ForensicAnalysisException($"Key {keyId} not found");
                 }
 
-                var encryptedPrivateKey = File.ReadAllBytes(keyPath);
-                var privateKey = DecryptKey(encryptedPrivateKey, keyId);
+                byte[] encryptedPrivateKey = File.ReadAllBytes(keyPath);
+                byte[] privateKey = DecryptKey(encryptedPrivateKey, keyId);
 
                 using var rsa = RSA.Create();
                 rsa.ImportPkcs8PrivateKey(privateKey, out _);
 
-                var signature = rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                byte[] signature = rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                 return Convert.ToBase64String(signature);
             });
         }
@@ -96,7 +94,7 @@ namespace VideoForensics.Forensics.KeyManagement
             {
                 try
                 {
-                    var publicKeyBytes = GetPublicKeyAsync(keyId).Result;
+                    byte[] publicKeyBytes = GetPublicKeyAsync(keyId).Result;
                     if (publicKeyBytes.Length == 0)
                     {
                         return false;
@@ -105,7 +103,7 @@ namespace VideoForensics.Forensics.KeyManagement
                     using var rsa = RSA.Create();
                     rsa.ImportSubjectPublicKeyInfo(publicKeyBytes, out _);
 
-                    var signatureBytes = Convert.FromBase64String(signature);
+                    byte[] signatureBytes = Convert.FromBase64String(signature);
                     return rsa.VerifyData(data, signatureBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                 }
                 catch
@@ -119,18 +117,20 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             await Task.Run(() =>
             {
-                var keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
-                var pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
-                var metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+                string keyPath = Path.Combine(_keyStorePath, $"{keyId}{KeyFileExtension}");
+                string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
+                string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
 
                 if (File.Exists(keyPath))
                 {
                     File.Delete(keyPath);
                 }
+
                 if (File.Exists(pubKeyPath))
                 {
                     File.Delete(pubKeyPath);
                 }
+
                 if (File.Exists(metadataPath))
                 {
                     File.Delete(metadataPath);
@@ -142,12 +142,9 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                if (!Directory.Exists(_keyStorePath))
-                {
-                    return new List<string>();
-                }
-
-                return Directory.GetFiles(_keyStorePath, $"*{KeyFileExtension}")
+                return !Directory.Exists(_keyStorePath)
+                    ? []
+                    : Directory.GetFiles(_keyStorePath, $"*{KeyFileExtension}")
                     .Select(f => Path.GetFileNameWithoutExtension(f))
                     .ToList();
             });
@@ -169,21 +166,21 @@ namespace VideoForensics.Forensics.KeyManagement
 
         private byte[] EncryptKey(byte[] keyData, string keyId)
         {
-            var masterKey = GetOrCreateMasterKey();
+            byte[] masterKey = GetOrCreateMasterKey();
 
             using var aes = new AesGcm(masterKey, 16);
-            var nonce = new byte[12];
+            byte[] nonce = new byte[12];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(nonce);
 
-            var tag = new byte[16];
-            var ciphertext = new byte[keyData.Length];
+            byte[] tag = new byte[16];
+            byte[] ciphertext = new byte[keyData.Length];
 
-            var associatedData = Encoding.UTF8.GetBytes(keyId);
+            byte[] associatedData = Encoding.UTF8.GetBytes(keyId);
             aes.Encrypt(nonce, keyData, ciphertext, tag, associatedData);
 
             // Return: nonce + tag + ciphertext
-            var result = new byte[nonce.Length + tag.Length + ciphertext.Length];
+            byte[] result = new byte[nonce.Length + tag.Length + ciphertext.Length];
             Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
             Buffer.BlockCopy(tag, 0, result, nonce.Length, tag.Length);
             Buffer.BlockCopy(ciphertext, 0, result, nonce.Length + tag.Length, ciphertext.Length);
@@ -193,23 +190,23 @@ namespace VideoForensics.Forensics.KeyManagement
 
         private byte[] DecryptKey(byte[] encryptedData, string keyId)
         {
-            var masterKey = GetOrCreateMasterKey();
+            byte[] masterKey = GetOrCreateMasterKey();
 
             const int nonceLength = 12;
             const int tagLength = 16;
 
-            var nonce = new byte[nonceLength];
-            var tag = new byte[tagLength];
-            var ciphertext = new byte[encryptedData.Length - nonceLength - tagLength];
+            byte[] nonce = new byte[nonceLength];
+            byte[] tag = new byte[tagLength];
+            byte[] ciphertext = new byte[encryptedData.Length - nonceLength - tagLength];
 
             Buffer.BlockCopy(encryptedData, 0, nonce, 0, nonceLength);
             Buffer.BlockCopy(encryptedData, nonceLength, tag, 0, tagLength);
             Buffer.BlockCopy(encryptedData, nonceLength + tagLength, ciphertext, 0, ciphertext.Length);
 
             using var aes = new AesGcm(masterKey, 16);
-            var plaintext = new byte[ciphertext.Length];
+            byte[] plaintext = new byte[ciphertext.Length];
 
-            var associatedData = Encoding.UTF8.GetBytes(keyId);
+            byte[] associatedData = Encoding.UTF8.GetBytes(keyId);
             aes.Decrypt(nonce, ciphertext, tag, plaintext, associatedData);
 
             return plaintext;
@@ -241,7 +238,7 @@ namespace VideoForensics.Forensics.KeyManagement
 
         private string ComputeThumbprint(byte[] publicKey)
         {
-            var hash = SHA256.HashData(publicKey);
+            byte[] hash = SHA256.HashData(publicKey);
             return Convert.ToHexString(hash);
         }
 
@@ -256,19 +253,19 @@ namespace VideoForensics.Forensics.KeyManagement
                 Algorithm = "RSA-2048"
             };
 
-            var metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
-            var json = JsonSerializer.Serialize(metadata);
+            string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+            string json = JsonSerializer.Serialize(metadata);
             File.WriteAllText(metadataPath, json);
         }
 
         private KeyMetadata? RetrieveKeyMetadata(string keyId)
         {
-            var metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
+            string metadataPath = Path.Combine(_keyStorePath, $"{keyId}.meta");
             if (File.Exists(metadataPath))
             {
                 try
                 {
-                    var json = File.ReadAllText(metadataPath);
+                    string json = File.ReadAllText(metadataPath);
                     return JsonSerializer.Deserialize<KeyMetadata>(json);
                 }
                 catch
@@ -276,6 +273,7 @@ namespace VideoForensics.Forensics.KeyManagement
                     return null;
                 }
             }
+
             return null;
         }
     }

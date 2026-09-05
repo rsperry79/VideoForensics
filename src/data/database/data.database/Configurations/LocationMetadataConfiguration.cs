@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,30 +10,30 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<LocationMetadata> builder)
         {
-            builder.HasKey(lm => lm.Id);
+            _ = builder.HasKey(lm => lm.Id);
 
-            builder.Property(lm => lm.StreetAddress)
+            _ = builder.Property(lm => lm.StreetAddress)
                 .HasMaxLength(512);
 
-            builder.Property(lm => lm.City)
+            _ = builder.Property(lm => lm.City)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.State)
+            _ = builder.Property(lm => lm.State)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.PostalCode)
+            _ = builder.Property(lm => lm.PostalCode)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.Country)
+            _ = builder.Property(lm => lm.Country)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.TimeZoneId)
+            _ = builder.Property(lm => lm.TimeZoneId)
                 .HasMaxLength(256);
 
-            builder.Property(lm => lm.ApiResponseHash)
+            _ = builder.Property(lm => lm.ApiResponseHash)
                 .HasMaxLength(256);
 
-            builder.HasIndex(lm => lm.LocationId)
+            _ = builder.HasIndex(lm => lm.LocationId)
                 .IsUnique();
         }
     }

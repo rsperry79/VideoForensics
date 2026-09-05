@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -13,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new MediaItemRepository(_fixture.Factory, loggerFactory.CreateLogger<MediaItemRepository>());
         }
 
@@ -27,10 +30,10 @@ namespace VideoForensics.Data.Database.Tests
         public async Task MediaItemRepository_AddAndGet_RoundTrips()
         {
             var deviceId = Guid.NewGuid();
-            var item = TestDataBuilder.BuildMediaItem(deviceId, null, "video.mp4", "abc123def456");
+            MediaItem item = TestDataBuilder.BuildMediaItem(deviceId, null, "video.mp4", "abc123def456");
 
             await _repository.AddAsync(item, CancellationToken.None);
-            var retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
+            MediaItem? retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(item.Id, retrieved.Id);
@@ -42,10 +45,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task MediaItemRepository_GetByHash_FindsItem()
         {
-            var item = TestDataBuilder.BuildMediaItem(null, null, null, "unique_hash_123");
+            MediaItem item = TestDataBuilder.BuildMediaItem(null, null, null, "unique_hash_123");
 
             await _repository.AddAsync(item, CancellationToken.None);
-            var retrieved = await _repository.GetByHashAsync("unique_hash_123", CancellationToken.None);
+            MediaItem? retrieved = await _repository.GetByHashAsync("unique_hash_123", CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(item.Id, retrieved.Id);
@@ -57,15 +60,15 @@ namespace VideoForensics.Data.Database.Tests
             var deviceId = Guid.NewGuid();
             var otherDeviceId = Guid.NewGuid();
 
-            var item1 = TestDataBuilder.BuildMediaItem(deviceId);
-            var item2 = TestDataBuilder.BuildMediaItem(deviceId);
-            var item3 = TestDataBuilder.BuildMediaItem(otherDeviceId);
+            MediaItem item1 = TestDataBuilder.BuildMediaItem(deviceId);
+            MediaItem item2 = TestDataBuilder.BuildMediaItem(deviceId);
+            MediaItem item3 = TestDataBuilder.BuildMediaItem(otherDeviceId);
 
             await _repository.AddAsync(item1, CancellationToken.None);
             await _repository.AddAsync(item2, CancellationToken.None);
             await _repository.AddAsync(item3, CancellationToken.None);
 
-            var list = await _repository.GetByDeviceIdAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<MediaItem> list = await _repository.GetByDeviceIdAsync(deviceId, CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
@@ -75,15 +78,15 @@ namespace VideoForensics.Data.Database.Tests
             var downloadEventId = Guid.NewGuid();
             var otherEventId = Guid.NewGuid();
 
-            var item1 = TestDataBuilder.BuildMediaItem(null, downloadEventId);
-            var item2 = TestDataBuilder.BuildMediaItem(null, downloadEventId);
-            var item3 = TestDataBuilder.BuildMediaItem(null, otherEventId);
+            MediaItem item1 = TestDataBuilder.BuildMediaItem(null, downloadEventId);
+            MediaItem item2 = TestDataBuilder.BuildMediaItem(null, downloadEventId);
+            MediaItem item3 = TestDataBuilder.BuildMediaItem(null, otherEventId);
 
             await _repository.AddAsync(item1, CancellationToken.None);
             await _repository.AddAsync(item2, CancellationToken.None);
             await _repository.AddAsync(item3, CancellationToken.None);
 
-            var list = await _repository.GetByDownloadEventIdAsync(downloadEventId, CancellationToken.None);
+            IReadOnlyList<MediaItem> list = await _repository.GetByDownloadEventIdAsync(downloadEventId, CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
 
@@ -91,22 +94,22 @@ namespace VideoForensics.Data.Database.Tests
         public async Task MediaItemRepository_GetByDeviceAndDateRange_FiltersCorrectly()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var item1 = TestDataBuilder.BuildMediaItem(deviceId);
+            MediaItem item1 = TestDataBuilder.BuildMediaItem(deviceId);
             item1.RecordedAtUtc = now.AddHours(-2);
 
-            var item2 = TestDataBuilder.BuildMediaItem(deviceId);
+            MediaItem item2 = TestDataBuilder.BuildMediaItem(deviceId);
             item2.RecordedAtUtc = now;
 
-            var item3 = TestDataBuilder.BuildMediaItem(deviceId);
+            MediaItem item3 = TestDataBuilder.BuildMediaItem(deviceId);
             item3.RecordedAtUtc = now.AddHours(2);
 
             await _repository.AddAsync(item1, CancellationToken.None);
             await _repository.AddAsync(item2, CancellationToken.None);
             await _repository.AddAsync(item3, CancellationToken.None);
 
-            var list = await _repository.GetByDeviceAndDateRangeAsync(
+            IReadOnlyList<MediaItem> list = await _repository.GetByDeviceAndDateRangeAsync(
                 deviceId,
                 now.AddHours(-1),
                 now.AddHours(1),
@@ -119,13 +122,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task MediaItemRepository_UpdateAsync_ModifiesData()
         {
-            var item = TestDataBuilder.BuildMediaItem();
+            MediaItem item = TestDataBuilder.BuildMediaItem();
             await _repository.AddAsync(item, CancellationToken.None);
 
             item.FileName = "updated.mp4";
             await _repository.UpdateAsync(item, CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
+            MediaItem? retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
             Assert.Equal("updated.mp4", retrieved.FileName);
         }
@@ -133,25 +136,25 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task MediaItemRepository_DeleteAsync_RemovesItem()
         {
-            var item = TestDataBuilder.BuildMediaItem();
+            MediaItem item = TestDataBuilder.BuildMediaItem();
             await _repository.AddAsync(item, CancellationToken.None);
 
             await _repository.DeleteAsync(item.Id, CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
+            MediaItem? retrieved = await _repository.GetAsync(item.Id, CancellationToken.None);
             Assert.Null(retrieved);
         }
 
         [Fact]
         public async Task MediaItemRepository_ListAsync_ReturnsAll()
         {
-            var item1 = TestDataBuilder.BuildMediaItem();
-            var item2 = TestDataBuilder.BuildMediaItem();
+            MediaItem item1 = TestDataBuilder.BuildMediaItem();
+            MediaItem item2 = TestDataBuilder.BuildMediaItem();
 
             await _repository.AddAsync(item1, CancellationToken.None);
             await _repository.AddAsync(item2, CancellationToken.None);
 
-            var list = await _repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<MediaItem> list = await _repository.ListAsync(CancellationToken.None);
             Assert.Equal(2, list.Count);
         }
     }

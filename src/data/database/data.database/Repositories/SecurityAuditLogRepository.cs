@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -20,9 +21,9 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<SecurityAuditLogEntry> AppendAsync(SecurityAuditLogEntry entry, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            db.SecurityAuditLogEntries.Add(entry);
-            await db.SaveChangesAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = db.SecurityAuditLogEntries.Add(entry);
+            _ = await db.SaveChangesAsync(ct);
 
             if (entry.IsUrgent)
             {
@@ -39,8 +40,8 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<SecurityAuditLogEntry>> ListAsync(Guid? operatorId, int maxResults, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var query = db.SecurityAuditLogEntries.AsQueryable();
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<SecurityAuditLogEntry> query = db.SecurityAuditLogEntries.AsQueryable();
             if (operatorId.HasValue)
             {
                 query = query.Where(e => e.OperatorId == operatorId.Value);

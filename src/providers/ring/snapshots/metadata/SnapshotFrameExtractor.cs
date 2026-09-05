@@ -1,14 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
 
-#nullable enable
+using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Extracts and processes snapshot frames from Ring events.
@@ -47,10 +45,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
             // Ensure output directory exists
             if (!_fileSystem.Directory.Exists(outputDirectory))
             {
-                _fileSystem.Directory.CreateDirectory(outputDirectory);
+                _ = _fileSystem.Directory.CreateDirectory(outputDirectory);
             }
 
-            var startTime = DateTime.UtcNow;
+            _ = DateTime.UtcNow;
             var timeFormatted = FormatTimestamp(metadata.EventDateTime);
             var fileName = $"snapshot_{timeFormatted.Replace(":", "-").Replace(".", "_")}.jpg";
             var filePath = _fileSystem.Path.Combine(outputDirectory, fileName);
@@ -58,7 +56,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
             try
             {
                 // Download snapshot from Ring
-                using (var response = _httpClient.GetAsync(snapshotUrl).Result)
+                using (HttpResponseMessage response = _httpClient.GetAsync(snapshotUrl).Result)
                 {
                     if (!response.IsSuccessStatusCode)
                     {
@@ -97,7 +95,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                     };
                 }
 
-                var fileInfo = _fileSystem.FileInfo.New(filePath);
+                IFileInfo fileInfo = _fileSystem.FileInfo.New(filePath);
 
                 // Create processed snapshot with metadata
                 var processedSnapshot = new ProcessedSnapshot
@@ -163,107 +161,113 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                 var summaryPath = _fileSystem.Path.Combine(outputDirectory, summaryFileName);
 
                 var summary = new StringBuilder();
-                summary.AppendLine("=== RING EVENT EVIDENCE SUMMARY ===");
-                summary.AppendLine();
+                _ = summary.AppendLine("=== RING EVENT EVIDENCE SUMMARY ===");
+                _ = summary.AppendLine();
 
                 // Event Information
-                summary.AppendLine("EVENT INFORMATION:");
-                summary.AppendLine($"  Timestamp: {snapshot.TimeFormatted} (UTC)");
-                summary.AppendLine($"  Epoch (ms): {snapshot.TimestampMs}");
-                summary.AppendLine($"  Event ID: {metadata.RingEventId}");
-                summary.AppendLine($"  Event Kind: {metadata.RingEventKind}");
-                summary.AppendLine();
+                _ = summary.AppendLine("EVENT INFORMATION:");
+                _ = summary.AppendLine($"  Timestamp: {snapshot.TimeFormatted} (UTC)");
+                _ = summary.AppendLine($"  Epoch (ms): {snapshot.TimestampMs}");
+                _ = summary.AppendLine($"  Event ID: {metadata.RingEventId}");
+                _ = summary.AppendLine($"  Event Kind: {metadata.RingEventKind}");
+                _ = summary.AppendLine();
 
                 // Device Information
-                summary.AppendLine("DEVICE INFORMATION:");
-                summary.AppendLine($"  Name: {metadata.DeviceName}");
-                summary.AppendLine($"  Manufacturer: {metadata.DeviceManufacturer}");
-                summary.AppendLine($"  Model: {metadata.DeviceModel}");
-                summary.AppendLine($"  Firmware: {metadata.DeviceFirmwareVersion}");
-                summary.AppendLine($"  Online: {metadata.DeviceOnline}");
-                summary.AppendLine($"  Notifications Enabled: {metadata.OwnerNotificationsEnabled}");
-                summary.AppendLine();
+                _ = summary.AppendLine("DEVICE INFORMATION:");
+                _ = summary.AppendLine($"  Name: {metadata.DeviceName}");
+                _ = summary.AppendLine($"  Manufacturer: {metadata.DeviceManufacturer}");
+                _ = summary.AppendLine($"  Model: {metadata.DeviceModel}");
+                _ = summary.AppendLine($"  Firmware: {metadata.DeviceFirmwareVersion}");
+                _ = summary.AppendLine($"  Online: {metadata.DeviceOnline}");
+                _ = summary.AppendLine($"  Notifications Enabled: {metadata.OwnerNotificationsEnabled}");
+                _ = summary.AppendLine();
 
                 // Location Information
                 if (!string.IsNullOrWhiteSpace(metadata.Address) || metadata.Latitude.HasValue)
                 {
-                    summary.AppendLine("LOCATION INFORMATION:");
-                    summary.AppendLine($"  Address: {metadata.Address}");
+                    _ = summary.AppendLine("LOCATION INFORMATION:");
+                    _ = summary.AppendLine($"  Address: {metadata.Address}");
                     if (metadata.Latitude.HasValue && metadata.Longitude.HasValue)
                     {
-                        summary.AppendLine($"  Coordinates: {metadata.Latitude:F6}, {metadata.Longitude:F6}");
+                        _ = summary.AppendLine($"  Coordinates: {metadata.Latitude:F6}, {metadata.Longitude:F6}");
                     }
-                    summary.AppendLine($"  Timezone: {metadata.Timezone}");
-                    summary.AppendLine();
+
+                    _ = summary.AppendLine($"  Timezone: {metadata.Timezone}");
+                    _ = summary.AppendLine();
                 }
 
                 // Snapshot Information
-                summary.AppendLine("SNAPSHOT INFORMATION:");
-                summary.AppendLine($"  File: {snapshot.FileName}");
-                summary.AppendLine($"  Path: {snapshot.FilePath}");
-                summary.AppendLine($"  Size: {FormatFileSize(snapshot.FileSizeBytes)}");
-                summary.AppendLine($"  Format: {snapshot.ImageFormat}");
-                summary.AppendLine($"  Dimensions: {snapshot.Dimensions}");
-                summary.AppendLine();
+                _ = summary.AppendLine("SNAPSHOT INFORMATION:");
+                _ = summary.AppendLine($"  File: {snapshot.FileName}");
+                _ = summary.AppendLine($"  Path: {snapshot.FilePath}");
+                _ = summary.AppendLine($"  Size: {FormatFileSize(snapshot.FileSizeBytes)}");
+                _ = summary.AppendLine($"  Format: {snapshot.ImageFormat}");
+                _ = summary.AppendLine($"  Dimensions: {snapshot.Dimensions}");
+                _ = summary.AppendLine();
 
                 // Detection Information
-                summary.AppendLine("DETECTION INFORMATION:");
-                summary.AppendLine($"  Detection Type: {snapshot.DetectionType}");
-                summary.AppendLine($"  Confidence: {FormatConfidence(snapshot.DetectionConfidence)}");
-                summary.AppendLine($"  Anomaly Score: {FormatConfidence(snapshot.AnomalyScore)}");
-                summary.AppendLine();
+                _ = summary.AppendLine("DETECTION INFORMATION:");
+                _ = summary.AppendLine($"  Detection Type: {snapshot.DetectionType}");
+                _ = summary.AppendLine($"  Confidence: {FormatConfidence(snapshot.DetectionConfidence)}");
+                _ = summary.AppendLine($"  Anomaly Score: {FormatConfidence(snapshot.AnomalyScore)}");
+                _ = summary.AppendLine();
 
                 // Recognized Profiles
                 if (snapshot.RecognizedProfiles != null && snapshot.RecognizedProfiles.Count > 0)
                 {
-                    summary.AppendLine("RECOGNIZED PROFILES:");
-                    foreach (var profile in snapshot.RecognizedProfiles)
+                    _ = summary.AppendLine("RECOGNIZED PROFILES:");
+                    foreach (DetectedProfile profile in snapshot.RecognizedProfiles)
                     {
-                        summary.AppendLine($"  - {profile.Name} (Confidence: {FormatConfidence(profile.Confidence)})");
+                        _ = summary.AppendLine($"  - {profile.Name} (Confidence: {FormatConfidence(profile.Confidence)})");
                         if (!string.IsNullOrWhiteSpace(profile.Id))
                         {
-                            summary.AppendLine($"    ID: {profile.Id}");
+                            _ = summary.AppendLine($"    ID: {profile.Id}");
                         }
                     }
-                    summary.AppendLine();
+
+                    _ = summary.AppendLine();
                 }
 
                 // Security Alerts
                 if (snapshot.SecurityAlerts != null && snapshot.SecurityAlerts.Count > 0)
                 {
-                    summary.AppendLine("SECURITY ALERTS:");
-                    summary.AppendLine($"  Severity: {snapshot.AlertSeverity}");
+                    _ = summary.AppendLine("SECURITY ALERTS:");
+                    _ = summary.AppendLine($"  Severity: {snapshot.AlertSeverity}");
                     foreach (var alert in snapshot.SecurityAlerts)
                     {
-                        summary.AppendLine($"  - {alert}");
+                        _ = summary.AppendLine($"  - {alert}");
                     }
-                    summary.AppendLine();
+
+                    _ = summary.AppendLine();
                 }
 
                 // Motion Zones
                 if (snapshot.ActiveZones != null && snapshot.ActiveZones.Count > 0)
                 {
-                    summary.AppendLine("MOTION ZONES:");
-                    foreach (var zone in snapshot.ActiveZones)
+                    _ = summary.AppendLine("MOTION ZONES:");
+                    foreach (MotionZone zone in snapshot.ActiveZones)
                     {
-                        summary.AppendLine($"  - {zone.Name} (Confidence: {FormatConfidence(zone.Confidence)})");
+                        _ = summary.AppendLine($"  - {zone.Name} (Confidence: {FormatConfidence(zone.Confidence)})");
                     }
-                    summary.AppendLine();
+
+                    _ = summary.AppendLine();
                 }
 
                 // Device Health
                 if (metadata.Rssi.HasValue || metadata.BatteryPercentage.HasValue)
                 {
-                    summary.AppendLine("DEVICE HEALTH:");
+                    _ = summary.AppendLine("DEVICE HEALTH:");
                     if (metadata.Rssi.HasValue)
                     {
-                        summary.AppendLine($"  Signal (RSSI): {metadata.Rssi} dBm");
+                        _ = summary.AppendLine($"  Signal (RSSI): {metadata.Rssi} dBm");
                     }
+
                     if (metadata.BatteryPercentage.HasValue)
                     {
-                        summary.AppendLine($"  Battery: {metadata.BatteryPercentage}%");
+                        _ = summary.AppendLine($"  Battery: {metadata.BatteryPercentage}%");
                     }
-                    summary.AppendLine();
+
+                    _ = summary.AppendLine();
                 }
 
                 // Write summary file
@@ -287,7 +291,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                 }
 
                 var bytes = new byte[12];
-                using (var stream = _fileSystem.File.OpenRead(filePath))
+                using (FileSystemStream stream = _fileSystem.File.OpenRead(filePath))
                 {
                     var bytesRead = stream.Read(bytes, 0, bytes.Length);
                     if (bytesRead < 3)
@@ -316,12 +320,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                 }
 
                 // Check for GIF
-                if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46)
-                {
-                    return "GIF";
-                }
-
-                return null;
+                return bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 ? "GIF" : null;
             }
             catch
             {
@@ -337,7 +336,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
             }
 
             var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var diff = dateTime.Value.ToUniversalTime() - epoch;
+            TimeSpan diff = dateTime.Value.ToUniversalTime() - epoch;
             return (long)diff.TotalMilliseconds;
         }
 
@@ -348,18 +347,13 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
                 return "00-00-00-000";
             }
 
-            var dt = dateTime.Value;
+            DateTime dt = dateTime.Value;
             return $"{dt:yyyy-MM-dd_HH-mm-ss}";
         }
 
         private string FormatConfidence(double? confidence)
         {
-            if (!confidence.HasValue)
-            {
-                return "N/A";
-            }
-
-            return $"{confidence.Value:P1}";
+            return !confidence.HasValue ? "N/A" : $"{confidence.Value:P1}";
         }
 
         private string FormatFileSize(long bytes)
@@ -371,7 +365,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata
             while (len >= 1024 && order < sizes.Length - 1)
             {
                 order++;
-                len = len / 1024;
+                len /= 1024;
             }
 
             return $"{len:F2} {sizes[order]}";

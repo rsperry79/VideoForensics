@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Hubs
@@ -29,7 +30,7 @@ namespace VideoForensics.WebApp.Hubs
 
         public override Task OnConnectedAsync()
         {
-            var deviceId = GetPairedDeviceId();
+            Guid? deviceId = GetPairedDeviceId();
             if (deviceId is not null)
             {
                 _connectionTracker.Register(deviceId.Value, Context);
@@ -40,7 +41,7 @@ namespace VideoForensics.WebApp.Hubs
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            var deviceId = GetPairedDeviceId();
+            Guid? deviceId = GetPairedDeviceId();
             if (deviceId is not null)
             {
                 _connectionTracker.Unregister(deviceId.Value, Context.ConnectionId);
@@ -52,7 +53,7 @@ namespace VideoForensics.WebApp.Hubs
         private Guid? GetPairedDeviceId()
         {
             var claim = Context.User?.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
-            return Guid.TryParse(claim, out var id) ? id : null;
+            return Guid.TryParse(claim, out Guid id) ? id : null;
         }
     }
 }

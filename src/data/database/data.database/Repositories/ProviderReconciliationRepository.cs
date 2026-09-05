@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -24,7 +25,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a provider reconciliation record by ID.</summary>
         public async Task<ProviderReconciliationRecord?> GetAsync(Guid recordId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderReconciliationRecords
                 .FirstOrDefaultAsync(prr => prr.Id == recordId, ct);
         }
@@ -32,11 +33,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Appends a new provider reconciliation record.</summary>
         public async Task<ProviderReconciliationRecord> AppendAsync(ProviderReconciliationRecord record, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.ProviderReconciliationRecords.Add(record);
-                await db.SaveChangesAsync(ct);
+                _ = db.ProviderReconciliationRecords.Add(record);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Provider reconciliation record appended: {RecordId} (device: {DeviceId})",
                     record.Id, record.DeviceId);
                 return record;
@@ -52,7 +53,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the history of reconciliation records for a device.</summary>
         public async Task<IReadOnlyList<ProviderReconciliationRecord>> GetHistoryForDeviceAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderReconciliationRecords
                 .Where(prr => prr.DeviceId == deviceId)
                 .OrderByDescending(prr => prr.RanAtUtc)
@@ -62,7 +63,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets open (unreviewed) discrepancies across all devices.</summary>
         public async Task<IReadOnlyList<ProviderReconciliationRecord>> GetOpenDiscrepanciesAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderReconciliationRecords
                 .OrderByDescending(prr => prr.RanAtUtc)
                 .ToListAsync(ct);
@@ -71,7 +72,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all provider reconciliation records.</summary>
         public async Task<IReadOnlyList<ProviderReconciliationRecord>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderReconciliationRecords.ToListAsync(ct);
         }
     }

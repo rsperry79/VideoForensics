@@ -1,7 +1,8 @@
-using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -24,27 +25,27 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTimelineSummaryAsync_ReturnsHealthySummary_WhenNoGaps()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
+            TimelineSummary summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(10, summary.TotalCount);
             Assert.Contains("Healthy", summary.Status);
             Assert.Null(summary.ComplianceScore);
-            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            DeviceTimelineSummary deviceSummary = Assert.Single(summary.DeviceSummaries);
             Assert.True(deviceSummary.CoveragePercentage > 80);
             Assert.Equal(0, deviceSummary.GapCount);
         }
@@ -52,9 +53,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTimelineSummaryAsync_ReturnsAnomaliesSummary_WhenGapsExist()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
@@ -62,24 +63,24 @@ namespace VideoForensics.Data.Database.Tests
             // Create more events to ensure good coverage but with a gap
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
             // Gap of 20 minutes (> 5)
             for (int i = 5; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
-                evt.OccurredAtUtc = now.AddMinutes(i * 5 + 20);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
+                evt.OccurredAtUtc = now.AddMinutes((i * 5) + 20);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-5), now.AddMinutes(70), CancellationToken.None);
+            TimelineSummary summary = await _repository.GetTimelineSummaryAsync(location.Id, now.AddMinutes(-5), now.AddMinutes(70), CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(10, summary.TotalCount);
-            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            DeviceTimelineSummary deviceSummary = Assert.Single(summary.DeviceSummaries);
             Assert.True(deviceSummary.GapCount > 0);
             Assert.Contains("Anomalies", summary.Status);
         }
@@ -87,39 +88,39 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTimelineSummaryAsync_ReturnsCriticalSummary_WhenLargeGapExists()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var evt1 = TestDataBuilder.BuildEvent(device.Id);
+            Event evt1 = TestDataBuilder.BuildEvent(device.Id);
             evt1.OccurredAtUtc = now;
-            await _eventRepository.UpsertAsync(evt1, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(evt1, CancellationToken.None);
 
-            var evt2 = TestDataBuilder.BuildEvent(device.Id);
+            Event evt2 = TestDataBuilder.BuildEvent(device.Id);
             evt2.OccurredAtUtc = now.AddHours(3);
-            await _eventRepository.UpsertAsync(evt2, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(evt2, CancellationToken.None);
 
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now, now.AddHours(4), CancellationToken.None);
+            TimelineSummary summary = await _repository.GetTimelineSummaryAsync(location.Id, now, now.AddHours(4), CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Contains("Critical", summary.Status);
             Assert.Null(summary.ComplianceScore);
-            var deviceSummary = Assert.Single(summary.DeviceSummaries);
+            DeviceTimelineSummary deviceSummary = Assert.Single(summary.DeviceSummaries);
             Assert.True(deviceSummary.CoveragePercentage < 50);
         }
 
         [Fact]
         public async Task VerifyTimelineIntegrityAsync_TwoDevicesDifferentCoverage_ReportsIndependentPerDeviceStats()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var goodDevice = TestDataBuilder.BuildDevice(location.Id);
-            var badDevice = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
-            var from = now;
-            var to = now.AddMinutes(40);
+            Location location = TestDataBuilder.BuildLocation();
+            Device goodDevice = TestDataBuilder.BuildDevice(location.Id);
+            Device badDevice = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
+            DateTime from = now;
+            DateTime to = now.AddMinutes(40);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(goodDevice, CancellationToken.None);
@@ -129,26 +130,26 @@ namespace VideoForensics.Data.Database.Tests
             // is ever detected between consecutive events - near-100% coverage.
             for (int i = 0; i < 20; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(goodDevice.Id);
+                Event evt = TestDataBuilder.BuildEvent(goodDevice.Id);
                 evt.OccurredAtUtc = from.AddMinutes(i * 2);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
             // Bad device: two events with a 38-minute gap between them (>> the 5-minute
             // threshold), consuming nearly the entire window - low coverage.
-            var badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
+            Event badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
             badEvt1.OccurredAtUtc = from.AddMinutes(1);
-            await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
-            var badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
+            _ = await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
+            Event badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
             badEvt2.OccurredAtUtc = from.AddMinutes(39);
-            await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
 
-            var report = await _repository.VerifyTimelineIntegrityAsync(location.Id, from, to, CancellationToken.None);
+            TimelineIntegrityReport report = await _repository.VerifyTimelineIntegrityAsync(location.Id, from, to, CancellationToken.None);
 
             Assert.NotNull(report);
             Assert.Equal(2, report.DeviceReports.Count);
-            var goodReport = Assert.Single(report.DeviceReports, d => d.DeviceId == goodDevice.Id);
-            var badReport = Assert.Single(report.DeviceReports, d => d.DeviceId == badDevice.Id);
+            DeviceTimelineIntegrity goodReport = Assert.Single(report.DeviceReports, d => d.DeviceId == goodDevice.Id);
+            DeviceTimelineIntegrity badReport = Assert.Single(report.DeviceReports, d => d.DeviceId == badDevice.Id);
             // The core regression: each device's true coverage survives independently - the bad
             // device's low coverage must not be masked by blending with the good device's.
             Assert.True(goodReport.CoveragePercentage > 90m);
@@ -160,17 +161,17 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task VerifyTimelineIntegrityAsync_DeviceWithNoEvents_StillAppearsInReport()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var silentDevice = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device silentDevice = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(silentDevice, CancellationToken.None);
 
-            var report = await _repository.VerifyTimelineIntegrityAsync(location.Id, now, now.AddHours(1), CancellationToken.None);
+            TimelineIntegrityReport report = await _repository.VerifyTimelineIntegrityAsync(location.Id, now, now.AddHours(1), CancellationToken.None);
 
             Assert.NotNull(report);
-            var deviceReport = Assert.Single(report.DeviceReports);
+            DeviceTimelineIntegrity deviceReport = Assert.Single(report.DeviceReports);
             Assert.Equal(silentDevice.Id, deviceReport.DeviceId);
             Assert.Equal(0, deviceReport.TotalEvents);
         }
@@ -178,12 +179,12 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTimelineSummaryAsync_TwoDevicesDifferentCoverage_ReportsIndependentPerDeviceStats()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var goodDevice = TestDataBuilder.BuildDevice(location.Id);
-            var badDevice = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
-            var from = now;
-            var to = now.AddMinutes(40);
+            Location location = TestDataBuilder.BuildLocation();
+            Device goodDevice = TestDataBuilder.BuildDevice(location.Id);
+            Device badDevice = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
+            DateTime from = now;
+            DateTime to = now.AddMinutes(40);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(goodDevice, CancellationToken.None);
@@ -191,25 +192,25 @@ namespace VideoForensics.Data.Database.Tests
 
             for (int i = 0; i < 20; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(goodDevice.Id);
+                Event evt = TestDataBuilder.BuildEvent(goodDevice.Id);
                 evt.OccurredAtUtc = from.AddMinutes(i * 2);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
+            Event badEvt1 = TestDataBuilder.BuildEvent(badDevice.Id);
             badEvt1.OccurredAtUtc = from.AddMinutes(1);
-            await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
-            var badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
+            _ = await _eventRepository.UpsertAsync(badEvt1, CancellationToken.None);
+            Event badEvt2 = TestDataBuilder.BuildEvent(badDevice.Id);
             badEvt2.OccurredAtUtc = from.AddMinutes(39);
-            await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(badEvt2, CancellationToken.None);
 
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, from, to, CancellationToken.None);
+            TimelineSummary summary = await _repository.GetTimelineSummaryAsync(location.Id, from, to, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Null(summary.ComplianceScore);
             Assert.Equal(2, summary.DeviceSummaries.Count);
-            var goodSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == goodDevice.Id);
-            var badSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == badDevice.Id);
+            DeviceTimelineSummary goodSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == goodDevice.Id);
+            DeviceTimelineSummary badSummary = Assert.Single(summary.DeviceSummaries, d => d.DeviceId == badDevice.Id);
             Assert.True(goodSummary.CoveragePercentage > 90m);
             Assert.True(badSummary.CoveragePercentage < 20m);
             // Worst-status-among-devices rollup: the bad device's Critical status must surface at
@@ -220,19 +221,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsPaginatedAsync_ReturnsPaginatedResult_PageOne()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetRecordingGapsPaginatedAsync(
+            PaginatedResult<TimelineGap> result = await _repository.GetRecordingGapsPaginatedAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(140), minGapMinutes: 5, pageNumber: 1, pageSize: 2, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -245,19 +246,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsPaginatedAsync_ReturnsPaginatedResult_PageTwo()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 6; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetRecordingGapsPaginatedAsync(
+            PaginatedResult<TimelineGap> result = await _repository.GetRecordingGapsPaginatedAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(170), minGapMinutes: 5, pageNumber: 2, pageSize: 2, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -267,16 +268,16 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsPaginatedAsync_ReturnsEmptyResult_OutOfBounds()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var evt = TestDataBuilder.BuildEvent(device.Id);
+            Event evt = TestDataBuilder.BuildEvent(device.Id);
             evt.OccurredAtUtc = now;
-            await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
 
-            var result = await _repository.GetRecordingGapsPaginatedAsync(
+            PaginatedResult<TimelineGap> result = await _repository.GetRecordingGapsPaginatedAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(20), minGapMinutes: 5, pageNumber: 10, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -286,19 +287,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsCursorAsync_ReturnsCursorResult_FirstPage()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetRecordingGapsCursorAsync(
+            CursorPaginatedResult<TimelineGap> result = await _repository.GetRecordingGapsCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(140), minGapMinutes: 5, cursor: null, pageSize: 2, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -309,24 +310,24 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsCursorAsync_ReturnsCursorResult_WithCursor()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var firstResult = await _repository.GetRecordingGapsCursorAsync(
+            CursorPaginatedResult<TimelineGap> firstResult = await _repository.GetRecordingGapsCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(140), minGapMinutes: 5, cursor: null, pageSize: 1, CancellationToken.None);
 
             if (firstResult.HasMore && firstResult.NextCursor != null)
             {
-                var secondResult = await _repository.GetRecordingGapsCursorAsync(
+                CursorPaginatedResult<TimelineGap> secondResult = await _repository.GetRecordingGapsCursorAsync(
                     device.Id, now.AddMinutes(-10), now.AddMinutes(140), minGapMinutes: 5, cursor: firstResult.NextCursor, pageSize: 1, CancellationToken.None);
 
                 Assert.NotNull(secondResult);
@@ -336,19 +337,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetRecordingGapsCursorAsync_VerifyHasMoreFlag()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 3; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetRecordingGapsCursorAsync(
+            CursorPaginatedResult<TimelineGap> result = await _repository.GetRecordingGapsCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(80), minGapMinutes: 5, cursor: null, pageSize: 100, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -359,8 +360,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetEventCountByHourAsync_ReturnsHourlyDistribution()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
@@ -368,13 +369,13 @@ namespace VideoForensics.Data.Database.Tests
             {
                 for (int i = 0; i < 3; i++)
                 {
-                    var evt = TestDataBuilder.BuildEvent(device.Id);
+                    Event evt = TestDataBuilder.BuildEvent(device.Id);
                     evt.OccurredAtUtc = now.Date.AddHours(hour).AddMinutes(i * 10);
-                    await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                    _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
                 }
             }
 
-            var counts = await _repository.GetEventCountByHourAsync(device.Id, now.Date, now.Date.AddDays(1), CancellationToken.None);
+            Dictionary<int, int> counts = await _repository.GetEventCountByHourAsync(device.Id, now.Date, now.Date.AddDays(1), CancellationToken.None);
 
             Assert.NotEmpty(counts);
             Assert.True(counts.ContainsKey(8) || counts.ContainsKey(9));
@@ -383,9 +384,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetPeakActivityPeriodsAsync_ReturnsTopHours()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
@@ -395,13 +396,13 @@ namespace VideoForensics.Data.Database.Tests
                 int count = hour == 12 ? 10 : 3;
                 for (int i = 0; i < count; i++)
                 {
-                    var evt = TestDataBuilder.BuildEvent(device.Id);
+                    Event evt = TestDataBuilder.BuildEvent(device.Id);
                     evt.OccurredAtUtc = now.Date.AddHours(hour).AddMinutes(i * 5);
-                    await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                    _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
                 }
             }
 
-            var peaks = await _repository.GetPeakActivityPeriodsAsync(location.Id, now.Date, now.Date.AddDays(1), CancellationToken.None);
+            IReadOnlyList<HourlyActivityCount> peaks = await _repository.GetPeakActivityPeriodsAsync(location.Id, now.Date, now.Date.AddDays(1), CancellationToken.None);
 
             Assert.NotEmpty(peaks);
         }
@@ -409,11 +410,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTimelineSummaryAsync_ReturnsNullLocation_WhenNoEvents()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var now = DateTime.UtcNow;
-            var summary = await _repository.GetTimelineSummaryAsync(location.Id, now, now.AddHours(1), CancellationToken.None);
+            DateTime now = DateTime.UtcNow;
+            TimelineSummary summary = await _repository.GetTimelineSummaryAsync(location.Id, now, now.AddHours(1), CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(0, summary.TotalCount);

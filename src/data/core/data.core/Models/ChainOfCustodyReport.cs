@@ -8,7 +8,7 @@ namespace VideoForensics.Data.Core.Models
         public DateTime GeneratedAtUtc { get; set; }
         public DateTime ReportFromUtc { get; set; }
         public DateTime ReportToUtc { get; set; }
-        public IReadOnlyList<ActionLogEntry> AuditTrail { get; set; } = new List<ActionLogEntry>();
+        public IReadOnlyList<ActionLogEntry> AuditTrail { get; set; } = [];
         public bool ChainIntegrityVerified { get; set; }
         public string? ChainVerificationStatus { get; set; }
     }

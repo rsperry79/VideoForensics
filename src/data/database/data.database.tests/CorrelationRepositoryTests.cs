@@ -1,7 +1,8 @@
-using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -28,15 +29,15 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetCorrelationSummaryAsync_ReturnsHealthy_WhenAllDevicesOnline()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device1 = TestDataBuilder.BuildDevice(location.Id);
-            var device2 = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device1 = TestDataBuilder.BuildDevice(location.Id);
+            Device device2 = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device1, CancellationToken.None);
             await _deviceRepository.AddAsync(device2, CancellationToken.None);
 
-            var summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
+            CorrelationSummary summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(2, summary.DeviceCount);
@@ -47,16 +48,16 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetCorrelationSummaryAsync_ReturnsDegraded_WhenDeviceOffline()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device1 = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device1 = TestDataBuilder.BuildDevice(location.Id);
             device1.IsOnline = false;
-            var device2 = TestDataBuilder.BuildDevice(location.Id);
+            Device device2 = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device1, CancellationToken.None);
             await _deviceRepository.AddAsync(device2, CancellationToken.None);
 
-            var summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
+            CorrelationSummary summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.NotNull(summary.Status);
@@ -66,17 +67,17 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetCorrelationSummaryAsync_ReturnsMixed_WithSomeOffline()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var onlineDevice = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device onlineDevice = TestDataBuilder.BuildDevice(location.Id);
             onlineDevice.IsOnline = true;
-            var offlineDevice = TestDataBuilder.BuildDevice(location.Id);
+            Device offlineDevice = TestDataBuilder.BuildDevice(location.Id);
             offlineDevice.IsOnline = false;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(onlineDevice, CancellationToken.None);
             await _deviceRepository.AddAsync(offlineDevice, CancellationToken.None);
 
-            var summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
+            CorrelationSummary summary = await _repository.GetCorrelationSummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(2, summary.DeviceCount);
@@ -86,13 +87,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetHealthRelatedGapsPaginatedAsync_ReturnsPaginatedResult_FirstPage()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var result = await _repository.GetHealthRelatedGapsPaginatedAsync(
+            PaginatedResult<HealthRelatedGap> result = await _repository.GetHealthRelatedGapsPaginatedAsync(
                 location.Id, pageNumber: 1, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -103,13 +104,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetHealthRelatedGapsPaginatedAsync_ReturnsPaginatedResult_SecondPage()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var result = await _repository.GetHealthRelatedGapsPaginatedAsync(
+            PaginatedResult<HealthRelatedGap> result = await _repository.GetHealthRelatedGapsPaginatedAsync(
                 location.Id, pageNumber: 2, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -119,19 +120,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetEventHealthCorrelationCursorAsync_ReturnsCursorResult_FirstPage()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetEventHealthCorrelationCursorAsync(
+            CursorPaginatedResult<EventWithHealthCorrelation> result = await _repository.GetEventHealthCorrelationCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), cursor: null, pageSize: 2, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -141,19 +142,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetEventHealthCorrelationCursorAsync_VerifyHasMoreFlag()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 3; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetEventHealthCorrelationCursorAsync(
+            CursorPaginatedResult<EventWithHealthCorrelation> result = await _repository.GetEventHealthCorrelationCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), cursor: null, pageSize: 100, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -164,14 +165,14 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnalyzeSyncHealthAsync_ReturnsHealthyStatus_WhenAllGood()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
             device.IsOnline = true;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var report = await _repository.AnalyzeSyncHealthAsync(location.Id, CancellationToken.None);
+            SyncHealthReport report = await _repository.AnalyzeSyncHealthAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(report);
             Assert.Equal(1, report.DeviceCount);
@@ -180,10 +181,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnalyzeSyncHealthAsync_TwoDevicesDifferentUptime_NoBlendedAverageInReport()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var reliableDevice = TestDataBuilder.BuildDevice(location.Id);
-            var unreliableDevice = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device reliableDevice = TestDataBuilder.BuildDevice(location.Id);
+            Device unreliableDevice = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(reliableDevice, CancellationToken.None);
@@ -192,25 +193,25 @@ namespace VideoForensics.Data.Database.Tests
             // Reliable device: frequent events, no significant gaps in the last 30 days.
             for (int i = 0; i < 20; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(reliableDevice.Id);
+                Event evt = TestDataBuilder.BuildEvent(reliableDevice.Id);
                 evt.OccurredAtUtc = now.AddDays(-1).AddMinutes(i * 5);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
             // Unreliable device: one huge gap dominating the 30-day window.
-            var firstEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
+            Event firstEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
             firstEvt.OccurredAtUtc = now.AddDays(-29);
-            await _eventRepository.UpsertAsync(firstEvt, CancellationToken.None);
-            var secondEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
+            _ = await _eventRepository.UpsertAsync(firstEvt, CancellationToken.None);
+            Event secondEvt = TestDataBuilder.BuildEvent(unreliableDevice.Id);
             secondEvt.OccurredAtUtc = now.AddDays(-1);
-            await _eventRepository.UpsertAsync(secondEvt, CancellationToken.None);
+            _ = await _eventRepository.UpsertAsync(secondEvt, CancellationToken.None);
 
-            var report = await _repository.AnalyzeSyncHealthAsync(location.Id, CancellationToken.None);
+            SyncHealthReport report = await _repository.AnalyzeSyncHealthAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(report);
             Assert.Equal(2, report.DeviceCount);
-            var reliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == reliableDevice.Id);
-            var unreliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == unreliableDevice.Id);
+            DeviceSyncStatus reliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == reliableDevice.Id);
+            DeviceSyncStatus unreliableStatus = Assert.Single(report.DeviceStatus, s => s.DeviceId == unreliableDevice.Id);
             // The core regression: each device's true uptime survives independently - the
             // unreliable device's number must not be dragged up by averaging with the reliable one.
             Assert.True(reliableStatus.Uptime > unreliableStatus.Uptime);
@@ -220,19 +221,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnalyzeDeviceReliabilityAsync_ReturnsReliabilityAnalysis()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var analysis = await _repository.AnalyzeDeviceReliabilityAsync(device.Id, CancellationToken.None);
+            DeviceReliabilityAnalysis analysis = await _repository.AnalyzeDeviceReliabilityAsync(device.Id, CancellationToken.None);
 
             Assert.NotNull(analysis);
             Assert.Equal(device.Id, analysis.DeviceId);
@@ -241,13 +242,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task IdentifyHealthRelatedGapsAsync_ReturnsGaps_WhenHealthIssues()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var gaps = await _repository.IdentifyHealthRelatedGapsAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<HealthRelatedGap> gaps = await _repository.IdentifyHealthRelatedGapsAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(gaps);
         }
@@ -255,19 +256,19 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetEventHealthCorrelationAsync_ReturnsEvents_WithHealthData()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var correlations = await _repository.GetEventHealthCorrelationAsync(
+            IReadOnlyList<EventWithHealthCorrelation> correlations = await _repository.GetEventHealthCorrelationAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.NotNull(correlations);
@@ -277,11 +278,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetLocationChangeHistoryAsync_ReturnsEmpty_NoChanges()
         {
-            var device = TestDataBuilder.BuildDevice();
+            Device device = TestDataBuilder.BuildDevice();
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var history = await _repository.GetLocationChangeHistoryAsync(device.Id, CancellationToken.None);
+            IReadOnlyList<LocationChangeImpact> history = await _repository.GetLocationChangeHistoryAsync(device.Id, CancellationToken.None);
 
             Assert.NotNull(history);
         }
@@ -289,13 +290,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task CorrelateEventMissingWithSyncGapsAsync_ReturnsCorrelations()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var correlations = await _repository.CorrelateEventMissingWithSyncGapsAsync(location.Id, CancellationToken.None);
+            IReadOnlyList<SyncGapCorrelation> correlations = await _repository.CorrelateEventMissingWithSyncGapsAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(correlations);
         }

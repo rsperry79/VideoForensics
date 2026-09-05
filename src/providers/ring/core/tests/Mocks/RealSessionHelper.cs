@@ -1,10 +1,6 @@
 using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Auth;
 
-using System;
-using System.Threading.Tasks;
-
-namespace VideoForensics.Providers.Ring.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>
     /// Helper class for creating real Ring API sessions for integration testing. Reads the shared
@@ -33,7 +29,7 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// </summary>
         public static async Task<Session> CreateAuthenticatedSessionAsync()
         {
-            var auth = CredentialResolver.Resolve(null, null, null);
+            ResolvedCredentials? auth = CredentialResolver.Resolve(null, null, null);
             if (auth == null)
             {
                 throw new InvalidOperationException(
@@ -48,10 +44,10 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
                 }
 
                 var session = new Session(auth.UserName, auth.Password);
-                await session.Authenticate();
+                _ = await session.Authenticate();
                 return session;
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 throw new InvalidOperationException(
                     $"The saved credentials require two-factor authentication, which this test helper cannot complete " +
@@ -72,21 +68,21 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// </summary>
         public static Session CreateSessionWithoutAuth()
         {
-            var auth = CredentialResolver.Resolve(null, null, null);
-            if (auth?.UserName == null || auth.Password == null)
-            {
-                throw new InvalidOperationException(
-                    $"Ring API username/password not found at {CredentialResolver.AuthPath}.\n{SetupPointer}");
-            }
-
-            return new Session(auth.UserName, auth.Password);
+            ResolvedCredentials? auth = CredentialResolver.Resolve(null, null, null);
+            return auth?.UserName == null || auth.Password == null
+                ? throw new InvalidOperationException(
+                    $"Ring API username/password not found at {CredentialResolver.AuthPath}.\n{SetupPointer}")
+                : new Session(auth.UserName, auth.Password);
         }
 
         /// <summary>
         /// Checks if credentials (a refresh token, or username/password) are available for real
         /// integration testing.
         /// </summary>
-        public static bool CredentialsAvailable() => CredentialResolver.Resolve(null, null, null) != null;
+        public static bool CredentialsAvailable()
+        {
+            return CredentialResolver.Resolve(null, null, null) != null;
+        }
 
         /// <summary>
         /// Checks specifically for saved username/password (not just any credential) - needed by
@@ -96,15 +92,17 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// </summary>
         public static bool UsernamePasswordAvailable()
         {
-            var auth = CredentialResolver.Resolve(null, null, null);
+            ResolvedCredentials? auth = CredentialResolver.Resolve(null, null, null);
             return auth?.UserName != null && auth.Password != null;
         }
 
         /// <summary>
         /// Gets a message explaining how to setup credentials, for tests that want to surface it directly.
         /// </summary>
-        public static string GetSetupInstructions() =>
-            $"Ring API credentials not found or not usable at {CredentialResolver.AuthPath}.\n{SetupPointer}";
+        public static string GetSetupInstructions()
+        {
+            return $"Ring API credentials not found or not usable at {CredentialResolver.AuthPath}.\n{SetupPointer}";
+        }
     }
 }
 

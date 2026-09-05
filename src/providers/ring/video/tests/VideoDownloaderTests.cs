@@ -1,11 +1,8 @@
 #nullable disable
-using System.Net;
-using System.Net.Http;
-using System.Text;
-
-using VideoForensics.Providers.Ring;
-
 using Moq;
+
+using System.Net;
+using System.Text;
 
 namespace VideoForensics.Providers.Ring.Video.Tests
 {
@@ -19,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         [Fact]
         public async Task OpenStreamAsync_ReturnsDownloadedBytes()
         {
-            var expected = Encoding.UTF8.GetBytes("fake-video-bytes");
+            byte[] expected = Encoding.UTF8.GetBytes("fake-video-bytes");
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(expected)
@@ -42,7 +39,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             });
             var downloader = CreateDownloader(handler);
 
-            await downloader.OpenStreamAsync("https://example.com/recording.mp4");
+            _ = await downloader.OpenStreamAsync("https://example.com/recording.mp4");
 
             Assert.NotNull(handler.LastRequest.Headers.Range);
             Assert.Equal("https://example.com/recording.mp4", handler.LastRequest.RequestUri.ToString());
@@ -51,13 +48,13 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         [Fact]
         public async Task DownloadToFileAsync_WritesBytesToDisk()
         {
-            var expected = Encoding.UTF8.GetBytes("fake-video-bytes-for-file");
+            byte[] expected = Encoding.UTF8.GetBytes("fake-video-bytes-for-file");
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(expected)
             });
             var downloader = CreateDownloader(handler);
-            var path = Path.Combine(Path.GetTempPath(), $"video-downloader-test-{Guid.NewGuid()}.bin");
+            string path = Path.Combine(Path.GetTempPath(), $"video-downloader-test-{Guid.NewGuid()}.bin");
 
             try
             {
@@ -68,7 +65,9 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             finally
             {
                 if (File.Exists(path))
+                {
                     File.Delete(path);
+                }
             }
         }
 
@@ -80,7 +79,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
 
             try
             {
-                await downloader.OpenStreamAsync("not-a-url");
+                _ = await downloader.OpenStreamAsync("not-a-url");
                 Assert.Fail("Expected an ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -97,7 +96,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
 
             try
             {
-                await downloader.OpenStreamAsync("");
+                _ = await downloader.OpenStreamAsync("");
                 Assert.Fail("Expected an ArgumentException to be thrown");
             }
             catch (ArgumentException)
@@ -114,7 +113,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         public async Task IVideoDownloader_IsMockable()
         {
             var mock = new Mock<IVideoDownloader>();
-            mock.Setup(d => d.OpenStreamAsync(It.IsAny<string>()))
+            _ = mock.Setup(d => d.OpenStreamAsync(It.IsAny<string>()))
                 .ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes("mocked")));
 
             IVideoDownloader downloader = mock.Object;

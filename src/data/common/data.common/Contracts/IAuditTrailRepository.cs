@@ -61,7 +61,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int TotalEventsTracked { get; set; }
         public int AccessRecordsCount { get; set; }
         public bool IsComplete { get; set; }
-        public List<AccessAuditLog> AllAccesses { get; set; } = new();
+        public List<AccessAuditLog> AllAccesses { get; set; } = [];
         public string CustodyStatus { get; set; } = "Unknown"; // "Intact", "Questionable", "Compromised"
     }
 
@@ -104,7 +104,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int ModifiedEvents { get; set; }
         public bool IsIntact { get; set; }
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Modified", "Compromised"
-        public List<ModificationDetail> ModificationDetails { get; set; } = new();
+        public List<ModificationDetail> ModificationDetails { get; set; } = [];
     }
 
     /// <summary>Redaction audit record.</summary>

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,21 +23,21 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a device by ID.</summary>
         public async Task<Device?> GetAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
         }
 
         /// <summary>Gets all devices for a location.</summary>
         public async Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
         }
 
         /// <summary>Gets a device by location ID and provider device ID.</summary>
         public async Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Devices.FirstOrDefaultAsync(
                 d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId, ct);
         }
@@ -44,18 +45,18 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all devices.</summary>
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Devices.ToListAsync(ct);
         }
 
         /// <summary>Adds a new device.</summary>
         public async Task AddAsync(Device device, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.Devices.Add(device);
-                await db.SaveChangesAsync(ct);
+                _ = db.Devices.Add(device);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Device added: {DeviceId} ({DeviceName})", device.Id, device.Name);
             }
             catch (Exception ex)
@@ -68,11 +69,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates an existing device.</summary>
         public async Task UpdateAsync(Device device, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.Devices.Update(device);
-                await db.SaveChangesAsync(ct);
+                _ = db.Devices.Update(device);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Device updated: {DeviceId}", device.Id);
             }
             catch (Exception ex)
@@ -85,14 +86,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates the last successful pull timestamp for a device.</summary>
         public async Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
                 if (device != null)
                 {
                     device.LastSuccessfulPullAtUtc = pulledAtUtc;
-                    await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Device watermark updated: {DeviceId} ({PulledAtUtc})", deviceId, pulledAtUtc);
                 }
             }
@@ -106,14 +107,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a device.</summary>
         public async Task DeleteAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
                 if (device != null)
                 {
-                    db.Devices.Remove(device);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.Devices.Remove(device);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Device deleted: {DeviceId}", deviceId);
                 }
             }

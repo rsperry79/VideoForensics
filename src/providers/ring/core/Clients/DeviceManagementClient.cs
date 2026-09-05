@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring.Interfaces;
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Interfaces;
 
 namespace VideoForensics.Providers.Ring.Clients;
 
@@ -43,16 +43,11 @@ public class DeviceManagementClient : IDeviceManagementClient
             throw new ArgumentException("Device name is required", nameof(deviceName));
         }
 
-        var devices = await _discoveryService.GetRingDevices(null, cancellationToken);
-        var device = devices.FirstOrDefault(d =>
+        List<Doorbot> devices = await _discoveryService.GetRingDevices(null, cancellationToken);
+        Doorbot? device = devices.FirstOrDefault(d =>
             d.Description?.Equals(deviceName, StringComparison.OrdinalIgnoreCase) ?? false);
 
-        if (device == null)
-        {
-            throw new KeyNotFoundException($"Device '{deviceName}' not found");
-        }
-
-        return device;
+        return device == null ? throw new KeyNotFoundException($"Device '{deviceName}' not found") : device;
     }
 
     public async Task<Doorbot> GetDeviceByIdAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -62,15 +57,10 @@ public class DeviceManagementClient : IDeviceManagementClient
             throw new ArgumentException("Device ID is required", nameof(deviceId));
         }
 
-        var devices = await _discoveryService.GetRingDevices(null, cancellationToken);
-        var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        List<Doorbot> devices = await _discoveryService.GetRingDevices(null, cancellationToken);
+        Doorbot? device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
-        if (device == null)
-        {
-            throw new KeyNotFoundException($"Device '{deviceId}' not found");
-        }
-
-        return device;
+        return device == null ? throw new KeyNotFoundException($"Device '{deviceId}' not found") : device;
     }
 
     public async Task<bool> ControlDeviceAsync(string deviceId, DeviceAction action, CancellationToken cancellationToken = default)
@@ -113,8 +103,9 @@ public class DeviceManagementClient : IDeviceManagementClient
             throw new ArgumentException("Device ID is required", nameof(deviceId));
         }
 
-        var device = await GetDeviceByIdAsync(deviceId, cancellationToken);
-        var health = await _healthService.GetDoorbotHealth(deviceId, cancellationToken);
+        Doorbot device = await GetDeviceByIdAsync(deviceId, cancellationToken);
+
+        _ = await _healthService.GetDoorbotHealth(deviceId, cancellationToken);
 
         return new DeviceStatusInfo
         {
@@ -132,12 +123,9 @@ public class DeviceManagementClient : IDeviceManagementClient
 
     public async Task<List<Doorbot>> GetDevicesByLocationAsync(Guid locationId, CancellationToken cancellationToken = default)
     {
-        if (locationId == Guid.Empty)
-        {
-            throw new ArgumentException("Location ID is required", nameof(locationId));
-        }
-
-        return await _discoveryService.GetRingDevices(locationId, cancellationToken);
+        return locationId == Guid.Empty
+            ? throw new ArgumentException("Location ID is required", nameof(locationId))
+            : await _discoveryService.GetRingDevices(locationId, cancellationToken);
     }
 
     public async Task<bool> SetLocationModeAsync(Guid locationId, string mode, CancellationToken cancellationToken = default)

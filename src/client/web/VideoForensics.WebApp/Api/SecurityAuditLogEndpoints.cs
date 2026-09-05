@@ -8,7 +8,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapSecurityAuditLogEndpoints(this WebApplication app)
         {
-            app.MapGet("/api/security-audit-log", async (
+            _ = app.MapGet("/api/security-audit-log", async (
                 Guid? operatorId,
                 int? maxResults,
                 ISecurityAuditLogRepository repository,

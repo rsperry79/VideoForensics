@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.MauiApp.Logging
@@ -22,7 +20,10 @@ namespace VideoForensics.MauiApp.Logging
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _filePath, _minLevel, _writeLock);
+        public ILogger CreateLogger(string categoryName)
+        {
+            return new FileLogger(categoryName, _filePath, _minLevel, _writeLock);
+        }
 
         public void Dispose()
         {
@@ -43,9 +44,15 @@ namespace VideoForensics.MauiApp.Logging
                 _writeLock = writeLock;
             }
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= _minLevel;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return logLevel != LogLevel.None && logLevel >= _minLevel;
+            }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {

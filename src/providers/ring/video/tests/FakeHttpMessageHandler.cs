@@ -1,6 +1,3 @@
-using System.Net.Http;
-using System.Threading;
-
 namespace VideoForensics.Providers.Ring.Video.Tests
 {
     /// <summary>

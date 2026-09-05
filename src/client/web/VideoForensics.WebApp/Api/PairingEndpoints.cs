@@ -1,8 +1,10 @@
-using System.Text;
-using System.Text.Json;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
+
 using QRCoder;
+
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -25,7 +27,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapPairingEndpoints(this WebApplication app)
         {
-            app.MapPost("/api/pairing/initiate", async (
+            _ = app.MapPost("/api/pairing/initiate", async (
                 HttpContext context,
                 IPairingTokenService pairingTokens,
                 IOperatorRepository operators,
@@ -33,13 +35,13 @@ namespace VideoForensics.WebApp.Api
                 INetworkTierResolver tierResolver,
                 CancellationToken ct) =>
             {
-                var isBootstrap = await operators.IsEmptyAsync(ct);
+                bool isBootstrap = await operators.IsEmptyAsync(ct);
                 if (!isBootstrap)
                 {
-                    var roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
-                    var tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-                    var isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role == OperatorRole.SuperAdmin;
-                    var isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local;
+                    string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
+                    string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+                    bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role == OperatorRole.SuperAdmin;
+                    bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local;
 
                     if (!isSuperAdmin || !isLocal)
                     {
@@ -57,7 +59,7 @@ namespace VideoForensics.WebApp.Api
             }).RequireAuthorization(policy => policy.RequireAssertion(_ => true)) // auth optional here - the handler above does the real gating (bootstrap case has no session at all)
               .RequireRateLimiting("auth");
 
-            app.MapGet("/api/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
+            _ = app.MapGet("/api/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
             {
                 var info = pairingTokens.Peek(token);
                 return info == null
@@ -70,7 +72,7 @@ namespace VideoForensics.WebApp.Api
             // image only encodes the same pairing URL a SuperAdmin could otherwise read off-screen
             // or copy as plain text - rendering it as an image is a UX convenience, not a new trust
             // boundary.
-            app.MapGet("/api/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
+            _ = app.MapGet("/api/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
             {
                 var info = pairingTokens.Peek(token);
                 if (info == null)
@@ -78,17 +80,17 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                var pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}";
+                string pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}";
 
                 using var generator = new QRCodeGenerator();
                 using var data = generator.CreateQrCode(pairingUrl, QRCodeGenerator.ECCLevel.Q);
                 var pngQrCode = new PngByteQRCode(data);
-                var bytes = pngQrCode.GetGraphic(10);
+                byte[] bytes = pngQrCode.GetGraphic(10);
 
                 return Results.File(bytes, "image/png");
             }).RequireRateLimiting("auth");
 
-            app.MapPost("/api/pairing/{token}/register/options", async (
+            _ = app.MapPost("/api/pairing/{token}/register/options", async (
                 string token,
                 RegisterOptionsRequest request,
                 IPairingTokenService pairingTokens,
@@ -112,7 +114,7 @@ namespace VideoForensics.WebApp.Api
                 var options = fido2.RequestNewCredential(new RequestNewCredentialParams
                 {
                     User = fido2User,
-                    ExcludeCredentials = new List<PublicKeyCredentialDescriptor>(),
+                    ExcludeCredentials = [],
                     // AuthenticatorSelection.Default leaves AuthenticatorAttachment unset and
                     // UserVerification "discouraged" - that's why registration wasn't going
                     // straight to Windows Hello: an unset attachment lets the browser offer ANY
@@ -131,12 +133,12 @@ namespace VideoForensics.WebApp.Api
                 });
 
                 var pendingRegistration = new PendingRegistration(token, operatorId, request.OperatorDisplayName, request.DeviceName, info.Role, options.ToJson());
-                var nonce = ceremonyCache.Store(JsonSerializer.Serialize(pendingRegistration));
+                string nonce = ceremonyCache.Store(JsonSerializer.Serialize(pendingRegistration));
 
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
             }).RequireRateLimiting("auth");
 
-            app.MapPost("/api/pairing/{token}/register/complete", async (
+            _ = app.MapPost("/api/pairing/{token}/register/complete", async (
                 string token,
                 RegisterCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
@@ -149,7 +151,7 @@ namespace VideoForensics.WebApp.Api
                 IFido2 fido2,
                 CancellationToken ct) =>
             {
-                var cached = ceremonyCache.TryTake(request.Nonce);
+                string? cached = ceremonyCache.TryTake(request.Nonce);
                 if (cached == null)
                 {
                     return Results.BadRequest(new { error = "Registration ceremony expired or already completed." });
@@ -217,7 +219,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString() });
             }).RequireRateLimiting("auth");
 
-            app.MapPost("/api/auth/webauthn/assertion-options", async (
+            _ = app.MapPost("/api/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IFido2 fido2,
@@ -241,12 +243,12 @@ namespace VideoForensics.WebApp.Api
                     // satisfy it with mere presence instead of an actual biometric/PIN check.
                     UserVerification = UserVerificationRequirement.Required
                 });
-                var nonce = ceremonyCache.Store(options.ToJson());
+                string nonce = ceremonyCache.Store(options.ToJson());
 
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
             }).RequireRateLimiting("auth");
 
-            app.MapPost("/api/auth/webauthn/assertion-complete", async (
+            _ = app.MapPost("/api/auth/webauthn/assertion-complete", async (
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
@@ -257,7 +259,7 @@ namespace VideoForensics.WebApp.Api
                 IFido2 fido2,
                 CancellationToken ct) =>
             {
-                var cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
+                string? cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
                 if (cachedOptionsJson == null)
                 {
                     return Results.BadRequest(new { error = "Authentication ceremony expired." });
@@ -276,7 +278,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.BadRequest(new { error = "Malformed assertion response." });
                 }
 
-                var credentialIdB64 = Convert.ToBase64String(assertionResponse.RawId);
+                string credentialIdB64 = Convert.ToBase64String(assertionResponse.RawId);
                 var device = await pairedDevices.GetByWebAuthnCredentialIdAsync(credentialIdB64, ct);
                 if (device == null || device.WebAuthnPublicKey == null)
                 {
@@ -307,7 +309,7 @@ namespace VideoForensics.WebApp.Api
                 var tier = tierResolver.ResolveTier(context);
                 await pairedDevices.RecordSuccessfulAuthAsync(device.Id, result.SignCount, tierResolver.ResolveClientIp(context), tier, ct);
 
-                var token = sessionTokens.Issue(device.OperatorId, device.Id, device.Role);
+                string token = sessionTokens.Issue(device.OperatorId, device.Id, device.Role);
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, device.OperatorId, device.Id,
                     tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
@@ -322,7 +324,7 @@ namespace VideoForensics.WebApp.Api
             // that protected endpoints require in addition to the normal session. See
             // IStepUpAuthService's doc comment for why this is kept deliberately separate from
             // session-start verification above.
-            app.MapPost("/api/auth/webauthn/stepup-complete", async (
+            _ = app.MapPost("/api/auth/webauthn/stepup-complete", async (
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
@@ -333,13 +335,13 @@ namespace VideoForensics.WebApp.Api
                 IFido2 fido2,
                 CancellationToken ct) =>
             {
-                var currentDeviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+                string? currentDeviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
                 if (!Guid.TryParse(currentDeviceIdClaim, out var currentDeviceId))
                 {
                     return Results.Unauthorized();
                 }
 
-                var cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
+                string? cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
                 if (cachedOptionsJson == null)
                 {
                     return Results.BadRequest(new { error = "Step-up ceremony expired." });
@@ -393,7 +395,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.Unauthorized();
                 }
 
-                var stepUpToken = stepUpAuth.IssueToken(device.Id);
+                string stepUpToken = stepUpAuth.IssueToken(device.Id);
                 await auditLog.LogAsync(SecurityAuditEventTypes.StepUpVerified, device.OperatorId, device.Id,
                     tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
 

@@ -1,4 +1,5 @@
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Common.Tests
@@ -92,7 +93,7 @@ namespace VideoForensics.Providers.Common.Tests
         public void DeviceEvent_CanBeCreated()
         {
             // Arrange
-            var timestamp = DateTime.UtcNow;
+            DateTime timestamp = DateTime.UtcNow;
 
             // Act
             var @event = new DeviceEvent(

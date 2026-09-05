@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -36,47 +37,61 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            var response = await _httpClient.GetAsync("/api/media-items", ct);
-            response.EnsureSuccessStatusCode();
-            var items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/media-items", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<MediaItem>? items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
             return items ?? [];
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            var response = await _httpClient.GetAsync($"/api/media-items?deviceId={deviceId}", ct);
-            response.EnsureSuccessStatusCode();
-            var items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/media-items?deviceId={deviceId}", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<MediaItem>? items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
             return items ?? [];
         }
 
         /// <inheritdoc />
-        public Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct) =>
+        public Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
+        {
             throw new NotSupportedException(NotSupportedMessage);
+        }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+        public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
             throw new NotSupportedException(NotSupportedMessage);
+        }
 
         /// <inheritdoc />
-        public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct) =>
+        public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
+        {
             throw new NotSupportedException(NotSupportedMessage);
+        }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct) =>
+        public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
+        {
             throw new NotSupportedException(NotSupportedMessage);
+        }
 
         /// <inheritdoc />
-        public Task AddAsync(MediaItem mediaItem, CancellationToken ct) =>
+        public Task AddAsync(MediaItem mediaItem, CancellationToken ct)
+        {
             throw new NotSupportedException(NoWritePathMessage);
+        }
 
         /// <inheritdoc />
-        public Task UpdateAsync(MediaItem mediaItem, CancellationToken ct) =>
+        public Task UpdateAsync(MediaItem mediaItem, CancellationToken ct)
+        {
             throw new NotSupportedException(NoWritePathMessage);
+        }
 
         /// <inheritdoc />
-        public Task DeleteAsync(Guid mediaItemId, CancellationToken ct) =>
+        public Task DeleteAsync(Guid mediaItemId, CancellationToken ct)
+        {
             throw new NotSupportedException(NoWritePathMessage);
+        }
     }
 }

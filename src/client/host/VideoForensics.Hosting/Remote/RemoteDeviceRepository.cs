@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -27,9 +28,9 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            var response = await _httpClient.GetAsync("/api/devices", ct);
-            response.EnsureSuccessStatusCode();
-            var devices = await response.Content.ReadFromJsonAsync<List<Device>>(JsonOptions, ct);
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/devices", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<Device>? devices = await response.Content.ReadFromJsonAsync<List<Device>>(JsonOptions, ct);
             return devices ?? [];
         }
 
@@ -40,32 +41,44 @@ namespace VideoForensics.Hosting.Remote
         /// </remarks>
         public async Task<Device?> GetAsync(Guid deviceId, CancellationToken ct)
         {
-            var devices = await ListAsync(ct);
+            IReadOnlyList<Device> devices = await ListAsync(ct);
             return devices.FirstOrDefault(d => d.Id == deviceId);
         }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct) =>
+        public Task<IReadOnlyList<Device>> GetByLocationIdAsync(Guid locationId, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
 
         /// <inheritdoc />
-        public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct) =>
+        public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
 
         /// <inheritdoc />
-        public Task AddAsync(Device device, CancellationToken ct) =>
+        public Task AddAsync(Device device, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
 
         /// <inheritdoc />
-        public Task UpdateAsync(Device device, CancellationToken ct) =>
+        public Task UpdateAsync(Device device, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
 
         /// <inheritdoc />
-        public Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct) =>
+        public Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
 
         /// <inheritdoc />
-        public Task DeleteAsync(Guid deviceId, CancellationToken ct) =>
+        public Task DeleteAsync(Guid deviceId, CancellationToken ct)
+        {
             throw new NotSupportedException("Not supported on a remote (MAUI client) repository - use the server's API directly, or this read isn't wired up yet.");
+        }
     }
 }
