@@ -1,6 +1,7 @@
 @page "/collect/videos"
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
+@inject NavigationManager NavigationManager
 
 <RadzenText TextStyle="TextStyle.H4" class="mb-4">Collect Videos</RadzenText>
 
@@ -10,7 +11,7 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to collect videos.</RadzenText>
+    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to collect videos.</RadzenText>
 }
 else
 {

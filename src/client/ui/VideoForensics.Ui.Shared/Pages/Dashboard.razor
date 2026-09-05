@@ -1,6 +1,7 @@
 @page "/"
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
+@inject NavigationManager NavigationManager
 
 <RadzenText TextStyle="TextStyle.H4" class="mb-4">VideoForensics</RadzenText>
 
@@ -10,7 +11,7 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view your devices.</RadzenText>
+    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view your devices.</RadzenText>
 }
 else
 {

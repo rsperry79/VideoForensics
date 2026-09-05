@@ -1,20 +1,20 @@
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using Radzen;
+
+using System.Threading.RateLimiting;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
-using VideoForensics.Providers.Common.Contracts;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -23,9 +23,9 @@ using VideoForensics.Providers.Common.Contracts;
 // ADO.NET connection - not the full EF/DI stack - and tolerates a missing file/table (first run,
 // or a fresh install) by defaulting to Local, the safest "hasn't been configured yet" state (plan
 // §5.2's "Local-only by default").
-var configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
+NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 var listenPort = ResolveConfiguredPort(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
@@ -114,9 +114,9 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddPolicy("auth", httpContext =>
+    _ = options.AddPolicy("auth", httpContext =>
     {
-        var resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
 
         // This limiter exists to stop a REMOTE attacker from brute-forcing pairing/auth (plan
         // §5.7) - it was never meant to throttle the physically-present owner setting up their own
@@ -140,9 +140,9 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
-    options.AddPolicy("media", httpContext =>
+    _ = options.AddPolicy("media", httpContext =>
     {
-        var resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
         var key = resolver.ResolveClientIp(httpContext);
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
@@ -182,14 +182,19 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 
-var app = builder.Build();
+// MainLayout.razor's shared <RadzenComponents> needs @rendermode="InteractiveServer" here - this
+// is a real ASP.NET Core host with interactive server components configured below. MAUI's
+// BlazorWebView registers NullBlazorRenderModeProvider instead - see IBlazorRenderModeProvider.
+builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazorRenderModeProvider>();
+
+WebApplication app = builder.Build();
 
 // DB init + Events backfill + persisted-config load, in that order - see
 // VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
 // app has no "must respond immediately" constraint, so this is awaited directly before app.Run().
 // A transient DB issue is logged critically but does not crash the whole web server - matching this
 // project's existing philosophy of graceful degradation over hard crashes where reasonable.
-var initLogger = app.Services.GetRequiredService<ILogger<Program>>();
+ILogger<Program> initLogger = app.Services.GetRequiredService<ILogger<Program>>();
 try
 {
     await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(app.Services, initLogger, CancellationToken.None);
@@ -203,10 +208,11 @@ catch (Exception ex)
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    _ = app.UseHsts();
 }
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -253,10 +259,10 @@ static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
 
         using var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
         connection.Open();
-        using var command = connection.CreateCommand();
+        using SqliteCommand command = connection.CreateCommand();
         command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'ConfiguredNetworkTier' LIMIT 1";
         var value = command.ExecuteScalar() as string;
-        return Enum.TryParse<NetworkTier>(value, out var tier) ? tier : NetworkTier.Local;
+        return Enum.TryParse<NetworkTier>(value, out NetworkTier tier) ? tier : NetworkTier.Local;
     }
     catch
     {
@@ -270,7 +276,7 @@ static int ResolveConfiguredPort(IConfiguration configuration)
 {
     var urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
     var first = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-    if (first is not null && Uri.TryCreate(first, UriKind.Absolute, out var uri))
+    if (first is not null && Uri.TryCreate(first, UriKind.Absolute, out Uri? uri))
     {
         return uri.Port;
     }

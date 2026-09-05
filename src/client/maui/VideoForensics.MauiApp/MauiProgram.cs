@@ -1,12 +1,13 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using CommunityToolkit.Maui;
-using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using Radzen;
-using VideoForensics.Client.Common;
+
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.MauiApp.AppLock;
 
@@ -37,6 +38,30 @@ namespace VideoForensics.MauiApp
             builder.Logging.SetMinimumLevel(LogLevel.Information);
             builder.Logging.AddProvider(new VideoForensics.MauiApp.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
 
+            // AddVideoForensicsDataLayer() -> AddVideoForensicsDatabase() registers a bare
+            // AddDataProtection() for CredentialEncryptionProvider. The first time anything resolves
+            // IDataProtectionProvider, DataProtectionOptionsSetup.Configure unconditionally computes an
+            // application discriminator via internal type HostingApplicationDiscriminator, which reads
+            // IHostEnvironment.ContentRootPath - MAUI's MauiHostEnvironment doesn't implement that
+            // property and throws NotImplementedException. HostingApplicationDiscriminator is internal
+            // with no public seam (confirmed: no IApplicationDiscriminator interface exists in this
+            // package to substitute), and chaining .SetApplicationName() after the fact does NOT help -
+            // that Configure delegate is registered after DataProtectionOptionsSetup's and only runs (if
+            // it even gets a chance to) once the eager `??=` computation above has already thrown. The
+            // only working seam is IHostEnvironment itself: register a fixed replacement AFTER MAUI's
+            // builder has already added its own (last registration for a service type wins in
+            // Microsoft.Extensions.DependencyInjection - the same rule this file already relies on for
+            // IAppLockPreferencesStore below) so HostingApplicationDiscriminator reads our ContentRootPath
+            // instead. Nothing else in this app depends on IHostEnvironment, so overriding it wholesale
+            // is safe.
+            builder.Services.AddSingleton<IHostEnvironment>(new FixedHostEnvironment(configDir));
+
+            var dataProtectionKeyPath = Path.Combine(configDir, "keys");
+            Directory.CreateDirectory(dataProtectionKeyPath);
+            builder.Services.AddDataProtection()
+                .SetApplicationName("VideoForensics")
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
             // Ring's four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
             // VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. This is a deliberate,
@@ -46,6 +71,23 @@ namespace VideoForensics.MauiApp
             // (Minimal API + HTTP-based remote repositories) is separately scoped, later work.
             builder.Services.AddVideoForensicsDataLayer();
             builder.Services.AddVideoForensicsServerCore();
+
+            // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan
+            // §5.1/§5.11), mirroring VideoForensics.WebApp/Program.cs - MainLayout.razor (rendered for
+            // every page, MAUI included) @injects PairedSessionState, so without this registration
+            // BlazorWebView fails to instantiate MainLayout at all and the app hangs on the static
+            // "Loading..." placeholder in wwwroot/index.html forever. WebAuthnClient is needed by the
+            // individual Security*/Pair/NetworkSettings/DeviceSignIn pages that share this UI project.
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
+
+            // MainLayout.razor's shared <RadzenComponents> needs a render mode decision too - MAUI's
+            // BlazorWebView has no ASP.NET Core render-mode infrastructure at all (it renders through
+            // its own native IPC channel) and throws "the current platform does not support the
+            // ServerRenderMode" the instant MainLayout renders if @rendermode is set to anything.
+            // NullBlazorRenderModeProvider tells MainLayout to pass null instead - see
+            // IBlazorRenderModeProvider and VideoForensics.WebApp/Program.cs's InteractiveServer one.
+            builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.IBlazorRenderModeProvider, VideoForensics.Ui.Shared.Services.NullBlazorRenderModeProvider>();
 
             // Local app-lock (plan §5.9) - overrides the no-op IAppLockPreferencesStore default that
             // AddVideoForensicsDataLayer() just registered for every host. Windows-only for now,
@@ -89,6 +131,22 @@ namespace VideoForensics.MauiApp
             });
 
             return app;
+        }
+
+        // Minimal stand-in for the IHostEnvironment MAUI can't fully implement (its ContentRootPath
+        // getter throws NotImplementedException) - see the comment above where this is registered.
+        private sealed class FixedHostEnvironment : IHostEnvironment
+        {
+            public FixedHostEnvironment(string contentRootPath)
+            {
+                ContentRootPath = contentRootPath;
+                ContentRootFileProvider = new PhysicalFileProvider(contentRootPath);
+            }
+
+            public string EnvironmentName { get; set; } = Environments.Production;
+            public string ApplicationName { get; set; } = "VideoForensics.MauiApp";
+            public string ContentRootPath { get; set; }
+            public IFileProvider ContentRootFileProvider { get; set; }
         }
     }
 }

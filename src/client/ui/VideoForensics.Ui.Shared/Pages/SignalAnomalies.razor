@@ -5,6 +5,7 @@
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
+@inject NavigationManager NavigationManager
 
 <RadzenText TextStyle="TextStyle.H4" class="mb-4">Signal Anomaly Report</RadzenText>
 
@@ -15,7 +16,7 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to view signal anomalies.
+        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view signal anomalies.
     </RadzenAlert>
 }
 else

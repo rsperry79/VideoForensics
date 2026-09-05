@@ -4,16 +4,17 @@
 @inject PairedSessionState SessionState
 @inject IProviderAuthService ProviderAuth
 @inject IAppLockPreferencesStore AppLockPreferences
+@inject IBlazorRenderModeProvider RenderModeProvider
 
 <RadzenTheme Theme="material" />
-<RadzenComponents @rendermode="InteractiveServer" />
+<RadzenComponents @rendermode="RenderModeProvider.InteractiveServerOrNull" />
 
 <RadzenLayout>
     <RadzenHeader>
         <div class="app-bar">
             <RadzenText TextStyle="TextStyle.H6" class="app-bar-brand">VideoForensics</RadzenText>
 
-            <RadzenMenu class="app-bar-menu">
+            <RadzenMenu class="app-bar-menu" Responsive="false">
                 <RadzenMenuItem Text="Dashboard" Path="/" Match="NavLinkMatch.All" />
                 <RadzenMenuItem Text="Full Workflow" Path="/workflow" />
 
@@ -48,7 +49,7 @@
                 <RadzenMenuItem Text="Query API" Path="/query" />
             </RadzenMenu>
 
-            <RadzenMenu class="app-bar-settings">
+            <RadzenMenu class="app-bar-settings" Responsive="false">
                 <RadzenMenuItem Text="Settings">
                     <RadzenMenuItem Text="General" Path="/settings" />
                     <RadzenMenuItem Text="Accounts" Path="/accounts" />

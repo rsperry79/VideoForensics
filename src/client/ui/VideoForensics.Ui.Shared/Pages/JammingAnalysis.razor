@@ -4,6 +4,7 @@
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject JammingToolsOrchestrator JammingTools
+@inject NavigationManager NavigationManager
 
 <RadzenText TextStyle="TextStyle.H4" class="mb-4">Jamming Analysis</RadzenText>
 
@@ -14,7 +15,7 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to analyze jamming.
+        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to analyze jamming.
     </RadzenAlert>
 }
 else
