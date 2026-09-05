@@ -15,7 +15,7 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="/signin" Text="Sign in" /> to validate evidence.
+        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to validate evidence.
     </RadzenAlert>
 }
 else
