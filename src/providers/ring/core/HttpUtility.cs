@@ -245,10 +245,10 @@ namespace VideoForensics.Providers.Ring
             {
                 case HttpStatusCode.TooManyRequests:
                     RecordThrottled();
-                    throw new Exceptions.ThrottledException();
+                    throw new Exceptions.ThrottledException { StatusCode = response.StatusCode, ResponseBody = TruncateForLog(responseFromServer) };
 
                 case HttpStatusCode.NotFound:
-                    throw new Exceptions.DeviceUnknownException(url);
+                    throw new Exceptions.DeviceUnknownException(url) { StatusCode = response.StatusCode, ResponseBody = TruncateForLog(responseFromServer) };
             }
 
             // A non-2xx response here (e.g. 401 from an expired token, or 403 from a scope the
@@ -257,7 +257,7 @@ namespace VideoForensics.Providers.Ring
             // into "no devices/locations found" instead of a surfaced auth error.
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode);
+                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode) { ResponseBody = TruncateForLog(responseFromServer) };
             }
 
             ClearThrottle();
@@ -350,6 +350,12 @@ namespace VideoForensics.Providers.Ring
             {
                 PersistHardBanState();
             }
+        }
+
+        /// <summary>Truncates a response body to a bounded length before it's attached to an exception or persisted, so a pathological/verbose error page can't bloat the DB.</summary>
+        private static string TruncateForLog(string body, int maxLength = 4000)
+        {
+            return body != null && body.Length > maxLength ? body[..maxLength] : body;
         }
 
         private static void ClearThrottle()
@@ -647,12 +653,12 @@ namespace VideoForensics.Providers.Ring
             {
                 if (response.StatusCode != expectedStatusCode.Value)
                 {
-                    throw new Exceptions.UnexpectedOutcomeException(response.StatusCode, expectedStatusCode.Value);
+                    throw new Exceptions.UnexpectedOutcomeException(response.StatusCode, expectedStatusCode.Value) { ResponseBody = TruncateForLog(responseFromServer) };
                 }
             }
             else if (!response.IsSuccessStatusCode)
             {
-                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode);
+                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode) { ResponseBody = TruncateForLog(responseFromServer) };
             }
         }
 

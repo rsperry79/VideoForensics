@@ -21,6 +21,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
         private readonly Mock<IDeviceHealthSnapshotRepository> _mockDeviceHealthSnapshotRepository;
+        private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IWatermarkService> _mockWatermarkService;
         private readonly Mock<IActionLogger> _mockActionLogger;
@@ -42,6 +43,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockDeviceHealthSnapshotRepository = new Mock<IDeviceHealthSnapshotRepository>();
+            _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockWatermarkService = new Mock<IWatermarkService>();
             _mockActionLogger = new Mock<IActionLogger>();
@@ -59,6 +61,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthSnapshotRepository.Object,
+                _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
                 _mockActionLogger.Object,

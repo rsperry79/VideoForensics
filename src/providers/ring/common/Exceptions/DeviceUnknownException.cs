@@ -12,6 +12,12 @@ namespace VideoForensics.Providers.Ring.Exceptions
         /// </summary>
         private const string errorMessage = "The Ring device with Id '{0}' could not be found";
 
+        /// <summary>The HTTP status code Ring returned (always 404 for this exception), set via object initializer at the throw site.</summary>
+        public System.Net.HttpStatusCode? StatusCode { get; init; }
+
+        /// <summary>The raw response body Ring returned, truncated to ~4000 chars, when available.</summary>
+        public string? ResponseBody { get; init; }
+
         public DeviceUnknownException() : base(string.Format(errorMessage, "unknown"))
         {
         }

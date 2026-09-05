@@ -18,6 +18,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthSnapshotRepository _deviceHealthSnapshotRepository;
+        private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
@@ -36,6 +37,7 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthSnapshotRepository deviceHealthSnapshotRepository,
+            IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
             IActionLogger actionLogger,
@@ -52,6 +54,7 @@ namespace VideoForensics.Data.Core.Services
             _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthSnapshotRepository = deviceHealthSnapshotRepository;
+            _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
             _actionLogger = actionLogger;
@@ -86,6 +89,20 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording device health snapshot for device {DeviceId}", snapshot.DeviceId);
+                throw;
+            }
+        }
+
+        public async Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct)
+        {
+            try
+            {
+                await _providerApiErrorLogRepository.RecordAsync(entry, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording provider API error log for event {EventId}, device {DeviceId}",
+                    entry.EventId, entry.DeviceId);
                 throw;
             }
         }
