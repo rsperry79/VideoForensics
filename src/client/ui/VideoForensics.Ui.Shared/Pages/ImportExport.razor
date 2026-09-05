@@ -1,0 +1,155 @@
+@page "/tools/import-export"
+@inject IBackupExportService BackupExportService
+@inject IBackupImportService BackupImportService
+
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Import / Export</RadzenText>
+
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">Export</RadzenText>
+
+    <div>
+        <RadzenButton Text="Prepare for Export" Click="PrepareAsync" Disabled="@_isPreparing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Secondary" />
+    </div>
+
+    @if (_prepareResult is not null)
+    {
+        <div class="mt-2">
+            <RadzenText>Validated: @_prepareResult.Validated</RadzenText>
+            <RadzenText>Backfilled: @_prepareResult.Backfilled</RadzenText>
+            <RadzenText>Missing media: @_prepareResult.MissingMedia</RadzenText>
+            <RadzenText>Unrecoverable sidecars: @_prepareResult.MissingSidecarUnrecoverable</RadzenText>
+            @foreach (var detail in _prepareResult.Details)
+            {
+                <RadzenText Class="mt-1">@detail</RadzenText>
+            }
+        </div>
+    }
+
+    <div class="mt-4">
+        <RadzenTextBox @bind-Value="_exportOutputDirectory" Placeholder="Output directory" Disabled="@_isExporting" />
+    </div>
+    <div>
+        <RadzenButton Text="Export Backup" Click="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+    </div>
+
+    @if (_exportResult is not null)
+    {
+        @if (_exportResult.Success)
+        {
+            <div class="mt-2">
+                <RadzenText>Backup created: @_exportResult.ArchivePath</RadzenText>
+                <RadzenText>SHA-256: @_exportResult.ArchiveSha256Hash</RadzenText>
+                <RadzenText>Accounts: @_exportResult.ProviderAccountCount, Locations: @_exportResult.LocationCount, Devices: @_exportResult.DeviceCount, Events: @_exportResult.EventCount, Media items: @_exportResult.MediaItemCount</RadzenText>
+            </div>
+        }
+        else
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_exportResult.ErrorMessage</RadzenAlert>
+        }
+    }
+</RadzenCard>
+
+<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
+    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">Import</RadzenText>
+
+    <div>
+        <RadzenTextBox @bind-Value="_backupZipPath" Placeholder="Backup zip path" Disabled="@_isImporting" />
+    </div>
+    <div>
+        <RadzenTextBox @bind-Value="_mediaRootPath" Placeholder="Media root folder" Disabled="@_isImporting" />
+    </div>
+    <div>
+        <RadzenButton Text="Import" Click="ImportAsync" Disabled="@_isImporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+    </div>
+
+    @if (_importResult is not null)
+    {
+        @if (_importResult.Success)
+        {
+            <div class="mt-2">
+                <RadzenText>Accounts: inserted @_importResult.ProviderAccounts.Inserted, skipped existing @_importResult.ProviderAccounts.SkippedExisting, orphaned @_importResult.ProviderAccounts.SkippedOrphaned</RadzenText>
+                <RadzenText>Locations: inserted @_importResult.Locations.Inserted, skipped existing @_importResult.Locations.SkippedExisting, orphaned @_importResult.Locations.SkippedOrphaned</RadzenText>
+                <RadzenText>Devices: inserted @_importResult.Devices.Inserted, skipped existing @_importResult.Devices.SkippedExisting, orphaned @_importResult.Devices.SkippedOrphaned</RadzenText>
+                <RadzenText>Events: inserted @_importResult.Events.Inserted, skipped existing @_importResult.Events.SkippedExisting, orphaned @_importResult.Events.SkippedOrphaned</RadzenText>
+                <RadzenText>Download events: inserted @_importResult.DownloadEvents.Inserted, skipped existing @_importResult.DownloadEvents.SkippedExisting, orphaned @_importResult.DownloadEvents.SkippedOrphaned</RadzenText>
+                <RadzenText>Media items: inserted @_importResult.MediaItems.Inserted, skipped existing @_importResult.MediaItems.SkippedExisting, orphaned @_importResult.MediaItems.SkippedOrphaned, integrity issues @_importResult.MediaItems.IntegrityIssues</RadzenText>
+                @foreach (var detail in _importResult.Details)
+                {
+                    <RadzenText Class="mt-1">@detail</RadzenText>
+                }
+            </div>
+        }
+        else
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_importResult.ErrorMessage</RadzenAlert>
+        }
+    }
+</RadzenCard>
+
+@code {
+    private bool _isPreparing;
+    private bool _isExporting;
+    private bool _isImporting;
+
+    private PrepareExportResult? _prepareResult;
+    private BackupExportResult? _exportResult;
+    private BackupImportResult? _importResult;
+
+    private string _exportOutputDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "VideoForensics",
+        "Backups");
+
+    private string _backupZipPath = "";
+    private string _mediaRootPath = "";
+
+    private async Task PrepareAsync()
+    {
+        _isPreparing = true;
+        _prepareResult = null;
+        try
+        {
+            _prepareResult = await BackupExportService.PrepareForExportAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _isPreparing = false;
+        }
+    }
+
+    private async Task ExportAsync()
+    {
+        _isExporting = true;
+        _exportResult = null;
+        try
+        {
+            _exportResult = await BackupExportService.ExportBackupAsync(_exportOutputDirectory, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _exportResult = new BackupExportResult { Success = false, ErrorMessage = ex.Message };
+        }
+        finally
+        {
+            _isExporting = false;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        _isImporting = true;
+        _importResult = null;
+        try
+        {
+            _importResult = await BackupImportService.ImportBackupAsync(_backupZipPath, _mediaRootPath, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _importResult = new BackupImportResult { Success = false, ErrorMessage = ex.Message };
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+}
