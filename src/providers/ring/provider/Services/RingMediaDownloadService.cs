@@ -18,6 +18,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly IVideoForensicsDataClient _dataClient;
+        private readonly IMediaMetadataTagger _metadataTagger;
         private DownloadStatus _currentStatus = new(IsDownloading: false, FilesCompleted: 0, FilesTotal: 0, BytesDownloaded: 0);
 
         // Per-item outcomes (one line per file, success or failure) queued as they happen so a
@@ -102,11 +103,12 @@ namespace VideoForensics.Providers.Ring.Services
         // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
         private int _peakActiveDownloadsForBatch;
 
-        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
+        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
+            _metadataTagger = metadataTagger ?? new FfmpegMediaMetadataTagger(logger);
         }
 
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
@@ -226,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
-                        await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
 
                         // Use the device GUID resolved at batch start; all events are for this same device
@@ -283,7 +285,12 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
 
                                 var wroteMetadata = !File.Exists(Path.ChangeExtension(fileName, ".json")) &&
-                                    WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4");
+                                    WriteMetadataFile(fileName, deviceId, @event, existingSize, "mp4", eventDbId);
+
+                                if (wroteMetadata)
+                                {
+                                    _ = await _metadataTagger.TagEventIdAsync(fileName, eventDbId, rateLimitCts.Token);
+                                }
 
                                 if (sha256Hash != null)
                                 {
@@ -369,7 +376,11 @@ namespace VideoForensics.Providers.Ring.Services
                             {
                                 var downloadedSize = new FileInfo(fileName).Length;
                                 var validated = downloadedSize > 0;
-                                var wroteMetadata = WriteMetadataFile(fileName, deviceId, @event, downloadedSize, "mp4");
+                                var wroteMetadata = WriteMetadataFile(fileName, deviceId, @event, downloadedSize, "mp4", eventDbId);
+                                if (wroteMetadata)
+                                {
+                                    _ = await _metadataTagger.TagEventIdAsync(fileName, eventDbId, rateLimitCts.Token);
+                                }
 
                                 // Compute SHA-256 hash for the downloaded file
                                 string? sha256Hash = null;
@@ -712,7 +723,12 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 var fileSize = new FileInfo(fileName).Length;
-                var metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize);
+                var mediaItemId = Guid.NewGuid();
+                var metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize, mediaItemId);
+                if (metadataWritten)
+                {
+                    _ = await _metadataTagger.TagEventIdAsync(fileName, mediaItemId, cancellationToken);
+                }
 
                 // Resolve device identity and record snapshot download
                 Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
@@ -758,7 +774,7 @@ namespace VideoForensics.Providers.Ring.Services
                         (string Json, string Hash) = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId, timestamp = DateTime.UtcNow });
                         var mediaItem = new MediaItem
                         {
-                            Id = Guid.NewGuid(),
+                            Id = mediaItemId,
                             DeviceId = deviceGuid,
                             DownloadEventId = downloadEvent.Id,
                             FileName = Path.GetFileName(fileName),
@@ -839,14 +855,14 @@ namespace VideoForensics.Providers.Ring.Services
             return (json, hashHex);
         }
 
-        private async Task UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
+        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
             object? apiResponse = null)
         {
             try
             {
                 (string Json, string Hash) = SerializeMetadata(apiResponse);
-                _ = await _dataClient.UpsertEventAsync(new Event
+                Event upserted = await _dataClient.UpsertEventAsync(new Event
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceGuid,
@@ -860,13 +876,16 @@ namespace VideoForensics.Providers.Ring.Services
                     MetadataJson = Json,
                     ApiSourceHash = Hash
                 }, ct);
+                return upserted.Id;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
+                return Guid.Empty;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
+                return Guid.Empty;
             }
         }
 
@@ -959,7 +978,7 @@ namespace VideoForensics.Providers.Ring.Services
             return Path.Combine(outputPath, providerName, accountDisplayName);
         }
 
-        private bool WriteMetadataFile(string mediaFilePath, string deviceId, Entities.DoorbotHistoryEvent @event, long fileSizeBytes, string mediaFormat)
+        private bool WriteMetadataFile(string mediaFilePath, string deviceId, Entities.DoorbotHistoryEvent @event, long fileSizeBytes, string mediaFormat, Guid eventDbId)
         {
             try
             {
@@ -969,6 +988,7 @@ namespace VideoForensics.Providers.Ring.Services
                     DeviceId: deviceId,
                     DeviceName: @event.Doorbot?.Description ?? deviceId,
                     EventId: @event.Id?.ToString() ?? "unknown",
+                    EventDbId: eventDbId,
                     EventType: @event.Kind,
                     Answered: @event.Answered,
                     Favorite: @event.Favorite,
@@ -1027,6 +1047,7 @@ namespace VideoForensics.Providers.Ring.Services
             string DeviceId,
             string DeviceName,
             string EventId,
+            Guid EventDbId,
             string? EventType,
             bool Answered,
             bool Favorite,
@@ -1283,13 +1304,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        private bool WriteSnapshotMetadataFile(string mediaFilePath, string deviceId, long fileSizeBytes)
+        private bool WriteSnapshotMetadataFile(string mediaFilePath, string deviceId, long fileSizeBytes, Guid mediaItemId)
         {
             try
             {
                 var metadata = new RingSnapshotMetadata(
                     FileName: Path.GetFileName(mediaFilePath),
                     DeviceId: deviceId,
+                    MediaItemId: mediaItemId,
                     CapturedAt: DateTime.Now,
                     FileSizeBytes: fileSizeBytes,
                     MediaFormat: "jpg"
@@ -1322,6 +1344,7 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingSnapshotMetadata(
             string FileName,
             string DeviceId,
+            Guid MediaItemId,
             DateTime CapturedAt,
             long FileSizeBytes,
             string MediaFormat

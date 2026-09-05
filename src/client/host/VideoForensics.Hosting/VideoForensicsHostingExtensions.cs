@@ -160,6 +160,35 @@ namespace VideoForensics.Hosting
                 return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
             });
 
+            // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a
+            // media file's own container metadata (independent of the JSON sidecar), and exports/
+            // imports the whole database as portable JSON+zip, so evidence can be reconstituted into
+            // a fresh database on another machine.
+            _ = services.AddScoped<IMediaMetadataTagger>(serviceProvider =>
+                new FfmpegMediaMetadataTagger(serviceProvider.GetRequiredService<ILogger<FfmpegMediaMetadataTagger>>())
+            );
+
+            _ = services.AddScoped<IBackupExportService>(serviceProvider =>
+            {
+                ILogger<BackupExportOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<BackupExportOrchestrator>>();
+                IProviderAccountRepository providerAccountRepository = serviceProvider.GetRequiredService<IProviderAccountRepository>();
+                ILocationRepository locationRepository = serviceProvider.GetRequiredService<ILocationRepository>();
+                IDeviceRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
+                IEventRepository eventRepository = serviceProvider.GetRequiredService<IEventRepository>();
+                IDownloadEventRepository downloadEventRepository = serviceProvider.GetRequiredService<IDownloadEventRepository>();
+                IMediaItemRepository backupMediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                IForensicsConfiguration forensicsConfiguration = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+                IMediaMetadataTagger metadataTagger = serviceProvider.GetRequiredService<IMediaMetadataTagger>();
+                return new BackupExportOrchestrator(logger, providerAccountRepository, locationRepository, deviceRepository, eventRepository, downloadEventRepository, backupMediaItemRepository, forensicsConfiguration, metadataTagger);
+            });
+
+            _ = services.AddScoped<IBackupImportService>(serviceProvider =>
+                new BackupImportOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<BackupImportOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IUnitOfWork>()
+                )
+            );
+
             _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
