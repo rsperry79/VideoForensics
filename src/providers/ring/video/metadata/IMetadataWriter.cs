@@ -1,8 +1,8 @@
-using System.IO.Abstractions;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Writes extracted metadata to video files using standard tagging formats.

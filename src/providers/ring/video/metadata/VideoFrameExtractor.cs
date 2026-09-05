@@ -4,11 +4,10 @@ using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
 
-#nullable enable
+using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Extracts and tags frames from Ring videos at detection timestamps.
@@ -62,7 +61,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             // Ensure output directory exists
             if (!_fileSystem.Directory.Exists(outputDirectory))
             {
-                _fileSystem.Directory.CreateDirectory(outputDirectory);
+                _ = _fileSystem.Directory.CreateDirectory(outputDirectory);
             }
 
             // Extract frames at verified detection timestamps if available
@@ -89,7 +88,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 return frames;
             }
 
-            foreach (var timestampMs in timestamps.Distinct().OrderBy(ts => ts))
+            foreach (long timestampMs in timestamps.Distinct().OrderBy(ts => ts))
             {
                 var frame = ExtractFrameAtTimestamp(videoFilePath, timestampMs, outputDirectory);
                 if (frame != null)
@@ -106,10 +105,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             long timestampMs,
             string outputDirectory)
         {
-            var startTime = DateTime.UtcNow;
-            var timeFormatted = FormatTimestamp(timestampMs);
-            var frameFileName = $"frame_{timeFormatted.Replace(":", "-").Replace(".", "_")}.jpg";
-            var frameFilePath = _fileSystem.Path.Combine(outputDirectory, frameFileName);
+            _ = DateTime.UtcNow;
+            string timeFormatted = FormatTimestamp(timestampMs);
+            string frameFileName = $"frame_{timeFormatted.Replace(":", "-").Replace(".", "_")}.jpg";
+            string frameFilePath = _fileSystem.Path.Combine(outputDirectory, frameFileName);
 
             try
             {
@@ -117,7 +116,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 // -ss seeks to timestamp before decoding (fast)
                 // -vframes 1 extracts exactly 1 frame
                 // -f image2 outputs image format
-                var arguments = $"-ss {timeFormatted} -i \"{videoFilePath}\" -vframes 1 -f image2 \"{frameFilePath}\"";
+                string arguments = $"-ss {timeFormatted} -i \"{videoFilePath}\" -vframes 1 -f image2 \"{frameFilePath}\"";
 
                 var processInfo = new ProcessStartInfo
                 {
@@ -145,7 +144,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                         };
                     }
 
-                    process.WaitForExit(30000); // 30 second timeout
+                    _ = process.WaitForExit(30000); // 30 second timeout
 
                     if (process.ExitCode != 0)
                     {
@@ -221,11 +220,11 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
 
         private string FormatTimestamp(long timestampMs)
         {
-            var seconds = timestampMs / 1000;
-            var milliseconds = timestampMs % 1000;
-            var hours = seconds / 3600;
-            var minutes = (seconds % 3600) / 60;
-            var secs = seconds % 60;
+            long seconds = timestampMs / 1000;
+            long milliseconds = timestampMs % 1000;
+            long hours = seconds / 3600;
+            long minutes = seconds % 3600 / 60;
+            long secs = seconds % 60;
 
             return $"{hours:D2}:{minutes:D2}:{secs:D2}.{milliseconds:D3}";
         }

@@ -1,7 +1,8 @@
-using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -24,22 +25,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetIntegritySummaryAsync_ReturnsGoodIntegrity_WhenAllDownloaded()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
+            IntegritySummary summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(0, summary.MissingDownloads);
@@ -50,42 +51,35 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetIntegritySummaryAsync_ReturnsMissingDownloads_WhenNotAllDownloaded()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
-                if (i % 2 == 0)
-                {
-                    evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                }
-                else
-                {
-                    evt.DownloadedAtUtc = null;
-                }
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                evt.DownloadedAtUtc = i % 2 == 0 ? evt.OccurredAtUtc.AddSeconds(30) : null;
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
+            IntegritySummary summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.NotNull(summary.Status);
-            Assert.True(summary.IntegrityScore >= 0 && summary.IntegrityScore <= 100);
+            Assert.True(summary.IntegrityScore is >= 0 and <= 100);
         }
 
         [Fact]
         public async Task GetTamperingIndicatorsPaginatedAsync_ReturnsPaginatedResult_FirstPage()
         {
-            var location = TestDataBuilder.BuildLocation();
+            Location location = TestDataBuilder.BuildLocation();
             await _locationRepository.AddAsync(location, CancellationToken.None);
 
-            var result = await _repository.GetTamperingIndicatorsPaginatedAsync(
+            PaginatedResult<TamperingIndicator> result = await _repository.GetTamperingIndicatorsPaginatedAsync(
                 location.Id, pageNumber: 1, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -96,22 +90,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetTamperingIndicatorsPaginatedAsync_ReturnsEmptyList_NoTampering()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetTamperingIndicatorsPaginatedAsync(
+            PaginatedResult<TamperingIndicator> result = await _repository.GetTamperingIndicatorsPaginatedAsync(
                 location.Id, pageNumber: 1, pageSize: 10, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -121,20 +115,20 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetDownloadHistoryCursorAsync_ReturnsCursorResult_FirstPage()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetDownloadHistoryCursorAsync(
+            CursorPaginatedResult<DownloadAuditRecord> result = await _repository.GetDownloadHistoryCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), cursor: null, pageSize: 2, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -144,20 +138,20 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetDownloadHistoryCursorAsync_VerifyHasMoreFlag()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 3; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetDownloadHistoryCursorAsync(
+            CursorPaginatedResult<DownloadAuditRecord> result = await _repository.GetDownloadHistoryCursorAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), cursor: null, pageSize: 100, CancellationToken.None);
 
             Assert.NotNull(result);
@@ -168,20 +162,20 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetDownloadHistoryAsync_ReturnsAllDownloads_ForDevice()
         {
-            var device = TestDataBuilder.BuildDevice();
-            var now = DateTime.UtcNow;
+            Device device = TestDataBuilder.BuildDevice();
+            DateTime now = DateTime.UtcNow;
 
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 5; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 10);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var result = await _repository.GetDownloadHistoryAsync(
+            IReadOnlyList<DownloadAuditRecord> result = await _repository.GetDownloadHistoryAsync(
                 device.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.Equal(5, result.Count);
@@ -191,29 +185,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task GetMissingDownloadsAsync_ReturnsMissing_WhenNotDownloaded()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
-                if (i >= 5)
-                {
-                    evt.DownloadedAtUtc = null;
-                }
-                else
-                {
-                    evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                }
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                evt.DownloadedAtUtc = i >= 5 ? null : evt.OccurredAtUtc.AddSeconds(30);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var missing = await _repository.GetMissingDownloadsAsync(
+            IReadOnlyList<MissingDownloadRecord> missing = await _repository.GetMissingDownloadsAsync(
                 location.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.Equal(5, missing.Count);
@@ -223,22 +210,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task VerifyDownloadCompletenessAsync_ReturnsComplete_WhenAllDownloaded()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var report = await _repository.VerifyDownloadCompletenessAsync(
+            DownloadCompletenessReport report = await _repository.VerifyDownloadCompletenessAsync(
                 location.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.NotNull(report);
@@ -252,22 +239,22 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task VerifyDownloadCompletenessAsync_ReturnsCritical_WhenMostMissing()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
                 evt.DownloadedAtUtc = i < 2 ? evt.OccurredAtUtc.AddSeconds(30) : null;
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var report = await _repository.VerifyDownloadCompletenessAsync(
+            DownloadCompletenessReport report = await _repository.VerifyDownloadCompletenessAsync(
                 location.Id, now.AddMinutes(-10), now.AddMinutes(60), CancellationToken.None);
 
             Assert.NotNull(report);
@@ -278,36 +265,36 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ComputeEventIntegrityScoreAsync_ReturnsHighScore_AllIntact()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
-            var now = DateTime.UtcNow;
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
+            DateTime now = DateTime.UtcNow;
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
             for (int i = 0; i < 10; i++)
             {
-                var evt = TestDataBuilder.BuildEvent(device.Id);
+                Event evt = TestDataBuilder.BuildEvent(device.Id);
                 evt.OccurredAtUtc = now.AddMinutes(i * 5);
                 evt.DownloadedAtUtc = evt.OccurredAtUtc.AddSeconds(30);
-                await _eventRepository.UpsertAsync(evt, CancellationToken.None);
+                _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
             var score = await _repository.ComputeEventIntegrityScoreAsync(location.Id, CancellationToken.None);
 
-            Assert.True(score >= 0 && score <= 100);
+            Assert.True(score is >= 0 and <= 100);
         }
 
         [Fact]
         public async Task GetIntegritySummaryAsync_ReturnsAllGood_WhenNoIssues()
         {
-            var location = TestDataBuilder.BuildLocation();
-            var device = TestDataBuilder.BuildDevice(location.Id);
+            Location location = TestDataBuilder.BuildLocation();
+            Device device = TestDataBuilder.BuildDevice(location.Id);
 
             await _locationRepository.AddAsync(location, CancellationToken.None);
             await _deviceRepository.AddAsync(device, CancellationToken.None);
 
-            var summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
+            IntegritySummary summary = await _repository.GetIntegritySummaryAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(summary);
             Assert.Equal(0, summary.TamperingIndicators);

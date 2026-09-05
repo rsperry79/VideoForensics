@@ -2,11 +2,10 @@ using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Video.Metadata.Models;
 
-#nullable enable
+using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Extracts and saves video thumbnails from Ring snapshot data.
@@ -46,10 +45,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             // Ensure output directory exists
             if (!_fileSystem.Directory.Exists(outputDirectory))
             {
-                _fileSystem.Directory.CreateDirectory(outputDirectory);
+                _ = _fileSystem.Directory.CreateDirectory(outputDirectory);
             }
 
-            var startTime = DateTime.UtcNow;
+            _ = DateTime.UtcNow;
 
             // Generate thumbnail filename based on video filename
             var videoFileName = _fileSystem.Path.GetFileNameWithoutExtension(videoFilePath);
@@ -59,7 +58,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
             try
             {
                 // Download snapshot from Ring
-                using (var response = _httpClient.GetAsync(snapshotUrl).Result)
+                using (HttpResponseMessage response = _httpClient.GetAsync(snapshotUrl).Result)
                 {
                     if (!response.IsSuccessStatusCode)
                     {
@@ -96,7 +95,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                     };
                 }
 
-                var fileInfo = _fileSystem.FileInfo.New(thumbnailPath);
+                IFileInfo fileInfo = _fileSystem.FileInfo.New(thumbnailPath);
 
                 // Create thumbnail info
                 var thumbnail = new VideoThumbnail
@@ -138,7 +137,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 }
 
                 var bytes = new byte[12];
-                using (var stream = _fileSystem.File.OpenRead(filePath))
+                using (FileSystemStream stream = _fileSystem.File.OpenRead(filePath))
                 {
                     var bytesRead = stream.Read(bytes, 0, bytes.Length);
                     if (bytesRead < 3)
@@ -167,12 +166,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
                 }
 
                 // Check for GIF
-                if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46)
-                {
-                    return "GIF";
-                }
-
-                return null;
+                return bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 ? "GIF" : null;
             }
             catch
             {

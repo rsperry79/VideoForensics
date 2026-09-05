@@ -9,9 +9,9 @@ namespace VideoForensics.Data.Common.Contracts
     /// </summary>
     public class TimelineSummary : QuerySummary
     {
-        public List<DeviceTimelineSummary> DeviceSummaries { get; set; } = new();
-        public List<string> SuspiciousDevices { get; set; } = new();
-        public List<HourlyActivityCount> PeakHours { get; set; } = new();
+        public List<DeviceTimelineSummary> DeviceSummaries { get; set; } = [];
+        public List<string> SuspiciousDevices { get; set; } = [];
+        public List<HourlyActivityCount> PeakHours { get; set; } = [];
     }
 
     /// <summary>One device's own timeline summary numbers - never blended with any other device's.</summary>
@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int MissingDownloads { get; set; }
         public int FailedRecordings { get; set; }
         public decimal IntegrityScore { get; set; } // 0-100%
-        public List<string> CompromisedDevices { get; set; } = new();
+        public List<string> CompromisedDevices { get; set; } = [];
     }
 
     /// <summary>
@@ -46,8 +46,8 @@ namespace VideoForensics.Data.Common.Contracts
         public int DeviceCount { get; set; }
         public int UnhealthyDeviceCount { get; set; }
         public int SyncFailureCount { get; set; }
-        public List<string> OfflineDevices { get; set; } = new();
-        public List<string> LocationChanges { get; set; } = new();
+        public List<string> OfflineDevices { get; set; } = [];
+        public List<string> LocationChanges { get; set; } = [];
     }
 
     /// <summary>Phase 4 Summary: Access & Export Audit - chain of custody status.</summary>
@@ -59,6 +59,6 @@ namespace VideoForensics.Data.Common.Contracts
         public DateTime LastAccessUtc { get; set; }
         public DateTime LastExportUtc { get; set; }
         public bool ChainOfCustodyIntact { get; set; }
-        public List<string> SuspiciousAccessPatterns { get; set; } = new();
+        public List<string> SuspiciousAccessPatterns { get; set; } = [];
     }
 }

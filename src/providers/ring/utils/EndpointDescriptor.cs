@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// What a single endpoint call needs from the fan-out (nothing, one location, one doorbot, or
@@ -70,8 +69,8 @@ namespace VideoForensics.Providers.Ring.Utils
         // location (see there for why). Declared before All below since All's PrepareRestore
         // lambdas reference these by name - the nullable analyzer treats a static member as not-yet-
         // assigned when it's referenced before its own declaration in source order.
-        public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = new();
-        public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = new();
+        public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = [];
+        public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = [];
 
         public static readonly IReadOnlyList<EndpointDescriptor> All = new List<EndpointDescriptor>
         {
@@ -397,7 +396,7 @@ namespace VideoForensics.Providers.Ring.Utils
                 Invoke = (session, target) => VolumeLevel.HasValue
                     ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value)
                     : throw new InvalidOperationException("set-volume requires --volume-level <0-11>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out var snap) && snap is { Volume: { } volume }
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume }
                     ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume))
                     : null
             },
@@ -414,8 +413,8 @@ namespace VideoForensics.Providers.Ring.Utils
                 Invoke = (session, target) => session.SetMotionDetection(target.DoorbotId!.Value, false),
                 PrepareRestore = target =>
                 {
-                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out var snap) && snap.MotionDetectionEnabled.HasValue;
-                    var original = captured ? snap!.MotionDetectionEnabled!.Value : true;
+                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.MotionDetectionEnabled.HasValue;
+                    var original = !captured || snap!.MotionDetectionEnabled!.Value;
                     var description = captured
                         ? $"motion_detection_enabled={original}"
                         : "unknown (not present in the devices listing for this doorbot) - restoring to enabled as a safe default";
@@ -435,7 +434,7 @@ namespace VideoForensics.Providers.Ring.Utils
                 Invoke = (session, target) => ChimeTypeValue.HasValue
                     ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value)
                     : throw new InvalidOperationException("set-chime-type requires --chime-type-value <0|1|2>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out var snap) && snap is { ChimeType: { } chimeType }
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType }
                     ? new RestorePlan(
                         $"chime_settings.type={chimeType}, enable={snap.ChimeEnabled}, duration={snap.ChimeDuration}",
                         WasCaptured: true,
@@ -468,8 +467,8 @@ namespace VideoForensics.Providers.Ring.Utils
                 Invoke = (session, target) => session.SetNightMode(target.DoorbotId!.Value, true),
                 PrepareRestore = target =>
                 {
-                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out var snap) && snap.NightModeEnabled.HasValue;
-                    var original = captured ? snap!.NightModeEnabled!.Value : false;
+                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
+                    var original = captured && snap!.NightModeEnabled!.Value;
                     var description = captured
                         ? $"night_mode={original}"
                         : "unknown (not present in the devices listing for this doorbot) - restoring to disabled as a safe default";
@@ -492,11 +491,13 @@ namespace VideoForensics.Providers.Ring.Utils
                     {
                         throw new InvalidOperationException("set-location-mode requires --location-mode-value <home|away|disarmed>");
                     }
-                    var current = await session.GetLocationMode(target.LocationId!.Value);
+
+                    Entities.LocationMode current = await session.GetLocationMode(target.LocationId!.Value);
                     if (!string.IsNullOrWhiteSpace(current?.Mode))
                     {
                         OriginalLocationModeByLocation[target.LocationId!.Value] = current!.Mode;
                     }
+
                     await session.SetLocationMode(target.LocationId!.Value, LocationModeValue!);
                 },
                 PrepareRestore = target => OriginalLocationModeByLocation.TryGetValue(target.LocationId!.Value, out var mode) && !string.IsNullOrWhiteSpace(mode)
@@ -714,8 +715,10 @@ namespace VideoForensics.Providers.Ring.Utils
         public static string? AssetUuid { get; set; }
         public static string? PushToken { get; set; }
 
-        public static EndpointDescriptor? Find(string key) =>
-            All.FirstOrDefault(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase));
+        public static EndpointDescriptor? Find(string key)
+        {
+            return All.FirstOrDefault(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase));
+        }
     }
 }
 

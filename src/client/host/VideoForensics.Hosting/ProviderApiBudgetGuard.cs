@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -52,7 +53,7 @@ namespace VideoForensics.Hosting
 
         public async Task<bool> TryConsumeAsync(string providerName, CancellationToken ct)
         {
-            var recentCount = await _callLog.CountRecentCallsAsync(providerName, BudgetWindow, ct);
+            int recentCount = await _callLog.CountRecentCallsAsync(providerName, BudgetWindow, ct);
             if (recentCount >= BudgetCeiling)
             {
                 _logger.LogWarning("Provider API budget exceeded for {ProviderName}: {Count} calls in the last {Window}. Backing off.",
@@ -71,8 +72,10 @@ namespace VideoForensics.Hosting
             return true;
         }
 
-        public Task RecordCallAsync(string providerName, CancellationToken ct) =>
-            _callLog.RecordCallAsync(providerName, ct);
+        public Task RecordCallAsync(string providerName, CancellationToken ct)
+        {
+            return _callLog.RecordCallAsync(providerName, ct);
+        }
 
         public async Task RecordRateLimitHitAsync(string providerName, ISecurityAuditLogger auditLog, CancellationToken ct)
         {
@@ -81,6 +84,9 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>Opportunistic cleanup - safe to call frequently, only actually deletes when there's stale data to remove.</summary>
-        public Task PruneAsync(CancellationToken ct) => _callLog.PruneOlderThanAsync(RetentionWindow, ct);
+        public Task PruneAsync(CancellationToken ct)
+        {
+            return _callLog.PruneOlderThanAsync(RetentionWindow, ct);
+        }
     }
 }

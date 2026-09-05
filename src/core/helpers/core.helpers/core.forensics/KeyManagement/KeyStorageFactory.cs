@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+
+using VideoForensics.Forensics.Exceptions;
 
 namespace VideoForensics.Forensics.KeyManagement
 {
@@ -14,9 +15,9 @@ namespace VideoForensics.Forensics.KeyManagement
     {
         public static async Task<IKeyStorageProvider> GetDefaultProviderAsync()
         {
-            var providers = GetAvailableProviders();
+            List<IKeyStorageProvider> providers = GetAvailableProviders();
 
-            foreach (var provider in providers)
+            foreach (IKeyStorageProvider provider in providers)
             {
                 if (provider.IsAvailable)
                 {

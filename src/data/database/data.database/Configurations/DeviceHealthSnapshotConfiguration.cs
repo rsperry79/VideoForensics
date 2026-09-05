@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,16 +10,16 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<DeviceHealthSnapshot> builder)
         {
-            builder.HasKey(dh => dh.Id);
+            _ = builder.HasKey(dh => dh.Id);
 
-            builder.Property(dh => dh.WifiName)
+            _ = builder.Property(dh => dh.WifiName)
                 .HasMaxLength(256);
 
-            builder.Property(dh => dh.FirmwareVersion)
+            _ = builder.Property(dh => dh.FirmwareVersion)
                 .HasMaxLength(256);
 
-            builder.HasIndex(dh => dh.DownloadEventId);
-            builder.HasIndex(dh => new { dh.DeviceId, dh.CapturedAtUtc });
+            _ = builder.HasIndex(dh => dh.DownloadEventId);
+            _ = builder.HasIndex(dh => new { dh.DeviceId, dh.CapturedAtUtc });
         }
     }
 }

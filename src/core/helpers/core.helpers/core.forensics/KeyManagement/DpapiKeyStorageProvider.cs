@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using VideoForensics.Forensics.Exceptions;
+
 namespace VideoForensics.Forensics.KeyManagement
 {
     /// <summary>
@@ -40,7 +42,7 @@ namespace VideoForensics.Forensics.KeyManagement
 
         public async Task<IEnumerable<string>> ListKeysAsync()
         {
-            return new List<string>();
+            return [];
         }
 
         public async Task<KeyMetadata> GetKeyMetadataAsync(string keyId)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,29 +10,29 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<ActionLogEntry> builder)
         {
-            builder.HasKey(ale => ale.Id);
+            _ = builder.HasKey(ale => ale.Id);
 
-            builder.Property(ale => ale.Actor)
+            _ = builder.Property(ale => ale.Actor)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(ale => ale.Action)
+            _ = builder.Property(ale => ale.Action)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(ale => ale.EntityType)
+            _ = builder.Property(ale => ale.EntityType)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(ale => ale.PreviousEntryHash)
+            _ = builder.Property(ale => ale.PreviousEntryHash)
                 .HasMaxLength(64);
 
-            builder.Property(ale => ale.EntryHash)
+            _ = builder.Property(ale => ale.EntryHash)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.HasIndex(ale => ale.TimestampUtc);
-            builder.HasIndex(ale => new { ale.EntityType, ale.EntityId });
+            _ = builder.HasIndex(ale => ale.TimestampUtc);
+            _ = builder.HasIndex(ale => new { ale.EntityType, ale.EntityId });
         }
     }
 }

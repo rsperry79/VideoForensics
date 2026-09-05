@@ -1,19 +1,22 @@
+using Microsoft.Extensions.Logging;
+
 using System.Security.Cryptography;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Core.Contracts;
 
-namespace VideoForensics.Client.Core
+namespace VideoForensics.Client.Core.Services
 {
     public class VideoDownloadServiceAdapter : IVideoDownloadService
     {
         private readonly ILogger<VideoDownloadServiceAdapter> _logger;
-        private readonly VideoForensics.Providers.Common.Contracts.IVideoProvider _videoProvider;
-        private readonly VideoForensics.Providers.Common.Contracts.IProviderAuthService _authService;
-        private readonly VideoForensics.Providers.Common.Contracts.IMediaDownloadService _downloadService;
-        private readonly VideoForensics.Providers.Common.Contracts.IDeviceDiscoveryService _deviceService;
+        private readonly Providers.Common.Contracts.IVideoProvider _videoProvider;
+        private readonly Providers.Common.Contracts.IProviderAuthService _authService;
+        private readonly Providers.Common.Contracts.IMediaDownloadService _downloadService;
+        private readonly Providers.Common.Contracts.IDeviceDiscoveryService _deviceService;
         private readonly IVideoForensicsDataClient _dataClient;
         private readonly IForensicsConfiguration _forensicsConfig;
         private string? _lastError;
@@ -25,11 +28,11 @@ namespace VideoForensics.Client.Core
         // Keyed by the real Ring provider location id (not a single global cache) — an account can
         // have more than one location, and each must map to its own Location row, not all devices
         // collapsing into one synthetic "default" location.
-        private readonly Dictionary<string, Guid> _locationIdCache = new();
+        private readonly Dictionary<string, Guid> _locationIdCache = [];
         // Real location names discovered via DiscoverUniqueDevicesAsync, keyed by provider location id.
-        private readonly Dictionary<string, string> _knownLocationNames = new();
+        private readonly Dictionary<string, string> _knownLocationNames = [];
         private string? _cachedLocationName;
-        private readonly Dictionary<string, Guid> _deviceIdCache = new();
+        private readonly Dictionary<string, Guid> _deviceIdCache = [];
         // Device ID to location name mapping, set by the caller before downloading
         private Dictionary<string, string>? _deviceToLocationMapping;
         private int _lastRemainingCount;
@@ -48,7 +51,7 @@ namespace VideoForensics.Client.Core
         // current outputPath/date range, so hitting "Continue downloading" after a rate-limit pause
         // resumes at the device that still has work left instead of re-walking every already-
         // finished device (each incurring InterDeviceDelayMs and a full event-list re-scan).
-        private readonly Dictionary<string, (int FilesDownloaded, int FilesMatched, long BytesDownloaded)> _completedDeviceResults = new();
+        private readonly Dictionary<string, (int FilesDownloaded, int FilesMatched, long BytesDownloaded)> _completedDeviceResults = [];
         private string? _completedRunKey;
 
         // Live-observable pre-scan results (per-device matched-item counts), keyed by provider device
@@ -56,7 +59,7 @@ namespace VideoForensics.Client.Core
         // that follows an explicit PreScanAsync call for the same outputPath/range/force reuses these
         // instead of re-querying every device's history again.
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _preScanCounts = new();
-        private Dictionary<string, DateTime> _preScanEffectiveStartDates = new();
+        private Dictionary<string, DateTime> _preScanEffectiveStartDates = [];
         private int _preScanGrandTotal;
         private string? _preScanRunKey;
 
@@ -68,10 +71,10 @@ namespace VideoForensics.Client.Core
 
         public VideoDownloadServiceAdapter(
             ILogger<VideoDownloadServiceAdapter> logger,
-            VideoForensics.Providers.Common.Contracts.IVideoProvider videoProvider,
-            VideoForensics.Providers.Common.Contracts.IProviderAuthService authService,
-            VideoForensics.Providers.Common.Contracts.IMediaDownloadService downloadService,
-            VideoForensics.Providers.Common.Contracts.IDeviceDiscoveryService deviceService,
+            Providers.Common.Contracts.IVideoProvider videoProvider,
+            Providers.Common.Contracts.IProviderAuthService authService,
+            Providers.Common.Contracts.IMediaDownloadService downloadService,
+            Providers.Common.Contracts.IDeviceDiscoveryService deviceService,
             IVideoForensicsDataClient dataClient,
             IForensicsConfiguration forensicsConfig)
         {
@@ -95,12 +98,14 @@ namespace VideoForensics.Client.Core
         private (string Json, string Hash) SerializeMetadata(object? apiResponse)
         {
             if (apiResponse == null)
+            {
                 return (string.Empty, string.Empty);
+            }
 
             using var hash = SHA256.Create();
-            var json = JsonSerializer.Serialize(apiResponse);
-            var hashValue = hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
-            var hashHex = Convert.ToHexString(hashValue);
+            string json = JsonSerializer.Serialize(apiResponse);
+            byte[] hashValue = hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
+            string hashHex = Convert.ToHexString(hashValue);
             return (json, hashHex);
         }
 
@@ -112,18 +117,22 @@ namespace VideoForensics.Client.Core
         private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out var cached))
+            {
                 return cached;
+            }
 
             await _identityResolutionLock.WaitAsync(ct);
             try
             {
                 if (_deviceIdCache.TryGetValue(providerDeviceId, out cached))
+                {
                     return cached;
+                }
 
                 // Falls back to a synthetic "default" location only when the caller genuinely has no
                 // real Ring location id for this device (e.g. GetLocationsAsync/DeriveLocationsFromDevices
                 // both came back empty) — every device that does have one gets its own real Location row.
-                var effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
+                string effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
 
                 if (!_locationIdCache.TryGetValue(effectiveLocationId, out var locationGuid))
                 {
@@ -144,13 +153,13 @@ namespace VideoForensics.Client.Core
                         accountId = account.Id;
                     }
 
-                    var locationName = _knownLocationNames.TryGetValue(effectiveLocationId, out var knownName)
+                    string locationName = _knownLocationNames.TryGetValue(effectiveLocationId, out string? knownName)
                         ? knownName
                         : effectiveLocationId;
 
-                    var locationMetadata = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
+                    var (Json, Hash) = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
                     var location = await _dataClient.EnsureLocationAsync(
-                        accountId, effectiveLocationId, locationName, locationMetadata.Json, locationMetadata.Hash, ct: ct);
+                        accountId, effectiveLocationId, locationName, Json, Hash, ct: ct);
                     locationGuid = location.Id;
                     _locationIdCache[effectiveLocationId] = locationGuid;
                     _cachedLocationName = location.Name;
@@ -164,7 +173,7 @@ namespace VideoForensics.Client.Core
             }
             finally
             {
-                _identityResolutionLock.Release();
+                _ = _identityResolutionLock.Release();
             }
         }
 
@@ -178,18 +187,18 @@ namespace VideoForensics.Client.Core
         /// Discovers devices across all locations, deduped by device id (a device shared across
         /// multiple locations otherwise comes back once per location).
         /// </summary>
-        private async Task<List<VideoForensics.Providers.Common.Contracts.Device>> DiscoverUniqueDevicesAsync()
+        private async Task<List<Providers.Common.Contracts.Device>> DiscoverUniqueDevicesAsync()
         {
             var locations = await _deviceService.GetLocationsAsync();
             if (locations == null || locations.Count == 0)
             {
-                return new List<VideoForensics.Providers.Common.Contracts.Device>();
+                return [];
             }
 
             _logger.LogInformation("Found {LocationCount} location(s)", locations.Count);
 
             var seenDeviceIds = new HashSet<string>();
-            var uniqueDevices = new List<VideoForensics.Providers.Common.Contracts.Device>();
+            var uniqueDevices = new List<Providers.Common.Contracts.Device>();
             foreach (var location in locations)
             {
                 _knownLocationNames[location.Id] = location.Name;
@@ -220,7 +229,7 @@ namespace VideoForensics.Client.Core
         /// and caches the result under runKey so a later call with the same key is a no-op.
         /// </summary>
         private async Task PreScanCoreAsync(
-            List<VideoForensics.Providers.Common.Contracts.Device> uniqueDevices,
+            List<Providers.Common.Contracts.Device> uniqueDevices,
             DateTime startDate,
             DateTime endDate,
             bool force,
@@ -234,7 +243,7 @@ namespace VideoForensics.Client.Core
 
             _preScanCounts.Clear();
             var effectiveStartDates = new Dictionary<string, DateTime>();
-            var grandTotalMatched = 0;
+            int grandTotalMatched = 0;
 
             // Resolve every device's watermark first - these are local DB lookups, not Ring API
             // calls - so the count-fetch pass below can process devices widest-range-first (earliest
@@ -243,7 +252,7 @@ namespace VideoForensics.Client.Core
             // that needs the most history means its single fetch covers every other device's
             // narrower range too - one real history fetch for the whole batch instead of up to one
             // per distinct watermark.
-            var devicesNeedingCount = new List<(VideoForensics.Providers.Common.Contracts.Device Device, DateTime EffectiveStart)>();
+            var devicesNeedingCount = new List<(Providers.Common.Contracts.Device Device, DateTime EffectiveStart)>();
             foreach (var device in uniqueDevices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -265,11 +274,12 @@ namespace VideoForensics.Client.Core
                 {
                     _logger.LogWarning(ex, "Failed to resolve watermark for {DeviceName} during pre-scan; using requested date range", device.Name);
                 }
+
                 effectiveStartDates[device.Id] = deviceEffectiveStart;
                 devicesNeedingCount.Add((device, deviceEffectiveStart));
             }
 
-            var hasMadeRealHistoryCall = false;
+            bool hasMadeRealHistoryCall = false;
             foreach (var (device, deviceEffectiveStart) in devicesNeedingCount.OrderBy(d => d.EffectiveStart))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -278,13 +288,13 @@ namespace VideoForensics.Client.Core
                 // first are served from the already-cached superset with no API call at all - the
                 // rate-limit-safety delay below only needs to apply before a call that will actually
                 // hit the network, not before every device regardless.
-                var willHitNetwork = !_downloadService.IsHistoryCached(deviceEffectiveStart, endDate);
+                bool willHitNetwork = !_downloadService.IsHistoryCached(deviceEffectiveStart, endDate);
                 if (willHitNetwork && hasMadeRealHistoryCall)
                 {
                     await Task.Delay(InterDeviceDelayMs, cancellationToken);
                 }
 
-                var deviceCount = 0;
+                int deviceCount = 0;
                 try
                 {
                     deviceCount = await _downloadService.GetMatchedEventCountAsync(device.Id, deviceEffectiveStart, endDate, cancellationToken);
@@ -309,7 +319,7 @@ namespace VideoForensics.Client.Core
 
         public async Task PreScanAsync(string outputPath, DateTime startDate, DateTime endDate, bool force = false, CancellationToken cancellationToken = default)
         {
-            var runKey = $"{outputPath}|{startDate:O}|{endDate:O}";
+            string runKey = $"{outputPath}|{startDate:O}|{endDate:O}";
             if (_completedRunKey != runKey)
             {
                 _completedDeviceResults.Clear();
@@ -341,7 +351,7 @@ namespace VideoForensics.Client.Core
 
             // Only keep the completed-device cache when this call is a "Continue" for the same
             // outputPath/date range as the previous call — a different range means different work.
-            var runKey = $"{outputPath}|{startDate:O}|{endDate:O}";
+            string runKey = $"{outputPath}|{startDate:O}|{endDate:O}";
             if (_completedRunKey != runKey)
             {
                 _completedDeviceResults.Clear();
@@ -377,9 +387,9 @@ namespace VideoForensics.Client.Core
                 var uniqueDevices = await DiscoverUniqueDevicesAsync();
 
                 // Download videos from all devices
-                var totalDevices = uniqueDevices.Count;
-                var totalFilesDownloaded = 0;
-                var totalFilesMatched = 0;
+                int totalDevices = uniqueDevices.Count;
+                int totalFilesDownloaded = 0;
+                int totalFilesMatched = 0;
                 var deviceErrors = new List<string>();
                 // Reasons for a per-device shortfall (FilesDownloaded < FilesMatched) even when that
                 // device's call reported Success — e.g. "rate limited by Ring API". Collected
@@ -430,8 +440,8 @@ namespace VideoForensics.Client.Core
                     }
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = "Unknown";
-                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out var mappedLocation) == true)
+                    string locationName = "Unknown";
+                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out string? mappedLocation) == true)
                     {
                         locationName = mappedLocation;
                     }
@@ -440,7 +450,7 @@ namespace VideoForensics.Client.Core
                         locationName = _cachedLocationName;
                     }
 
-                    var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
+                    string deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadVideosAsync(
                         device.Id,
@@ -470,7 +480,7 @@ namespace VideoForensics.Client.Core
                     }
                     else
                     {
-                        var reason = result?.ErrorMessage ?? "unknown error";
+                        string reason = result?.ErrorMessage ?? "unknown error";
                         deviceErrors.Add($"{device.Id}: {reason}");
                         _logger.LogWarning("✗ Failed to download from {DeviceName}: {Reason}",
                             device.Name, reason);
@@ -504,17 +514,17 @@ namespace VideoForensics.Client.Core
                         // at and persists across app restarts - surface that precise message verbatim
                         // instead of the generic "wait 5+ minutes" guess below, which is both vague
                         // and can be badly wrong (the real cooldown can run up to an hour).
-                        var hardBanError = deviceErrors.FirstOrDefault(e => e.Contains("extended period", StringComparison.OrdinalIgnoreCase));
+                        string? hardBanError = deviceErrors.FirstOrDefault(e => e.Contains("extended period", StringComparison.OrdinalIgnoreCase));
                         if (hardBanError != null)
                         {
-                            var colonIndex = hardBanError.IndexOf(':');
+                            int colonIndex = hardBanError.IndexOf(':');
                             _lastError = colonIndex >= 0 ? hardBanError[(colonIndex + 1)..].Trim() : hardBanError;
                             _logger.LogError(_lastError);
                             return false;
                         }
 
                         // Check if all errors are rate limit errors
-                        var rateLimitErrors = deviceErrors
+                        int rateLimitErrors = deviceErrors
                             .Where(e => e.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
                                        e.Contains("denied by Ring", StringComparison.OrdinalIgnoreCase))
                             .Count();
@@ -622,7 +632,7 @@ namespace VideoForensics.Client.Core
 
                 // Dedupe devices shared across multiple locations (see DownloadVideosAsync).
                 var seenDeviceIds = new HashSet<string>();
-                var uniqueDevices = new List<VideoForensics.Providers.Common.Contracts.Device>();
+                var uniqueDevices = new List<Providers.Common.Contracts.Device>();
                 foreach (var location in locations)
                 {
                     _logger.LogInformation("Checking location: {LocationId}", location.Id);
@@ -645,8 +655,8 @@ namespace VideoForensics.Client.Core
                 _logger.LogInformation("Found {DeviceCount} unique device(s) across all locations", uniqueDevices.Count);
 
                 // Download snapshots from all devices
-                var totalDevices = uniqueDevices.Count;
-                var totalFilesDownloaded = 0;
+                int totalDevices = uniqueDevices.Count;
+                int totalFilesDownloaded = 0;
                 var deviceErrors = new List<string>();
 
                 _currentDeviceTotal = uniqueDevices.Count;
@@ -662,8 +672,8 @@ namespace VideoForensics.Client.Core
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Build device-specific path with location and camera name structure
-                    var locationName = "Unknown";
-                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out var mappedLocation) == true)
+                    string locationName = "Unknown";
+                    if (_deviceToLocationMapping?.TryGetValue(device.Id, out string? mappedLocation) == true)
                     {
                         locationName = mappedLocation;
                     }
@@ -672,7 +682,7 @@ namespace VideoForensics.Client.Core
                         locationName = _cachedLocationName;
                     }
 
-                    var deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
+                    string deviceOutputPath = PathUtilities.BuildSavePath(outputPath, locationName, device.Name);
 
                     var result = await _downloadService.DownloadSnapshotsAsync(
                         device.Id,
@@ -693,7 +703,7 @@ namespace VideoForensics.Client.Core
                     }
                     else
                     {
-                        var reason = result?.ErrorMessage ?? "unknown error";
+                        string reason = result?.ErrorMessage ?? "unknown error";
                         deviceErrors.Add($"{device.Id}: {reason}");
                         _logger.LogWarning("✗ Failed to download from {DeviceName}: {Reason}",
                             device.Name, reason);
@@ -740,32 +750,32 @@ namespace VideoForensics.Client.Core
             return "Ready";
         }
 
-        public VideoForensics.Providers.Common.Contracts.DownloadStatus GetProgress()
+        public Providers.Common.Contracts.DownloadStatus GetProgress()
         {
             var status = _downloadService.GetStatus();
 
             // _totalBytesDownloaded only advances once a device fully finishes, so mid-device it
             // sits frozen — use the live grand total (completed devices + the current device's
             // in-flight bytes) or the speed reads 0 for the entire time a device is downloading.
-            var liveTotalBytes = _totalBytesDownloaded + status.BytesDownloaded;
+            long liveTotalBytes = _totalBytesDownloaded + status.BytesDownloaded;
 
             var now = DateTime.UtcNow;
             var elapsed = now - _lastSpeedCheck;
-            var currentSpeed = 0.0;
+            double currentSpeed = 0.0;
 
             if (elapsed.TotalSeconds >= 1)
             {
                 // Guard against a transient dip right as one device's live total is replaced by the
                 // next device's (status.BytesDownloaded resets to 0 a moment before
                 // _totalBytesDownloaded catches up), which would otherwise show a negative rate.
-                var bytesDelta = Math.Max(0, liveTotalBytes - _lastBytesValue);
-                currentSpeed = (bytesDelta * 8) / (1_000_000 * elapsed.TotalSeconds);
+                long bytesDelta = Math.Max(0, liveTotalBytes - _lastBytesValue);
+                currentSpeed = bytesDelta * 8 / (1_000_000 * elapsed.TotalSeconds);
                 _lastBytesValue = liveTotalBytes;
                 _lastSpeedCheck = now;
             }
 
             // Return enriched status with aggregated data and speed
-            return new VideoForensics.Providers.Common.Contracts.DownloadStatus(
+            return new Providers.Common.Contracts.DownloadStatus(
                 IsDownloading: status.IsDownloading,
                 FilesCompleted: status.FilesCompleted,
                 FilesTotal: status.FilesTotal,
@@ -815,9 +825,9 @@ namespace VideoForensics.Client.Core
             // treats as unrelated reasons when the counts differ (e.g. "9 items failed to download"
             // vs "1 item failed to download" render as two separate "causes" instead of one combined
             // total) - sum those into a single reason before deduplicating what's left.
-            var itemFailureTotal = 0;
+            int itemFailureTotal = 0;
             var otherReasons = new List<string>();
-            foreach (var reason in skipReasons)
+            foreach (string reason in skipReasons)
             {
                 var match = ItemFailureCountPattern.Match(reason);
                 if (match.Success)
@@ -836,12 +846,9 @@ namespace VideoForensics.Client.Core
                 reasons.Add(itemFailureTotal == 1 ? "1 item failed to download" : $"{itemFailureTotal} items failed to download");
             }
 
-            if (reasons.Count == 1)
-            {
-                return char.ToUpperInvariant(reasons[0][0]) + reasons[0].Substring(1);
-            }
-
-            return "Multiple causes: " + string.Join(", ", reasons);
+            return reasons.Count == 1
+                ? char.ToUpperInvariant(reasons[0][0]) + reasons[0][1..]
+                : "Multiple causes: " + string.Join(", ", reasons);
         }
 
         public (int Index, int Total, string Name) GetCurrentDevice()

@@ -1,11 +1,15 @@
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Moq;
+
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Core.Logging.Tests
@@ -27,11 +31,11 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task LogAsync_ForwardsToRepositoryWithEnvironmentUserName()
         {
             // Arrange
-            var action = "TestAction";
-            var entityType = "TestEntity";
+            string action = "TestAction";
+            string entityType = "TestEntity";
             var entityId = Guid.NewGuid();
-            var details = "test details";
-            var userName = Environment.UserName;
+            string details = "test details";
+            string userName = Environment.UserName;
 
             var expectedEntry = TestHelpers.CreateActionLogEntry(
                 actor: userName,
@@ -40,7 +44,7 @@ namespace VideoForensics.Core.Logging.Tests
                 entityId: entityId,
                 details: details);
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.AppendAsync(
                     userName,
                     ActorType.Human,
@@ -72,10 +76,10 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task LogAsync_WithoutDetails_ForwardsWithNullDetails()
         {
             // Arrange
-            var action = "TestAction";
-            var entityType = "TestEntity";
+            string action = "TestAction";
+            string entityType = "TestEntity";
             var entityId = Guid.NewGuid();
-            var userName = Environment.UserName;
+            string userName = Environment.UserName;
 
             var expectedEntry = new ActionLogEntry
             {
@@ -90,7 +94,7 @@ namespace VideoForensics.Core.Logging.Tests
                 EntryHash = "test_hash"
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.AppendAsync(
                     userName,
                     ActorType.Human,
@@ -122,12 +126,12 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task LogAsAsync_WithCustomActorAndType_ForwardsToRepository()
         {
             // Arrange
-            var customActor = "mcp:tool-name";
+            string customActor = "mcp:tool-name";
             var customActorType = ActorType.McpTool;
-            var action = "AnalysisPerformed";
-            var entityType = "MediaItem";
+            string action = "AnalysisPerformed";
+            string entityType = "MediaItem";
             var entityId = Guid.NewGuid();
-            var details = "analysis details";
+            string details = "analysis details";
 
             var expectedEntry = new ActionLogEntry
             {
@@ -142,7 +146,7 @@ namespace VideoForensics.Core.Logging.Tests
                 EntryHash = "test_hash"
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.AppendAsync(
                     customActor,
                     customActorType,
@@ -175,8 +179,8 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task LogAsAsync_WithSystemActorType_ForwardsWithSystemType()
         {
             // Arrange
-            var action = "RetentionPurge";
-            var entityType = "MediaItem";
+            string action = "RetentionPurge";
+            string entityType = "MediaItem";
             var entityId = Guid.NewGuid();
 
             var expectedEntry = new ActionLogEntry
@@ -191,7 +195,7 @@ namespace VideoForensics.Core.Logging.Tests
                 EntryHash = "test_hash"
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.AppendAsync(
                     "system",
                     ActorType.System,
@@ -213,8 +217,8 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task LogAsync_DoesNotCallRepositoryMultipleTimes()
         {
             // Arrange
-            var action = "TestAction";
-            var entityType = "TestEntity";
+            string action = "TestAction";
+            string entityType = "TestEntity";
 
             var expectedEntry = new ActionLogEntry
             {
@@ -227,7 +231,7 @@ namespace VideoForensics.Core.Logging.Tests
                 EntryHash = "test_hash"
             };
 
-            _mockActionLogRepository
+            _ = _mockActionLogRepository
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -239,7 +243,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ReturnsAsync(expectedEntry);
 
             // Act
-            await _actionLogger.LogAsync(action, entityType, null, null, CancellationToken.None);
+            _ = await _actionLogger.LogAsync(action, entityType, null, null, CancellationToken.None);
 
             // Assert - verify AppendAsync is called exactly once
             _mockActionLogRepository.Verify(

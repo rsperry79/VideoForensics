@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,12 +10,12 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<JammingIncidentRecord> builder)
         {
-            builder.HasKey(j => j.Id);
+            _ = builder.HasKey(j => j.Id);
 
-            builder.Property(j => j.Notes)
+            _ = builder.Property(j => j.Notes)
                 .HasMaxLength(2000);
 
-            builder.HasIndex(j => j.DeviceId);
+            _ = builder.HasIndex(j => j.DeviceId);
         }
     }
 }

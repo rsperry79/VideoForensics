@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace VideoForensics.Providers.Ring.Entities;
+namespace VideoForensics.Providers.Ring;
 
 /// <summary>
 /// Represents an action to perform on a device.
@@ -15,5 +15,5 @@ public class DeviceAction
     /// <summary>
     /// Additional parameters for the action.
     /// </summary>
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = [];
 }

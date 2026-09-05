@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -11,10 +12,10 @@ public class DeviceLocationEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var providerAccountId = Guid.NewGuid();
-        var providerLocationId = "location-123";
-        var name = "Front Door";
-        var address = "123 Main St";
-        var metadataJson = "{\"timezone\": \"UTC\"}";
+        string providerLocationId = "location-123";
+        string name = "Front Door";
+        string address = "123 Main St";
+        string metadataJson = "{\"timezone\": \"UTC\"}";
 
         // Act
         var location = new Location
@@ -61,14 +62,14 @@ public class DeviceLocationEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var locationId = Guid.NewGuid();
-        var providerDeviceId = "device-456";
-        var name = "Front Doorbell";
-        var type = "Doorbell";
-        var isOnline = true;
-        var metadataJson = "{\"model\": \"Ring Doorbell 3\"}";
+        string providerDeviceId = "device-456";
+        string name = "Front Doorbell";
+        string type = "Doorbell";
+        bool isOnline = true;
+        string metadataJson = "{\"model\": \"Ring Doorbell 3\"}";
         var lastSuccessfulPullAtUtc = DateTime.UtcNow.AddHours(-2);
         var lastPullAttemptAtUtc = DateTime.UtcNow.AddHours(-1);
-        var timeZoneId = "America/New_York";
+        string timeZoneId = "America/New_York";
 
         // Act
         var device = new Device

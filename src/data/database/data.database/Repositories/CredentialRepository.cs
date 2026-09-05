@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -28,12 +29,14 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<(string CredentialType, string DecryptedValue)?> GetAsync(
             Guid providerAccountId, string credentialType, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var credential = await db.Credentials.FirstOrDefaultAsync(
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Credential? credential = await db.Credentials.FirstOrDefaultAsync(
                 c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType, ct);
 
             if (credential == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -50,7 +53,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets all credentials for a provider account.</summary>
         public async Task<IReadOnlyList<Credential>> GetByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Credentials
                 .Where(c => c.ProviderAccountId == providerAccountId)
                 .ToListAsync(ct);
@@ -59,12 +62,12 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Sets or updates a credential, encrypting the value automatically.</summary>
         public async Task SetAsync(Guid providerAccountId, string credentialType, string plainValue, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 var encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
 
-                var credential = await db.Credentials.FirstOrDefaultAsync(
+                Credential? credential = await db.Credentials.FirstOrDefaultAsync(
                     c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType, ct);
 
                 if (credential == null)
@@ -78,16 +81,16 @@ namespace VideoForensics.Data.Database.Repositories
                         EncryptionProvider = "DataProtection",
                         CreatedUtc = DateTime.UtcNow
                     };
-                    db.Credentials.Add(credential);
+                    _ = db.Credentials.Add(credential);
                 }
                 else
                 {
                     credential.EncryptedValue = encryptedValue;
                     credential.RotatedUtc = DateTime.UtcNow;
-                    db.Credentials.Update(credential);
+                    _ = db.Credentials.Update(credential);
                 }
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Credential set for account {ProviderAccountId} (type: {CredentialType})",
                     providerAccountId, credentialType);
             }
@@ -101,16 +104,16 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a credential.</summary>
         public async Task DeleteAsync(Guid providerAccountId, string credentialType, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var credential = await db.Credentials.FirstOrDefaultAsync(
+                Credential? credential = await db.Credentials.FirstOrDefaultAsync(
                     c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType, ct);
 
                 if (credential != null)
                 {
-                    db.Credentials.Remove(credential);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.Credentials.Remove(credential);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Credential deleted for account {ProviderAccountId} (type: {CredentialType})",
                         providerAccountId, credentialType);
                 }
@@ -125,17 +128,17 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes all credentials for a provider account.</summary>
         public async Task DeleteByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var credentials = await db.Credentials
+                List<Credential> credentials = await db.Credentials
                     .Where(c => c.ProviderAccountId == providerAccountId)
                     .ToListAsync(ct);
 
                 if (credentials.Count > 0)
                 {
                     db.Credentials.RemoveRange(credentials);
-                    await db.SaveChangesAsync(ct);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("All credentials deleted for account {ProviderAccountId}",
                         providerAccountId);
                 }

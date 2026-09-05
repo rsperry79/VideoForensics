@@ -1,9 +1,10 @@
+using Microsoft.Extensions.Logging;
+
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
@@ -111,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            var session = _sessionProvider.GetSession();
+            Session? session = _sessionProvider.GetSession();
             if (session == null)
             {
                 return 0;
@@ -120,13 +121,19 @@ namespace VideoForensics.Providers.Ring.Services
             // Reuses GetHistoryEventsAsync's per-(startDate,endDate) cache, so when this device's
             // resolved range matches a range already fetched (e.g. another device with the same
             // watermark), no extra API call happens here.
-            var events = await GetHistoryEventsAsync(session, startDate, endDate);
+            List<Entities.DoorbotHistoryEvent> events = await GetHistoryEventsAsync(session, startDate, endDate);
             return events.Count(e => e.Doorbot?.Id.ToString() == deviceId);
         }
 
-        public DateTime? GetRateLimitBanUntilUtc() => Session.GetRateLimitBanUntilUtc();
+        public DateTime? GetRateLimitBanUntilUtc()
+        {
+            return Session.GetRateLimitBanUntilUtc();
+        }
 
-        public void OverrideRateLimitBan() => Session.OverrideRateLimitBan();
+        public void OverrideRateLimitBan()
+        {
+            Session.OverrideRateLimitBan();
+        }
 
         public bool IsHistoryCached(DateTime startDate, DateTime endDate)
         {
@@ -145,7 +152,7 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -155,9 +162,9 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
-                Directory.CreateDirectory(outputPath);
+                _ = Directory.CreateDirectory(outputPath);
 
-                var events = await GetHistoryEventsAsync(session, startDate, endDate);
+                List<Entities.DoorbotHistoryEvent> events = await GetHistoryEventsAsync(session, startDate, endDate);
                 var relevantEvents = events.Where(e => e.Doorbot?.Id.ToString() == deviceId).ToList();
 
                 // Track the latest successfully downloaded event's timestamp for watermark advancement
@@ -183,7 +190,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
-                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, cancellationToken);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -199,17 +206,19 @@ namespace VideoForensics.Providers.Ring.Services
 
                 try
                 {
-                    var downloadTasks = relevantEvents.Select(async (@event) =>
+                    IEnumerable<Task> downloadTasks = relevantEvents.Select(async (@event) =>
                     {
                         if (rateLimitCts.Token.IsCancellationRequested)
+                        {
                             return;
+                        }
 
                         var cameraName = @event.Doorbot?.Description ?? deviceId;
                         var eventType = @event.Kind ?? "video";
                         var fileName = Path.Combine(outputPath,
                             MediaFileNamer.FormatMediaFileName(cameraName, @event.CreatedAtDateTime ?? DateTime.UtcNow, eventType, "mp4"));
                         var eventIdStr = @event.Id?.ToString() ?? "unknown";
-                        var eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                        DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         var previousAttemptCount = 0;
 
                         // Record this event in the Events table independent of download outcome —
@@ -233,7 +242,7 @@ namespace VideoForensics.Providers.Ring.Services
                             // or downloaded to a different output path in a prior run). Only skip the
                             // network call when the file is actually present on disk; otherwise fall through
                             // and redownload it, even though the DB says it was already downloaded.
-                            var existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+                            DownloadEvent? existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
                             var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
                             previousAttemptCount = existingRecord?.AttemptCount ?? 0;
 
@@ -245,7 +254,7 @@ namespace VideoForensics.Providers.Ring.Services
                             // case the recording becomes available again later or the failure was transient.
                             if (existingRecord is { Success: false, AttemptCount: >= MaxRetries } && !existsOnDisk)
                             {
-                                Interlocked.Increment(ref permanentlySkipped);
+                                _ = Interlocked.Increment(ref permanentlySkipped);
                                 _activityLog.Enqueue($"[dim]⊘ {EscapeMarkup(Path.GetFileName(fileName))}: skipped, failed permanently after {existingRecord.AttemptCount} attempt(s) ({EscapeMarkup(existingRecord.ErrorMessage ?? "unknown error")})[/]");
                                 return;
                             }
@@ -289,7 +298,9 @@ namespace VideoForensics.Providers.Ring.Services
                                     mediaFilesValidated++;
                                     validatedFiles.Add(fileName);
                                     if (wroteMetadata)
+                                    {
                                         metadataFilesWritten++;
+                                    }
 
                                     RecordBytesForRate(existingSize);
 
@@ -303,9 +314,11 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     // Update watermark for existing files too, so if batch fails later,
                                     // we don't re-attempt files we've already validated
-                                    var eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
+                                    DateTime eventTime = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                                     if (eventTime > latestSuccessfulTime)
+                                    {
                                         latestSuccessfulTime = eventTime;
+                                    }
                                 }
 
                                 _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
@@ -349,7 +362,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             finally
                             {
-                                Interlocked.Decrement(ref _activeDownloads);
+                                _ = Interlocked.Decrement(ref _activeDownloads);
                             }
 
                             if (File.Exists(fileName))
@@ -395,7 +408,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                                         };
 
-                                        var metadata = SerializeMetadata(@event);
+                                        (string Json, string Hash) = SerializeMetadata(@event);
                                         var mediaItem = new MediaItem
                                         {
                                             Id = Guid.NewGuid(),
@@ -409,11 +422,11 @@ namespace VideoForensics.Providers.Ring.Services
                                             DownloadedAtUtc = DateTime.UtcNow,
                                             Sha256Hash = sha256Hash,
                                             IntegrityVerified = false,
-                                            MetadataJson = metadata.Json,
-                                            ApiSourceHash = metadata.Hash
+                                            MetadataJson = Json,
+                                            ApiSourceHash = Hash
                                         };
 
-                                        await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, rateLimitCts.Token);
+                                        _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, rateLimitCts.Token);
 
                                         await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
                                             @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
@@ -445,8 +458,11 @@ namespace VideoForensics.Providers.Ring.Services
                                         mediaFilesValidated++;
                                         validatedFiles.Add(fileName);
                                     }
+
                                     if (wroteMetadata)
+                                    {
                                         metadataFilesWritten++;
+                                    }
 
                                     RecordBytesForRate(downloadedSize);
 
@@ -482,7 +498,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             else
                             {
-                                Interlocked.Increment(ref otherItemFailures);
+                                _ = Interlocked.Increment(ref otherItemFailures);
 
                                 // Record the failed attempt so a subsequent run/"Continue downloading"
                                 // can tell this item was already tried (see the MaxRetries skip check
@@ -508,7 +524,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         ErrorMessage = HumanizeExceptionTypeName(ex.GetType().Name) + ": " + ex.Message,
                                         AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                                     };
-                                    await _dataClient.RecordDownloadEventAsync(failedEvent, media: null, CancellationToken.None);
+                                    _ = await _dataClient.RecordDownloadEventAsync(failedEvent, media: null, CancellationToken.None);
                                 }
                                 catch (Exception recordEx)
                                 {
@@ -520,7 +536,7 @@ namespace VideoForensics.Providers.Ring.Services
                         {
                             if (acquiredSemaphore)
                             {
-                                concurrencySemaphore.Release();
+                                _ = concurrencySemaphore.Release();
                             }
                         }
                     });
@@ -626,7 +642,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -644,7 +660,7 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
-                Directory.CreateDirectory(outputPath);
+                _ = Directory.CreateDirectory(outputPath);
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
 
                 // Best-effort: ask Ring to capture a fresh snapshot before fetching it. Not every
@@ -699,7 +715,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize);
 
                 // Resolve device identity and record snapshot download
-                var deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
 
                 // Compute SHA-256 hash for snapshot
                 string? sha256Hash = null;
@@ -739,7 +755,7 @@ namespace VideoForensics.Providers.Ring.Services
                             AppVersion = typeof(RingMediaDownloadService).Assembly.GetName().Version?.ToString() ?? "unknown"
                         };
 
-                        var snapshotMetadata = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId = deviceId, timestamp = DateTime.UtcNow });
+                        (string Json, string Hash) = SerializeMetadata(new { eventId = snapshotEventId, type = "snapshot", deviceId, timestamp = DateTime.UtcNow });
                         var mediaItem = new MediaItem
                         {
                             Id = Guid.NewGuid(),
@@ -753,11 +769,11 @@ namespace VideoForensics.Providers.Ring.Services
                             DownloadedAtUtc = DateTime.UtcNow,
                             Sha256Hash = sha256Hash,
                             IntegrityVerified = false,
-                            MetadataJson = snapshotMetadata.Json,
-                            ApiSourceHash = snapshotMetadata.Hash
+                            MetadataJson = Json,
+                            ApiSourceHash = Hash
                         };
 
-                        await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, cancellationToken);
+                        _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -787,7 +803,7 @@ namespace VideoForensics.Providers.Ring.Services
                     BytesDownloaded: fileSize,
                     MetadataFilesWritten: metadataWritten ? 1 : 0,
                     MediaFilesValidated: fileSize > 0 ? 1 : 0,
-                    ValidatedFiles: fileSize > 0 ? new List<string> { fileName } : new List<string>(),
+                    ValidatedFiles: fileSize > 0 ? [fileName] : [],
                     FilesMatched: 1
                 );
             }
@@ -812,7 +828,9 @@ namespace VideoForensics.Providers.Ring.Services
         private (string Json, string Hash) SerializeMetadata(object? apiResponse)
         {
             if (apiResponse == null)
+            {
                 return (string.Empty, string.Empty);
+            }
 
             using var hash = SHA256.Create();
             var json = JsonSerializer.Serialize(apiResponse);
@@ -827,8 +845,8 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                var metadata = SerializeMetadata(apiResponse);
-                await _dataClient.UpsertEventAsync(new Event
+                (string Json, string Hash) = SerializeMetadata(apiResponse);
+                _ = await _dataClient.UpsertEventAsync(new Event
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceGuid,
@@ -839,8 +857,8 @@ namespace VideoForensics.Providers.Ring.Services
                     DiscoveredAtUtc = DateTime.UtcNow,
                     DownloadedAtUtc = downloadedAtUtc,
                     EventIntegrityHash = hash,
-                    MetadataJson = metadata.Json,
-                    ApiSourceHash = metadata.Hash
+                    MetadataJson = Json,
+                    ApiSourceHash = Hash
                 }, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -865,7 +883,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             lock (_statusLock)
             {
-                var now = DateTime.UtcNow;
+                DateTime now = DateTime.UtcNow;
                 var elapsedSeconds = (now - _rateWindowStart).TotalSeconds;
 
                 // Reset window if it's been 5+ seconds
@@ -880,7 +898,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Calculate current rate in MB/s
-                var rateMbps = elapsedSeconds > 0 ? (_rateWindowBytes / (1024.0 * 1024.0)) / elapsedSeconds : 0.0;
+                var rateMbps = elapsedSeconds > 0 ? _rateWindowBytes / (1024.0 * 1024.0) / elapsedSeconds : 0.0;
                 _currentStatus = _currentStatus with { CurrentSpeedMbps = rateMbps };
             }
         }
@@ -892,6 +910,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 items.Add(item);
             }
+
             return items;
         }
 
@@ -900,18 +919,16 @@ namespace VideoForensics.Providers.Ring.Services
             const double kb = 1024;
             const double mb = kb * 1024;
             if (bytes >= mb)
+            {
                 return $"{bytes / mb:F1} MB";
-            if (bytes >= kb)
-                return $"{bytes / kb:F1} KB";
-            return $"{bytes} bytes";
+            }
+
+            return bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
         }
 
         private static string EscapeMarkup(string? text)
         {
-            if (string.IsNullOrEmpty(text))
-                return string.Empty;
-
-            return text.Replace("[", "[[").Replace("]", "]]");
+            return string.IsNullOrEmpty(text) ? string.Empty : text.Replace("[", "[[").Replace("]", "]]");
         }
 
         /// <summary>Turns a PascalCase exception type name (e.g. "DeviceUnknownException") into a
@@ -919,17 +936,21 @@ namespace VideoForensics.Providers.Ring.Services
         private static string HumanizeExceptionTypeName(string typeName)
         {
             if (string.IsNullOrEmpty(typeName))
+            {
                 return typeName;
+            }
 
             var sb = new System.Text.StringBuilder(typeName.Length + 8);
             for (var i = 0; i < typeName.Length; i++)
             {
                 if (i > 0 && char.IsUpper(typeName[i]) && !char.IsUpper(typeName[i - 1]))
                 {
-                    sb.Append(' ');
+                    _ = sb.Append(' ');
                 }
-                sb.Append(typeName[i]);
+
+                _ = sb.Append(typeName[i]);
             }
+
             return sb.ToString();
         }
 
@@ -942,7 +963,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                var cv = @event.CvProperties;
+                Entities.CvProperties cv = @event.CvProperties;
                 var metadata = new RingEventMetadata(
                     FileName: Path.GetFileName(mediaFilePath),
                     DeviceId: deviceId,
@@ -1041,12 +1062,15 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingCvProfile(string? Id, string? Name, double? Confidence);
         private record RingCvZone(string? Id, string? Name, double? Confidence);
 
-        public void SetActiveProviderAccountId(Guid accountId) => _cachedProviderAccountId = accountId;
+        public void SetActiveProviderAccountId(Guid accountId)
+        {
+            _cachedProviderAccountId = accountId;
+        }
 
         private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
         {
             // Check per-device cache first
-            if (_deviceIdCache.TryGetValue(providerDeviceId, out var cachedDeviceId))
+            if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
             {
                 return cachedDeviceId;
             }
@@ -1073,7 +1097,7 @@ namespace VideoForensics.Providers.Ring.Services
                     // happen since the caller resolves the real active account first, but fall back
                     // to a synthetic placeholder rather than failing the whole download outright.
                     _logger.LogWarning("No active provider account set; falling back to a synthetic placeholder account for device identity resolution");
-                    var (_, account) = await _dataClient.EnsureUserAndAccountAsync(
+                    (_, ProviderAccount? account) = await _dataClient.EnsureUserAndAccountAsync(
                         "Ring",
                         "default",
                         "default",
@@ -1084,7 +1108,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!_locationIdCache.TryGetValue(effectiveLocationId, out locationGuid))
                 {
-                    var location = await _dataClient.EnsureLocationAsync(
+                    Data.Common.Entities.Location location = await _dataClient.EnsureLocationAsync(
                         _cachedProviderAccountId.Value,
                         effectiveLocationId,
                         effectiveLocationId,
@@ -1096,11 +1120,11 @@ namespace VideoForensics.Providers.Ring.Services
             }
             finally
             {
-                _identityResolutionLock.Release();
+                _ = _identityResolutionLock.Release();
             }
 
             // Now resolve the device
-            var device = await _dataClient.EnsureDeviceAsync(
+            Data.Common.Entities.Device device = await _dataClient.EnsureDeviceAsync(
                 locationGuid,
                 providerDeviceId,
                 deviceName,
@@ -1109,7 +1133,7 @@ namespace VideoForensics.Providers.Ring.Services
                 ct: ct);
 
             // Cache in the per-device dictionary
-            _deviceIdCache.TryAdd(providerDeviceId, device.Id);
+            _ = _deviceIdCache.TryAdd(providerDeviceId, device.Id);
             return device.Id;
         }
 
@@ -1123,8 +1147,8 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                var devices = await GetDevicesForHealthAsync(session, ct);
-                var health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
                     _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
@@ -1136,14 +1160,14 @@ namespace VideoForensics.Providers.Ring.Services
                     Id = Guid.NewGuid(),
                     DeviceId = deviceGuid,
                     Connected = health.Connected,
-                    BatteryPercentage = health.BatteryPercentage.HasValue ? (decimal)health.BatteryPercentage.Value : null,
+                    BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
                     Rssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
                     WifiName = health.WifiName,
                     FirmwareVersion = health.FirmwareVersion,
                     CapturedAtUtc = DateTime.UtcNow
                 };
 
-                await _dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
+                _ = await _dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
                 _logger.LogInformation("Captured health snapshot for device {DeviceId}: battery={Battery}%, connected={Connected}, rssi={Rssi}",
                     providerDeviceId, snapshot.BatteryPercentage, snapshot.Connected, snapshot.Rssi);
             }
@@ -1168,14 +1192,14 @@ namespace VideoForensics.Providers.Ring.Services
                     return _cachedHealthDevices;
                 }
 
-                var devices = await session.GetRingDevices();
+                Entities.Devices devices = await session.GetRingDevices();
                 _cachedHealthDevices = devices;
                 _cachedHealthDevicesAt = DateTime.UtcNow;
                 return devices;
             }
             finally
             {
-                _healthCacheLock.Release();
+                _ = _healthCacheLock.Release();
             }
         }
 
@@ -1214,30 +1238,27 @@ namespace VideoForensics.Providers.Ring.Services
                     return filtered;
                 }
 
-                var fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
-                var fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
+                DateTime fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
+                DateTime fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
 
                 _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
-                var events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
-                _cachedHistoryEvents = events ?? new List<Entities.DoorbotHistoryEvent>();
+                List<Entities.DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
+                _cachedHistoryEvents = events ?? [];
                 _cachedHistoryStart = fetchStart;
                 _cachedHistoryEnd = fetchEnd;
 
                 // The fetch above may have covered a wider union range than this specific caller
                 // asked for (to satisfy the cache widening above) - callers don't re-filter by date
                 // themselves, so return only the slice matching what was actually requested.
-                if (fetchStart == startDate && fetchEnd == endDate)
-                {
-                    return _cachedHistoryEvents;
-                }
-
-                return _cachedHistoryEvents
+                return fetchStart == startDate && fetchEnd == endDate
+                    ? _cachedHistoryEvents
+                    : _cachedHistoryEvents
                     .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
                     .ToList();
             }
             finally
             {
-                _historyCacheLock.Release();
+                _ = _historyCacheLock.Release();
             }
         }
 
@@ -1245,9 +1266,11 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                using var stream = File.OpenRead(filePath);
+                using FileStream stream = File.OpenRead(filePath);
                 if (stream.Length < 4)
+                {
                     return false;
+                }
 
                 Span<byte> header = stackalloc byte[3];
                 var read = stream.Read(header);
@@ -1364,20 +1387,18 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // JSON is valid
                 var content = File.ReadAllText(jsonPath);
-                using (var doc = JsonDocument.Parse(content))
+                using var doc = JsonDocument.Parse(content);
+                // If we can parse it and get the root element, it's valid JSON
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    // If we can parse it and get the root element, it's valid JSON
-                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                    {
-                        _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
-                            metadataType, Path.GetFileName(jsonPath), fileInfo.Length);
-                        return true;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("JSON sidecar root is not an object: {JsonPath}", jsonPath);
-                        return false;
-                    }
+                    _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
+                        metadataType, Path.GetFileName(jsonPath), fileInfo.Length);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogWarning("JSON sidecar root is not an object: {JsonPath}", jsonPath);
+                    return false;
                 }
             }
             catch (JsonException ex)

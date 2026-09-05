@@ -1,9 +1,9 @@
-using System;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Models;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Interface for extracting metadata from snapshot events.

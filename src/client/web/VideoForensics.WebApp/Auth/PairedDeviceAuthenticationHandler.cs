@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Hosting;
 
@@ -41,7 +42,7 @@ namespace VideoForensics.WebApp.Auth
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var token = ExtractToken();
+            string? token = ExtractToken();
             if (token is null)
             {
                 return AuthenticateResult.NoResult();
@@ -88,19 +89,16 @@ namespace VideoForensics.WebApp.Auth
         {
             if (Request.Headers.TryGetValue("Authorization", out var authHeader))
             {
-                var headerValue = authHeader.ToString();
+                string headerValue = authHeader.ToString();
                 if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
                     return headerValue["Bearer ".Length..].Trim();
                 }
             }
 
-            if (Request.Path.StartsWithSegments("/hubs") && Request.Query.TryGetValue("access_token", out var queryToken))
-            {
-                return queryToken.ToString();
-            }
-
-            return null;
+            return Request.Path.StartsWithSegments("/hubs") && Request.Query.TryGetValue("access_token", out var queryToken)
+                ? queryToken.ToString()
+                : null;
         }
     }
 

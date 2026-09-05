@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,12 +10,12 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<AiAnalysisSnapshot> builder)
         {
-            builder.HasKey(a => a.Id);
+            _ = builder.HasKey(a => a.Id);
 
-            builder.Property(a => a.FullDescription)
+            _ = builder.Property(a => a.FullDescription)
                 .HasMaxLength(2048);
 
-            builder.HasIndex(a => a.DownloadEventId);
+            _ = builder.HasIndex(a => a.DownloadEventId);
         }
     }
 }

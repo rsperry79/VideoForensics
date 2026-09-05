@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Client.Core
 {
@@ -18,7 +20,7 @@ namespace VideoForensics.Client.Core
         {
             try
             {
-                var loadedConfig = await configService.LoadConfigurationAsync("", cancellationToken);
+                IForensicsConfiguration loadedConfig = await configService.LoadConfigurationAsync("", cancellationToken);
 
                 runtimeConfig.EnableForensicAnalysisReports = loadedConfig.EnableForensicAnalysisReports;
                 runtimeConfig.EnableSignalAnomalyReports = loadedConfig.EnableSignalAnomalyReports;

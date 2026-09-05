@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,26 +10,26 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<RedactionAuditRecordEntity> builder)
         {
-            builder.HasKey(rar => rar.Id);
+            _ = builder.HasKey(rar => rar.Id);
 
-            builder.Property(rar => rar.RedactedBy)
+            _ = builder.Property(rar => rar.RedactedBy)
                 .IsRequired()
                 .HasMaxLength(ActorMaxLength);
 
-            builder.Property(rar => rar.ApprovedBy)
+            _ = builder.Property(rar => rar.ApprovedBy)
                 .IsRequired()
                 .HasMaxLength(ActorMaxLength);
 
-            builder.Property(rar => rar.ContentRedacted)
+            _ = builder.Property(rar => rar.ContentRedacted)
                 .IsRequired()
                 .HasMaxLength(DescriptionMaxLength);
 
-            builder.Property(rar => rar.JustificationNotes)
+            _ = builder.Property(rar => rar.JustificationNotes)
                 .IsRequired()
                 .HasMaxLength(DescriptionMaxLength);
 
-            builder.HasIndex(rar => rar.EvidenceId);
-            builder.HasIndex(rar => rar.RedactedAtUtc);
+            _ = builder.HasIndex(rar => rar.EvidenceId);
+            _ = builder.HasIndex(rar => rar.RedactedAtUtc);
         }
     }
 }

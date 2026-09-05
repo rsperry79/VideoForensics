@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models.Reports;
 
-namespace VideoForensics.Forensics
+using VideoForensics.Forensics.Models;
+
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Cryptographically signs forensic reports to prove they haven't been tampered with.

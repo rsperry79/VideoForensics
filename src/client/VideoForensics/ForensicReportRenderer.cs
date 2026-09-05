@@ -1,14 +1,15 @@
+using Microsoft.Extensions.Logging;
+
+using Spectre.Console;
+
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Data.Core.Models;
+
 namespace VideoForensics
 {
-    using System;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.Extensions.Logging;
-    using Spectre.Console;
-    using VideoForensics.Client.Common;
-    using VideoForensics.Data.Core.Contracts;
-
     public class ForensicReportRenderer : IForensicReportRenderer
     {
         private readonly IForensicsConfiguration _forensicsConfig;
@@ -31,7 +32,7 @@ namespace VideoForensics
 
             try
             {
-                var report = await _reportService.BuildEvidenceReviewAsync(
+                EvidenceReviewReport report = await _reportService.BuildEvidenceReviewAsync(
                     deviceId: null,
                     fromUtc: DateTime.UtcNow.AddDays(-90),
                     toUtc: DateTime.UtcNow,
@@ -44,18 +45,18 @@ namespace VideoForensics
                 }
 
                 var table = new Table();
-                table.AddColumn("Evidence ID");
-                table.AddColumn("Device ID");
-                table.AddColumn("Format");
-                table.AddColumn("Status");
+                _ = table.AddColumn("Evidence ID");
+                _ = table.AddColumn("Device ID");
+                _ = table.AddColumn("Format");
+                _ = table.AddColumn("Status");
                 table.Border = TableBorder.Rounded;
 
-                foreach (var item in report.MediaItems)
+                foreach (MediaItem item in report.MediaItems)
                 {
                     var status = DetermineMediaStatus(item.Id, report.IntegrityRecords);
-                    table.AddRow(
-                        item.Id.ToString("N").Substring(0, 8),
-                        item.DeviceId.ToString("N").Substring(0, 8),
+                    _ = table.AddRow(
+                        item.Id.ToString("N")[..8],
+                        item.DeviceId.ToString("N")[..8],
                         item.MediaFormat ?? "Unknown",
                         status);
                 }
@@ -74,20 +75,20 @@ namespace VideoForensics
             AnsiConsole.MarkupLine("[bold cyan]Forensic Report Generation[/]");
 
             var reportStatus = new Table();
-            reportStatus.AddColumn("Report Type");
-            reportStatus.AddColumn("Status");
+            _ = reportStatus.AddColumn("Report Type");
+            _ = reportStatus.AddColumn("Status");
             reportStatus.Border = TableBorder.Rounded;
 
-            reportStatus.AddRow(
+            _ = reportStatus.AddRow(
                 "Forensic Analysis",
                 _forensicsConfig.EnableForensicAnalysisReports ? "[green]✓ Enabled[/]" : "[red]✗ Disabled[/]");
-            reportStatus.AddRow(
+            _ = reportStatus.AddRow(
                 "Chain of Custody",
                 _forensicsConfig.EnableChainOfCustodyReports ? "[green]✓ Enabled[/]" : "[red]✗ Disabled[/]");
-            reportStatus.AddRow(
+            _ = reportStatus.AddRow(
                 "Evidence Validation",
                 _forensicsConfig.EnableEvidenceValidationReports ? "[green]✓ Enabled[/]" : "[red]✗ Disabled[/]");
-            reportStatus.AddRow(
+            _ = reportStatus.AddRow(
                 "Signal Anomaly",
                 _forensicsConfig.EnableSignalAnomalyReports ? "[green]✓ Enabled[/]" : "[red]✗ Disabled[/]");
 
@@ -101,7 +102,7 @@ namespace VideoForensics
 
             try
             {
-                var report = await _reportService.BuildForensicAnalysisReportAsync(
+                ForensicAnalysisReport report = await _reportService.BuildForensicAnalysisReportAsync(
                     deviceId: null,
                     fromUtc: DateTime.UtcNow.AddDays(-90),
                     toUtc: DateTime.UtcNow,
@@ -156,7 +157,7 @@ namespace VideoForensics
 
             try
             {
-                var report = await _reportService.BuildSignalAnomalyReportAsync(
+                SignalAnomalyReport report = await _reportService.BuildSignalAnomalyReportAsync(
                     deviceId: null,
                     fromUtc: DateTime.UtcNow.AddDays(-30),
                     toUtc: DateTime.UtcNow,
@@ -168,7 +169,7 @@ namespace VideoForensics
                     return;
                 }
 
-                foreach (var deviceAnomaly in report.AnomaliesByDevice)
+                foreach (SignalAnomalyReport.AnomalyFindings deviceAnomaly in report.AnomaliesByDevice)
                 {
                     AnsiConsole.MarkupLine("[yellow]Device: {0}[/]", deviceAnomaly.DeviceName);
 
@@ -178,7 +179,7 @@ namespace VideoForensics
                     }
                     else
                     {
-                        foreach (var anomaly in deviceAnomaly.Anomalies)
+                        foreach (SignalAnomalyReport.SignalAnomaly anomaly in deviceAnomaly.Anomalies)
                         {
                             var icon = anomaly.AnomalyType switch
                             {
@@ -193,6 +194,7 @@ namespace VideoForensics
                                 anomaly.RssiValue?.ToString() ?? "N/A");
                         }
                     }
+
                     AnsiConsole.MarkupLine("");
                 }
             }
@@ -215,7 +217,7 @@ namespace VideoForensics
 
             try
             {
-                var report = await _reportService.BuildAccessControlReportAsync(
+                AccessControlReport report = await _reportService.BuildAccessControlReportAsync(
                     deviceId: null,
                     fromUtc: DateTime.UtcNow.AddDays(-30),
                     toUtc: DateTime.UtcNow,
@@ -232,20 +234,21 @@ namespace VideoForensics
                 {
                     AnsiConsole.MarkupLine("[yellow]Access Events:[/]");
                     var accessTable = new Table();
-                    accessTable.AddColumn("Actor");
-                    accessTable.AddColumn("Action");
-                    accessTable.AddColumn("Entity Type");
-                    accessTable.AddColumn("Timestamp");
+                    _ = accessTable.AddColumn("Actor");
+                    _ = accessTable.AddColumn("Action");
+                    _ = accessTable.AddColumn("Entity Type");
+                    _ = accessTable.AddColumn("Timestamp");
                     accessTable.Border = TableBorder.Rounded;
 
-                    foreach (var evt in report.AccessEvents)
+                    foreach (AccessControlReport.AccessEvent evt in report.AccessEvents)
                     {
-                        accessTable.AddRow(
+                        _ = accessTable.AddRow(
                             evt.Actor,
                             evt.Action,
                             evt.EntityType,
                             evt.AccessedAtUtc.ToString("yyyy-MM-dd HH:mm"));
                     }
+
                     AnsiConsole.Write(accessTable);
                     AnsiConsole.MarkupLine("");
                 }
@@ -255,20 +258,21 @@ namespace VideoForensics
                 {
                     AnsiConsole.MarkupLine("[yellow]Export Events:[/]");
                     var exportTable = new Table();
-                    exportTable.AddColumn("User");
-                    exportTable.AddColumn("Case Reference");
-                    exportTable.AddColumn("Item Count");
-                    exportTable.AddColumn("Timestamp");
+                    _ = exportTable.AddColumn("User");
+                    _ = exportTable.AddColumn("Case Reference");
+                    _ = exportTable.AddColumn("Item Count");
+                    _ = exportTable.AddColumn("Timestamp");
                     exportTable.Border = TableBorder.Rounded;
 
-                    foreach (var evt in report.ExportEvents)
+                    foreach (AccessControlReport.ExportEvent evt in report.ExportEvents)
                     {
-                        exportTable.AddRow(
+                        _ = exportTable.AddRow(
                             evt.ExportedByUserName,
                             evt.CaseReference ?? "N/A",
                             evt.ItemCount.ToString(),
                             evt.ExportedAtUtc.ToString("yyyy-MM-dd HH:mm"));
                     }
+
                     AnsiConsole.Write(exportTable);
                 }
             }
@@ -291,7 +295,7 @@ namespace VideoForensics
 
             try
             {
-                var report = await _reportService.BuildChainOfCustodyReportAsync(
+                ChainOfCustodyReport report = await _reportService.BuildChainOfCustodyReportAsync(
                     deviceId: null,
                     fromUtc: DateTime.UtcNow.AddDays(-90),
                     toUtc: DateTime.UtcNow,
@@ -311,6 +315,7 @@ namespace VideoForensics
                     {
                         AnsiConsole.MarkupLine("[green]Status: {0}[/]", report.ChainVerificationStatus);
                     }
+
                     AnsiConsole.MarkupLine("");
                 }
 
@@ -322,16 +327,16 @@ namespace VideoForensics
                 }
 
                 var table = new Table();
-                table.AddColumn("ID");
-                table.AddColumn("Actor");
-                table.AddColumn("Action");
-                table.AddColumn("Timestamp");
+                _ = table.AddColumn("ID");
+                _ = table.AddColumn("Actor");
+                _ = table.AddColumn("Action");
+                _ = table.AddColumn("Timestamp");
                 table.Border = TableBorder.Rounded;
 
-                foreach (var entry in report.AuditTrail)
+                foreach (ActionLogEntry entry in report.AuditTrail)
                 {
-                    table.AddRow(
-                        entry.Id.ToString("N").Substring(0, 8),
+                    _ = table.AddRow(
+                        entry.Id.ToString("N")[..8],
                         entry.Actor ?? "Unknown",
                         entry.Action ?? "Unknown",
                         entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm"));
@@ -348,19 +353,14 @@ namespace VideoForensics
 
         private string DetermineMediaStatus(Guid mediaId, IReadOnlyList<VideoForensics.Data.Common.Entities.IntegrityRecord> integrityRecords)
         {
-            var record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
+            IntegrityRecord? record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
 
             if (record == null)
             {
                 return "[yellow]⚠ Not verified[/]";
             }
 
-            if (!record.Passed)
-            {
-                return "[red]Integrity failed[/]";
-            }
-
-            return "[green]✓ Verified[/]";
+            return !record.Passed ? "[red]Integrity failed[/]" : "[green]✓ Verified[/]";
         }
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
@@ -20,25 +21,25 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             // Resolve default database path if not provided
             if (string.IsNullOrEmpty(dbPath))
             {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 dbPath = Path.Combine(appDataPath, "VideoForensics", "videoforensics.db");
             }
 
             // Ensure parent directory exists
-            var dbDirectory = Path.GetDirectoryName(dbPath);
+            string? dbDirectory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dbDirectory))
             {
-                Directory.CreateDirectory(dbDirectory);
+                _ = Directory.CreateDirectory(dbDirectory);
             }
 
             // Register DbContext factory with SQLite provider
             // Using a factory (not AddDbContext) for thread-safety compatibility with MAUI and concurrent access patterns.
-            var connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
+            string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
 
-            services.AddDbContextFactory<VideoForensicsDbContext>(options =>
+            _ = services.AddDbContextFactory<VideoForensicsDbContext>(options =>
                 options.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite")));
 
-            services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
+            _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 
             return services;
         }

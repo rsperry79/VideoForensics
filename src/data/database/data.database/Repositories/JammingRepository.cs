@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,7 +23,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Upserts (inserts or updates) a jamming incident record.</summary>
         public async Task<JammingIncidentRecord> UpsertIncidentAsync(JammingIncidentRecord incident, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 JammingIncidentRecord? existing = null;
@@ -38,7 +39,7 @@ namespace VideoForensics.Data.Database.Repositories
                         incident.Id = Guid.NewGuid();
                     }
 
-                    db.JammingIncidentRecords.Add(incident);
+                    _ = db.JammingIncidentRecords.Add(incident);
                     _logger.LogInformation("Jamming incident inserted: {IncidentId}", incident.Id);
                 }
                 else
@@ -52,11 +53,11 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.DetectedAtUtc = incident.DetectedAtUtc;
                     existing.Notes = incident.Notes;
                     existing.Source = incident.Source;
-                    db.JammingIncidentRecords.Update(existing);
+                    _ = db.JammingIncidentRecords.Update(existing);
                     _logger.LogInformation("Jamming incident upserted (updated): {IncidentId}", incident.Id);
                 }
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
                 return existing ?? incident;
             }
             catch (Exception ex)
@@ -70,8 +71,8 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(
             Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var query = db.JammingIncidentRecords.AsQueryable();
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<JammingIncidentRecord> query = db.JammingIncidentRecords.AsQueryable();
 
             if (deviceId.HasValue)
             {
@@ -94,29 +95,29 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the jamming stats summary for a device.</summary>
         public async Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.JammingStatsSummaries.FirstOrDefaultAsync(j => j.DeviceId == deviceId, ct);
         }
 
         /// <summary>Lists jamming stats summaries for all devices.</summary>
         public async Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.JammingStatsSummaries.ToListAsync(ct);
         }
 
         /// <summary>Recomputes and upserts the JammingStatsSummary row for a device from its current JammingIncidentRecord rows.</summary>
         public async Task<JammingStatsSummary> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var incidents = await db.JammingIncidentRecords
+                List<JammingIncidentRecord> incidents = await db.JammingIncidentRecords
                     .Where(j => j.DeviceId == deviceId)
                     .ToListAsync(ct);
 
-                var existing = await db.JammingStatsSummaries.FirstOrDefaultAsync(j => j.DeviceId == deviceId, ct);
-                var summary = existing ?? new JammingStatsSummary { Id = Guid.NewGuid(), DeviceId = deviceId };
+                JammingStatsSummary? existing = await db.JammingStatsSummaries.FirstOrDefaultAsync(j => j.DeviceId == deviceId, ct);
+                JammingStatsSummary summary = existing ?? new JammingStatsSummary { Id = Guid.NewGuid(), DeviceId = deviceId };
 
                 summary.IncidentCount = incidents.Count;
                 summary.TotalJammedDurationMinutes = incidents.Sum(i => (i.EndUtc - i.StartUtc).TotalMinutes);
@@ -132,14 +133,14 @@ namespace VideoForensics.Data.Database.Repositories
 
                 if (existing == null)
                 {
-                    db.JammingStatsSummaries.Add(summary);
+                    _ = db.JammingStatsSummaries.Add(summary);
                 }
                 else
                 {
-                    db.JammingStatsSummaries.Update(summary);
+                    _ = db.JammingStatsSummaries.Update(summary);
                 }
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Recomputed jamming stats for device {DeviceId}: {IncidentCount} incidents", deviceId, summary.IncidentCount);
                 return summary;
             }

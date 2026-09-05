@@ -1,6 +1,6 @@
 using System.Net.Http;
 
-namespace VideoForensics.Providers.Wyze.Utils;
+namespace VideoForensics.Providers.Wyze;
 
 /// <summary>Extension methods for HttpClient used with Wyze API</summary>
 public static class WyzeHttpClientExtensions

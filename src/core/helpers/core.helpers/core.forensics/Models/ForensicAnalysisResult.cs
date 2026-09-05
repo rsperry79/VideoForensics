@@ -10,9 +10,9 @@ namespace VideoForensics.Forensics.Models
         public DateTime AnalysisTimestamp { get; set; } = DateTime.UtcNow;
         public string? Finding { get; set; }
         public AnalysisSeverity Severity { get; set; } = AnalysisSeverity.Info;
-        public List<string> Tags { get; set; } = new();
+        public List<string> Tags { get; set; } = [];
         public string? Recommendation { get; set; }
-        public Dictionary<string, object> AnalysisData { get; set; } = new();
+        public Dictionary<string, object> AnalysisData { get; set; } = [];
     }
 
     public enum AnalysisSeverity

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Primitives;
+
 using VideoForensics.Hosting;
 
 namespace VideoForensics.WebApp.Auth
@@ -11,25 +13,22 @@ namespace VideoForensics.WebApp.Auth
     {
         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
-            var httpContext = context.HttpContext;
+            HttpContext httpContext = context.HttpContext;
             var deviceIdClaim = httpContext.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
-            if (!Guid.TryParse(deviceIdClaim, out var pairedDeviceId))
+            if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
             {
                 return Results.Unauthorized();
             }
 
-            if (!httpContext.Request.Headers.TryGetValue("X-StepUp-Token", out var tokenHeader))
+            if (!httpContext.Request.Headers.TryGetValue("X-StepUp-Token", out StringValues tokenHeader))
             {
                 return Results.Json(new { error = "This action requires step-up re-authentication (X-StepUp-Token header missing)." }, statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var stepUpAuth = httpContext.RequestServices.GetRequiredService<IStepUpAuthService>();
-            if (!stepUpAuth.Validate(tokenHeader.ToString(), pairedDeviceId))
-            {
-                return Results.Json(new { error = "Step-up token invalid or expired - re-authenticate and retry." }, statusCode: StatusCodes.Status403Forbidden);
-            }
-
-            return await next(context);
+            IStepUpAuthService stepUpAuth = httpContext.RequestServices.GetRequiredService<IStepUpAuthService>();
+            return !stepUpAuth.Validate(tokenHeader.ToString(), pairedDeviceId)
+                ? Results.Json(new { error = "Step-up token invalid or expired - re-authenticate and retry." }, statusCode: StatusCodes.Status403Forbidden)
+                : await next(context);
         }
     }
 }

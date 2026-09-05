@@ -1,5 +1,6 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+
+using System.Collections.Concurrent;
 
 namespace VideoForensics.WebApp.Hubs
 {
@@ -27,26 +28,26 @@ namespace VideoForensics.WebApp.Hubs
 
         public void Register(Guid pairedDeviceId, HubCallerContext context)
         {
-            var connections = _connectionsByDevice.GetOrAdd(pairedDeviceId, _ => new ConcurrentDictionary<string, HubCallerContext>());
+            ConcurrentDictionary<string, HubCallerContext> connections = _connectionsByDevice.GetOrAdd(pairedDeviceId, _ => new ConcurrentDictionary<string, HubCallerContext>());
             connections[context.ConnectionId] = context;
         }
 
         public void Unregister(Guid pairedDeviceId, string connectionId)
         {
-            if (_connectionsByDevice.TryGetValue(pairedDeviceId, out var connections))
+            if (_connectionsByDevice.TryGetValue(pairedDeviceId, out ConcurrentDictionary<string, HubCallerContext>? connections))
             {
-                connections.TryRemove(connectionId, out _);
+                _ = connections.TryRemove(connectionId, out _);
             }
         }
 
         public void ForceDisconnect(Guid pairedDeviceId)
         {
-            if (!_connectionsByDevice.TryRemove(pairedDeviceId, out var connections))
+            if (!_connectionsByDevice.TryRemove(pairedDeviceId, out ConcurrentDictionary<string, HubCallerContext>? connections))
             {
                 return;
             }
 
-            foreach (var context in connections.Values)
+            foreach (HubCallerContext context in connections.Values)
             {
                 context.Abort();
             }

@@ -1,6 +1,4 @@
 #nullable disable
-using VideoForensics.Providers.Ring;
-
 using Moq;
 
 namespace VideoForensics.Providers.Ring.Auth.Tests
@@ -10,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         [Fact]
         public void SaveAndLoadRoundTrip()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
+            string path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
             var store = new CredentialStore();
             var auth = new RingCredentials
             {
@@ -22,7 +20,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             try
             {
                 store.Save(path, auth);
-                var raw = File.ReadAllText(path);
+                string raw = File.ReadAllText(path);
                 var loaded = store.Load(path);
 
                 Assert.False(raw.Contains("testPassword"));
@@ -34,14 +32,16 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             finally
             {
                 if (File.Exists(path))
+                {
                     File.Delete(path);
+                }
             }
         }
 
         [Fact]
         public void EncryptsBeforeWritingToDisk()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
+            string path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
             var store = new CredentialStore();
             var auth = new RingCredentials
             {
@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             try
             {
                 store.Save(path, auth);
-                var raw = File.ReadAllText(path);
+                string raw = File.ReadAllText(path);
 
                 Assert.False(raw.Contains("SecurePassword123!"));
                 Assert.False(raw.Contains("refresh_abc123"));
@@ -61,7 +61,9 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             finally
             {
                 if (File.Exists(path))
+                {
                     File.Delete(path);
+                }
             }
         }
 
@@ -69,7 +71,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void Load_MissingFile_ReturnsEmptyCredentials()
         {
             var store = new CredentialStore();
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-missing-{Guid.NewGuid()}.json");
+            string path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-missing-{Guid.NewGuid()}.json");
 
             var loaded = store.Load(path);
 
@@ -81,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         [Fact]
         public void SetCredentials_WritesRetrievableRoundTrip()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
+            string path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
             var store = new CredentialStore();
 
             try
@@ -96,22 +98,24 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             finally
             {
                 if (File.Exists(path))
+                {
                     File.Delete(path);
+                }
             }
         }
 
         [Fact]
         public void SanitizeClearTextPassword_MigratesAndRemovesClearTextField()
         {
-            var settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");
-            var authPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
+            string settingsPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-settings-{Guid.NewGuid()}.json");
+            string authPath = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-{Guid.NewGuid()}.json");
             var store = new CredentialStore();
 
             try
             {
                 File.WriteAllText(settingsPath, "{\"Password\":\"clear-text-secret\",\"Other\":1}");
 
-                var migrated = store.SanitizeClearTextPassword(settingsPath, authPath);
+                bool migrated = store.SanitizeClearTextPassword(settingsPath, authPath);
 
                 Assert.True(migrated);
                 Assert.False(File.ReadAllText(settingsPath).Contains("clear-text-secret"));
@@ -120,9 +124,14 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             finally
             {
                 if (File.Exists(settingsPath))
+                {
                     File.Delete(settingsPath);
+                }
+
                 if (File.Exists(authPath))
+                {
                     File.Delete(authPath);
+                }
             }
         }
 
@@ -135,7 +144,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void ICredentialStore_IsMockable()
         {
             var mock = new Mock<ICredentialStore>();
-            mock.Setup(s => s.Load(It.IsAny<string>())).Returns(new RingCredentials { RefreshToken = "fake-token" });
+            _ = mock.Setup(s => s.Load(It.IsAny<string>())).Returns(new RingCredentials { RefreshToken = "fake-token" });
 
             ICredentialStore store = mock.Object;
             var result = store.Load("irrelevant-path");

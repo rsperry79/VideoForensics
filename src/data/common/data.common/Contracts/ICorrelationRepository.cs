@@ -126,6 +126,6 @@ namespace VideoForensics.Data.Common.Contracts
         public int DeviceCount { get; set; }
         public int TotalSyncGaps { get; set; }
         public DateTime LastSuccessfulSyncUtc { get; set; }
-        public List<DeviceSyncStatus> DeviceStatus { get; set; } = new();
+        public List<DeviceSyncStatus> DeviceStatus { get; set; } = [];
     }
 }

@@ -24,19 +24,14 @@ namespace VideoForensics.Hosting
 
         public string Store(string optionsJson)
         {
-            var nonce = Guid.NewGuid().ToString("N");
+            string nonce = Guid.NewGuid().ToString("N");
             _entries[nonce] = (optionsJson, DateTime.UtcNow + CeremonyLifetime);
             return nonce;
         }
 
         public string? TryTake(string nonce)
         {
-            if (_entries.TryRemove(nonce, out var entry) && entry.ExpiresAtUtc > DateTime.UtcNow)
-            {
-                return entry.OptionsJson;
-            }
-
-            return null;
+            return _entries.TryRemove(nonce, out var entry) && entry.ExpiresAtUtc > DateTime.UtcNow ? entry.OptionsJson : null;
         }
     }
 }

@@ -24,6 +24,9 @@ namespace VideoForensics.Hosting
     /// <summary>Default implementation for hosts that are always on mains power (console, MCP, WebApp).</summary>
     public class AlwaysOnAcPower : IBatteryStatusProvider
     {
-        public BatteryStatus GetStatus() => BatteryStatus.OnAcPower;
+        public BatteryStatus GetStatus()
+        {
+            return BatteryStatus.OnAcPower;
+        }
     }
 }

@@ -1,7 +1,8 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace VideoForensics.Ui.Shared.Services
 {
@@ -41,9 +42,9 @@ namespace VideoForensics.Ui.Shared.Services
         public async Task<(Guid OperatorId, Guid PairedDeviceId, string Role)> CompleteRegistrationAsync(
             string pairingToken, string operatorDisplayName, string deviceName)
         {
-            using var client = CreateClient(null);
+            using HttpClient client = CreateClient(null);
 
-            var optionsResponse = await client.PostAsJsonAsync(
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
                 $"api/pairing/{pairingToken}/register/options",
                 new { operatorDisplayName, deviceName });
             if (!optionsResponse.IsSuccessStatusCode)
@@ -51,14 +52,14 @@ namespace VideoForensics.Ui.Shared.Services
                 throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
             }
 
-            var optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
             var nonce = optionsBody.GetProperty("nonce").GetString()!;
             var optionsJson = optionsBody.GetProperty("options").GetRawText();
 
             var attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
-            var attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
+            JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
 
-            var completeResponse = await client.PostAsJsonAsync(
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
                 $"api/pairing/{pairingToken}/register/complete",
                 new { nonce, attestationResponse = attestation });
             if (!completeResponse.IsSuccessStatusCode)
@@ -66,7 +67,7 @@ namespace VideoForensics.Ui.Shared.Services
                 throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
             }
 
-            var result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
             return (
                 result.GetProperty("operatorId").GetGuid(),
                 result.GetProperty("pairedDeviceId").GetGuid(),
@@ -75,22 +76,22 @@ namespace VideoForensics.Ui.Shared.Services
 
         public async Task<(string SessionToken, Guid OperatorId, string Role)> SignInAsync()
         {
-            using var client = CreateClient(null);
+            using HttpClient client = CreateClient(null);
 
-            var optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
             if (!optionsResponse.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
             }
 
-            var optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
             var nonce = optionsBody.GetProperty("nonce").GetString()!;
             var optionsJson = optionsBody.GetProperty("options").GetRawText();
 
             var assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
-            var assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
-            var completeResponse = await client.PostAsJsonAsync(
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
                 "api/auth/webauthn/assertion-complete",
                 new { nonce, assertionResponse = assertion });
             if (!completeResponse.IsSuccessStatusCode)
@@ -98,7 +99,7 @@ namespace VideoForensics.Ui.Shared.Services
                 throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
             }
 
-            var result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
             return (
                 result.GetProperty("sessionToken").GetString()!,
                 result.GetProperty("operatorId").GetGuid(),
@@ -108,22 +109,22 @@ namespace VideoForensics.Ui.Shared.Services
         /// <summary>Fresh passkey assertion for an already-signed-in session (plan §5.7) - returns the short-lived step-up token to attach as the X-StepUp-Token header on the one protected call it authorizes.</summary>
         public async Task<string> StepUpAsync(string sessionToken)
         {
-            using var client = CreateClient(sessionToken);
+            using HttpClient client = CreateClient(sessionToken);
 
-            var optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
             if (!optionsResponse.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
             }
 
-            var optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
             var nonce = optionsBody.GetProperty("nonce").GetString()!;
             var optionsJson = optionsBody.GetProperty("options").GetRawText();
 
             var assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
-            var assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
-            var completeResponse = await client.PostAsJsonAsync(
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
                 "api/auth/webauthn/stepup-complete",
                 new { nonce, assertionResponse = assertion });
             if (!completeResponse.IsSuccessStatusCode)
@@ -131,7 +132,7 @@ namespace VideoForensics.Ui.Shared.Services
                 throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
             }
 
-            var result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
             return result.GetProperty("stepUpToken").GetString()!;
         }
 
@@ -150,7 +151,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                Dictionary<string, string>? doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
                 if (doc is not null && doc.TryGetValue("error", out var msg))
                 {
                     return msg;

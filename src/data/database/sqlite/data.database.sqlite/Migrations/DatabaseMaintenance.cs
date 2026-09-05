@@ -1,6 +1,10 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using System.Data.Common;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Sqlite.Migrations
@@ -29,7 +33,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             try
             {
-                await using var db = await factory.CreateDbContextAsync(cancellationToken);
+                await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(cancellationToken);
                 var connection = db.Database.GetDbConnection() as SqliteConnection;
                 if (connection?.DataSource == null)
                 {
@@ -46,7 +50,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     diagnosis.WalSizeBytes = walSize;
                     diagnosis.NeedsWalCheckpoint = walSize > WalSizeThresholdBytes;
                     if (diagnosis.NeedsWalCheckpoint)
+                    {
                         logger.LogInformation("Database maintenance: WAL file is {WalSizeMB:F1}MB (threshold: 100KB)", walSize / 1024.0 / 1024.0);
+                    }
                 }
 
                 // 2. Check database file size
@@ -56,21 +62,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     diagnosis.DatabaseSizeBytes = dbSize;
                     diagnosis.NeedsReindex = dbSize > DbSizeThresholdBytes;
                     if (diagnosis.NeedsReindex)
+                    {
                         logger.LogInformation("Database maintenance: Database is {DbSizeMB:F1}MB (threshold: 5MB)", dbSize / 1024.0 / 1024.0);
+                    }
                 }
 
                 // 3. Check time since last maintenance
                 if (connection.State != System.Data.ConnectionState.Open)
+                {
                     await connection.OpenAsync(cancellationToken);
+                }
 
-                var lastMaintenance = await GetLastMaintenanceTimeAsync(db, cancellationToken);
+                DateTime? lastMaintenance = await GetLastMaintenanceTimeAsync(db, cancellationToken);
                 if (lastMaintenance.HasValue)
                 {
                     var hoursSinceLastMaintenance = (DateTime.UtcNow - lastMaintenance.Value).TotalHours;
                     diagnosis.HoursSinceLastMaintenance = hoursSinceLastMaintenance;
                     diagnosis.NeedsTimedMaintenance = hoursSinceLastMaintenance > MaintenanceIntervalHours;
                     if (diagnosis.NeedsTimedMaintenance)
+                    {
                         logger.LogInformation("Database maintenance: Last maintenance was {Hours:F1} hours ago (threshold: 24h)", hoursSinceLastMaintenance);
+                    }
                 }
                 else
                 {
@@ -107,10 +119,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             MaintenanceDiagnosis? diagnosis = null,
             CancellationToken cancellationToken = default)
         {
-            if (diagnosis == null)
-            {
-                diagnosis = await DiagnoseAsync(factory, logger, cancellationToken);
-            }
+            diagnosis ??= await DiagnoseAsync(factory, logger, cancellationToken);
 
             if (!diagnosis.ShouldMaintain)
             {
@@ -124,21 +133,21 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             try
             {
-                await using var db = await factory.CreateDbContextAsync(cancellationToken);
-                var connection = db.Database.GetDbConnection();
+                await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(cancellationToken);
+                DbConnection connection = db.Database.GetDbConnection();
                 if (connection.State != System.Data.ConnectionState.Open)
                 {
                     await connection.OpenAsync(cancellationToken);
                 }
 
-                using var command = connection.CreateCommand();
+                using DbCommand command = connection.CreateCommand();
 
                 // 1. Checkpoint WAL file (flush pending writes to main DB)
                 if (diagnosis.NeedsWalCheckpoint)
                 {
                     logger.LogInformation("Database maintenance: checkpointing WAL ({WalMB:F1}MB)...", diagnosis.WalSizeBytes / 1024.0 / 1024.0);
                     command.CommandText = "PRAGMA wal_checkpoint(PASSIVE);";
-                    await command.ExecuteScalarAsync(cancellationToken);
+                    _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
 
                 // 2. Reindex to rebuild corrupted or fragmented indexes
@@ -146,7 +155,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 {
                     logger.LogInformation("Database maintenance: reindexing ({DbMB:F1}MB database)...", diagnosis.DatabaseSizeBytes / 1024.0 / 1024.0);
                     command.CommandText = "REINDEX;";
-                    await command.ExecuteScalarAsync(cancellationToken);
+                    _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
 
                 // 3. Optimize query plans
@@ -154,7 +163,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 {
                     logger.LogInformation("Database maintenance: optimizing queries ({QueryMs:F0}ms baseline)...", diagnosis.QueryMs);
                     command.CommandText = "PRAGMA optimize;";
-                    await command.ExecuteScalarAsync(cancellationToken);
+                    _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
 
                 // 4. Analyze table statistics for query planner
@@ -162,7 +171,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 {
                     logger.LogInformation("Database maintenance: analyzing statistics...");
                     command.CommandText = "ANALYZE;";
-                    await command.ExecuteScalarAsync(cancellationToken);
+                    _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
 
                 // Record maintenance completion
@@ -183,9 +192,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             try
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                using var command = connection.CreateCommand();
+                using DbCommand command = connection.CreateCommand();
                 command.CommandText = "SELECT COUNT(*) FROM sqlite_master;"; // Fast diagnostic query
-                await command.ExecuteScalarAsync(cancellationToken);
+                _ = await command.ExecuteScalarAsync(cancellationToken);
                 stopwatch.Stop();
                 return stopwatch.Elapsed.TotalMilliseconds;
             }
@@ -201,11 +210,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         {
             try
             {
-                var setting = await db.AppSettings
+                AppSetting? setting = await db.AppSettings
                     .AsNoTracking()
                     .FirstOrDefaultAsync(s => s.Key == LastMaintenanceKey, cancellationToken);
 
-                if (setting != null && DateTime.TryParse(setting.Value, null, System.Globalization.DateTimeStyles.AssumeUniversal, out var lastMaintenance))
+                if (setting != null && DateTime.TryParse(setting.Value, null, System.Globalization.DateTimeStyles.AssumeUniversal, out DateTime lastMaintenance))
                 {
                     return lastMaintenance;
                 }
@@ -224,15 +233,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         {
             try
             {
-                var connection = db.Database.GetDbConnection();
+                DbConnection connection = db.Database.GetDbConnection();
                 if (connection.State != System.Data.ConnectionState.Open)
                 {
                     await connection.OpenAsync(cancellationToken);
                 }
 
-                using var command = connection.CreateCommand();
+                using DbCommand command = connection.CreateCommand();
                 command.CommandText = $"INSERT OR REPLACE INTO AppSettings (Key, Value) VALUES ('{LastMaintenanceKey}', '{DateTime.UtcNow:O}');";
-                await command.ExecuteNonQueryAsync(cancellationToken);
+                _ = await command.ExecuteNonQueryAsync(cancellationToken);
             }
             catch
             {

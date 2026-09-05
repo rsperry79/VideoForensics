@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Data.Core.Models
 {
     /// <summary>Report showing who accessed and exported evidence.</summary>
@@ -8,8 +6,8 @@ namespace VideoForensics.Data.Core.Models
         public DateTime GeneratedAtUtc { get; set; }
         public DateTime ReportFromUtc { get; set; }
         public DateTime ReportToUtc { get; set; }
-        public IReadOnlyList<AccessEvent> AccessEvents { get; set; } = new List<AccessEvent>();
-        public IReadOnlyList<ExportEvent> ExportEvents { get; set; } = new List<ExportEvent>();
+        public IReadOnlyList<AccessEvent> AccessEvents { get; set; } = [];
+        public IReadOnlyList<ExportEvent> ExportEvents { get; set; } = [];
 
         public class AccessEvent
         {

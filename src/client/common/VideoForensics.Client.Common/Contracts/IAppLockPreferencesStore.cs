@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// The MAUI app-lock idle timeout (plan §5.9's <c>/settings/app-lock</c> screen: "lock after
@@ -21,7 +21,11 @@ namespace VideoForensics.Client.Common
     public class NullAppLockPreferencesStore : IAppLockPreferencesStore
     {
         public bool IsSupported => false;
-        public TimeSpan GetIdleLockTimeout() => TimeSpan.Zero;
+        public TimeSpan GetIdleLockTimeout()
+        {
+            return TimeSpan.Zero;
+        }
+
         public void SetIdleLockTimeout(TimeSpan timeout) { }
     }
 }

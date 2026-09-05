@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata.Models
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Indicates the validation and correction status of video metadata.

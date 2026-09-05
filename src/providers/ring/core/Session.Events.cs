@@ -24,10 +24,10 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/events");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
-            return parsed?.Events ?? new List<LocationEvent>();
+            return parsed?.Events ?? [];
         }
 
         /// <summary>
@@ -40,10 +40,10 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/devices/{doorbotId}/events");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
-            return parsed?.Events ?? new List<LocationEvent>();
+            return parsed?.Events ?? [];
         }
     }
 }

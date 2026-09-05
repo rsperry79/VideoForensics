@@ -75,7 +75,7 @@ namespace VideoForensics.Data.Database.Tests
 
         public static DownloadEvent BuildDownloadEvent(Guid? deviceId = null, string? providerEventId = null, bool success = true)
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             return new DownloadEvent
             {
                 Id = Guid.NewGuid(),
@@ -286,7 +286,7 @@ namespace VideoForensics.Data.Database.Tests
             double confidence = 0.75,
             int affectedEventCount = 5)
         {
-            var start = startUtc ?? DateTime.UtcNow;
+            DateTime start = startUtc ?? DateTime.UtcNow;
             return new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),

@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+
+using System.Reflection;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Core.Services
@@ -17,8 +20,8 @@ namespace VideoForensics.Data.Core.Services
         public T MarkSynced<T>(T entity) where T : class
         {
             // Use reflection to set LastSyncedUtc and SyncStatus if they exist
-            var lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
-            var syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
+            PropertyInfo? lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
+            PropertyInfo? syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
 
             if (lastSyncedProperty?.CanWrite == true)
             {
@@ -36,32 +39,34 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Marks an entity as stale.</summary>
         public T MarkStale<T>(T entity) where T : class
         {
-            var syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
+            PropertyInfo? syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
             if (syncStatusProperty?.CanWrite == true)
             {
                 syncStatusProperty.SetValue(entity, SyncStatus.Stale);
             }
+
             return entity;
         }
 
         /// <summary>Marks an entity with an error status.</summary>
         public T MarkError<T>(T entity) where T : class
         {
-            var syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
+            PropertyInfo? syncStatusProperty = entity.GetType().GetProperty("SyncStatus");
             if (syncStatusProperty?.CanWrite == true)
             {
                 syncStatusProperty.SetValue(entity, SyncStatus.Error);
             }
+
             return entity;
         }
 
         /// <summary>Checks if entity cache is stale based on LastSyncedUtc.</summary>
         public bool IsStale<T>(T entity, int maxAgeMinutes) where T : class
         {
-            var lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
+            PropertyInfo? lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
             if (lastSyncedProperty?.GetValue(entity) is DateTime lastSynced)
             {
-                var age = DateTime.UtcNow - lastSynced;
+                TimeSpan age = DateTime.UtcNow - lastSynced;
                 return age.TotalMinutes > maxAgeMinutes;
             }
 
@@ -72,12 +77,10 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Gets age in minutes since last sync.</summary>
         public int GetAgeMinutes<T>(T entity) where T : class
         {
-            var lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
-            if (lastSyncedProperty?.GetValue(entity) is DateTime lastSynced)
-            {
-                return (int)Math.Ceiling((DateTime.UtcNow - lastSynced).TotalMinutes);
-            }
-            return int.MaxValue;
+            PropertyInfo? lastSyncedProperty = entity.GetType().GetProperty("LastSyncedUtc");
+            return lastSyncedProperty?.GetValue(entity) is DateTime lastSynced
+                ? (int)Math.Ceiling((DateTime.UtcNow - lastSynced).TotalMinutes)
+                : int.MaxValue;
         }
 
         /// <summary>Computes hash of entity for change detection.</summary>
@@ -93,7 +96,9 @@ namespace VideoForensics.Data.Core.Services
         public bool HasChanged<T>(T entity, string? previousHash) where T : class
         {
             if (previousHash == null)
+            {
                 return true;
+            }
 
             var currentHash = ComputeHash(entity);
             return currentHash != previousHash;

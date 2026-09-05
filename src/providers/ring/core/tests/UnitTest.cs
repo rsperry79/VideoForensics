@@ -1,9 +1,6 @@
-using System;
-
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
     /// Runs the class-level Ring session setup once per test class, matching MSTest's
@@ -19,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // No refresh token available, try to authenticate with the credentials from the config file
                 UnitTest.session = new Session(UnitTest.Username, UnitTest.Password);
 
-                VideoForensics.Providers.Ring.Entities.Session? authResult = null;
+                Entities.Session? authResult = null;
                 try
                 {
                     authResult = await UnitTest.session.Authenticate(twoFactorAuthCode: UnitTest.TwoFactorAuthenticationToken);
@@ -30,14 +27,15 @@ namespace VideoForensics.Providers.Ring.Tests
                         UnitTest.TwoFactorAuthenticationToken = string.Empty;
                     }
                 }
-                catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
+                catch (Exceptions.TwoFactorAuthenticationRequiredException)
                 {
                     Assert.Fail("Ring account requires two factor authentication. Add the token received through text message to the config file as 'TwoFactorAuthenticationToken' and run the test again.");
                 }
-                catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationIncorrectException)
+                catch (Exceptions.TwoFactorAuthenticationIncorrectException)
                 {
                     Assert.Fail("The two factor authentication token provided in the config file as 'TwoFactorAuthenticationToken' is invalid or has expired.");
                 }
+
                 Assert.False(authResult == null, "Failed to authenticate");
 
                 // Store the refresh token for subsequent runs
@@ -52,7 +50,10 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 
     public class UnitTest : IClassFixture<UnitTestFixture>
@@ -67,10 +68,10 @@ namespace VideoForensics.Providers.Ring.Tests
         /// </summary>
         private static readonly Lazy<(string? UserName, string? Password, string? RefreshToken)> AutoDiscoveredCredentials = new(() =>
         {
-            var hasAppConfigCredentials = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingRefreshToken"])
+            bool hasAppConfigCredentials = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingRefreshToken"])
                 || (!string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"]) && !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"]));
 
-            if (!hasAppConfigCredentials && RingVideosCredentialLocator.TryLoad(out var userName, out var password, out var refreshToken))
+            if (!hasAppConfigCredentials && RingVideosCredentialLocator.TryLoad(out string? userName, out string? password, out string? refreshToken))
             {
                 return (userName, password, refreshToken);
             }
@@ -81,29 +82,24 @@ namespace VideoForensics.Providers.Ring.Tests
         /// <summary>
         /// Username to use to connect to the Ring API
         /// </summary>
-#pragma warning disable CS8603 // Possible null reference return.
         public static string Username => string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"])
             ? AutoDiscoveredCredentials.Value.UserName
             : ConfigurationManager.AppSettings["RingUsername"];
-#pragma warning restore CS8603 // Possible null reference return.
 
         /// <summary>
         /// Password to use to connect to the Ring API
         /// </summary>
-#pragma warning disable CS8603 // Possible null reference return.
         public static string Password => string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"])
             ? AutoDiscoveredCredentials.Value.Password
             : ConfigurationManager.AppSettings["RingPassword"];
-#pragma warning restore CS8603 // Possible null reference return.
 
         /// <summary>
         /// Two factor authentication token to use to connect to the Ring API
         /// </summary>
         public static string TwoFactorAuthenticationToken
         {
-#pragma warning disable CS8603 // Possible null reference return.
-            get { return ConfigurationManager.AppSettings["TwoFactorAuthenticationToken"]; }
-#pragma warning restore CS8603 // Possible null reference return.
+            get => ConfigurationManager.AppSettings["TwoFactorAuthenticationToken"];
+
             set
             {
                 var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -115,6 +111,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     configFile.AppSettings.Settings.Add("TwoFactorAuthenticationToken", value);
                 }
+
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
             }
@@ -124,13 +121,12 @@ namespace VideoForensics.Providers.Ring.Tests
         /// </summary>
         public static string RefreshToken
         {
-#pragma warning disable CS8603 // Possible null reference return.
             get
             {
-                var configured = ConfigurationManager.AppSettings["RingRefreshToken"];
+                string? configured = ConfigurationManager.AppSettings["RingRefreshToken"];
                 return string.IsNullOrEmpty(configured) ? AutoDiscoveredCredentials.Value.RefreshToken : configured;
             }
-#pragma warning restore CS8603 // Possible null reference return.
+
             set
             {
                 var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -142,6 +138,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     configFile.AppSettings.Settings.Add("RingRefreshToken", value);
                 }
+
                 configFile.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
             }
@@ -161,10 +158,10 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 var session = new Session("test@test.com", "someinvalidpassword");
-                await session.Authenticate();
+                _ = await session.Authenticate();
                 Assert.Fail("Should have thrown AuthenticationFailedException");
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.AuthenticationFailedException)
+            catch (Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -175,7 +172,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task AuthenticateWithRefreshTokenSuccessTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -193,10 +193,10 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 // Request a new authenticated session based on a non existing RefreshToken
-                await Session.GetSessionByRefreshToken("abcdefghijklmnopqrstuvwxyz");
+                _ = await Session.GetSessionByRefreshToken("abcdefghijklmnopqrstuvwxyz");
                 Assert.Fail("Should have thrown AuthenticationFailedException");
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.AuthenticationFailedException)
+            catch (Exceptions.AuthenticationFailedException)
             {
             }
         }
@@ -207,7 +207,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDevicesTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -224,10 +227,10 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 var session = new Session("", "");
-                await session.GetRingDevices();
+                _ = await session.GetRingDevices();
                 Assert.Fail("Should have thrown SessionNotAuthenticatedException");
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.SessionNotAuthenticatedException)
+            catch (Exceptions.SessionNotAuthenticatedException)
             {
             }
         }
@@ -238,7 +241,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -253,7 +259,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryForSpecificDoorbotTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -282,17 +291,20 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryForSpecificNonExistingDoorbotTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
             try
             {
                 // Try getting the historical items for the a doorbot that does not exist
-                await session.GetDoorbotsHistory(doorbotId: 1234567);
+                _ = await session.GetDoorbotsHistory(doorbotId: 1234567);
                 Assert.Fail("Should have thrown DeviceUnknownException");
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException)
+            catch (Exceptions.DeviceUnknownException)
             {
             }
         }
@@ -303,11 +315,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryWithLimitTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
-            var limit = 250;
+            int limit = 250;
 
             var doorbotHistory = await session.GetDoorbotsHistory(limit);
             Assert.True(doorbotHistory.Count > 0, "No doorbot history items returned");
@@ -320,7 +335,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryByDateSpanTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -338,7 +356,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryRecordingByIdTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -346,7 +367,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
-            var tempFilePath = Path.GetTempFileName();
+            string tempFilePath = Path.GetTempFileName();
 
             await session.GetDoorbotHistoryRecording(doorbotHistory[0].Id.ToString(), tempFilePath);
 
@@ -359,7 +380,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetDoorbotsHistoryRecordingByInstanceTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -367,7 +391,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
-            var tempFilePath = Path.GetTempFileName();
+            string tempFilePath = Path.GetTempFileName();
 
             await session.GetDoorbotHistoryRecording(doorbotHistory[0], tempFilePath);
 
@@ -380,7 +404,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task ShareRecordingTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -388,7 +415,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
-            await session.ShareRecording(doorbotHistory[0]);
+            _ = await session.ShareRecording(doorbotHistory[0]);
         }
 
         /// <summary>
@@ -397,7 +424,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task DownloadLatestSnapshotTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -405,7 +435,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(devices != null, "Unable to retrieve Ring devices");
             Assert.True((devices.AuthorizedDoorbots != null && devices.AuthorizedDoorbots.Count > 0) || (devices.Doorbots != null && devices.Doorbots.Count > 0), "Retrieved Ring devices do not contain any doorbots");
 
-            var tempFilePath = Path.GetTempFileName();
+            string tempFilePath = Path.GetTempFileName();
 
             await session.GetLatestSnapshot(devices.AuthorizedDoorbots?.Count > 0 ? devices.AuthorizedDoorbots[0] : devices.Doorbots[0], tempFilePath);
 
@@ -418,7 +448,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task UpdateSnapshotTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -435,7 +468,10 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetSnapshotTimestampTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
@@ -460,14 +496,14 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(converter);
 
             // Test that StickupCam with flexible LedStatus deserializes correctly
-            var jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
-            var cam1 = System.Text.Json.JsonSerializer.Deserialize<VideoForensics.Providers.Ring.Entities.StickupCam>(jsonWithStringLedStatus);
+            string jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
+            var cam1 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithStringLedStatus);
             Assert.NotNull(cam1);
             Assert.Equal("on", cam1.LedStatus);
 
             // Test with number LedStatus (the reason for FlexibleStringConverter)
-            var jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
-            var cam2 = System.Text.Json.JsonSerializer.Deserialize<VideoForensics.Providers.Ring.Entities.StickupCam>(jsonWithNumberLedStatus);
+            string jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
+            var cam2 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithNumberLedStatus);
             Assert.NotNull(cam2);
             Assert.Equal("1", cam2.LedStatus);
         }
@@ -478,14 +514,17 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetLocationsTest()
         {
-            if (!IsSessionActive()) return;
+            if (!IsSessionActive())
+            {
+                return;
+            }
 
             Assert.NotNull(session);
 
             var locations = await session.GetLocations();
 
             Assert.NotNull(locations);
-            Assert.True(locations is System.Collections.Generic.List<VideoForensics.Providers.Ring.Entities.Location>, "Should return a list of Location objects");
+            Assert.True(locations is not null, "Should return a list of Location objects");
         }
 
         /// <summary>
@@ -494,14 +533,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void LocationIdDeserializationTest()
         {
-            var chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
-            var chime = System.Text.Json.JsonSerializer.Deserialize<VideoForensics.Providers.Ring.Entities.Chime>(chimeJson);
+            string chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
+            var chime = System.Text.Json.JsonSerializer.Deserialize<Entities.Chime>(chimeJson);
 
             Assert.NotNull(chime);
             Assert.Equal(new System.Guid("550e8400-e29b-41d4-a716-446655440000"), chime.LocationId);
 
-            var doorbotJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440001", "description": "test"}""";
-            var doorbot = System.Text.Json.JsonSerializer.Deserialize<VideoForensics.Providers.Ring.Entities.Doorbot>(doorbotJson);
+            string doorbotJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440001", "description": "test"}""";
+            var doorbot = System.Text.Json.JsonSerializer.Deserialize<Entities.Doorbot>(doorbotJson);
 
             Assert.NotNull(doorbot);
             Assert.Equal(new System.Guid("550e8400-e29b-41d4-a716-446655440001"), doorbot.LocationId);

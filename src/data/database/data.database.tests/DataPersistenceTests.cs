@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Xunit;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -10,7 +12,7 @@ namespace VideoForensics.Data.Database.Tests
     {
         private VideoForensicsDbContext CreateContext()
         {
-            var options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+            DbContextOptions<VideoForensicsDbContext> options = new DbContextOptionsBuilder<VideoForensicsDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             return new VideoForensicsDbContext(options);
@@ -19,7 +21,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RingAccount_PersistsSubscriptionData()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var account = new RingAccount
             {
@@ -30,19 +32,19 @@ namespace VideoForensics.Data.Database.Tests
                 AuthenticatedAtUtc = DateTime.UtcNow
             };
 
-            db.RingAccounts.Add(account);
-            await db.SaveChangesAsync();
+            _ = db.RingAccounts.Add(account);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.RingAccounts.FirstOrDefaultAsync(a => a.Id == account.Id);
+            RingAccount? retrieved = await db.RingAccounts.FirstOrDefaultAsync(a => a.Id == account.Id);
             Assert.NotNull(retrieved);
             Assert.Equal("premium", retrieved.SubscriptionLevel);
-            Assert.NotNull(retrieved.AuthenticatedAtUtc);
+            _ = Assert.NotNull(retrieved.AuthenticatedAtUtc);
         }
 
         [Fact]
         public async Task Device_TracksCacheMetadata()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var device = new Device
             {
@@ -56,20 +58,20 @@ namespace VideoForensics.Data.Database.Tests
                 ApiResponseHash = "abc123"
             };
 
-            db.Devices.Add(device);
-            await db.SaveChangesAsync();
+            _ = db.Devices.Add(device);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.Devices.FirstOrDefaultAsync(d => d.Id == device.Id);
+            Device? retrieved = await db.Devices.FirstOrDefaultAsync(d => d.Id == device.Id);
             Assert.NotNull(retrieved);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
-            Assert.NotNull(retrieved.LastSyncedUtc);
+            _ = Assert.NotNull(retrieved.LastSyncedUtc);
             Assert.NotNull(retrieved.ApiResponseHash);
         }
 
         [Fact]
         public async Task Location_TracksSyncTimestamp()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var location = new Location
             {
@@ -81,18 +83,18 @@ namespace VideoForensics.Data.Database.Tests
                 SyncStatus = SyncStatus.Synced
             };
 
-            db.Locations.Add(location);
-            await db.SaveChangesAsync();
+            _ = db.Locations.Add(location);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.Locations.FirstOrDefaultAsync(l => l.Id == location.Id);
-            Assert.NotNull(retrieved.LastSyncedUtc);
+            Location? retrieved = await db.Locations.FirstOrDefaultAsync(l => l.Id == location.Id);
+            _ = Assert.NotNull(retrieved.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
         }
 
         [Fact]
         public async Task DeviceCapabilities_StoresSpecsFromAPI()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var caps = new DeviceCapabilities
             {
@@ -104,10 +106,10 @@ namespace VideoForensics.Data.Database.Tests
                 FirmwareVersion = "1.8.26"
             };
 
-            db.DeviceCapabilities.Add(caps);
-            await db.SaveChangesAsync();
+            _ = db.DeviceCapabilities.Add(caps);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == caps.Id);
+            DeviceCapabilities? retrieved = await db.DeviceCapabilities.FirstOrDefaultAsync(c => c.Id == caps.Id);
             Assert.NotNull(retrieved);
             Assert.Equal("1080p", retrieved.Resolution);
             Assert.True(retrieved.HasAudio);
@@ -116,7 +118,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadata_StoresAddressComponents()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var metadata = new LocationMetadata
             {
@@ -128,10 +130,10 @@ namespace VideoForensics.Data.Database.Tests
                 PostalCode = "62701"
             };
 
-            db.LocationMetadata.Add(metadata);
-            await db.SaveChangesAsync();
+            _ = db.LocationMetadata.Add(metadata);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.LocationMetadata.FirstOrDefaultAsync(m => m.Id == metadata.Id);
+            LocationMetadata? retrieved = await db.LocationMetadata.FirstOrDefaultAsync(m => m.Id == metadata.Id);
             Assert.NotNull(retrieved);
             Assert.Equal("123 Main St", retrieved.StreetAddress);
             Assert.Equal("Springfield", retrieved.City);
@@ -140,7 +142,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task DeviceHealth_PersistsCurrentStatus()
         {
-            using var db = CreateContext();
+            using VideoForensicsDbContext db = CreateContext();
 
             var health = new DeviceHealth
             {
@@ -152,10 +154,10 @@ namespace VideoForensics.Data.Database.Tests
                 LastHeartbeatUtc = DateTime.UtcNow
             };
 
-            db.DeviceHealthRecords.Add(health);
-            await db.SaveChangesAsync();
+            _ = db.DeviceHealthRecords.Add(health);
+            _ = await db.SaveChangesAsync();
 
-            var retrieved = await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == health.Id);
+            DeviceHealth? retrieved = await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == health.Id);
             Assert.NotNull(retrieved);
             Assert.Equal(85m, retrieved.BatteryPercentage);
             Assert.True(retrieved.IsOnline);

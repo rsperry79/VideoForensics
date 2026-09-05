@@ -10,49 +10,49 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Server;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Hosting;
 
 namespace VideoForensics.Mcp
 {
-    class Program
+    internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
-            var configDir = System.IO.Path.Combine(
+            string configDir = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "VideoForensics");
-            Directory.CreateDirectory(configDir);
+            _ = Directory.CreateDirectory(configDir);
 
             // Build host with full DI setup
             var builder = Host.CreateApplicationBuilder(args);
-            builder.Logging.SetMinimumLevel(LogLevel.Information);
+            _ = builder.Logging.SetMinimumLevel(LogLevel.Information);
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
             // Ring's four services, download/evidence orchestrators, JammingToolsOrchestrator) -
             // see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. MCP remains a
             // server-tier host (it talks to Ring directly), unaffected by the client/server split
             // that only applies to the planned MAUI app.
-            builder.Services.AddVideoForensicsDataLayer();
-            builder.Services.AddVideoForensicsServerCore();
+            _ = builder.Services.AddVideoForensicsDataLayer();
+            _ = builder.Services.AddVideoForensicsServerCore();
 
             // Forensics query repositories (Phases 1-4) - MCP-specific, not shared with other hosts
-            builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
-            builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
-            builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
-            builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
+            _ = builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
+            _ = builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
+            _ = builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
+            _ = builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
 
             // MCP Tool classes (Phases 1-4)
-            builder.Services.AddScoped<VideoForensics.Mcp.Tools.TimelineTools>();
-            builder.Services.AddScoped<VideoForensics.Mcp.Tools.IntegrityTools>();
-            builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
-            builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
-            builder.Services.AddScoped<VideoForensics.Mcp.Tools.JammingTools>();
+            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.TimelineTools>();
+            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.IntegrityTools>();
+            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
+            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
+            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.JammingTools>();
 
             // MCP server: stdio transport, attribute-discovered tools/resources
-            builder.Services
+            _ = builder.Services
                 .AddMcpServer()
                 .WithStdioServerTransport()
                 .WithToolsFromAssembly()
@@ -126,6 +126,7 @@ namespace VideoForensics.Mcp
                 Console.Error.WriteLine($"MCP CONFIG ERROR: {ex}");
                 throw;
             }
+
             initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit, Jamming) configured with [McpServerToolType]");
             initLogger.LogInformation("Resource: jamming-analysis-instructions configured with [McpServerResourceType]");
             initLogger.LogInformation("");

@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "Operators",
                 columns: table => new
                 {
@@ -22,10 +21,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Operators", x => x.Id);
+                    _ = table.PrimaryKey("PK_Operators", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "PairedDevices",
                 columns: table => new
                 {
@@ -47,10 +46,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PairedDevices", x => x.Id);
+                    _ = table.PrimaryKey("PK_PairedDevices", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "SecurityAuditLogEntries",
                 columns: table => new
                 {
@@ -65,30 +64,30 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_SecurityAuditLogEntries", x => x.Id);
+                    _ = table.PrimaryKey("PK_SecurityAuditLogEntries", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_FallbackApiKeyHash",
                 table: "PairedDevices",
                 column: "FallbackApiKeyHash");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_OperatorId",
                 table: "PairedDevices",
                 column: "OperatorId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_WebAuthnCredentialId",
                 table: "PairedDevices",
                 column: "WebAuthnCredentialId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_SecurityAuditLogEntries_OperatorId",
                 table: "SecurityAuditLogEntries",
                 column: "OperatorId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_SecurityAuditLogEntries_TimestampUtc",
                 table: "SecurityAuditLogEntries",
                 column: "TimestampUtc");
@@ -97,13 +96,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "Operators");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "PairedDevices");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "SecurityAuditLogEntries");
         }
     }

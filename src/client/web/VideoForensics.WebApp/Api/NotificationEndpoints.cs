@@ -1,4 +1,5 @@
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
@@ -14,9 +15,9 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapNotificationEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/notifications").RequireAuthorization(VideoForensicsPolicies.Admin);
+            RouteGroupBuilder group = app.MapGroup("/api/notifications").RequireAuthorization(VideoForensicsPolicies.Admin);
 
-            group.MapGet("/settings", (IForensicsConfiguration config) => Results.Ok(new
+            _ = group.MapGet("/settings", (IForensicsConfiguration config) => Results.Ok(new
             {
                 enableEmailNotifications = config.EnableEmailNotifications,
                 smtpHost = config.SmtpHost,
@@ -29,7 +30,7 @@ namespace VideoForensics.WebApp.Api
                 // point of view, same as every other credential field in this app.
             }));
 
-            group.MapPost("/settings", async (
+            _ = group.MapPost("/settings", async (
                 SaveNotificationSettingsRequest request,
                 IForensicsConfiguration config,
                 IForensicsConfigurationService configService,
@@ -56,7 +57,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok();
             });
 
-            group.MapPost("/test-email", async (EmailNotificationProvider emailProvider, CancellationToken ct) =>
+            _ = group.MapPost("/test-email", async (EmailNotificationProvider emailProvider, CancellationToken ct) =>
             {
                 try
                 {
@@ -69,9 +70,9 @@ namespace VideoForensics.WebApp.Api
                 }
             });
 
-            group.MapGet("/urgency-overrides", async (IUrgencyOverrideStore overrides, CancellationToken ct) =>
+            _ = group.MapGet("/urgency-overrides", async (IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
-                var current = await overrides.GetAllOverridesAsync(ct);
+                IReadOnlyDictionary<string, bool> current = await overrides.GetAllOverridesAsync(ct);
                 var rows = SecurityAuditEventTypes.DefaultUrgency.Select(kvp => new
                 {
                     eventType = kvp.Key,
@@ -82,13 +83,13 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(rows);
             });
 
-            group.MapPost("/urgency-overrides/set", async (SetUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
+            _ = group.MapPost("/urgency-overrides/set", async (SetUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
                 await overrides.SetOverrideAsync(request.EventType, request.IsUrgent, ct);
                 return Results.Ok();
             });
 
-            group.MapPost("/urgency-overrides/clear", async (ClearUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
+            _ = group.MapPost("/urgency-overrides/clear", async (ClearUrgencyOverrideRequest request, IUrgencyOverrideStore overrides, CancellationToken ct) =>
             {
                 await overrides.ClearOverrideAsync(request.EventType, ct);
                 return Results.Ok();

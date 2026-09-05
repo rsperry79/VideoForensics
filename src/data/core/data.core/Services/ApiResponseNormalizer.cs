@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -17,7 +17,6 @@ namespace VideoForensics.Data.Core.Services
             _cacheFreshnessService = cacheFreshnessService;
         }
 
-
         public DeviceHealth CreateDeviceHealth(
             Guid deviceId,
             int? batteryPct = null,
@@ -29,7 +28,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
-                BatteryPercentage = batteryPct.HasValue ? (decimal)batteryPct.Value : null,
+                BatteryPercentage = batteryPct.HasValue ? batteryPct.Value : null,
                 WifiSignalRssi = rssi,
                 WifiName = wifiName,
                 IsOnline = isOnline,
@@ -37,7 +36,7 @@ namespace VideoForensics.Data.Core.Services
                 Status = isOnline == true ? "online" : "offline",
             };
 
-            _cacheFreshnessService.MarkSynced(health);
+            _ = _cacheFreshnessService.MarkSynced(health);
             return health;
         }
     }

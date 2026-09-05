@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata.Models
+using VideoForensics.Providers.Ring.Models;
+
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Result of writing and validating metadata to a video file.

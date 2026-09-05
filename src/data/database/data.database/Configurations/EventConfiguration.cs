@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,23 +10,23 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<Event> builder)
         {
-            builder.HasKey(e => e.Id);
+            _ = builder.HasKey(e => e.Id);
 
-            builder.Property(e => e.ProviderEventId)
+            _ = builder.Property(e => e.ProviderEventId)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(e => e.EventType)
+            _ = builder.Property(e => e.EventType)
                 .IsRequired()
                 .HasMaxLength(256);
 
-            builder.Property(e => e.SnapshotUrl)
+            _ = builder.Property(e => e.SnapshotUrl)
                 .HasMaxLength(1024);
 
-            builder.HasIndex(e => new { e.DeviceId, e.ProviderEventId })
+            _ = builder.HasIndex(e => new { e.DeviceId, e.ProviderEventId })
                 .IsUnique();
 
-            builder.HasIndex(e => e.DeviceId);
+            _ = builder.HasIndex(e => e.DeviceId);
         }
     }
 }

@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
+using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Logging.Contracts;
 
 namespace VideoForensics.Core.Logging.Services
 {
@@ -39,7 +41,7 @@ namespace VideoForensics.Core.Logging.Services
             string? details = null,
             CancellationToken ct = default)
         {
-            var entry = await _actionLogRepository.AppendAsync(actor, actorType, action, entityType, entityId, details, ct);
+            ActionLogEntry entry = await _actionLogRepository.AppendAsync(actor, actorType, action, entityType, entityId, details, ct);
 
             _logger.LogInformation(
                 "Action logged: actor={Actor}, type={ActorType}, action={Action}, entity={EntityType}, entityId={EntityId}",

@@ -1,6 +1,5 @@
-using System;
+using VideoForensics.Forensics.Interfaces;
 using VideoForensics.Forensics.Models;
-using VideoForensics.Forensics.Models.Reports;
 
 namespace VideoForensics.Forensics.Tests.Fixtures
 {
@@ -9,13 +8,13 @@ namespace VideoForensics.Forensics.Tests.Fixtures
     /// </summary>
     public class FakeChainOfCustodyLogger : IChainOfCustodyLogger
     {
-        private Dictionary<string, List<ChainOfCustodyEntry>> _custodyChains = new();
+        private readonly Dictionary<string, List<ChainOfCustodyEntry>> _custodyChains = [];
 
         public Task LogEvidenceReceptionAsync(string evidenceId, string handler)
         {
             if (!_custodyChains.ContainsKey(evidenceId))
             {
-                _custodyChains[evidenceId] = new List<ChainOfCustodyEntry>();
+                _custodyChains[evidenceId] = [];
             }
 
             _custodyChains[evidenceId].Add(new ChainOfCustodyEntry
@@ -33,7 +32,7 @@ namespace VideoForensics.Forensics.Tests.Fixtures
         {
             if (!_custodyChains.ContainsKey(evidenceId))
             {
-                _custodyChains[evidenceId] = new List<ChainOfCustodyEntry>();
+                _custodyChains[evidenceId] = [];
             }
 
             _custodyChains[evidenceId].Add(new ChainOfCustodyEntry
@@ -51,7 +50,7 @@ namespace VideoForensics.Forensics.Tests.Fixtures
         {
             if (!_custodyChains.ContainsKey(evidenceId))
             {
-                _custodyChains[evidenceId] = new List<ChainOfCustodyEntry>();
+                _custodyChains[evidenceId] = [];
             }
 
             _custodyChains[evidenceId].Add(new ChainOfCustodyEntry
@@ -67,12 +66,9 @@ namespace VideoForensics.Forensics.Tests.Fixtures
 
         public Task<IEnumerable<ChainOfCustodyEntry>> GetChainOfCustodyAsync(string evidenceId)
         {
-            if (!_custodyChains.ContainsKey(evidenceId))
-            {
-                return Task.FromResult(Enumerable.Empty<ChainOfCustodyEntry>());
-            }
-
-            return Task.FromResult(_custodyChains[evidenceId].OrderBy(e => e.Timestamp).AsEnumerable());
+            return !_custodyChains.ContainsKey(evidenceId)
+                ? Task.FromResult(Enumerable.Empty<ChainOfCustodyEntry>())
+                : Task.FromResult(_custodyChains[evidenceId].OrderBy(e => e.Timestamp).AsEnumerable());
         }
 
         public Task<bool> VerifyCustodyIntegrityAsync(string evidenceId)
@@ -82,7 +78,7 @@ namespace VideoForensics.Forensics.Tests.Fixtures
                 return Task.FromResult(false);
             }
 
-            var entries = _custodyChains[evidenceId];
+            List<ChainOfCustodyEntry> entries = _custodyChains[evidenceId];
             for (int i = 1; i < entries.Count; i++)
             {
                 if (entries[i].Timestamp < entries[i - 1].Timestamp)
@@ -96,7 +92,7 @@ namespace VideoForensics.Forensics.Tests.Fixtures
 
         public async Task<ChainOfCustodyReport> GetCustodyReportAsync(string evidenceId)
         {
-            var custody = await GetChainOfCustodyAsync(evidenceId);
+            IEnumerable<ChainOfCustodyEntry> custody = await GetChainOfCustodyAsync(evidenceId);
             var custodyList = custody.ToList();
             var isVerified = await VerifyCustodyIntegrityAsync(evidenceId);
 

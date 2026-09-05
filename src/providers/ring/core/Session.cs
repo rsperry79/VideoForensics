@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.IO;
-using System.Threading;
-using System.Text.Json;
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Common.Helpers.Contracts;
-using VideoForensics.Providers.Common.Helpers.Platform;
 using System.Collections.Specialized;
-using System.Reflection.Metadata.Ecma335;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -26,25 +25,33 @@ namespace VideoForensics.Providers.Ring
         private static string GetOrCreateHardwareId()
         {
             var directoryService = new PlatformDirectoryService();
-            var folder = directoryService.GetApplicationDataDirectory();
-            var filePath = Path.Combine(folder, "hardware_id.txt");
+            string folder = directoryService.GetApplicationDataDirectory();
+            string filePath = Path.Combine(folder, "hardware_id.txt");
             try
             {
                 if (File.Exists(filePath))
                 {
-                    var id = File.ReadAllText(filePath).Trim();
-                    if (!string.IsNullOrEmpty(id)) return id;
+                    string id = File.ReadAllText(filePath).Trim();
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        return id;
+                    }
                 }
             }
             catch { }
 
-            var newId = Guid.NewGuid().ToString();
+            string newId = Guid.NewGuid().ToString();
             try
             {
-                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+                if (!Directory.Exists(folder))
+                {
+                    _ = Directory.CreateDirectory(folder);
+                }
+
                 File.WriteAllText(filePath, newId);
             }
             catch { }
+
             return newId;
         }
 
@@ -61,12 +68,12 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Uri on which OAuth tokens can be requested from Ring
         /// </summary>
-        public Uri OAuthUrl => new Uri("https://oauth.ring.com/oauth/token");
+        public Uri OAuthUrl => new("https://oauth.ring.com/oauth/token");
 
         /// <summary>
         /// Base Uri with which all Ring API requests start
         /// </summary>
-        public Uri BaseUrl => new Uri("https://api.ring.com/clients_api/");
+        public Uri BaseUrl => new("https://api.ring.com/clients_api/");
 
         /// <summary>
         /// Boolean indicating if the current session is authenticated
@@ -76,10 +83,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Authentication Token that will be used to communicate with the Ring API
         /// </summary>
-        public string AuthenticationToken
-        {
-            get { return OAuthToken?.AccessToken; }
-        }
+        public string AuthenticationToken => OAuthToken?.AccessToken;
 
         /// <summary>
         /// OAuth Token for communicating with the Ring API
@@ -227,10 +231,9 @@ namespace VideoForensics.Providers.Ring
                 : "Authenticating with username/password");
 
             // Make the OAuth POST request to request an OAuth Token
-            var oAuthResponse = await _httpUtility.OAuthPost(OAuthUrl,
+            string oAuthResponse = await _httpUtility.OAuthPost(OAuthUrl,
                                                             oAuthformFields,
                                                             headerFields);
-
 
             // Deserialize the JSON result into a typed object
             OAuthToken = JsonSerializer.Deserialize<OAutToken>(oAuthResponse);
@@ -262,7 +265,7 @@ namespace VideoForensics.Providers.Ring
                 }
             };
 
-            var json = JsonSerializer.Serialize(sessionData);
+            string json = JsonSerializer.Serialize(sessionData);
             var headerFields = new NameValueCollection
             {
                 { "Accept-Encoding", "gzip, deflate" },
@@ -271,7 +274,7 @@ namespace VideoForensics.Providers.Ring
                 { "hardware_id", _hardwareId }
             };
 
-            var response = await _httpUtility.JsonPostRaw(new Uri(BaseUrl, "session"), json, headerFields);
+            _ = await _httpUtility.JsonPostRaw(new Uri(BaseUrl, "session"), json, headerFields);
         }
 
         /// <summary>
@@ -281,7 +284,10 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public async Task RefreshSession() => await RefreshSession(OAuthToken.RefreshToken);
+        public async Task RefreshSession()
+        {
+            await RefreshSession(OAuthToken.RefreshToken);
+        }
 
         /// <summary>
         /// Authenticates to the Ring API using the provided refresh token
@@ -318,10 +324,9 @@ namespace VideoForensics.Providers.Ring
             // Make the OAuth POST request to request an OAuth Token
             try
             {
-                var oAuthResponse = await _httpUtility.OAuthPost(OAuthUrl,
+                string oAuthResponse = await _httpUtility.OAuthPost(OAuthUrl,
                                                                 oAuthformFields,
                                                                 headerFields);
-
 
                 // Deserialize the JSON result into a typed object
                 OAuthToken = JsonSerializer.Deserialize<OAutToken>(oAuthResponse);
@@ -397,12 +402,18 @@ namespace VideoForensics.Providers.Ring
         /// Static because the ban is process-wide (shared across every Session/account), matching
         /// HttpUtility's own state.
         /// </summary>
-        public static DateTime? GetRateLimitBanUntilUtc() => HttpUtility.GetHardBanUntilUtc();
+        public static DateTime? GetRateLimitBanUntilUtc()
+        {
+            return HttpUtility.GetHardBanUntilUtc();
+        }
 
         /// <summary>
         /// Explicitly lifts an active hard ban for one more attempt - see HttpUtility.OverrideHardBan.
         /// </summary>
-        public static void OverrideRateLimitBan() => HttpUtility.OverrideHardBan();
+        public static void OverrideRateLimitBan()
+        {
+            HttpUtility.OverrideHardBan();
+        }
 
         public virtual async Task<Devices> GetRingDevices(Guid? locationId = null)
         {
@@ -412,7 +423,7 @@ namespace VideoForensics.Providers.Ring
                 ? $"ring_devices?api_version=11&location_id={locationId:D}"
                 : "ring_devices?api_version=11";
 
-            var response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId);
 
             var devices = JsonSerializer.Deserialize<Devices>(response) ?? new Devices();
             ApiRawLogger.LogEvent("Devices", $"Retrieved {devices.Doorbots?.Count ?? 0} doorbots, {devices.AuthorizedDoorbots?.Count ?? 0} authorized doorbots, {devices.Chimes?.Count ?? 0} chimes, {devices.StickupCams?.Count ?? 0} stickup cams" + (locationId.HasValue ? $" (location {locationId})" : ""));
@@ -423,7 +434,7 @@ namespace VideoForensics.Providers.Ring
         /// Base Uri for the newer Ring devices API, which (unlike the legacy clients_api) exposes
         /// a working locations endpoint.
         /// </summary>
-        public Uri RingDevicesApiBaseUrl => new Uri("https://api.ring.com/devices/v1/");
+        public Uri RingDevicesApiBaseUrl => new("https://api.ring.com/devices/v1/");
 
         /// <summary>
         /// Returns the locations (with friendly names) visible to the current account.
@@ -432,10 +443,10 @@ namespace VideoForensics.Providers.Ring
         {
             await EnsureSessionValid();
 
-            var response = await _httpUtility.GetContents(new Uri(RingDevicesApiBaseUrl, "locations"), AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(new Uri(RingDevicesApiBaseUrl, "locations"), AuthenticationToken, _hardwareId);
 
             var parsed = JsonSerializer.Deserialize<Entities.UserLocationsResponse>(response);
-            return parsed?.UserLocations ?? new List<Entities.Location>();
+            return parsed?.UserLocations ?? [];
         }
 
         /// <summary>
@@ -455,16 +466,19 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             // Receive the first batch
-            var response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history{(limit.HasValue ? $"?limit={limit}" : "")}"), AuthenticationToken, _hardwareId);
+            string response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history{(limit.HasValue ? $"?limit={limit}" : "")}"), AuthenticationToken, _hardwareId);
 
             // Parse the result
             var doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
 
             // If no limit has been specified or the amount of items requested have been returned already, just return whatever has been returned by the API
-            if (!limit.HasValue || doorbotHistory.Count >= limit.Value) return doorbotHistory;
+            if (!limit.HasValue || doorbotHistory.Count >= limit.Value)
+            {
+                return doorbotHistory;
+            }
 
             // Calculate how many items we still need to retrieve after this first batch
-            var remainingItems = limit.Value - doorbotHistory.Count;
+            int remainingItems = limit.Value - doorbotHistory.Count;
 
             // Create a list to hold all the results
             var allHistory = new List<DoorbotHistoryEvent>();
@@ -565,7 +579,7 @@ namespace VideoForensics.Providers.Ring
             var allHistory = new List<DoorbotHistoryEvent>();
             var doorbotHistory = new List<DoorbotHistoryEvent>();
             DateTime? lastItemDateTime = null;
-            var isFirstPage = true;
+            bool isFirstPage = true;
             var lastChunkBoundary = effectiveEndDate;
 
             do
@@ -582,12 +596,13 @@ namespace VideoForensics.Providers.Ring
                         await Task.Delay(InterPageDelayMs);
                     }
                 }
+
                 isFirstPage = false;
 
                 // Retrieve a batch with historical items, retrying with backoff if Ring throttles us
                 // mid-pagination rather than aborting the whole history fetch.
                 string response = null;
-                for (var attempt = 1; attempt <= MaxPageRetries; attempt++)
+                for (int attempt = 1; attempt <= MaxPageRetries; attempt++)
                 {
                     try
                     {
@@ -612,7 +627,7 @@ namespace VideoForensics.Providers.Ring
 
                 if (doorbotHistory.Count > 0)
                 {
-                    lastItemDateTime = doorbotHistory[doorbotHistory.Count - 1]?.CreatedAtDateTime ?? DateTime.MinValue;
+                    lastItemDateTime = doorbotHistory[^1]?.CreatedAtDateTime ?? DateTime.MinValue;
                 }
             }
             // Keep retrieving next batches until the last item in the retrieved batch does not fit within the request date span anymore
@@ -638,12 +653,9 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="ArgumentNullException">Thrown when no historyEvent provided or one provided without an Id</exception>
         public async Task<Stream> GetDoorbotHistoryRecording(DoorbotHistoryEvent doorbotHistoryEvent)
         {
-            if (doorbotHistoryEvent == null || !doorbotHistoryEvent.Id.HasValue)
-            {
-                throw new ArgumentNullException(nameof(doorbotHistoryEvent));
-            }
-
-            return await GetDoorbotHistoryRecording(doorbotHistoryEvent.Id.Value.ToString());
+            return doorbotHistoryEvent == null || !doorbotHistoryEvent.Id.HasValue
+                ? throw new ArgumentNullException(nameof(doorbotHistoryEvent))
+                : await GetDoorbotHistoryRecording(doorbotHistoryEvent.Id.Value.ToString());
         }
 
         /// <summary>
@@ -662,7 +674,6 @@ namespace VideoForensics.Providers.Ring
             var downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
             return await _videoDownloader.OpenStreamAsync(downloadResult.Url);
         }
-
 
         /// <summary>
         /// Saves the recording of the provided Ding Id of a doorbot to the provided location
@@ -719,12 +730,9 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="ArgumentNullException">Thrown when no historyEvent provided or one provided without an Id</exception>
         public async Task<Entities.DownloadRecording> GetDoorbotHistoryRecordingInfo(DoorbotHistoryEvent doorbotHistoryEvent)
         {
-            if (doorbotHistoryEvent == null || !doorbotHistoryEvent.Id.HasValue)
-            {
-                throw new ArgumentNullException(nameof(doorbotHistoryEvent));
-            }
-
-            return await GetDoorbotHistoryRecordingInfo(doorbotHistoryEvent.Id.Value.ToString());
+            return doorbotHistoryEvent == null || !doorbotHistoryEvent.Id.HasValue
+                ? throw new ArgumentNullException(nameof(doorbotHistoryEvent))
+                : await GetDoorbotHistoryRecordingInfo(doorbotHistoryEvent.Id.Value.ToString());
         }
 
         /// <summary>
@@ -753,10 +761,10 @@ namespace VideoForensics.Providers.Ring
             // events doesn't stall for minutes per expired recording; a genuinely-preparing recording
             // that isn't ready within ~8s is rare enough that this is the better tradeoff for callers
             // downloading many events at once.
-            for (var downloadAttempt = 1; downloadAttempt < 6; downloadAttempt++)
+            for (int downloadAttempt = 1; downloadAttempt < 6; downloadAttempt++)
             {
                 // Request to download the recording
-                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
+                string response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 downloadResult = JsonSerializer.Deserialize<DownloadRecording>(response);
@@ -773,12 +781,9 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Ensure we ended with a valid URL to download the recording from
-            if (downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out _))
-            {
-                throw new Exceptions.DownloadFailedException(downloadResult?.Url ?? "(no URL was created)");
-            }
-
-            return downloadResult;
+            return downloadResult == null || string.IsNullOrWhiteSpace(downloadResult.Url) || !Uri.TryCreate(downloadResult.Url, UriKind.Absolute, out _)
+                ? throw new Exceptions.DownloadFailedException(downloadResult?.Url ?? "(no URL was created)")
+                : downloadResult;
         }
 
         /// <summary>
@@ -813,12 +818,9 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="ArgumentNullException">Thrown when no historyEvent provided or one provided without an Id</exception>
         public async Task<Uri> ShareRecording(DoorbotHistoryEvent historyEvent)
         {
-            if (historyEvent == null || !historyEvent.Id.HasValue)
-            {
-                throw new ArgumentNullException(nameof(historyEvent));
-            }
-
-            return await ShareRecording(historyEvent.Id.Value.ToString());
+            return historyEvent == null || !historyEvent.Id.HasValue
+                ? throw new ArgumentNullException(nameof(historyEvent))
+                : await ShareRecording(historyEvent.Id.Value.ToString());
         }
 
         /// <summary>
@@ -840,10 +842,10 @@ namespace VideoForensics.Providers.Ring
             var downloadRequestUri = new Uri(BaseUrl, $"dings/{recordingId}/share/share?disable_redirect=true");
 
             Entities.SharedRecording shareResult = null;
-            for (var downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
+            for (int downloadAttempt = 1; downloadAttempt < 60; downloadAttempt++)
             {
                 // Request to share the recording
-                var response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
+                string response = await _httpUtility.GetContents(downloadRequestUri, AuthenticationToken, _hardwareId);
 
                 // Parse the result
                 shareResult = JsonSerializer.Deserialize<SharedRecording>(response);
@@ -860,12 +862,9 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Ensure we ended with a valid URL to the shared recording
-            if (shareResult == null || string.IsNullOrWhiteSpace(shareResult.WrapperUrl) || !Uri.TryCreate(shareResult.WrapperUrl, UriKind.Absolute, out Uri shareUri))
-            {
-                throw new Exceptions.SharingFailedException(recordingId);
-            }
-
-            return shareUri;
+            return shareResult == null || string.IsNullOrWhiteSpace(shareResult.WrapperUrl) || !Uri.TryCreate(shareResult.WrapperUrl, UriKind.Absolute, out Uri shareUri)
+                ? throw new Exceptions.SharingFailedException(recordingId)
+                : shareUri;
         }
 
         /// <summary>
@@ -884,7 +883,6 @@ namespace VideoForensics.Providers.Ring
             await GetLatestSnapshot(doorbot.Id, saveAs);
         }
 
-
         /// <summary>
         /// Saves the latest available snapshot from the provided doorbot to the provided location
         /// </summary>
@@ -901,7 +899,7 @@ namespace VideoForensics.Providers.Ring
             using var stream = await GetLatestSnapshot(doorbotId);
             using var fileStream = File.Create(saveAs);
 
-            stream.Seek(0, SeekOrigin.Begin);
+            _ = stream.Seek(0, SeekOrigin.Begin);
             await stream.CopyToAsync(fileStream);
         }
 
@@ -940,7 +938,7 @@ namespace VideoForensics.Providers.Ring
             var downloadSnapshotUri = new Uri(BaseUrl, $"snapshots/image/{doorbotId}");
 
             // Request the snapshot
-            var bytes = await _httpUtility.DownloadFile(downloadSnapshotUri, AuthenticationToken);
+            byte[] bytes = await _httpUtility.DownloadFile(downloadSnapshotUri, AuthenticationToken);
             return new MemoryStream(bytes);
         }
 
@@ -979,7 +977,7 @@ namespace VideoForensics.Providers.Ring
             var updateSnapshotUri = new Uri(BaseUrl, "snapshots/update_all");
 
             // Construct the body of the message
-            var bodyContent = string.Concat(@"{ ""doorbot_ids"": [", doorbotId, @"], ""refresh"": true }");
+            string bodyContent = string.Concat(@"{ ""doorbot_ids"": [", doorbotId, @"], ""refresh"": true }");
 
             // Send the request
             await _httpUtility.SendRequestWithExpectedStatusOutcome(updateSnapshotUri, System.Net.Http.HttpMethod.Put, System.Net.HttpStatusCode.NoContent, bodyContent, AuthenticationToken);
@@ -1017,7 +1015,7 @@ namespace VideoForensics.Providers.Ring
             var updateSnapshotUri = new Uri(BaseUrl, "snapshots/timestamps");
 
             // Construct the body of the message
-            var bodyContent = string.Concat(@"{ ""doorbot_ids"": [", doorbotId, @"]}");
+            string bodyContent = string.Concat(@"{ ""doorbot_ids"": [", doorbotId, @"]}");
 
             // Send the request
             var doorbotTimestamps = await _httpUtility.SendRequest<DoorbotTimestamps>(updateSnapshotUri, System.Net.Http.HttpMethod.Post, bodyContent, AuthenticationToken);

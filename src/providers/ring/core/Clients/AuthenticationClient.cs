@@ -20,22 +20,16 @@ public class AuthenticationClient : IAuthenticationClient
 
     public async Task<bool> SignInAsync(string username, string password, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-        {
-            throw new ArgumentException("Username and password are required");
-        }
-
-        return await _authService.Authenticate(cancellationToken: cancellationToken);
+        return string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)
+            ? throw new ArgumentException("Username and password are required")
+            : await _authService.Authenticate(cancellationToken: cancellationToken);
     }
 
     public async Task<bool> SignInWithTwoFactorAsync(string code, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(code))
-        {
-            throw new ArgumentException("Two-factor code is required");
-        }
-
-        return await _authService.Authenticate(cancellationToken: cancellationToken);
+        return string.IsNullOrEmpty(code)
+            ? throw new ArgumentException("Two-factor code is required")
+            : await _authService.Authenticate(cancellationToken: cancellationToken);
     }
 
     public async Task<bool> RefreshAuthenticationAsync(CancellationToken cancellationToken = default)

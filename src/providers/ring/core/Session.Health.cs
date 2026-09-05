@@ -23,7 +23,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/health");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DeviceHealthResponse>(response);
         }
@@ -37,7 +37,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/health");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DeviceHealthResponse>(response);
         }

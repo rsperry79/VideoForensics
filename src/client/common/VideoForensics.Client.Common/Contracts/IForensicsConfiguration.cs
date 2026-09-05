@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     public interface IForensicsConfiguration
     {

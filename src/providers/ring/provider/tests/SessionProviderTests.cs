@@ -1,4 +1,5 @@
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -74,7 +75,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var provider = new SessionProvider();
 
-            Assert.Throws<ArgumentNullException>(() => provider.SetSession(Guid.NewGuid(), null!));
+            _ = Assert.Throws<ArgumentNullException>(() => provider.SetSession(Guid.NewGuid(), null!));
         }
 
         [Fact]
@@ -82,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var provider = new SessionProvider();
 
-            Assert.Throws<ArgumentNullException>(() => provider.SetSession((Session)null!));
+            _ = Assert.Throws<ArgumentNullException>(() => provider.SetSession(null!));
         }
 
         [Fact]

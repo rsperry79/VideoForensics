@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -27,15 +28,17 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<IReadOnlyList<IntegrityRecord>> GetLatestByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
-            var ids = string.Join(',', mediaItemIds);
+            string ids = string.Join(',', mediaItemIds);
             var response = await _httpClient.GetAsync($"/api/integrity-records?mediaItemIds={ids}", ct);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
             var records = await response.Content.ReadFromJsonAsync<List<IntegrityRecord>>(JsonOptions, ct);
             return records ?? [];
         }
 
         /// <inheritdoc />
-        public Task AddAsync(IntegrityRecord record, CancellationToken ct) =>
+        public Task AddAsync(IntegrityRecord record, CancellationToken ct)
+        {
             throw new NotSupportedException("MAUI has no write path to server-owned evidence data - integrity records are append-only data produced by the server's own verification runs, not something a thin client writes.");
+        }
     }
 }

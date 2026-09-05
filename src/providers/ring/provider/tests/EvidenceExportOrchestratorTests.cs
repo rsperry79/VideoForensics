@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using VideoForensics.Client.Common;
-using VideoForensics.Client.Core;
+
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -23,8 +25,8 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private string CreateTempDirectory()
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
             return tempDir;
         }
 
@@ -32,10 +34,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithNoItems_ReturnsFailure()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             try
             {
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -62,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 // Act
                 var result = await orchestrator.ExportEvidenceAsync(
-                    new List<Guid>(),
+                    [],
                     tempDir,
                     null,
                     null,
@@ -76,7 +78,9 @@ namespace VideoForensics.Providers.Ring.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -84,11 +88,11 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithFailedIntegrityItem_ExcludesItem()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             var failedItemId = Guid.NewGuid();
             var validItemId = Guid.NewGuid();
-            var failedFilePath = Path.Combine(tempDir, "failed.mp4");
-            var validFilePath = Path.Combine(tempDir, "valid.mp4");
+            string failedFilePath = Path.Combine(tempDir, "failed.mp4");
+            string validFilePath = Path.Combine(tempDir, "valid.mp4");
             File.WriteAllText(failedFilePath, "dummy content");
             File.WriteAllText(validFilePath, "valid content");
 
@@ -120,23 +124,23 @@ namespace VideoForensics.Providers.Ring.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository.Setup(r => r.GetAsync(failedItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(failedItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(failedItem);
-                _mockMediaItemRepository.Setup(r => r.GetAsync(validItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(validItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(validItem);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(failedItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(failedItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(false); // Verification fails
-                _mockIntegrityService.Setup(s => s.VerifyAsync(validItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(validItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true); // Verification passes
 
-                _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
+                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
                     It.IsAny<string>(),
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<ActionLogEntry>());
+                    .ReturnsAsync([]);
 
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -172,14 +176,16 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 // Assert
                 Assert.True(result.Success);
-                Assert.Single(result.ItemsExcludedForFailedIntegrity);
+                _ = Assert.Single(result.ItemsExcludedForFailedIntegrity);
                 Assert.Contains(failedItemId, result.ItemsExcludedForFailedIntegrity);
                 Assert.Equal(1, result.ItemsIncluded);
             }
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -187,9 +193,9 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithValidItem_CreatesArchive()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             var mediaItemId = Guid.NewGuid();
-            var filePath = Path.Combine(tempDir, "test.mp4");
+            string filePath = Path.Combine(tempDir, "test.mp4");
             File.WriteAllText(filePath, "dummy content");
 
             try
@@ -207,19 +213,19 @@ namespace VideoForensics.Providers.Ring.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
 
-                _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
+                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
                     It.IsAny<string>(),
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<ActionLogEntry>());
+                    .ReturnsAsync([]);
 
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -265,7 +271,9 @@ namespace VideoForensics.Providers.Ring.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -273,9 +281,9 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithEncryption_CreatesPasswordProtectedArchive()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             var mediaItemId = Guid.NewGuid();
-            var filePath = Path.Combine(tempDir, "test.mp4");
+            string filePath = Path.Combine(tempDir, "test.mp4");
             File.WriteAllText(filePath, "dummy content");
 
             try
@@ -293,19 +301,19 @@ namespace VideoForensics.Providers.Ring.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
 
-                _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
+                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
                     It.IsAny<string>(),
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<ActionLogEntry>());
+                    .ReturnsAsync([]);
 
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -355,7 +363,9 @@ namespace VideoForensics.Providers.Ring.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -363,11 +373,11 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithMultipleItems_IncludesAllValidItems()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             var mediaItemId1 = Guid.NewGuid();
             var mediaItemId2 = Guid.NewGuid();
-            var filePath1 = Path.Combine(tempDir, "test1.mp4");
-            var filePath2 = Path.Combine(tempDir, "test2.mp4");
+            string filePath1 = Path.Combine(tempDir, "test1.mp4");
+            string filePath2 = Path.Combine(tempDir, "test2.mp4");
             File.WriteAllText(filePath1, "content1");
             File.WriteAllText(filePath2, "content2");
 
@@ -399,21 +409,21 @@ namespace VideoForensics.Providers.Ring.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId1, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId1, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem1);
-                _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId2, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(mediaItemId2, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem2);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
 
-                _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
+                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
                     It.IsAny<string>(),
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<ActionLogEntry>());
+                    .ReturnsAsync([]);
 
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -456,7 +466,9 @@ namespace VideoForensics.Providers.Ring.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -464,10 +476,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task ExportEvidenceAsync_WithMixedValidAndInvalid_IncludesOnlyValid()
         {
             // Arrange
-            var tempDir = CreateTempDirectory();
+            string tempDir = CreateTempDirectory();
             var validItemId = Guid.NewGuid();
             var invalidItemId = Guid.NewGuid();
-            var validFilePath = Path.Combine(tempDir, "valid.mp4");
+            string validFilePath = Path.Combine(tempDir, "valid.mp4");
             File.WriteAllText(validFilePath, "valid content");
 
             try
@@ -498,23 +510,23 @@ namespace VideoForensics.Providers.Ring.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository.Setup(r => r.GetAsync(validItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(validItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(validItem);
-                _mockMediaItemRepository.Setup(r => r.GetAsync(invalidItemId, It.IsAny<CancellationToken>()))
+                _ = _mockMediaItemRepository.Setup(r => r.GetAsync(invalidItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(invalidItem);
 
-                _mockIntegrityService.Setup(s => s.VerifyAsync(validItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(validItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
-                _mockIntegrityService.Setup(s => s.VerifyAsync(invalidItemId, It.IsAny<CancellationToken>()))
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(invalidItemId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(false);
 
-                _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
+                _ = _mockActionLogRepository.Setup(r => r.GetHistoryForEntityAsync(
                     It.IsAny<string>(),
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new List<ActionLogEntry>());
+                    .ReturnsAsync([]);
 
-                _mockExportRecordService.Setup(s => s.RecordExportAsync(
+                _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -551,13 +563,15 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Assert
                 Assert.True(result.Success);
                 Assert.Equal(1, result.ItemsIncluded);
-                Assert.Single(result.ItemsExcludedForFailedIntegrity);
+                _ = Assert.Single(result.ItemsExcludedForFailedIntegrity);
                 Assert.Contains(invalidItemId, result.ItemsExcludedForFailedIntegrity);
             }
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, true);
+                }
             }
         }
     }

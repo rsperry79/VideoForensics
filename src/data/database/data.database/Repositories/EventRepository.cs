@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,14 +23,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets an event by ID.</summary>
         public async Task<Event?> GetAsync(Guid eventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
         }
 
         /// <summary>Gets an event by device ID and provider event ID.</summary>
         public async Task<Event?> GetByProviderEventIdAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events.FirstOrDefaultAsync(
                 e => e.DeviceId == deviceId && e.ProviderEventId == providerEventId, ct);
         }
@@ -37,15 +38,15 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Upserts (inserts or updates) an event by device ID and provider event ID.</summary>
         public async Task<Event> UpsertAsync(Event @event, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var existing = await db.Events.FirstOrDefaultAsync(
+                Event? existing = await db.Events.FirstOrDefaultAsync(
                     e => e.DeviceId == @event.DeviceId && e.ProviderEventId == @event.ProviderEventId, ct);
 
                 if (existing == null)
                 {
-                    db.Events.Add(@event);
+                    _ = db.Events.Add(@event);
                     _logger.LogInformation("Event inserted: {EventId} ({ProviderEventId})", @event.Id, @event.ProviderEventId);
                 }
                 else
@@ -63,11 +64,11 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.DownloadedAtUtc = @event.DownloadedAtUtc ?? existing.DownloadedAtUtc;
                     existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
                     existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
-                    db.Events.Update(existing);
+                    _ = db.Events.Update(existing);
                     _logger.LogInformation("Event upserted (updated): {EventId}", @event.Id);
                 }
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
                 return existing ?? @event;
             }
             catch (Exception ex)
@@ -81,7 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .ToListAsync(ct);
@@ -91,7 +92,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -105,7 +106,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListByDeviceEventTypeAndDateRangeAsync(
             Guid deviceId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.EventType == eventType &&
@@ -118,7 +119,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListByLocationEventTypeAndDateRangeAsync(
             Guid locationId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -133,7 +134,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<Dictionary<string, int>> GetEventTypeSummaryAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
@@ -146,7 +147,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists events that are unanswered or flagged for a device.</summary>
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events
                 .Where(e => e.DeviceId == deviceId)
                 .ToListAsync(ct);
@@ -155,21 +156,21 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all events.</summary>
         public async Task<IReadOnlyList<Event>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events.ToListAsync(ct);
         }
 
         /// <summary>Deletes an event.</summary>
         public async Task DeleteAsync(Guid eventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var @event = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
+                Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
                 if (@event != null)
                 {
-                    db.Events.Remove(@event);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.Events.Remove(@event);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Event deleted: {EventId}", eventId);
                 }
             }

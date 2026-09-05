@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -14,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new JammingRepository(_fixture.Factory, loggerFactory.CreateLogger<JammingRepository>());
         }
 
@@ -53,10 +55,10 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
-            var incident = BuildJammingIncident(deviceId, startTime);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
             incident.Id = Guid.Empty;
 
-            var result = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+            JammingIncidentRecord result = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
 
             Assert.NotEqual(Guid.Empty, result.Id);
             Assert.Equal(deviceId, result.DeviceId);
@@ -68,10 +70,10 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
-            var incident = BuildJammingIncident(deviceId, startTime);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
 
-            var created = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
-            var createdId = created.Id;
+            JammingIncidentRecord created = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+            Guid createdId = created.Id;
 
             // Update the incident
             created.AffectedEventCount = 10;
@@ -79,7 +81,7 @@ namespace VideoForensics.Data.Database.Tests
             created.Confidence = JammingConfidenceLevel.High;
             created.Notes = "Updated test incident";
 
-            var updated = await _repository.UpsertIncidentAsync(created, CancellationToken.None);
+            JammingIncidentRecord updated = await _repository.UpsertIncidentAsync(created, CancellationToken.None);
 
             Assert.Equal(createdId, updated.Id);
             Assert.Equal(10, updated.AffectedEventCount);
@@ -93,17 +95,17 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId1 = Guid.NewGuid();
             var deviceId2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var incident1 = BuildJammingIncident(deviceId1, now.AddHours(-1));
-            var incident2 = BuildJammingIncident(deviceId1, now);
-            var incident3 = BuildJammingIncident(deviceId2, now.AddHours(1));
+            JammingIncidentRecord incident1 = BuildJammingIncident(deviceId1, now.AddHours(-1));
+            JammingIncidentRecord incident2 = BuildJammingIncident(deviceId1, now);
+            JammingIncidentRecord incident3 = BuildJammingIncident(deviceId2, now.AddHours(1));
 
-            await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(incident3, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident3, CancellationToken.None);
 
-            var results = await _repository.ListIncidentsAsync(null, null, null, CancellationToken.None);
+            IReadOnlyList<JammingIncidentRecord> results = await _repository.ListIncidentsAsync(null, null, null, CancellationToken.None);
 
             Assert.Equal(3, results.Count);
         }
@@ -113,13 +115,13 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId1 = Guid.NewGuid();
             var deviceId2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId1, now), CancellationToken.None);
-            await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId1, now.AddMinutes(15)), CancellationToken.None);
-            await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId2, now.AddHours(1)), CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId1, now), CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId1, now.AddMinutes(15)), CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(BuildJammingIncident(deviceId2, now.AddHours(1)), CancellationToken.None);
 
-            var results = await _repository.ListIncidentsAsync(deviceId1, null, null, CancellationToken.None);
+            IReadOnlyList<JammingIncidentRecord> results = await _repository.ListIncidentsAsync(deviceId1, null, null, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
             Assert.All(results, r => Assert.Equal(deviceId1, r.DeviceId));
@@ -129,19 +131,19 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ListIncidentsAsync_FiltersBy_DateRange()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var before = BuildJammingIncident(deviceId, now.AddHours(-2));
-            var during1 = BuildJammingIncident(deviceId, now.AddHours(-1));
-            var during2 = BuildJammingIncident(deviceId, now);
-            var after = BuildJammingIncident(deviceId, now.AddHours(2));
+            JammingIncidentRecord before = BuildJammingIncident(deviceId, now.AddHours(-2));
+            JammingIncidentRecord during1 = BuildJammingIncident(deviceId, now.AddHours(-1));
+            JammingIncidentRecord during2 = BuildJammingIncident(deviceId, now);
+            JammingIncidentRecord after = BuildJammingIncident(deviceId, now.AddHours(2));
 
-            await _repository.UpsertIncidentAsync(before, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(during1, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(during2, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(after, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(before, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(during1, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(during2, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(after, CancellationToken.None);
 
-            var results = await _repository.ListIncidentsAsync(
+            IReadOnlyList<JammingIncidentRecord> results = await _repository.ListIncidentsAsync(
                 deviceId,
                 now.AddHours(-1.5),
                 now.AddHours(1),
@@ -160,25 +162,25 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId1 = Guid.NewGuid();
             var deviceId2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var device1Before = BuildJammingIncident(deviceId1, now.AddHours(-2));
-            var device1During = BuildJammingIncident(deviceId1, now);
-            var device1After = BuildJammingIncident(deviceId1, now.AddHours(2));
-            var device2During = BuildJammingIncident(deviceId2, now);
+            JammingIncidentRecord device1Before = BuildJammingIncident(deviceId1, now.AddHours(-2));
+            JammingIncidentRecord device1During = BuildJammingIncident(deviceId1, now);
+            JammingIncidentRecord device1After = BuildJammingIncident(deviceId1, now.AddHours(2));
+            JammingIncidentRecord device2During = BuildJammingIncident(deviceId2, now);
 
-            await _repository.UpsertIncidentAsync(device1Before, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(device1During, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(device1After, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(device2During, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(device1Before, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(device1During, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(device1After, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(device2During, CancellationToken.None);
 
-            var results = await _repository.ListIncidentsAsync(
+            IReadOnlyList<JammingIncidentRecord> results = await _repository.ListIncidentsAsync(
                 deviceId1,
                 now.AddHours(-1),
                 now.AddHours(1),
                 CancellationToken.None);
 
-            Assert.Single(results);
+            _ = Assert.Single(results);
             Assert.Equal(deviceId1, results[0].DeviceId);
             Assert.True(results[0].StartUtc >= now.AddHours(-1));
             Assert.True(results[0].StartUtc <= now.AddHours(1));
@@ -189,7 +191,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            var result = await _repository.GetStatsAsync(deviceId, CancellationToken.None);
+            JammingStatsSummary? result = await _repository.GetStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -198,13 +200,13 @@ namespace VideoForensics.Data.Database.Tests
         public async Task GetStatsAsync_ReturnsStats_WhenStatsExist()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var incident = BuildJammingIncident(deviceId, now);
-            await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
-            await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, now);
+            _ = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+            _ = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
-            var result = await _repository.GetStatsAsync(deviceId, CancellationToken.None);
+            JammingStatsSummary? result = await _repository.GetStatsAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(deviceId, result.DeviceId);
@@ -216,17 +218,17 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId1 = Guid.NewGuid();
             var deviceId2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var incident1 = BuildJammingIncident(deviceId1, now);
-            var incident2 = BuildJammingIncident(deviceId2, now.AddHours(1));
+            JammingIncidentRecord incident1 = BuildJammingIncident(deviceId1, now);
+            JammingIncidentRecord incident2 = BuildJammingIncident(deviceId2, now.AddHours(1));
 
-            await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
-            await _repository.RecomputeStatsAsync(deviceId1, CancellationToken.None);
-            await _repository.RecomputeStatsAsync(deviceId2, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
+            _ = await _repository.RecomputeStatsAsync(deviceId1, CancellationToken.None);
+            _ = await _repository.RecomputeStatsAsync(deviceId2, CancellationToken.None);
 
-            var results = await _repository.ListStatsAsync(CancellationToken.None);
+            IReadOnlyList<JammingStatsSummary> results = await _repository.ListStatsAsync(CancellationToken.None);
 
             Assert.Equal(2, results.Count);
         }
@@ -235,9 +237,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task RecomputeStatsAsync_ComputesCorrectStats_FromIncidents()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var incident1 = BuildJammingIncident(
+            JammingIncidentRecord incident1 = BuildJammingIncident(
                 deviceId,
                 now,
                 now.AddMinutes(10),
@@ -245,7 +247,7 @@ namespace VideoForensics.Data.Database.Tests
                 averageDegradationDb: 8.0,
                 confidence: JammingConfidenceLevel.Low);
 
-            var incident2 = BuildJammingIncident(
+            JammingIncidentRecord incident2 = BuildJammingIncident(
                 deviceId,
                 now.AddMinutes(30),
                 now.AddMinutes(50),
@@ -253,7 +255,7 @@ namespace VideoForensics.Data.Database.Tests
                 averageDegradationDb: 12.0,
                 confidence: JammingConfidenceLevel.Medium);
 
-            var incident3 = BuildJammingIncident(
+            JammingIncidentRecord incident3 = BuildJammingIncident(
                 deviceId,
                 now.AddMinutes(60),
                 now.AddMinutes(65),
@@ -261,11 +263,11 @@ namespace VideoForensics.Data.Database.Tests
                 averageDegradationDb: 16.0,
                 confidence: JammingConfidenceLevel.High);
 
-            await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
-            await _repository.UpsertIncidentAsync(incident3, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
+            _ = await _repository.UpsertIncidentAsync(incident3, CancellationToken.None);
 
-            var summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingStatsSummary summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(3, summary.IncidentCount);
             Assert.Equal(35, summary.TotalJammedDurationMinutes); // 10 + 20 + 5
@@ -284,7 +286,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            var summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingStatsSummary summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(deviceId, summary.DeviceId);
             Assert.Equal(0, summary.IncidentCount);
@@ -299,17 +301,17 @@ namespace VideoForensics.Data.Database.Tests
         public async Task RecomputeStatsAsync_UpdatesExistingStats()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            var incident1 = BuildJammingIncident(deviceId, now);
-            await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
-            var summary1 = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingIncidentRecord incident1 = BuildJammingIncident(deviceId, now);
+            _ = await _repository.UpsertIncidentAsync(incident1, CancellationToken.None);
+            JammingStatsSummary summary1 = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(1, summary1.IncidentCount);
 
-            var incident2 = BuildJammingIncident(deviceId, now.AddHours(1));
-            await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
-            var summary2 = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingIncidentRecord incident2 = BuildJammingIncident(deviceId, now.AddHours(1));
+            _ = await _repository.UpsertIncidentAsync(incident2, CancellationToken.None);
+            JammingStatsSummary summary2 = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(summary1.Id, summary2.Id); // Same summary row
             Assert.Equal(2, summary2.IncidentCount);
@@ -319,25 +321,25 @@ namespace VideoForensics.Data.Database.Tests
         public async Task RecomputeStatsAsync_CountsConfidenceByLevel()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            await _repository.UpsertIncidentAsync(
+            _ = await _repository.UpsertIncidentAsync(
                 BuildJammingIncident(deviceId, now, confidence: JammingConfidenceLevel.Low),
                 CancellationToken.None);
-            await _repository.UpsertIncidentAsync(
+            _ = await _repository.UpsertIncidentAsync(
                 BuildJammingIncident(deviceId, now.AddMinutes(20), confidence: JammingConfidenceLevel.Low),
                 CancellationToken.None);
-            await _repository.UpsertIncidentAsync(
+            _ = await _repository.UpsertIncidentAsync(
                 BuildJammingIncident(deviceId, now.AddMinutes(40), confidence: JammingConfidenceLevel.Medium),
                 CancellationToken.None);
-            await _repository.UpsertIncidentAsync(
+            _ = await _repository.UpsertIncidentAsync(
                 BuildJammingIncident(deviceId, now.AddMinutes(60), confidence: JammingConfidenceLevel.High),
                 CancellationToken.None);
-            await _repository.UpsertIncidentAsync(
+            _ = await _repository.UpsertIncidentAsync(
                 BuildJammingIncident(deviceId, now.AddMinutes(80), confidence: JammingConfidenceLevel.Definite),
                 CancellationToken.None);
 
-            var summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
+            JammingStatsSummary summary = await _repository.RecomputeStatsAsync(deviceId, CancellationToken.None);
 
             Assert.Equal(2, summary.LowConfidenceCount);
             Assert.Equal(1, summary.MediumConfidenceCount);

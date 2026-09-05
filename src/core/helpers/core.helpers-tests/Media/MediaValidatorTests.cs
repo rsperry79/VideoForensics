@@ -1,10 +1,10 @@
 using System;
 using System.IO;
-using Xunit;
+
 using VideoForensics.Providers.Common.Helpers.Contracts;
 using VideoForensics.Providers.Common.Helpers.Media;
 
-#nullable enable
+using Xunit;
 
 namespace VideoForensics.Providers.Common.Helpers.Tests.Media
 {
@@ -15,80 +15,80 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Media
 
         public MediaValidatorTests()
         {
-            Directory.CreateDirectory(_tempDir);
+            _ = Directory.CreateDirectory(_tempDir);
         }
 
         [Fact]
         public void ValidateMediaExists_WithNonexistentFile_ReturnsFalse()
         {
-            var result = _validator.ValidateMediaExists("/nonexistent/file.mp4", null);
+            bool result = _validator.ValidateMediaExists("/nonexistent/file.mp4", null);
             Assert.False(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithNullPath_ReturnsFalse()
         {
-            var result = _validator.ValidateMediaExists(null!, null);
+            bool result = _validator.ValidateMediaExists(null!, null);
             Assert.False(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithEmptyPath_ReturnsFalse()
         {
-            var result = _validator.ValidateMediaExists("", null);
+            bool result = _validator.ValidateMediaExists("", null);
             Assert.False(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithExistingFileAndNoExpectedSize_ReturnsTrue()
         {
-            var filePath = Path.Combine(_tempDir, "test.mp4");
+            string filePath = Path.Combine(_tempDir, "test.mp4");
             File.WriteAllText(filePath, "content");
 
-            var result = _validator.ValidateMediaExists(filePath, null);
+            bool result = _validator.ValidateMediaExists(filePath, null);
             Assert.True(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithExistingFileAndMatchingSize_ReturnsTrue()
         {
-            var filePath = Path.Combine(_tempDir, "test.mp4");
-            var content = "content";
+            string filePath = Path.Combine(_tempDir, "test.mp4");
+            string content = "content";
             File.WriteAllText(filePath, content);
-            var expectedSize = new FileInfo(filePath).Length;
+            long expectedSize = new FileInfo(filePath).Length;
 
-            var result = _validator.ValidateMediaExists(filePath, expectedSize);
+            bool result = _validator.ValidateMediaExists(filePath, expectedSize);
             Assert.True(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithExistingFileAndMismatchedSize_ReturnsFalse()
         {
-            var filePath = Path.Combine(_tempDir, "test.mp4");
+            string filePath = Path.Combine(_tempDir, "test.mp4");
             File.WriteAllText(filePath, "content");
-            var wrongSize = 999L;
+            long wrongSize = 999L;
 
-            var result = _validator.ValidateMediaExists(filePath, wrongSize);
+            bool result = _validator.ValidateMediaExists(filePath, wrongSize);
             Assert.False(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithEmptyExistingFile_ReturnsFalse()
         {
-            var filePath = Path.Combine(_tempDir, "empty.mp4");
+            string filePath = Path.Combine(_tempDir, "empty.mp4");
             File.WriteAllText(filePath, "");
 
-            var result = _validator.ValidateMediaExists(filePath, null);
+            bool result = _validator.ValidateMediaExists(filePath, null);
             Assert.False(result);
         }
 
         [Fact]
         public void ValidateMediaExists_WithEmptyFileAndZeroExpectedSize_ReturnsTrue()
         {
-            var filePath = Path.Combine(_tempDir, "empty.mp4");
+            string filePath = Path.Combine(_tempDir, "empty.mp4");
             File.WriteAllText(filePath, "");
 
-            var result = _validator.ValidateMediaExists(filePath, 0);
+            bool result = _validator.ValidateMediaExists(filePath, 0);
             Assert.True(result);
         }
 

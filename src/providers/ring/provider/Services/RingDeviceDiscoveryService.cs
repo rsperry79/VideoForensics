@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+
+using System.Collections.ObjectModel;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
@@ -33,7 +36,6 @@ namespace VideoForensics.Providers.Ring.Services
         private IReadOnlyList<Location>? _cachedLocations;
         private DateTime _cachedLocationsAt;
 
-
         public RingDeviceDiscoveryService(
             ILogger logger,
             ISessionProvider sessionProvider,
@@ -62,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching Ring locations");
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -84,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Services
                     throw;
                 }
 
-                var locations = await session.GetLocations();
+                List<Entities.Location>? locations = await session.GetLocations();
                 _logger.LogInformation("GetLocations() completed, returned collection type: {Type}", locations?.GetType().Name ?? "null");
 
                 if (locations == null)
@@ -126,7 +128,7 @@ namespace VideoForensics.Providers.Ring.Services
                     // synthetic Location per orphaned device location_id, so the device still lands
                     // under something honestly labeled instead of a wrong real location name.
                     var knownIds = new HashSet<string>(result.Select(l => l.Id));
-                    var derived = await DeriveLocationsFromDevicesAsync(cancellationToken);
+                    IReadOnlyList<Location> derived = await DeriveLocationsFromDevicesAsync(cancellationToken);
                     var orphaned = derived.Where(l => !knownIds.Contains(l.Id)).ToList();
                     if (orphaned.Count > 0)
                     {
@@ -136,7 +138,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 _logger.LogInformation("Found {LocationCount} locations after filtering", result.Count);
-                foreach (var loc in result)
+                foreach (Location loc in result)
                 {
                     _logger.LogInformation("Location: {LocationId} - {LocationName}", loc.Id, loc.Name);
                 }
@@ -152,7 +154,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             finally
             {
-                _locationsCacheLock.Release();
+                _ = _locationsCacheLock.Release();
             }
         }
 
@@ -167,7 +169,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         private async Task<IReadOnlyList<Location>> DeriveLocationsFromDevicesAsync(CancellationToken cancellationToken)
         {
-            var devices = await GetAllDevicesUnfilteredAsync(cancellationToken);
+            IReadOnlyList<Device> devices = await GetAllDevicesUnfilteredAsync(cancellationToken);
 
             return devices
                 .Where(d => d.LocationId != UnknownLocationId)
@@ -192,7 +194,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<IReadOnlyList<Device>> GetDevicesAsync(string locationId, CancellationToken cancellationToken = default)
         {
-            var allDevices = await GetAllDevicesUnfilteredAsync(cancellationToken);
+            IReadOnlyList<Device> allDevices = await GetAllDevicesUnfilteredAsync(cancellationToken);
             return allDevices.Where(d => d.LocationId == locationId).ToList().AsReadOnly();
         }
 
@@ -210,14 +212,14 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching the account's full device list");
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
                     return new List<Device>().AsReadOnly();
                 }
 
-                var devices = await session.GetRingDevices();
+                Entities.Devices? devices = await session.GetRingDevices();
 
                 var deviceMap = new Dictionary<string, Device>();
 
@@ -227,7 +229,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // history events can't be matched back to a device by device_id (it comes back empty).
                 if (devices?.Doorbots != null)
                 {
-                    foreach (var d in devices.Doorbots)
+                    foreach (Entities.Doorbot d in devices.Doorbots)
                     {
                         var deviceId = d.Id.ToString();
                         deviceMap[deviceId] = new Device(
@@ -243,7 +245,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Add Stickup Cameras (skip if already added via Doorbots)
                 if (devices?.StickupCams != null)
                 {
-                    foreach (var d in devices.StickupCams)
+                    foreach (Entities.StickupCam d in devices.StickupCams)
                     {
                         var deviceId = d.Id?.ToString() ?? d.DeviceId;
                         if (!deviceMap.ContainsKey(deviceId))
@@ -262,7 +264,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Add Authorized Doorbots (skip if already added)
                 if (devices?.AuthorizedDoorbots != null)
                 {
-                    foreach (var d in devices.AuthorizedDoorbots)
+                    foreach (Entities.Doorbot d in devices.AuthorizedDoorbots)
                     {
                         var deviceId = d.Id.ToString();
                         if (!deviceMap.ContainsKey(deviceId))
@@ -285,7 +287,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // from the DB. IsOnline uses Health.Connected (chimes have no Subscribed field).
                 if (devices?.Chimes != null)
                 {
-                    foreach (var c in devices.Chimes)
+                    foreach (Entities.Chime c in devices.Chimes)
                     {
                         var deviceId = c.Id.ToString();
                         if (!deviceMap.ContainsKey(deviceId))
@@ -304,7 +306,7 @@ namespace VideoForensics.Providers.Ring.Services
                 var allAccountDevices = new List<Device>(deviceMap.Values);
 
                 _logger.LogInformation("Found {DeviceCount} devices on the account", allAccountDevices.Count);
-                foreach (var device in allAccountDevices)
+                foreach (Device device in allAccountDevices)
                 {
                     _logger.LogInformation("  Device: {DeviceId} - {DeviceName} ({DeviceType}), Location: {LocationId}, Online: {IsOnline}",
                         device.Id, device.Name, device.Type, device.LocationId, device.IsOnline);
@@ -314,7 +316,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // TODO: Fix type mismatch between Ring device Ids (string) and Guids
                 // _ = PersistDeviceCapabilitiesAsync(allAccountDevices, cancellationToken);
 
-                var readOnlyDevices = allAccountDevices.AsReadOnly();
+                ReadOnlyCollection<Device> readOnlyDevices = allAccountDevices.AsReadOnly();
                 _cachedAllDevices = (readOnlyDevices, DateTime.UtcNow);
                 return readOnlyDevices;
             }
@@ -325,7 +327,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             finally
             {
-                _allDevicesCacheLock.Release();
+                _ = _allDevicesCacheLock.Release();
             }
         }
 
@@ -335,14 +337,16 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Fetching device: {DeviceId}", deviceId);
 
-                var locations = await GetLocationsAsync(cancellationToken);
+                IReadOnlyList<Location> locations = await GetLocationsAsync(cancellationToken);
 
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var devices = await GetDevicesAsync(location.Id, cancellationToken);
-                    var device = devices.FirstOrDefault(d => d.Id == deviceId);
+                    IReadOnlyList<Device> devices = await GetDevicesAsync(location.Id, cancellationToken);
+                    Device? device = devices.FirstOrDefault(d => d.Id == deviceId);
                     if (device != null)
+                    {
                         return device;
+                    }
                 }
 
                 return null;

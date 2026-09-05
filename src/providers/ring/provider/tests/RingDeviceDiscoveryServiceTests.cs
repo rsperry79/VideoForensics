@@ -1,10 +1,14 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
-using CommonContracts = VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
+
+using CommonContracts = VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -19,12 +23,12 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
-            var logger = new Mock<ILogger>().Object;
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetLocationsAsync();
+            IReadOnlyList<CommonContracts.Location> result = await service.GetLocationsAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -36,16 +40,16 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetLocationsAsync();
+            IReadOnlyList<CommonContracts.Location> result = await service.GetLocationsAsync();
 
             // Assert
             Assert.NotNull(result);
             // Verify it's read-only by attempting to cast to IReadOnlyList
-            Assert.IsAssignableFrom<IReadOnlyList<CommonContracts.Location>>(result);
+            _ = Assert.IsAssignableFrom<IReadOnlyList<CommonContracts.Location>>(result);
         }
 
         [Fact]
@@ -53,12 +57,12 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
-            var logger = new Mock<ILogger>().Object;
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync("location123");
+            IReadOnlyList<Device> result = await service.GetDevicesAsync("location123");
 
             // Assert
             Assert.NotNull(result);
@@ -70,11 +74,11 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync("invalid-location-id");
+            IReadOnlyList<Device> result = await service.GetDevicesAsync("invalid-location-id");
 
             // Assert
             Assert.NotNull(result);
@@ -86,15 +90,15 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync("00000000-0000-0000-0000-000000000000");
+            IReadOnlyList<Device> result = await service.GetDevicesAsync("00000000-0000-0000-0000-000000000000");
 
             // Assert
             Assert.NotNull(result);
-            Assert.IsAssignableFrom<IReadOnlyList<Device>>(result);
+            _ = Assert.IsAssignableFrom<IReadOnlyList<Device>>(result);
         }
 
         [Fact]
@@ -102,12 +106,12 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
-            var logger = new Mock<ILogger>().Object;
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDeviceAsync("device123");
+            Device? result = await service.GetDeviceAsync("device123");
 
             // Assert
             Assert.Null(result);
@@ -118,18 +122,18 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDeviceAsync("nonexistent-device");
+            Device? result = await service.GetDeviceAsync("nonexistent-device");
 
             // Assert
             // Result may be null if device not found, which is valid behavior
             // If not null, should be Device type
             if (result != null)
             {
-                Assert.IsType<Device>(result);
+                _ = Assert.IsType<Device>(result);
             }
         }
 
@@ -137,10 +141,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public void ConstructorThrowsOnNullSessionProvider()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new RingDeviceDiscoveryService(logger, null!));
+            _ = Assert.Throws<ArgumentNullException>(() => new RingDeviceDiscoveryService(logger, null!));
         }
 
         [Fact]
@@ -153,28 +157,28 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var devicesResponse = new Devices
             {
-                Doorbots = new List<Doorbot> { doorbot },
-                AuthorizedDoorbots = new List<Doorbot> { authorizedDoorbot },
+                Doorbots = [doorbot],
+                AuthorizedDoorbots = [authorizedDoorbot],
                 StickupCams = null,
                 Chimes = null
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync(locationId);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal("123", result[0].Id);
             Assert.Equal("doorbot", result[0].Type);
         }
@@ -189,28 +193,28 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var devicesResponse = new Devices
             {
-                Doorbots = new List<Doorbot> { doorbot },
+                Doorbots = [doorbot],
                 AuthorizedDoorbots = null,
-                StickupCams = new List<StickupCam> { stickupCam },
+                StickupCams = [stickupCam],
                 Chimes = null
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync(locationId);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal("100", result[0].Id);
             Assert.Equal("doorbot", result[0].Type);
         }
@@ -225,24 +229,24 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var devicesResponse = new Devices
             {
-                Doorbots = new List<Doorbot> { doorbot },
+                Doorbots = [doorbot],
                 AuthorizedDoorbots = null,
-                StickupCams = new List<StickupCam> { stickupCam },
+                StickupCams = [stickupCam],
                 Chimes = null
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync(locationId);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
 
             // Assert
             Assert.NotNull(result);
@@ -265,24 +269,24 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var devicesResponse = new Devices
             {
-                Doorbots = new List<Doorbot> { doorbot },
+                Doorbots = [doorbot],
                 AuthorizedDoorbots = null,
                 StickupCams = null,
-                Chimes = new List<Chime> { chime }
+                Chimes = [chime]
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync(locationId);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
 
             // Assert
             Assert.NotNull(result);
@@ -308,26 +312,26 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 Doorbots = null,
                 AuthorizedDoorbots = null,
-                StickupCams = new List<StickupCam> { stickupCamWithoutId },
+                StickupCams = [stickupCamWithoutId],
                 Chimes = null
             };
 
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
 
             // Act
-            var result = await service.GetDevicesAsync(locationId);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal("fallback-device-id", result[0].Id);
             Assert.Equal("stickup_cam", result[0].Type);
         }

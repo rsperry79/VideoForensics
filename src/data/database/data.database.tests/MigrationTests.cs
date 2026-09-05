@@ -1,6 +1,11 @@
-using Microsoft.Extensions.Logging;
-using Xunit;
 using Microsoft.EntityFrameworkCore;
+
+using System.Data;
+
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -23,71 +28,71 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task Migration_SchemaCreated_Successfully()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var tables = await ctx.Database.GetDbConnection().GetSchemaAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            DataTable tables = await ctx.Database.GetDbConnection().GetSchemaAsync();
             Assert.NotNull(tables);
         }
 
         [Fact]
         public async Task Migration_Users_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Users.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<User> result = await ctx.Users.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_ProviderAccounts_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.ProviderAccounts.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<ProviderAccount> result = await ctx.ProviderAccounts.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_Locations_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Locations.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<Location> result = await ctx.Locations.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_Devices_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Devices.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<Device> result = await ctx.Devices.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_MediaItems_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.MediaItems.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<MediaItem> result = await ctx.MediaItems.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_DownloadEvents_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.DownloadEvents.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<DownloadEvent> result = await ctx.DownloadEvents.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_DeviceHealthSnapshots_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.DeviceHealthSnapshots.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<DeviceHealthSnapshot> result = await ctx.DeviceHealthSnapshots.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_DeviceHealthSnapshots_HasNullableDeviceIdColumn()
         {
-            await using var ctx = _fixture.Factory.CreateDbContext();
+            await using VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var snapshot = new VideoForensics.Data.Common.Entities.DeviceHealthSnapshot
             {
                 Id = Guid.NewGuid(),
@@ -97,10 +102,10 @@ namespace VideoForensics.Data.Database.Tests
                 CapturedAtUtc = DateTime.UtcNow
             };
 
-            ctx.DeviceHealthSnapshots.Add(snapshot);
-            await ctx.SaveChangesAsync();
+            _ = ctx.DeviceHealthSnapshots.Add(snapshot);
+            _ = await ctx.SaveChangesAsync();
 
-            var reloaded = await ctx.DeviceHealthSnapshots.FindAsync(snapshot.Id);
+            DeviceHealthSnapshot? reloaded = await ctx.DeviceHealthSnapshots.FindAsync(snapshot.Id);
             Assert.NotNull(reloaded);
             Assert.Equal(snapshot.DeviceId, reloaded!.DeviceId);
             Assert.Null(reloaded.DownloadEventId);
@@ -109,80 +114,80 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task Migration_AiAnalysisSnapshots_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.AiAnalysisSnapshots.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<AiAnalysisSnapshot> result = await ctx.AiAnalysisSnapshots.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_Credentials_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Credentials.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<Credential> result = await ctx.Credentials.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_ActionLogEntries_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.ActionLogEntries.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<ActionLogEntry> result = await ctx.ActionLogEntries.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_IntegrityRecords_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.IntegrityRecords.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<IntegrityRecord> result = await ctx.IntegrityRecords.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_Events_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Events.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<Event> result = await ctx.Events.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_DeviceConfigSnapshots_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.DeviceConfigSnapshots.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<DeviceConfigSnapshot> result = await ctx.DeviceConfigSnapshots.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_Annotations_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.Annotations.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<Annotation> result = await ctx.Annotations.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_ProviderReconciliationRecords_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.ProviderReconciliationRecords.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<ProviderReconciliationRecord> result = await ctx.ProviderReconciliationRecords.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_ExportRecords_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.ExportRecords.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<ExportRecord> result = await ctx.ExportRecords.ToListAsync();
             Assert.NotNull(result);
         }
 
         [Fact]
         public async Task Migration_ExportRecordItems_DbSetQueryable()
         {
-            var ctx = _fixture.Factory.CreateDbContext();
-            var result = await ctx.ExportRecordItems.ToListAsync();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            List<ExportRecordItem> result = await ctx.ExportRecordItems.ToListAsync();
             Assert.NotNull(result);
         }
     }

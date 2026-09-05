@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models.Reports;
+
+using VideoForensics.Forensics.Interfaces;
+using VideoForensics.Forensics.Models;
 
 namespace VideoForensics.Forensics.Implementations
 {

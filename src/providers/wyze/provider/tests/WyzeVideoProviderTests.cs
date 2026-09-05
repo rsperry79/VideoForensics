@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Wyze.Tests
@@ -52,7 +55,7 @@ namespace VideoForensics.Providers.Wyze.Tests
                 mockEventService.Object);
 
             // Assert
-            Assert.IsAssignableFrom<IVideoProvider>(provider);
+            _ = Assert.IsAssignableFrom<IVideoProvider>(provider);
         }
 
         [Fact]
@@ -79,10 +82,10 @@ namespace VideoForensics.Providers.Wyze.Tests
             Assert.NotNull(provider.DownloadService);
             Assert.NotNull(provider.EventService);
 
-            Assert.IsAssignableFrom<IProviderAuthService>(provider.AuthService);
-            Assert.IsAssignableFrom<IDeviceDiscoveryService>(provider.DeviceService);
-            Assert.IsAssignableFrom<IMediaDownloadService>(provider.DownloadService);
-            Assert.IsAssignableFrom<IEventAndConfigService>(provider.EventService);
+            _ = Assert.IsAssignableFrom<IProviderAuthService>(provider.AuthService);
+            _ = Assert.IsAssignableFrom<IDeviceDiscoveryService>(provider.DeviceService);
+            _ = Assert.IsAssignableFrom<IMediaDownloadService>(provider.DownloadService);
+            _ = Assert.IsAssignableFrom<IEventAndConfigService>(provider.EventService);
         }
 
         [Fact]

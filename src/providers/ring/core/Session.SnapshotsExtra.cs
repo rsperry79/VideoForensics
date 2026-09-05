@@ -19,12 +19,12 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's dedicated snapshot delivery host, separate from api.ring.com.
         /// </summary>
-        public Uri AppSnapsApiBaseUrl => new Uri("https://app-snaps.ring.com/");
+        public Uri AppSnapsApiBaseUrl => new("https://app-snaps.ring.com/");
 
         /// <summary>
         /// Base Uri for Ring's public recordings/footage host.
         /// </summary>
-        public Uri RingRecordingsApiBaseUrl => new Uri("https://api.ring.com/recordings/public/");
+        public Uri RingRecordingsApiBaseUrl => new("https://api.ring.com/recordings/public/");
 
         /// <summary>
         /// Returns a previously captured snapshot identified by its UUID.
@@ -35,7 +35,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"snapshots/uuid?uuid={uuid}");
-            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
+            byte[] bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
             return new MemoryStream(bytes);
         }
 
@@ -50,7 +50,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(AppSnapsApiBaseUrl, $"snapshots/next/{doorbotId}");
-            var bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
+            byte[] bytes = await _httpUtility.DownloadFile(uri, AuthenticationToken, cancellationToken);
             return new MemoryStream(bytes);
         }
 
@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingRecordingsApiBaseUrl, $"footages/{footageId}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonSerializer.Deserialize<DownloadRecording>(response);
         }

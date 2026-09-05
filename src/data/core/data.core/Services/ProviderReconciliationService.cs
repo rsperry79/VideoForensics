@@ -1,5 +1,7 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
+
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -34,9 +36,9 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                await _unitOfWork.ExecuteAsync(async context =>
+                _ = await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    var runAtUtc = DateTime.UtcNow;
+                    DateTime runAtUtc = DateTime.UtcNow;
 
                     // Convert discrepancies to ProviderReconciliationRecord entities
                     var records = discrepancies.Select(d => new ProviderReconciliationRecord
@@ -52,9 +54,9 @@ namespace VideoForensics.Data.Core.Services
                     }).ToList();
 
                     // Append all records
-                    foreach (var record in records)
+                    foreach (ProviderReconciliationRecord? record in records)
                     {
-                        await context.ProviderReconciliation.AppendAsync(record, ct);
+                        _ = await context.ProviderReconciliation.AppendAsync(record, ct);
                     }
 
                     // Count discrepancies by type
@@ -74,7 +76,7 @@ namespace VideoForensics.Data.Core.Services
                         NewEventFoundOnProvider = newCount
                     };
 
-                    await context.ActionLog.AppendAsync(
+                    _ = await context.ActionLog.AppendAsync(
                         Environment.UserName,
                         ActorType.Human,
                         "ProviderReconciliationRun",
@@ -102,7 +104,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                var history = await _reconciliationRepository.GetHistoryForDeviceAsync(deviceId, ct);
+                IReadOnlyList<ProviderReconciliationRecord> history = await _reconciliationRepository.GetHistoryForDeviceAsync(deviceId, ct);
                 _logger.LogInformation("Retrieved {RecordCount} reconciliation records for device {DeviceId}",
                     history.Count, deviceId);
                 return history;

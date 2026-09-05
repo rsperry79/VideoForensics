@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -13,7 +16,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new AnnotationRepository(_fixture.Factory, loggerFactory.CreateLogger<AnnotationRepository>());
         }
 
@@ -28,7 +31,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var entityId = Guid.NewGuid();
 
-            var annotation = await _repository.AddAsync("MediaItem", entityId, "mcp:face", "person", "John Doe", CancellationToken.None);
+            Annotation annotation = await _repository.AddAsync("MediaItem", entityId, "mcp:face", "person", "John Doe", CancellationToken.None);
 
             Assert.NotNull(annotation);
             Assert.Equal("MediaItem", annotation.EntityType);
@@ -42,9 +45,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task AnnotationRepository_GetAsync_FindsAnnotation()
         {
             var entityId = Guid.NewGuid();
-            var annotation = await _repository.AddAsync("Event", entityId, "source1", "key1", "value1", CancellationToken.None);
+            Annotation annotation = await _repository.AddAsync("Event", entityId, "source1", "key1", "value1", CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(annotation.Id, CancellationToken.None);
+            Annotation? retrieved = await _repository.GetAsync(annotation.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(annotation.Id, retrieved.Id);
@@ -57,11 +60,11 @@ namespace VideoForensics.Data.Database.Tests
             var entityId = Guid.NewGuid();
             var otherEntityId = Guid.NewGuid();
 
-            await _repository.AddAsync("MediaItem", entityId, "src1", "key1", "val1", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", entityId, "src2", "key2", "val2", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", otherEntityId, "src3", "key3", "val3", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", entityId, "src1", "key1", "val1", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", entityId, "src2", "key2", "val2", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", otherEntityId, "src3", "key3", "val3", CancellationToken.None);
 
-            var annotations = await _repository.GetForEntityAsync("MediaItem", entityId, CancellationToken.None);
+            IReadOnlyList<Annotation> annotations = await _repository.GetForEntityAsync("MediaItem", entityId, CancellationToken.None);
 
             Assert.Equal(2, annotations.Count);
         }
@@ -69,11 +72,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnnotationRepository_SearchAsync_ByKeyOnly()
         {
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src1", "detected_person", "Alice", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src2", "detected_person", "Bob", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src3", "detected_object", "Car", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src1", "detected_person", "Alice", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src2", "detected_person", "Bob", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src3", "detected_object", "Car", CancellationToken.None);
 
-            var results = await _repository.SearchAsync("detected_person", null, CancellationToken.None);
+            IReadOnlyList<Annotation> results = await _repository.SearchAsync("detected_person", null, CancellationToken.None);
 
             Assert.Equal(2, results.Count);
         }
@@ -81,11 +84,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnnotationRepository_SearchAsync_ByKeyAndValue()
         {
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Alice", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Alice", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Bob", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Alice", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Alice", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "face_recognition", "person_name", "Bob", CancellationToken.None);
 
-            var results = await _repository.SearchAsync("person_name", "Alice", CancellationToken.None);
+            IReadOnlyList<Annotation> results = await _repository.SearchAsync("person_name", "Alice", CancellationToken.None);
 
             Assert.Equal(2, results.Count);
         }
@@ -93,11 +96,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AnnotationRepository_DeleteAsync_RemovesAnnotation()
         {
-            var annotation = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src", "key", "val", CancellationToken.None);
+            Annotation annotation = await _repository.AddAsync("MediaItem", Guid.NewGuid(), "src", "key", "val", CancellationToken.None);
 
             await _repository.DeleteAsync(annotation.Id, CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(annotation.Id, CancellationToken.None);
+            Annotation? retrieved = await _repository.GetAsync(annotation.Id, CancellationToken.None);
             Assert.Null(retrieved);
         }
 
@@ -107,18 +110,17 @@ namespace VideoForensics.Data.Database.Tests
             var entityId = Guid.NewGuid();
             var otherEntityId = Guid.NewGuid();
 
-            await _repository.AddAsync("MediaItem", entityId, "src1", "key1", "val1", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", entityId, "src2", "key2", "val2", CancellationToken.None);
-            await _repository.AddAsync("MediaItem", otherEntityId, "src3", "key3", "val3", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", entityId, "src1", "key1", "val1", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", entityId, "src2", "key2", "val2", CancellationToken.None);
+            _ = await _repository.AddAsync("MediaItem", otherEntityId, "src3", "key3", "val3", CancellationToken.None);
 
             await _repository.DeleteForEntityAsync("MediaItem", entityId, CancellationToken.None);
 
-            var forEntity = await _repository.GetForEntityAsync("MediaItem", entityId, CancellationToken.None);
-            var forOther = await _repository.GetForEntityAsync("MediaItem", otherEntityId, CancellationToken.None);
+            IReadOnlyList<Annotation> forEntity = await _repository.GetForEntityAsync("MediaItem", entityId, CancellationToken.None);
+            IReadOnlyList<Annotation> forOther = await _repository.GetForEntityAsync("MediaItem", otherEntityId, CancellationToken.None);
 
             Assert.Empty(forEntity);
-            Assert.Single(forOther);
+            _ = Assert.Single(forOther);
         }
-
     }
 }

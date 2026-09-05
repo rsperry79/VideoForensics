@@ -1,13 +1,17 @@
+using ICSharpCode.SharpZipLib.Zip;
+
+using Microsoft.Extensions.Logging;
+
 using System.Security.Cryptography;
 using System.Text.Json;
-using ICSharpCode.SharpZipLib.Zip;
-using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 
-namespace VideoForensics.Client.Core
+namespace VideoForensics.Client.Core.Services
 {
     internal class EvidenceExportOrchestrator : IEvidenceExportService
     {
@@ -51,17 +55,17 @@ namespace VideoForensics.Client.Core
                     !string.IsNullOrEmpty(passphrase));
 
                 // Ensure output directory exists
-                Directory.CreateDirectory(outputDirectory);
+                _ = Directory.CreateDirectory(outputDirectory);
 
                 // Step 1: Fetch all media items and verify integrity
                 var itemsToExport = new List<(MediaItem Item, string Sha256AtExport)>();
                 var excludedItems = new List<Guid>();
 
-                foreach (var mediaItemId in mediaItemIds)
+                foreach (Guid mediaItemId in mediaItemIds)
                 {
                     try
                     {
-                        var mediaItem = await _mediaItemRepository.GetAsync(mediaItemId, ct);
+                        MediaItem? mediaItem = await _mediaItemRepository.GetAsync(mediaItemId, ct);
                         if (mediaItem == null)
                         {
                             _logger.LogWarning("Media item {MediaItemId} not found, skipping", mediaItemId);
@@ -107,10 +111,10 @@ namespace VideoForensics.Client.Core
                     ItemCount = itemsToExport.Count,
                     Items = itemsToExport.Select(x => new
                     {
-                        FileName = x.Item.FileName,
+                        x.Item.FileName,
                         Sha256Hash = x.Sha256AtExport,
-                        RecordedAtUtc = x.Item.RecordedAtUtc,
-                        DownloadedAtUtc = x.Item.DownloadedAtUtc,
+                        x.Item.RecordedAtUtc,
+                        x.Item.DownloadedAtUtc,
                         IntegrityStatus = "Verified"
                     }).ToList()
                 };
@@ -119,21 +123,21 @@ namespace VideoForensics.Client.Core
 
                 // Step 3: Build chain_of_custody.json (per-item action log history)
                 var chainOfCustodyItems = new List<object>();
-                foreach (var (item, _) in itemsToExport)
+                foreach ((MediaItem? item, _) in itemsToExport)
                 {
                     try
                     {
-                        var history = await _actionLogRepository.GetHistoryForEntityAsync(nameof(MediaItem), item.Id, ct);
+                        IReadOnlyList<ActionLogEntry> history = await _actionLogRepository.GetHistoryForEntityAsync(nameof(MediaItem), item.Id, ct);
                         chainOfCustodyItems.Add(new
                         {
                             MediaItemId = item.Id,
-                            FileName = item.FileName,
+                            item.FileName,
                             ActionHistory = history.Select(entry => new
                             {
-                                TimestampUtc = entry.TimestampUtc,
-                                Actor = entry.Actor,
+                                entry.TimestampUtc,
+                                entry.Actor,
                                 ActorType = entry.ActorType.ToString(),
-                                Action = entry.Action,
+                                entry.Action,
                                 Details = entry.DetailsJson
                             }).ToList()
                         });
@@ -158,7 +162,7 @@ namespace VideoForensics.Client.Core
                     }
 
                     // Add each media file
-                    foreach (var (item, _) in itemsToExport)
+                    foreach ((MediaItem? item, _) in itemsToExport)
                     {
                         try
                         {
@@ -171,7 +175,7 @@ namespace VideoForensics.Client.Core
                             var entry = new ZipEntry(item.FileName);
                             zipStream.PutNextEntry(entry);
 
-                            using (var fileStream = File.OpenRead(item.FilePath))
+                            using (FileStream fileStream = File.OpenRead(item.FilePath))
                             {
                                 await fileStream.CopyToAsync(zipStream, ct);
                             }
@@ -193,6 +197,7 @@ namespace VideoForensics.Client.Core
                         {
                             await writer.WriteAsync(manifestJson);
                         }
+
                         zipStream.CloseEntry();
                     }
 
@@ -204,6 +209,7 @@ namespace VideoForensics.Client.Core
                         {
                             await writer.WriteAsync(chainOfCustodyJson);
                         }
+
                         zipStream.CloseEntry();
                     }
                 }
@@ -212,7 +218,7 @@ namespace VideoForensics.Client.Core
                 var archiveHash = await ComputeFileHashAsync(archivePath, ct);
                 var exportedItems = itemsToExport.Select(x => (x.Item.Id, x.Sha256AtExport)).ToList();
 
-                await _exportRecordService.RecordExportAsync(
+                _ = await _exportRecordService.RecordExportAsync(
                     Environment.UserName,
                     caseReference,
                     recipientDescription,
@@ -248,12 +254,10 @@ namespace VideoForensics.Client.Core
 
         private async Task<string> ComputeFileHashAsync(string filePath, CancellationToken ct)
         {
-            using (var hashAlgorithm = SHA256.Create())
-            using (var fileStream = File.OpenRead(filePath))
-            {
-                var hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
-                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-            }
+            using var hashAlgorithm = SHA256.Create();
+            using FileStream fileStream = File.OpenRead(filePath);
+            var hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
     }
 }

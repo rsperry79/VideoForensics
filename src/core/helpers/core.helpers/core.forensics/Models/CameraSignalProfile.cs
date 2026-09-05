@@ -12,6 +12,6 @@ namespace VideoForensics.Forensics.Models
         public bool AnomaliesDetected { get; set; }
         public int AnomalousEventCount { get; set; }
         public double AnomalyPercentage { get; set; }
-        public List<string> FlagsForReview { get; set; } = new();
+        public List<string> FlagsForReview { get; set; } = [];
     }
 }

@@ -1,5 +1,7 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
+
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -44,7 +46,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    var appVersion = GetAppVersion();
+                    string appVersion = GetAppVersion();
 
                     var exportRecord = new ExportRecord
                     {
@@ -68,7 +70,7 @@ namespace VideoForensics.Data.Core.Services
                         MediaItemSha256HashAtExport = item.HashAtExport
                     }).ToList();
 
-                    await context.ExportRecords.AppendAsync(exportRecord, exportItems, ct);
+                    _ = await context.ExportRecords.AppendAsync(exportRecord, exportItems, ct);
 
                     // Log the export event
                     var details = new
@@ -79,7 +81,7 @@ namespace VideoForensics.Data.Core.Services
                         WasEncrypted = wasEncrypted
                     };
 
-                    await context.ActionLog.AppendAsync(
+                    _ = await context.ActionLog.AppendAsync(
                         exportedByUserName,
                         ActorType.Human,
                         "EvidenceExported",
@@ -136,7 +138,7 @@ namespace VideoForensics.Data.Core.Services
             try
             {
                 var assembly = System.Reflection.Assembly.GetEntryAssembly();
-                var version = assembly?.GetName().Version?.ToString() ?? "Unknown";
+                string version = assembly?.GetName().Version?.ToString() ?? "Unknown";
                 var infoVersion = assembly?.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                     .FirstOrDefault() as System.Reflection.AssemblyInformationalVersionAttribute;
 

@@ -45,7 +45,7 @@ namespace VideoForensics.Providers.Ring
         {
             await EnsureSessionValid(cancellationToken);
 
-            var path = $"doorbots/{doorbotId}/siren_{(on ? "on" : "off")}";
+            string path = $"doorbots/{doorbotId}/siren_{(on ? "on" : "off")}";
             if (on && durationSeconds.HasValue)
             {
                 path += $"?duration={durationSeconds.Value}";
@@ -70,7 +70,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/play_sound");
-            var bodyContent = JsonSerializer.Serialize(new { kind });
+            string bodyContent = JsonSerializer.Serialize(new { kind });
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
@@ -90,7 +90,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
-            var bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
+            string bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
             {
                 ["doorbot[settings][doorbell_volume]"] = volume
             });
@@ -112,7 +112,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
-            var bodyContent = JsonSerializer.Serialize(new
+            string bodyContent = JsonSerializer.Serialize(new
             {
                 motion_settings = new { motion_detection_enabled = enabled }
             });
@@ -144,12 +144,13 @@ namespace VideoForensics.Providers.Ring
             {
                 fields["doorbot[settings][chime_settings][enable]"] = enabled.Value;
             }
+
             if (duration.HasValue)
             {
                 fields["doorbot[settings][chime_settings][duration]"] = duration.Value;
             }
 
-            var bodyContent = JsonSerializer.Serialize(fields);
+            string bodyContent = JsonSerializer.Serialize(fields);
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
@@ -169,7 +170,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/do_not_disturb");
-            var bodyContent = JsonSerializer.Serialize(new { time = seconds });
+            string bodyContent = JsonSerializer.Serialize(new { time = seconds });
             await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
@@ -187,7 +188,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
-            var bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
+            string bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
             {
                 ["doorbot[settings][night_mode]"] = enabled ? 1 : 0
             });
@@ -206,7 +207,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingDevicesApiBaseUrl, $"devices/{doorbotId}/settings");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }
@@ -237,7 +238,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/linked_doorbots");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
         }

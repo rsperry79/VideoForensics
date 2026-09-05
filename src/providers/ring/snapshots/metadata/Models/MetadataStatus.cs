@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Models
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Status of metadata processing for a snapshot.

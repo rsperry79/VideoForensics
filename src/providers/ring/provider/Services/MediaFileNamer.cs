@@ -1,4 +1,3 @@
-using System;
 using System.Text.RegularExpressions;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -18,8 +17,8 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static string FormatMediaFileName(string cameraName, DateTime timestamp, string mediaType, string extension)
         {
-            var sanitizedName = SanitizeForFilePath(cameraName);
-            var dateTime = timestamp.ToString("yyyyMMdd_HHmmss");
+            string sanitizedName = SanitizeForFilePath(cameraName);
+            string dateTime = timestamp.ToString("yyyyMMdd_HHmmss");
             return $"{sanitizedName}_{dateTime}_{mediaType}.{extension.TrimStart('.')}";
         }
 
@@ -31,11 +30,13 @@ namespace VideoForensics.Providers.Ring.Services
         public static string SanitizeForFilePath(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
+            {
                 return "device";
+            }
 
             // Characters forbidden in NTFS/OneDrive filenames: < > : " / \ | ? *
             // Also control characters 0x00-0x1F
-            var sanitized = Regex.Replace(input, @"[\<\>\:""/\\|\?\*\x00-\x1F]", string.Empty);
+            string sanitized = Regex.Replace(input, @"[\<\>\:""/\\|\?\*\x00-\x1F]", string.Empty);
 
             // Replace multiple spaces with single space, then trim
             sanitized = Regex.Replace(sanitized, @"\s+", " ").Trim();
@@ -44,10 +45,7 @@ namespace VideoForensics.Providers.Ring.Services
             sanitized = sanitized.Replace(" ", "_");
 
             // If entirely empty after sanitization, use fallback
-            if (string.IsNullOrEmpty(sanitized))
-                return "device";
-
-            return sanitized;
+            return string.IsNullOrEmpty(sanitized) ? "device" : sanitized;
         }
     }
 }

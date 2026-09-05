@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Per-doorbot settings values captured from the raw "devices" response before any destructive
@@ -30,7 +29,7 @@ namespace VideoForensics.Providers.Ring.Utils
             try
             {
                 using var doc = JsonDocument.Parse(devicesJson);
-                foreach (var arrayName in new[] { "doorbots", "authorized_doorbots", "stickup_cams" })
+                foreach (string? arrayName in new[] { "doorbots", "authorized_doorbots", "stickup_cams" })
                 {
                     if (!doc.RootElement.TryGetProperty(arrayName, out var array) || array.ValueKind != JsonValueKind.Array)
                     {
@@ -39,10 +38,11 @@ namespace VideoForensics.Providers.Ring.Utils
 
                     foreach (var device in array.EnumerateArray())
                     {
-                        if (!device.TryGetProperty("id", out var idProp) || !idProp.TryGetInt64(out var id))
+                        if (!device.TryGetProperty("id", out var idProp) || !idProp.TryGetInt64(out long id))
                         {
                             continue;
                         }
+
                         if (result.ContainsKey(id))
                         {
                             continue;
@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Utils
                             continue;
                         }
 
-                        int? volume = settings.TryGetProperty("doorbell_volume", out var v) && v.TryGetInt32(out var vi) ? vi : null;
+                        int? volume = settings.TryGetProperty("doorbell_volume", out var v) && v.TryGetInt32(out int vi) ? vi : null;
                         bool? nightMode = TryGetBool(settings, "night_mode_on");
                         bool? motionDetection = TryGetBool(settings, "motion_detection_enabled");
 
@@ -62,9 +62,9 @@ namespace VideoForensics.Providers.Ring.Utils
                         int? chimeDuration = null;
                         if (settings.TryGetProperty("chime_settings", out var chime) && chime.ValueKind == JsonValueKind.Object)
                         {
-                            chimeType = chime.TryGetProperty("type", out var ct) && ct.TryGetInt32(out var cti) ? cti : null;
+                            chimeType = chime.TryGetProperty("type", out var ct) && ct.TryGetInt32(out int cti) ? cti : null;
                             chimeEnabled = TryGetBool(chime, "enable");
-                            chimeDuration = chime.TryGetProperty("duration", out var cd) && cd.TryGetInt32(out var cdi) ? cdi : null;
+                            chimeDuration = chime.TryGetProperty("duration", out var cd) && cd.TryGetInt32(out int cdi) ? cdi : null;
                         }
 
                         result[id] = new DoorbotSettingsSnapshot(volume, chimeType, chimeEnabled, chimeDuration, nightMode, motionDetection);
@@ -80,16 +80,18 @@ namespace VideoForensics.Providers.Ring.Utils
             return result;
         }
 
-        private static bool? TryGetBool(JsonElement obj, string propertyName) =>
-            obj.TryGetProperty(propertyName, out var prop)
+        private static bool? TryGetBool(JsonElement obj, string propertyName)
+        {
+            return obj.TryGetProperty(propertyName, out var prop)
                 ? prop.ValueKind switch
                 {
                     JsonValueKind.True => true,
                     JsonValueKind.False => false,
-                    JsonValueKind.Number when prop.TryGetInt32(out var i) => i != 0,
-                    _ => (bool?)null
+                    JsonValueKind.Number when prop.TryGetInt32(out int i) => i != 0,
+                    _ => null
                 }
                 : null;
+        }
     }
 }
 

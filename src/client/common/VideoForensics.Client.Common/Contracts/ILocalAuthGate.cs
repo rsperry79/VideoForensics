@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// Local device biometric/PIN gate (plan §5.9) - distinct from and in addition to §5.1's

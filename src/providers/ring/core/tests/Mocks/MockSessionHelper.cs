@@ -1,8 +1,6 @@
-using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 
-using System;
-
-namespace VideoForensics.Providers.Ring.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>
     /// Helper class for creating mock Ring API sessions for testing
@@ -27,7 +25,10 @@ namespace VideoForensics.Providers.Ring.Tests.Mocks
         /// <summary>
         /// Gets the underlying mock handler for custom response setup
         /// </summary>
-        public MockHttpMessageHandler GetMockHandler() => _mockHandler;
+        public MockHttpMessageHandler GetMockHandler()
+        {
+            return _mockHandler;
+        }
 
         /// <summary>
         /// Sets up a mock response for a specific URL

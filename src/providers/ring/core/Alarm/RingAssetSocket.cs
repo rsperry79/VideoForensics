@@ -27,7 +27,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         private readonly List<string> _assetIds;
         private readonly CancellationTokenSource _cts = new();
         private readonly object _waitersLock = new();
-        private readonly List<(Func<JsonElement, bool> Predicate, TaskCompletionSource<JsonElement> Tcs)> _waiters = new();
+        private readonly List<(Func<JsonElement, bool> Predicate, TaskCompletionSource<JsonElement> Tcs)> _waiters = [];
         private long _seq = 1;
         private Task _receiveLoopTask;
         private string _webSocketUrl;
@@ -40,7 +40,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         internal RingAssetSocket(IWebSocketTransport transport, List<string> assetIds)
         {
             _transport = transport;
-            _assetIds = assetIds ?? new List<string>();
+            _assetIds = assetIds ?? [];
         }
 
         internal async Task ConnectAsync(Uri webSocketUri)
@@ -83,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Alarm
                     continue;
                 }
 
-                if (root.TryGetProperty("channel", out var channelEl) &&
+                if (root.TryGetProperty("channel", out JsonElement channelEl) &&
                     channelEl.ValueKind == JsonValueKind.String &&
                     channelEl.GetString() == "DataUpdate")
                 {
@@ -97,14 +97,14 @@ namespace VideoForensics.Providers.Ring.Alarm
 
         private void RaiseDeviceUpdated(JsonElement root)
         {
-            if (!root.TryGetProperty("body", out var bodyEl))
+            if (!root.TryGetProperty("body", out JsonElement bodyEl))
             {
                 return;
             }
 
             try
             {
-                var device = JsonSerializer.Deserialize<AlarmDevice>(bodyEl.GetRawText());
+                AlarmDevice? device = JsonSerializer.Deserialize<AlarmDevice>(bodyEl.GetRawText());
                 if (device != null)
                 {
                     DeviceUpdated?.Invoke(this, device);
@@ -124,7 +124,7 @@ namespace VideoForensics.Providers.Ring.Alarm
                 {
                     if (_waiters[i].Predicate(root))
                     {
-                        _waiters[i].Tcs.TrySetResult(root.Clone());
+                        _ = _waiters[i].Tcs.TrySetResult(root.Clone());
                         _waiters.RemoveAt(i);
                     }
                 }
@@ -140,7 +140,7 @@ namespace VideoForensics.Providers.Ring.Alarm
             }
 
             var timeoutCts = new CancellationTokenSource(timeout);
-            timeoutCts.Token.Register(() => tcs.TrySetException(
+            _ = timeoutCts.Token.Register(() => tcs.TrySetException(
                 new TimeoutException($"Timed out after {timeout.TotalSeconds}s waiting for an asset socket response")));
 
             return tcs.Task;
@@ -161,8 +161,8 @@ namespace VideoForensics.Providers.Ring.Alarm
                 msg = new { msg = msgType, dst, seq, body }
             };
 
-            var waitTask = WaitForMessageAsync(
-                el => el.TryGetProperty("msg", out var m) && m.ValueKind == JsonValueKind.String && m.GetString() == msgType,
+            Task<JsonElement> waitTask = WaitForMessageAsync(
+                el => el.TryGetProperty("msg", out JsonElement m) && m.ValueKind == JsonValueKind.String && m.GetString() == msgType,
                 timeout ?? TimeSpan.FromSeconds(10));
 
             var serialized = JsonSerializer.Serialize(envelope);
@@ -181,17 +181,17 @@ namespace VideoForensics.Providers.Ring.Alarm
 
             foreach (var assetId in _assetIds)
             {
-                var response = await SendCommandAsync("DeviceInfoDocGetList", assetId, null);
-                if (!response.TryGetProperty("body", out var bodyEl) || bodyEl.ValueKind != JsonValueKind.Array)
+                JsonElement response = await SendCommandAsync("DeviceInfoDocGetList", assetId, null);
+                if (!response.TryGetProperty("body", out JsonElement bodyEl) || bodyEl.ValueKind != JsonValueKind.Array)
                 {
                     continue;
                 }
 
-                foreach (var deviceEl in bodyEl.EnumerateArray())
+                foreach (JsonElement deviceEl in bodyEl.EnumerateArray())
                 {
                     try
                     {
-                        var device = JsonSerializer.Deserialize<AlarmDevice>(deviceEl.GetRawText());
+                        AlarmDevice? device = JsonSerializer.Deserialize<AlarmDevice>(deviceEl.GetRawText());
                         if (device != null)
                         {
                             devices.Add(device);
@@ -209,35 +209,40 @@ namespace VideoForensics.Providers.Ring.Alarm
 
         private async Task<AlarmDevice> GetSecurityPanelAsync()
         {
-            var devices = await GetDevices();
-            var panel = devices.FirstOrDefault(d => d.DeviceType == "security-panel");
-            if (panel == null)
-            {
-                throw new InvalidOperationException("No security panel device found at this location.");
-            }
-            return panel;
+            List<AlarmDevice> devices = await GetDevices();
+            AlarmDevice? panel = devices.FirstOrDefault(d => d.DeviceType == "security-panel");
+            return panel == null ? throw new InvalidOperationException("No security panel device found at this location.") : panel;
         }
 
         /// <summary>
         /// Arms the alarm in "away" mode.
         /// </summary>
-        public Task ArmAway(IEnumerable<string> bypassSensorZids = null) => SetAlarmModeAsync("all", bypassSensorZids);
+        public Task ArmAway(IEnumerable<string> bypassSensorZids = null)
+        {
+            return SetAlarmModeAsync("all", bypassSensorZids);
+        }
 
         /// <summary>
         /// Arms the alarm in "home" mode.
         /// </summary>
-        public Task ArmHome(IEnumerable<string> bypassSensorZids = null) => SetAlarmModeAsync("some", bypassSensorZids);
+        public Task ArmHome(IEnumerable<string> bypassSensorZids = null)
+        {
+            return SetAlarmModeAsync("some", bypassSensorZids);
+        }
 
         /// <summary>
         /// Disarms the alarm.
         /// </summary>
-        public Task Disarm() => SetAlarmModeAsync("none", null);
+        public Task Disarm()
+        {
+            return SetAlarmModeAsync("none", null);
+        }
 
         private async Task SetAlarmModeAsync(string mode, IEnumerable<string> bypassSensorZids)
         {
-            var panel = await GetSecurityPanelAsync();
+            AlarmDevice panel = await GetSecurityPanelAsync();
             var body = new { mode, bypass = bypassSensorZids?.ToArray() ?? Array.Empty<string>() };
-            await SendCommandAsync("security-panel.switch-mode", panel.Zid, body);
+            _ = await SendCommandAsync("security-panel.switch-mode", panel.Zid, body);
         }
 
         public async Task CloseAsync()

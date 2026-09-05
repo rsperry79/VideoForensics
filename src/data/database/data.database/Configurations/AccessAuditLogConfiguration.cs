@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,27 +10,27 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<AccessAuditLogEntity> builder)
         {
-            builder.HasKey(aal => aal.Id);
+            _ = builder.HasKey(aal => aal.Id);
 
-            builder.Property(aal => aal.UserId)
+            _ = builder.Property(aal => aal.UserId)
                 .IsRequired()
                 .HasMaxLength(ActorMaxLength);
 
-            builder.Property(aal => aal.Action)
+            _ = builder.Property(aal => aal.Action)
                 .IsRequired()
                 .HasMaxLength(ActionMaxLength);
 
-            builder.Property(aal => aal.IpAddress)
+            _ = builder.Property(aal => aal.IpAddress)
                 .IsRequired()
                 .HasMaxLength(ActorMaxLength);
 
-            builder.Property(aal => aal.Purpose)
+            _ = builder.Property(aal => aal.Purpose)
                 .IsRequired()
                 .HasMaxLength(DescriptionMaxLength);
 
-            builder.HasIndex(aal => aal.EvidenceId);
-            builder.HasIndex(aal => aal.UserId);
-            builder.HasIndex(aal => aal.AccessedAtUtc);
+            _ = builder.HasIndex(aal => aal.EvidenceId);
+            _ = builder.HasIndex(aal => aal.UserId);
+            _ = builder.HasIndex(aal => aal.AccessedAtUtc);
         }
     }
 }

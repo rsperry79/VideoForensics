@@ -6,7 +6,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task CalculateRssiStatisticsAsync_WithEvents_ReturnsStats()
         {
             // Arrange
-            var events = new List<DoorbotHistoryEvent>
+            _ = new List<DoorbotHistoryEvent>
             {
                 // Add events with RSSI data
             };
@@ -24,7 +24,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task AnalyzeCameraSignalsAsync_WithEvents_ReturnsCameraProfiles()
         {
             // Arrange
-            var events = new List<DoorbotHistoryEvent>
+            _ = new List<DoorbotHistoryEvent>
             {
                 // Add test events with multiple cameras
             };
@@ -42,7 +42,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task DetectSignalAnomaliesAsync_WithAnomalousEvents_FlagThemForReview()
         {
             // Arrange
-            var events = new List<DoorbotHistoryEvent>
+            _ = new List<DoorbotHistoryEvent>
             {
                 // Mix of normal and anomalous RSSI values
             };
@@ -61,7 +61,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task DetectJammingAsync_WithSustainedSignalDegradation_ReturnsJammingIncident()
         {
             // Arrange
-            var events = new List<DoorbotHistoryEvent>
+            _ = new List<DoorbotHistoryEvent>
             {
                 // Add events with sustained poor signal
             };

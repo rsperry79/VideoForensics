@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -29,12 +32,12 @@ namespace VideoForensics.Data.Core.Tests
             var watermarkDate = new DateTime(2024, 1, 10, 12, 0, 0, DateTimeKind.Utc);
 
             var device = new Device { Id = deviceId, ProviderDeviceId = "test-id", Name = "Test Device", Type = "indoor", LastSuccessfulPullAtUtc = watermarkDate };
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: true, CancellationToken.None);
+            DateTime result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: true, CancellationToken.None);
 
             // Assert
             Assert.Equal(requestedDate, result);
@@ -51,12 +54,12 @@ namespace VideoForensics.Data.Core.Tests
             var requestedDate = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc);
 
             var device = new Device { Id = deviceId, ProviderDeviceId = "test-id", Name = "Test Device", Type = "indoor", LastSuccessfulPullAtUtc = null };
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
+            DateTime result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
 
             // Assert
             Assert.Equal(requestedDate, result);
@@ -72,12 +75,12 @@ namespace VideoForensics.Data.Core.Tests
             var expectedDate = new DateTime(2024, 1, 20, 11, 0, 0, DateTimeKind.Utc); // watermark - 1 hour
 
             var device = new Device { Id = deviceId, ProviderDeviceId = "test-id", Name = "Test Device", Type = "indoor", LastSuccessfulPullAtUtc = watermarkDate };
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
+            DateTime result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
 
             // Assert
             Assert.Equal(expectedDate, result);
@@ -92,12 +95,12 @@ namespace VideoForensics.Data.Core.Tests
             var watermarkDate = new DateTime(2024, 1, 10, 12, 0, 0, DateTimeKind.Utc);
 
             var device = new Device { Id = deviceId, ProviderDeviceId = "test-id", Name = "Test Device", Type = "indoor", LastSuccessfulPullAtUtc = watermarkDate };
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
+            DateTime result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
 
             // Assert
             // Should return max(requestedDate, watermarkDate - buffer)
@@ -116,12 +119,12 @@ namespace VideoForensics.Data.Core.Tests
             var expectedDate = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc); // watermark - 1 hour
 
             var device = new Device { Id = deviceId, ProviderDeviceId = "test-id", Name = "Test Device", Type = "indoor", LastSuccessfulPullAtUtc = watermarkDate };
-            _mockDeviceRepository
+            _ = _mockDeviceRepository
                 .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
 
             // Act
-            var result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
+            DateTime result = await _watermarkService.ResolveStartDateAsync(deviceId, requestedDate, force: false, CancellationToken.None);
 
             // Assert
             Assert.Equal(expectedDate, result);

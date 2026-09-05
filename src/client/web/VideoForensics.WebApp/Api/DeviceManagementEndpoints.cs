@@ -22,15 +22,15 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapDeviceManagementEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
-            group.MapGet("/paired-devices", async (IPairedDeviceRepository devices, CancellationToken ct) =>
+            _ = group.MapGet("/paired-devices", async (IPairedDeviceRepository devices, CancellationToken ct) =>
                 Results.Ok(await devices.ListAsync(ct)));
 
-            group.MapGet("/operators", async (IOperatorRepository operators, CancellationToken ct) =>
+            _ = group.MapGet("/operators", async (IOperatorRepository operators, CancellationToken ct) =>
                 Results.Ok(await operators.ListAsync(ct)));
 
-            group.MapPost("/paired-devices/{id:guid}/revoke", async (
+            _ = group.MapPost("/paired-devices/{id:guid}/revoke", async (
                 Guid id,
                 RevokeDeviceRequest request,
                 IPairedDeviceRepository devices,
@@ -44,12 +44,12 @@ namespace VideoForensics.WebApp.Api
                 await devices.RevokeAsync(id, request.Reason, ct);
                 connectionTracker.ForceDisconnect(id);
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingRevoked,
-                    Guid.TryParse(operatorIdClaim, out var actingOperatorId) ? actingOperatorId : null,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     id, tierResolver.ResolveClientIp(context), request.Reason, isUrgent: true, ct);
                 return Results.Ok();
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
-            group.MapPost("/operators/{id:guid}/deactivate", async (
+            _ = group.MapPost("/operators/{id:guid}/deactivate", async (
                 Guid id,
                 RevokeDeviceRequest request,
                 IOperatorRepository operators,
@@ -62,14 +62,14 @@ namespace VideoForensics.WebApp.Api
             {
                 var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await operators.DeactivateAsync(id, ct);
-                var revokedDeviceIds = await devices.RevokeAllForOperatorAsync(id, request.Reason, ct);
-                foreach (var revokedDeviceId in revokedDeviceIds)
+                IReadOnlyList<Guid> revokedDeviceIds = await devices.RevokeAllForOperatorAsync(id, request.Reason, ct);
+                foreach (Guid revokedDeviceId in revokedDeviceIds)
                 {
                     connectionTracker.ForceDisconnect(revokedDeviceId);
                 }
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.OperatorDeactivated,
-                    Guid.TryParse(operatorIdClaim, out var actingOperatorId) ? actingOperatorId : null,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     null, tierResolver.ResolveClientIp(context), $"Operator {id}, {revokedDeviceIds.Count} device(s) revoked: {request.Reason}", isUrgent: true, ct);
 
                 return Results.Ok(new { revokedDeviceCount = revokedDeviceIds.Count });

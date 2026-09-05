@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring.Auth;
+using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -53,7 +54,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 var credentials = new RingCredentials { UserName = username, Password = password };
 
-                var session = await Session.AuthenticateWithCredentials(
+                Session session = await Session.AuthenticateWithCredentials(
                     credentials,
                     twoFactorAuthCodeProvider: twoFactorAuthCodeProvider,
                     progress: null!
@@ -62,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Services
                 if (session?.OAuthToken != null)
                 {
                     _sessionProvider.SetSession(session);
-                    var expiresAt = DateTime.UtcNow.AddHours(24);
+                    DateTime expiresAt = DateTime.UtcNow.AddHours(24);
 
                     // Persist credentials to secure store
                     if (credentials.RefreshToken != null)
@@ -82,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Guid? providerAccountId = null;
                     try
                     {
-                        var resolvedAccountId = await GetOrCreateProviderAccountAsync(username, cancellationToken);
+                        Guid resolvedAccountId = await GetOrCreateProviderAccountAsync(username, cancellationToken);
                         if (resolvedAccountId != Guid.Empty)
                         {
                             var dbPersistenceSucceeded = true;
@@ -192,9 +193,11 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
         {
-            var session = _sessionProvider.GetSession();
+            Session? session = _sessionProvider.GetSession();
             if (session == null)
+            {
                 return false;
+            }
 
             try
             {
@@ -213,9 +216,11 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Refreshing Ring API token");
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
+                {
                     return false;
+                }
 
                 await session.RefreshSession();
                 return true;
@@ -252,7 +257,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     try
                     {
-                        var credentialEntity = await _credentialRepository.GetAsync(
+                        (string CredentialType, string DecryptedValue)? credentialEntity = await _credentialRepository.GetAsync(
                             providerAccountId.Value,
                             "RefreshToken",
                             cancellationToken);
@@ -274,7 +279,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     try
                     {
-                        var saved = _credentialStore.Load(CredentialResolver.AuthPath);
+                        RingCredentials saved = _credentialStore.Load(CredentialResolver.AuthPath);
                         if (!string.IsNullOrWhiteSpace(saved.RefreshToken))
                         {
                             credentials = saved;
@@ -302,7 +307,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // For refresh token flow, we don't need 2FA — Ring API handles it server-side
-                var session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!);
+                Session session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!);
 
                 if (session?.OAuthToken == null)
                 {
@@ -317,7 +322,7 @@ namespace VideoForensics.Providers.Ring.Services
                     _credentialStore.Save(CredentialResolver.AuthPath, credentials);
 
                     // Update database if we have a provider account ID
-                    var resolvedAccountId = providerAccountId ?? (
+                    Guid resolvedAccountId = providerAccountId ?? (
                         string.IsNullOrWhiteSpace(credentials.UserName)
                             ? Guid.Empty
                             : await GetOrCreateProviderAccountAsync(credentials.UserName, cancellationToken)
@@ -345,9 +350,11 @@ namespace VideoForensics.Providers.Ring.Services
         private async Task<Guid> GetOrCreateProviderAccountAsync(string username, CancellationToken ct)
         {
             if (_userRepository == null || _providerAccountRepository == null)
+            {
                 return Guid.Empty;
+            }
 
-            var user = await _userRepository.GetByProviderKeyAsync(username, ct);
+            User? user = await _userRepository.GetByProviderKeyAsync(username, ct);
             if (user == null)
             {
                 user = new User
@@ -360,7 +367,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _userRepository.AddAsync(user, ct);
             }
 
-            var account = await _providerAccountRepository.GetByUserAndProviderAsync(user.Id, ProviderName, ct);
+            ProviderAccount? account = await _providerAccountRepository.GetByUserAndProviderAsync(user.Id, ProviderName, ct);
             if (account == null)
             {
                 account = new ProviderAccount
@@ -386,17 +393,16 @@ namespace VideoForensics.Providers.Ring.Services
 
         public string GetAuthStatus()
         {
-            var session = _sessionProvider.GetSession();
-            if (session?.OAuthToken == null)
-                return "Not authenticated";
-
-            return "Authenticated";
+            Session? session = _sessionProvider.GetSession();
+            return session?.OAuthToken == null ? "Not authenticated" : "Authenticated";
         }
 
         private async Task PersistRingAccountAsync(string username, Session session, Guid providerAccountId, CancellationToken ct)
         {
             if (_ringAccountRepository == null)
+            {
                 return;
+            }
 
             // Persist Ring account record for data governance
             var ringAccount = new RingAccount

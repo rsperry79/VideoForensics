@@ -1,5 +1,6 @@
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -12,10 +13,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var health = new DeviceHealth { BatteryPercentage = 42, Connected = true };
             var devices = new Devices
             {
-                Doorbots = new List<Doorbot> { new() { Id = 111, Health = health } }
+                Doorbots = [new() { Id = 111, Health = health }]
             };
 
-            var result = DeviceHealthMatcher.FindDeviceHealth(devices, "111");
+            DeviceHealth? result = DeviceHealthMatcher.FindDeviceHealth(devices, "111");
 
             Assert.Same(health, result);
         }
@@ -26,10 +27,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var health = new DeviceHealth { BatteryPercentage = 77 };
             var devices = new Devices
             {
-                StickupCams = new List<StickupCam> { new() { Id = 222, Health = health } }
+                StickupCams = [new() { Id = 222, Health = health }]
             };
 
-            var result = DeviceHealthMatcher.FindDeviceHealth(devices, "222");
+            DeviceHealth? result = DeviceHealthMatcher.FindDeviceHealth(devices, "222");
 
             Assert.Same(health, result);
         }
@@ -40,10 +41,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var health = new DeviceHealth { Connected = false };
             var devices = new Devices
             {
-                AuthorizedDoorbots = new List<Doorbot> { new() { Id = 333, Health = health } }
+                AuthorizedDoorbots = [new() { Id = 333, Health = health }]
             };
 
-            var result = DeviceHealthMatcher.FindDeviceHealth(devices, "333");
+            DeviceHealth? result = DeviceHealthMatcher.FindDeviceHealth(devices, "333");
 
             Assert.Same(health, result);
         }
@@ -53,10 +54,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var devices = new Devices
             {
-                Doorbots = new List<Doorbot> { new() { Id = 111, Health = new DeviceHealth() } }
+                Doorbots = [new() { Id = 111, Health = new DeviceHealth() }]
             };
 
-            var result = DeviceHealthMatcher.FindDeviceHealth(devices, "does-not-exist");
+            DeviceHealth? result = DeviceHealthMatcher.FindDeviceHealth(devices, "does-not-exist");
 
             Assert.Null(result);
         }
@@ -64,7 +65,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void FindDeviceHealth_NullDevices_ReturnsNull()
         {
-            var result = DeviceHealthMatcher.FindDeviceHealth(null, "111");
+            DeviceHealth? result = DeviceHealthMatcher.FindDeviceHealth(null, "111");
 
             Assert.Null(result);
         }

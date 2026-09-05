@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
@@ -29,6 +30,9 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         /// <summary>Create a typed logger for the given type.</summary>
-        protected ILogger<T> CreateLogger<T>() => LoggerFactory.CreateLogger<T>();
+        protected ILogger<T> CreateLogger<T>()
+        {
+            return LoggerFactory.CreateLogger<T>();
+        }
     }
 }

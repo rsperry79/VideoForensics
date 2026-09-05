@@ -20,10 +20,15 @@ public class SessionProvider : ISessionProvider
     /// </summary>
     private Guid? _lastSetAccountId;
 
-    public Session? GetSession() =>
-        _lastSetAccountId.HasValue ? GetSession(_lastSetAccountId.Value) : null;
+    public Session? GetSession()
+    {
+        return _lastSetAccountId.HasValue ? GetSession(_lastSetAccountId.Value) : null;
+    }
 
-    public void SetSession(Session session) => SetSession(DefaultAccountKey, session);
+    public void SetSession(Session session)
+    {
+        SetSession(DefaultAccountKey, session);
+    }
 
     public void ClearSession()
     {
@@ -33,8 +38,10 @@ public class SessionProvider : ISessionProvider
         }
     }
 
-    public Session? GetSession(Guid providerAccountId) =>
-        _sessions.TryGetValue(providerAccountId, out var session) ? session : null;
+    public Session? GetSession(Guid providerAccountId)
+    {
+        return _sessions.TryGetValue(providerAccountId, out Session? session) ? session : null;
+    }
 
     public void SetSession(Guid providerAccountId, Session session)
     {
@@ -46,7 +53,7 @@ public class SessionProvider : ISessionProvider
 
     public void ClearSession(Guid providerAccountId)
     {
-        _sessions.TryRemove(providerAccountId, out _);
+        _ = _sessions.TryRemove(providerAccountId, out _);
 
         // If the cleared account was the "last set" one, clear that tracking too so a subsequent
         // parameterless GetSession()/ClearSession() doesn't operate on a now-removed session.

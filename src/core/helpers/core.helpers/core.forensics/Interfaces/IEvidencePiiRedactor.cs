@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models.Reports;
 
-namespace VideoForensics.Forensics
+using VideoForensics.Forensics.Models;
+
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Redacts or removes personally identifiable information (PII) from forensic evidence and reports.
@@ -63,7 +64,7 @@ namespace VideoForensics.Forensics
         public bool RedactAccessLogs { get; set; }
         public bool RedactTimestamps { get; set; }
         public bool FullyAnonymize { get; set; }
-        public List<string> CustomSensitiveFields { get; set; } = new();
+        public List<string> CustomSensitiveFields { get; set; } = [];
         public string? ReplacementString { get; set; } = "[REDACTED]";
     }
 
@@ -72,7 +73,7 @@ namespace VideoForensics.Forensics
         public string ReportId { get; set; } = string.Empty;
         public DateTime RedactedAt { get; set; } = DateTime.UtcNow;
         public string RedactedBy { get; set; } = string.Empty;
-        public List<string> FieldsRedacted { get; set; } = new();
+        public List<string> FieldsRedacted { get; set; } = [];
         public int TotalRedactions { get; set; }
         public bool IsFullyAnonymized { get; set; }
     }

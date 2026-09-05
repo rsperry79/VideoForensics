@@ -6,7 +6,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task ExtractEvidenceAsync_WithValidEvent_ReturnsMetadata()
         {
             // Arrange
-            var @event = new DoorbotHistoryEvent
+            _ = new DoorbotHistoryEvent
             {
                 // Set event properties
             };
@@ -23,7 +23,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests
         public async Task ExtractEvidenceTimeSeriesAsync_WithMultipleEvents_ReturnsOrderedSequence()
         {
             // Arrange
-            var events = new List<DoorbotHistoryEvent>
+            _ = new List<DoorbotHistoryEvent>
             {
                 // Add test events
             };

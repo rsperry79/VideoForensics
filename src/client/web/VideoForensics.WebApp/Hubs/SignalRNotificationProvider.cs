@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.WebApp.Hubs
@@ -23,9 +24,14 @@ namespace VideoForensics.WebApp.Hubs
 
         // Always enabled - sending to zero connected clients is a harmless no-op, and unlike email
         // there is no configuration step (SMTP host/credentials) that could be missing.
-        public Task<bool> IsEnabledAsync(CancellationToken ct) => Task.FromResult(true);
+        public Task<bool> IsEnabledAsync(CancellationToken ct)
+        {
+            return Task.FromResult(true);
+        }
 
         public Task SendAsync(NotificationEvent notificationEvent, CancellationToken ct)
-            => _hubContext.Clients.All.SendAsync("UrgentEvent", notificationEvent, ct);
+        {
+            return _hubContext.Clients.All.SendAsync("UrgentEvent", notificationEvent, ct);
+        }
     }
 }

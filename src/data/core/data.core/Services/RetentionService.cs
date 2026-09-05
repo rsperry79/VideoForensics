@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -36,13 +37,13 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                var allItems = await _mediaItemRepository.ListAsync(ct);
-                var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+                IReadOnlyList<MediaItem> allItems = await _mediaItemRepository.ListAsync(ct);
+                DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
                 var itemsToPurge = allItems
                     .Where(m => !m.IsPurged && m.DownloadedAtUtc < cutoffDate)
                     .ToList();
 
-                var activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(itemsToPurge.Select(i => i.Id), ct);
+                IReadOnlyList<LegalHold> activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(itemsToPurge.Select(i => i.Id), ct);
                 var heldMediaItemIds = activeHolds.Select(h => h.MediaItemId).ToHashSet();
 
                 if (heldMediaItemIds.Count > 0)
@@ -54,11 +55,11 @@ namespace VideoForensics.Data.Core.Services
 
                 int purgedCount = 0;
 
-                foreach (var item in itemsToPurge)
+                foreach (MediaItem? item in itemsToPurge)
                 {
                     try
                     {
-                        await _unitOfWork.ExecuteAsync(async context =>
+                        _ = await _unitOfWork.ExecuteAsync(async context =>
                         {
                             if (File.Exists(item.FilePath))
                             {
@@ -71,7 +72,7 @@ namespace VideoForensics.Data.Core.Services
                             item.PurgeReason = $"Retention policy: older than {_retentionDays} days";
 
                             await context.MediaItems.UpdateAsync(item, ct);
-                            await context.ActionLog.AppendAsync(
+                            _ = await context.ActionLog.AppendAsync(
                                 Environment.UserName,
                                 ActorType.Human,
                                 "MediaPurged",

@@ -14,7 +14,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             Reset();
         }
 
-        public static DoorbotHistoryEventBuilder Create() => new();
+        public static DoorbotHistoryEventBuilder Create()
+        {
+            return new();
+        }
 
         public DoorbotHistoryEventBuilder WithId(long id)
         {
@@ -142,7 +145,10 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             return this;
         }
 
-        public Doorbot Build() => _doorbot;
+        public Doorbot Build()
+        {
+            return _doorbot;
+        }
     }
 
     /// <summary>
@@ -181,6 +187,9 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             return this;
         }
 
-        public CvProperties Build() => _cvProperties;
+        public CvProperties Build()
+        {
+            return _cvProperties;
+        }
     }
 }

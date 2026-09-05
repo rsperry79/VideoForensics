@@ -1,9 +1,13 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using System.Security.Cryptography;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -30,8 +34,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task ComputeHashAsync_WithValidFile_ReturnsCorrectSha256Hash()
         {
             // Arrange
-            var testContent = "This is a test file content for hashing";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
+            string testContent = "This is a test file content for hashing";
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
 
             try
             {
@@ -39,10 +43,10 @@ namespace VideoForensics.Data.Core.Tests
                 await File.WriteAllTextAsync(tempFilePath, testContent);
 
                 // Compute expected hash independently
-                var expectedHash = await ComputeExpectedHash(tempFilePath);
+                string expectedHash = await ComputeExpectedHash(tempFilePath);
 
                 // Act
-                var result = await _service.ComputeHashAsync(tempFilePath, CancellationToken.None);
+                string result = await _service.ComputeHashAsync(tempFilePath, CancellationToken.None);
 
                 // Assert
                 Assert.Equal(expectedHash, result);
@@ -52,7 +56,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (File.Exists(tempFilePath))
+                {
                     File.Delete(tempFilePath);
+                }
             }
         }
 
@@ -60,10 +66,10 @@ namespace VideoForensics.Data.Core.Tests
         public async Task ComputeHashAsync_WithNonExistentFile_ThrowsFileNotFoundException()
         {
             // Arrange
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid()}.txt");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid()}.txt");
 
             // Act & Assert
-            await Assert.ThrowsAsync<FileNotFoundException>(
+            _ = await Assert.ThrowsAsync<FileNotFoundException>(
                 () => _service.ComputeHashAsync(nonExistentPath, CancellationToken.None));
         }
 
@@ -71,15 +77,15 @@ namespace VideoForensics.Data.Core.Tests
         public async Task ComputeHashAsync_ReturnsLowercaseHex()
         {
             // Arrange
-            var testContent = "uppercase test";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
+            string testContent = "uppercase test";
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
 
             try
             {
                 await File.WriteAllTextAsync(tempFilePath, testContent);
 
                 // Act
-                var result = await _service.ComputeHashAsync(tempFilePath, CancellationToken.None);
+                string result = await _service.ComputeHashAsync(tempFilePath, CancellationToken.None);
 
                 // Assert
                 Assert.Equal(result, result.ToLowerInvariant());
@@ -87,7 +93,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (File.Exists(tempFilePath))
+                {
                     File.Delete(tempFilePath);
+                }
             }
         }
 
@@ -95,13 +103,13 @@ namespace VideoForensics.Data.Core.Tests
         public async Task VerifyAsync_WithMatchingHash_ReturnsTrue()
         {
             // Arrange
-            var testContent = "verify matching hash";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
+            string testContent = "verify matching hash";
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
 
             try
             {
                 await File.WriteAllTextAsync(tempFilePath, testContent);
-                var computedHash = await ComputeExpectedHash(tempFilePath);
+                string computedHash = await ComputeExpectedHash(tempFilePath);
 
                 var mediaItem = new MediaItem
                 {
@@ -115,12 +123,12 @@ namespace VideoForensics.Data.Core.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository
+                _ = _mockMediaItemRepository
                     .Setup(x => x.GetAsync(mediaItem.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem);
 
                 // Act
-                var result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
+                bool result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
 
                 // Assert
                 Assert.True(result);
@@ -128,7 +136,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (File.Exists(tempFilePath))
+                {
                     File.Delete(tempFilePath);
+                }
             }
         }
 
@@ -136,8 +146,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task VerifyAsync_WithMismatchedHash_ReturnsFalse()
         {
             // Arrange
-            var testContent = "verify mismatched hash";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
+            string testContent = "verify mismatched hash";
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.txt");
 
             try
             {
@@ -155,12 +165,12 @@ namespace VideoForensics.Data.Core.Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 };
 
-                _mockMediaItemRepository
+                _ = _mockMediaItemRepository
                     .Setup(x => x.GetAsync(mediaItem.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItem);
 
                 // Act
-                var result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
+                bool result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
 
                 // Assert
                 Assert.False(result);
@@ -168,7 +178,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (File.Exists(tempFilePath))
+                {
                     File.Delete(tempFilePath);
+                }
             }
         }
 
@@ -178,12 +190,12 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var mediaItemId = Guid.NewGuid();
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((MediaItem?)null);
 
             // Act
-            var result = await _service.VerifyAsync(mediaItemId, CancellationToken.None);
+            bool result = await _service.VerifyAsync(mediaItemId, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -205,12 +217,12 @@ namespace VideoForensics.Data.Core.Tests
                 DownloadedAtUtc = DateTime.UtcNow
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetAsync(mediaItem.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mediaItem);
 
             // Act
-            var result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
+            bool result = await _service.VerifyAsync(mediaItem.Id, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -221,17 +233,17 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var tempDir = Path.Combine(Path.GetTempPath(), $"verify_device_{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), $"verify_device_{Guid.NewGuid()}");
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
                 var mediaItems = new List<MediaItem>();
                 for (int i = 0; i < 3; i++)
                 {
-                    var filePath = Path.Combine(tempDir, $"file_{i}.txt");
+                    string filePath = Path.Combine(tempDir, $"file_{i}.txt");
                     await File.WriteAllTextAsync(filePath, $"content {i}");
-                    var hash = await ComputeExpectedHash(filePath);
+                    string hash = await ComputeExpectedHash(filePath);
 
                     mediaItems.Add(new MediaItem
                     {
@@ -246,19 +258,19 @@ namespace VideoForensics.Data.Core.Tests
                     });
                 }
 
-                _mockMediaItemRepository
+                _ = _mockMediaItemRepository
                     .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItems);
 
                 foreach (var item in mediaItems)
                 {
-                    _mockMediaItemRepository
+                    _ = _mockMediaItemRepository
                         .Setup(x => x.GetAsync(item.Id, It.IsAny<CancellationToken>()))
                         .ReturnsAsync(item);
                 }
 
                 // Act
-                var result = await _service.VerifyAllForDeviceAsync(deviceId, CancellationToken.None);
+                int result = await _service.VerifyAllForDeviceAsync(deviceId, CancellationToken.None);
 
                 // Assert
                 Assert.Equal(3, result);
@@ -269,7 +281,9 @@ namespace VideoForensics.Data.Core.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir, recursive: true);
+                }
             }
         }
 
@@ -279,12 +293,12 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem>());
+                .ReturnsAsync([]);
 
             // Act
-            var result = await _service.VerifyAllForDeviceAsync(deviceId, CancellationToken.None);
+            int result = await _service.VerifyAllForDeviceAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.Equal(0, result);
@@ -293,7 +307,7 @@ namespace VideoForensics.Data.Core.Tests
         private static async Task<string> ComputeExpectedHash(string filePath)
         {
             using var fileStream = File.OpenRead(filePath);
-            var hash = await SHA256.HashDataAsync(fileStream, CancellationToken.None);
+            byte[] hash = await SHA256.HashDataAsync(fileStream, CancellationToken.None);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
     }

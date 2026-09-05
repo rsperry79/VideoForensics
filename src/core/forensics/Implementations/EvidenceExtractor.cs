@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VideoForensics.Providers.Ring.Entities;
+
 using VideoForensics.Forensics;
 using VideoForensics.Forensics.Models;
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Interfaces;
 
-namespace VideoForensics.Providers.Ring.Forensics.Implementations
+namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>
     /// Stub implementation of evidence extraction.

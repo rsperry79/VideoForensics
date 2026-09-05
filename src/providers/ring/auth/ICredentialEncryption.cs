@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Auth
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Platform-agnostic credential encryption interface.

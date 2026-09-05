@@ -1,14 +1,15 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Net;
-using System.Text;
-using System.Collections.Specialized;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
 using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring
@@ -83,7 +84,7 @@ namespace VideoForensics.Providers.Ring
                 try
                 {
                     if (File.Exists(HardBanStateFilePath) &&
-                        long.TryParse(File.ReadAllText(HardBanStateFilePath).Trim(), out var ticks))
+                        long.TryParse(File.ReadAllText(HardBanStateFilePath).Trim(), out long ticks))
                     {
                         var persisted = new DateTime(ticks, DateTimeKind.Utc);
                         if (persisted > DateTime.UtcNow)
@@ -130,6 +131,7 @@ namespace VideoForensics.Providers.Ring
                 _hardBanUntilUtc = null;
                 _consecutiveThrottles = 0;
             }
+
             PersistHardBanState();
         }
 
@@ -137,10 +139,10 @@ namespace VideoForensics.Providers.Ring
         {
             try
             {
-                var folder = Path.GetDirectoryName(HardBanStateFilePath);
+                string? folder = Path.GetDirectoryName(HardBanStateFilePath);
                 if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
                 {
-                    Directory.CreateDirectory(folder);
+                    _ = Directory.CreateDirectory(folder);
                 }
 
                 if (_hardBanUntilUtc.HasValue)
@@ -178,8 +180,10 @@ namespace VideoForensics.Providers.Ring
                 messageHandler = _httpClientHandler;
             }
 
-            _httpClient = new(messageHandler);
-            _httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
+            _httpClient = new(messageHandler)
+            {
+                Timeout = TimeSpan.FromMilliseconds(timeout)
+            };
         }
 
         #endregion
@@ -222,7 +226,7 @@ namespace VideoForensics.Providers.Ring
                 request.Headers.Add(HttpRequestHeader.Authorization.ToString(), $"Bearer {bearerToken}");
             }
 
-            request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
+            _ = request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
 
             if (!string.IsNullOrEmpty(hardwareId))
             {
@@ -234,7 +238,7 @@ namespace VideoForensics.Providers.Ring
 
             // Read the body up front (even on error responses) so it can be captured for diagnostics
             // before we potentially throw below.
-            var responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
+            string responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, responseFromServer);
 
             switch (response.StatusCode)
@@ -289,6 +293,7 @@ namespace VideoForensics.Providers.Ring
                     _hardBanUntilUtc = null;
                     _consecutiveThrottles = 0;
                 }
+
                 PersistHardBanState();
             }
         }
@@ -321,7 +326,7 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         private static void RecordThrottled()
         {
-            var justHardBanned = false;
+            bool justHardBanned = false;
             lock (_throttleLock)
             {
                 _consecutiveThrottles++;
@@ -390,17 +395,20 @@ namespace VideoForensics.Providers.Ring
                 }
             }
 
-            request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
+            _ = request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var json = JsonSerializer.Serialize(formFields);
+            string json = JsonSerializer.Serialize(formFields);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(request);
 
-            if (response == null) return null;
+            if (response == null)
+            {
+                return null;
+            }
 
-            var responseText = await response.Content.ReadAsStringAsync();
+            string responseText = await response.Content.ReadAsStringAsync();
 
             switch (response.StatusCode)
             {
@@ -410,11 +418,13 @@ namespace VideoForensics.Providers.Ring
                         ApiRawLogger.LogEvent("Auth", "Throttled (HTTP 429/400 too many requests)");
                         throw new Exceptions.ThrottledException();
                     }
+
                     if (responseText.Contains("Verification Code is invalid or expired", StringComparison.InvariantCultureIgnoreCase))
                     {
                         ApiRawLogger.LogEvent("Auth", "Two-factor code incorrect or expired");
                         throw new Exceptions.TwoFactorAuthenticationIncorrectException();
                     }
+
                     break;
 
                 case HttpStatusCode.PreconditionFailed:
@@ -431,11 +441,11 @@ namespace VideoForensics.Providers.Ring
                         ApiRawLogger.LogEvent("Auth", $"Authentication failed (HTTP {(int)response.StatusCode})");
                         throw new Exceptions.AuthenticationFailedException($"Ring API returned HTTP {(int)response.StatusCode} ({response.StatusCode}): {responseText}");
                     }
+
                     break;
             }
 
-            if (responseText == null) return null;
-            return responseText;
+            return responseText == null ? null : responseText;
         }
 
         /// <summary>
@@ -453,18 +463,21 @@ namespace VideoForensics.Providers.Ring
             {
                 foreach (string headerField in headerFields)
                 {
-                    request.Headers.TryAddWithoutValidation(headerField, headerFields[headerField]);
+                    _ = request.Headers.TryAddWithoutValidation(headerField, headerFields[headerField]);
                 }
             }
 
-            request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
+            _ = request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
 
             request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(request);
-            if (response == null) return null;
+            if (response == null)
+            {
+                return null;
+            }
 
-            var responseText = await response.Content.ReadAsStringAsync();
+            string responseText = await response.Content.ReadAsStringAsync();
             return responseText;
         }
 
@@ -496,7 +509,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Always add the User-Agent header
-            request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
+            _ = request.Headers.TryAddWithoutValidation("User-Agent", "android:com.ringapp");
 
             // Add Accept header for JSON responses
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -508,10 +521,13 @@ namespace VideoForensics.Providers.Ring
             var response = await _httpClient.SendAsync(request);
 
             // Make sure the webserver has sent a response
-            if (response == null) return null;
+            if (response == null)
+            {
+                return null;
+            }
 
             // Get the response body
-            var responseText = await response.Content.ReadAsStringAsync();
+            string responseText = await response.Content.ReadAsStringAsync();
 
             switch (response.StatusCode)
             {
@@ -527,6 +543,7 @@ namespace VideoForensics.Providers.Ring
                     {
                         throw new Exceptions.TwoFactorAuthenticationIncorrectException();
                     }
+
                     break;
 
                 case HttpStatusCode.PreconditionFailed:
@@ -541,12 +558,12 @@ namespace VideoForensics.Providers.Ring
                     {
                         throw new Exceptions.AuthenticationFailedException($"Ring API returned HTTP {(int)response.StatusCode} ({response.StatusCode}): {responseText}");
                     }
+
                     break;
             }
 
             // Make sure the response content is available
-            if (responseText == null) return null;
-            return responseText;
+            return responseText == null ? null : responseText;
         }
 
         /// <summary>
@@ -578,12 +595,10 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Receive the response from the webserver
-            using (var response = await _httpClient.SendAsync(request, cancellationToken))
-            {
-                var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
-                return bytes;
-            }
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            byte[] bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
+            return bytes;
         }
 
         /// <summary>
@@ -619,7 +634,7 @@ namespace VideoForensics.Providers.Ring
             // every device-control/setter call: SetLight, SetSiren, SetVolume, SetMotionZones,
             // SetGroupLights, SetLocationMode, UpdateSnapshot, etc.) never surfaced anything through
             // ApiRawLogger, leaving a large blind spot in the raw traffic log.
-            var responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
+            string responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode,
                 bodyContent == null ? responseFromServer : $"REQUEST: {bodyContent}\nRESPONSE: {responseFromServer}");
 
@@ -653,7 +668,7 @@ namespace VideoForensics.Providers.Ring
         public async Task<T> SendRequest<T>(Uri url, HttpMethod httpMethod, string bodyContent, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             // Make the request and get the body contents of the response
-            var response = await SendRequest(url, httpMethod, bodyContent, bearerToken, cancellationToken);
+            string response = await SendRequest(url, httpMethod, bodyContent, bearerToken, cancellationToken);
 
             // Try parsing the response to the type provided with this method
             T responseEntity = JsonSerializer.Deserialize<T>(response);
@@ -688,7 +703,7 @@ namespace VideoForensics.Providers.Ring
             var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Get the response body and return it
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode, responseBody);
             return responseBody;
         }

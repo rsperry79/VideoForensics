@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,22 +10,22 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<ModificationAuditRecordEntity> builder)
         {
-            builder.HasKey(mar => mar.Id);
+            _ = builder.HasKey(mar => mar.Id);
 
-            builder.Property(mar => mar.ModifiedBy)
+            _ = builder.Property(mar => mar.ModifiedBy)
                 .IsRequired()
                 .HasMaxLength(ActorMaxLength);
 
-            builder.Property(mar => mar.ModificationType)
+            _ = builder.Property(mar => mar.ModificationType)
                 .IsRequired()
                 .HasMaxLength(ActionMaxLength);
 
-            builder.Property(mar => mar.ChangeSummary)
+            _ = builder.Property(mar => mar.ChangeSummary)
                 .IsRequired()
                 .HasMaxLength(DescriptionMaxLength);
 
-            builder.HasIndex(mar => mar.EventId);
-            builder.HasIndex(mar => mar.ModifiedAtUtc);
+            _ = builder.HasIndex(mar => mar.EventId);
+            _ = builder.HasIndex(mar => mar.ModifiedAtUtc);
         }
     }
 }

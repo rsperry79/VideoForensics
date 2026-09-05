@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>Result of an evidence export operation.</summary>
     public class ExportResult
@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Common
         public int ItemsIncluded { get; set; }
 
         /// <summary>Media item IDs that were excluded due to failed integrity verification.</summary>
-        public IReadOnlyList<Guid> ItemsExcludedForFailedIntegrity { get; set; } = new List<Guid>();
+        public IReadOnlyList<Guid> ItemsExcludedForFailedIntegrity { get; set; } = [];
 
         /// <summary>Error message if the export failed entirely, or null if successful.</summary>
         public string? ErrorMessage { get; set; }

@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -33,9 +35,9 @@ namespace VideoForensics.Data.Core.Tests
         {
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockLegalHoldRepository = new Mock<ILegalHoldRepository>();
-            _mockLegalHoldRepository
+            _ = _mockLegalHoldRepository
                 .Setup(x => x.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<LegalHold>());
+                .ReturnsAsync([]);
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockActionLogger = new Mock<IActionLogger>();
             _mockLogger = new Mock<ILogger<RetentionService>>();
@@ -45,8 +47,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_PurgesItemsOlderThanRetentionThreshold()
         {
             // Arrange
-            var service = CreateService();
-            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            RetentionService service = CreateService();
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
             var expiredItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -73,16 +75,16 @@ namespace VideoForensics.Data.Core.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { expiredItem, recentItem });
+                .ReturnsAsync([expiredItem, recentItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -94,9 +96,10 @@ namespace VideoForensics.Data.Core.Tests
                 EntityId = expiredItem.Id,
                 TimestampUtc = DateTime.UtcNow
             ,
-                EntryHash = "test_hash"};
+                EntryHash = "test_hash"
+            };
 
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -107,7 +110,7 @@ namespace VideoForensics.Data.Core.Tests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedLogEntry);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -128,8 +131,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_SetsPurgeFieldsCorrectly()
         {
             // Arrange
-            var service = CreateService();
-            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            RetentionService service = CreateService();
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
             var expiredItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -143,18 +146,18 @@ namespace VideoForensics.Data.Core.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { expiredItem });
+                .ReturnsAsync([expiredItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -166,12 +169,12 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync(TestHelpers.CreateActionLogEntry());
 
             MediaItem updatedItem = null!;
-            mockMediaItemRepoInContext
+            _ = mockMediaItemRepoInContext
                 .Setup(x => x.UpdateAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
                 .Callback<MediaItem, CancellationToken>((item, ct) => { updatedItem = item; })
                 .Returns(Task.CompletedTask);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -179,12 +182,12 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            await service.PurgeExpiredAsync(CancellationToken.None);
+            _ = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             Assert.NotNull(updatedItem);
             Assert.True(updatedItem.IsPurged);
-            Assert.NotNull(updatedItem.PurgedAtUtc);
+            _ = Assert.NotNull(updatedItem.PurgedAtUtc);
             Assert.NotNull(updatedItem.PurgeReason);
             Assert.Contains("Retention policy", updatedItem.PurgeReason);
             Assert.Contains("90", updatedItem.PurgeReason); // Contains retention days
@@ -194,8 +197,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_SkipsAlreadyPurgedItems()
         {
             // Arrange
-            var service = CreateService();
-            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            RetentionService service = CreateService();
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
             var alreadyPurgedItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -210,18 +213,18 @@ namespace VideoForensics.Data.Core.Tests
                 PurgedAtUtc = cutoffDate
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { alreadyPurgedItem });
+                .ReturnsAsync([alreadyPurgedItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -242,7 +245,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_WithNoExpiredItems_ReturnsZero()
         {
             // Arrange
-            var service = CreateService();
+            RetentionService service = CreateService();
             var recentItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -256,14 +259,14 @@ namespace VideoForensics.Data.Core.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { recentItem });
+                .ReturnsAsync([recentItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
-            mockContext.Setup(x => x.MediaItems).Returns(new Mock<IMediaItemRepository>().Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(new Mock<IMediaItemRepository>().Object);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -281,8 +284,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_LogsActionForEachPurgedItem()
         {
             // Arrange
-            var service = CreateService();
-            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            RetentionService service = CreateService();
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
             var expiredItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -296,18 +299,18 @@ namespace VideoForensics.Data.Core.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { expiredItem });
+                .ReturnsAsync([expiredItem]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -318,7 +321,7 @@ namespace VideoForensics.Data.Core.Tests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(TestHelpers.CreateActionLogEntry());
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -326,7 +329,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            await service.PurgeExpiredAsync(CancellationToken.None);
+            _ = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             mockActionLogRepoInContext.Verify(
@@ -345,8 +348,8 @@ namespace VideoForensics.Data.Core.Tests
         public async Task PurgeExpiredAsync_SkipsItemsUnderActiveLegalHold()
         {
             // Arrange
-            var service = CreateService();
-            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+            RetentionService service = CreateService();
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
             var heldItem = new MediaItem
             {
                 Id = Guid.NewGuid(),
@@ -360,14 +363,14 @@ namespace VideoForensics.Data.Core.Tests
                 IsPurged = false
             };
 
-            _mockMediaItemRepository
+            _ = _mockMediaItemRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { heldItem });
+                .ReturnsAsync([heldItem]);
 
-            _mockLegalHoldRepository
+            _ = _mockLegalHoldRepository
                 .Setup(x => x.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<LegalHold>
-                {
+                .ReturnsAsync(
+                [
                     new LegalHold
                     {
                         Id = Guid.NewGuid(),
@@ -376,16 +379,16 @@ namespace VideoForensics.Data.Core.Tests
                         CreatedBy = "tester",
                         CreatedAtUtc = DateTime.UtcNow
                     }
-                });
+                ]);
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))

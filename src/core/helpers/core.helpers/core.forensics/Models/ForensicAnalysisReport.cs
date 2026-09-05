@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace VideoForensics.Forensics.Models.Reports
+namespace VideoForensics.Forensics.Models
 {
     /// <summary>
     /// Strongly-typed report of forensic analysis findings.
@@ -13,9 +13,9 @@ namespace VideoForensics.Forensics.Models.Reports
         public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
         public string? AnalyzedEvidenceId { get; set; }
         public string? AnalysisType { get; set; }
-        public List<ForensicAnalysisResult> Findings { get; set; } = new();
+        public List<ForensicAnalysisResult> Findings { get; set; } = [];
         public string? Summary { get; set; }
-        public Dictionary<string, object> Metadata { get; set; } = new();
+        public Dictionary<string, object> Metadata { get; set; } = [];
 
         public string? DigitalSignature { get; set; }
         public DateTime? ReportSignedAt { get; set; }

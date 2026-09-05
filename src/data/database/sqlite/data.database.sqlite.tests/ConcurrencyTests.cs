@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
+
 using Xunit;
 
 namespace VideoForensics.Data.Database.Sqlite.Tests
@@ -16,14 +18,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public async Task DbContextFactory_ConcurrentContextCreation_EachContextIsIndependent()
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            var dbPath = Path.Combine(tempDir, "test.db");
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dbPath = Path.Combine(tempDir, "test.db");
 
             try
             {
                 var services = new ServiceCollection();
-                services.AddVideoForensicsSqlite(dbPath);
-                services.AddLogging();
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddLogging();
 
                 var provider = services.BuildServiceProvider();
                 var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
@@ -52,8 +54,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                     CreatedUtc = DateTime.UtcNow
                 };
 
-                context1.Users.Add(testUser);
-                await context1.SaveChangesAsync();
+                _ = context1.Users.Add(testUser);
+                _ = await context1.SaveChangesAsync();
 
                 // Read via context2 - should see the inserted data
                 var users = await context2.Users.ToListAsync();
@@ -77,7 +79,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }

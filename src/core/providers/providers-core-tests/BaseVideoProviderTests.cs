@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Core;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Core.Tests
@@ -51,7 +53,7 @@ namespace VideoForensics.Providers.Core.Tests
             var provider = new TestVideoProvider(mockLogger.Object);
 
             // Act & Assert - all services should be implemented by IVideoProvider
-            Assert.IsAssignableFrom<IVideoProvider>(provider);
+            _ = Assert.IsAssignableFrom<IVideoProvider>(provider);
             Assert.NotNull(provider.AuthService);
             Assert.NotNull(provider.DeviceService);
             Assert.NotNull(provider.DownloadService);

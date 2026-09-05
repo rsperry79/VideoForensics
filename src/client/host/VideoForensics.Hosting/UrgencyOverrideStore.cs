@@ -32,7 +32,7 @@ namespace VideoForensics.Hosting
 
         public async Task<bool?> GetOverrideAsync(string eventType, CancellationToken ct)
         {
-            var value = await _settings.GetAsync(KeyPrefix + eventType, ct);
+            string? value = await _settings.GetAsync(KeyPrefix + eventType, ct);
             return string.IsNullOrEmpty(value) ? null : bool.Parse(value);
         }
 
@@ -45,9 +45,13 @@ namespace VideoForensics.Hosting
         }
 
         public Task SetOverrideAsync(string eventType, bool isUrgent, CancellationToken ct)
-            => _settings.SetAsync(KeyPrefix + eventType, isUrgent.ToString(), ct);
+        {
+            return _settings.SetAsync(KeyPrefix + eventType, isUrgent.ToString(), ct);
+        }
 
         public Task ClearOverrideAsync(string eventType, CancellationToken ct)
-            => _settings.DeleteAsync(KeyPrefix + eventType, ct);
+        {
+            return _settings.DeleteAsync(KeyPrefix + eventType, ct);
+        }
     }
 }

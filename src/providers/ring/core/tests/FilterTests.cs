@@ -1,7 +1,7 @@
 #nullable disable
 using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     public class FilterTests
     {
@@ -22,7 +22,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Filter_CanSetStartDateTime()
         {
-            var now = DateTime.Now;
+            DateTime now = DateTime.Now;
             var filter = new Filter { StartDateTime = now };
             Assert.Equal(now, filter.StartDateTime);
         }
@@ -30,7 +30,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Filter_CanSetEndDateTime()
         {
-            var now = DateTime.Now;
+            DateTime now = DateTime.Now;
             var filter = new Filter { EndDateTime = now };
             Assert.Equal(now, filter.EndDateTime);
         }
@@ -80,8 +80,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Filter_AllPropertiesCanBeSetTogether()
         {
-            var start = DateTime.Now;
-            var end = start.AddDays(7);
+            DateTime start = DateTime.Now;
+            DateTime end = start.AddDays(7);
 
             var filter = new Filter
             {
@@ -99,13 +99,13 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Filter_DateTimeCanBeSet()
         {
             var filter = new Filter();
-            var now = DateTime.Now;
+            DateTime now = DateTime.Now;
 
             filter.StartDateTime = now;
             filter.EndDateTime = now.AddDays(1);
 
-            Assert.NotNull(filter.StartDateTime);
-            Assert.NotNull(filter.EndDateTime);
+            _ = Assert.NotNull(filter.StartDateTime);
+            _ = Assert.NotNull(filter.EndDateTime);
         }
 
         [Fact]

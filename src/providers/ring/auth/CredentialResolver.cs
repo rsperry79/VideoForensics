@@ -3,11 +3,10 @@
 using System;
 using System.IO;
 
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Common.Helpers.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
 
-namespace VideoForensics.Providers.Ring.Auth
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Resolved set of credentials to authenticate a <see cref="Session"/> with, plus where
@@ -47,18 +46,16 @@ namespace VideoForensics.Providers.Ring.Auth
             {
                 return new ResolvedCredentials(userName, null, refreshToken, "cli-argument");
             }
+
             if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
             {
                 return new ResolvedCredentials(userName, password, null, "cli-argument");
             }
 
-            var saved = new CredentialStore().Load(AuthPath);
-            if (!string.IsNullOrEmpty(saved.RefreshToken) || (!string.IsNullOrEmpty(saved.UserName) && !string.IsNullOrEmpty(saved.Password)))
-            {
-                return new ResolvedCredentials(saved.UserName, saved.Password, saved.RefreshToken, $"auth-store:{AuthPath}");
-            }
-
-            return null;
+            RingCredentials saved = new CredentialStore().Load(AuthPath);
+            return !string.IsNullOrEmpty(saved.RefreshToken) || (!string.IsNullOrEmpty(saved.UserName) && !string.IsNullOrEmpty(saved.Password))
+                ? new ResolvedCredentials(saved.UserName, saved.Password, saved.RefreshToken, $"auth-store:{AuthPath}")
+                : null;
         }
 
         /// <summary>

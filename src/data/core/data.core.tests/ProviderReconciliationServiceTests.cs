@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -38,16 +40,16 @@ namespace VideoForensics.Data.Core.Tests
             var deviceId = Guid.NewGuid();
             var discrepancies = new List<ReconciliationDiscrepancy>
             {
-                new ReconciliationDiscrepancy { ProviderEventId = "event-1", Type = DiscrepancyType.MissingFromProvider },
-                new ReconciliationDiscrepancy { ProviderEventId = "event-2", Type = DiscrepancyType.MetadataChanged, FieldName = "timestamp" }
+                new() { ProviderEventId = "event-1", Type = DiscrepancyType.MissingFromProvider },
+                new() { ProviderEventId = "event-2", Type = DiscrepancyType.MetadataChanged, FieldName = "timestamp" }
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -59,13 +61,14 @@ namespace VideoForensics.Data.Core.Tests
                 EntityId = deviceId,
                 TimestampUtc = DateTime.UtcNow
             ,
-                EntryHash = "test_hash"};
+                EntryHash = "test_hash"
+            };
 
-            mockReconciliationRepoInContext
+            _ = mockReconciliationRepoInContext
                 .Setup(x => x.AppendAsync(It.IsAny<ProviderReconciliationRecord>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ProviderReconciliationRecord record, CancellationToken ct) => record);
 
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -76,7 +79,7 @@ namespace VideoForensics.Data.Core.Tests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedLogEntry);
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -112,25 +115,25 @@ namespace VideoForensics.Data.Core.Tests
             var deviceId = Guid.NewGuid();
             var discrepancies = new List<ReconciliationDiscrepancy>
             {
-                new ReconciliationDiscrepancy { ProviderEventId = "event-1", Type = DiscrepancyType.MissingFromProvider },
-                new ReconciliationDiscrepancy { ProviderEventId = "event-2", Type = DiscrepancyType.MissingFromProvider },
-                new ReconciliationDiscrepancy { ProviderEventId = "event-3", Type = DiscrepancyType.MetadataChanged },
-                new ReconciliationDiscrepancy { ProviderEventId = "event-4", Type = DiscrepancyType.NewEventFoundOnProvider }
+                new() { ProviderEventId = "event-1", Type = DiscrepancyType.MissingFromProvider },
+                new() { ProviderEventId = "event-2", Type = DiscrepancyType.MissingFromProvider },
+                new() { ProviderEventId = "event-3", Type = DiscrepancyType.MetadataChanged },
+                new() { ProviderEventId = "event-4", Type = DiscrepancyType.NewEventFoundOnProvider }
             };
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
-            mockReconciliationRepoInContext
+            _ = mockReconciliationRepoInContext
                 .Setup(x => x.AppendAsync(It.IsAny<ProviderReconciliationRecord>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ProviderReconciliationRecord record, CancellationToken ct) => record);
 
             string? capturedDetails = null;
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -143,7 +146,7 @@ namespace VideoForensics.Data.Core.Tests
                     (actor, type, action, entity, id, details, ct) => { capturedDetails = details; })
                 .ReturnsAsync(TestHelpers.CreateActionLogEntry());
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -174,11 +177,11 @@ namespace VideoForensics.Data.Core.Tests
             var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             string? capturedDetails = null;
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -191,7 +194,7 @@ namespace VideoForensics.Data.Core.Tests
                     (actor, type, action, entity, id, details, ct) => { capturedDetails = details; })
                 .ReturnsAsync(TestHelpers.CreateActionLogEntry());
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))
@@ -214,16 +217,14 @@ namespace VideoForensics.Data.Core.Tests
             var deviceId = Guid.NewGuid();
             var expectedRecords = new List<ProviderReconciliationRecord>
             {
-                new ProviderReconciliationRecord
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceId,
                     RanAtUtc = DateTime.UtcNow.AddHours(-1),
                     ProviderEventId = "event-1",
                     DiscrepancyType = DiscrepancyType.MissingFromProvider
                 },
-                new ProviderReconciliationRecord
-                {
+                new() {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceId,
                     RanAtUtc = DateTime.UtcNow,
@@ -233,12 +234,12 @@ namespace VideoForensics.Data.Core.Tests
                 }
             };
 
-            _mockReconciliationRepository
+            _ = _mockReconciliationRepository
                 .Setup(x => x.GetHistoryForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedRecords);
 
             // Act
-            var result = await _service.GetHistoryAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> result = await _service.GetHistoryAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -256,12 +257,12 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
 
-            _mockReconciliationRepository
+            _ = _mockReconciliationRepository
                 .Setup(x => x.GetHistoryForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ProviderReconciliationRecord>());
+                .ReturnsAsync([]);
 
             // Act
-            var result = await _service.GetHistoryAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<ProviderReconciliationRecord> result = await _service.GetHistoryAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -275,8 +276,7 @@ namespace VideoForensics.Data.Core.Tests
             var deviceId = Guid.NewGuid();
             var discrepancies = new List<ReconciliationDiscrepancy>
             {
-                new ReconciliationDiscrepancy
-                {
+                new() {
                     ProviderEventId = "event-123",
                     Type = DiscrepancyType.MetadataChanged,
                     FieldName = "EventType",
@@ -289,16 +289,16 @@ namespace VideoForensics.Data.Core.Tests
             var mockReconciliationRepoInContext = new Mock<IProviderReconciliationRepository>();
             var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
 
-            mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
-            mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ProviderReconciliation).Returns(mockReconciliationRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
 
             ProviderReconciliationRecord? capturedRecord = null;
-            mockReconciliationRepoInContext
+            _ = mockReconciliationRepoInContext
                 .Setup(x => x.AppendAsync(It.IsAny<ProviderReconciliationRecord>(), It.IsAny<CancellationToken>()))
                 .Callback<ProviderReconciliationRecord, CancellationToken>((record, ct) => { capturedRecord = record; })
                 .ReturnsAsync((ProviderReconciliationRecord record, CancellationToken ct) => record);
 
-            mockActionLogRepoInContext
+            _ = mockActionLogRepoInContext
                 .Setup(x => x.AppendAsync(
                     It.IsAny<string>(),
                     It.IsAny<ActorType>(),
@@ -309,7 +309,7 @@ namespace VideoForensics.Data.Core.Tests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(TestHelpers.CreateActionLogEntry());
 
-            _mockUnitOfWork
+            _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
                     It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
                     It.IsAny<CancellationToken>()))

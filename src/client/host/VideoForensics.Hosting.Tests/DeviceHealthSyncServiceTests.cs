@@ -1,27 +1,35 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
+
 using Device = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Hosting.Tests
 {
     public class DeviceHealthSyncServiceTests
     {
-        private static Device MakeDevice(string providerDeviceId) => new()
+        private static Device MakeDevice(string providerDeviceId)
         {
-            Id = Guid.NewGuid(),
-            LocationId = Guid.NewGuid(),
-            ProviderDeviceId = providerDeviceId,
-            Name = "Test Device",
-            Type = "camera"
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                LocationId = Guid.NewGuid(),
+                ProviderDeviceId = providerDeviceId,
+                Name = "Test Device",
+                Type = "camera"
+            };
+        }
 
         private static (DeviceHealthSyncService Service, Mock<IProviderHealthSource> HealthSource, Mock<IDeviceRepository> DeviceRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<IProviderApiBudgetGuard> BudgetGuard)
             CreateService(IForensicsConfiguration? config = null, IBatteryStatusProvider? batteryProvider = null)
@@ -31,18 +39,18 @@ namespace VideoForensics.Hosting.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
 
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
-            budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             var auditLog = new Mock<ISecurityAuditLogger>();
 
             var services = new ServiceCollection();
-            services.AddSingleton(healthSource.Object);
-            services.AddSingleton(deviceRepo.Object);
-            services.AddSingleton(dataClient.Object);
-            services.AddSingleton(budgetGuard.Object);
-            services.AddSingleton(auditLog.Object);
-            var provider = services.BuildServiceProvider();
+            _ = services.AddSingleton(healthSource.Object);
+            _ = services.AddSingleton(deviceRepo.Object);
+            _ = services.AddSingleton(dataClient.Object);
+            _ = services.AddSingleton(budgetGuard.Object);
+            _ = services.AddSingleton(auditLog.Object);
+            ServiceProvider provider = services.BuildServiceProvider();
 
-            var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+            IServiceScopeFactory scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
             var service = new DeviceHealthSyncService(
                 scopeFactory,
@@ -56,20 +64,20 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_MatchesReadingToDeviceAndPersistsSnapshot()
         {
-            var (service, healthSource, deviceRepo, dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
-            var device = MakeDevice("ring-123");
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Device> { device });
+            Device device = MakeDevice("ring-123");
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
 
-            healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceHealthReading>
-                {
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -55, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
-                });
+                ]);
 
             DeviceHealthSnapshot? captured = null;
-            dataClient.Setup(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()))
+            _ = dataClient.Setup(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()))
                 .Callback<DeviceHealthSnapshot, CancellationToken>((s, _) => captured = s)
                 .ReturnsAsync((DeviceHealthSnapshot s, CancellationToken _) => s);
 
@@ -86,16 +94,16 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()
         {
-            var (service, healthSource, deviceRepo, dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Device> { MakeDevice("ring-known") });
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([MakeDevice("ring-known")]);
 
-            healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceHealthReading>
-                {
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
                     new("ring-unmapped", true, null, -60, null, null)
-                });
+                ]);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
@@ -105,12 +113,12 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_HealthSourceThrows_IsSwallowedAndDoesNotPropagate()
         {
-            var (service, healthSource, deviceRepo, dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Device> { MakeDevice("ring-1") });
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([MakeDevice("ring-1")]);
 
-            healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("provider API exploded"));
 
             // Must not throw - one provider's failure must not stop the whole tick.
@@ -122,9 +130,9 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_DeviceRepositoryThrows_IsSwallowedAndDoesNotPropagate()
         {
-            var (service, healthSource, deviceRepo, dataClient, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
 
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("db unavailable"));
 
             await service.RunOneTickAsync(CancellationToken.None);
@@ -135,10 +143,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_NoDevices_DoesNotCallHealthSource()
         {
-            var (service, healthSource, deviceRepo, _, _) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, _, _) = CreateService();
 
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Device>());
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
@@ -148,12 +156,12 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_BudgetExceeded_SkipsHealthSourceWithoutThrowing()
         {
-            var (service, healthSource, deviceRepo, dataClient, budgetGuard) = CreateService();
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, Mock<IProviderApiBudgetGuard>? budgetGuard) = CreateService();
 
-            deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Device> { MakeDevice("ring-1") });
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([MakeDevice("ring-1")]);
 
-            budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
             await service.RunOneTickAsync(CancellationToken.None);
 

@@ -8,7 +8,7 @@ namespace VideoForensics.Forensics.Models
         public bool IsTimeSynchronized { get; set; }
         public TimeSpan? MaxClockDrift { get; set; }
         public DateTime? LastKnownCorrectTime { get; set; }
-        public List<string> TimeSuspiciousEvents { get; set; } = new();
+        public List<string> TimeSuspiciousEvents { get; set; } = [];
         public string? Recommendation { get; set; }
         public string? SyncProvider { get; set; }
         public DateTime? LastSyncedAt { get; set; }

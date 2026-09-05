@@ -1,10 +1,7 @@
 #nullable disable
-using System.Collections.Generic;
-
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Models;
 
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     public class RingVideoServiceModelTests
     {
@@ -21,7 +18,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Filter_CanHavePropertiesSet()
         {
             var filter = new Filter();
-            var now = DateTime.Now;
+            DateTime now = DateTime.Now;
 
             filter.VideoCount = 100;
             filter.StartDateTime = now;
@@ -92,14 +89,14 @@ namespace VideoForensics.Providers.Ring.Tests
         public void DeviceList_SupportsMultipleDevices()
         {
             var deviceList = new DeviceList();
-            var devices = new[]
+            DeviceInfo[] devices = new[]
             {
                 new DeviceInfo { Id = 1, Name = "Camera 1", DeviceId = "dev_1" },
                 new DeviceInfo { Id = 2, Name = "Camera 2", DeviceId = "dev_2" },
                 new DeviceInfo { Id = 3, Name = "Camera 3", DeviceId = "dev_3" }
             };
 
-            foreach (var device in devices)
+            foreach (DeviceInfo device in devices)
             {
                 deviceList.Devices.Add(device);
             }
@@ -122,7 +119,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void FailedDownload_StoresErrorInformation()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var error = new FailedDownload
             {
                 Timestamp = now,
@@ -159,7 +156,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void Model_FailedDownloadTimestampIsUtc()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var failed = new FailedDownload { Timestamp = now };
 
             Assert.Equal(now, failed.Timestamp);
@@ -245,13 +242,13 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void LocationNameResolutionUsesApiResult()
         {
-            var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
+            var locations = new List<Entities.Location>
             {
                 new()
                 {
                     Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     Name = "Front Door",
-                    Address = new VideoForensics.Providers.Ring.Entities.LocationAddress
+                    Address = new Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -265,7 +262,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Name = "Back Patio",
-                    Address = new VideoForensics.Providers.Ring.Entities.LocationAddress
+                    Address = new Entities.LocationAddress
                     {
                         Address1 = "123 Main St",
                         City = "Springfield",
@@ -288,7 +285,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void LocationNameResolutionFallsBackToDefault()
         {
-            var locations = new List<VideoForensics.Providers.Ring.Entities.Location>
+            var locations = new List<Entities.Location>
             {
                 new()
                 {
@@ -329,7 +326,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void LocationCanBeNullAndHandledGracefully()
         {
-            var location = new VideoForensics.Providers.Ring.Entities.Location
+            var location = new Entities.Location
             {
                 Id = null,
                 Name = null,
@@ -337,7 +334,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 IsOwner = null
             };
 
-            var id = location.Id ?? Guid.Empty;
+            Guid id = location.Id ?? Guid.Empty;
             var name = location.Name ?? "Unknown";
 
             Assert.Equal(Guid.Empty, id);

@@ -1,7 +1,11 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -14,7 +18,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new CredentialRepository(
                 _fixture.Factory,
                 _fixture.EncryptionProvider,
@@ -34,9 +38,9 @@ namespace VideoForensics.Data.Database.Tests
             var plainPassword = "MySecurePassword123!";
 
             await _repository.SetAsync(accountId, "Password", plainPassword, CancellationToken.None);
-            var retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
+            (string CredentialType, string DecryptedValue)? retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
 
-            Assert.NotNull(retrieved);
+            _ = Assert.NotNull(retrieved);
             Assert.Equal("Password", retrieved.Value.CredentialType);
             Assert.Equal(plainPassword, retrieved.Value.DecryptedValue);
         }
@@ -49,9 +53,9 @@ namespace VideoForensics.Data.Database.Tests
 
             await _repository.SetAsync(accountId, "RefreshToken", plainToken, CancellationToken.None);
 
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
-            var ctx = _fixture.Factory.CreateDbContext();
-            var stored = await ctx.Credentials.FirstOrDefaultAsync(
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            Credential? stored = await ctx.Credentials.FirstOrDefaultAsync(
                 c => c.ProviderAccountId == accountId && c.CredentialType == "RefreshToken");
 
             Assert.NotNull(stored);
@@ -62,7 +66,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task CredentialRepository_GetAsync_ReturnsNullForNonexistent()
         {
             var accountId = Guid.NewGuid();
-            var retrieved = await _repository.GetAsync(accountId, "NonExistent", CancellationToken.None);
+            (string CredentialType, string DecryptedValue)? retrieved = await _repository.GetAsync(accountId, "NonExistent", CancellationToken.None);
 
             Assert.Null(retrieved);
         }
@@ -75,8 +79,8 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.SetAsync(accountId, "Password", "old_password", CancellationToken.None);
             await _repository.SetAsync(accountId, "Password", "new_password", CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
-            Assert.NotNull(retrieved);
+            (string CredentialType, string DecryptedValue)? retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
+            _ = Assert.NotNull(retrieved);
             Assert.Equal("new_password", retrieved.Value.DecryptedValue);
         }
 
@@ -86,15 +90,15 @@ namespace VideoForensics.Data.Database.Tests
             var accountId = Guid.NewGuid();
 
             await _repository.SetAsync(accountId, "Password", "first", CancellationToken.None);
-            var beforeUpdate = DateTime.UtcNow;
+            DateTime beforeUpdate = DateTime.UtcNow;
             await _repository.SetAsync(accountId, "Password", "second", CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
-            var stored = await ctx.Credentials.FirstOrDefaultAsync(
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            Credential? stored = await ctx.Credentials.FirstOrDefaultAsync(
                 c => c.ProviderAccountId == accountId && c.CredentialType == "Password");
 
             Assert.NotNull(stored);
-            Assert.NotNull(stored.RotatedUtc);
+            _ = Assert.NotNull(stored.RotatedUtc);
             Assert.True(stored.RotatedUtc >= beforeUpdate);
         }
 
@@ -108,7 +112,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.SetAsync(accountId, "RefreshToken", "token", CancellationToken.None);
             await _repository.SetAsync(otherAccountId, "Password", "other_pwd", CancellationToken.None);
 
-            var list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+            IReadOnlyList<Credential> list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
 
             Assert.Equal(2, list.Count);
         }
@@ -121,7 +125,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.SetAsync(accountId, "Password", "pwd", CancellationToken.None);
             await _repository.DeleteAsync(accountId, "Password", CancellationToken.None);
 
-            var retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
+            (string CredentialType, string DecryptedValue)? retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
             Assert.Null(retrieved);
         }
 
@@ -137,11 +141,11 @@ namespace VideoForensics.Data.Database.Tests
 
             await _repository.DeleteByProviderAccountIdAsync(accountId, CancellationToken.None);
 
-            var list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+            IReadOnlyList<Credential> list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
             Assert.Empty(list);
 
-            var otherList = await _repository.GetByProviderAccountIdAsync(otherAccountId, CancellationToken.None);
-            Assert.Single(otherList);
+            IReadOnlyList<Credential> otherList = await _repository.GetByProviderAccountIdAsync(otherAccountId, CancellationToken.None);
+            _ = Assert.Single(otherList);
         }
 
         [Fact]
@@ -151,7 +155,7 @@ namespace VideoForensics.Data.Database.Tests
 
             await _repository.SetAsync(accountId, "Password", "pwd1", CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var cred = new VideoForensics.Data.Common.Entities.Credential
             {
                 Id = Guid.NewGuid(),
@@ -162,9 +166,9 @@ namespace VideoForensics.Data.Database.Tests
                 CreatedUtc = DateTime.UtcNow
             };
 
-            ctx.Credentials.Add(cred);
+            _ = ctx.Credentials.Add(cred);
 
-            await Assert.ThrowsAsync<DbUpdateException>(async () =>
+            _ = await Assert.ThrowsAsync<DbUpdateException>(async () =>
                 await ctx.SaveChangesAsync());
         }
 
@@ -176,11 +180,11 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.SetAsync(accountId, "Password", "pwd", CancellationToken.None);
             await _repository.SetAsync(accountId, "RefreshToken", "token", CancellationToken.None);
 
-            var pwd = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
-            var token = await _repository.GetAsync(accountId, "RefreshToken", CancellationToken.None);
+            (string CredentialType, string DecryptedValue)? pwd = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
+            (string CredentialType, string DecryptedValue)? token = await _repository.GetAsync(accountId, "RefreshToken", CancellationToken.None);
 
-            Assert.NotNull(pwd);
-            Assert.NotNull(token);
+            _ = Assert.NotNull(pwd);
+            _ = Assert.NotNull(token);
             Assert.Equal("pwd", pwd.Value.DecryptedValue);
             Assert.Equal("token", token.Value.DecryptedValue);
         }

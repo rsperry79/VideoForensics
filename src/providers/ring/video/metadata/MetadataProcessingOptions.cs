@@ -1,8 +1,6 @@
 using System.Text.Json.Serialization;
 
-#nullable enable
-
-namespace VideoForensics.Providers.Ring.Video.Metadata
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Configuration options for video metadata processing.
@@ -84,48 +82,60 @@ namespace VideoForensics.Providers.Ring.Video.Metadata
         /// <summary>
         /// Create default options with all features enabled.
         /// </summary>
-        public static MetadataProcessingOptions CreateDefault() => new();
+        public static MetadataProcessingOptions CreateDefault()
+        {
+            return new();
+        }
 
         /// <summary>
         /// Create privacy-focused options with sensitive data excluded.
         /// </summary>
-        public static MetadataProcessingOptions CreatePrivacyFocused() => new()
+        public static MetadataProcessingOptions CreatePrivacyFocused()
         {
-            IncludeGps = false,
-            IncludeAddress = false,
-            IncludeDeviceHealth = false
-        };
+            return new()
+            {
+                IncludeGps = false,
+                IncludeAddress = false,
+                IncludeDeviceHealth = false
+            };
+        }
 
         /// <summary>
         /// Create minimal options with only essential metadata processing.
         /// </summary>
-        public static MetadataProcessingOptions CreateMinimal() => new()
+        public static MetadataProcessingOptions CreateMinimal()
         {
-            ExtractMetadata = true,
-            WriteMetadata = false,
-            ValidateMedia = false,
-            AutoCorrect = false,
-            PhotoPrismCompatibility = true,
-            IncludeGps = false,
-            IncludeAddress = false,
-            IncludeDeviceHealth = false,
-            IncludeAiAnalysis = true
-        };
+            return new()
+            {
+                ExtractMetadata = true,
+                WriteMetadata = false,
+                ValidateMedia = false,
+                AutoCorrect = false,
+                PhotoPrismCompatibility = true,
+                IncludeGps = false,
+                IncludeAddress = false,
+                IncludeDeviceHealth = false,
+                IncludeAiAnalysis = true
+            };
+        }
 
         /// <summary>
         /// Create options with all processing disabled.
         /// </summary>
-        public static MetadataProcessingOptions CreateDisabled() => new()
+        public static MetadataProcessingOptions CreateDisabled()
         {
-            ExtractMetadata = false,
-            WriteMetadata = false,
-            ValidateMedia = false,
-            AutoCorrect = false,
-            PhotoPrismCompatibility = false,
-            IncludeGps = false,
-            IncludeAddress = false,
-            IncludeDeviceHealth = false,
-            IncludeAiAnalysis = false
-        };
+            return new()
+            {
+                ExtractMetadata = false,
+                WriteMetadata = false,
+                ValidateMedia = false,
+                AutoCorrect = false,
+                PhotoPrismCompatibility = false,
+                IncludeGps = false,
+                IncludeAddress = false,
+                IncludeDeviceHealth = false,
+                IncludeAiAnalysis = false
+            };
+        }
     }
 }

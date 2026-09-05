@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -13,7 +12,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapVideoForensicsHealthEndpoints(this WebApplication app)
         {
-            app.MapHealthChecks("/healthz", new HealthCheckOptions
+            _ = app.MapHealthChecks("/healthz", new HealthCheckOptions
             {
                 ResponseWriter = async (context, report) =>
                 {

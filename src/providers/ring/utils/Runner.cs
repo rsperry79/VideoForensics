@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// What to run and how far to let it reach: which endpoint keys were requested, plus the two
@@ -45,7 +45,7 @@ namespace VideoForensics.Providers.Ring.Utils
 
         public async Task<IndexDocument> RunAsync(RunOptions options, string credentialSource)
         {
-            EndpointRegistry.OriginalDoorbotSettings = new Dictionary<long, DoorbotSettingsSnapshot>();
+            EndpointRegistry.OriginalDoorbotSettings = [];
             EndpointRegistry.OriginalLocationModeByLocation.Clear();
 
             var index = new IndexDocument
@@ -55,7 +55,7 @@ namespace VideoForensics.Providers.Ring.Utils
                 OutputDirectory = _outputDir
             };
 
-            var selected = ResolveSelection(options.RequestedKeys, options.Destructive, options.NoPhysical);
+            List<EndpointDescriptor> selected = ResolveSelection(options.RequestedKeys, options.Destructive, options.NoPhysical);
 
             var needsDevices = selected.Any(e => e.Key == "devices") || selected.Any(e => e.Scope is EndpointScope.PerDoorbot or EndpointScope.PerChime);
             var needsLocations = selected.Any(e => e.Key == "locations") || selected.Any(e => e.Scope == EndpointScope.PerLocation);
@@ -65,8 +65,8 @@ namespace VideoForensics.Providers.Ring.Utils
 
             if (needsDevices)
             {
-                var descriptor = EndpointRegistry.Find("devices")!;
-                var (record, result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
+                EndpointDescriptor descriptor = EndpointRegistry.Find("devices")!;
+                (CallRecord? record, object? result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
                 index.Calls.Add(record);
                 devices = result as Devices;
 
@@ -85,34 +85,52 @@ namespace VideoForensics.Providers.Ring.Utils
 
             if (needsLocations)
             {
-                var descriptor = EndpointRegistry.Find("locations")!;
-                var (record, result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
+                EndpointDescriptor descriptor = EndpointRegistry.Find("locations")!;
+                (CallRecord? record, object? result) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
                 index.Calls.Add(record);
                 locations = result as List<Location>;
             }
 
-            var locationNames = (locations ?? new()).Where(l => l.Id.HasValue)
+            var locationNames = (locations ?? []).Where(l => l.Id.HasValue)
                 .ToDictionary(l => l.Id!.Value, l => l.Name ?? "(unnamed)");
             var doorbotNames = new Dictionary<long, string>();
-            foreach (var d in devices?.Doorbots ?? new()) doorbotNames[d.Id] = d.Description ?? "(unnamed)";
-            foreach (var d in devices?.AuthorizedDoorbots ?? new()) doorbotNames.TryAdd(d.Id, d.Description ?? "(unnamed)");
-            foreach (var d in devices?.StickupCams ?? new()) if (d.Id.HasValue) doorbotNames.TryAdd(d.Id.Value, d.Description ?? "(unnamed)");
+            foreach (Doorbot d in devices?.Doorbots ?? [])
+            {
+                doorbotNames[d.Id] = d.Description ?? "(unnamed)";
+            }
+
+            foreach (Doorbot d in devices?.AuthorizedDoorbots ?? [])
+            {
+                _ = doorbotNames.TryAdd(d.Id, d.Description ?? "(unnamed)");
+            }
+
+            foreach (StickupCam d in devices?.StickupCams ?? [])
+            {
+                if (d.Id.HasValue)
+                {
+                    _ = doorbotNames.TryAdd(d.Id.Value, d.Description ?? "(unnamed)");
+                }
+            }
+
             var chimeNames = new Dictionary<long, string>();
-            foreach (var c in devices?.Chimes ?? new()) chimeNames[c.Id] = c.Description ?? "(unnamed)";
+            foreach (Chime c in devices?.Chimes ?? [])
+            {
+                chimeNames[c.Id] = c.Description ?? "(unnamed)";
+            }
 
-            var locationIds = options.LocationIdFilter.HasValue
-                ? new List<Guid> { options.LocationIdFilter.Value }
-                : (locations ?? new()).Where(l => l.Id.HasValue).Select(l => l.Id!.Value).Distinct().ToList();
+            List<Guid> locationIds = options.LocationIdFilter.HasValue
+                ? [options.LocationIdFilter.Value]
+                : (locations ?? []).Where(l => l.Id.HasValue).Select(l => l.Id!.Value).Distinct().ToList();
 
-            var doorbotIds = options.DoorbotIdFilter.HasValue
-                ? new List<long> { options.DoorbotIdFilter.Value }
+            List<long> doorbotIds = options.DoorbotIdFilter.HasValue
+                ? [options.DoorbotIdFilter.Value]
                 : doorbotNames.Keys.ToList();
 
-            var chimeIds = options.ChimeIdFilter.HasValue
-                ? new List<long> { options.ChimeIdFilter.Value }
+            List<long> chimeIds = options.ChimeIdFilter.HasValue
+                ? [options.ChimeIdFilter.Value]
                 : chimeNames.Keys.ToList();
 
-            foreach (var descriptor in selected)
+            foreach (EndpointDescriptor descriptor in selected)
             {
                 if (descriptor.Key is "devices" or "locations")
                 {
@@ -122,24 +140,26 @@ namespace VideoForensics.Providers.Ring.Utils
                 switch (descriptor.Scope)
                 {
                     case EndpointScope.None:
-                        {
-                            var (record, _) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
-                            index.Calls.Add(record);
-                            break;
-                        }
+                    {
+                        (CallRecord? record, _) = await ExecuteAsync(descriptor, EndpointTarget.None, null);
+                        index.Calls.Add(record);
+                        break;
+                    }
 
                     case EndpointScope.PerLocation:
                         if (locationIds.Count == 0)
                         {
                             Narrate($"Skipping {descriptor.Key}: no locations discovered (and no --location-id given).");
                         }
-                        foreach (var locId in locationIds)
+
+                        foreach (Guid locId in locationIds)
                         {
                             var target = new EndpointTarget(locId, null);
                             var targetRecord = new TargetRecord { LocationId = locId.ToString(), LocationName = locationNames.GetValueOrDefault(locId) };
-                            var (record, _) = await ExecuteAsync(descriptor, target, targetRecord);
+                            (CallRecord? record, _) = await ExecuteAsync(descriptor, target, targetRecord);
                             index.Calls.Add(record);
                         }
+
                         break;
 
                     case EndpointScope.PerDoorbot:
@@ -147,13 +167,15 @@ namespace VideoForensics.Providers.Ring.Utils
                         {
                             Narrate($"Skipping {descriptor.Key}: no doorbots discovered (and no --doorbot-id given).");
                         }
+
                         foreach (var dbId in doorbotIds)
                         {
                             var target = new EndpointTarget(null, dbId);
                             var targetRecord = new TargetRecord { DoorbotId = dbId, DoorbotName = doorbotNames.GetValueOrDefault(dbId) };
-                            var (record, _) = await ExecuteAsync(descriptor, target, targetRecord);
+                            (CallRecord? record, _) = await ExecuteAsync(descriptor, target, targetRecord);
                             index.Calls.Add(record);
                         }
+
                         break;
 
                     case EndpointScope.PerChime:
@@ -161,13 +183,15 @@ namespace VideoForensics.Providers.Ring.Utils
                         {
                             Narrate($"Skipping {descriptor.Key}: no chimes discovered (and no --chime-id given).");
                         }
+
                         foreach (var chId in chimeIds)
                         {
                             var target = new EndpointTarget(null, null, chId);
                             var targetRecord = new TargetRecord { ChimeId = chId, ChimeName = chimeNames.GetValueOrDefault(chId) };
-                            var (record, _) = await ExecuteAsync(descriptor, target, targetRecord);
+                            (CallRecord? record, _) = await ExecuteAsync(descriptor, target, targetRecord);
                             index.Calls.Add(record);
                         }
+
                         break;
                 }
             }
@@ -190,18 +214,20 @@ namespace VideoForensics.Providers.Ring.Utils
             }
             else
             {
-                result = new List<EndpointDescriptor>();
+                result = [];
                 foreach (var key in requestedKeys)
                 {
-                    var descriptor = EndpointRegistry.Find(key);
+                    EndpointDescriptor? descriptor = EndpointRegistry.Find(key);
                     if (descriptor == null)
                     {
                         throw new ArgumentException($"Unknown endpoint key '{key}'. Run --list to see valid keys.");
                     }
+
                     if (descriptor.Destructive && !destructive)
                     {
                         throw new ArgumentException($"Endpoint '{key}' is destructive and was requested explicitly, but --destructive was not passed. Add --destructive to confirm you want to run it.");
                     }
+
                     result.Add(descriptor);
                 }
             }
@@ -217,7 +243,10 @@ namespace VideoForensics.Providers.Ring.Utils
         private async Task<(CallRecord record, object? result)> ExecuteAsync(EndpointDescriptor descriptor, EndpointTarget target, TargetRecord? targetRecord)
         {
             var raw = new List<RawApiCall>();
-            void Handler(RawApiCall call) => raw.Add(call);
+            void Handler(RawApiCall call)
+            {
+                raw.Add(call);
+            }
 
             ApiRawLogger.OnRawResponse += Handler;
 
@@ -239,24 +268,24 @@ namespace VideoForensics.Providers.Ring.Utils
             var testCallCount = 0;
             try
             {
-                var task = descriptor.Invoke(_session, target);
+                Task task = descriptor.Invoke(_session, target);
                 await task;
                 testCallCount = raw.Count;
 
-                var taskType = task.GetType();
-                var resultProperty = taskType.GetProperty("Result");
+                Type taskType = task.GetType();
+                PropertyInfo? resultProperty = taskType.GetProperty("Result");
                 invokeResult = resultProperty?.GetValue(task);
 
                 record.Success = true;
                 Narrate($"   ok ({raw.Sum(r => r.Body?.Length ?? 0)} bytes, {raw.Count} http call(s))");
 
-                if (raw.Count > 0 && raw[0].Body != null && EndpointSchemaMap.TryGetExpectedType(descriptor.Key, out var expectedType) && expectedType != null)
+                if (raw.Count > 0 && raw[0].Body != null && EndpointSchemaMap.TryGetExpectedType(descriptor.Key, out Type? expectedType) && expectedType != null)
                 {
                     try
                     {
-                        var jsonResponse = JsonDocument.Parse(raw[0].Body).RootElement;
+                        JsonElement jsonResponse = JsonDocument.Parse(raw[0].Body).RootElement;
                         var validator = new JsonSchemaValidator();
-                        var issues = validator.ValidateAgainstSchema(jsonResponse, expectedType);
+                        List<JsonSchemaValidator.SchemaIssue> issues = validator.ValidateAgainstSchema(jsonResponse, expectedType);
                         record.SchemaIssues = issues.ConvertAll(i => new SchemaIssueRecord
                         {
                             Path = i.Path,
@@ -287,7 +316,7 @@ namespace VideoForensics.Providers.Ring.Utils
                 }
                 else
                 {
-                    var plan = descriptor.PrepareRestore(target);
+                    RestorePlan? plan = descriptor.PrepareRestore(target);
                     if (plan == null)
                     {
                         record.RestoreSkippedReason = "no original value could be captured for this target - the mutated value was left as set by --" +
@@ -325,7 +354,7 @@ namespace VideoForensics.Providers.Ring.Utils
             string? primaryResultFile = null;
             for (var i = 0; i < raw.Count; i++)
             {
-                var call = raw[i];
+                RawApiCall call = raw[i];
                 var phase = i < testCallCount ? "test" : "restore";
                 var fileName = BuildFileName(descriptor.Key, targetRecord, raw.Count > 1, phase);
                 var filePath = Path.Combine(_outputDir, fileName);
@@ -343,6 +372,7 @@ namespace VideoForensics.Providers.Ring.Utils
 
                 primaryResultFile ??= fileName;
             }
+
             record.ResultFile = primaryResultFile;
 
             return (record, invokeResult);
@@ -350,18 +380,29 @@ namespace VideoForensics.Providers.Ring.Utils
 
         private static string DescribeTarget(TargetRecord? t)
         {
-            if (t == null) return "";
-            if (t.LocationId != null) return $"(location {t.LocationName ?? t.LocationId})";
-            if (t.DoorbotId != null) return $"(doorbot {t.DoorbotName ?? t.DoorbotId.ToString()})";
-            if (t.ChimeId != null) return $"(chime {t.ChimeName ?? t.ChimeId.ToString()})";
-            return "";
+            if (t == null)
+            {
+                return "";
+            }
+
+            if (t.LocationId != null)
+            {
+                return $"(location {t.LocationName ?? t.LocationId})";
+            }
+
+            if (t.DoorbotId != null)
+            {
+                return $"(doorbot {t.DoorbotName ?? t.DoorbotId.ToString()})";
+            }
+
+            return t.ChimeId != null ? $"(chime {t.ChimeName ?? t.ChimeId.ToString()})" : "";
         }
 
         private string BuildFileName(string endpointKey, TargetRecord? target, bool multipleCalls, string phase)
         {
             var targetPart = target switch
             {
-                { LocationId: not null } => "_" + target.LocationId!.Substring(0, Math.Min(8, target.LocationId.Length)),
+                { LocationId: not null } => "_" + target.LocationId![..Math.Min(8, target.LocationId.Length)],
                 { DoorbotId: not null } => "_" + target.DoorbotId,
                 { ChimeId: not null } => "_" + target.ChimeId,
                 _ => ""
@@ -374,7 +415,10 @@ namespace VideoForensics.Providers.Ring.Utils
 
         private void Narrate(string message)
         {
-            if (!_quiet) Console.WriteLine(message);
+            if (!_quiet)
+            {
+                Console.WriteLine(message);
+            }
         }
     }
 }

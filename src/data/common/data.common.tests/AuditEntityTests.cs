@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Data.Common.Tests;
@@ -10,15 +11,15 @@ public class AuditEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var actor = "username";
+        string actor = "username";
         var actorType = ActorType.Human;
-        var action = "MediaDownloaded";
-        var entityType = "MediaItem";
+        string action = "MediaDownloaded";
+        string entityType = "MediaItem";
         var entityId = Guid.NewGuid();
-        var detailsJson = "{\"fileSize\": 1024000}";
+        string detailsJson = "{\"fileSize\": 1024000}";
         var timestampUtc = DateTime.UtcNow;
-        var previousEntryHash = "prev_hash_value";
-        var entryHash = "hash_value";
+        string previousEntryHash = "prev_hash_value";
+        string entryHash = "hash_value";
 
         // Act
         var logEntry = new ActionLogEntry
@@ -124,10 +125,10 @@ public class AuditEntityTests
         // Arrange
         var id = Guid.NewGuid();
         var mediaItemId = Guid.NewGuid();
-        var sha256Hash = "abcdef123456";
+        string sha256Hash = "abcdef123456";
         var verifiedAtUtc = DateTime.UtcNow;
-        var passed = true;
-        var verifiedBy = "operator";
+        bool passed = true;
+        string verifiedBy = "operator";
 
         // Act
         var record = new IntegrityRecord
@@ -155,7 +156,7 @@ public class AuditEntityTests
     public void IntegrityRecord_WhenVerificationFails_ContainsFailureReason()
     {
         // Arrange
-        var failureReason = "Hash mismatch: file has been tampered with";
+        string failureReason = "Hash mismatch: file has been tampered with";
 
         // Act
         var record = new IntegrityRecord
@@ -217,11 +218,11 @@ public class AuditEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var entityType = "MediaItem";
+        string entityType = "MediaItem";
         var entityId = Guid.NewGuid();
-        var source = "mcp:face-recognition";
-        var key = "recognized_person";
-        var value = "Jane Doe";
+        string source = "mcp:face-recognition";
+        string key = "recognized_person";
+        string value = "Jane Doe";
         var createdAtUtc = DateTime.UtcNow;
 
         // Act

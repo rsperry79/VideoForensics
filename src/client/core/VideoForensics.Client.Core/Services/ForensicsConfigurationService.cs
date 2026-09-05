@@ -1,9 +1,11 @@
-namespace VideoForensics.Client.Core
-{
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Client.Common;
-    using VideoForensics.Data.Common.Contracts;
+using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+
+namespace VideoForensics.Client.Core.Services
+{
     public class ForensicsConfigurationService : IForensicsConfigurationService
     {
         private readonly ILogger<ForensicsConfigurationService> _logger;
@@ -116,34 +118,33 @@ namespace VideoForensics.Client.Core
             }
         }
 
-
         private async Task<bool> GetBoolSetting(string key, bool defaultValue, CancellationToken ct)
         {
-            var value = await _settingRepository!.GetAsync(key, ct);
+            string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : bool.Parse(value);
         }
 
         private async Task<string> GetStringSetting(string key, string? defaultValue, CancellationToken ct)
         {
-            var value = await _settingRepository!.GetAsync(key, ct);
+            string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? (defaultValue ?? "") : value;
         }
 
         private async Task<int> GetIntSetting(string key, int defaultValue, CancellationToken ct)
         {
-            var value = await _settingRepository!.GetAsync(key, ct);
+            string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : int.Parse(value);
         }
 
         private async Task<T> GetEnumSetting<T>(string key, T defaultValue, CancellationToken ct) where T : struct, Enum
         {
-            var value = await _settingRepository!.GetAsync(key, ct);
+            string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : (T)Enum.Parse(typeof(T), value);
         }
 
         private async Task<Guid?> GetGuidSetting(string key, Guid? defaultValue, CancellationToken ct)
         {
-            var value = await _settingRepository!.GetAsync(key, ct);
+            string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : Guid.Parse(value);
         }
     }

@@ -1,9 +1,12 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Xunit;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
-using Microsoft.EntityFrameworkCore;
+
+using Xunit;
 
 namespace VideoForensics.Data.Database.Tests
 {
@@ -17,7 +20,7 @@ namespace VideoForensics.Data.Database.Tests
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
 
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
+            ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             var serviceProvider = new TestServiceProvider(_fixture, loggerFactory);
 
             _unitOfWork = new UnitOfWork(
@@ -38,22 +41,22 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
                 await context.Users.AddAsync(user, CancellationToken.None);
 
-                var account = TestDataBuilder.BuildProviderAccount(userId);
+                ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
                 return null;
             }, CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
-            var retrievedUser = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            var retrievedAccount = await ctx.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId);
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            User? retrievedUser = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            ProviderAccount? retrievedAccount = await ctx.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId);
 
             Assert.NotNull(retrievedUser);
             Assert.NotNull(retrievedAccount);
@@ -69,13 +72,13 @@ namespace VideoForensics.Data.Database.Tests
 
             try
             {
-                await _unitOfWork.ExecuteAsync<object?>(async context =>
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    var user = TestDataBuilder.BuildUser();
+                    User user = TestDataBuilder.BuildUser();
                     user.Id = userId;
                     await context.Users.AddAsync(user, CancellationToken.None);
 
-                    var account = TestDataBuilder.BuildProviderAccount(userId);
+                    ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                     account.Id = accountId;
                     await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
@@ -86,7 +89,7 @@ namespace VideoForensics.Data.Database.Tests
             {
             }
 
-            var ctx = _fixture.Factory.CreateDbContext();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var userCount = await ctx.Users.CountAsync(u => u.Id == userId);
             var accountCount = await ctx.ProviderAccounts.CountAsync(pa => pa.Id == accountId);
 
@@ -101,7 +104,7 @@ namespace VideoForensics.Data.Database.Tests
 
             var result = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 await context.Users.AddAsync(user, CancellationToken.None);
                 return expectedResult;
             }, CancellationToken.None);
@@ -115,46 +118,45 @@ namespace VideoForensics.Data.Database.Tests
             var userId1 = Guid.NewGuid();
             var userId2 = Guid.NewGuid();
 
-            var user1 = await _unitOfWork.ExecuteAsync(async context =>
+            User user1 = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId1;
                 await context.Users.AddAsync(user, CancellationToken.None);
                 return user;
             }, CancellationToken.None);
 
-            var user2 = await _unitOfWork.ExecuteAsync(async context =>
+            User user2 = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId2;
                 await context.Users.AddAsync(user, CancellationToken.None);
                 return user;
             }, CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var count = await ctx.Users.CountAsync();
             Assert.Equal(2, count);
         }
 
-
         [Fact]
         public async Task UnitOfWork_ActionLogChaining_AcrossMultipleExecutes()
         {
-            var entry1 = await _unitOfWork.ExecuteAsync(async context =>
+            ActionLogEntry entry1 = await _unitOfWork.ExecuteAsync(async context =>
             {
                 return await context.ActionLog.AppendAsync(
                     "A1", ActorType.Human, "Act1", "Ent", null, null, CancellationToken.None);
             }, CancellationToken.None);
 
-            var entry2 = await _unitOfWork.ExecuteAsync(async context =>
+            ActionLogEntry entry2 = await _unitOfWork.ExecuteAsync(async context =>
             {
                 return await context.ActionLog.AppendAsync(
                     "A2", ActorType.Human, "Act2", "Ent", null, null, CancellationToken.None);
             }, CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
-            var retrieved1 = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entry1.Id);
-            var retrieved2 = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entry2.Id);
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            ActionLogEntry? retrieved1 = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entry1.Id);
+            ActionLogEntry? retrieved2 = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entry2.Id);
 
             Assert.NotNull(retrieved2.PreviousEntryHash);
             Assert.Equal(retrieved1.EntryHash, retrieved2.PreviousEntryHash);
@@ -167,31 +169,31 @@ namespace VideoForensics.Data.Database.Tests
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
 
-            var logEntry = await _unitOfWork.ExecuteAsync(async context =>
+            ActionLogEntry logEntry = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
                 await context.Users.AddAsync(user, CancellationToken.None);
 
-                var account = TestDataBuilder.BuildProviderAccount(userId);
+                ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
-                var location = TestDataBuilder.BuildLocation(accountId);
+                Location location = TestDataBuilder.BuildLocation(accountId);
                 location.Id = locationId;
                 await context.Locations.AddAsync(location, CancellationToken.None);
 
-                var logEntry = await context.ActionLog.AppendAsync(
+                ActionLogEntry logEntry = await context.ActionLog.AppendAsync(
                     "TestUser", ActorType.Human, "UserAndLocationCreated", "Location", locationId, null, CancellationToken.None);
 
                 return logEntry;
             }, CancellationToken.None);
 
-            var ctx = _fixture.Factory.CreateDbContext();
-            var user = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            var account = await ctx.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId);
-            var location = await ctx.Locations.FirstOrDefaultAsync(l => l.Id == locationId);
-            var log = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == logEntry.Id);
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            User? user = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            ProviderAccount? account = await ctx.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId);
+            Location? location = await ctx.Locations.FirstOrDefaultAsync(l => l.Id == locationId);
+            ActionLogEntry? log = await ctx.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == logEntry.Id);
 
             Assert.NotNull(user);
             Assert.NotNull(account);
@@ -208,13 +210,13 @@ namespace VideoForensics.Data.Database.Tests
 
             try
             {
-                await _unitOfWork.ExecuteAsync<object?>(async context =>
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
                 {
-                    var user = TestDataBuilder.BuildUser();
+                    User user = TestDataBuilder.BuildUser();
                     user.Id = userId;
                     await context.Users.AddAsync(user, CancellationToken.None);
 
-                    var account = TestDataBuilder.BuildProviderAccount(userId);
+                    ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                     account.Id = accountId;
                     await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
@@ -225,7 +227,7 @@ namespace VideoForensics.Data.Database.Tests
             {
             }
 
-            var ctx = _fixture.Factory.CreateDbContext();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var userExists = await ctx.Users.AnyAsync(u => u.Id == userId);
             var accountExists = await ctx.ProviderAccounts.AnyAsync(pa => pa.Id == accountId);
 
@@ -243,13 +245,13 @@ namespace VideoForensics.Data.Database.Tests
             var address = "123 Main St";
 
             // Create user and account first
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
                 await context.Users.AddAsync(user, CancellationToken.None);
 
-                var account = TestDataBuilder.BuildProviderAccount(userId);
+                ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
@@ -258,10 +260,10 @@ namespace VideoForensics.Data.Database.Tests
 
             // First EnsureLocation call - should create
             Location? location1 = null;
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-                var existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
+                IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+                Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
                 {
@@ -286,10 +288,10 @@ namespace VideoForensics.Data.Database.Tests
 
             // Second EnsureLocation call - should find existing
             Location? location2 = null;
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-                var existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
+                IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
+                Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
                 {
@@ -318,7 +320,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(location1.Id, location2.Id);
 
             // Verify only one location exists in database
-            var ctx = _fixture.Factory.CreateDbContext();
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
             var locationCount = await ctx.Locations.CountAsync(l => l.ProviderLocationId == providerLocationId);
             Assert.Equal(1, locationCount);
         }
@@ -336,17 +338,17 @@ namespace VideoForensics.Data.Database.Tests
             var updatedType = "doorbell";
 
             // Create user, account, and location first
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                var user = TestDataBuilder.BuildUser();
+                User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
                 await context.Users.AddAsync(user, CancellationToken.None);
 
-                var account = TestDataBuilder.BuildProviderAccount(userId);
+                ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
-                var location = TestDataBuilder.BuildLocation(accountId);
+                Location location = TestDataBuilder.BuildLocation(accountId);
                 location.Id = locationId;
                 await context.Locations.AddAsync(location, CancellationToken.None);
 
@@ -355,10 +357,10 @@ namespace VideoForensics.Data.Database.Tests
 
             // First EnsureDevice call - should create
             Device? device1 = null;
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
-                var existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+                IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
+                Device? existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
 
                 if (existing == null)
                 {
@@ -384,10 +386,10 @@ namespace VideoForensics.Data.Database.Tests
 
             // Second EnsureDevice call - should find and update
             Device? device2 = null;
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                var devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
-                var existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+                IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, CancellationToken.None);
+                Device? existing = devices.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
 
                 if (existing == null)
                 {
@@ -422,8 +424,8 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(device1.Id, device2.Id);
 
             // Verify device was updated in database
-            var ctx = _fixture.Factory.CreateDbContext();
-            var retrievedDevice = await ctx.Devices.FirstOrDefaultAsync(d => d.ProviderDeviceId == providerDeviceId);
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            Device? retrievedDevice = await ctx.Devices.FirstOrDefaultAsync(d => d.ProviderDeviceId == providerDeviceId);
             Assert.NotNull(retrievedDevice);
             Assert.Equal(updatedName, retrievedDevice.Name);
             Assert.Equal(updatedType, retrievedDevice.Type);
@@ -448,12 +450,16 @@ namespace VideoForensics.Data.Database.Tests
             public object? GetService(Type serviceType)
             {
                 if (serviceType == typeof(ICredentialEncryptionProvider))
+                {
                     return _fixture.EncryptionProvider;
+                }
+
                 if (serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>))
+                {
                     return _loggerFactory.CreateLogger<ICredentialRepository>();
-                if (serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>))
-                    return _loggerFactory.CreateLogger<UnitOfWork>();
-                return null;
+                }
+
+                return serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
             }
         }
     }

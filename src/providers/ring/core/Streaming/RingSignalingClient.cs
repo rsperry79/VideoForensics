@@ -3,9 +3,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring.Alarm;
-using VideoForensics.Providers.Ring.Sockets;
-
 using IWebSocketTransport = VideoForensics.Providers.Ring.Sockets.IWebSocketTransport;
 
 namespace VideoForensics.Providers.Ring.Streaming
@@ -88,7 +85,7 @@ namespace VideoForensics.Providers.Ring.Streaming
                     continue;
                 }
 
-                if (!root.TryGetProperty("method", out var methodEl) || methodEl.ValueKind != JsonValueKind.String)
+                if (!root.TryGetProperty("method", out JsonElement methodEl) || methodEl.ValueKind != JsonValueKind.String)
                 {
                     continue;
                 }
@@ -107,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Streaming
 
         private void HandleSdpAnswer(JsonElement root)
         {
-            if (!root.TryGetProperty("body", out var bodyEl))
+            if (!root.TryGetProperty("body", out JsonElement bodyEl))
             {
                 return;
             }
@@ -115,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Streaming
             string sdp = bodyEl.ValueKind switch
             {
                 JsonValueKind.String => bodyEl.GetString(),
-                JsonValueKind.Object when bodyEl.TryGetProperty("sdp", out var sdpEl) => sdpEl.GetString(),
+                JsonValueKind.Object when bodyEl.TryGetProperty("sdp", out JsonElement sdpEl) => sdpEl.GetString(),
                 _ => null
             };
 
@@ -127,12 +124,12 @@ namespace VideoForensics.Providers.Ring.Streaming
 
         private void HandleIceCandidate(JsonElement root)
         {
-            if (!root.TryGetProperty("body", out var bodyEl) || !bodyEl.TryGetProperty("ice", out var iceEl))
+            if (!root.TryGetProperty("body", out JsonElement bodyEl) || !bodyEl.TryGetProperty("ice", out JsonElement iceEl))
             {
                 return;
             }
 
-            var mlineIndex = bodyEl.TryGetProperty("mlineindex", out var mEl) && mEl.ValueKind == JsonValueKind.Number
+            var mlineIndex = bodyEl.TryGetProperty("mlineindex", out JsonElement mEl) && mEl.ValueKind == JsonValueKind.Number
                 ? mEl.GetInt32()
                 : 0;
 

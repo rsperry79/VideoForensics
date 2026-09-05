@@ -3,7 +3,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Snapshots
@@ -23,8 +22,9 @@ namespace VideoForensics.Providers.Ring.Snapshots
 
         public async Task<bool> SaveLatestSnapshotAsync(Doorbot doorbot, string outputPath, CancellationToken cancellationToken = default)
         {
-            if (doorbot == null) throw new ArgumentNullException(nameof(doorbot));
-            return await SaveLatestSnapshotAsync(doorbot.Id, outputPath, cancellationToken);
+            return doorbot == null
+                ? throw new ArgumentNullException(nameof(doorbot))
+                : await SaveLatestSnapshotAsync(doorbot.Id, outputPath, cancellationToken);
         }
 
         public async Task<bool> SaveLatestSnapshotAsync(long doorbotId, string outputPath, CancellationToken cancellationToken = default)
@@ -32,12 +32,14 @@ namespace VideoForensics.Providers.Ring.Snapshots
             try
             {
                 if (string.IsNullOrWhiteSpace(outputPath))
+                {
                     throw new ArgumentException("Output path cannot be null or empty", nameof(outputPath));
+                }
 
-                using var stream = await GetLatestSnapshotAsync(doorbotId, cancellationToken);
-                using var fileStream = File.Create(outputPath);
+                using Stream stream = await GetLatestSnapshotAsync(doorbotId, cancellationToken);
+                using FileStream fileStream = File.Create(outputPath);
 
-                stream.Seek(0, SeekOrigin.Begin);
+                _ = stream.Seek(0, SeekOrigin.Begin);
                 await stream.CopyToAsync(fileStream, cancellationToken);
                 return true;
             }
@@ -49,8 +51,9 @@ namespace VideoForensics.Providers.Ring.Snapshots
 
         public async Task<Stream> GetLatestSnapshotAsync(Doorbot doorbot, CancellationToken cancellationToken = default)
         {
-            if (doorbot == null) throw new ArgumentNullException(nameof(doorbot));
-            return await GetLatestSnapshotAsync(doorbot.Id, cancellationToken);
+            return doorbot == null
+                ? throw new ArgumentNullException(nameof(doorbot))
+                : await GetLatestSnapshotAsync(doorbot.Id, cancellationToken);
         }
 
         public async Task<Stream> GetLatestSnapshotAsync(long doorbotId, CancellationToken cancellationToken = default)

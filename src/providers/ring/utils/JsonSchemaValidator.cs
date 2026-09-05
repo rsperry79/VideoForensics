@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Utils
+namespace VideoForensics.Providers.Ring
 {
     /// <summary>
     /// Compares actual API JSON responses against declared entity schemas, reporting type
@@ -25,13 +25,13 @@ namespace VideoForensics.Providers.Ring.Utils
             public required string Severity { get; set; } // "Error", "Warning", "Info"
         }
 
-        private static readonly Dictionary<string, Type> EntityTypeCache = new();
+        private static readonly Dictionary<string, Type> EntityTypeCache = [];
 
         static JsonSchemaValidator()
         {
             // Pre-cache all entity types from the Entities namespace
-            var entityAssembly = typeof(Profile).Assembly;
-            foreach (var type in entityAssembly.GetTypes()
+            Assembly entityAssembly = typeof(Profile).Assembly;
+            foreach (Type? type in entityAssembly.GetTypes()
                 .Where(t => t.Namespace == "VideoForensics.Providers.Ring.Entities" && !t.IsAbstract && !t.IsInterface))
             {
                 EntityTypeCache[type.Name] = type;
@@ -42,7 +42,9 @@ namespace VideoForensics.Providers.Ring.Utils
         {
             var issues = new List<SchemaIssue>();
             if (expectedType == null || actualResponse.ValueKind == JsonValueKind.Null)
+            {
                 return issues;
+            }
 
             ValidateType(actualResponse, expectedType, "$", issues);
             return issues;
@@ -64,10 +66,11 @@ namespace VideoForensics.Providers.Ring.Utils
                         Severity = "Warning"
                     });
                 }
+
                 return;
             }
 
-            var underlyingType = Nullable.GetUnderlyingType(schemaType) ?? schemaType;
+            Type underlyingType = Nullable.GetUnderlyingType(schemaType) ?? schemaType;
 
             if (underlyingType == typeof(string))
             {
@@ -126,7 +129,7 @@ namespace VideoForensics.Providers.Ring.Utils
             }
             else if (underlyingType == typeof(bool))
             {
-                if (json.ValueKind != JsonValueKind.True && json.ValueKind != JsonValueKind.False)
+                if (json.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
                 {
                     issues.Add(new SchemaIssue
                     {
@@ -150,17 +153,17 @@ namespace VideoForensics.Providers.Ring.Utils
 
         private void ValidateObject(JsonElement jsonObj, Type schemaType, string path, List<SchemaIssue> issues)
         {
-            var schemaProperties = GetJsonProperties(schemaType);
+            List<JsonPropertyInfo> schemaProperties = GetJsonProperties(schemaType);
             var jsonProps = new HashSet<string>(jsonObj.EnumerateObject().Select(p => p.Name), StringComparer.Ordinal);
             var usedSchemaProps = new HashSet<string>(StringComparer.Ordinal);
 
             // Check each schema property
-            foreach (var schemaProp in schemaProperties)
+            foreach (JsonPropertyInfo schemaProp in schemaProperties)
             {
                 var jsonPropName = schemaProp.JsonName;
-                usedSchemaProps.Add(jsonPropName);
+                _ = usedSchemaProps.Add(jsonPropName);
 
-                if (jsonObj.TryGetProperty(jsonPropName, out var jsonProp))
+                if (jsonObj.TryGetProperty(jsonPropName, out JsonElement jsonProp))
                 {
                     ValidateType(jsonProp, schemaProp.PropertyType, $"{path}.{jsonPropName}", issues);
                 }
@@ -168,7 +171,7 @@ namespace VideoForensics.Providers.Ring.Utils
             }
 
             // Check for extra fields in JSON not in schema
-            var extraJsonProps = jsonProps.Except(usedSchemaProps);
+            IEnumerable<string> extraJsonProps = jsonProps.Except(usedSchemaProps);
             foreach (var extra in extraJsonProps)
             {
                 issues.Add(new SchemaIssue
@@ -191,13 +194,15 @@ namespace VideoForensics.Providers.Ring.Utils
                 return;
             }
 
-            var elementType = schemaType.GetGenericArguments().FirstOrDefault();
+            Type? elementType = schemaType.GetGenericArguments().FirstOrDefault();
             if (elementType == null)
+            {
                 return;
+            }
 
-            var arrayEnum = jsonArray.EnumerateArray();
+            JsonElement.ArrayEnumerator arrayEnum = jsonArray.EnumerateArray();
             int index = 0;
-            foreach (var item in arrayEnum)
+            foreach (JsonElement item in arrayEnum)
             {
                 ValidateType(item, elementType, $"{path}[{index}]", issues);
                 index++;
@@ -213,12 +218,13 @@ namespace VideoForensics.Providers.Ring.Utils
         private List<JsonPropertyInfo> GetJsonProperties(Type type)
         {
             var props = new List<JsonPropertyInfo>();
-            foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                var jsonAttr = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
+                JsonPropertyNameAttribute? jsonAttr = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
                 var jsonName = jsonAttr?.Name ?? prop.Name;
                 props.Add(new JsonPropertyInfo { JsonName = jsonName, PropertyType = prop.PropertyType });
             }
+
             return props;
         }
 

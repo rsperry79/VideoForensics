@@ -1,5 +1,7 @@
-using System.Reflection;
 using Microsoft.Extensions.Logging;
+
+using System.Reflection;
+
 using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Data.Core.Services
@@ -23,7 +25,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             // Create a deep clone of the DTO
-            var cloned = DeepClone(reportDto);
+            T cloned = DeepClone(reportDto);
 
             _logger.LogInformation("Redacting report of type {ReportType} with level {RedactionLevel}",
                 typeof(T).Name, level);
@@ -36,16 +38,25 @@ namespace VideoForensics.Data.Core.Services
 
         private void ApplyRedaction<T>(T obj, RedactionLevel level) where T : class
         {
-            if (obj == null) return;
-
-            var properties = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var prop in properties)
+            if (obj == null)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
+                return;
+            }
+
+            PropertyInfo[] properties = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (PropertyInfo prop in properties)
+            {
+                if (!prop.CanRead || !prop.CanWrite)
+                {
+                    continue;
+                }
 
                 var value = prop.GetValue(obj);
-                if (value == null) continue;
+                if (value == null)
+                {
+                    continue;
+                }
 
                 // Apply field-level redaction based on property name
                 if (level >= RedactionLevel.Light)
@@ -92,9 +103,12 @@ namespace VideoForensics.Data.Core.Services
             }
 
             // Redact collections
-            foreach (var prop in properties)
+            foreach (PropertyInfo prop in properties)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
+                if (!prop.CanRead || !prop.CanWrite)
+                {
+                    continue;
+                }
 
                 var value = prop.GetValue(obj);
                 if (value is System.Collections.IEnumerable enumerable and not string)
@@ -112,22 +126,32 @@ namespace VideoForensics.Data.Core.Services
 
         private T DeepClone<T>(T obj) where T : class
         {
-            if (obj == null) return null!;
+            if (obj == null)
+            {
+                return null!;
+            }
 
-            var type = obj.GetType();
+            Type type = obj.GetType();
 
             // For simple types and strings, return as-is
             if (type.IsValueType || type == typeof(string))
+            {
                 return obj;
+            }
 
             // Use reflection to create a new instance and copy properties
-            var clone = Activator.CreateInstance(type) as T;
-            if (clone == null) return obj;
-
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var prop in properties)
+            if (Activator.CreateInstance(type) is not T clone)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
+                return obj;
+            }
+
+            PropertyInfo[] properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo prop in properties)
+            {
+                if (!prop.CanRead || !prop.CanWrite)
+                {
+                    continue;
+                }
 
                 var value = prop.GetValue(obj);
                 if (value != null)
@@ -135,18 +159,18 @@ namespace VideoForensics.Data.Core.Services
                     if (value is System.Collections.IEnumerable enumerable and not string)
                     {
                         // Clone collections
-                        var listType = typeof(List<>);
-                        var itemType = prop.PropertyType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
-                        var listGeneric = listType.MakeGenericType(itemType);
+                        Type listType = typeof(List<>);
+                        Type itemType = prop.PropertyType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+                        Type listGeneric = listType.MakeGenericType(itemType);
                         var newList = Activator.CreateInstance(listGeneric);
-                        var addMethod = listGeneric.GetMethod("Add");
+                        MethodInfo? addMethod = listGeneric.GetMethod("Add");
 
                         foreach (var item in enumerable)
                         {
                             var clonedItem = item is not string and not ValueType
                                 ? DeepClone(item)
                                 : item;
-                            addMethod?.Invoke(newList, new[] { clonedItem });
+                            _ = (addMethod?.Invoke(newList, new[] { clonedItem }));
                         }
 
                         prop.SetValue(clone, newList);
@@ -167,34 +191,52 @@ namespace VideoForensics.Data.Core.Services
             return clone;
         }
 
-        private bool IsEmailProperty(string propName) =>
-            propName.Contains("Email", StringComparison.OrdinalIgnoreCase);
+        private bool IsEmailProperty(string propName)
+        {
+            return propName.Contains("Email", StringComparison.OrdinalIgnoreCase);
+        }
 
-        private bool IsPhoneProperty(string propName) =>
-            propName.Contains("Phone", StringComparison.OrdinalIgnoreCase);
+        private bool IsPhoneProperty(string propName)
+        {
+            return propName.Contains("Phone", StringComparison.OrdinalIgnoreCase);
+        }
 
-        private bool IsAddressProperty(string propName) =>
-            propName.Contains("Address", StringComparison.OrdinalIgnoreCase);
+        private bool IsAddressProperty(string propName)
+        {
+            return propName.Contains("Address", StringComparison.OrdinalIgnoreCase);
+        }
 
-        private bool IsCoordinateProperty(string propName) =>
-            propName.Contains("Latitude", StringComparison.OrdinalIgnoreCase) ||
+        private bool IsCoordinateProperty(string propName)
+        {
+            return propName.Contains("Latitude", StringComparison.OrdinalIgnoreCase) ||
             propName.Contains("Longitude", StringComparison.OrdinalIgnoreCase) ||
             propName.Contains("Coordinate", StringComparison.OrdinalIgnoreCase);
+        }
 
-        private bool IsPersonNameProperty(string propName) =>
-            propName.Contains("Person", StringComparison.OrdinalIgnoreCase) ||
+        private bool IsPersonNameProperty(string propName)
+        {
+            return propName.Contains("Person", StringComparison.OrdinalIgnoreCase) ||
             propName.Contains("Name", StringComparison.OrdinalIgnoreCase);
+        }
 
-        private bool IsGpsProperty(string propName) =>
-            propName.Contains("GPS", StringComparison.OrdinalIgnoreCase) ||
+        private bool IsGpsProperty(string propName)
+        {
+            return propName.Contains("GPS", StringComparison.OrdinalIgnoreCase) ||
             propName.Contains("Location", StringComparison.OrdinalIgnoreCase);
+        }
 
         private string MaskEmail(string? email)
         {
-            if (string.IsNullOrEmpty(email)) return "[REDACTED_EMAIL]";
+            if (string.IsNullOrEmpty(email))
+            {
+                return "[REDACTED_EMAIL]";
+            }
 
             var parts = email.Split('@');
-            if (parts.Length != 2) return "[REDACTED_EMAIL]";
+            if (parts.Length != 2)
+            {
+                return "[REDACTED_EMAIL]";
+            }
 
             var localPart = parts[0];
             var domain = parts[1];
@@ -207,12 +249,13 @@ namespace VideoForensics.Data.Core.Services
 
         private string MaskPhone(string? phone)
         {
-            if (string.IsNullOrEmpty(phone)) return "[REDACTED_PHONE]";
+            if (string.IsNullOrEmpty(phone))
+            {
+                return "[REDACTED_PHONE]";
+            }
 
             var digits = new string(phone.Where(char.IsDigit).ToArray());
-            if (digits.Length < 4) return "[REDACTED_PHONE]";
-
-            return $"***-***-{digits[^4..]}";
+            return digits.Length < 4 ? "[REDACTED_PHONE]" : $"***-***-{digits[^4..]}";
         }
     }
 }

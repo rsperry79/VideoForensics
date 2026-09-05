@@ -1,9 +1,8 @@
-using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using VideoForensics.Providers.Ring.Auth;
-using VideoForensics.Providers.Ring.Auth.Implementations;
+
+using VideoForensics.Providers.Ring.Implementations;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -30,30 +29,22 @@ namespace VideoForensics.Providers.Ring
 
         public RingCredentials Load(string path)
         {
-            if (!File.Exists(path))
-            {
-                return new RingCredentials();
-            }
-
-            return LoadFromJson(File.ReadAllText(path));
+            return !File.Exists(path) ? new RingCredentials() : LoadFromJson(File.ReadAllText(path));
         }
 
         public RingCredentials LoadFromJson(string json)
         {
             try
             {
-                var stored = JsonSerializer.Deserialize<StoredCredentials>(json);
-                if (stored == null)
-                {
-                    return new RingCredentials();
-                }
-
-                return new RingCredentials
-                {
-                    UserName = stored.UserName,
-                    Password = _encryption.Decrypt(stored.Password),
-                    RefreshToken = _encryption.Decrypt(stored.RefreshToken)
-                };
+                StoredCredentials stored = JsonSerializer.Deserialize<StoredCredentials>(json);
+                return stored == null
+                    ? new RingCredentials()
+                    : new RingCredentials
+                    {
+                        UserName = stored.UserName,
+                        Password = _encryption.Decrypt(stored.Password),
+                        RefreshToken = _encryption.Decrypt(stored.RefreshToken)
+                    };
             }
             catch
             {
@@ -73,7 +64,7 @@ namespace VideoForensics.Providers.Ring
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                Directory.CreateDirectory(directory);
+                _ = Directory.CreateDirectory(directory);
             }
 
             File.WriteAllText(path, JsonSerializer.Serialize(stored, new JsonSerializerOptions { WriteIndented = true }));
@@ -87,27 +78,34 @@ namespace VideoForensics.Providers.Ring
         public bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password")
         {
             if (!File.Exists(filePath))
+            {
                 return false;
+            }
 
             try
             {
                 var json = File.ReadAllText(filePath);
-                var obj = JsonNode.Parse(json) as JsonObject;
-                if (obj == null)
+                if (JsonNode.Parse(json) is not JsonObject obj)
+                {
                     return false;
+                }
 
-                if (!obj.TryGetPropertyValue(clearFieldName, out var clearValue) || clearValue == null)
+                if (!obj.TryGetPropertyValue(clearFieldName, out JsonNode clearValue) || clearValue == null)
+                {
                     return false;
+                }
 
                 var clearText = clearValue.GetValue<string>();
                 if (string.IsNullOrWhiteSpace(clearText))
+                {
                     return false;
+                }
 
-                var existing = Load(authPath);
+                RingCredentials existing = Load(authPath);
                 existing.Password = clearText;
                 Save(authPath, existing);
 
-                obj.Remove(clearFieldName);
+                _ = obj.Remove(clearFieldName);
                 File.WriteAllText(filePath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
 
                 return true;

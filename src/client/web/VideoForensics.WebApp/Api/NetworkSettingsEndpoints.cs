@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Primitives;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
@@ -19,9 +22,9 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapNetworkSettingsEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/network-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/network-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
-            group.MapGet("/", (IForensicsConfiguration config) => Results.Ok(new
+            _ = group.MapGet("/", (IForensicsConfiguration config) => Results.Ok(new
             {
                 configuredTier = config.ConfiguredNetworkTier.ToString(),
                 // Kestrel's actual bind addresses are fixed at process startup (Program.cs reads
@@ -31,7 +34,7 @@ namespace VideoForensics.WebApp.Api
                 requiresRestartToTakeEffect = true
             }));
 
-            group.MapPost("/", async (
+            _ = group.MapPost("/", async (
                 SetNetworkTierRequest request,
                 IForensicsConfiguration config,
                 IForensicsConfigurationService configService,
@@ -41,18 +44,18 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                var currentTier = config.ConfiguredNetworkTier;
+                NetworkTier currentTier = config.ConfiguredNetworkTier;
                 var isWidening = request.Tier > currentTier;
 
                 if (isWidening)
                 {
                     var deviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
-                    if (!Guid.TryParse(deviceIdClaim, out var pairedDeviceId))
+                    if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
                     {
                         return Results.Unauthorized();
                     }
 
-                    if (!context.Request.Headers.TryGetValue("X-StepUp-Token", out var stepUpToken)
+                    if (!context.Request.Headers.TryGetValue("X-StepUp-Token", out StringValues stepUpToken)
                         || !stepUpAuth.Validate(stepUpToken.ToString(), pairedDeviceId))
                     {
                         return Results.Json(
@@ -66,7 +69,7 @@ namespace VideoForensics.WebApp.Api
 
                 var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
-                    Guid.TryParse(operatorIdClaim, out var actingOperatorId) ? actingOperatorId : null,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     null, tierResolver.ResolveClientIp(context), $"{currentTier} -> {request.Tier}", isUrgent: true, ct);
 
                 return Results.Ok(new { requiresRestartToTakeEffect = true });

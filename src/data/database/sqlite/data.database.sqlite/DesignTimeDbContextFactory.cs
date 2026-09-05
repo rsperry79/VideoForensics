@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+
 using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Sqlite
@@ -20,7 +21,7 @@ namespace VideoForensics.Data.Database.Sqlite
         public VideoForensicsDbContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-            optionsBuilder.UseSqlite(
+            _ = optionsBuilder.UseSqlite(
                 "Data Source=design-time-placeholder.db",
                 b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
             return new VideoForensicsDbContext(optionsBuilder.Options);

@@ -7,7 +7,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
     /// </summary>
     public class SnapshotEventBuilder
     {
-        private long? _id = (long)new System.Random().Next();
+        private long? _id = new System.Random().Next();
         private string _kind = "motion";
         private DateTime _createdAt = DateTime.UtcNow;
         private Doorbot? _doorbot;
@@ -45,10 +45,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
 
         public SnapshotEventBuilder WithPersonDetection(bool detected, int confidence = 95)
         {
-            if (_cvProperties == null)
-            {
-                _cvProperties = new CvProperties();
-            }
+            _cvProperties ??= new CvProperties();
 
             _cvProperties.PersonDetected = detected;
             _cvProperties.Similarity = confidence;
@@ -59,10 +56,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
 
         public SnapshotEventBuilder WithMotionDetection(bool detected)
         {
-            if (_cvProperties == null)
-            {
-                _cvProperties = new CvProperties();
-            }
+            _cvProperties ??= new CvProperties();
 
             if (detected)
             {
@@ -95,10 +89,10 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
 
         public DoorbotHistoryEvent Build()
         {
-            var doorbot = _doorbot;
+            Doorbot? doorbot = _doorbot;
             if (doorbot == null)
             {
-                WithDefaultDoorbot();
+                _ = WithDefaultDoorbot();
                 doorbot = _doorbot!;
             }
 

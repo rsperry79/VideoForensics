@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Data.Core.Models
 {
     /// <summary>Report analyzing device health metrics and identifying signal anomalies.</summary>
@@ -8,8 +6,8 @@ namespace VideoForensics.Data.Core.Models
         public DateTime GeneratedAtUtc { get; set; }
         public DateTime ReportFromUtc { get; set; }
         public DateTime ReportToUtc { get; set; }
-        public IReadOnlyList<AnomalyFindings> AnomaliesByDevice { get; set; } = new List<AnomalyFindings>();
-        public IReadOnlyList<JammingSummaryEntry> JammingByDevice { get; set; } = new List<JammingSummaryEntry>();
+        public IReadOnlyList<AnomalyFindings> AnomaliesByDevice { get; set; } = [];
+        public IReadOnlyList<JammingSummaryEntry> JammingByDevice { get; set; } = [];
 
         public class JammingSummaryEntry
         {
@@ -27,7 +25,7 @@ namespace VideoForensics.Data.Core.Models
         {
             public Guid DeviceId { get; set; }
             public string DeviceName { get; set; } = string.Empty;
-            public IReadOnlyList<SignalAnomaly> Anomalies { get; set; } = new List<SignalAnomaly>();
+            public IReadOnlyList<SignalAnomaly> Anomalies { get; set; } = [];
         }
 
         public class SignalAnomaly

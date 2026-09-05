@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -37,7 +38,7 @@ namespace VideoForensics.Data.Core.Services
         public async Task<(Device? device, bool needsApiFetch)> GetOrCheckDeviceAsync(
             Guid deviceId, CancellationToken ct)
         {
-            var cached = await _deviceRepository.GetAsync(deviceId, ct);
+            Device? cached = await _deviceRepository.GetAsync(deviceId, ct);
             if (cached == null)
             {
                 return (null, true); // Not in cache, need API
@@ -58,7 +59,7 @@ namespace VideoForensics.Data.Core.Services
         public async Task<(Location? location, bool needsApiFetch)> GetOrCheckLocationAsync(
             Guid locationId, CancellationToken ct)
         {
-            var cached = await _locationRepository.GetAsync(locationId, ct);
+            Location? cached = await _locationRepository.GetAsync(locationId, ct);
             if (cached == null)
             {
                 return (null, true); // Not in cache, need API
@@ -78,7 +79,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Persists device to cache and marks as synced.</summary>
         public async Task<Device> PersistDeviceAsync(Device device, CancellationToken ct)
         {
-            _cacheFreshnessService.MarkSynced(device);
+            _ = _cacheFreshnessService.MarkSynced(device);
             await _deviceRepository.UpdateAsync(device, ct);
             _logger.LogInformation("Persisted device {DeviceId} to cache", device.Id);
             return device;
@@ -87,7 +88,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Persists location to cache and marks as synced.</summary>
         public async Task<Location> PersistLocationAsync(Location location, CancellationToken ct)
         {
-            _cacheFreshnessService.MarkSynced(location);
+            _ = _cacheFreshnessService.MarkSynced(location);
             await _locationRepository.UpdateAsync(location, ct);
             _logger.LogInformation("Persisted location {LocationId} to cache", location.Id);
             return location;

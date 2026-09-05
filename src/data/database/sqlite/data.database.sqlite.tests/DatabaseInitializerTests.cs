@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
+
 using Xunit;
 
 namespace VideoForensics.Data.Database.Sqlite.Tests
@@ -13,8 +15,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
     {
         private string GetTempDbPath()
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
             return Path.Combine(tempDir, "test.db");
         }
 
@@ -22,14 +24,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public async Task InitializeAsync_FreshDatabase_AppliesMigrationsAndCreatesFile()
         {
             // Arrange
-            var dbPath = GetTempDbPath();
-            var tempDir = Path.GetDirectoryName(dbPath)!;
+            string dbPath = GetTempDbPath();
+            string tempDir = Path.GetDirectoryName(dbPath)!;
 
             try
             {
                 var services = new ServiceCollection();
-                services.AddVideoForensicsSqlite(dbPath);
-                services.AddLogging();
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddLogging();
 
                 var provider = services.BuildServiceProvider();
                 var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
@@ -63,7 +65,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }
@@ -73,14 +77,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public async Task InitializeAsync_ExistingDatabaseWithoutPendingMigrations_DoesNotThrow()
         {
             // Arrange
-            var dbPath = GetTempDbPath();
-            var tempDir = Path.GetDirectoryName(dbPath)!;
+            string dbPath = GetTempDbPath();
+            string tempDir = Path.GetDirectoryName(dbPath)!;
 
             try
             {
                 var services = new ServiceCollection();
-                services.AddVideoForensicsSqlite(dbPath);
-                services.AddLogging();
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddLogging();
 
                 var provider = services.BuildServiceProvider();
                 var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
@@ -113,7 +117,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }
@@ -123,14 +129,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public async Task InitializeAsync_AfterMigration_EnablesWalMode()
         {
             // Arrange
-            var dbPath = GetTempDbPath();
-            var tempDir = Path.GetDirectoryName(dbPath)!;
+            string dbPath = GetTempDbPath();
+            string tempDir = Path.GetDirectoryName(dbPath)!;
 
             try
             {
                 var services = new ServiceCollection();
-                services.AddVideoForensicsSqlite(dbPath);
-                services.AddLogging();
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddLogging();
 
                 var provider = services.BuildServiceProvider();
                 var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
@@ -146,7 +152,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 await connection.OpenAsync();
                 using var command = connection.CreateCommand();
                 command.CommandText = "PRAGMA journal_mode;";
-                var result = await command.ExecuteScalarAsync() as string;
+                string? result = await command.ExecuteScalarAsync() as string;
 
                 Assert.Equal("wal", result);
 
@@ -167,7 +173,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }
@@ -183,18 +191,18 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             // passed" log line; it now asserts the log line startup actually produces.
 
             // Arrange
-            var dbPath = GetTempDbPath();
-            var tempDir = Path.GetDirectoryName(dbPath)!;
+            string dbPath = GetTempDbPath();
+            string tempDir = Path.GetDirectoryName(dbPath)!;
 
             try
             {
                 var logMessages = new List<(LogLevel, string)>();
 
                 var services = new ServiceCollection();
-                services.AddVideoForensicsSqlite(dbPath);
-                services.AddLogging(builder =>
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                _ = services.AddLogging(builder =>
                 {
-                    builder.AddProvider(new TestLoggerProvider(logMessages));
+                    _ = builder.AddProvider(new TestLoggerProvider(logMessages));
                 });
 
                 var provider = services.BuildServiceProvider();
@@ -227,7 +235,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         // SQLite file may still be locked, try again after a longer delay
                         System.GC.Collect();
                         System.GC.WaitForPendingFinalizers();
-                        try { Directory.Delete(tempDir, recursive: true); } catch { }
+                        try
+                        { Directory.Delete(tempDir, recursive: true); }
+                        catch { }
                     }
                 }
             }
@@ -263,9 +273,15 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _messages = messages;
             }
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
             public void Log<TState>(
                 LogLevel logLevel,
@@ -274,7 +290,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 Exception? exception,
                 Func<TState, Exception?, string> formatter)
             {
-                var message = formatter(state, exception);
+                string message = formatter(state, exception);
                 _messages.Add((logLevel, message));
             }
         }

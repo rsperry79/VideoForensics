@@ -23,24 +23,24 @@ public static class DemoMode
         ShowRingVideosIntegration();
     }
 
-    static void ShowEvidence()
+    private static void ShowEvidence()
     {
         AnsiConsole.MarkupLine("[bold cyan]Forensic Evidence[/]");
         var table = new Table();
-        table.AddColumn("Evidence ID");
-        table.AddColumn("Device ID");
-        table.AddColumn("Format");
-        table.AddColumn("Status");
+        _ = table.AddColumn("Evidence ID");
+        _ = table.AddColumn("Device ID");
+        _ = table.AddColumn("Format");
+        _ = table.AddColumn("Status");
         table.Border = TableBorder.Rounded;
 
-        table.AddRow("e0b11ac2", "a1b2c3d4", "MP4", "[green]✓ Verified[/]");
-        table.AddRow("cec6d6ed", "e5f6g7h8", "MP4", "[yellow]⚠ Not verified[/]");
-        table.AddRow("7310f57a", "i9j0k1l2", "JPEG", "[red]Integrity failed[/]");
+        _ = table.AddRow("e0b11ac2", "a1b2c3d4", "MP4", "[green]✓ Verified[/]");
+        _ = table.AddRow("cec6d6ed", "e5f6g7h8", "MP4", "[yellow]⚠ Not verified[/]");
+        _ = table.AddRow("7310f57a", "i9j0k1l2", "JPEG", "[red]Integrity failed[/]");
 
         AnsiConsole.Write(table);
     }
 
-    static void ShowReports()
+    private static void ShowReports()
     {
         AnsiConsole.MarkupLine("[bold cyan]GENERATED REPORTS[/]");
 
@@ -66,7 +66,7 @@ public static class DemoMode
         AnsiConsole.Write(panel3);
     }
 
-    static void ShowSignalAnomalies()
+    private static void ShowSignalAnomalies()
     {
         AnsiConsole.MarkupLine("[bold cyan]Signal Strength Analysis[/]");
         AnsiConsole.MarkupLine("[green]████████████[/] 65% - Normal range");
@@ -79,7 +79,7 @@ public static class DemoMode
         AnsiConsole.MarkupLine("• [orange3]Sustained Degradation[/] - Side camera (25% loss)");
     }
 
-    static void ShowRingVideosIntegration()
+    private static void ShowRingVideosIntegration()
     {
         AnsiConsole.MarkupLine("[bold cyan]RING.VIDEOS INTEGRATION[/]");
         var panel = new Panel("[green]✓ Chain of Custody[/] - Managed by Ring.Videos\n[green]✓ Video Downloads[/] - Ring device management\n[green]✓ Device Authentication[/] - Secure access\n[green]✓ Evidence Storage[/] - Forensic preservation")
@@ -94,20 +94,20 @@ public static class DemoMode
         AnsiConsole.MarkupLine("  • Device authentication and authorization");
     }
 
-    static void ShowAccessControl()
+    private static void ShowAccessControl()
     {
         AnsiConsole.MarkupLine("[bold cyan]Evidence Access Monitoring[/]");
         AnsiConsole.MarkupLine("[red]High-Risk Alerts: 2[/]");
 
         var table = new Table();
-        table.AddColumn("Actor");
-        table.AddColumn("Action");
-        table.AddColumn("Entity Type");
-        table.AddColumn("Timestamp");
+        _ = table.AddColumn("Actor");
+        _ = table.AddColumn("Action");
+        _ = table.AddColumn("Entity Type");
+        _ = table.AddColumn("Timestamp");
         table.Border = TableBorder.Rounded;
 
-        table.AddRow("Officer Smith", "View", "Evidence", "2026-08-20 10:15");
-        table.AddRow("Detective Johnson", "Export", "Evidence", "2026-08-20 12:30");
+        _ = table.AddRow("Officer Smith", "View", "Evidence", "2026-08-20 10:15");
+        _ = table.AddRow("Detective Johnson", "Export", "Evidence", "2026-08-20 12:30");
 
         AnsiConsole.Write(table);
         AnsiConsole.MarkupLine("\n[yellow]Recommendation:[/] Review access logs for potential evidence tampering");

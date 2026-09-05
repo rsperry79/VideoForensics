@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -29,16 +30,16 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Fetching events for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
                     return new List<DeviceEvent>().AsReadOnly();
                 }
 
-                var events = await GetHistoryEventsAsync(session, startDate, endDate);
+                List<Entities.DoorbotHistoryEvent> events = await GetHistoryEventsAsync(session, startDate, endDate);
 
-                var deviceEvents = events?
+                List<DeviceEvent> deviceEvents = events?
                     .Where(e => e.Doorbot?.Id.ToString() == deviceId)
                     .Where(e => eventType == null || e.Kind == eventType)
                     .Select(e => new DeviceEvent(
@@ -48,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Services
                         Timestamp: e.CreatedAtDateTime ?? DateTime.MinValue,
                         SnapshotUrl: e.SnapshotUrl
                     ))
-                    .ToList() ?? new List<DeviceEvent>();
+                    .ToList() ?? [];
 
                 _logger.LogInformation("Found {EventCount} events for device {DeviceId}", deviceEvents.Count, deviceId);
                 return deviceEvents.AsReadOnly();
@@ -66,7 +67,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Fetching configuration for device {DeviceId}", deviceId);
 
-                var session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession();
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -79,13 +80,10 @@ namespace VideoForensics.Providers.Ring.Services
                     return null;
                 }
 
-                var history = await session.GetDoorbotsHistory(doorbotId);
-                if (history?.FirstOrDefault() is not Entities.DoorbotHistoryEvent firstEvent)
-                {
-                    return null;
-                }
-
-                return new DeviceConfig(
+                List<Entities.DoorbotHistoryEvent> history = await session.GetDoorbotsHistory(doorbotId);
+                return history?.FirstOrDefault() is not Entities.DoorbotHistoryEvent firstEvent
+                    ? null
+                    : new DeviceConfig(
                     DeviceId: deviceId,
                     MotionDetectionEnabled: true,
                     MotionSensitivity: 75,
@@ -125,15 +123,15 @@ namespace VideoForensics.Providers.Ring.Services
                     return _cachedHistoryEvents;
                 }
 
-                var events = await session.GetDoorbotsHistory(startDate, endDate);
-                _cachedHistoryEvents = events ?? new List<Entities.DoorbotHistoryEvent>();
+                List<Entities.DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(startDate, endDate);
+                _cachedHistoryEvents = events ?? [];
                 _cachedHistoryStart = startDate;
                 _cachedHistoryEnd = endDate;
                 return _cachedHistoryEvents;
             }
             finally
             {
-                _historyCacheLock.Release();
+                _ = _historyCacheLock.Release();
             }
         }
     }

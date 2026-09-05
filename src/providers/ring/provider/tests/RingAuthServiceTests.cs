@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
@@ -21,16 +24,16 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.AuthenticateAsync("user@example.com", "password");
+            AuthResult result = await service.AuthenticateAsync("user@example.com", "password");
 
             // Assert
             Assert.NotNull(result);
             // Result properties depend on Ring SDK behavior - verify structure exists
-            Assert.IsType<AuthResult>(result);
+            _ = Assert.IsType<AuthResult>(result);
         }
 
         [Fact]
@@ -40,11 +43,11 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            await service.AuthenticateAsync("user@example.com", "password");
+            _ = await service.AuthenticateAsync("user@example.com", "password");
 
             // Assert
             // Verify SetSession was called on successful auth (or not called on failure)
@@ -57,10 +60,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -77,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -92,10 +95,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -112,7 +115,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -127,24 +130,24 @@ namespace VideoForensics.Providers.Ring.Tests
         public void ConstructorThrowsOnNullSessionProvider()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var credentialStore = new Mock<ICredentialStore>();
             var credentialRepository = new Mock<ICredentialRepository>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new RingAuthService(logger, null!, credentialStore.Object, credentialRepository.Object));
+            _ = Assert.Throws<ArgumentNullException>(() => new RingAuthService(logger, null!, credentialStore.Object, credentialRepository.Object));
         }
 
         [Fact]
         public void ConstructorThrowsOnNullCredentialStore()
         {
             // Arrange
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialRepository = new Mock<ICredentialRepository>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new RingAuthService(logger, sessionProvider.Object, null!, credentialRepository.Object));
+            _ = Assert.Throws<ArgumentNullException>(() => new RingAuthService(logger, sessionProvider.Object, null!, credentialRepository.Object));
         }
 
         [Fact]
@@ -154,7 +157,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // RingAuthService falls back to filesystem-only credential storage when they're not
             // supplied (see RestoreFromSavedCredentialsWithAccountAsync's filesystem fallback), so
             // the constructor intentionally does not require them.
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
 
@@ -174,11 +177,11 @@ namespace VideoForensics.Providers.Ring.Tests
             // available, restore must fail fast and never touch the user/account repositories.
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
-            credentialStore.Setup(cs => cs.Load(It.IsAny<string>())).Returns(new RingCredentials());
+            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>())).Returns(new RingCredentials());
             var credentialRepository = new Mock<ICredentialRepository>();
             var userRepository = new Mock<IUserRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
 
             var service = new RingAuthService(
                 logger,
@@ -206,17 +209,17 @@ namespace VideoForensics.Providers.Ring.Tests
             var testRefreshToken = "test-refresh-token-123";
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
             var credentialStore = new Mock<ICredentialStore>();
-            credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
+            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
                 .Returns(new RingCredentials());
 
             var credentialRepository = new Mock<ICredentialRepository>();
-            credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(("RefreshToken", testRefreshToken));
 
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -235,14 +238,14 @@ namespace VideoForensics.Providers.Ring.Tests
             var testRefreshToken = "test-refresh-token-456";
 
             var sessionProvider = new Mock<ISessionProvider>();
-            sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
             var credentialStore = new Mock<ICredentialStore>();
-            credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
+            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
                 .Returns(new RingCredentials { RefreshToken = testRefreshToken });
 
             var credentialRepository = new Mock<ICredentialRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
@@ -264,16 +267,16 @@ namespace VideoForensics.Providers.Ring.Tests
             var credentialRepository = new Mock<ICredentialRepository>();
             var userRepository = new Mock<IUserRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
-            var logger = new Mock<ILogger>().Object;
+            ILogger logger = new Mock<ILogger>().Object;
 
             // Setup repositories
-            userRepository.Setup(ur => ur.GetByProviderKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = userRepository.Setup(ur => ur.GetByProviderKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((User?)null);
 
-            providerAccountRepository.Setup(par => par.GetByUserAndProviderAsync(It.IsAny<Guid>(), "Ring", It.IsAny<CancellationToken>()))
+            _ = providerAccountRepository.Setup(par => par.GetByUserAndProviderAsync(It.IsAny<Guid>(), "Ring", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ProviderAccount?)null);
 
-            credentialRepository.Setup(cr => cr.SetAsync(It.IsAny<Guid>(), "RefreshToken", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = credentialRepository.Setup(cr => cr.SetAsync(It.IsAny<Guid>(), "RefreshToken", It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var service = new RingAuthService(
@@ -286,7 +289,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 userRepository.Object);
 
             // Act
-            var result = await service.AuthenticateAsync("user@example.com", "password");
+            AuthResult result = await service.AuthenticateAsync("user@example.com", "password");
 
             // Assert
             // Verify SetAsync was called to save refresh token (whether it succeeds or fails depends on Ring API)

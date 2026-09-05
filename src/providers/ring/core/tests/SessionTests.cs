@@ -1,8 +1,6 @@
-using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 
-using VideoForensics.Providers.Ring.Tests.Mocks;
-
-namespace VideoForensics.Providers.Ring.Tests
+namespace VideoForensics.Providers.Ring.Core.Tests
 {
     public class SessionTests
     {
@@ -10,8 +8,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Session_Constructor_WithCredentials_CreatesSession()
         {
             // Arrange
-            var username = "test@example.com";
-            var password = "testpassword";
+            string username = "test@example.com";
+            string password = "testpassword";
 
             // Act
             var session = new Session(username, password);
@@ -27,8 +25,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Session_Constructor_WithMockHandler_CreatesSession()
         {
             // Arrange
-            var username = "test@example.com";
-            var password = "testpassword";
+            string username = "test@example.com";
+            string password = "testpassword";
             var mockHandler = new MockHttpMessageHandler();
 
             // Act
@@ -47,7 +45,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = new Session("test@example.com", "password");
 
             // Act
-            var isAuthenticated = session.IsAuthenticated;
+            bool isAuthenticated = session.IsAuthenticated;
 
             // Assert
             Assert.False(isAuthenticated);
@@ -60,7 +58,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var session = new Session("test@example.com", "password");
 
             // Act
-            var token = session.AuthenticationToken;
+            string token = session.AuthenticationToken;
 
             // Assert
             Assert.Null(token);

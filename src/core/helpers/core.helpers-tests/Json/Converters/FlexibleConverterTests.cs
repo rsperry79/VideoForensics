@@ -1,9 +1,8 @@
-using System;
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Providers.Common.Helpers.Json.Converters;
 
-#nullable enable
+using Xunit;
 
 namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
 {
@@ -26,40 +25,40 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
         [Fact]
         public void FlexibleStringConverter_WithStringValue_ReturnsString()
         {
-            var json = "\"hello\"";
-            var result = JsonSerializer.Deserialize<string>(json, _options);
+            string json = "\"hello\"";
+            string? result = JsonSerializer.Deserialize<string>(json, _options);
             Assert.Equal("hello", result);
         }
 
         [Fact]
         public void FlexibleStringConverter_WithNumberValue_ConvertsToString()
         {
-            var json = "42";
-            var result = JsonSerializer.Deserialize<string>(json, _options);
+            string json = "42";
+            string? result = JsonSerializer.Deserialize<string>(json, _options);
             Assert.Equal("42", result);
         }
 
         [Fact]
         public void FlexibleStringConverter_WithBooleanTrue_ConvertsToString()
         {
-            var json = "true";
-            var result = JsonSerializer.Deserialize<string>(json, _options);
+            string json = "true";
+            string? result = JsonSerializer.Deserialize<string>(json, _options);
             Assert.Equal("true", result);
         }
 
         [Fact]
         public void FlexibleStringConverter_WithBooleanFalse_ConvertsToString()
         {
-            var json = "false";
-            var result = JsonSerializer.Deserialize<string>(json, _options);
+            string json = "false";
+            string? result = JsonSerializer.Deserialize<string>(json, _options);
             Assert.Equal("false", result);
         }
 
         [Fact]
         public void FlexibleStringConverter_WithNull_ReturnsNull()
         {
-            var json = "null";
-            var result = JsonSerializer.Deserialize<string?>(json, _options);
+            string json = "null";
+            string? result = JsonSerializer.Deserialize<string?>(json, _options);
             Assert.Null(result);
         }
 
@@ -70,8 +69,8 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
             // ({"seconds_remaining":0}) instead of a scalar. The converter must Skip() the value
             // rather than leaving the reader mid-object, or the containing object fails to
             // deserialize with "converter read too much or not enough".
-            var json = "{\"seconds_remaining\":0}";
-            var result = JsonSerializer.Deserialize<string?>(json, _options);
+            string json = "{\"seconds_remaining\":0}";
+            string? result = JsonSerializer.Deserialize<string?>(json, _options);
             Assert.Null(result);
         }
 
@@ -87,7 +86,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
             // The bug this guards against: a converter that returns without consuming an
             // object/array token corrupts deserialization of every property that follows it in
             // the containing object, not just the one it was applied to.
-            var json = "{\"LedStatus\":{\"seconds_remaining\":0},\"NextField\":\"ok\"}";
+            string json = "{\"LedStatus\":{\"seconds_remaining\":0},\"NextField\":\"ok\"}";
             var result = JsonSerializer.Deserialize<DeviceWithLedStatus>(json, _options);
             Assert.NotNull(result);
             Assert.Null(result!.LedStatus);
@@ -101,64 +100,64 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
         [Fact]
         public void FlexibleBooleanConverter_WithBoolean_ReturnsBool()
         {
-            var json = "true";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "true";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.True(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithNumberOne_ReturnsTrue()
         {
-            var json = "1";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "1";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.True(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithNumberZero_ReturnsFalse()
         {
-            var json = "0";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "0";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.False(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithStringTrue_ReturnsTrue()
         {
-            var json = "\"true\"";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "\"true\"";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.True(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithStringOne_ReturnsTrue()
         {
-            var json = "\"1\"";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "\"1\"";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.True(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithStringFalse_ReturnsFalse()
         {
-            var json = "\"false\"";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "\"false\"";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.False(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithStringZero_ReturnsFalse()
         {
-            var json = "\"0\"";
-            var result = JsonSerializer.Deserialize<bool>(json, _options);
+            string json = "\"0\"";
+            bool result = JsonSerializer.Deserialize<bool>(json, _options);
             Assert.False(result);
         }
 
         [Fact]
         public void FlexibleBooleanConverter_WithInvalidString_ThrowsException()
         {
-            var json = "\"invalid\"";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<bool>(json, _options));
+            string json = "\"invalid\"";
+            _ = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<bool>(json, _options));
         }
 
         #endregion
@@ -168,32 +167,32 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
         [Fact]
         public void FlexibleDecimalConverter_WithNumber_ReturnsDecimal()
         {
-            var json = "4.5";
-            var result = JsonSerializer.Deserialize<decimal?>(json, _options);
+            string json = "4.5";
+            decimal? result = JsonSerializer.Deserialize<decimal?>(json, _options);
             Assert.Equal(4.5m, result);
         }
 
         [Fact]
         public void FlexibleDecimalConverter_WithString_ConvertsToDecimal()
         {
-            var json = "\"3.14\"";
-            var result = JsonSerializer.Deserialize<decimal?>(json, _options);
+            string json = "\"3.14\"";
+            decimal? result = JsonSerializer.Deserialize<decimal?>(json, _options);
             Assert.Equal(3.14m, result);
         }
 
         [Fact]
         public void FlexibleDecimalConverter_WithInvalidString_ReturnsNull()
         {
-            var json = "\"not-a-number\"";
-            var result = JsonSerializer.Deserialize<decimal?>(json, _options);
+            string json = "\"not-a-number\"";
+            decimal? result = JsonSerializer.Deserialize<decimal?>(json, _options);
             Assert.Null(result);
         }
 
         [Fact]
         public void FlexibleDecimalConverter_WithNull_ReturnsNull()
         {
-            var json = "null";
-            var result = JsonSerializer.Deserialize<decimal?>(json, _options);
+            string json = "null";
+            decimal? result = JsonSerializer.Deserialize<decimal?>(json, _options);
             Assert.Null(result);
         }
 
@@ -204,32 +203,32 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
         [Fact]
         public void FlexibleDoubleConverter_WithNumber_ReturnsDouble()
         {
-            var json = "-45.5";
-            var result = JsonSerializer.Deserialize<double?>(json, _options);
+            string json = "-45.5";
+            double? result = JsonSerializer.Deserialize<double?>(json, _options);
             Assert.Equal(-45.5, result);
         }
 
         [Fact]
         public void FlexibleDoubleConverter_WithString_ConvertsToDouble()
         {
-            var json = "\"-45.5\"";
-            var result = JsonSerializer.Deserialize<double?>(json, _options);
+            string json = "\"-45.5\"";
+            double? result = JsonSerializer.Deserialize<double?>(json, _options);
             Assert.Equal(-45.5, result);
         }
 
         [Fact]
         public void FlexibleDoubleConverter_WithInvalidString_ReturnsNull()
         {
-            var json = "\"not-a-number\"";
-            var result = JsonSerializer.Deserialize<double?>(json, _options);
+            string json = "\"not-a-number\"";
+            double? result = JsonSerializer.Deserialize<double?>(json, _options);
             Assert.Null(result);
         }
 
         [Fact]
         public void FlexibleDoubleConverter_WithNull_ReturnsNull()
         {
-            var json = "null";
-            var result = JsonSerializer.Deserialize<double?>(json, _options);
+            string json = "null";
+            double? result = JsonSerializer.Deserialize<double?>(json, _options);
             Assert.Null(result);
         }
 
@@ -240,32 +239,32 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
         [Fact]
         public void FlexibleIntConverter_WithNumber_ReturnsInt()
         {
-            var json = "42";
-            var result = JsonSerializer.Deserialize<int?>(json, _options);
+            string json = "42";
+            int? result = JsonSerializer.Deserialize<int?>(json, _options);
             Assert.Equal(42, result);
         }
 
         [Fact]
         public void FlexibleIntConverter_WithString_ConvertsToInt()
         {
-            var json = "\"100\"";
-            var result = JsonSerializer.Deserialize<int?>(json, _options);
+            string json = "\"100\"";
+            int? result = JsonSerializer.Deserialize<int?>(json, _options);
             Assert.Equal(100, result);
         }
 
         [Fact]
         public void FlexibleIntConverter_WithInvalidString_ReturnsNull()
         {
-            var json = "\"not-a-number\"";
-            var result = JsonSerializer.Deserialize<int?>(json, _options);
+            string json = "\"not-a-number\"";
+            int? result = JsonSerializer.Deserialize<int?>(json, _options);
             Assert.Null(result);
         }
 
         [Fact]
         public void FlexibleIntConverter_WithNull_ReturnsNull()
         {
-            var json = "null";
-            var result = JsonSerializer.Deserialize<int?>(json, _options);
+            string json = "null";
+            int? result = JsonSerializer.Deserialize<int?>(json, _options);
             Assert.Null(result);
         }
 

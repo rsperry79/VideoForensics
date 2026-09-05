@@ -15,7 +15,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Alarm monitoring accounts API.
         /// </summary>
-        public Uri MonitoringApiBaseUrl => new Uri("https://api.ring.com/rs/monitoring/accounts/");
+        public Uri MonitoringApiBaseUrl => new("https://api.ring.com/rs/monitoring/accounts/");
 
         /// <summary>
         /// Base Uri for Ring's event-manager history API (location-wide, distinct from
@@ -23,7 +23,7 @@ namespace VideoForensics.Providers.Ring
         /// (LOCATIONS_HISTORY_ENDPOINT) after the originally-guessed rs/history?locationId= path
         /// 404'd in a live ApiTester run.
         /// </summary>
-        public Uri RingEvmApiBaseUrl => new Uri("https://api.ring.com/evm/v2/history/locations/");
+        public Uri RingEvmApiBaseUrl => new("https://api.ring.com/evm/v2/history/locations/");
 
         /// <summary>
         /// Returns the alarm monitoring status for a location's account.
@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(MonitoringApiBaseUrl, $"{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }
@@ -68,7 +68,7 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(RingEvmApiBaseUrl, $"{locationId:D}");
-            var response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
             return JsonDocument.Parse(response).RootElement.Clone();
         }

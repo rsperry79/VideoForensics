@@ -33,16 +33,19 @@ namespace VideoForensics.Hosting
 
         public async Task SetAsync(string plainPassword, CancellationToken ct)
         {
-            var encrypted = await _encryption.EncryptAsync(plainPassword, ct);
+            string encrypted = await _encryption.EncryptAsync(plainPassword, ct);
             await _settings.SetAsync(SettingKey, encrypted, ct);
         }
 
         public async Task<string?> GetDecryptedAsync(CancellationToken ct)
         {
-            var encrypted = await _settings.GetAsync(SettingKey, ct);
+            string? encrypted = await _settings.GetAsync(SettingKey, ct);
             return string.IsNullOrEmpty(encrypted) ? null : await _encryption.DecryptAsync(encrypted, ct);
         }
 
-        public Task ClearAsync(CancellationToken ct) => _settings.DeleteAsync(SettingKey, ct);
+        public Task ClearAsync(CancellationToken ct)
+        {
+            return _settings.DeleteAsync(SettingKey, ct);
+        }
     }
 }

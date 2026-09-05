@@ -1,5 +1,4 @@
 using Xunit;
-using VideoForensics.Data.Core.Services;
 
 namespace VideoForensics.Data.Core.Tests
 {
@@ -12,9 +11,11 @@ namespace VideoForensics.Data.Core.Tests
             // Events should have 0 minute TTL (always fresh)
             // This is a governance rule: RingDataAccessService enforces EventTtlMinutes = 0
 
-            var deviceId = Guid.NewGuid();
-            var fromUtc = DateTime.UtcNow.AddDays(-7);
-            var toUtc = DateTime.UtcNow;
+            _ = Guid.NewGuid();
+
+            _ = DateTime.UtcNow.AddDays(-7);
+
+            _ = DateTime.UtcNow;
 
             // In real implementation, calling RingDataAccessService.LogEventFetch(deviceId, fromUtc, toUtc)
             // always indicates API fetch intent (no cache check)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,14 +10,14 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<ExportRecordItem> builder)
         {
-            builder.HasKey(eri => eri.Id);
+            _ = builder.HasKey(eri => eri.Id);
 
-            builder.Property(eri => eri.MediaItemSha256HashAtExport)
+            _ = builder.Property(eri => eri.MediaItemSha256HashAtExport)
                 .IsRequired()
                 .HasMaxLength(64);
 
-            builder.HasIndex(eri => eri.ExportRecordId);
-            builder.HasIndex(eri => eri.MediaItemId);
+            _ = builder.HasIndex(eri => eri.ExportRecordId);
+            _ = builder.HasIndex(eri => eri.MediaItemId);
         }
     }
 }

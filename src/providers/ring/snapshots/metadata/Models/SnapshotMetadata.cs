@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Models
+namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>
     /// Metadata extracted from a snapshot event, including image-specific fields.
@@ -214,7 +213,6 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Models
         /// False = may explain image upload issues or inability to capture.
         /// </summary>
         public bool? DeviceOnline { get; set; }
-
 
         /// <summary>
         /// User-applied or AI-suggested tags for this event.

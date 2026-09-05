@@ -1,4 +1,4 @@
-namespace VideoForensics.Client.Common
+namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>Manages persistence and loading of forensics configuration</summary>
     public interface IForensicsConfigurationService

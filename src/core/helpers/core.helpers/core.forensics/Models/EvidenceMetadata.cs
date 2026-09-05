@@ -14,8 +14,8 @@ namespace VideoForensics.Forensics.Models
         public string? SourceDeviceId { get; set; }
         public DateTime? EventTimestamp { get; set; }
         public string? EventType { get; set; }
-        public Dictionary<string, object> ExtractedData { get; set; } = new();
-        public Dictionary<string, string> Checksums { get; set; } = new();
+        public Dictionary<string, object> ExtractedData { get; set; } = [];
+        public Dictionary<string, string> Checksums { get; set; } = [];
         public string? ExtractionHandler { get; set; }
         public string? Notes { get; set; }
     }

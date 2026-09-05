@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -22,22 +23,22 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a download event by ID.</summary>
         public async Task<DownloadEvent?> GetAsync(Guid eventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DownloadEvents.FirstOrDefaultAsync(de => de.Id == eventId, ct);
         }
 
         /// <summary>Gets download events by device ID.</summary>
         public async Task<IReadOnlyList<DownloadEvent>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DownloadEvents.Where(de => de.DeviceId == deviceId).ToListAsync(ct);
         }
 
         /// <summary>Gets the latest successful download event time for a device (watermark).</summary>
         public async Task<DateTime?> GetLatestSuccessfulEventTimeAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var latest = await db.DownloadEvents
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            DownloadEvent? latest = await db.DownloadEvents
                 .Where(de => de.DeviceId == deviceId && de.Success && de.DownloadCompletedUtc.HasValue)
                 .OrderByDescending(de => de.EventOccurredAtUtc)
                 .FirstOrDefaultAsync(ct);
@@ -47,7 +48,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Checks if a download event exists for a given provider event ID on a device.</summary>
         public async Task<bool> ExistsForProviderEventIdAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DownloadEvents.AnyAsync(
                 de => de.DeviceId == deviceId && de.ProviderEventId == providerEventId, ct);
         }
@@ -55,7 +56,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a download event by device ID and provider event ID.</summary>
         public async Task<DownloadEvent?> GetByProviderEventIdAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DownloadEvents.FirstOrDefaultAsync(
                 de => de.DeviceId == deviceId && de.ProviderEventId == providerEventId, ct);
         }
@@ -63,18 +64,18 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Lists all download events.</summary>
         public async Task<IReadOnlyList<DownloadEvent>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.DownloadEvents.ToListAsync(ct);
         }
 
         /// <summary>Adds a new download event.</summary>
         public async Task AddAsync(DownloadEvent downloadEvent, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DownloadEvents.Add(downloadEvent);
-                await db.SaveChangesAsync(ct);
+                _ = db.DownloadEvents.Add(downloadEvent);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Download event added: {DownloadEventId} ({ProviderEventId})",
                     downloadEvent.Id, downloadEvent.ProviderEventId);
             }
@@ -88,11 +89,11 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates an existing download event.</summary>
         public async Task UpdateAsync(DownloadEvent downloadEvent, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                db.DownloadEvents.Update(downloadEvent);
-                await db.SaveChangesAsync(ct);
+                _ = db.DownloadEvents.Update(downloadEvent);
+                _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Download event updated: {DownloadEventId}", downloadEvent.Id);
             }
             catch (Exception ex)
@@ -105,14 +106,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a download event.</summary>
         public async Task DeleteAsync(Guid eventId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var downloadEvent = await db.DownloadEvents.FirstOrDefaultAsync(de => de.Id == eventId, ct);
+                DownloadEvent? downloadEvent = await db.DownloadEvents.FirstOrDefaultAsync(de => de.Id == eventId, ct);
                 if (downloadEvent != null)
                 {
-                    db.DownloadEvents.Remove(downloadEvent);
-                    await db.SaveChangesAsync(ct);
+                    _ = db.DownloadEvents.Remove(downloadEvent);
+                    _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Download event deleted: {DownloadEventId}", eventId);
                 }
             }

@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
+
+using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
 {
@@ -29,9 +32,9 @@ namespace VideoForensics.Data.Core.Tests
                 Type = "doorbot"
             };
 
-            var marked = _service.MarkSynced(device);
+            Device marked = _service.MarkSynced(device);
 
-            Assert.NotNull(marked.LastSyncedUtc);
+            _ = Assert.NotNull(marked.LastSyncedUtc);
             Assert.Equal(SyncStatus.Synced, marked.SyncStatus);
             Assert.True((DateTime.UtcNow - marked.LastSyncedUtc.Value).TotalSeconds < 5);
         }
@@ -101,7 +104,7 @@ namespace VideoForensics.Data.Core.Tests
             };
 
             var age = _service.GetAgeMinutes(device);
-            Assert.True(age >= 24 && age <= 26);
+            Assert.True(age is >= 24 and <= 26);
         }
 
         [Fact]
@@ -150,7 +153,7 @@ namespace VideoForensics.Data.Core.Tests
                 SyncStatus = SyncStatus.Synced
             };
 
-            var marked = _service.MarkStale(device);
+            Device marked = _service.MarkStale(device);
             Assert.Equal(SyncStatus.Stale, marked.SyncStatus);
         }
     }

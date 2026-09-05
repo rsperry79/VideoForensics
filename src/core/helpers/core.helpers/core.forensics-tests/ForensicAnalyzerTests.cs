@@ -6,7 +6,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task AnalyzeEvidenceAsync_WithValidEvidence_ReturnsFinding()
         {
             // Arrange
-            var evidence = new EvidenceMetadata
+            _ = new EvidenceMetadata
             {
                 SourceDeviceId = "test-device",
                 EventTimestamp = DateTime.UtcNow
@@ -24,7 +24,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithSequence_ReturnsAnomalies()
         {
             // Arrange
-            var evidenceSequence = new List<EvidenceMetadata>
+            _ = new List<EvidenceMetadata>
             {
                 // Add test evidence items
             };
@@ -40,7 +40,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task GenerateReportAsync_WithResults_ReturnsFormattedReport()
         {
             // Arrange
-            var analysisResults = new List<ForensicAnalysisResult>
+            _ = new List<ForensicAnalysisResult>
             {
                 // Add test results
             };

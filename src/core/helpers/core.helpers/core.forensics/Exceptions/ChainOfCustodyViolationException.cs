@@ -1,6 +1,6 @@
 using System;
 
-namespace VideoForensics.Forensics
+namespace VideoForensics.Forensics.Exceptions
 {
     /// <summary>
     /// Thrown when chain of custody integrity is violated or cannot be verified.

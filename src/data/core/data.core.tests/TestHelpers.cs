@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Core.Tests
                 DetailsJson = details,
                 TimestampUtc = DateTime.UtcNow,
                 PreviousEntryHash = null,
-                EntryHash = entryHash ?? "test_hash_" + Guid.NewGuid().ToString("N")[..8]
+                EntryHash = entryHash ?? ("test_hash_" + Guid.NewGuid().ToString("N")[..8])
             };
         }
 

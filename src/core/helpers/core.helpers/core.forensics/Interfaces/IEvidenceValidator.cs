@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
-using VideoForensics.Forensics.Models;
-using VideoForensics.Forensics.Models.Reports;
 
-namespace VideoForensics.Forensics
+using VideoForensics.Forensics.Models;
+
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Validates evidence for authenticity, completeness, and compliance

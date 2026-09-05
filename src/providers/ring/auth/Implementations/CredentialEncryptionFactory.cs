@@ -1,6 +1,8 @@
 using System;
 
-namespace VideoForensics.Providers.Ring.Auth.Implementations
+using VideoForensics.Providers.Ring;
+
+namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>
     /// Factory for creating platform-appropriate credential encryption implementations.
@@ -15,12 +17,7 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
         /// </summary>
         public static ICredentialEncryption CreateDefault()
         {
-            if (OperatingSystem.IsWindows())
-            {
-                return new WindowsDpapiEncryption();
-            }
-
-            return new AesEncryption();
+            return OperatingSystem.IsWindows() ? new WindowsDpapiEncryption() : new AesEncryption();
         }
     }
 }

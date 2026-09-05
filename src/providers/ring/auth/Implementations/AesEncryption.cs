@@ -3,7 +3,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace VideoForensics.Providers.Ring.Auth.Implementations
+using VideoForensics.Providers.Ring;
+
+namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>
     /// Cross-platform AES encryption implementation for encrypting credentials.
@@ -20,33 +22,31 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
         public string Encrypt(string plaintext)
         {
             if (string.IsNullOrEmpty(plaintext))
+            {
                 return null;
+            }
 
             try
             {
-                var key = DeriveKey();
-                using (var aes = Aes.Create())
+                byte[] key = DeriveKey();
+                using var aes = Aes.Create();
+                aes.KeySize = KeySize * 8;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+                aes.GenerateIV();
+
+                using var encryptor = aes.CreateEncryptor(key, aes.IV);
+                using var ms = new MemoryStream();
+                // Write IV first (needed for decryption)
+                ms.Write(aes.IV, 0, aes.IV.Length);
+
+                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                using (var sw = new StreamWriter(cs, Encoding.UTF8))
                 {
-                    aes.KeySize = KeySize * 8;
-                    aes.Mode = CipherMode.CBC;
-                    aes.Padding = PaddingMode.PKCS7;
-                    aes.GenerateIV();
-
-                    using (var encryptor = aes.CreateEncryptor(key, aes.IV))
-                    using (var ms = new MemoryStream())
-                    {
-                        // Write IV first (needed for decryption)
-                        ms.Write(aes.IV, 0, aes.IV.Length);
-
-                        using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                        using (var sw = new StreamWriter(cs, Encoding.UTF8))
-                        {
-                            sw.Write(plaintext);
-                        }
-
-                        return Convert.ToBase64String(ms.ToArray());
-                    }
+                    sw.Write(plaintext);
                 }
+
+                return Convert.ToBase64String(ms.ToArray());
             }
             catch
             {
@@ -57,32 +57,30 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
         public string Decrypt(string ciphertext)
         {
             if (string.IsNullOrEmpty(ciphertext))
+            {
                 return null;
+            }
 
             try
             {
-                var key = DeriveKey();
-                var buffer = Convert.FromBase64String(ciphertext);
+                byte[] key = DeriveKey();
+                byte[] buffer = Convert.FromBase64String(ciphertext);
 
-                using (var aes = Aes.Create())
-                {
-                    aes.KeySize = KeySize * 8;
-                    aes.Mode = CipherMode.CBC;
-                    aes.Padding = PaddingMode.PKCS7;
+                using var aes = Aes.Create();
+                aes.KeySize = KeySize * 8;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
-                    // Extract IV from the beginning of the buffer
-                    var iv = new byte[IvSize];
-                    Buffer.BlockCopy(buffer, 0, iv, 0, IvSize);
-                    aes.IV = iv;
+                // Extract IV from the beginning of the buffer
+                byte[] iv = new byte[IvSize];
+                Buffer.BlockCopy(buffer, 0, iv, 0, IvSize);
+                aes.IV = iv;
 
-                    using (var decryptor = aes.CreateDecryptor(key, aes.IV))
-                    using (var ms = new MemoryStream(buffer, IvSize, buffer.Length - IvSize))
-                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-                    using (var sr = new StreamReader(cs, Encoding.UTF8))
-                    {
-                        return sr.ReadToEnd();
-                    }
-                }
+                using var decryptor = aes.CreateDecryptor(key, aes.IV);
+                using var ms = new MemoryStream(buffer, IvSize, buffer.Length - IvSize);
+                using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
+                using var sr = new StreamReader(cs, Encoding.UTF8);
+                return sr.ReadToEnd();
             }
             catch
             {
@@ -93,9 +91,9 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
         private byte[] DeriveKey()
         {
             // Create a deterministic key based on machine and user information
-            var machineId = GetMachineIdentifier();
-            var userId = Environment.UserName ?? "unknown";
-            var combinedInput = $"{machineId}:{userId}";
+            string machineId = GetMachineIdentifier();
+            string userId = Environment.UserName ?? "unknown";
+            string combinedInput = $"{machineId}:{userId}";
 
             return Rfc2898DeriveBytes.Pbkdf2(
                 Encoding.UTF8.GetBytes(combinedInput),
@@ -134,12 +132,10 @@ namespace VideoForensics.Providers.Ring.Auth.Implementations
             try
             {
                 // On Windows, try to get the unique machine GUID
-                using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
-                    @"SOFTWARE\Microsoft\Cryptography"))
-                {
-                    var value = key?.GetValue("MachineGuid");
-                    return value?.ToString() ?? Environment.MachineName;
-                }
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Cryptography");
+                object value = key?.GetValue("MachineGuid");
+                return value?.ToString() ?? Environment.MachineName;
             }
             catch
             {

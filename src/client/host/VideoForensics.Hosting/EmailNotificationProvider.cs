@@ -1,8 +1,12 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+
 using Microsoft.Extensions.Logging;
+
 using MimeKit;
+
 using VideoForensics.Client.Common;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting
@@ -29,7 +33,7 @@ namespace VideoForensics.Hosting
 
         public Task<bool> IsEnabledAsync(CancellationToken ct)
         {
-            var configured = _config.EnableEmailNotifications
+            bool configured = _config.EnableEmailNotifications
                 && !string.IsNullOrWhiteSpace(_config.SmtpHost)
                 && !string.IsNullOrWhiteSpace(_config.SmtpFromAddress)
                 && !string.IsNullOrWhiteSpace(_config.NotificationRecipientEmail);
@@ -73,13 +77,13 @@ namespace VideoForensics.Hosting
 
             if (!string.IsNullOrEmpty(_config.SmtpUsername))
             {
-                var password = await _passwordStore.GetDecryptedAsync(ct) ?? "";
+                string password = await _passwordStore.GetDecryptedAsync(ct) ?? "";
                 await client.AuthenticateAsync(_config.SmtpUsername, password, ct);
             }
 
             try
             {
-                await client.SendAsync(message, ct);
+                _ = await client.SendAsync(message, ct);
             }
             finally
             {
@@ -95,10 +99,25 @@ namespace VideoForensics.Hosting
                 $"Time (UTC): {evt.TimestampUtc:u}"
             };
 
-            if (evt.OperatorId is not null) lines.Add($"Operator: {evt.OperatorId}");
-            if (evt.PairedDeviceId is not null) lines.Add($"Device: {evt.PairedDeviceId}");
-            if (evt.SourceIp is not null) lines.Add($"Source IP: {evt.SourceIp}");
-            if (!string.IsNullOrEmpty(evt.Details)) lines.Add($"Details: {evt.Details}");
+            if (evt.OperatorId is not null)
+            {
+                lines.Add($"Operator: {evt.OperatorId}");
+            }
+
+            if (evt.PairedDeviceId is not null)
+            {
+                lines.Add($"Device: {evt.PairedDeviceId}");
+            }
+
+            if (evt.SourceIp is not null)
+            {
+                lines.Add($"Source IP: {evt.SourceIp}");
+            }
+
+            if (!string.IsNullOrEmpty(evt.Details))
+            {
+                lines.Add($"Details: {evt.Details}");
+            }
 
             lines.Add("");
             lines.Add("This is an urgent security event from your VideoForensics server. Check the Security Audit Log for full context.");

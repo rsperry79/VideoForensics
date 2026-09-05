@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using VideoForensics.Forensics.Models;
 
-namespace VideoForensics.Forensics
+namespace VideoForensics.Forensics.Interfaces
 {
     /// <summary>
     /// Manages evidence retention policies and destruction authorization.
@@ -61,7 +62,7 @@ namespace VideoForensics.Forensics
     {
         public string EvidenceId { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-        public List<DestructionApprovalStep> ApprovalSteps { get; set; } = new();
+        public List<DestructionApprovalStep> ApprovalSteps { get; set; } = [];
         public DateTime? DestroyedAt { get; set; }
         public string? DestructionMethod { get; set; }
         public string? VerificationHash { get; set; }

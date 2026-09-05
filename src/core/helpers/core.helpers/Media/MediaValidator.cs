@@ -1,8 +1,6 @@
-using System;
 using System.IO;
-using VideoForensics.Providers.Common.Helpers.Contracts;
 
-#nullable enable
+using VideoForensics.Providers.Common.Helpers.Contracts;
 
 namespace VideoForensics.Providers.Common.Helpers.Media
 {
@@ -20,12 +18,11 @@ namespace VideoForensics.Providers.Common.Helpers.Media
         public bool ValidateMediaExists(string filePath, long? expectedSize)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
                 return false;
+            }
 
-            if (expectedSize.HasValue)
-                return new FileInfo(filePath).Length == expectedSize.Value;
-
-            return new FileInfo(filePath).Length > 0;
+            return expectedSize.HasValue ? new FileInfo(filePath).Length == expectedSize.Value : new FileInfo(filePath).Length > 0;
         }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Common.Contracts;
@@ -41,9 +42,9 @@ namespace VideoForensics.Hosting
 
         public async Task LogAsync(string eventType, Guid? operatorId, Guid? pairedDeviceId, string? sourceIp, string? details, bool isUrgent, CancellationToken ct)
         {
-            var effectiveUrgent = await _urgencyOverrides.GetOverrideAsync(eventType, ct) ?? isUrgent;
+            bool effectiveUrgent = await _urgencyOverrides.GetOverrideAsync(eventType, ct) ?? isUrgent;
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow,

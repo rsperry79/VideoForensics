@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Database.Configurations
@@ -9,13 +10,13 @@ namespace VideoForensics.Data.Database.Configurations
     {
         public void Configure(EntityTypeBuilder<SecurityAuditLogEntry> builder)
         {
-            builder.HasKey(e => e.Id);
-            builder.Property(e => e.EventType).IsRequired().HasMaxLength(64);
-            builder.Property(e => e.SourceIp).HasMaxLength(64);
-            builder.Property(e => e.Details).HasMaxLength(2048);
+            _ = builder.HasKey(e => e.Id);
+            _ = builder.Property(e => e.EventType).IsRequired().HasMaxLength(64);
+            _ = builder.Property(e => e.SourceIp).HasMaxLength(64);
+            _ = builder.Property(e => e.Details).HasMaxLength(2048);
 
-            builder.HasIndex(e => e.TimestampUtc);
-            builder.HasIndex(e => e.OperatorId);
+            _ = builder.HasIndex(e => e.TimestampUtc);
+            _ = builder.HasIndex(e => e.OperatorId);
         }
     }
 }

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
 namespace VideoForensics.Data.Database.Repositories
@@ -27,8 +29,8 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<EventWithHealthCorrelation>> GetEventHealthCorrelationAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var correlations = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<EventWithHealthCorrelation> correlations = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc)
@@ -53,22 +55,25 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<HealthRelatedGap>> IdentifyHealthRelatedGapsAsync(
             Guid locationId, CancellationToken ct)
         {
-            var gaps = await _timelineRepository.GetLocationRecordingGapsAsync(
+            IReadOnlyList<TimelineGap> gaps = await _timelineRepository.GetLocationRecordingGapsAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, minGapMinutes: 5, ct);
 
-            if (gaps.Count == 0) return new List<HealthRelatedGap>();
+            if (gaps.Count == 0)
+            {
+                return [];
+            }
 
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var gapDeviceIds = gaps.Select(g => g.DeviceId).Distinct().ToList();
-            var healthRecords = await db.DeviceHealthRecords
+            List<DeviceHealth> healthRecords = await db.DeviceHealthRecords
                 .Where(h => gapDeviceIds.Contains(h.DeviceId))
                 .OrderByDescending(h => h.LastHeartbeatUtc)
                 .ToListAsync(ct);
 
             var healthGaps = new List<HealthRelatedGap>();
-            foreach (var gap in gaps)
+            foreach (TimelineGap gap in gaps)
             {
-                var health = healthRecords
+                DeviceHealth? health = healthRecords
                     .Where(h => h.DeviceId == gap.DeviceId &&
                                 h.LastHeartbeatUtc >= gap.StartUtc &&
                                 h.LastHeartbeatUtc <= gap.EndUtc)
@@ -77,9 +82,18 @@ namespace VideoForensics.Data.Database.Repositories
                 if (health != null)
                 {
                     var issue = "Unknown";
-                    if (health.BatteryPercentage < 10m) issue = "LowBattery";
-                    else if (health.IsOnline == false) issue = "OfflineStatus";
-                    else if (health.WifiSignalRssi < -80) issue = "PoorWiFi";
+                    if (health.BatteryPercentage < 10m)
+                    {
+                        issue = "LowBattery";
+                    }
+                    else if (health.IsOnline == false)
+                    {
+                        issue = "OfflineStatus";
+                    }
+                    else if (health.WifiSignalRssi < -80)
+                    {
+                        issue = "PoorWiFi";
+                    }
 
                     healthGaps.Add(new HealthRelatedGap
                     {
@@ -99,15 +113,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<DeviceReliabilityAnalysis> AnalyzeDeviceReliabilityAsync(Guid deviceId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            var gaps = await _timelineRepository.GetRecordingGapsAsync(
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+            IReadOnlyList<TimelineGap> gaps = await _timelineRepository.GetRecordingGapsAsync(
                 deviceId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, minGapMinutes: 5, ct);
-            var healthGaps = await IdentifyHealthRelatedGapsAsync(device?.LocationId ?? Guid.Empty, ct);
+            IReadOnlyList<HealthRelatedGap> healthGaps = await IdentifyHealthRelatedGapsAsync(device?.LocationId ?? Guid.Empty, ct);
 
             var totalMinutes = 30 * 24 * 60;
             var gapMinutes = gaps.Sum(g => g.DurationMinutes);
-            var uptime = ((totalMinutes - gapMinutes) / (decimal)totalMinutes) * 100;
+            var uptime = (totalMinutes - gapMinutes) / (decimal)totalMinutes * 100;
 
             return new DeviceReliabilityAnalysis
             {
@@ -132,14 +146,14 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<LocationChangeWithGap>> CorrelateLocationChangeWithGapsAsync(
             Guid deviceId, CancellationToken ct)
         {
-            var changes = await GetLocationChangeHistoryAsync(deviceId, ct);
-            var gaps = await _timelineRepository.GetRecordingGapsAsync(
+            IReadOnlyList<LocationChangeImpact> changes = await GetLocationChangeHistoryAsync(deviceId, ct);
+            IReadOnlyList<TimelineGap> gaps = await _timelineRepository.GetRecordingGapsAsync(
                 deviceId, DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, minGapMinutes: 5, ct);
 
             var correlations = new List<LocationChangeWithGap>();
-            foreach (var change in changes)
+            foreach (LocationChangeImpact change in changes)
             {
-                var nearbyGap = gaps.FirstOrDefault(g => g.StartUtc > change.ChangedAtUtc &&
+                TimelineGap? nearbyGap = gaps.FirstOrDefault(g => g.StartUtc > change.ChangedAtUtc &&
                                                           (g.StartUtc - change.ChangedAtUtc).TotalDays <= 7);
                 if (nearbyGap != null)
                 {
@@ -161,7 +175,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<SyncGapCorrelation>> CorrelateEventMissingWithSyncGapsAsync(
             Guid locationId, CancellationToken ct)
         {
-            var missing = await _integrityRepository.GetMissingDownloadsAsync(
+            IReadOnlyList<MissingDownloadRecord> missing = await _integrityRepository.GetMissingDownloadsAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
 
             return missing.GroupBy(m => m.DeviceId)
@@ -179,13 +193,13 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<SyncHealthReport> AnalyzeSyncHealthAsync(Guid locationId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
             var deviceStatus = new List<DeviceSyncStatus>();
 
-            foreach (var device in devices)
+            foreach (Device? device in devices)
             {
-                var reliability = await AnalyzeDeviceReliabilityAsync(device.Id, ct);
+                DeviceReliabilityAnalysis reliability = await AnalyzeDeviceReliabilityAsync(device.Id, ct);
                 deviceStatus.Add(new DeviceSyncStatus { DeviceId = device.Id, DeviceName = device.Name, Uptime = reliability.UptimePercentage });
             }
 
@@ -201,22 +215,25 @@ namespace VideoForensics.Data.Database.Repositories
 
         private static string DetermineHealthStatus(decimal? battery, int? rssi, bool? isOnline)
         {
-            if (isOnline == false) return "Critical";
-            if (battery < 10m || rssi < -80) return "Degraded";
-            return "Good";
+            if (isOnline == false)
+            {
+                return "Critical";
+            }
+
+            return battery < 10m || rssi < -80 ? "Degraded" : "Good";
         }
 
         public async Task<CorrelationSummary> GetCorrelationSummaryAsync(Guid locationId, CancellationToken ct)
         {
-            var syncHealth = await AnalyzeSyncHealthAsync(locationId, ct);
-            var healthGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
+            SyncHealthReport syncHealth = await AnalyzeSyncHealthAsync(locationId, ct);
+            IReadOnlyList<HealthRelatedGap> healthGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
             var locationChanges = new List<LocationChangeImpact>();
 
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
-            foreach (var device in devices)
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<Device> devices = await db.Devices.Where(d => d.LocationId == locationId).ToListAsync(ct);
+            foreach (Device? device in devices)
             {
-                var changes = await GetLocationChangeHistoryAsync(device.Id, ct);
+                IReadOnlyList<LocationChangeImpact> changes = await GetLocationChangeHistoryAsync(device.Id, ct);
                 locationChanges.AddRange(changes);
             }
 
@@ -257,7 +274,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<PaginatedResult<HealthRelatedGap>> GetHealthRelatedGapsPaginatedAsync(
             Guid locationId, int pageNumber, int pageSize, CancellationToken ct)
         {
-            var allGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
+            IReadOnlyList<HealthRelatedGap> allGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
             var orderedGaps = allGaps.OrderByDescending(g => g.DurationMinutes).ToList();
 
             var totalCount = orderedGaps.Count;
@@ -278,7 +295,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<CursorPaginatedResult<EventWithHealthCorrelation>> GetEventHealthCorrelationCursorAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, string? cursor, int pageSize, CancellationToken ct)
         {
-            var allEvents = await GetEventHealthCorrelationAsync(deviceId, fromUtc, toUtc, ct);
+            IReadOnlyList<EventWithHealthCorrelation> allEvents = await GetEventHealthCorrelationAsync(deviceId, fromUtc, toUtc, ct);
             var orderedEvents = allEvents.OrderBy(e => e.OccurredAtUtc).ToList();
 
             int startIndex = 0;

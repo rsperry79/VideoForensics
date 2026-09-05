@@ -1,7 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
+
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
@@ -24,7 +27,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets an action log entry by ID.</summary>
         public async Task<ActionLogEntry?> GetAsync(Guid entryId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ActionLogEntries.FirstOrDefaultAsync(ale => ale.Id == entryId, ct);
         }
 
@@ -47,19 +50,19 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                using var transaction = await db.Database.BeginTransactionAsync(ct);
+                using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
 
                 // Read the last entry's hash atomically within this transaction
-                var lastEntry = await db.ActionLogEntries
+                ActionLogEntry? lastEntry = await db.ActionLogEntries
                     .OrderByDescending(ale => ale.TimestampUtc)
                     .ThenByDescending(ale => ale.Id)
                     .FirstOrDefaultAsync(ct);
 
                 var previousEntryHash = lastEntry?.EntryHash;
-                var timestampUtc = DateTime.UtcNow;
+                DateTime timestampUtc = DateTime.UtcNow;
 
                 // Compute the new entry's hash
                 var canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
@@ -80,8 +83,8 @@ namespace VideoForensics.Data.Database.Repositories
                     EntryHash = entryHash
                 };
 
-                db.ActionLogEntries.Add(entry);
-                await db.SaveChangesAsync(ct);
+                _ = db.ActionLogEntries.Add(entry);
+                _ = await db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
 
                 _logger.LogInformation("Action log entry appended: {EntryId} (action: {Action}, entity: {EntityType}:{EntityId})",
@@ -99,7 +102,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets the history of actions for a specific entity.</summary>
         public async Task<IReadOnlyList<ActionLogEntry>> GetHistoryForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ActionLogEntries
                 .Where(ale => ale.EntityType == entityType && ale.EntityId == entityId)
                 .OrderByDescending(ale => ale.TimestampUtc)
@@ -109,26 +112,28 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets all action log entries.</summary>
         public async Task<IReadOnlyList<ActionLogEntry>> ListAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ActionLogEntries.ToListAsync(ct);
         }
 
         /// <summary>Verifies the integrity of the hash chain, returning true if the chain is valid.</summary>
         public async Task<bool> VerifyChainIntegrityAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var entries = await db.ActionLogEntries
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<ActionLogEntry> entries = await db.ActionLogEntries
                 .OrderBy(ale => ale.TimestampUtc)
                 .ThenBy(ale => ale.Id)
                 .ToListAsync(ct);
 
             if (entries.Count == 0)
+            {
                 return true;
+            }
 
             // Verify the chain starting from the first entry
             string? expectedPreviousHash = null;
 
-            foreach (var entry in entries)
+            foreach (ActionLogEntry? entry in entries)
             {
                 // Check that PreviousEntryHash matches what we expect
                 if (entry.PreviousEntryHash != expectedPreviousHash)

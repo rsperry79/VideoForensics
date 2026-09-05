@@ -27,12 +27,12 @@ namespace VideoForensics.Providers.Ring
         {
             await EnsureSessionValid(cancellationToken);
 
-            var effectiveDateTo = dateTo ?? DateTime.UtcNow;
-            var effectiveDateFrom = dateFrom ?? effectiveDateTo.AddDays(-30);
+            DateTime effectiveDateTo = dateTo ?? DateTime.UtcNow;
+            DateTime effectiveDateFrom = dateFrom ?? effectiveDateTo.AddDays(-30);
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var adjustedDateFrom = effectiveDateFrom.Date.AddSeconds(1);
-            var adjustedDateTo = effectiveDateTo.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+            DateTime adjustedDateFrom = effectiveDateFrom.Date.AddSeconds(1);
+            DateTime adjustedDateTo = effectiveDateTo.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
             var query = $"video_search/history?doorbot_id={doorbotId}" +
                 $"&date_from={new DateTimeOffset(adjustedDateFrom).ToUnixTimeMilliseconds()}" +
@@ -40,8 +40,8 @@ namespace VideoForensics.Providers.Ring
 
             var response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId, cancellationToken);
 
-            var parsed = JsonSerializer.Deserialize<VideoSearchResponse>(response);
-            return parsed?.VideoSearch ?? new List<VideoSearchItem>();
+            VideoSearchResponse? parsed = JsonSerializer.Deserialize<VideoSearchResponse>(response);
+            return parsed?.VideoSearch ?? [];
         }
     }
 }

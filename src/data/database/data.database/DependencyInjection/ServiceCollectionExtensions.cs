@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.Configurations;
 using VideoForensics.Data.Database.Repositories;
@@ -16,7 +17,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
         public static IServiceCollection AddVideoForensicsDatabase(this IServiceCollection services)
         {
             // Ensure data protection is available (used by CredentialEncryptionProvider)
-            services.AddDataProtection();
+            _ = services.AddDataProtection();
 
             // Register credential encryption provider
             services.TryAddScoped<ICredentialEncryptionProvider, CredentialEncryptionProvider>();
