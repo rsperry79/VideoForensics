@@ -1,5 +1,6 @@
-using System.Text.Json;
 using Microsoft.JSInterop;
+
+using System.Text.Json;
 
 namespace VideoForensics.Ui.Shared.Services
 {
@@ -15,7 +16,10 @@ namespace VideoForensics.Ui.Shared.Services
         private readonly IJSRuntime _js;
         private bool _loaded;
 
-        public PairedSessionState(IJSRuntime js) => _js = js;
+        public PairedSessionState(IJSRuntime js)
+        {
+            _js = js;
+        }
 
         public string? SessionToken { get; private set; }
         public Guid? OperatorId { get; private set; }
@@ -33,7 +37,7 @@ namespace VideoForensics.Ui.Shared.Services
             _loaded = true;
             try
             {
-                var json = await _js.InvokeAsync<string?>("vfWebAuthn.loadSession");
+                string? json = await _js.InvokeAsync<string?>("vfWebAuthn.loadSession");
                 if (string.IsNullOrEmpty(json))
                 {
                     return;
@@ -59,8 +63,18 @@ namespace VideoForensics.Ui.Shared.Services
             SessionToken = sessionToken;
             OperatorId = operatorId;
             Role = role;
-            var json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role));
-            await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
+            try
+            {
+                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role));
+                await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
+            }
+            catch (JSException)
+            {
+                // Same gap as EnsureLoadedAsync: wwwroot/js/webauthn.js isn't loaded on every host
+                // (MAUI's BlazorWebView doesn't reference it - device pairing is server/WebApp-only
+                // for now). The in-memory session above still works for this circuit; it just won't
+                // survive a refresh without vfWebAuthn's localStorage persistence.
+            }
         }
 
         public async Task ClearAsync()
@@ -68,7 +82,14 @@ namespace VideoForensics.Ui.Shared.Services
             SessionToken = null;
             OperatorId = null;
             Role = null;
-            await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
+            try
+            {
+                await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
+            }
+            catch (JSException)
+            {
+                // See SetAsync - persistence is best-effort where vfWebAuthn isn't loaded.
+            }
         }
 
         private record StoredSession(string SessionToken, Guid OperatorId, string Role);
