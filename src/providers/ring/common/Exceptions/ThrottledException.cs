@@ -16,6 +16,12 @@ namespace VideoForensics.Providers.Ring.Exceptions
         /// </summary>
         public bool IsHardBan { get; }
 
+        /// <summary>The HTTP status code Ring returned, when available (set via object initializer at the throw site, not every caller populates it).</summary>
+        public System.Net.HttpStatusCode? StatusCode { get; init; }
+
+        /// <summary>The raw response body Ring returned, truncated to ~4000 chars, when available.</summary>
+        public string? ResponseBody { get; init; }
+
         public ThrottledException() : base("The request has been denied by Ring due to too many requests. Try again in a few minutes.")
         {
         }

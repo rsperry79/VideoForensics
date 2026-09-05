@@ -29,6 +29,9 @@ namespace VideoForensics.Providers.Ring.Exceptions
         /// </summary>
         public readonly HttpStatusCode? ExpectedStatusCode;
 
+        /// <summary>The raw response body Ring returned, truncated to ~4000 chars, when available, set via object initializer at the throw site.</summary>
+        public string? ResponseBody { get; init; }
+
         public UnexpectedOutcomeException(HttpStatusCode returnedStatusCode, HttpStatusCode expectedStatusCode) : base(string.Format(errorMessageWithExpectation, returnedStatusCode, expectedStatusCode))
         {
             ReturnedStatusCode = returnedStatusCode;

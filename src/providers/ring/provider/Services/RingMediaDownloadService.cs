@@ -222,6 +222,7 @@ namespace VideoForensics.Providers.Ring.Services
                         var eventIdStr = @event.Id?.ToString() ?? "unknown";
                         DateTime eventOccurredAtUtc = (@event.CreatedAtDateTime ?? DateTime.UtcNow).ToUniversalTime();
                         var previousAttemptCount = 0;
+                        DownloadEvent? existingRecord = null;
 
                         // Record this event in the Events table independent of download outcome —
                         // Timeline/Integrity/Correlation/Audit forensic tools all read from Events,
@@ -244,7 +245,7 @@ namespace VideoForensics.Providers.Ring.Services
                             // or downloaded to a different output path in a prior run). Only skip the
                             // network call when the file is actually present on disk; otherwise fall through
                             // and redownload it, even though the DB says it was already downloaded.
-                            DownloadEvent? existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
+                            existingRecord = await _dataClient.GetDownloadEventAsync(deviceGuid, eventIdStr, rateLimitCts.Token);
                             var existsOnDisk = File.Exists(fileName) && new FileInfo(fileName).Length > 0;
                             previousAttemptCount = existingRecord?.AttemptCount ?? 0;
 
@@ -541,6 +542,32 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     _logger.LogWarning(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
                                 }
+
+                                // Persist the raw status code/body (when the exception carries one) against
+                                // this event's stable Id - unlike the DownloadEvent above, which is upserted
+                                // and only ever holds the latest attempt, every failed attempt gets its own
+                                // row here so the full history survives retries.
+                                try
+                                {
+                                    var apiErrorLog = new ProviderApiErrorLog
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        EventId = eventDbId == Guid.Empty ? null : eventDbId,
+                                        DeviceId = deviceGuid,
+                                        AttemptNumber = previousAttemptCount + 1,
+                                        OccurredAtUtc = DateTime.UtcNow,
+                                        HttpStatusCode = GetHttpStatusCode(ex),
+                                        ResponseBody = GetResponseBody(ex),
+                                        ExceptionType = ex.GetType().Name,
+                                        ErrorMessage = ex.Message,
+                                        ErrorCategory = ClassifyProviderApiError(ex, existingRecord)
+                                    };
+                                    await _dataClient.RecordProviderApiErrorAsync(apiErrorLog, CancellationToken.None);
+                                }
+                                catch (Exception apiErrorRecordEx)
+                                {
+                                    _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
+                                }
                             }
                         }
                         finally
@@ -649,6 +676,10 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<DownloadResult> DownloadSnapshotsAsync(string deviceId, string outputPath, DateTime startDate,
             DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
+            // Hoisted so the catch block below can attach a ProviderApiErrorLog to the right device
+            // when the failure happens after device identity was resolved - null means it failed
+            // before that point, in which case there's no device to correlate the error log against.
+            Guid? resolvedDeviceGuid = null;
             try
             {
                 _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
@@ -732,6 +763,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve device identity and record snapshot download
                 Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
+                resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
                 string? sha256Hash = null;
@@ -827,6 +859,32 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogError(ex, "Error downloading snapshot for device {DeviceId}", deviceId);
                 _currentStatus = _currentStatus with { IsDownloading = false };
+
+                if (resolvedDeviceGuid.HasValue)
+                {
+                    try
+                    {
+                        var apiErrorLog = new ProviderApiErrorLog
+                        {
+                            Id = Guid.NewGuid(),
+                            EventId = null, // snapshots have no Event row
+                            DeviceId = resolvedDeviceGuid.Value,
+                            AttemptNumber = 1,
+                            OccurredAtUtc = DateTime.UtcNow,
+                            HttpStatusCode = GetHttpStatusCode(ex),
+                            ResponseBody = GetResponseBody(ex),
+                            ExceptionType = ex.GetType().Name,
+                            ErrorMessage = ex.Message,
+                            ErrorCategory = ClassifyProviderApiError(ex, existingRecord: null)
+                        };
+                        await _dataClient.RecordProviderApiErrorAsync(apiErrorLog, CancellationToken.None);
+                    }
+                    catch (Exception apiErrorRecordEx)
+                    {
+                        _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
+                    }
+                }
+
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: $"Download failed: {ex.Message}"
@@ -1386,6 +1444,52 @@ namespace VideoForensics.Providers.Ring.Services
                    message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("denied by Ring", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Classifies a download failure for the ProviderApiErrorLog table. The interesting case is
+        /// DeviceUnknownException (Ring 404): if this event previously downloaded successfully
+        /// (existingRecord.Success == true), Ring no longer having it means the recording was deleted
+        /// after the fact - a materially different situation from an event that was never available.
+        /// </summary>
+        internal static string ClassifyProviderApiError(Exception ex, DownloadEvent? existingRecord)
+        {
+            return ex switch
+            {
+                VideoForensics.Providers.Ring.Exceptions.ThrottledException => "RateLimited",
+                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException =>
+                    existingRecord?.Success == true ? "RecordingDeletedAfterDownload" : "RecordingNotFound",
+                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException => "DownloadFailed",
+                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException => "UnexpectedStatus",
+                OperationCanceledException => "Cancelled",
+                _ => "Other"
+            };
+        }
+
+        /// <summary>Extracts the HTTP status code from whichever of the four Ring exception types carries one, or null.</summary>
+        private static int? GetHttpStatusCode(Exception ex)
+        {
+            return ex switch
+            {
+                VideoForensics.Providers.Ring.Exceptions.ThrottledException te => te.StatusCode.HasValue ? (int)te.StatusCode.Value : null,
+                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException due => due.StatusCode.HasValue ? (int)due.StatusCode.Value : null,
+                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException dfe => dfe.StatusCode.HasValue ? (int)dfe.StatusCode.Value : null,
+                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException uoe => (int)uoe.ReturnedStatusCode,
+                _ => null
+            };
+        }
+
+        /// <summary>Extracts the (already-truncated) raw response body from whichever of the four Ring exception types carries one, or null.</summary>
+        private static string? GetResponseBody(Exception ex)
+        {
+            return ex switch
+            {
+                VideoForensics.Providers.Ring.Exceptions.ThrottledException te => te.ResponseBody,
+                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException due => due.ResponseBody,
+                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException dfe => dfe.ResponseBody,
+                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException uoe => uoe.ResponseBody,
+                _ => null
+            };
         }
 
         private bool ValidateJsonSidecar(string jsonPath, string metadataType)
