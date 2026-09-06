@@ -29,7 +29,14 @@
         }
         else
         {
-            <RadzenDataGrid TItem="Location" Data="@_locations" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+            <RadzenDataFilter @ref="_locationsFilter" TItem="Location" Data="@_locations" Auto="true" Class="mt-2 mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="Id" Title="Id" />
+                    <RadzenDataFilterProperty Property="Name" Title="Name" />
+                    <RadzenDataFilterProperty Property="Address" Title="Address" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="Location" Data="@_locationsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
                     <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Id)" Title="Id" />
                     <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Name)" Title="Name" />
@@ -59,7 +66,15 @@
         }
         else
         {
-            <RadzenDataGrid TItem="Device" Data="@_devices" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+            <RadzenDataFilter @ref="_devicesFilter" TItem="Device" Data="@_devices" Auto="true" Class="mt-2 mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="Id" Title="Id" />
+                    <RadzenDataFilterProperty Property="Name" Title="Name" />
+                    <RadzenDataFilterProperty Property="Type" Title="Type" />
+                    <RadzenDataFilterProperty Property="IsOnline" Title="Online" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
                     <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Id)" Title="Id" />
                     <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Name)" Title="Name" />
@@ -96,7 +111,15 @@
         }
         else
         {
-            <RadzenDataGrid TItem="DeviceEvent" Data="@_events" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
+            <RadzenDataFilter @ref="_eventsFilter" TItem="DeviceEvent" Data="@_events" Auto="true" Class="mt-2 mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="Id" Title="Id" />
+                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
+                    <RadzenDataFilterProperty Property="Timestamp" Title="Timestamp" />
+                    <RadzenDataFilterProperty Property="SnapshotUrl" Title="Snapshot URL" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="DeviceEvent" Data="@_eventsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
                     <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Id)" Title="Id" />
                     <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.EventType)" Title="Event Type" />
@@ -151,6 +174,7 @@
     private bool _locationsLoading;
     private string? _locationsError;
     private List<Location>? _locations;
+    private RadzenDataFilter<Location>? _locationsFilter;
 
     private async Task RunLocationsAsync()
     {
@@ -176,6 +200,7 @@
     private bool _devicesLoading;
     private string? _devicesError;
     private List<Device>? _devices;
+    private RadzenDataFilter<Device>? _devicesFilter;
 
     private async Task RunDevicesAsync()
     {
@@ -203,6 +228,7 @@
     private bool _eventsLoading;
     private string? _eventsError;
     private List<DeviceEvent>? _events;
+    private RadzenDataFilter<DeviceEvent>? _eventsFilter;
 
     private async Task RunEventsAsync()
     {

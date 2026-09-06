@@ -59,57 +59,60 @@ else if (_devices is null || _devices.Count == 0)
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Device Name</th>
-                <th>Role</th>
-                <th>Paired At (UTC)</th>
-                <th>Last Seen (UTC)</th>
-                <th>Last Seen IP</th>
-                <th>Last Seen Tier</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var context in _devices)
-            {
-                <tr>
-                    <td>@context.DeviceName</td>
-                    <td>@context.Role</td>
-                    <td>@context.PairedAtUtc</td>
-                    <td>@(context.LastSeenAtUtc?.ToString() ?? "-")</td>
-                    <td>@(context.LastSeenIp ?? "-")</td>
-                    <td>@(context.LastSeenTier?.ToString() ?? "-")</td>
-                    <td>
-                        @if (context.IsActive)
+    <RadzenDataFilter @ref="_devicesFilter" TItem="PairedDevice" Data="@_devices" Auto="true" class="mb-2">
+        <Properties>
+            <RadzenDataFilterProperty Property="DeviceName" Title="Device Name" />
+            <RadzenDataFilterProperty Property="Role" Title="Role" />
+            <RadzenDataFilterProperty Property="PairedAtUtc" Title="Paired At (UTC)" />
+            <RadzenDataFilterProperty Property="LastSeenAtUtc" Title="Last Seen (UTC)" />
+            <RadzenDataFilterProperty Property="LastSeenIp" Title="Last Seen IP" />
+            <RadzenDataFilterProperty Property="IsActive" Title="Active" />
+        </Properties>
+    </RadzenDataFilter>
+    <RadzenDataGrid TItem="PairedDevice" Data="@_devicesFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+        <Columns>
+            <RadzenDataGridColumn TItem="PairedDevice" Property="DeviceName" Title="Device Name" />
+            <RadzenDataGridColumn TItem="PairedDevice" Property="Role" Title="Role" />
+            <RadzenDataGridColumn TItem="PairedDevice" Property="PairedAtUtc" Title="Paired At (UTC)" />
+            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen (UTC)">
+                <Template Context="context">@(context.LastSeenAtUtc?.ToString() ?? "-")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen IP">
+                <Template Context="context">@(context.LastSeenIp ?? "-")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen Tier">
+                <Template Context="context">@(context.LastSeenTier?.ToString() ?? "-")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="Status" Sortable="false" Filterable="false">
+                <Template Context="context">
+                    @if (context.IsActive)
+                    {
+                        <span style="color: var(--rz-success);">Active</span>
+                    }
+                    else
+                    {
+                        <span style="color: var(--rz-danger);">Revoked: @context.RevokedReason</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="" Sortable="false" Filterable="false">
+                <Template Context="context">
+                    @if (context.IsActive)
+                    {
+                        <RadzenButton Text="Revoke" Click="() => BeginRevoke(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                        @if (_pendingRevokeDeviceId == context.Id)
                         {
-                            <span style="color: var(--rz-success);">Active</span>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
+                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="Reason for revocation" Style="max-width: 260px;" />
+                                <RadzenButton Text="Confirm" Click="() => ConfirmRevoke(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                                <RadzenButton Text="Cancel" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
+                            </RadzenStack>
                         }
-                        else
-                        {
-                            <span style="color: var(--rz-danger);">Revoked: @context.RevokedReason</span>
-                        }
-                    </td>
-                    <td>
-                        @if (context.IsActive)
-                        {
-                            <RadzenButton Text="Revoke" Click="() => BeginRevoke(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                            @if (_pendingRevokeDeviceId == context.Id)
-                            {
-                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
-                                    <RadzenTextBox @bind-Value="_reasonInput" Placeholder="Reason for revocation" Style="max-width: 260px;" />
-                                    <RadzenButton Text="Confirm" Click="() => ConfirmRevoke(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                                    <RadzenButton Text="Cancel" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
-                                </RadzenStack>
-                            }
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @if (_actionError is not null)
@@ -120,6 +123,7 @@ else
 @code {
     private bool _isLoading = true;
     private List<PairedDevice>? _devices;
+    private RadzenDataFilter<PairedDevice>? _devicesFilter;
     private string? _authError;
     private string? _loadError;
     private string? _actionError;

@@ -21,7 +21,15 @@ else
     }
     else
     {
-        <RadzenDataGrid TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devices" AllowPaging="true" PageSize="20" AllowSorting="true">
+        <RadzenDataFilter @ref="_devicesFilter" TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devices" Auto="true" class="mb-2">
+            <Properties>
+                <RadzenDataFilterProperty Property="Name" Title="Name" />
+                <RadzenDataFilterProperty Property="Type" Title="Type" />
+                <RadzenDataFilterProperty Property="IsOnline" Title="Online" />
+                <RadzenDataFilterProperty Property="LastSyncedUtc" Title="Last Synced" />
+            </Properties>
+        </RadzenDataFilter>
+        <RadzenDataGrid TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
             <Columns>
                 <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" Title="Name" />
                 <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" Title="Type" />
@@ -40,6 +48,7 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private RadzenDataFilter<VideoForensics.Data.Common.Entities.Device>? _devicesFilter;
 
     protected override async Task OnInitializedAsync()
     {

@@ -36,29 +36,27 @@ else
         }
         else
         {
-            <table class="rz-data-grid">
-                <thead>
-                    <tr>
-                        <th>Accessed At</th>
-                        <th>Actor</th>
-                        <th>Action</th>
-                        <th>Entity Type</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var accessEvent in _report.AccessEvents)
-                    {
-                        <tr>
-                            <td>@accessEvent.AccessedAtUtc</td>
-                            <td>@accessEvent.Actor</td>
-                            <td>@accessEvent.Action</td>
-                            <td>@accessEvent.EntityType</td>
-                            <td>@(accessEvent.Details ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_accessEventsFilter" TItem="AccessControlReport.AccessEvent" Data="@_report.AccessEvents" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="AccessedAtUtc" Title="Accessed At" />
+                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
+                    <RadzenDataFilterProperty Property="Action" Title="Action" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
+                    <RadzenDataFilterProperty Property="Details" Title="Details" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="AccessControlReport.AccessEvent" Data="@_accessEventsFilter?.View"
+                AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="AccessedAtUtc" Title="Accessed At" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Actor" Title="Actor" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Action" Title="Action" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="EntityType" Title="Entity Type" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Details" Title="Details">
+                        <Template Context="row">@(row.Details ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
 
         <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Export Events</RadzenText>
@@ -68,29 +66,29 @@ else
         }
         else
         {
-            <table class="rz-data-grid">
-                <thead>
-                    <tr>
-                        <th>Exported At</th>
-                        <th>Exported By</th>
-                        <th>Case Reference</th>
-                        <th>Recipient</th>
-                        <th>Item Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var exportEvent in _report.ExportEvents)
-                    {
-                        <tr>
-                            <td>@exportEvent.ExportedAtUtc</td>
-                            <td>@exportEvent.ExportedByUserName</td>
-                            <td>@(exportEvent.CaseReference ?? "-")</td>
-                            <td>@(exportEvent.RecipientDescription ?? "-")</td>
-                            <td>@exportEvent.ItemCount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_exportEventsFilter" TItem="AccessControlReport.ExportEvent" Data="@_report.ExportEvents" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="ExportedAtUtc" Title="Exported At" />
+                    <RadzenDataFilterProperty Property="ExportedByUserName" Title="Exported By" />
+                    <RadzenDataFilterProperty Property="CaseReference" Title="Case Reference" />
+                    <RadzenDataFilterProperty Property="RecipientDescription" Title="Recipient" />
+                    <RadzenDataFilterProperty Property="ItemCount" Title="Item Count" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="AccessControlReport.ExportEvent" Data="@_exportEventsFilter?.View"
+                AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedAtUtc" Title="Exported At" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedByUserName" Title="Exported By" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="CaseReference" Title="Case Reference">
+                        <Template Context="row">@(row.CaseReference ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="RecipientDescription" Title="Recipient">
+                        <Template Context="row">@(row.RecipientDescription ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ItemCount" Title="Item Count" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
 }
@@ -103,6 +101,8 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private AccessControlReport? _report;
+    private RadzenDataFilter<AccessControlReport.AccessEvent>? _accessEventsFilter;
+    private RadzenDataFilter<AccessControlReport.ExportEvent>? _exportEventsFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
