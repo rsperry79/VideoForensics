@@ -43,7 +43,14 @@ else
             }
             else
             {
-                <RadzenDataGrid TItem="MediaVerificationResult" Data="@_verificationResults" AllowPaging="true" PageSize="20" AllowSorting="true">
+                <RadzenDataFilter @ref="_verificationResultsFilter" TItem="MediaVerificationResult" Data="@_verificationResults" Auto="true" class="mb-2">
+                    <Properties>
+                        <RadzenDataFilterProperty Property="FileName" Title="File Name" />
+                        <RadzenDataFilterProperty Property="Status" Title="Status" />
+                        <RadzenDataFilterProperty Property="FailureReason" Title="Failure Reason" />
+                    </Properties>
+                </RadzenDataFilter>
+                <RadzenDataGrid TItem="MediaVerificationResult" Data="@_verificationResultsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                     <Columns>
                         <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FileName)" Title="File Name" />
                         <RadzenDataGridColumn TItem="MediaVerificationResult" Title="Status"><Template Context="result"><span style="color:@StatusColor(result.Status)">@result.Status</span></Template></RadzenDataGridColumn>
@@ -78,7 +85,16 @@ else
             }
             else
             {
-                <RadzenDataGrid TItem="ReconciliationDiscrepancy" Data="@_discrepancies" AllowPaging="true" PageSize="20" AllowSorting="true">
+                <RadzenDataFilter @ref="_discrepanciesFilter" TItem="ReconciliationDiscrepancy" Data="@_discrepancies" Auto="true" class="mb-2">
+                    <Properties>
+                        <RadzenDataFilterProperty Property="Type" Title="Type" />
+                        <RadzenDataFilterProperty Property="ProviderEventId" Title="Provider Event ID" />
+                        <RadzenDataFilterProperty Property="FieldName" Title="Field" />
+                        <RadzenDataFilterProperty Property="StoredValue" Title="Stored Value" />
+                        <RadzenDataFilterProperty Property="ProviderValue" Title="Provider Value" />
+                    </Properties>
+                </RadzenDataFilter>
+                <RadzenDataGrid TItem="ReconciliationDiscrepancy" Data="@_discrepanciesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                     <Columns>
                         <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.Type)" Title="Type" />
                         <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderEventId)" Title="Provider Event ID" />
@@ -103,6 +119,8 @@ else
     private string _activeTab = "integrity";
     private IReadOnlyList<MediaVerificationResult>? _verificationResults;
     private IReadOnlyList<ReconciliationDiscrepancy>? _discrepancies;
+    private RadzenDataFilter<MediaVerificationResult>? _verificationResultsFilter;
+    private RadzenDataFilter<ReconciliationDiscrepancy>? _discrepanciesFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));

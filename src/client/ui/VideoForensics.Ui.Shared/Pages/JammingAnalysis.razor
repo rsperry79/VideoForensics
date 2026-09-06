@@ -41,33 +41,30 @@ else
 
         @if (_report.Incidents.Count > 0)
         {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Affected Events</th>
-                        <th>Avg Degradation (dB)</th>
-                        <th>Confidence</th>
-                        <th>Source</th>
-                        <th>Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var incident in _report.Incidents)
-                    {
-                        <tr>
-                            <td>@incident.StartUtc</td>
-                            <td>@incident.EndUtc</td>
-                            <td>@incident.AffectedEventCount</td>
-                            <td>@incident.AverageDegradationDb.ToString("F1")</td>
-                            <td>@incident.Confidence</td>
-                            <td>@incident.Source</td>
-                            <td>@incident.Notes</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_incidentsFilter" TItem="JammingIncidentRecord" Data="@_report.Incidents" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="StartUtc" Title="Start" />
+                    <RadzenDataFilterProperty Property="EndUtc" Title="End" />
+                    <RadzenDataFilterProperty Property="AffectedEventCount" Title="Affected Events" />
+                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="Avg Degradation (dB)" />
+                    <RadzenDataFilterProperty Property="Confidence" Title="Confidence" />
+                    <RadzenDataFilterProperty Property="Source" Title="Source" />
+                    <RadzenDataFilterProperty Property="Notes" Title="Notes" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="JammingIncidentRecord" Data="@_incidentsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="StartUtc" Title="Start" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="EndUtc" Title="End" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="AffectedEventCount" Title="Affected Events" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Title="Avg Degradation (dB)">
+                        <Template Context="incident">@incident.AverageDegradationDb.ToString("F1")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Confidence" Title="Confidence" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Source" Title="Source" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Notes" Title="Notes" />
+                </Columns>
+            </RadzenDataGrid>
         }
 
         <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Record Manual Incident</RadzenText>
@@ -115,6 +112,7 @@ else
     private bool _analyzing;
     private string? _analyzeError;
     private JammingAnalysisReport? _report;
+    private RadzenDataFilter<JammingIncidentRecord>? _incidentsFilter;
 
     private DateTime _manualStartUtc = DateTime.UtcNow.AddHours(-1);
     private DateTime _manualEndUtc = DateTime.UtcNow;

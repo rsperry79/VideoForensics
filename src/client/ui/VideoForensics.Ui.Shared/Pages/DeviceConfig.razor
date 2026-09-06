@@ -65,7 +65,16 @@ else
         }
         else
         {
-            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@_history.OrderByDescending(s => s.CapturedAtUtc)" AllowPaging="true" PageSize="20" AllowSorting="true">
+            <RadzenDataFilter @ref="_historyFilter" TItem="DeviceConfigSnapshot" Data="@_history.OrderByDescending(s => s.CapturedAtUtc)" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="Captured At (UTC)" />
+                    <RadzenDataFilterProperty Property="MotionDetectionEnabled" Title="Motion Detection Enabled" />
+                    <RadzenDataFilterProperty Property="MotionSensitivity" Title="Motion Sensitivity" />
+                    <RadzenDataFilterProperty Property="RecordingMode" Title="Recording Mode" />
+                    <RadzenDataFilterProperty Property="Source" Title="Source" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@_historyFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                 <Columns>
                     <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="Captured At (UTC)" />
                     <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Detection Enabled">
@@ -95,6 +104,7 @@ else
     private string? _error;
     private DeviceConfigSnapshot? _latest;
     private List<DeviceConfigSnapshot> _history = new();
+    private RadzenDataFilter<DeviceConfigSnapshot>? _historyFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));

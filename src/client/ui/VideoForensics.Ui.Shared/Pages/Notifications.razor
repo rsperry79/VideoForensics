@@ -92,34 +92,34 @@ else
         }
         else
         {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Event Type</th>
-                        <th>Default</th>
-                        <th>Effective</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var context in _urgencyRows)
-                    {
-                        <tr>
-                            <td>@context.EventType</td>
-                            <td>@(context.DefaultUrgent ? "Urgent" : "Routine")</td>
-                            <td>
-                                <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? "Urgent" : "Routine")</label>
-                            </td>
-                            <td>
-                                @if (context.OverrideUrgent is not null)
-                                {
-                                    <RadzenButton Text="Reset to default" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_urgencyRowsFilter" TItem="UrgencyRow" Data="@_urgencyRows" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
+                    <RadzenDataFilterProperty Property="DefaultUrgent" Title="Default" />
+                    <RadzenDataFilterProperty Property="EffectiveUrgent" Title="Effective" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="UrgencyRow" Data="@_urgencyRowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="UrgencyRow" Property="EventType" Title="Event Type" />
+                    <RadzenDataGridColumn TItem="UrgencyRow" Title="Default" Sortable="false" Filterable="false">
+                        <Template Context="context">@(context.DefaultUrgent ? "Urgent" : "Routine")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="UrgencyRow" Title="Effective" Sortable="false" Filterable="false">
+                        <Template Context="context">
+                            <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? "Urgent" : "Routine")</label>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="UrgencyRow" Title="" Sortable="false" Filterable="false">
+                        <Template Context="context">
+                            @if (context.OverrideUrgent is not null)
+                            {
+                                <RadzenButton Text="Reset to default" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
     </RadzenCard>
 }
@@ -144,6 +144,7 @@ else
 
     private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
     private List<UrgencyRow> _urgencyRows = new();
+    private RadzenDataFilter<UrgencyRow>? _urgencyRowsFilter;
 
     protected override async Task OnInitializedAsync()
     {

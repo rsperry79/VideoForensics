@@ -65,7 +65,16 @@ else
         }
         else
         {
-            <RadzenDataGrid TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_report.JammingByDevice" AllowPaging="true" PageSize="20" AllowSorting="true">
+            <RadzenDataFilter @ref="_jammingByDeviceFilter" TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_report.JammingByDevice" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="DeviceName" Title="Device" />
+                    <RadzenDataFilterProperty Property="IncidentCount" Title="Incident Count" />
+                    <RadzenDataFilterProperty Property="TotalJammedDurationMinutes" Title="Total Jammed (min)" />
+                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="Avg Degradation (dB)" />
+                    <RadzenDataFilterProperty Property="MaxDegradationDb" Title="Max Degradation (dB)" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_jammingByDeviceFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                 <Columns>
                     <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" Title="Device" />
                     <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" Title="Incident Count" />
@@ -88,6 +97,7 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private SignalAnomalyReport? _report;
+    private RadzenDataFilter<SignalAnomalyReport.JammingSummaryEntry>? _jammingByDeviceFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
