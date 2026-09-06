@@ -34,7 +34,17 @@ else if (_entries is null || _entries.Count == 0)
 }
 else
 {
-    <RadzenDataGrid TItem="SecurityAuditLogEntry" Data="@_entries.OrderByDescending(e => e.TimestampUtc)" AllowPaging="true" PageSize="20" AllowSorting="true">
+    <RadzenDataFilter @ref="_entriesFilter" TItem="SecurityAuditLogEntry" Data="@_entries.OrderByDescending(e => e.TimestampUtc)" Auto="true" class="mb-2">
+        <Properties>
+            <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp (UTC)" />
+            <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
+            <RadzenDataFilterProperty Property="OperatorId" Title="Operator Id" />
+            <RadzenDataFilterProperty Property="PairedDeviceId" Title="Paired Device Id" />
+            <RadzenDataFilterProperty Property="SourceIp" Title="Source IP" />
+            <RadzenDataFilterProperty Property="Details" Title="Details" />
+        </Properties>
+    </RadzenDataFilter>
+    <RadzenDataGrid TItem="SecurityAuditLogEntry" Data="@_entriesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
         <Columns>
             <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.TimestampUtc)" Title="Timestamp (UTC)" />
             <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.EventType)" Title="Event Type" />
@@ -51,6 +61,7 @@ else
 @code {
     private bool _isLoading = true;
     private List<SecurityAuditLogEntry>? _entries;
+    private RadzenDataFilter<SecurityAuditLogEntry>? _entriesFilter;
     private string? _authError;
     private string? _loadError;
     private string _operatorIdInput = string.Empty;

@@ -59,7 +59,16 @@ else
         }
         else
         {
-            <RadzenDataGrid @ref="_grid" TItem="EventRow" Data="@_rows" AllowPaging="true" PageSize="20"
+            <RadzenDataFilter @ref="_rowsFilter" TItem="EventRow" Data="@_rows" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
+                    <RadzenDataFilterProperty Property="OccurredAtUtc" Title="Occurred At (UTC)" />
+                    <RadzenDataFilterProperty Property="DiscoveredAtUtc" Title="Discovered At (UTC)" />
+                    <RadzenDataFilterProperty Property="DownloadedAtUtc" Title="Downloaded At (UTC)" />
+                    <RadzenDataFilterProperty Property="ProviderEventId" Title="Provider Event ID" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid @ref="_grid" TItem="EventRow" Data="@_rowsFilter?.View" AllowPaging="true" PageSize="20"
                 AllowSorting="true" AllowFiltering="true" SelectionMode="DataGridSelectionMode.Multiple"
                 @bind-Value="@_selectedRows" CellContextMenu="@ShowRowContextMenu">
                 <Columns>
@@ -131,6 +140,7 @@ else
     private List<EventRow>? _rows;
     private IList<EventRow>? _selectedRows;
     private RadzenDataGrid<EventRow>? _grid;
+    private RadzenDataFilter<EventRow>? _rowsFilter;
 
     private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
     private IReadOnlyList<IntegrityRecord> _integrityRecords = new List<IntegrityRecord>();
