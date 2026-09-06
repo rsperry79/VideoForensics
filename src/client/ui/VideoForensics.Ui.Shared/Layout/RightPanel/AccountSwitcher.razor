@@ -1,0 +1,107 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject IUserRepository UserRepository
+@inject IProviderAuthService AuthService
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+@inject IStringLocalizer<SharedResources> L
+
+<div class="right-panel-section">
+    <RadzenText TextStyle="TextStyle.Subtitle2">@L["Active Account"]</RadzenText>
+    @if (_isLoading)
+    {
+        <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" Size="ProgressBarCircularSize.ExtraSmall" />
+    }
+    else if (_rows.Count == 0)
+    {
+        <RadzenText TextStyle="TextStyle.Caption">No accounts linked yet.</RadzenText>
+    }
+    else
+    {
+        <RadzenDropDown TValue="Guid?" Data="@_rows" TextProperty="DisplayName" ValueProperty="Id"
+                         Value="@ForensicsConfig.ActiveProviderAccountId" Disabled="@_isBusy"
+                         Change="@(args => SelectAccountAsync((Guid?)args))" class="w-100" />
+    }
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <RadzenText TextStyle="TextStyle.Caption">@_statusMessage</RadzenText>
+    }
+</div>
+
+@code {
+    private sealed record AccountRow(Guid Id, string DisplayName);
+
+    private List<AccountRow> _rows = new();
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private string? _statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountsAsync();
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
+            var rows = new List<AccountRow>();
+            foreach (var account in accounts)
+            {
+                string displayName = account.ProviderName;
+                try
+                {
+                    var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
+                    if (user is not null)
+                    {
+                        displayName = user.DisplayName;
+                    }
+                }
+                catch
+                {
+                    // Fall back to ProviderName if user lookup fails for any reason.
+                }
+
+                rows.Add(new AccountRow(account.Id, displayName));
+            }
+
+            _rows = rows;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SelectAccountAsync(Guid? accountId)
+    {
+        if (accountId is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _statusMessage = null;
+        try
+        {
+            ForensicsConfig.ActiveProviderAccountId = accountId;
+            await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+
+            var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
+            _statusMessage = resumed
+                ? "Switched active account."
+                : "Switched, but the saved session could not be resumed - sign in again.";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Could not switch account: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+}

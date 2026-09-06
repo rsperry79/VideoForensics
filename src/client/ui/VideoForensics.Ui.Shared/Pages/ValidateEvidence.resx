@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Validate Evidence</value>
+  </data>
+  <data name="NotSignedInMessage" xml:space="preserve">
+    <value>You are not signed in. Sign in to validate evidence.</value>
+  </data>
+  <data name="VerifyIntegrityTab" xml:space="preserve">
+    <value>Verify Integrity</value>
+  </data>
+  <data name="ReconcileTab" xml:space="preserve">
+    <value>Reconcile with Provider</value>
+  </data>
+  <data name="AllDevicesFilter" xml:space="preserve">
+    <value>(All devices)</value>
+  </data>
+  <data name="VerifyButton" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="NoMediaFound" xml:space="preserve">
+    <value>No media items found to verify.</value>
+  </data>
+  <data name="ColFileName" xml:space="preserve">
+    <value>File Name</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ColFailureReason" xml:space="preserve">
+    <value>Failure Reason</value>
+  </data>
+  <data name="SelectDeviceFilter" xml:space="preserve">
+    <value>(Select a device)</value>
+  </data>
+  <data name="ProviderDeviceIdLabel" xml:space="preserve">
+    <value>Provider Device ID</value>
+  </data>
+  <data name="ProviderDeviceIdPlaceholder" xml:space="preserve">
+    <value>Provider Device ID</value>
+  </data>
+  <data name="FromLabel" xml:space="preserve">
+    <value>From:</value>
+  </data>
+  <data name="ToLabel" xml:space="preserve">
+    <value>To:</value>
+  </data>
+  <data name="ReconcileButton" xml:space="preserve">
+    <value>Reconcile</value>
+  </data>
+  <data name="NoDiscrepanciesFound" xml:space="preserve">
+    <value>No discrepancies found.</value>
+  </data>
+  <data name="ColType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="ColProviderEventId" xml:space="preserve">
+    <value>Provider Event ID</value>
+  </data>
+  <data name="ColField" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="ColStoredValue" xml:space="preserve">
+    <value>Stored Value</value>
+  </data>
+  <data name="ColProviderValue" xml:space="preserve">
+    <value>Provider Value</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>-</value>
+  </data>
+</root>

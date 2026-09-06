@@ -1,8 +1,10 @@
 @page "/workflow"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<Workflow> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Full Forensic Workflow</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -11,47 +13,47 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to use the workflow.
+        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToUseWorkflow"]
     </RadzenAlert>
 }
 else
 {
     <ol class="workflow-steps">
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">1. Sign in / select account</RadzenText>
-            <RadzenText>Choose which provider account this session works against.</RadzenText>
-            <RadzenLink Path="/accounts" Text="Go to Accounts" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step1Title"]</RadzenText>
+            <RadzenText>@L["Step1Description"]</RadzenText>
+            <RadzenLink Path="/accounts" Text="@L["GoToAccounts"]" />
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">2. Collect evidence</RadzenText>
-            <RadzenText>Download videos and snapshots from your devices.</RadzenText>
-            <RadzenLink Path="/collect/videos" Text="Collect Videos" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step2Title"]</RadzenText>
+            <RadzenText>@L["Step2Description"]</RadzenText>
+            <RadzenLink Path="/collect/videos" Text="@L["CollectVideos"]" />
             &nbsp;|&nbsp;
-            <RadzenLink Path="/collect/snapshots" Text="Collect Snapshots" />
+            <RadzenLink Path="/collect/snapshots" Text="@L["CollectSnapshots"]" />
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">3. Review evidence</RadzenText>
-            <RadzenText>Review collected evidence and manage legal holds.</RadzenText>
-            <RadzenLink Path="/events" Text="Go to Events" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step3Title"]</RadzenText>
+            <RadzenText>@L["Step3Description"]</RadzenText>
+            <RadzenLink Path="/events" Text="@L["GoToEvents"]" />
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">4. Validate evidence</RadzenText>
-            <RadzenText>Verify the integrity of collected evidence.</RadzenText>
-            <RadzenLink Path="/analyze/validate/integrity" Text="Go to Integrity Validation" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step4Title"]</RadzenText>
+            <RadzenText>@L["Step4Description"]</RadzenText>
+            <RadzenLink Path="/analyze/validate/integrity" Text="@L["GoToIntegrityValidation"]" />
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">5. Analyze</RadzenText>
-            <RadzenText>Generate reports and analyze jamming and signal anomalies.</RadzenText>
-            <RadzenLink Path="/analyze/reports" Text="Reports" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step5Title"]</RadzenText>
+            <RadzenText>@L["Step5Description"]</RadzenText>
+            <RadzenLink Path="/analyze/reports" Text="@L["Reports"]" />
             &nbsp;|&nbsp;
-            <RadzenLink Path="/analyze/jamming" Text="Jamming Analysis" />
+            <RadzenLink Path="/analyze/jamming" Text="@L["JammingAnalysis"]" />
             &nbsp;|&nbsp;
-            <RadzenLink Path="/analyze/signal-anomalies" Text="Signal Anomalies" />
+            <RadzenLink Path="/analyze/signal-anomalies" Text="@L["SignalAnomalies"]" />
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">6. Export</RadzenText>
-            <RadzenText>Export the reviewed evidence for delivery.</RadzenText>
-            <RadzenLink Path="/review/export" Text="Go to Export" />
+            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step6Title"]</RadzenText>
+            <RadzenText>@L["Step6Description"]</RadzenText>
+            <RadzenLink Path="/review/export" Text="@L["GoToExport"]" />
         </li>
     </ol>
 }

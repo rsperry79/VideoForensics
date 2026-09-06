@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Infrastructure Settings</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToChangeSettings" xml:space="preserve">
+    <value>to change infrastructure settings.</value>
+  </data>
+  <data name="DataEncryptionSection" xml:space="preserve">
+    <value>Data-at-Rest Encryption</value>
+  </data>
+  <data name="EncryptionWarning" xml:space="preserve">
+    <value>Neither the database nor downloaded media files are encrypted by this application. An application-level database encryption approach (SQLCipher) was evaluated and found to silently fail to apply schema changes under this platform's current SQLite provider version - a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe approach is available, protecting this data at rest is the owner's responsibility: enable full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding %AppData%\VideoForensics and your configured download location, and secure physical access to this machine.</value>
+  </data>
+  <data name="KeyStorageSection" xml:space="preserve">
+    <value>Key Storage Provider</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="FactoryResetSection" xml:space="preserve">
+    <value>Factory Reset</value>
+  </data>
+  <data name="FactoryResetButton" xml:space="preserve">
+    <value>Factory Reset</value>
+  </data>
+  <data name="FactoryResetWarning" xml:space="preserve">
+    <value>This will permanently delete ALL data. This cannot be undone.</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Yes, delete everything</value>
+  </data>
+  <data name="CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+</root>

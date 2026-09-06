@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Access Control Report</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToViewAccessControl" xml:space="preserve">
+    <value>to view access control data.</value>
+  </data>
+  <data name="AllDevicesPlaceholder" xml:space="preserve">
+    <value>(All devices)</value>
+  </data>
+  <data name="FromLabel" xml:space="preserve">
+    <value>From:</value>
+  </data>
+  <data name="ToLabel" xml:space="preserve">
+    <value>To:</value>
+  </data>
+  <data name="RunReport" xml:space="preserve">
+    <value>Run Report</value>
+  </data>
+  <data name="AccessEventsTitle" xml:space="preserve">
+    <value>Access Events</value>
+  </data>
+  <data name="NoAccessEventsFound" xml:space="preserve">
+    <value>No access events found in this range.</value>
+  </data>
+  <data name="ColAccessedAt" xml:space="preserve">
+    <value>Accessed At</value>
+  </data>
+  <data name="ColActor" xml:space="preserve">
+    <value>Actor</value>
+  </data>
+  <data name="ColAction" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="ColEntityType" xml:space="preserve">
+    <value>Entity Type</value>
+  </data>
+  <data name="ColDetails" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="ExportEventsTitle" xml:space="preserve">
+    <value>Export Events</value>
+  </data>
+  <data name="NoExportEventsFound" xml:space="preserve">
+    <value>No export events found in this range.</value>
+  </data>
+  <data name="ColExportedAt" xml:space="preserve">
+    <value>Exported At</value>
+  </data>
+  <data name="ColExportedBy" xml:space="preserve">
+    <value>Exported By</value>
+  </data>
+  <data name="ColCaseReference" xml:space="preserve">
+    <value>Case Reference</value>
+  </data>
+  <data name="ColRecipient" xml:space="preserve">
+    <value>Recipient</value>
+  </data>
+  <data name="ColItemCount" xml:space="preserve">
+    <value>Item Count</value>
+  </data>
+</root>

@@ -1,4 +1,5 @@
 @page "/analyze/access-control"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
@@ -6,8 +7,9 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<AccessControl> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Access Control Report</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -15,78 +17,78 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view access control data.</RadzenAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewAccessControl"]</RadzenAlert>
 }
 else
 {
     <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
         <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
-        <label>From: <input type="date" @bind="_fromDate" /></label>
-        <label>To: <input type="date" @bind="_toDate" /></label>
-        <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesPlaceholder"]" />
+        <label>@L["FromLabel"] <input type="date" @bind="_fromDate" /></label>
+        <label>@L["ToLabel"] <input type="date" @bind="_toDate" /></label>
+        <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
     </RadzenStack>
 
     @if (_report is not null)
     {
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Access Events</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AccessEventsTitle"]</RadzenText>
         @if (_report.AccessEvents.Count == 0)
         {
-            <RadzenText>No access events found in this range.</RadzenText>
+            <RadzenText>@L["NoAccessEventsFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_accessEventsFilter" TItem="AccessControlReport.AccessEvent" Data="@_report.AccessEvents" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="AccessedAtUtc" Title="Accessed At" />
-                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
-                    <RadzenDataFilterProperty Property="Action" Title="Action" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
-                    <RadzenDataFilterProperty Property="Details" Title="Details" />
+                    <RadzenDataFilterProperty Property="AccessedAtUtc" Title="@L["ColAccessedAt"]" />
+                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataFilterProperty Property="Details" Title="@L["ColDetails"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="AccessControlReport.AccessEvent" Data="@_accessEventsFilter?.View"
                 AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="AccessedAtUtc" Title="Accessed At" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Actor" Title="Actor" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Action" Title="Action" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="EntityType" Title="Entity Type" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Details" Title="Details">
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="AccessedAtUtc" Title="@L["ColAccessedAt"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Details" Title="@L["ColDetails"]">
                         <Template Context="row">@(row.Details ?? "-")</Template>
                     </RadzenDataGridColumn>
                 </Columns>
             </RadzenDataGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Export Events</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["ExportEventsTitle"]</RadzenText>
         @if (_report.ExportEvents.Count == 0)
         {
-            <RadzenText>No export events found in this range.</RadzenText>
+            <RadzenText>@L["NoExportEventsFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_exportEventsFilter" TItem="AccessControlReport.ExportEvent" Data="@_report.ExportEvents" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="ExportedAtUtc" Title="Exported At" />
-                    <RadzenDataFilterProperty Property="ExportedByUserName" Title="Exported By" />
-                    <RadzenDataFilterProperty Property="CaseReference" Title="Case Reference" />
-                    <RadzenDataFilterProperty Property="RecipientDescription" Title="Recipient" />
-                    <RadzenDataFilterProperty Property="ItemCount" Title="Item Count" />
+                    <RadzenDataFilterProperty Property="ExportedAtUtc" Title="@L["ColExportedAt"]" />
+                    <RadzenDataFilterProperty Property="ExportedByUserName" Title="@L["ColExportedBy"]" />
+                    <RadzenDataFilterProperty Property="CaseReference" Title="@L["ColCaseReference"]" />
+                    <RadzenDataFilterProperty Property="RecipientDescription" Title="@L["ColRecipient"]" />
+                    <RadzenDataFilterProperty Property="ItemCount" Title="@L["ColItemCount"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="AccessControlReport.ExportEvent" Data="@_exportEventsFilter?.View"
                 AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedAtUtc" Title="Exported At" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedByUserName" Title="Exported By" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="CaseReference" Title="Case Reference">
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedAtUtc" Title="@L["ColExportedAt"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedByUserName" Title="@L["ColExportedBy"]" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="CaseReference" Title="@L["ColCaseReference"]">
                         <Template Context="row">@(row.CaseReference ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="RecipientDescription" Title="Recipient">
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="RecipientDescription" Title="@L["ColRecipient"]">
                         <Template Context="row">@(row.RecipientDescription ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ItemCount" Title="Item Count" />
+                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ItemCount" Title="@L["ColItemCount"]" />
                 </Columns>
             </RadzenDataGrid>
         }

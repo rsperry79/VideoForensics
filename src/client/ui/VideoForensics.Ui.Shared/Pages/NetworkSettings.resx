@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Network Access</value>
+  </data>
+  <data name="SignInPrompt" xml:space="preserve">
+    <value>Sign in with your passkey</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage network access.</value>
+  </data>
+  <data name="WarningText" xml:space="preserve">
+    <value>Local is the safest default: the server is only reachable from its own machine, and pairing a new device is impossible from anywhere else. Each wider tier is a deliberate choice - the app never widens its own exposure on its own. Changing this setting takes effect only after the server is restarted (Kestrel's listen addresses are fixed at startup).</value>
+  </data>
+  <data name="AuthErrorHeader" xml:space="preserve">
+    <value>Not authorized. </value>
+  </data>
+  <data name="AuthErrorDescription" xml:space="preserve">
+    <value> - a Super Admin device signed in via the Local network tier is required to manage network access.</value>
+  </data>
+  <data name="AuthUnauthorized" xml:space="preserve">
+    <value>Not authorized to view network settings.</value>
+  </data>
+  <data name="LocalLabelText" xml:space="preserve">
+    <value>reachable only from this machine (loopback). Default.</value>
+  </data>
+  <data name="NetworkLabelText" xml:space="preserve">
+    <value>reachable on the local network (LAN).</value>
+  </data>
+  <data name="InternetLabelText" xml:space="preserve">
+    <value>reachable on the LAN, and eligible to use the Remote Access Cloudflare Tunnel for internet reachability.</value>
+  </data>
+  <data name="ConfirmWiden" xml:space="preserve">
+    <value>Widening from {0} to {1} requires a fresh passkey confirmation.</value>
+  </data>
+  <data name="ConfirmButton" xml:space="preserve">
+    <value>Confirm with Passkey</value>
+  </data>
+  <data name="ConfirmingButton" xml:space="preserve">
+    <value>Confirming...</value>
+  </data>
+  <data name="CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SavedMessage" xml:space="preserve">
+    <value>Saved. Restart the server for this to take effect.</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="LoadFailed" xml:space="preserve">
+    <value>Failed to load network settings: {0}</value>
+  </data>
+</root>

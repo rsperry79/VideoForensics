@@ -1,9 +1,11 @@
 @page "/collect/videos"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<CollectVideos> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Collect Videos</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -11,27 +13,27 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to collect videos.</RadzenText>
+    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToCollect"]</RadzenText>
 }
 else
 {
     <div class="collect-form">
         <div>
-            <RadzenTextBox @bind-Value="_outputPath" Placeholder="Output Path" Disabled="@_isDownloading" />
+            <RadzenTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
         </div>
         <div>
-            <label for="startDate">Start Date</label>
+            <label for="startDate">@L["StartDateLabel"]</label>
             <input id="startDate" type="date" @bind="_startDate" disabled="@_isDownloading" />
         </div>
         <div>
-            <label for="endDate">End Date</label>
+            <label for="endDate">@L["EndDateLabel"]</label>
             <input id="endDate" type="date" @bind="_endDate" disabled="@_isDownloading" />
         </div>
         <div>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_force" /> Force full re-scan</label>
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_force" /> @L["ForceFullRescan"]</label>
         </div>
         <div>
-            <RadzenButton Text="Start Download" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["StartDownload"]" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -41,7 +43,7 @@ else
 
         @if (_downloadCompleted)
         {
-            <RadzenText>@(_downloadSucceeded ? "Download completed." : "Download finished with errors.")</RadzenText>
+            <RadzenText>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</RadzenText>
         }
     </div>
 
@@ -97,7 +99,7 @@ else
                     _downloadCompleted = true;
                     if (!success)
                     {
-                        _errorMessage = DownloadService.GetLastError() ?? "Download failed.";
+                        _errorMessage = DownloadService.GetLastError() ?? L["DownloadFailedGeneric"].Value;
                     }
                     _isDownloading = false;
                     StateHasChanged();
@@ -107,7 +109,7 @@ else
             {
                 await InvokeAsync(() =>
                 {
-                    _errorMessage = $"Download failed: {ex.Message}";
+                    _errorMessage = L["DownloadFailedWithException", ex.Message].Value;
                     _downloadCompleted = true;
                     _downloadSucceeded = false;
                     _isDownloading = false;

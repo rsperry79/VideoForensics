@@ -1,22 +1,24 @@
 @page "/settings/devices"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<SecurityDevices> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Paired Devices</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage paired devices.
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> @L["SignInToManage"]
     </RadzenAlert>
 }
 
-<RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Add Client</RadzenText>
+<RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["AddClientHeading"]</RadzenText>
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mb-4">
-    <RadzenButton Text="@(_isInitiatingPairing ? "Generating..." : "Generate Pairing QR Code")" Click="InitiatePairingAsync" Disabled="@_isInitiatingPairing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+    <RadzenButton Text="@(_isInitiatingPairing ? L["GeneratingButton"] : L["GenerateQrButton"])" Click="InitiatePairingAsync" Disabled="@_isInitiatingPairing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
 </RadzenStack>
 @if (_pairingError is not null)
 {
@@ -26,15 +28,15 @@
 {
     <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
         <img src="@QrCodeUrl" alt="Pairing QR code" width="240" height="240" />
-        <RadzenText Class="mt-2">Scan with the new device's camera, or open this link on it directly:</RadzenText>
+        <RadzenText Class="mt-2">@L["QrInstructions"]</RadzenText>
         <RadzenText TextStyle="TextStyle.Body2"><code>@PairingUrl</code></RadzenText>
-        <RadzenText TextStyle="TextStyle.Body2">Expires at @_pairingExpiresAtUtc UTC (single use, ~2 minutes).</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2">@L["ExpiresMessage", _pairingExpiresAtUtc]</RadzenText>
     </RadzenCard>
 }
 
-<RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Currently Paired</RadzenText>
+<RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["CurrentlyPairedHeading"]</RadzenText>
 <RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
-    <RadzenButton Text="Refresh" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+    <RadzenButton Text="@L["RefreshButton"]" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
 </RadzenStack>
 
 @if (_isLoading)
@@ -44,10 +46,7 @@
 else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
-        signed in via the Local network tier is required to manage paired devices.
-    </RadzenText>
+    <RadzenText>@L["NotAuthorizedMessage"]</RadzenText>
 }
 else if (_loadError is not null)
 {
@@ -55,43 +54,43 @@ else if (_loadError is not null)
 }
 else if (_devices is null || _devices.Count == 0)
 {
-    <RadzenText>No paired devices found.</RadzenText>
+    <RadzenText>@L["NoPairedDevices"]</RadzenText>
 }
 else
 {
     <RadzenDataFilter @ref="_devicesFilter" TItem="PairedDevice" Data="@_devices" Auto="true" class="mb-2">
         <Properties>
-            <RadzenDataFilterProperty Property="DeviceName" Title="Device Name" />
-            <RadzenDataFilterProperty Property="Role" Title="Role" />
-            <RadzenDataFilterProperty Property="PairedAtUtc" Title="Paired At (UTC)" />
-            <RadzenDataFilterProperty Property="LastSeenAtUtc" Title="Last Seen (UTC)" />
-            <RadzenDataFilterProperty Property="LastSeenIp" Title="Last Seen IP" />
-            <RadzenDataFilterProperty Property="IsActive" Title="Active" />
+            <RadzenDataFilterProperty Property="DeviceName" Title="@L["ColDeviceName"]" />
+            <RadzenDataFilterProperty Property="Role" Title="@L["ColRole"]" />
+            <RadzenDataFilterProperty Property="PairedAtUtc" Title="@L["ColPairedAt"]" />
+            <RadzenDataFilterProperty Property="LastSeenAtUtc" Title="@L["ColLastSeenUtc"]" />
+            <RadzenDataFilterProperty Property="LastSeenIp" Title="@L["ColLastSeenIp"]" />
+            <RadzenDataFilterProperty Property="IsActive" Title="@L["StatusActive"]" />
         </Properties>
     </RadzenDataFilter>
     <RadzenDataGrid TItem="PairedDevice" Data="@_devicesFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
         <Columns>
-            <RadzenDataGridColumn TItem="PairedDevice" Property="DeviceName" Title="Device Name" />
-            <RadzenDataGridColumn TItem="PairedDevice" Property="Role" Title="Role" />
-            <RadzenDataGridColumn TItem="PairedDevice" Property="PairedAtUtc" Title="Paired At (UTC)" />
-            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen (UTC)">
-                <Template Context="context">@(context.LastSeenAtUtc?.ToString() ?? "-")</Template>
+            <RadzenDataGridColumn TItem="PairedDevice" Property="DeviceName" Title="@L["ColDeviceName"]" />
+            <RadzenDataGridColumn TItem="PairedDevice" Property="Role" Title="@L["ColRole"]" />
+            <RadzenDataGridColumn TItem="PairedDevice" Property="PairedAtUtc" Title="@L["ColPairedAt"]" />
+            <RadzenDataGridColumn TItem="PairedDevice" Title="@L["ColLastSeenUtc"]">
+                <Template Context="context">@(context.LastSeenAtUtc?.ToString() ?? L["NotAvailable"].Value)</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen IP">
-                <Template Context="context">@(context.LastSeenIp ?? "-")</Template>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="@L["ColLastSeenIp"]">
+                <Template Context="context">@(context.LastSeenIp ?? L["NotAvailable"].Value)</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PairedDevice" Title="Last Seen Tier">
-                <Template Context="context">@(context.LastSeenTier?.ToString() ?? "-")</Template>
+            <RadzenDataGridColumn TItem="PairedDevice" Title="@L["ColLastSeenTier"]">
+                <Template Context="context">@(context.LastSeenTier?.ToString() ?? L["NotAvailable"].Value)</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="PairedDevice" Title="Status" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn TItem="PairedDevice" Title="@L["ColStatus"]" Sortable="false" Filterable="false">
                 <Template Context="context">
                     @if (context.IsActive)
                     {
-                        <span style="color: var(--rz-success);">Active</span>
+                        <span style="color: var(--rz-success);">@L["StatusActive"]</span>
                     }
                     else
                     {
-                        <span style="color: var(--rz-danger);">Revoked: @context.RevokedReason</span>
+                        <span style="color: var(--rz-danger);">@L["StatusRevoked", context.RevokedReason]</span>
                     }
                 </Template>
             </RadzenDataGridColumn>
@@ -99,13 +98,13 @@ else
                 <Template Context="context">
                     @if (context.IsActive)
                     {
-                        <RadzenButton Text="Revoke" Click="() => BeginRevoke(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                        <RadzenButton Text="@L["RevokeButton"]" Click="() => BeginRevoke(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
                         @if (_pendingRevokeDeviceId == context.Id)
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
-                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="Reason for revocation" Style="max-width: 260px;" />
-                                <RadzenButton Text="Confirm" Click="() => ConfirmRevoke(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                                <RadzenButton Text="Cancel" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
+                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"]" Style="max-width: 260px;" />
+                                <RadzenButton Text="@L["ConfirmButton"]" Click="() => ConfirmRevoke(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                                <RadzenButton Text="@L["CancelButton"]" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
                             </RadzenStack>
                         }
                     }
@@ -167,7 +166,7 @@ else
             var response = await client.PostAsync("api/pairing/initiate", null);
             if (!response.IsSuccessStatusCode)
             {
-                _pairingError = await SafeReadErrorAsync(response) ?? $"Could not start pairing: {response.StatusCode}";
+                _pairingError = await SafeReadErrorAsync(response) ?? L["PairingError1", response.StatusCode];
                 return;
             }
 
@@ -177,7 +176,7 @@ else
         }
         catch (Exception ex)
         {
-            _pairingError = $"Could not start pairing: {ex.Message}";
+            _pairingError = L["PairingError2", ex.Message];
         }
         finally
         {
@@ -197,7 +196,7 @@ else
             var response = await client.GetAsync("api/devices-management/paired-devices");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view paired devices.";
+                _authError = L["NotAuthorizedToView"];
                 _devices = null;
                 return;
             }
@@ -207,7 +206,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load paired devices: {ex.Message}";
+            _loadError = L["FailedToLoad", ex.Message];
         }
         finally
         {
@@ -237,7 +236,7 @@ else
 
         if (SessionState.SessionToken is null)
         {
-            _actionError = "Sign in with your passkey first.";
+            _actionError = L["SignInFirstError"];
             return;
         }
 
@@ -254,7 +253,7 @@ else
             if (!response.IsSuccessStatusCode)
             {
                 var body = await SafeReadErrorAsync(response);
-                _actionError = body ?? $"Revoke failed: {response.StatusCode}";
+                _actionError = body ?? L["RevokeFailed1", response.StatusCode];
                 return;
             }
 
@@ -263,7 +262,7 @@ else
         }
         catch (Exception ex)
         {
-            _actionError = $"Revoke failed: {ex.Message}";
+            _actionError = L["RevokeFailed2", ex.Message];
         }
     }
 

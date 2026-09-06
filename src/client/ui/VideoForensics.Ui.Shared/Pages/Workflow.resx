@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Full Forensic Workflow</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToUseWorkflow" xml:space="preserve">
+    <value>to use the workflow.</value>
+  </data>
+  <data name="Step1Title" xml:space="preserve">
+    <value>1. Sign in / select account</value>
+  </data>
+  <data name="Step1Description" xml:space="preserve">
+    <value>Choose which provider account this session works against.</value>
+  </data>
+  <data name="GoToAccounts" xml:space="preserve">
+    <value>Go to Accounts</value>
+  </data>
+  <data name="Step2Title" xml:space="preserve">
+    <value>2. Collect evidence</value>
+  </data>
+  <data name="Step2Description" xml:space="preserve">
+    <value>Download videos and snapshots from your devices.</value>
+  </data>
+  <data name="CollectVideos" xml:space="preserve">
+    <value>Collect Videos</value>
+  </data>
+  <data name="CollectSnapshots" xml:space="preserve">
+    <value>Collect Snapshots</value>
+  </data>
+  <data name="Step3Title" xml:space="preserve">
+    <value>3. Review evidence</value>
+  </data>
+  <data name="Step3Description" xml:space="preserve">
+    <value>Review collected evidence and manage legal holds.</value>
+  </data>
+  <data name="GoToEvents" xml:space="preserve">
+    <value>Go to Events</value>
+  </data>
+  <data name="Step4Title" xml:space="preserve">
+    <value>4. Validate evidence</value>
+  </data>
+  <data name="Step4Description" xml:space="preserve">
+    <value>Verify the integrity of collected evidence.</value>
+  </data>
+  <data name="GoToIntegrityValidation" xml:space="preserve">
+    <value>Go to Integrity Validation</value>
+  </data>
+  <data name="Step5Title" xml:space="preserve">
+    <value>5. Analyze</value>
+  </data>
+  <data name="Step5Description" xml:space="preserve">
+    <value>Generate reports and analyze jamming and signal anomalies.</value>
+  </data>
+  <data name="Reports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="JammingAnalysis" xml:space="preserve">
+    <value>Jamming Analysis</value>
+  </data>
+  <data name="SignalAnomalies" xml:space="preserve">
+    <value>Signal Anomalies</value>
+  </data>
+  <data name="Step6Title" xml:space="preserve">
+    <value>6. Export</value>
+  </data>
+  <data name="Step6Description" xml:space="preserve">
+    <value>Export the reviewed evidence for delivery.</value>
+  </data>
+  <data name="GoToExport" xml:space="preserve">
+    <value>Go to Export</value>
+  </data>
+</root>

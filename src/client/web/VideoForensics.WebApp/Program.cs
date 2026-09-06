@@ -182,6 +182,15 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 
+// Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state (device-local),
+// right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
+// PairedSessionState above.
+builder.Services.AddScoped<LayoutPreferencesState>();
+builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<ThemePreferenceService>();
+builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
+builder.Services.AddLocalization();
+
 // MainLayout.razor's shared <RadzenComponents> needs @rendermode="InteractiveServer" here - this
 // is a real ASP.NET Core host with interactive server components configured below. MAUI's
 // BlazorWebView registers NullBlazorRenderModeProvider instead - see IBlazorRenderModeProvider.

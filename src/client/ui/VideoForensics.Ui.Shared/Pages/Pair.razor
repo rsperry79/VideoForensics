@@ -1,34 +1,36 @@
 @page "/pair"
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<Pair> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Pair This Device</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_token is null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</RadzenAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Danger">@L["NoTokenAlert"]</RadzenAlert>
 }
 else if (_result is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Success">
-        Device paired successfully as <strong>@_result.Value.Role</strong>.
-        You can now <RadzenLink Path="/device-signin" Text="sign in with your passkey" />.
+        @L["SuccessAlert", _result.Value.Role]
+        You can now <RadzenLink Path="/device-signin" Text="@L["SignInLink"]" />.
     </RadzenAlert>
 }
 else
 {
     <RadzenStack>
-        <RadzenText>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</RadzenText>
+        <RadzenText>@L["Instructions"]</RadzenText>
         <div>
-            <label>Your name</label>
-            <RadzenTextBox @bind-Value="_operatorDisplayName" Placeholder="e.g. Jane Doe" />
+            <label>@L["OperatorNameLabel"]</label>
+            <RadzenTextBox @bind-Value="_operatorDisplayName" Placeholder="@L["OperatorNamePlaceholder"]" />
         </div>
         <div>
-            <label>Device name</label>
-            <RadzenTextBox @bind-Value="_deviceName" Placeholder="e.g. Jane's Laptop" />
+            <label>@L["DeviceNameLabel"]</label>
+            <RadzenTextBox @bind-Value="_deviceName" Placeholder="@L["DeviceNamePlaceholder"]" />
         </div>
-        <RadzenButton Text="@(_isPairing ? "Waiting for passkey..." : "Pair Device")" Click="PairAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
+        <RadzenButton Text="@(_isPairing ? L["PairWaiting"] : L["PairButton"])" Click="PairAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
 
         @if (_error is not null)
         {
@@ -65,7 +67,7 @@ else
         {
             if (!await WebAuthn.IsAvailableAsync())
             {
-                _error = "This browser does not support WebAuthn/passkeys. Use a modern Chrome, Edge, Firefox, or Safari.";
+                _error = L["WebAuthnNotSupported"];
                 return;
             }
 
@@ -73,7 +75,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Pairing failed: {ex.Message}";
+            _error = L["PairingFailed", ex.Message];
         }
         finally
         {

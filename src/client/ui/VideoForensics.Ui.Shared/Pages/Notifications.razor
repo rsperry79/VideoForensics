@@ -1,14 +1,16 @@
 @page "/settings/notifications"
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
+@inject IStringLocalizer<Notifications> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Notifications</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage notification settings.
+        <RadzenLink Path="/device-signin" Text="@L["SignInWithPasskey"]" /> @L["ToManageNotifications"]
     </RadzenAlert>
 }
 
@@ -20,8 +22,7 @@ else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
     <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - an Admin (or higher)
-        device is required to manage notification settings.
+        @L["NotAuthorized"] <RadzenLink Path="/device-signin" Text="@L["SignInWithPasskey"]" /> @L["SignInRequired"]
     </RadzenText>
 }
 else if (_loadError is not null)
@@ -30,48 +31,47 @@ else if (_loadError is not null)
 }
 else
 {
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Email</RadzenText>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["EmailSection"]</RadzenText>
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         <RadzenStack>
             <RadzenText>
-                The reliable baseline channel - reaches you regardless of whether any client app is
-                open. Other channels (Web Push, MAUI toast) are planned but not yet built.
+                @L["EmailDescription"]
             </RadzenText>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_enableEmail" /> Enable email notifications</label>
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_enableEmail" /> @L["EnableEmailNotifications"]</label>
             <RadzenStack Orientation="Orientation.Horizontal">
                 <div>
-                    <label>SMTP Host</label>
+                    <label>@L["LabelSmtpHost"]</label>
                     <RadzenTextBox @bind-Value="_smtpHost" style="max-width: 260px;" />
                 </div>
                 <div>
-                    <label>Port</label>
+                    <label>@L["LabelPort"]</label>
                     <RadzenNumeric TValue="int" @bind-Value="_smtpPort" style="max-width: 120px;" />
                 </div>
-                <label><RadzenCheckBox TValue="bool" @bind-Value="_smtpUseTls" /> Use STARTTLS</label>
+                <label><RadzenCheckBox TValue="bool" @bind-Value="_smtpUseTls" /> @L["LabelUseStarttls"]</label>
             </RadzenStack>
             <RadzenStack Orientation="Orientation.Horizontal">
                 <div>
-                    <label>SMTP Username</label>
+                    <label>@L["LabelSmtpUsername"]</label>
                     <RadzenTextBox @bind-Value="_smtpUsername" style="max-width: 260px;" />
                 </div>
                 <div>
-                    <label>SMTP Password</label>
-                    <input type="password" @bind="_smtpPassword" placeholder="(unchanged)" style="max-width: 260px;" />
+                    <label>@L["LabelSmtpPassword"]</label>
+                    <input type="password" @bind="_smtpPassword" placeholder="@L["PlaceholderPassword"]" style="max-width: 260px;" />
                 </div>
             </RadzenStack>
             <RadzenStack Orientation="Orientation.Horizontal">
                 <div>
-                    <label>From Address</label>
+                    <label>@L["LabelFromAddress"]</label>
                     <RadzenTextBox @bind-Value="_smtpFromAddress" style="max-width: 300px;" />
                 </div>
                 <div>
-                    <label>Notify This Address</label>
+                    <label>@L["LabelNotifyAddress"]</label>
                     <RadzenTextBox @bind-Value="_recipientEmail" style="max-width: 300px;" />
                 </div>
             </RadzenStack>
             <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenButton Text="@(_isSaving ? "Saving..." : "Save")" Click="SaveSettingsAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" />
-                <RadzenButton Text="@(_isSendingTest ? "Sending..." : "Send Test Email")" Click="SendTestEmailAsync" Variant="Variant.Outlined" Disabled="@_isSendingTest" />
+                <RadzenButton Text="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" Click="SaveSettingsAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" />
+                <RadzenButton Text="@(_isSendingTest ? L["SendingTestButton"] : L["SendTestEmailButton"])" Click="SendTestEmailAsync" Variant="Variant.Outlined" Disabled="@_isSendingTest" />
             </RadzenStack>
             @if (_settingsMessage is not null)
             {
@@ -80,41 +80,40 @@ else
         </RadzenStack>
     </RadzenCard>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Urgent Event Overrides</RadzenText>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["UrgentEventOverrides"]</RadzenText>
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         <RadzenText class="mb-2">
-            Every security event type ships with a reviewed default urgency. Override one below if
-            it should (or shouldn't) trigger a notification differently than the default.
+            @L["UrgencyDescription"]
         </RadzenText>
         @if (_urgencyRows.Count == 0)
         {
-            <RadzenText>No event types found.</RadzenText>
+            <RadzenText>@L["NoEventTypes"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_urgencyRowsFilter" TItem="UrgencyRow" Data="@_urgencyRows" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
-                    <RadzenDataFilterProperty Property="DefaultUrgent" Title="Default" />
-                    <RadzenDataFilterProperty Property="EffectiveUrgent" Title="Effective" />
+                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
+                    <RadzenDataFilterProperty Property="DefaultUrgent" Title="@L["ColDefault"]" />
+                    <RadzenDataFilterProperty Property="EffectiveUrgent" Title="@L["ColEffective"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="UrgencyRow" Data="@_urgencyRowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="UrgencyRow" Property="EventType" Title="Event Type" />
-                    <RadzenDataGridColumn TItem="UrgencyRow" Title="Default" Sortable="false" Filterable="false">
-                        <Template Context="context">@(context.DefaultUrgent ? "Urgent" : "Routine")</Template>
+                    <RadzenDataGridColumn TItem="UrgencyRow" Property="EventType" Title="@L["ColEventType"]" />
+                    <RadzenDataGridColumn TItem="UrgencyRow" Title="@L["ColDefault"]" Sortable="false" Filterable="false">
+                        <Template Context="context">@(context.DefaultUrgent ? L["Urgent"] : L["Routine"])</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="UrgencyRow" Title="Effective" Sortable="false" Filterable="false">
+                    <RadzenDataGridColumn TItem="UrgencyRow" Title="@L["ColEffective"]" Sortable="false" Filterable="false">
                         <Template Context="context">
-                            <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? "Urgent" : "Routine")</label>
+                            <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? L["Urgent"] : L["Routine"])</label>
                         </Template>
                     </RadzenDataGridColumn>
                     <RadzenDataGridColumn TItem="UrgencyRow" Title="" Sortable="false" Filterable="false">
                         <Template Context="context">
                             @if (context.OverrideUrgent is not null)
                             {
-                                <RadzenButton Text="Reset to default" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
+                                <RadzenButton Text="@L["ResetToDefault"]" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
                             }
                         </Template>
                     </RadzenDataGridColumn>
@@ -175,7 +174,7 @@ else
             var settingsResponse = await client.GetAsync("api/notifications/settings");
             if (settingsResponse.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view notification settings.";
+                _authError = L["NotAuthorizedToView"];
                 return;
             }
 
@@ -204,7 +203,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load notification settings: {ex.Message}";
+            _loadError = L["FailedToLoadSettings", ex.Message];
         }
         finally
         {
@@ -234,18 +233,18 @@ else
             if (!response.IsSuccessStatusCode)
             {
                 _settingsSuccess = false;
-                _settingsMessage = $"Save failed: {response.StatusCode}";
+                _settingsMessage = L["SaveFailed", response.StatusCode.ToString()];
                 return;
             }
 
             _smtpPassword = "";
             _settingsSuccess = true;
-            _settingsMessage = "Saved.";
+            _settingsMessage = L["Saved"];
         }
         catch (Exception ex)
         {
             _settingsSuccess = false;
-            _settingsMessage = $"Save failed: {ex.Message}";
+            _settingsMessage = L["SaveFailed", ex.Message];
         }
         finally
         {
@@ -265,17 +264,17 @@ else
             {
                 var body = await SafeReadErrorAsync(response);
                 _settingsSuccess = false;
-                _settingsMessage = body ?? $"Test email failed: {response.StatusCode}";
+                _settingsMessage = body ?? L["TestEmailFailed", response.StatusCode.ToString()];
                 return;
             }
 
             _settingsSuccess = true;
-            _settingsMessage = "Test email sent.";
+            _settingsMessage = L["TestEmailSent"];
         }
         catch (Exception ex)
         {
             _settingsSuccess = false;
-            _settingsMessage = $"Test email failed: {ex.Message}";
+            _settingsMessage = L["TestEmailFailed", ex.Message];
         }
         finally
         {
@@ -294,7 +293,7 @@ else
         catch (Exception ex)
         {
             _settingsSuccess = false;
-            _settingsMessage = $"Failed to update override: {ex.Message}";
+            _settingsMessage = L["FailedToUpdateOverride", ex.Message];
         }
     }
 
@@ -309,7 +308,7 @@ else
         catch (Exception ex)
         {
             _settingsSuccess = false;
-            _settingsMessage = $"Failed to clear override: {ex.Message}";
+            _settingsMessage = L["FailedToClearOverride", ex.Message];
         }
     }
 

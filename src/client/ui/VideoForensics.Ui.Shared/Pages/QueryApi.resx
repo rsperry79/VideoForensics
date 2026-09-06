@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Query API</value>
+  </data>
+  <data name="AccountStatus" xml:space="preserve">
+    <value>Account Status</value>
+  </data>
+  <data name="CheckStatus" xml:space="preserve">
+    <value>Check Status</value>
+  </data>
+  <data name="Locations" xml:space="preserve">
+    <value>Locations</value>
+  </data>
+  <data name="GetLocations" xml:space="preserve">
+    <value>Get Locations</value>
+  </data>
+  <data name="NoLocationsFound" xml:space="preserve">
+    <value>No locations found.</value>
+  </data>
+  <data name="ColId" xml:space="preserve">
+    <value>Id</value>
+  </data>
+  <data name="ColName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ColAddress" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Devices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="LabelLocationId" xml:space="preserve">
+    <value>Location Id</value>
+  </data>
+  <data name="PlaceholderLocationId" xml:space="preserve">
+    <value>Location Id</value>
+  </data>
+  <data name="GetDevices" xml:space="preserve">
+    <value>Get Devices</value>
+  </data>
+  <data name="NoDevicesFound" xml:space="preserve">
+    <value>No devices found.</value>
+  </data>
+  <data name="ColType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="ColOnline" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="DeviceEvents" xml:space="preserve">
+    <value>Device Events</value>
+  </data>
+  <data name="LabelDeviceId" xml:space="preserve">
+    <value>Device Id</value>
+  </data>
+  <data name="PlaceholderDeviceId" xml:space="preserve">
+    <value>Device Id</value>
+  </data>
+  <data name="LabelFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="LabelTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="GetEvents" xml:space="preserve">
+    <value>Get Events</value>
+  </data>
+  <data name="NoEventsFound" xml:space="preserve">
+    <value>No events found.</value>
+  </data>
+  <data name="ColEventType" xml:space="preserve">
+    <value>Event Type</value>
+  </data>
+  <data name="ColTimestamp" xml:space="preserve">
+    <value>Timestamp</value>
+  </data>
+  <data name="ColSnapshotUrl" xml:space="preserve">
+    <value>Snapshot URL</value>
+  </data>
+  <data name="DeviceConfig" xml:space="preserve">
+    <value>Device Config</value>
+  </data>
+  <data name="GetConfig" xml:space="preserve">
+    <value>Get Config</value>
+  </data>
+  <data name="NoConfigFound" xml:space="preserve">
+    <value>No configuration found for this device.</value>
+  </data>
+  <data name="ColMotionDetectionEnabled" xml:space="preserve">
+    <value>Motion Detection Enabled</value>
+  </data>
+  <data name="ColMotionSensitivity" xml:space="preserve">
+    <value>Motion Sensitivity</value>
+  </data>
+  <data name="ColRecordingMode" xml:space="preserve">
+    <value>Recording Mode</value>
+  </data>
+  <data name="FailedToGetLocations" xml:space="preserve">
+    <value>Failed to get locations: {0}</value>
+  </data>
+  <data name="FailedToGetDevices" xml:space="preserve">
+    <value>Failed to get devices: {0}</value>
+  </data>
+  <data name="FailedToGetEvents" xml:space="preserve">
+    <value>Failed to get events: {0}</value>
+  </data>
+  <data name="FailedToGetConfig" xml:space="preserve">
+    <value>Failed to get device config: {0}</value>
+  </data>
+</root>

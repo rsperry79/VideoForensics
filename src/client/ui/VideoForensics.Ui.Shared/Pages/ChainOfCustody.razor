@@ -1,4 +1,5 @@
 @page "/analyze/chain-of-custody"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
@@ -6,8 +7,9 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<ChainOfCustody> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Chain of Custody Report</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -15,54 +17,54 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view the chain of custody.</RadzenAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewChainOfCustody"]</RadzenAlert>
 }
 else
 {
     <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
         <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
-        <label>From: <input type="date" @bind="_fromDate" /></label>
-        <label>To: <input type="date" @bind="_toDate" /></label>
-        <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesPlaceholder"]" />
+        <label>@L["FromLabel"] <input type="date" @bind="_fromDate" /></label>
+        <label>@L["ToLabel"] <input type="date" @bind="_toDate" /></label>
+        <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
     </RadzenStack>
 
     @if (_report is not null)
     {
         @if (_report.ChainIntegrityVerified)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Success">Chain integrity verified</RadzenAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Success">@L["ChainIntegrityVerified"]</RadzenAlert>
         }
         else
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">Chain integrity FAILED: @_report.ChainVerificationStatus</RadzenAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</RadzenAlert>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Audit Trail</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AuditTrailTitle"]</RadzenText>
         @if (_report.AuditTrail.Count == 0)
         {
-            <RadzenText>No audit trail entries found in this range.</RadzenText>
+            <RadzenText>@L["NoAuditTrailFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_auditTrailFilter" TItem="ActionLogEntry" Data="@_report.AuditTrail" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp" />
-                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
-                    <RadzenDataFilterProperty Property="ActorType" Title="Actor Type" />
-                    <RadzenDataFilterProperty Property="Action" Title="Action" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
-                    <RadzenDataFilterProperty Property="EntityId" Title="Entity ID" />
+                    <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
+                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataFilterProperty Property="ActorType" Title="@L["ColActorType"]" />
+                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataFilterProperty Property="EntityId" Title="@L["ColEntityId"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="ActionLogEntry" Data="@_auditTrailFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="Timestamp" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="Actor" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="ActorType" Title="Actor Type" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="Action" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="Entity Type" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Title="Entity ID">
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="@L["ColTimestamp"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="ActorType" Title="@L["ColActorType"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Title="@L["ColEntityId"]">
                         <Template Context="entry">@(entry.EntityId?.ToString("N")[..8] ?? "-")</Template>
                     </RadzenDataGridColumn>
                 </Columns>

@@ -2,12 +2,14 @@
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<ForensicReports> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Forensic Analysis Report</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -16,18 +18,18 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view forensic reports.
+        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewReports"]
     </RadzenAlert>
 }
 else
 {
     <RadzenStack>
         <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
+            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevices"]" />
         <RadzenStack Orientation="Orientation.Horizontal">
             <input type="date" @bind="_fromDate" />
             <input type="date" @bind="_toDate" />
-            <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </RadzenStack>
     </RadzenStack>
 
@@ -38,99 +40,99 @@ else
             <RadzenText>@_report.Summary</RadzenText>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Evidence Items</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["EvidenceItems"]</RadzenText>
         @if (_report.EvidenceItems.Count == 0)
         {
-            <RadzenText>No evidence items found in this range.</RadzenText>
+            <RadzenText>@L["NoEvidenceItems"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_evidenceItemsFilter" TItem="MediaItem" Data="@_report.EvidenceItems" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="Evidence ID" />
-                    <RadzenDataFilterProperty Property="DeviceId" Title="Device ID" />
-                    <RadzenDataFilterProperty Property="FileName" Title="File Name" />
-                    <RadzenDataFilterProperty Property="MediaFormat" Title="Format" />
+                    <RadzenDataFilterProperty Property="Id" Title="@L["ColEvidenceId"]" />
+                    <RadzenDataFilterProperty Property="DeviceId" Title="@L["ColDeviceId"]" />
+                    <RadzenDataFilterProperty Property="FileName" Title="@L["ColFileName"]" />
+                    <RadzenDataFilterProperty Property="MediaFormat" Title="@L["ColFormat"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="MediaItem" Data="@_evidenceItemsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="MediaItem" Title="Evidence ID">
+                    <RadzenDataGridColumn TItem="MediaItem" Title="@L["ColEvidenceId"]">
                         <Template Context="item">@item.Id.ToString("N")[..8]</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="MediaItem" Title="Device ID">
+                    <RadzenDataGridColumn TItem="MediaItem" Title="@L["ColDeviceId"]">
                         <Template Context="item">@item.DeviceId.ToString("N")[..8]</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="MediaItem" Property="FileName" Title="File Name" />
-                    <RadzenDataGridColumn TItem="MediaItem" Property="MediaFormat" Title="Format" />
+                    <RadzenDataGridColumn TItem="MediaItem" Property="FileName" Title="@L["ColFileName"]" />
+                    <RadzenDataGridColumn TItem="MediaItem" Property="MediaFormat" Title="@L["ColFormat"]" />
                 </Columns>
             </RadzenDataGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Anomalous Health Snapshots</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AnomalousHealthSnapshots"]</RadzenText>
         @if (_report.AnomalousHealthSnapshots.Count == 0)
         {
-            <RadzenText>No anomalous health snapshots found in this range.</RadzenText>
+            <RadzenText>@L["NoAnomalousHealthSnapshots"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_anomalousHealthSnapshotsFilter" TItem="DeviceHealthSnapshot" Data="@_report.AnomalousHealthSnapshots" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="Captured At" />
-                    <RadzenDataFilterProperty Property="DeviceId" Title="Device ID" />
-                    <RadzenDataFilterProperty Property="Connected" Title="Connected" />
-                    <RadzenDataFilterProperty Property="BatteryPercentage" Title="Battery %" />
-                    <RadzenDataFilterProperty Property="Rssi" Title="RSSI" />
-                    <RadzenDataFilterProperty Property="WifiName" Title="Wifi" />
-                    <RadzenDataFilterProperty Property="FirmwareVersion" Title="Firmware" />
+                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
+                    <RadzenDataFilterProperty Property="DeviceId" Title="@L["ColDeviceId"]" />
+                    <RadzenDataFilterProperty Property="Connected" Title="@L["ColConnected"]" />
+                    <RadzenDataFilterProperty Property="BatteryPercentage" Title="@L["ColBatteryPercent"]" />
+                    <RadzenDataFilterProperty Property="Rssi" Title="@L["ColRssi"]" />
+                    <RadzenDataFilterProperty Property="WifiName" Title="@L["ColWifi"]" />
+                    <RadzenDataFilterProperty Property="FirmwareVersion" Title="@L["ColFirmware"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="DeviceHealthSnapshot" Data="@_anomalousHealthSnapshotsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Property="CapturedAtUtc" Title="Captured At" />
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Device ID">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColDeviceId"]">
                         <Template Context="snapshot">@(snapshot.DeviceId?.ToString("N")[..8] ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Connected">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColConnected"]">
                         <Template Context="snapshot">@(snapshot.Connected?.ToString() ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Battery %">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColBatteryPercent"]">
                         <Template Context="snapshot">@(snapshot.BatteryPercentage?.ToString() ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="RSSI">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColRssi"]">
                         <Template Context="snapshot">@(snapshot.Rssi?.ToString() ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Wifi">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColWifi"]">
                         <Template Context="snapshot">@(snapshot.WifiName ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Firmware">
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColFirmware"]">
                         <Template Context="snapshot">@(snapshot.FirmwareVersion ?? "-")</Template>
                     </RadzenDataGridColumn>
                 </Columns>
             </RadzenDataGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Significant Actions</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["SignificantActions"]</RadzenText>
         @if (_report.SignificantActions.Count == 0)
         {
-            <RadzenText>No significant actions found in this range.</RadzenText>
+            <RadzenText>@L["NoSignificantActions"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_significantActionsFilter" TItem="ActionLogEntry" Data="@_report.SignificantActions" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
-                    <RadzenDataFilterProperty Property="Action" Title="Action" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
-                    <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp" />
+                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="ActionLogEntry" Data="@_significantActionsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="Actor" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="Action" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="Entity Type" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="Timestamp" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="@L["ColActor"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="@L["ColAction"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="@L["ColEntityType"]" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="@L["ColTimestamp"]" />
                 </Columns>
             </RadzenDataGrid>
         }

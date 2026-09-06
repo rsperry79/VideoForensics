@@ -1,0 +1,41 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Resources
+@implements IDisposable
+@inject ThemePreferenceService ThemeService
+@inject IStringLocalizer<SharedResources> L
+
+<div class="right-panel-section">
+    <RadzenText TextStyle="TextStyle.Subtitle2">@L["Theme"]</RadzenText>
+    <RadzenSelectBar TValue="ThemeMode" Value="@ThemeService.Mode" Change="@(async (ThemeMode m) => await ThemeService.SetModeAsync(m))">
+        <Items>
+            <RadzenSelectBarItem Text="@L["Light"]" Value="@(ThemeMode.Light)" />
+            <RadzenSelectBarItem Text="@L["Dark"]" Value="@(ThemeMode.Dark)" />
+            <RadzenSelectBarItem Text="@L["System"]" Value="@(ThemeMode.System)" />
+        </Items>
+    </RadzenSelectBar>
+
+    <RadzenText TextStyle="TextStyle.Subtitle2" class="mt-3">@L["Language"]</RadzenText>
+    <RadzenDropDown TValue="string" Data="@_availableCultures" TextProperty="Name" ValueProperty="Code"
+                     Value="@(ThemeService.CultureName ?? "en-US")"
+                     Change="@(async (object? v) => await ThemeService.SetCultureAsync((string)v!))" class="w-100" />
+</div>
+
+@code {
+    private sealed record CultureOption(string Code, string Name);
+
+    private readonly List<CultureOption> _availableCultures = new()
+    {
+        new("en-US", "English (US)")
+    };
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnChange -= StateHasChanged;
+    }
+}

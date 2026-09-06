@@ -1,23 +1,22 @@
 @page "/settings/remote-access"
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<RemoteAccess> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Remote Access</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage remote access.
+        <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["SignInToManage"]
     </RadzenAlert>
 }
 
 <RadzenAlert AlertStyle="AlertStyle.Warning" Class="mb-4">
-    A tunnel only changes network transport - it does not replace passkey pairing/sign-in.
-    An unauthenticated request arriving over the tunnel still cannot reach any data. Starting a
-    tunnel makes this server reachable from the internet, so it requires a fresh passkey
-    confirmation (step-up) even in an already-signed-in session.
+    @L["WarningText"]
 </RadzenAlert>
 
 @if (_isLoading)
@@ -28,8 +27,7 @@ else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
     <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
-        signed in via the Local network tier is required to manage remote access.
+        @L["AuthErrorHeader"] <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["AuthErrorDescription"]
     </RadzenText>
 }
 else if (_loadError is not null)
@@ -39,24 +37,24 @@ else if (_loadError is not null)
 else
 {
     <RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
-        <RadzenButton Text="Refresh" Click="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+        <RadzenButton Text="@L["RefreshButton"]" Click="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
     </RadzenStack>
 
     @if (!_installed)
     {
         <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-4">
-            <code>cloudflared</code> was not found on this server's PATH. Install it from
-            <RadzenLink Path="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Text="Cloudflare's downloads page" />
-            and restart the server, then refresh this screen.
+            <code>cloudflared</code> @L["CloudflaredNotFoundPrefix"]
+            <RadzenLink Path="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Text="@L["CloudflaredDownloadLink"]" />
+            @L["CloudflaredNotFoundSuffix"]
         </RadzenAlert>
     }
     else
     {
-        <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Current Status</RadzenText>
+        <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["CurrentStatus"]</RadzenText>
         <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
             <RadzenStack>
                 <RadzenText>
-                    Status: <RadzenBadge BadgeStyle="@StatusBadgeStyle" Text="@_status" />
+                    @L["StatusLabel"] <RadzenBadge BadgeStyle="@StatusBadgeStyle" Text="@_status" />
                     @if (_kind != "None")
                     {
                         <span>(@_kind)</span>
@@ -64,7 +62,7 @@ else
                 </RadzenText>
                 @if (_publicUrl is not null)
                 {
-                    <RadzenText>Public URL: <RadzenLink Path="@_publicUrl" Text="@_publicUrl" /></RadzenText>
+                    <RadzenText>@L["PublicUrlLabel"] <RadzenLink Path="@_publicUrl" Text="@_publicUrl" /></RadzenText>
                 }
                 @if (_tunnelErrorMessage is not null)
                 {
@@ -72,11 +70,11 @@ else
                 }
                 @if (_status is "Running" or "Starting")
                 {
-                    <RadzenButton Text="Stop Tunnel" Click="StopAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Style="width: fit-content;" />
+                    <RadzenButton Text="@L["StopTunnelButton"]" Click="StopAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Style="width: fit-content;" />
                 }
                 @if (_recentLogLines.Count > 0)
                 {
-                    <RadzenText TextStyle="TextStyle.Body2" Class="mt-2">Recent log output:</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="mt-2">@L["RecentLogLabel"]</RadzenText>
                     <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
                 }
             </RadzenStack>
@@ -84,32 +82,29 @@ else
 
         @if (_status is "Stopped" or "Failed")
         {
-            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Quick Tunnel</RadzenText>
+            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["QuickTunnelHeading"]</RadzenText>
             <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
                 <RadzenText Class="mb-2">
-                    Starts an ephemeral <code>*.trycloudflare.com</code> URL - no Cloudflare account needed. Good for
-                    short-term remote access; the URL changes every time you start a new one.
+                    @L["QuickTunnelDescription"]
                 </RadzenText>
-                <RadzenButton Text="@(_isActing ? "Starting..." : "Start Quick Tunnel")" Click="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenButton Text="@(_isActing ? L["StartingQuickTunnelButton"] : L["StartQuickTunnelButton"])" Click="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
             </RadzenCard>
 
-            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">Named Tunnel</RadzenText>
+            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["NamedTunnelHeading"]</RadzenText>
             <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
                 <RadzenText Class="mb-2">
-                    Runs a persistent tunnel you already configured at the command line
-                    (<code>cloudflared tunnel login</code>, <code>cloudflared tunnel create &lt;name&gt;</code>, and a
-                    DNS route) - that one-time setup is not automated here. Select an already-configured tunnel to run it.
+                    @L["NamedTunnelDescription"]
                 </RadzenText>
                 @if (_namedTunnels.Count == 0)
                 {
-                    <RadzenText TextStyle="TextStyle.Body2">No configured named tunnels found (or cloudflared is not logged in to a Cloudflare account).</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2">@L["NoNamedTunnels"]</RadzenText>
                 }
                 else
                 {
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <label>Tunnel</label>
-                        <RadzenDropDown TValue="string" @bind-Value="_selectedNamedTunnel" Data="@_namedTunnels" Placeholder="Select tunnel" Style="max-width: 260px;" />
-                        <RadzenButton Text="@(_isActing ? "Starting..." : "Start Named Tunnel")" Click="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+                        <label>@L["TunnelLabel"]</label>
+                        <RadzenDropDown TValue="string" @bind-Value="_selectedNamedTunnel" Data="@_namedTunnels" Placeholder="@L["SelectTunnelPlaceholder"]" Style="max-width: 260px;" />
+                        <RadzenButton Text="@(_isActing ? L["StartingNamedTunnelButton"] : L["StartNamedTunnelButton"])" Click="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
                     </RadzenStack>
                 }
             </RadzenCard>
@@ -174,7 +169,7 @@ else
             var response = await client.GetAsync("api/remote-access/status");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view remote access status.";
+                _authError = L["AuthUnauthorized"];
                 return;
             }
 
@@ -199,7 +194,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load remote access status: {ex.Message}";
+            _loadError = L["LoadFailed", ex.Message];
         }
         finally
         {
@@ -226,7 +221,7 @@ else
     {
         if (SessionState.SessionToken is null)
         {
-            _actionError = "Sign in with your passkey first.";
+            _actionError = L["SignInRequired"];
             return;
         }
 
@@ -247,7 +242,7 @@ else
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await SafeReadErrorAsync(response);
-                _actionError = errorBody ?? $"Failed: {response.StatusCode}";
+                _actionError = errorBody ?? L["ActionFailed", response.StatusCode.ToString()];
                 return;
             }
 
@@ -255,7 +250,7 @@ else
         }
         catch (Exception ex)
         {
-            _actionError = $"Failed: {ex.Message}";
+            _actionError = L["ActionFailed", ex.Message];
         }
         finally
         {
@@ -272,7 +267,7 @@ else
             var response = await client.PostAsync("api/remote-access/stop", null);
             if (!response.IsSuccessStatusCode)
             {
-                _actionError = await SafeReadErrorAsync(response) ?? $"Stop failed: {response.StatusCode}";
+                _actionError = await SafeReadErrorAsync(response) ?? L["StopFailed", response.StatusCode.ToString()];
                 return;
             }
 
@@ -280,7 +275,7 @@ else
         }
         catch (Exception ex)
         {
-            _actionError = $"Stop failed: {ex.Message}";
+            _actionError = L["StopFailed", ex.Message];
         }
     }
 

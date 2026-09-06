@@ -1,0 +1,27 @@
+@using VideoForensics.Ui.Shared.Services
+@implements IDisposable
+@inject RightPanelContentService RightPanelContent
+
+<div class="right-panel">
+    <AccountSwitcher />
+    <ThemeLanguagePicker />
+
+    @if (RightPanelContent.Content is not null)
+    {
+        <div class="right-panel-section right-panel-page-context">
+            @RightPanelContent.Content
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        RightPanelContent.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        RightPanelContent.OnChange -= StateHasChanged;
+    }
+}

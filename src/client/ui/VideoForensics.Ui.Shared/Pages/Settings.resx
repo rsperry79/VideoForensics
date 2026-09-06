@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToChangeSettings" xml:space="preserve">
+    <value>to change settings.</value>
+  </data>
+  <data name="ReportsSection" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="ForensicAnalysis" xml:space="preserve">
+    <value>Forensic Analysis</value>
+  </data>
+  <data name="SignalAnomaly" xml:space="preserve">
+    <value>Signal Anomaly</value>
+  </data>
+  <data name="ChainOfCustody" xml:space="preserve">
+    <value>Chain of Custody</value>
+  </data>
+  <data name="EvidenceValidation" xml:space="preserve">
+    <value>Evidence Validation</value>
+  </data>
+  <data name="AccessControl" xml:space="preserve">
+    <value>Access Control</value>
+  </data>
+  <data name="HealthSyncSection" xml:space="preserve">
+    <value>Health Sync</value>
+  </data>
+  <data name="EnableHealthSync" xml:space="preserve">
+    <value>Enable RSSI / device-health background sync</value>
+  </data>
+  <data name="NetworkDiscoverySection" xml:space="preserve">
+    <value>Network Discovery</value>
+  </data>
+  <data name="EnableMdnsAdvertisement" xml:space="preserve">
+    <value>Advertise this server on the local network (mDNS) so a pairing client can find it without typing an IP</value>
+  </data>
+  <data name="RetentionSection" xml:space="preserve">
+    <value>Retention</value>
+  </data>
+  <data name="RetentionDaysLabel" xml:space="preserve">
+    <value>Retention (days)</value>
+  </data>
+  <data name="DownloadsSection" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloads" xml:space="preserve">
+    <value>Max Concurrent Downloads</value>
+  </data>
+  <data name="DownloadLocation" xml:space="preserve">
+    <value>Download Location</value>
+  </data>
+  <data name="ReportingFormatSection" xml:space="preserve">
+    <value>Reporting Format &amp; Redaction</value>
+  </data>
+  <data name="LoggingSection" xml:space="preserve">
+    <value>Logging</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="HealthSyncStatus" xml:space="preserve">
+    <value>Health sync {0}</value>
+  </data>
+  <data name="HealthSyncError" xml:space="preserve">
+    <value>Failed to update health sync: {0}</value>
+  </data>
+  <data name="MdnsStatus" xml:space="preserve">
+    <value>mDNS advertisement {0}</value>
+  </data>
+  <data name="MdnsError" xml:space="preserve">
+    <value>Failed to update mDNS advertisement: {0}</value>
+  </data>
+</root>

@@ -1,8 +1,10 @@
 @page "/signin"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<SignIn> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Sign In</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_restoringSession)
 {
@@ -15,7 +17,7 @@ else
         <RadzenAlert AlertStyle="AlertStyle.Danger">@_restoreErrorMessage</RadzenAlert>
     }
 
-    <AuthForm IdPrefix="signin" SubmitLabel="Sign In" OnAuthenticated="HandleAuthenticated" />
+    <AuthForm IdPrefix="signin" SubmitLabel="@L["Title"]" OnAuthenticated="HandleAuthenticated" />
 }
 
 @code {
@@ -40,7 +42,7 @@ else
             // A fresh install legitimately has no saved credentials - RestoreFromSavedCredentialsAsync
             // returning false is expected and not surfaced as an error. Only an actual exception here
             // (e.g. a corrupt credential store) is worth telling the user about.
-            _restoreErrorMessage = $"Could not check for a saved session: {ex.Message}";
+            _restoreErrorMessage = L["CouldNotCheckSavedSession", ex.Message].Value;
         }
         finally
         {

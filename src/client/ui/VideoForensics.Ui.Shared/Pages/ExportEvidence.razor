@@ -1,9 +1,11 @@
 @page "/review/export"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IEvidenceExportService EvidenceExportService
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<ExportEvidence> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Export Evidence</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -11,31 +13,31 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to export evidence.</RadzenText>
+    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToExport"]</RadzenText>
 }
 else if (_mediaItemIds.Count == 0)
 {
-    <RadzenText>No items selected - go to <RadzenLink Path="/events" Text="Events" /> and select items to export.</RadzenText>
+    <RadzenText>@L["NoItemsSelectedPrefix"] <RadzenLink Path="/events" Text="@L["EventsLink"]" /> @L["NoItemsSelectedSuffix"]</RadzenText>
 }
 else
 {
-    <RadzenText>@_mediaItemIds.Count item(s) selected for export.</RadzenText>
+    <RadzenText>@L["ItemsSelectedMessage", _mediaItemIds.Count]</RadzenText>
 
     <div>
-        <RadzenTextBox @bind-Value="_caseReference" Placeholder="Case reference" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_caseReference" Placeholder="@L["CaseReferencePlaceholder"]" Disabled="@_isExporting" />
     </div>
     <div>
-        <RadzenTextBox @bind-Value="_recipientDescription" Placeholder="Recipient description" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_recipientDescription" Placeholder="@L["RecipientDescriptionPlaceholder"]" Disabled="@_isExporting" />
     </div>
     <div>
-        <input type="password" @bind="_passphrase" disabled="@_isExporting" />
+        <input type="password" @bind="_passphrase" placeholder="@L["PassphrasePlaceholder"].Value" disabled="@_isExporting" />
     </div>
     <div>
-        <RadzenTextBox @bind-Value="_outputDirectory" Placeholder="Output directory" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_outputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Disabled="@_isExporting" />
     </div>
     <div>
         <RadzenButton Click="ExportAsync" Disabled="@_isExporting" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled">
-            @(_isExporting ? "Exporting..." : "Export")
+            @(_isExporting ? L["ExportingButton"] : L["ExportButton"])
         </RadzenButton>
     </div>
 
@@ -44,19 +46,19 @@ else
         @if (_result.Success)
         {
             <div>
-                <RadzenText>Export succeeded.</RadzenText>
-                <RadzenText>Archive path: @_result.ArchivePath</RadzenText>
-                <RadzenText>SHA-256 hash: @_result.ArchiveSha256Hash</RadzenText>
-                <RadzenText>Items included: @_result.ItemsIncluded</RadzenText>
+                <RadzenText>@L["ExportSucceeded"]</RadzenText>
+                <RadzenText>@L["ArchivePath"] @_result.ArchivePath</RadzenText>
+                <RadzenText>@L["ArchiveSha256"] @_result.ArchiveSha256Hash</RadzenText>
+                <RadzenText>@L["ItemsIncluded"] @_result.ItemsIncluded</RadzenText>
                 @if (_result.ItemsExcludedForFailedIntegrity.Count > 0)
                 {
-                    <RadzenText>Items excluded for failed integrity: @_result.ItemsExcludedForFailedIntegrity.Count</RadzenText>
+                    <RadzenText>@L["ItemsExcludedForFailedIntegrity"] @_result.ItemsExcludedForFailedIntegrity.Count</RadzenText>
                 }
             </div>
         }
         else
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">Export failed: @_result.ErrorMessage</RadzenAlert>
+            <RadzenAlert AlertStyle="AlertStyle.Danger">@L["ExportFailed", _result.ErrorMessage]</RadzenAlert>
         }
     }
 }

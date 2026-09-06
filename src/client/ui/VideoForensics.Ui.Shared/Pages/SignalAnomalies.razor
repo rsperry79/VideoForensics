@@ -1,4 +1,5 @@
 @page "/analyze/signal-anomalies"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
@@ -6,8 +7,9 @@
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<SignalAnomalies> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Signal Anomaly Report</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -16,7 +18,7 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view signal anomalies.
+        @L["NotSignedInMessage"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" />
     </RadzenAlert>
 }
 else
@@ -24,23 +26,23 @@ else
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         <RadzenStack>
             <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-                TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
+                TextProperty="Value" ValueProperty="Key" Placeholder="@L["DeviceFilter"]" />
             <label>
-                From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
+                @L["FromLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
             </label>
             <label>
-                To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
+                @L["ToLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
             </label>
-            <RadzenButton Text="Run Report" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["RunReportButton"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </RadzenStack>
     </RadzenCard>
 
     @if (_report is not null)
     {
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Anomalies by Device</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AnomaliesByDeviceHeading"]</RadzenText>
         @if (_report.AnomaliesByDevice.Count == 0)
         {
-            <RadzenText>No signal anomalies found in this range.</RadzenText>
+            <RadzenText>@L["NoAnomaliesFound"]</RadzenText>
         }
         else
         {
@@ -49,40 +51,40 @@ else
                 <RadzenText TextStyle="TextStyle.H6">@deviceFindings.DeviceName</RadzenText>
                 <RadzenDataGrid TItem="SignalAnomalyReport.SignalAnomaly" Data="@deviceFindings.Anomalies" AllowPaging="true" PageSize="20" AllowSorting="true">
                     <Columns>
-                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" Title="Occurred At" />
-                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" Title="Anomaly Type" />
-                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="Description"><Template Context="anomaly">@(anomaly.Description ?? "-")</Template></RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="RSSI"><Template Context="anomaly">@(anomaly.RssiValue?.ToString() ?? "-")</Template></RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" Title="@L["ColOccurredAt"]" />
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Property="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" Title="@L["ColAnomalyType"]" />
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="@L["ColDescription"]"><Template Context="anomaly">@(anomaly.Description ?? L["NotAvailable"].Value)</Template></RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="SignalAnomalyReport.SignalAnomaly" Title="@L["ColRssi"]"><Template Context="anomaly">@(anomaly.RssiValue?.ToString() ?? L["NotAvailable"].Value)</Template></RadzenDataGridColumn>
                     </Columns>
                 </RadzenDataGrid>
             }
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Jamming Summary</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["JammingSummaryHeading"]</RadzenText>
         @if (_report.JammingByDevice.Count == 0)
         {
-            <RadzenText>No jamming incidents found in this range.</RadzenText>
+            <RadzenText>@L["NoJammingFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_jammingByDeviceFilter" TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_report.JammingByDevice" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="DeviceName" Title="Device" />
-                    <RadzenDataFilterProperty Property="IncidentCount" Title="Incident Count" />
-                    <RadzenDataFilterProperty Property="TotalJammedDurationMinutes" Title="Total Jammed (min)" />
-                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="Avg Degradation (dB)" />
-                    <RadzenDataFilterProperty Property="MaxDegradationDb" Title="Max Degradation (dB)" />
+                    <RadzenDataFilterProperty Property="DeviceName" Title="@L["ColDevice"]" />
+                    <RadzenDataFilterProperty Property="IncidentCount" Title="@L["ColIncidentCount"]" />
+                    <RadzenDataFilterProperty Property="TotalJammedDurationMinutes" Title="@L["ColTotalJammedMin"]" />
+                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="@L["ColAvgDegradation"]" />
+                    <RadzenDataFilterProperty Property="MaxDegradationDb" Title="@L["ColMaxDegradation"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="SignalAnomalyReport.JammingSummaryEntry" Data="@_jammingByDeviceFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                 <Columns>
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" Title="Device" />
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" Title="Incident Count" />
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" Title="Total Jammed (min)" />
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" Title="Avg Degradation (dB)" />
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" Title="Max Degradation (dB)" />
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="First Incident"><Template Context="jamming">@(jamming.FirstIncidentUtc?.ToString() ?? "-")</Template></RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="Last Incident"><Template Context="jamming">@(jamming.LastIncidentUtc?.ToString() ?? "-")</Template></RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" Title="@L["ColDevice"]" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" Title="@L["ColIncidentCount"]" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" Title="@L["ColTotalJammedMin"]" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" Title="@L["ColAvgDegradation"]" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Property="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" Title="@L["ColMaxDegradation"]" />
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="@L["ColFirstIncident"]"><Template Context="jamming">@(jamming.FirstIncidentUtc?.ToString() ?? L["NotAvailable"].Value)</Template></RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SignalAnomalyReport.JammingSummaryEntry" Title="@L["ColLastIncident"]"><Template Context="jamming">@(jamming.LastIncidentUtc?.ToString() ?? L["NotAvailable"].Value)</Template></RadzenDataGridColumn>
                 </Columns>
             </RadzenDataGrid>
         }

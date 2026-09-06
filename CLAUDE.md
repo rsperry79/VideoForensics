@@ -78,3 +78,8 @@ Respond to the user with **terse, direct output**:
 ## Archive and docs directories
 
 Do not read or explore files in the `docs/` directory unless explicitly asked by the user. (There is currently no `archive/` directory in this repo — if one is added later, the same rule applies to it.)
+
+## Execution workflow
+
+- **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.
+- **Before committing or pushing, always:** do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change), then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures. This gate runs after feature-specific build+test verification already passed, and applies to every plan, not just large ones.

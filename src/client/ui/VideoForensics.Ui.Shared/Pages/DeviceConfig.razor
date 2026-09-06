@@ -1,11 +1,13 @@
 @page "/devices/config"
 @using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceConfigRepository DeviceConfigRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<DeviceConfig> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Device Configuration</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -13,17 +15,17 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view device configuration.</RadzenText>
+    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewConfig"]</RadzenText>
 }
 else
 {
     <div class="device-config-form">
         <div>
             <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
-                TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" />
+                TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectDevice"]" />
         </div>
         <div>
-            <RadzenButton Text="Load Configuration" Click="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["LoadConfiguration"]" Click="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
         </div>
 
         @if (!string.IsNullOrEmpty(_error))
@@ -34,59 +36,59 @@ else
 
     @if (_loadedOnce)
     {
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Latest Configuration</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["LatestConfiguration"]</RadzenText>
         @if (_latest is null)
         {
-            <RadzenText>No configuration snapshot found for this device.</RadzenText>
+            <RadzenText>@L["NoConfigSnapshot"]</RadzenText>
         }
         else
         {
             <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@(new[] { _latest })" AllowPaging="false">
                 <Columns>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="Captured At (UTC)" />
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Detection Enabled">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="@L["ColCapturedAt"]" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionDetectionEnabled"]">
                         <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Sensitivity">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionSensitivity"]">
                         <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Recording Mode">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColRecordingMode"]">
                         <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="Source" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="@L["ColSource"]" />
                 </Columns>
             </RadzenDataGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">History</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["History"]</RadzenText>
         @if (_history.Count == 0)
         {
-            <RadzenText>No configuration history found for this device.</RadzenText>
+            <RadzenText>@L["NoConfigHistory"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_historyFilter" TItem="DeviceConfigSnapshot" Data="@_history.OrderByDescending(s => s.CapturedAtUtc)" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="Captured At (UTC)" />
-                    <RadzenDataFilterProperty Property="MotionDetectionEnabled" Title="Motion Detection Enabled" />
-                    <RadzenDataFilterProperty Property="MotionSensitivity" Title="Motion Sensitivity" />
-                    <RadzenDataFilterProperty Property="RecordingMode" Title="Recording Mode" />
-                    <RadzenDataFilterProperty Property="Source" Title="Source" />
+                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
+                    <RadzenDataFilterProperty Property="MotionDetectionEnabled" Title="@L["ColMotionDetectionEnabled"]" />
+                    <RadzenDataFilterProperty Property="MotionSensitivity" Title="@L["ColMotionSensitivity"]" />
+                    <RadzenDataFilterProperty Property="RecordingMode" Title="@L["ColRecordingMode"]" />
+                    <RadzenDataFilterProperty Property="Source" Title="@L["ColSource"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@_historyFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                 <Columns>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="Captured At (UTC)" />
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Detection Enabled">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="@L["ColCapturedAt"]" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionDetectionEnabled"]">
                         <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Motion Sensitivity">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionSensitivity"]">
                         <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="Recording Mode">
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColRecordingMode"]">
                         <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="Source" />
+                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="@L["ColSource"]" />
                 </Columns>
             </RadzenDataGrid>
         }
@@ -144,7 +146,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load configuration: {ex.Message}";
+            _error = L["FailedToLoadConfig", ex.Message];
         }
         finally
         {

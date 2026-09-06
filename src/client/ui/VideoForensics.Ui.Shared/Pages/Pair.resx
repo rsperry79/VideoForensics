@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Pair This Device</value>
+  </data>
+  <data name="NoTokenAlert" xml:space="preserve">
+    <value>No pairing token in the URL. Scan the QR code shown on the server's Paired Devices screen, or open the link it displays.</value>
+  </data>
+  <data name="SuccessAlert" xml:space="preserve">
+    <value>Device paired successfully as {0}.</value>
+  </data>
+  <data name="SignInLink" xml:space="preserve">
+    <value>sign in with your passkey</value>
+  </data>
+  <data name="Instructions" xml:space="preserve">
+    <value>Choose who this device is for, then confirm with your platform authenticator (Windows Hello, Touch ID, or a security key).</value>
+  </data>
+  <data name="OperatorNameLabel" xml:space="preserve">
+    <value>Your name</value>
+  </data>
+  <data name="OperatorNamePlaceholder" xml:space="preserve">
+    <value>e.g. Jane Doe</value>
+  </data>
+  <data name="DeviceNameLabel" xml:space="preserve">
+    <value>Device name</value>
+  </data>
+  <data name="DeviceNamePlaceholder" xml:space="preserve">
+    <value>e.g. Jane's Laptop</value>
+  </data>
+  <data name="PairButton" xml:space="preserve">
+    <value>Pair Device</value>
+  </data>
+  <data name="PairWaiting" xml:space="preserve">
+    <value>Waiting for passkey...</value>
+  </data>
+  <data name="WebAuthnNotSupported" xml:space="preserve">
+    <value>This browser does not support WebAuthn/passkeys. Use a modern Chrome, Edge, Firefox, or Safari.</value>
+  </data>
+  <data name="PairingFailed" xml:space="preserve">
+    <value>Pairing failed: {0}</value>
+  </data>
+</root>
