@@ -45,27 +45,26 @@ else
         }
         else
         {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Evidence ID</th>
-                        <th>Device ID</th>
-                        <th>File Name</th>
-                        <th>Format</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in _report.EvidenceItems)
-                    {
-                        <tr>
-                            <td>@item.Id.ToString("N")[..8]</td>
-                            <td>@item.DeviceId.ToString("N")[..8]</td>
-                            <td>@item.FileName</td>
-                            <td>@item.MediaFormat</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_evidenceItemsFilter" TItem="MediaItem" Data="@_report.EvidenceItems" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="Id" Title="Evidence ID" />
+                    <RadzenDataFilterProperty Property="DeviceId" Title="Device ID" />
+                    <RadzenDataFilterProperty Property="FileName" Title="File Name" />
+                    <RadzenDataFilterProperty Property="MediaFormat" Title="Format" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="MediaItem" Data="@_evidenceItemsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="MediaItem" Title="Evidence ID">
+                        <Template Context="item">@item.Id.ToString("N")[..8]</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="MediaItem" Title="Device ID">
+                        <Template Context="item">@item.DeviceId.ToString("N")[..8]</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="MediaItem" Property="FileName" Title="File Name" />
+                    <RadzenDataGridColumn TItem="MediaItem" Property="MediaFormat" Title="Format" />
+                </Columns>
+            </RadzenDataGrid>
         }
 
         <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Anomalous Health Snapshots</RadzenText>
@@ -75,33 +74,40 @@ else
         }
         else
         {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Captured At</th>
-                        <th>Device ID</th>
-                        <th>Connected</th>
-                        <th>Battery %</th>
-                        <th>RSSI</th>
-                        <th>Wifi</th>
-                        <th>Firmware</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var snapshot in _report.AnomalousHealthSnapshots)
-                    {
-                        <tr>
-                            <td>@snapshot.CapturedAtUtc</td>
-                            <td>@(snapshot.DeviceId?.ToString("N")[..8] ?? "-")</td>
-                            <td>@(snapshot.Connected?.ToString() ?? "-")</td>
-                            <td>@(snapshot.BatteryPercentage?.ToString() ?? "-")</td>
-                            <td>@(snapshot.Rssi?.ToString() ?? "-")</td>
-                            <td>@(snapshot.WifiName ?? "-")</td>
-                            <td>@(snapshot.FirmwareVersion ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_anomalousHealthSnapshotsFilter" TItem="DeviceHealthSnapshot" Data="@_report.AnomalousHealthSnapshots" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="Captured At" />
+                    <RadzenDataFilterProperty Property="DeviceId" Title="Device ID" />
+                    <RadzenDataFilterProperty Property="Connected" Title="Connected" />
+                    <RadzenDataFilterProperty Property="BatteryPercentage" Title="Battery %" />
+                    <RadzenDataFilterProperty Property="Rssi" Title="RSSI" />
+                    <RadzenDataFilterProperty Property="WifiName" Title="Wifi" />
+                    <RadzenDataFilterProperty Property="FirmwareVersion" Title="Firmware" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="DeviceHealthSnapshot" Data="@_anomalousHealthSnapshotsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Property="CapturedAtUtc" Title="Captured At" />
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Device ID">
+                        <Template Context="snapshot">@(snapshot.DeviceId?.ToString("N")[..8] ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Connected">
+                        <Template Context="snapshot">@(snapshot.Connected?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Battery %">
+                        <Template Context="snapshot">@(snapshot.BatteryPercentage?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="RSSI">
+                        <Template Context="snapshot">@(snapshot.Rssi?.ToString() ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Wifi">
+                        <Template Context="snapshot">@(snapshot.WifiName ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="Firmware">
+                        <Template Context="snapshot">@(snapshot.FirmwareVersion ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
 
         <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Significant Actions</RadzenText>
@@ -111,27 +117,22 @@ else
         }
         else
         {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Actor</th>
-                        <th>Action</th>
-                        <th>Entity Type</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var action in _report.SignificantActions)
-                    {
-                        <tr>
-                            <td>@action.Actor</td>
-                            <td>@action.Action</td>
-                            <td>@action.EntityType</td>
-                            <td>@action.TimestampUtc</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_significantActionsFilter" TItem="ActionLogEntry" Data="@_report.SignificantActions" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
+                    <RadzenDataFilterProperty Property="Action" Title="Action" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
+                    <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="ActionLogEntry" Data="@_significantActionsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="Actor" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="Action" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="Entity Type" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="Timestamp" />
+                </Columns>
+            </RadzenDataGrid>
         }
     }
 }
@@ -144,6 +145,9 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ForensicAnalysisReport? _report;
+    private RadzenDataFilter<MediaItem>? _evidenceItemsFilter;
+    private RadzenDataFilter<DeviceHealthSnapshot>? _anomalousHealthSnapshotsFilter;
+    private RadzenDataFilter<ActionLogEntry>? _significantActionsFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));

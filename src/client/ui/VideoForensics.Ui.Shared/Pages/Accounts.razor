@@ -24,43 +24,42 @@ else
     }
     else
     {
-        <table class="rz-data-grid">
-            <thead>
-                <tr>
-                    <th>Display Name</th>
-                    <th>Provider</th>
-                    <th>Linked</th>
-                    <th>Last Auth</th>
-                    <th>Active</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in _rows)
-                {
-                    <tr>
-                        <td>@row.DisplayName</td>
-                        <td>@row.Account.ProviderName</td>
-                        <td>@row.Account.LinkedUtc</td>
-                        <td>@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</td>
-                        <td>@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</td>
-                        <td>
-                            <RadzenButton Text="Select" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-                            @if (_confirmingRemoveId == row.Account.Id)
-                            {
-                                <RadzenText>Are you sure?</RadzenText>
-                                <RadzenButton Text="Yes" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
-                                <RadzenButton Text="No" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
-                            }
-                            else
-                            {
-                                <RadzenButton Text="Remove" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <RadzenDataFilter @ref="_rowsFilter" TItem="AccountRow" Data="@_rows" Auto="true" class="mb-2">
+            <Properties>
+                <RadzenDataFilterProperty Property="DisplayName" Title="Display Name" />
+                <RadzenDataFilterProperty Property="Account.ProviderName" Title="Provider" />
+                <RadzenDataFilterProperty Property="Account.LinkedUtc" Title="Linked" />
+                <RadzenDataFilterProperty Property="Account.LastSuccessfulAuthUtc" Title="Last Auth" />
+            </Properties>
+        </RadzenDataFilter>
+        <RadzenDataGrid TItem="AccountRow" Data="@_rowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+            <Columns>
+                <RadzenDataGridColumn TItem="AccountRow" Property="DisplayName" Title="Display Name" />
+                <RadzenDataGridColumn TItem="AccountRow" Property="Account.ProviderName" Title="Provider" />
+                <RadzenDataGridColumn TItem="AccountRow" Property="Account.LinkedUtc" Title="Linked" />
+                <RadzenDataGridColumn TItem="AccountRow" Title="Last Auth">
+                    <Template Context="row">@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AccountRow" Title="Active" Sortable="false" Filterable="false">
+                    <Template Context="row">@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AccountRow" Title="" Sortable="false" Filterable="false">
+                    <Template Context="row">
+                        <RadzenButton Text="Select" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+                        @if (_confirmingRemoveId == row.Account.Id)
+                        {
+                            <RadzenText>Are you sure?</RadzenText>
+                            <RadzenButton Text="Yes" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
+                            <RadzenButton Text="No" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
+                        }
+                        else
+                        {
+                            <RadzenButton Text="Remove" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     }
 }
 
@@ -71,6 +70,7 @@ else
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private List<AccountRow> _rows = new();
+    private RadzenDataFilter<AccountRow>? _rowsFilter;
     private bool _isLoading = true;
     private bool _isBusy;
     private string? _statusMessage;

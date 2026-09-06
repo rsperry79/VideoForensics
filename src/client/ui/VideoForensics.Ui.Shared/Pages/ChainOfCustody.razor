@@ -45,31 +45,28 @@ else
         }
         else
         {
-            <table class="rz-data-grid">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Actor</th>
-                        <th>Actor Type</th>
-                        <th>Action</th>
-                        <th>Entity Type</th>
-                        <th>Entity ID</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var entry in _report.AuditTrail)
-                    {
-                        <tr>
-                            <td>@entry.TimestampUtc</td>
-                            <td>@entry.Actor</td>
-                            <td>@entry.ActorType</td>
-                            <td>@entry.Action</td>
-                            <td>@entry.EntityType</td>
-                            <td>@(entry.EntityId?.ToString("N")[..8] ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <RadzenDataFilter @ref="_auditTrailFilter" TItem="ActionLogEntry" Data="@_report.AuditTrail" Auto="true" class="mb-2">
+                <Properties>
+                    <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp" />
+                    <RadzenDataFilterProperty Property="Actor" Title="Actor" />
+                    <RadzenDataFilterProperty Property="ActorType" Title="Actor Type" />
+                    <RadzenDataFilterProperty Property="Action" Title="Action" />
+                    <RadzenDataFilterProperty Property="EntityType" Title="Entity Type" />
+                    <RadzenDataFilterProperty Property="EntityId" Title="Entity ID" />
+                </Properties>
+            </RadzenDataFilter>
+            <RadzenDataGrid TItem="ActionLogEntry" Data="@_auditTrailFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
+                <Columns>
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="Timestamp" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="Actor" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="ActorType" Title="Actor Type" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="Action" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="Entity Type" />
+                    <RadzenDataGridColumn TItem="ActionLogEntry" Title="Entity ID">
+                        <Template Context="entry">@(entry.EntityId?.ToString("N")[..8] ?? "-")</Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
         }
     }
 }
@@ -82,6 +79,7 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ChainOfCustodyReport? _report;
+    private RadzenDataFilter<ActionLogEntry>? _auditTrailFilter;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
