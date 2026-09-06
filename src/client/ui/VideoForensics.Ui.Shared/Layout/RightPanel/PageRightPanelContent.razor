@@ -1,0 +1,18 @@
+@using VideoForensics.Ui.Shared.Services
+@implements IDisposable
+@inject RightPanelContentService RightPanel
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        RightPanel.Set(ChildContent);
+    }
+
+    public void Dispose()
+    {
+        RightPanel.Clear();
+    }
+}

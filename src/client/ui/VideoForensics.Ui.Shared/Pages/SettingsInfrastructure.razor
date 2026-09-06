@@ -1,11 +1,13 @@
 @page "/settings/infrastructure"
 @using VideoForensics.Client.Core.Tools
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IForensicsConfiguration Config
 @inject ConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<SettingsInfrastructure> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Infrastructure Settings</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -14,28 +16,21 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to change infrastructure settings.
+        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToChangeSettings"]
     </RadzenAlert>
 }
 else
 {
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Data-at-Rest Encryption</RadzenText>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["DataEncryptionSection"]</RadzenText>
     <RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
-        <strong>Neither the database nor downloaded media files are encrypted by this application.</strong>
-        An application-level database encryption approach (SQLCipher) was evaluated and found to
-        silently fail to apply schema changes under this platform's current SQLite provider version -
-        a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe
-        approach is available, protecting this data at rest is the owner's responsibility: enable
-        full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding
-        <code>%AppData%\VideoForensics</code> and your configured download location, and secure
-        physical access to this machine.
+        <strong>@L["EncryptionWarning"]</strong>
     </RadzenAlert>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Key Storage Provider</RadzenText>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["KeyStorageSection"]</RadzenText>
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         <RadzenStack Orientation="Orientation.Horizontal">
             <RadzenDropDown TValue="KeyStorageProvider" @bind-Value="_keyStorageProvider" Data="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
-            <RadzenButton Text="Save" Click="SaveKeyStorageProviderAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["SaveButton"]" Click="SaveKeyStorageProviderAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             @if (_keyStorageProviderMessage is not null)
             {
                 <RadzenText style="@(_keyStorageProviderSuccess ? "color: green;" : "color: red;")">@_keyStorageProviderMessage</RadzenText>
@@ -43,20 +38,20 @@ else
         </RadzenStack>
     </RadzenCard>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">Factory Reset</RadzenText>
+    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["FactoryResetSection"]</RadzenText>
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         @if (!_showFactoryResetConfirm)
         {
-            <RadzenButton Text="Factory Reset" Click="() => _showFactoryResetConfirm = true" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
+            <RadzenButton Text="@L["FactoryResetButton"]" Click="() => _showFactoryResetConfirm = true" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
         }
         else
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">
-                <strong>This will permanently delete ALL data. This cannot be undone.</strong>
+                <strong>@L["FactoryResetWarning"]</strong>
             </RadzenAlert>
             <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenButton Text="Yes, delete everything" Click="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
-                <RadzenButton Text="Cancel" Click="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined" />
+                <RadzenButton Text="@L["ConfirmDelete"]" Click="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
+                <RadzenButton Text="@L["CancelButton"]" Click="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined" />
             </RadzenStack>
         }
 

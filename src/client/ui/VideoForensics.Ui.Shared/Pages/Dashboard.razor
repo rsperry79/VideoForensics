@@ -1,9 +1,11 @@
 @page "/"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<Dashboard> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">VideoForensics</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -11,32 +13,32 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to view your devices.</RadzenText>
+    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewDevices"]</RadzenText>
 }
 else
 {
     @if (_devices.Count == 0)
     {
-        <RadzenText>No devices found yet.</RadzenText>
+        <RadzenText>@L["NoDevicesFound"]</RadzenText>
     }
     else
     {
         <RadzenDataFilter @ref="_devicesFilter" TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devices" Auto="true" class="mb-2">
             <Properties>
-                <RadzenDataFilterProperty Property="Name" Title="Name" />
-                <RadzenDataFilterProperty Property="Type" Title="Type" />
-                <RadzenDataFilterProperty Property="IsOnline" Title="Online" />
-                <RadzenDataFilterProperty Property="LastSyncedUtc" Title="Last Synced" />
+                <RadzenDataFilterProperty Property="Name" Title="@L["ColumnName"]" />
+                <RadzenDataFilterProperty Property="Type" Title="@L["ColumnType"]" />
+                <RadzenDataFilterProperty Property="IsOnline" Title="@L["ColumnOnline"]" />
+                <RadzenDataFilterProperty Property="LastSyncedUtc" Title="@L["ColumnLastSynced"]" />
             </Properties>
         </RadzenDataFilter>
         <RadzenDataGrid TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
             <Columns>
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" Title="Name" />
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" Title="Type" />
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="Online">
-                    <Template Context="device">@(device.IsOnline ? "Yes" : "No")</Template>
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" Title="@L["ColumnName"]" />
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" Title="@L["ColumnType"]" />
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="@L["ColumnOnline"]">
+                    <Template Context="device">@(device.IsOnline ? L["Yes"] : L["No"])</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="Last Synced">
+                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="@L["ColumnLastSynced"]">
                     <Template Context="device">@(device.LastSyncedUtc?.ToString() ?? "-")</Template>
                 </RadzenDataGridColumn>
             </Columns>

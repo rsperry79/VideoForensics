@@ -1,12 +1,14 @@
 @page "/analyze/jamming"
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Core.Tools
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject JammingToolsOrchestrator JammingTools
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<JammingAnalysis> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Jamming Analysis</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -15,18 +17,18 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to analyze jamming.
+        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToAnalyzeJamming"]
     </RadzenAlert>
 }
 else
 {
     <RadzenStack>
         <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" />
+            TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectDevice"]" />
         <RadzenStack Orientation="Orientation.Horizontal">
             <input type="date" @bind="_fromDate" />
             <input type="date" @bind="_toDate" />
-            <RadzenButton Text="Analyze" Click="AnalyzeAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
+            <RadzenButton Text="@L["Analyze"]" Click="AnalyzeAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
         </RadzenStack>
 
         @if (!string.IsNullOrEmpty(_analyzeError))
@@ -43,51 +45,51 @@ else
         {
             <RadzenDataFilter @ref="_incidentsFilter" TItem="JammingIncidentRecord" Data="@_report.Incidents" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="StartUtc" Title="Start" />
-                    <RadzenDataFilterProperty Property="EndUtc" Title="End" />
-                    <RadzenDataFilterProperty Property="AffectedEventCount" Title="Affected Events" />
-                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="Avg Degradation (dB)" />
-                    <RadzenDataFilterProperty Property="Confidence" Title="Confidence" />
-                    <RadzenDataFilterProperty Property="Source" Title="Source" />
-                    <RadzenDataFilterProperty Property="Notes" Title="Notes" />
+                    <RadzenDataFilterProperty Property="StartUtc" Title="@L["ColStart"]" />
+                    <RadzenDataFilterProperty Property="EndUtc" Title="@L["ColEnd"]" />
+                    <RadzenDataFilterProperty Property="AffectedEventCount" Title="@L["ColAffectedEvents"]" />
+                    <RadzenDataFilterProperty Property="AverageDegradationDb" Title="@L["ColAvgDegradation"]" />
+                    <RadzenDataFilterProperty Property="Confidence" Title="@L["ColConfidence"]" />
+                    <RadzenDataFilterProperty Property="Source" Title="@L["ColSource"]" />
+                    <RadzenDataFilterProperty Property="Notes" Title="@L["ColNotes"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="JammingIncidentRecord" Data="@_incidentsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
                 <Columns>
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="StartUtc" Title="Start" />
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="EndUtc" Title="End" />
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="AffectedEventCount" Title="Affected Events" />
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Title="Avg Degradation (dB)">
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="StartUtc" Title="@L["ColStart"]" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="EndUtc" Title="@L["ColEnd"]" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="AffectedEventCount" Title="@L["ColAffectedEvents"]" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Title="@L["ColAvgDegradation"]">
                         <Template Context="incident">@incident.AverageDegradationDb.ToString("F1")</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Confidence" Title="Confidence" />
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Source" Title="Source" />
-                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Notes" Title="Notes" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Confidence" Title="@L["ColConfidence"]" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Source" Title="@L["ColSource"]" />
+                    <RadzenDataGridColumn TItem="JammingIncidentRecord" Property="Notes" Title="@L["ColNotes"]" />
                 </Columns>
             </RadzenDataGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Record Manual Incident</RadzenText>
+        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["RecordManualIncident"]</RadzenText>
         <RadzenStack>
             <div>
-                <label for="startUtc">Start (UTC)</label>
+                <label for="startUtc">@L["LabelStartUtc"]</label>
                 <RadzenDatePicker TValue="DateTime" @bind-Value="_manualStartUtc" ShowTime="true" />
             </div>
             <div>
-                <label for="endUtc">End (UTC)</label>
+                <label for="endUtc">@L["LabelEndUtc"]</label>
                 <RadzenDatePicker TValue="DateTime" @bind-Value="_manualEndUtc" ShowTime="true" />
             </div>
             <div>
-                <label>Affected Event Count</label>
+                <label>@L["LabelAffectedEventCount"]</label>
                 <RadzenNumeric TValue="int" @bind-Value="_manualAffectedEventCount" />
             </div>
             <div>
-                <label>Average Degradation (dB)</label>
+                <label>@L["LabelAvgDegradation"]</label>
                 <RadzenNumeric TValue="double" @bind-Value="_manualAverageDegradationDb" />
             </div>
             <RadzenDropDown TValue="JammingConfidenceLevel" @bind-Value="_manualConfidence" Data="@(Enum.GetValues<JammingConfidenceLevel>())" />
-            <RadzenTextArea @bind-Value="_manualNotes" Rows="3" Placeholder="Notes" />
-            <RadzenButton Text="Record Incident" Click="RecordIncidentAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_recording" />
+            <RadzenTextArea @bind-Value="_manualNotes" Rows="3" Placeholder="@L["ColNotes"]" />
+            <RadzenButton Text="@L["RecordIncident"]" Click="RecordIncidentAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_recording" />
 
             @if (!string.IsNullOrEmpty(_recordMessage))
             {
@@ -155,7 +157,7 @@ else
             _report = await JammingTools.AnalyzeJammingAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
             if (!_report.Success)
             {
-                _analyzeError = _report.ErrorMessage ?? "Analysis failed.";
+                _analyzeError = _report.ErrorMessage ?? L["AnalysisFailed"].Value;
             }
         }
         finally

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Jamming Analysis</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToAnalyzeJamming" xml:space="preserve">
+    <value>to analyze jamming.</value>
+  </data>
+  <data name="SelectDevice" xml:space="preserve">
+    <value>-- Select a device --</value>
+  </data>
+  <data name="Analyze" xml:space="preserve">
+    <value>Analyze</value>
+  </data>
+  <data name="ColStart" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="ColEnd" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="ColAffectedEvents" xml:space="preserve">
+    <value>Affected Events</value>
+  </data>
+  <data name="ColAvgDegradation" xml:space="preserve">
+    <value>Avg Degradation (dB)</value>
+  </data>
+  <data name="ColConfidence" xml:space="preserve">
+    <value>Confidence</value>
+  </data>
+  <data name="ColSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="ColNotes" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="RecordManualIncident" xml:space="preserve">
+    <value>Record Manual Incident</value>
+  </data>
+  <data name="LabelStartUtc" xml:space="preserve">
+    <value>Start (UTC)</value>
+  </data>
+  <data name="LabelEndUtc" xml:space="preserve">
+    <value>End (UTC)</value>
+  </data>
+  <data name="LabelAffectedEventCount" xml:space="preserve">
+    <value>Affected Event Count</value>
+  </data>
+  <data name="LabelAvgDegradation" xml:space="preserve">
+    <value>Average Degradation (dB)</value>
+  </data>
+  <data name="RecordIncident" xml:space="preserve">
+    <value>Record Incident</value>
+  </data>
+  <data name="AnalysisFailed" xml:space="preserve">
+    <value>Analysis failed.</value>
+  </data>
+</root>

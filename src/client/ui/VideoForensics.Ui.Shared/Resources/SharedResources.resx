@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Full Workflow" xml:space="preserve">
+    <value>Full Workflow</value>
+  </data>
+  <data name="Collect" xml:space="preserve">
+    <value>Collect</value>
+  </data>
+  <data name="Collect Videos" xml:space="preserve">
+    <value>Collect Videos</value>
+  </data>
+  <data name="Collect Snapshots" xml:space="preserve">
+    <value>Collect Snapshots</value>
+  </data>
+  <data name="Analyze" xml:space="preserve">
+    <value>Analyze</value>
+  </data>
+  <data name="Forensic Reports" xml:space="preserve">
+    <value>Forensic Reports</value>
+  </data>
+  <data name="Signal Anomalies" xml:space="preserve">
+    <value>Signal Anomalies</value>
+  </data>
+  <data name="Access Control" xml:space="preserve">
+    <value>Access Control</value>
+  </data>
+  <data name="Chain of Custody" xml:space="preserve">
+    <value>Chain of Custody</value>
+  </data>
+  <data name="Validate Evidence" xml:space="preserve">
+    <value>Validate Evidence</value>
+  </data>
+  <data name="Jamming Analysis" xml:space="preserve">
+    <value>Jamming Analysis</value>
+  </data>
+  <data name="Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Devices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="Device Configuration" xml:space="preserve">
+    <value>Device Configuration</value>
+  </data>
+  <data name="Paired Devices" xml:space="preserve">
+    <value>Paired Devices</value>
+  </data>
+  <data name="Device Sign-In" xml:space="preserve">
+    <value>Device Sign-In</value>
+  </data>
+  <data name="Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="Query API" xml:space="preserve">
+    <value>Query API</value>
+  </data>
+  <data name="Import / Export" xml:space="preserve">
+    <value>Import / Export</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Accounts" xml:space="preserve">
+    <value>Accounts</value>
+  </data>
+  <data name="Infrastructure" xml:space="preserve">
+    <value>Infrastructure</value>
+  </data>
+  <data name="Operators" xml:space="preserve">
+    <value>Operators</value>
+  </data>
+  <data name="Network Access" xml:space="preserve">
+    <value>Network Access</value>
+  </data>
+  <data name="Remote Access" xml:space="preserve">
+    <value>Remote Access</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="Security Audit Log" xml:space="preserve">
+    <value>Security Audit Log</value>
+  </data>
+  <data name="App Lock" xml:space="preserve">
+    <value>App Lock</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Active Account" xml:space="preserve">
+    <value>Active Account</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>System</value>
+  </data>
+</root>

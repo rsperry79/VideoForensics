@@ -1,23 +1,25 @@
 @page "/tools/import-export"
+@using Microsoft.Extensions.Localization
 @inject IBackupExportService BackupExportService
 @inject IBackupImportService BackupImportService
+@inject IStringLocalizer<ImportExport> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Import / Export</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">Export</RadzenText>
+    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">@L["ExportSectionTitle"]</RadzenText>
 
     <div>
-        <RadzenButton Text="Prepare for Export" Click="PrepareAsync" Disabled="@_isPreparing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Secondary" />
+        <RadzenButton Text="@L["PrepareForExport"]" Click="PrepareAsync" Disabled="@_isPreparing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Secondary" />
     </div>
 
     @if (_prepareResult is not null)
     {
         <div class="mt-2">
-            <RadzenText>Validated: @_prepareResult.Validated</RadzenText>
-            <RadzenText>Backfilled: @_prepareResult.Backfilled</RadzenText>
-            <RadzenText>Missing media: @_prepareResult.MissingMedia</RadzenText>
-            <RadzenText>Unrecoverable sidecars: @_prepareResult.MissingSidecarUnrecoverable</RadzenText>
+            <RadzenText>@L["Validated"] @_prepareResult.Validated</RadzenText>
+            <RadzenText>@L["Backfilled"] @_prepareResult.Backfilled</RadzenText>
+            <RadzenText>@L["MissingMedia"] @_prepareResult.MissingMedia</RadzenText>
+            <RadzenText>@L["UnrecoverableSidecars"] @_prepareResult.MissingSidecarUnrecoverable</RadzenText>
             @foreach (var detail in _prepareResult.Details)
             {
                 <RadzenText Class="mt-1">@detail</RadzenText>
@@ -26,10 +28,10 @@
     }
 
     <div class="mt-4">
-        <RadzenTextBox @bind-Value="_exportOutputDirectory" Placeholder="Output directory" Disabled="@_isExporting" />
+        <RadzenTextBox @bind-Value="_exportOutputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Disabled="@_isExporting" />
     </div>
     <div>
-        <RadzenButton Text="Export Backup" Click="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+        <RadzenButton Text="@L["ExportBackup"]" Click="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
     </div>
 
     @if (_exportResult is not null)
@@ -37,9 +39,9 @@
         @if (_exportResult.Success)
         {
             <div class="mt-2">
-                <RadzenText>Backup created: @_exportResult.ArchivePath</RadzenText>
-                <RadzenText>SHA-256: @_exportResult.ArchiveSha256Hash</RadzenText>
-                <RadzenText>Accounts: @_exportResult.ProviderAccountCount, Locations: @_exportResult.LocationCount, Devices: @_exportResult.DeviceCount, Events: @_exportResult.EventCount, Media items: @_exportResult.MediaItemCount</RadzenText>
+                <RadzenText>@L["BackupCreated"] @_exportResult.ArchivePath</RadzenText>
+                <RadzenText>@L["SHA256"] @_exportResult.ArchiveSha256Hash</RadzenText>
+                <RadzenText>@L["ExportSummary", _exportResult.ProviderAccountCount, _exportResult.LocationCount, _exportResult.DeviceCount, _exportResult.EventCount, _exportResult.MediaItemCount]</RadzenText>
             </div>
         }
         else
@@ -50,16 +52,16 @@
 </RadzenCard>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">Import</RadzenText>
+    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">@L["ImportSectionTitle"]</RadzenText>
 
     <div>
-        <RadzenTextBox @bind-Value="_backupZipPath" Placeholder="Backup zip path" Disabled="@_isImporting" />
+        <RadzenTextBox @bind-Value="_backupZipPath" Placeholder="@L["BackupZipPathPlaceholder"]" Disabled="@_isImporting" />
     </div>
     <div>
-        <RadzenTextBox @bind-Value="_mediaRootPath" Placeholder="Media root folder" Disabled="@_isImporting" />
+        <RadzenTextBox @bind-Value="_mediaRootPath" Placeholder="@L["MediaRootFolderPlaceholder"]" Disabled="@_isImporting" />
     </div>
     <div>
-        <RadzenButton Text="Import" Click="ImportAsync" Disabled="@_isImporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+        <RadzenButton Text="@L["Import"]" Click="ImportAsync" Disabled="@_isImporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
     </div>
 
     @if (_importResult is not null)
@@ -67,12 +69,12 @@
         @if (_importResult.Success)
         {
             <div class="mt-2">
-                <RadzenText>Accounts: inserted @_importResult.ProviderAccounts.Inserted, skipped existing @_importResult.ProviderAccounts.SkippedExisting, orphaned @_importResult.ProviderAccounts.SkippedOrphaned</RadzenText>
-                <RadzenText>Locations: inserted @_importResult.Locations.Inserted, skipped existing @_importResult.Locations.SkippedExisting, orphaned @_importResult.Locations.SkippedOrphaned</RadzenText>
-                <RadzenText>Devices: inserted @_importResult.Devices.Inserted, skipped existing @_importResult.Devices.SkippedExisting, orphaned @_importResult.Devices.SkippedOrphaned</RadzenText>
-                <RadzenText>Events: inserted @_importResult.Events.Inserted, skipped existing @_importResult.Events.SkippedExisting, orphaned @_importResult.Events.SkippedOrphaned</RadzenText>
-                <RadzenText>Download events: inserted @_importResult.DownloadEvents.Inserted, skipped existing @_importResult.DownloadEvents.SkippedExisting, orphaned @_importResult.DownloadEvents.SkippedOrphaned</RadzenText>
-                <RadzenText>Media items: inserted @_importResult.MediaItems.Inserted, skipped existing @_importResult.MediaItems.SkippedExisting, orphaned @_importResult.MediaItems.SkippedOrphaned, integrity issues @_importResult.MediaItems.IntegrityIssues</RadzenText>
+                <RadzenText>@L["ProviderAccountsSummary", _importResult.ProviderAccounts.Inserted, _importResult.ProviderAccounts.SkippedExisting, _importResult.ProviderAccounts.SkippedOrphaned]</RadzenText>
+                <RadzenText>@L["LocationsSummary", _importResult.Locations.Inserted, _importResult.Locations.SkippedExisting, _importResult.Locations.SkippedOrphaned]</RadzenText>
+                <RadzenText>@L["DevicesSummary", _importResult.Devices.Inserted, _importResult.Devices.SkippedExisting, _importResult.Devices.SkippedOrphaned]</RadzenText>
+                <RadzenText>@L["EventsSummary", _importResult.Events.Inserted, _importResult.Events.SkippedExisting, _importResult.Events.SkippedOrphaned]</RadzenText>
+                <RadzenText>@L["DownloadEventsSummary", _importResult.DownloadEvents.Inserted, _importResult.DownloadEvents.SkippedExisting, _importResult.DownloadEvents.SkippedOrphaned]</RadzenText>
+                <RadzenText>@L["MediaItemsSummary", _importResult.MediaItems.Inserted, _importResult.MediaItems.SkippedExisting, _importResult.MediaItems.SkippedOrphaned, _importResult.MediaItems.IntegrityIssues]</RadzenText>
                 @foreach (var detail in _importResult.Details)
                 {
                     <RadzenText Class="mt-1">@detail</RadzenText>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Accounts</value>
+  </data>
+  <data name="NoAccountsLinked" xml:space="preserve">
+    <value>No accounts linked yet.</value>
+  </data>
+  <data name="ColDisplayName" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="ColProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="ColLinked" xml:space="preserve">
+    <value>Linked</value>
+  </data>
+  <data name="ColLastAuth" xml:space="preserve">
+    <value>Last Auth</value>
+  </data>
+  <data name="ColActive" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>Select</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Are you sure?</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="AddAccount" xml:space="preserve">
+    <value>Add Account</value>
+  </data>
+  <data name="SwitchedAndResumed" xml:space="preserve">
+    <value>Switched active account and resumed session.</value>
+  </data>
+  <data name="SwitchedNotResumed" xml:space="preserve">
+    <value>Switched active account, but the saved session could not be resumed. You may need to sign in again.</value>
+  </data>
+  <data name="CouldNotSwitch" xml:space="preserve">
+    <value>Could not switch account: {0}</value>
+  </data>
+  <data name="AccountRemoved" xml:space="preserve">
+    <value>Account removed.</value>
+  </data>
+  <data name="CouldNotRemove" xml:space="preserve">
+    <value>Could not remove account: {0}</value>
+  </data>
+  <data name="AccountAdded" xml:space="preserve">
+    <value>Account added.</value>
+  </data>
+</root>

@@ -1,27 +1,26 @@
 @page "/settings/app-lock"
+@using Microsoft.Extensions.Localization
 @inject IAppLockPreferencesStore AppLockPreferences
+@inject IStringLocalizer<AppLock> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">App Lock</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (!AppLockPreferences.IsSupported)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        App Lock is a device-local setting for the Windows MAUI app - it does not apply here.
+        @L["UnsupportedAlert"]
     </RadzenAlert>
 }
 else
 {
     <RadzenText class="mb-4">
-        VideoForensics requires Windows Hello (or your device PIN) to view its content, on every
-        cold launch and again after this much time spent in the background. This is separate from
-        signing in to the server - it protects an already-signed-in device from anyone who simply
-        picks it up.
+        @L["Description"]
     </RadzenText>
 
     <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
         <RadzenDropDown TValue="int" Value="_selectedSeconds" ValueChanged="OnTimeoutChangedAsync"
             Data="@(TimeoutOptions.Select(o => new { Value = o.Seconds, Text = o.Label }).ToList())"
-            ValueProperty="Value" TextProperty="Text" Placeholder="Lock after this long in the background" Style="max-width: 320px;" />
+            ValueProperty="Value" TextProperty="Text" Placeholder="@L["TimeoutPlaceholder"]" Style="max-width: 320px;" />
         @if (_message is not null)
         {
             <RadzenText class="mt-2">@_message</RadzenText>
@@ -30,19 +29,21 @@ else
 }
 
 @code {
-    private static readonly (int Seconds, string Label)[] TimeoutOptions =
-    {
-        (0, "Immediately"),
-        (60, "1 minute"),
-        (300, "5 minutes"),
-        (900, "15 minutes"),
-    };
+    private (int Seconds, string Label)[] TimeoutOptions = Array.Empty<(int, string)>();
 
     private int _selectedSeconds;
     private string? _message;
 
     protected override void OnInitialized()
     {
+        TimeoutOptions = new[]
+        {
+            (0, L["TimeoutImmediate"].Value),
+            (60, L["TimeoutOneMinute"].Value),
+            (300, L["TimeoutFiveMinutes"].Value),
+            (900, L["TimeoutFifteenMinutes"].Value),
+        };
+
         if (AppLockPreferences.IsSupported)
         {
             _selectedSeconds = (int)AppLockPreferences.GetIdleLockTimeout().TotalSeconds;
@@ -53,7 +54,7 @@ else
     {
         _selectedSeconds = seconds;
         AppLockPreferences.SetIdleLockTimeout(TimeSpan.FromSeconds(seconds));
-        _message = "Saved.";
+        _message = L["SavedMessage"];
         return Task.CompletedTask;
     }
 }

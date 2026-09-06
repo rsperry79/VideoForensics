@@ -1151,6 +1151,35 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("Operators");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorPreferences", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CultureName")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OperatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThemeMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperatorId")
+                        .IsUnique();
+
+                    b.ToTable("OperatorPreferences");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.PairedDevice", b =>
                 {
                     b.Property<Guid>("Id")

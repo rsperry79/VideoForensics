@@ -1,21 +1,23 @@
 @page "/settings/operators"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<SecurityOperators> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Operators</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage operators.
+        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> @L["SignInToManage"]
     </RadzenAlert>
 }
 
 <RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
-    <RadzenButton Text="Refresh" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+    <RadzenButton Text="@L["RefreshButton"]" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
 </RadzenStack>
 
 @if (_isLoading)
@@ -25,10 +27,7 @@
 else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
-        signed in via the Local network tier is required to manage operators.
-    </RadzenText>
+    <RadzenText>@L["NotAuthorizedMessage"]</RadzenText>
 }
 else if (_loadError is not null)
 {
@@ -36,30 +35,30 @@ else if (_loadError is not null)
 }
 else if (_operators is null || _operators.Count == 0)
 {
-    <RadzenText>No operators found.</RadzenText>
+    <RadzenText>@L["NoOperatorsFound"]</RadzenText>
 }
 else
 {
     <RadzenDataFilter @ref="_operatorsFilter" TItem="Operator" Data="@_operators" Auto="true" class="mb-2">
         <Properties>
-            <RadzenDataFilterProperty Property="DisplayName" Title="Display Name" />
-            <RadzenDataFilterProperty Property="CreatedAtUtc" Title="Created At (UTC)" />
-            <RadzenDataFilterProperty Property="Active" Title="Active" />
+            <RadzenDataFilterProperty Property="DisplayName" Title="@L["ColDisplayName"]" />
+            <RadzenDataFilterProperty Property="CreatedAtUtc" Title="@L["ColCreatedAt"]" />
+            <RadzenDataFilterProperty Property="Active" Title="@L["ColActive"]" />
         </Properties>
     </RadzenDataFilter>
     <RadzenDataGrid TItem="Operator" Data="@_operatorsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
         <Columns>
-            <RadzenDataGridColumn TItem="Operator" Property="DisplayName" Title="Display Name" />
-            <RadzenDataGridColumn TItem="Operator" Property="CreatedAtUtc" Title="Created At (UTC)" />
-            <RadzenDataGridColumn TItem="Operator" Title="Active" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn TItem="Operator" Property="DisplayName" Title="@L["ColDisplayName"]" />
+            <RadzenDataGridColumn TItem="Operator" Property="CreatedAtUtc" Title="@L["ColCreatedAt"]" />
+            <RadzenDataGridColumn TItem="Operator" Title="@L["ColActive"]" Sortable="false" Filterable="false">
                 <Template Context="context">
                     @if (context.Active)
                     {
-                        <span style="color: var(--rz-success);">Active</span>
+                        <span style="color: var(--rz-success);">@L["StatusActive"]</span>
                     }
                     else
                     {
-                        <span style="color: var(--rz-danger);">Inactive</span>
+                        <span style="color: var(--rz-danger);">@L["StatusInactive"]</span>
                     }
                 </Template>
             </RadzenDataGridColumn>
@@ -67,13 +66,13 @@ else
                 <Template Context="context">
                     @if (context.Active)
                     {
-                        <RadzenButton Text="Deactivate" Click="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                        <RadzenButton Text="@L["DeactivateButton"]" Click="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
                         @if (_pendingDeactivateOperatorId == context.Id)
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
-                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="Reason for deactivation" Style="max-width: 260px;" />
-                                <RadzenButton Text="Confirm" Click="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                                <RadzenButton Text="Cancel" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
+                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"]" Style="max-width: 260px;" />
+                                <RadzenButton Text="@L["ConfirmButton"]" Click="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
+                                <RadzenButton Text="@L["CancelButton"]" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
                             </RadzenStack>
                         }
                     }
@@ -127,7 +126,7 @@ else
             var response = await client.GetAsync("api/devices-management/operators");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view operators.";
+                _authError = L["NotAuthorizedToView"];
                 _operators = null;
                 return;
             }
@@ -137,7 +136,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load operators: {ex.Message}";
+            _loadError = L["FailedToLoad", ex.Message];
         }
         finally
         {
@@ -167,7 +166,7 @@ else
 
         if (SessionState.SessionToken is null)
         {
-            _actionError = "Sign in with your passkey first.";
+            _actionError = L["SignInFirstError"];
             return;
         }
 
@@ -184,7 +183,7 @@ else
             if (!response.IsSuccessStatusCode)
             {
                 var body = await SafeReadErrorAsync(response);
-                _actionError = body ?? $"Deactivate failed: {response.StatusCode}";
+                _actionError = body ?? L["DeactivateFailed1", response.StatusCode];
                 return;
             }
 
@@ -193,7 +192,7 @@ else
         }
         catch (Exception ex)
         {
-            _actionError = $"Deactivate failed: {ex.Message}";
+            _actionError = L["DeactivateFailed2", ex.Message];
         }
     }
 

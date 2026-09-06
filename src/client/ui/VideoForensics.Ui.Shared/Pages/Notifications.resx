@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="SignInWithPasskey" xml:space="preserve">
+    <value>Sign in with your passkey</value>
+  </data>
+  <data name="ToManageNotifications" xml:space="preserve">
+    <value>to manage notification settings.</value>
+  </data>
+  <data name="NotAuthorized" xml:space="preserve">
+    <value>Not authorized.</value>
+  </data>
+  <data name="SignInRequired" xml:space="preserve">
+    <value>- an Admin (or higher) device is required to manage notification settings.</value>
+  </data>
+  <data name="EmailSection" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="EmailDescription" xml:space="preserve">
+    <value>The reliable baseline channel - reaches you regardless of whether any client app is open. Other channels (Web Push, MAUI toast) are planned but not yet built.</value>
+  </data>
+  <data name="EnableEmailNotifications" xml:space="preserve">
+    <value>Enable email notifications</value>
+  </data>
+  <data name="LabelSmtpHost" xml:space="preserve">
+    <value>SMTP Host</value>
+  </data>
+  <data name="LabelPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="LabelUseStarttls" xml:space="preserve">
+    <value>Use STARTTLS</value>
+  </data>
+  <data name="LabelSmtpUsername" xml:space="preserve">
+    <value>SMTP Username</value>
+  </data>
+  <data name="LabelSmtpPassword" xml:space="preserve">
+    <value>SMTP Password</value>
+  </data>
+  <data name="PlaceholderPassword" xml:space="preserve">
+    <value>(unchanged)</value>
+  </data>
+  <data name="LabelFromAddress" xml:space="preserve">
+    <value>From Address</value>
+  </data>
+  <data name="LabelNotifyAddress" xml:space="preserve">
+    <value>Notify This Address</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="SendTestEmailButton" xml:space="preserve">
+    <value>Send Test Email</value>
+  </data>
+  <data name="SendingTestButton" xml:space="preserve">
+    <value>Sending...</value>
+  </data>
+  <data name="UrgentEventOverrides" xml:space="preserve">
+    <value>Urgent Event Overrides</value>
+  </data>
+  <data name="UrgencyDescription" xml:space="preserve">
+    <value>Every security event type ships with a reviewed default urgency. Override one below if it should (or shouldn't) trigger a notification differently than the default.</value>
+  </data>
+  <data name="NoEventTypes" xml:space="preserve">
+    <value>No event types found.</value>
+  </data>
+  <data name="ColEventType" xml:space="preserve">
+    <value>Event Type</value>
+  </data>
+  <data name="ColDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="ColEffective" xml:space="preserve">
+    <value>Effective</value>
+  </data>
+  <data name="Urgent" xml:space="preserve">
+    <value>Urgent</value>
+  </data>
+  <data name="Routine" xml:space="preserve">
+    <value>Routine</value>
+  </data>
+  <data name="ResetToDefault" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="NotAuthorizedToView" xml:space="preserve">
+    <value>Not authorized to view notification settings.</value>
+  </data>
+  <data name="FailedToLoadSettings" xml:space="preserve">
+    <value>Failed to load notification settings: {0}</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="TestEmailSent" xml:space="preserve">
+    <value>Test email sent.</value>
+  </data>
+  <data name="TestEmailFailed" xml:space="preserve">
+    <value>Test email failed: {0}</value>
+  </data>
+  <data name="FailedToUpdateOverride" xml:space="preserve">
+    <value>Failed to update override: {0}</value>
+  </data>
+  <data name="FailedToClearOverride" xml:space="preserve">
+    <value>Failed to clear override: {0}</value>
+  </data>
+</root>

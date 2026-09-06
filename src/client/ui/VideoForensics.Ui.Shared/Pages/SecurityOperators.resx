@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Operators</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage operators.</value>
+  </data>
+  <data name="RefreshButton" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="NotAuthorizedMessage" xml:space="preserve">
+    <value>Not authorized. Sign in with your passkey - a Super Admin device signed in via the Local network tier is required to manage operators.</value>
+  </data>
+  <data name="NoOperatorsFound" xml:space="preserve">
+    <value>No operators found.</value>
+  </data>
+  <data name="ColDisplayName" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="ColCreatedAt" xml:space="preserve">
+    <value>Created At (UTC)</value>
+  </data>
+  <data name="ColActive" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="StatusActive" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="StatusInactive" xml:space="preserve">
+    <value>Inactive</value>
+  </data>
+  <data name="DeactivateButton" xml:space="preserve">
+    <value>Deactivate</value>
+  </data>
+  <data name="ReasonPlaceholder" xml:space="preserve">
+    <value>Reason for deactivation</value>
+  </data>
+  <data name="ConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="NotAuthorizedToView" xml:space="preserve">
+    <value>Not authorized to view operators.</value>
+  </data>
+  <data name="FailedToLoad" xml:space="preserve">
+    <value>Failed to load operators: {0}</value>
+  </data>
+  <data name="SignInFirstError" xml:space="preserve">
+    <value>Sign in with your passkey first.</value>
+  </data>
+  <data name="DeactivateFailed1" xml:space="preserve">
+    <value>Deactivate failed: {0}</value>
+  </data>
+  <data name="DeactivateFailed2" xml:space="preserve">
+    <value>Deactivate failed: {0}</value>
+  </data>
+</root>

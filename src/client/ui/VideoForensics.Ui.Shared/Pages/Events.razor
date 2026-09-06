@@ -1,4 +1,5 @@
 @page "/events"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
@@ -13,8 +14,9 @@
 @inject NotificationService NotificationService
 @inject ContextMenuService ContextMenuService
 @inject DialogService DialogService
+@inject IStringLocalizer<Events> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Events</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -22,18 +24,18 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to browse events.</RadzenAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToBrowseEvents"]</RadzenAlert>
 }
 else
 {
     <RadzenStack Gap="0.75rem" class="mb-4">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
             <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
-                TextProperty="Value" ValueProperty="Key" Placeholder="-- Select a device --" Style="min-width: 220px;" />
-            <label>From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
-            <label>To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_onlyUnansweredOrFlagged" /> Show only unanswered/flagged</label>
-            <RadzenButton Text="Load Events" Click="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" />
+                TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectADevice"]" Style="min-width: 220px;" />
+            <label>@L["FromLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
+            <label>@L["ToLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
+            <label><RadzenCheckBox TValue="bool" @bind-Value="_onlyUnansweredOrFlagged" /> @L["ShowOnlyUnansweredOrFlagged"]</label>
+            <RadzenButton Text="@L["LoadEvents"]" Click="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" />
         </RadzenStack>
 
         @if (!string.IsNullOrEmpty(_error))
@@ -44,9 +46,9 @@ else
         @if (_pendingHoldRow is not null || _pendingReleaseRow is not null)
         {
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                <RadzenTextBox @bind-Value="_holdReasonInput" Placeholder="@(_pendingHoldRow is not null ? "Reason for hold" : "Reason for release")" Style="max-width: 260px;" />
-                <RadzenButton Text="Confirm" Click="ConfirmPendingHoldActionAsync" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
-                <RadzenButton Text="Cancel" Click="CancelPendingHoldAction" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" />
+                <RadzenTextBox @bind-Value="_holdReasonInput" Placeholder="@(_pendingHoldRow is not null ? L["ReasonForHold"] : L["ReasonForRelease"])" Style="max-width: 260px;" />
+                <RadzenButton Text="@L["Confirm"]" Click="ConfirmPendingHoldActionAsync" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
+                <RadzenButton Text="@L["Cancel"]" Click="CancelPendingHoldAction" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" />
             </RadzenStack>
         }
     </RadzenStack>
@@ -55,17 +57,17 @@ else
     {
         @if (_rows.Count == 0)
         {
-            <RadzenText>No events found.</RadzenText>
+            <RadzenText>@L["NoEventsFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_rowsFilter" TItem="EventRow" Data="@_rows" Auto="true" class="mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
-                    <RadzenDataFilterProperty Property="OccurredAtUtc" Title="Occurred At (UTC)" />
-                    <RadzenDataFilterProperty Property="DiscoveredAtUtc" Title="Discovered At (UTC)" />
-                    <RadzenDataFilterProperty Property="DownloadedAtUtc" Title="Downloaded At (UTC)" />
-                    <RadzenDataFilterProperty Property="ProviderEventId" Title="Provider Event ID" />
+                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
+                    <RadzenDataFilterProperty Property="OccurredAtUtc" Title="@L["ColOccurredAt"]" />
+                    <RadzenDataFilterProperty Property="DiscoveredAtUtc" Title="@L["ColDiscoveredAt"]" />
+                    <RadzenDataFilterProperty Property="DownloadedAtUtc" Title="@L["ColDownloadedAt"]" />
+                    <RadzenDataFilterProperty Property="ProviderEventId" Title="@L["ColProviderEventId"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid @ref="_grid" TItem="EventRow" Data="@_rowsFilter?.View" AllowPaging="true" PageSize="20"
@@ -94,31 +96,31 @@ else
                                 Disabled="@(row.MediaItem is null)" Click="@(() => OpenDetailsDialogAsync(row))" />
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.EventType)" Title="Event Type" Width="140px" />
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.OccurredAtUtc)" Title="Occurred At (UTC)" Width="170px" />
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.DiscoveredAtUtc)" Title="Discovered At (UTC)" Width="170px" />
-                    <RadzenDataGridColumn TItem="EventRow" Title="Downloaded At (UTC)" Width="170px">
-                        <Template Context="row">@(row.DownloadedAtUtc?.ToString() ?? "-")</Template>
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.EventType)" Title="@L["ColEventType"]" Width="140px" />
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.OccurredAtUtc)" Title="@L["ColOccurredAt"]" Width="170px" />
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.DiscoveredAtUtc)" Title="@L["ColDiscoveredAt"]" Width="170px" />
+                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColDownloadedAt"]" Width="170px">
+                        <Template Context="row">@(row.DownloadedAtUtc?.ToString() ?? L["NotAvailable"])</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="Media Format" Width="110px">
-                        <Template Context="row">@(row.MediaItem?.MediaFormat ?? "-")</Template>
+                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColMediaFormat"]" Width="110px">
+                        <Template Context="row">@(row.MediaItem?.MediaFormat ?? L["NotAvailable"])</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="Integrity" Width="120px">
+                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColIntegrity"]" Width="120px">
                         <Template Context="row">
                             @{
                                 var (statusText, statusColor) = row.MediaItem is null
-                                    ? ("-", "inherit")
+                                    ? (L["NotAvailable"].Value, "inherit")
                                     : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
                             }
                             <RadzenText TextStyle="TextStyle.Body2" Style="@($"color:{statusColor}")">@statusText</RadzenText>
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="Legal Hold" Width="110px">
+                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColLegalHold"]" Width="110px">
                         <Template Context="row">
-                            @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? "On Hold" : "-")
+                            @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"] : L["NotAvailable"])
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.ProviderEventId)" Title="Provider Event ID" Width="140px" />
+                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.ProviderEventId)" Title="@L["ColProviderEventId"]" Width="140px" />
                 </Columns>
             </RadzenDataGrid>
         }
@@ -231,7 +233,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load events: {ex.Message}";
+            _error = L["FailedToLoadEvents", ex.Message];
         }
         finally
         {
@@ -247,20 +249,20 @@ else
 
         var items = new List<ContextMenuItem>
         {
-            new ContextMenuItem { Text = "View Details", Value = "details" },
-            new ContextMenuItem { Text = "Export Selected", Value = "export", Disabled = !hasMediaItem && (_selectedRows?.Count ?? 0) == 0 },
+            new ContextMenuItem { Text = L["ViewDetails"], Value = "details" },
+            new ContextMenuItem { Text = L["ExportSelected"], Value = "export", Disabled = !hasMediaItem && (_selectedRows?.Count ?? 0) == 0 },
         };
 
         if (hasMediaItem && !hasHold)
         {
-            items.Add(new ContextMenuItem { Text = "Place Legal Hold", Value = "hold" });
+            items.Add(new ContextMenuItem { Text = L["PlaceLegalHold"], Value = "hold" });
         }
         else if (hasMediaItem && hasHold)
         {
-            items.Add(new ContextMenuItem { Text = "Release Legal Hold", Value = "release" });
+            items.Add(new ContextMenuItem { Text = L["ReleaseLegalHold"], Value = "release" });
         }
 
-        items.Add(new ContextMenuItem { Text = "Verify Integrity (device)", Value = "verify", Disabled = !hasMediaItem });
+        items.Add(new ContextMenuItem { Text = L["VerifyIntegrityDevice"], Value = "verify", Disabled = !hasMediaItem });
 
         ContextMenuService.Open(args, items, e => OnContextMenuItemClick(e, row));
     }
@@ -301,7 +303,7 @@ else
 
         if (ids.Count == 0)
         {
-            NotificationService.Notify(NotificationSeverity.Warning, "Nothing to export", "None of the selected rows have downloaded media.");
+            NotificationService.Notify(NotificationSeverity.Warning, L["NothingToExport"], L["NoSelectedRowsHaveMedia"]);
             return;
         }
 
@@ -341,13 +343,13 @@ else
         {
             var hold = await LegalHoldRepository.PlaceAsync(_pendingHoldRow.MediaItem.Id, _holdReasonInput, Environment.UserName, CancellationToken.None);
             _activeHoldsByMediaItemId[_pendingHoldRow.MediaItem.Id] = hold;
-            NotificationService.Notify(NotificationSeverity.Success, "Legal hold placed");
+            NotificationService.Notify(NotificationSeverity.Success, L["LegalHoldPlaced"]);
         }
         else if (_pendingReleaseRow?.MediaItem is not null && _activeHoldsByMediaItemId.TryGetValue(_pendingReleaseRow.MediaItem.Id, out var activeHold))
         {
             await LegalHoldRepository.ReleaseAsync(activeHold.Id, Environment.UserName, _holdReasonInput, CancellationToken.None);
             _activeHoldsByMediaItemId.Remove(_pendingReleaseRow.MediaItem.Id);
-            NotificationService.Notify(NotificationSeverity.Success, "Legal hold released");
+            NotificationService.Notify(NotificationSeverity.Success, L["LegalHoldReleased"]);
         }
 
         CancelPendingHoldAction();
@@ -367,10 +369,10 @@ else
 
     private async Task OpenDetailsDialogAsync(EventRow row)
     {
-        var (statusText, _) = row.MediaItem is null ? ("-", "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
-        var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? "On Hold" : "-";
+        var (statusText, _) = row.MediaItem is null ? (L["NotAvailable"].Value, "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
+        var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"].Value : L["NotAvailable"].Value;
 
-        await DialogService.OpenAsync<EventDetailsDialog>("Event Details", new Dictionary<string, object?>
+        await DialogService.OpenAsync<EventDetailsDialog>(L["EventDetailsTitle"], new Dictionary<string, object?>
         {
             { nameof(EventDetailsDialog.EventType), row.EventType },
             { nameof(EventDetailsDialog.OccurredAtUtc), row.OccurredAtUtc },
@@ -399,25 +401,25 @@ else
         var failed = results.Count(r => r.Status != "verified");
         NotificationService.Notify(
             failed == 0 ? NotificationSeverity.Success : NotificationSeverity.Warning,
-            "Integrity verification complete",
-            $"{results.Count - failed} of {results.Count} file(s) verified for this device.");
+            L["IntegrityVerificationComplete"],
+            L["FilesVerifiedForDevice", results.Count - failed, results.Count]);
     }
 
     // Mirrors ForensicReportRenderer.DetermineMediaStatus (src/client/VideoForensics/ForensicReportRenderer.cs)
-    private static (string Text, string Color) DetermineMediaStatus(Guid mediaId, IReadOnlyList<IntegrityRecord> integrityRecords)
+    private (string Text, string Color) DetermineMediaStatus(Guid mediaId, IReadOnlyList<IntegrityRecord> integrityRecords)
     {
         var record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
 
         if (record == null)
         {
-            return ("Not verified", "goldenrod");
+            return (L["NotVerified"], "goldenrod");
         }
 
         if (!record.Passed)
         {
-            return ("Integrity failed", "red");
+            return (L["IntegrityFailed"], "red");
         }
 
-        return ("Verified", "green");
+        return (L["Verified"], "green");
     }
 }

@@ -1,13 +1,15 @@
 @page "/query"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
+@inject IStringLocalizer<QueryApi> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Query API</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Account Status</RadzenText>
-    <RadzenButton Text="Check Status" Click="RunAccountStatus" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["AccountStatus"]</RadzenText>
+    <RadzenButton Text="@L["CheckStatus"]" Click="RunAccountStatus" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
     @if (_accountStatus is not null)
     {
         <RadzenText Class="mt-2">@_accountStatus</RadzenText>
@@ -15,8 +17,8 @@
 </RadzenCard>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Locations</RadzenText>
-    <RadzenButton Text="Get Locations" Click="RunLocationsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@_locationsLoading" />
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["Locations"]</RadzenText>
+    <RadzenButton Text="@L["GetLocations"]" Click="RunLocationsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@_locationsLoading" />
     @if (!string.IsNullOrEmpty(_locationsError))
     {
         <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_locationsError</RadzenAlert>
@@ -25,22 +27,22 @@
     {
         @if (_locations.Count == 0)
         {
-            <RadzenText Class="mt-2">No locations found.</RadzenText>
+            <RadzenText Class="mt-2">@L["NoLocationsFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_locationsFilter" TItem="Location" Data="@_locations" Auto="true" Class="mt-2 mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="Id" />
-                    <RadzenDataFilterProperty Property="Name" Title="Name" />
-                    <RadzenDataFilterProperty Property="Address" Title="Address" />
+                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
+                    <RadzenDataFilterProperty Property="Name" Title="@L["ColName"]" />
+                    <RadzenDataFilterProperty Property="Address" Title="@L["ColAddress"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="Location" Data="@_locationsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Id)" Title="Id" />
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Name)" Title="Name" />
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Address)" Title="Address" />
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Id)" Title="@L["ColId"]" />
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Name)" Title="@L["ColName"]" />
+                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Address)" Title="@L["ColAddress"]" />
                 </Columns>
             </RadzenDataGrid>
         }
@@ -48,11 +50,11 @@
 </RadzenCard>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Devices</RadzenText>
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["Devices"]</RadzenText>
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <label>Location Id</label>
-        <RadzenTextBox @bind-Value="_locationIdInput" Placeholder="Location Id" Style="max-width: 200px;" />
-        <RadzenButton Text="Get Devices" Click="RunDevicesAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
+        <label>@L["LabelLocationId"]</label>
+        <RadzenTextBox @bind-Value="_locationIdInput" Placeholder="@L["PlaceholderLocationId"]" Style="max-width: 200px;" />
+        <RadzenButton Text="@L["GetDevices"]" Click="RunDevicesAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
     </RadzenStack>
     @if (!string.IsNullOrEmpty(_devicesError))
     {
@@ -62,25 +64,25 @@
     {
         @if (_devices.Count == 0)
         {
-            <RadzenText Class="mt-2">No devices found.</RadzenText>
+            <RadzenText Class="mt-2">@L["NoDevicesFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_devicesFilter" TItem="Device" Data="@_devices" Auto="true" Class="mt-2 mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="Id" />
-                    <RadzenDataFilterProperty Property="Name" Title="Name" />
-                    <RadzenDataFilterProperty Property="Type" Title="Type" />
-                    <RadzenDataFilterProperty Property="IsOnline" Title="Online" />
+                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
+                    <RadzenDataFilterProperty Property="Name" Title="@L["ColName"]" />
+                    <RadzenDataFilterProperty Property="Type" Title="@L["ColType"]" />
+                    <RadzenDataFilterProperty Property="IsOnline" Title="@L["ColOnline"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Id)" Title="Id" />
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Name)" Title="Name" />
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Type)" Title="Type" />
-                    <RadzenDataGridColumn TItem="Device" Title="Online">
-                        <Template Context="row">@(row.IsOnline ? "Yes" : "No")</Template>
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Id)" Title="@L["ColId"]" />
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Name)" Title="@L["ColName"]" />
+                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Type)" Title="@L["ColType"]" />
+                    <RadzenDataGridColumn TItem="Device" Title="@L["ColOnline"]">
+                        <Template Context="row">@(row.IsOnline ? L["Yes"] : L["No"])</Template>
                     </RadzenDataGridColumn>
                 </Columns>
             </RadzenDataGrid>
@@ -89,15 +91,15 @@
 </RadzenCard>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Device Events</RadzenText>
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["DeviceEvents"]</RadzenText>
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <label>Device Id</label>
-        <RadzenTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="Device Id" Style="max-width: 200px;" />
-        <label>From</label>
+        <label>@L["LabelDeviceId"]</label>
+        <RadzenTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" Style="max-width: 200px;" />
+        <label>@L["LabelFrom"]</label>
         <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsFromDate" />
-        <label>To</label>
+        <label>@L["LabelTo"]</label>
         <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsToDate" />
-        <RadzenButton Text="Get Events" Click="RunEventsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
+        <RadzenButton Text="@L["GetEvents"]" Click="RunEventsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
     </RadzenStack>
     @if (!string.IsNullOrEmpty(_eventsError))
     {
@@ -107,24 +109,24 @@
     {
         @if (_events.Count == 0)
         {
-            <RadzenText Class="mt-2">No events found.</RadzenText>
+            <RadzenText Class="mt-2">@L["NoEventsFound"]</RadzenText>
         }
         else
         {
             <RadzenDataFilter @ref="_eventsFilter" TItem="DeviceEvent" Data="@_events" Auto="true" Class="mt-2 mb-2">
                 <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="Id" />
-                    <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
-                    <RadzenDataFilterProperty Property="Timestamp" Title="Timestamp" />
-                    <RadzenDataFilterProperty Property="SnapshotUrl" Title="Snapshot URL" />
+                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
+                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
+                    <RadzenDataFilterProperty Property="Timestamp" Title="@L["ColTimestamp"]" />
+                    <RadzenDataFilterProperty Property="SnapshotUrl" Title="@L["ColSnapshotUrl"]" />
                 </Properties>
             </RadzenDataFilter>
             <RadzenDataGrid TItem="DeviceEvent" Data="@_eventsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
                 <Columns>
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Id)" Title="Id" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.EventType)" Title="Event Type" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Timestamp)" Title="Timestamp" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.SnapshotUrl)" Title="Snapshot URL" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Id)" Title="@L["ColId"]" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.EventType)" Title="@L["ColEventType"]" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Timestamp)" Title="@L["ColTimestamp"]" />
+                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.SnapshotUrl)" Title="@L["ColSnapshotUrl"]" />
                 </Columns>
             </RadzenDataGrid>
         }
@@ -132,11 +134,11 @@
 </RadzenCard>
 
 <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">Device Config</RadzenText>
+    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["DeviceConfig"]</RadzenText>
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <label>Device Id</label>
-        <RadzenTextBox @bind-Value="_configDeviceIdInput" Placeholder="Device Id" Style="max-width: 200px;" />
-        <RadzenButton Text="Get Config" Click="RunDeviceConfigAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+        <label>@L["LabelDeviceId"]</label>
+        <RadzenTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" Style="max-width: 200px;" />
+        <RadzenButton Text="@L["GetConfig"]" Click="RunDeviceConfigAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
     </RadzenStack>
     @if (!string.IsNullOrEmpty(_configError))
     {
@@ -146,15 +148,15 @@
     {
         @if (_config is null)
         {
-            <RadzenText Class="mt-2">No configuration found for this device.</RadzenText>
+            <RadzenText Class="mt-2">@L["NoConfigFound"]</RadzenText>
         }
         else
         {
             <RadzenDataGrid TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Data="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2">
                 <Columns>
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" Title="Motion Detection Enabled" />
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" Title="Motion Sensitivity" />
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" Title="Recording Mode" />
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" Title="@L["ColMotionDetectionEnabled"]" />
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" Title="@L["ColMotionSensitivity"]" />
+                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" Title="@L["ColRecordingMode"]" />
                 </Columns>
             </RadzenDataGrid>
         }
@@ -187,7 +189,7 @@
         }
         catch (Exception ex)
         {
-            _locationsError = $"Failed to get locations: {ex.Message}";
+            _locationsError = L["FailedToGetLocations", ex.Message];
         }
         finally
         {
@@ -213,7 +215,7 @@
         }
         catch (Exception ex)
         {
-            _devicesError = $"Failed to get devices: {ex.Message}";
+            _devicesError = L["FailedToGetDevices", ex.Message];
         }
         finally
         {
@@ -241,7 +243,7 @@
         }
         catch (Exception ex)
         {
-            _eventsError = $"Failed to get events: {ex.Message}";
+            _eventsError = L["FailedToGetEvents", ex.Message];
         }
         finally
         {
@@ -267,7 +269,7 @@
         }
         catch (Exception ex)
         {
-            _configError = $"Failed to get device config: {ex.Message}";
+            _configError = L["FailedToGetConfig", ex.Message];
         }
         finally
         {

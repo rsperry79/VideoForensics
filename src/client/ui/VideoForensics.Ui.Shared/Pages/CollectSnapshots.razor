@@ -1,9 +1,11 @@
 @page "/collect/snapshots"
+@using Microsoft.Extensions.Localization
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<CollectSnapshots> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Collect Snapshots</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -11,13 +13,13 @@
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to collect snapshots.</RadzenAlert>
+    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToCollect"]</RadzenAlert>
 }
 else
 {
     <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
-        <RadzenTextBox @bind-Value="_outputPath" Placeholder="Output Path" Disabled="@_isDownloading" />
-        <RadzenButton Text="Start Download" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+        <RadzenTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
+        <RadzenButton Text="@L["StartDownload"]" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
@@ -26,7 +28,7 @@ else
 
         @if (_downloadCompleted)
         {
-            <RadzenText>@(_downloadSucceeded ? "Snapshot download completed." : "Snapshot download finished with errors.")</RadzenText>
+            <RadzenText>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</RadzenText>
         }
     </RadzenStack>
 
@@ -80,7 +82,7 @@ else
                     _downloadCompleted = true;
                     if (!success)
                     {
-                        _errorMessage = DownloadService.GetLastError() ?? "Download failed.";
+                        _errorMessage = DownloadService.GetLastError() ?? L["DownloadFailedGeneric"].Value;
                     }
                     _isDownloading = false;
                     StateHasChanged();
@@ -90,7 +92,7 @@ else
             {
                 await InvokeAsync(() =>
                 {
-                    _errorMessage = $"Download failed: {ex.Message}";
+                    _errorMessage = L["DownloadFailedWithException", ex.Message].Value;
                     _downloadCompleted = true;
                     _downloadSucceeded = false;
                     _isDownloading = false;

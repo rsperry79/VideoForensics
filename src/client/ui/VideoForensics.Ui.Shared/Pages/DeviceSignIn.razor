@@ -1,22 +1,24 @@
 @page "/device-signin"
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
 @inject WebAuthnClient WebAuthn
 @inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<DeviceSignIn> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Device Sign-In</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Success">Signed in as operator @SessionState.OperatorId (@SessionState.Role).</RadzenAlert>
-    <RadzenButton Text="Sign out" Click="SignOutAsync" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" />
+    <RadzenAlert AlertStyle="AlertStyle.Success">@L["SignedInAlert", SessionState.OperatorId, SessionState.Role]</RadzenAlert>
+    <RadzenButton Text="@L["SignOut"]" Click="SignOutAsync" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" />
 }
 else
 {
-    <RadzenText>Sign in on this already-paired device with your passkey. If this device has not been paired yet, ask a Super Admin to generate a pairing QR code from the Paired Devices screen.</RadzenText>
+    <RadzenText>@L["SignInDescription"]</RadzenText>
 
     <RadzenButton Click="SignInAsync" Disabled="@_isSigningIn" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled">
-        @(_isSigningIn ? "Waiting for passkey..." : "Sign in with Passkey")
+        @(_isSigningIn ? L["SignInWaiting"] : L["SignInButton"])
     </RadzenButton>
 
     @if (_error is not null)
@@ -48,7 +50,7 @@ else
         {
             if (!await WebAuthn.IsAvailableAsync())
             {
-                _error = "This browser does not support WebAuthn/passkeys. Use a modern Chrome, Edge, Firefox, or Safari.";
+                _error = L["WebAuthnNotSupported"];
                 return;
             }
 
@@ -58,7 +60,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Sign-in failed: {ex.Message}";
+            _error = L["SignInFailed", ex.Message];
         }
         finally
         {

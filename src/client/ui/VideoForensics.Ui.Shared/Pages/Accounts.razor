@@ -1,11 +1,13 @@
 @page "/accounts"
+@using Microsoft.Extensions.Localization
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAuthService AuthService
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
+@inject IStringLocalizer<Accounts> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Accounts</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -20,41 +22,41 @@ else
 
     @if (_rows.Count == 0)
     {
-        <RadzenText>No accounts linked yet.</RadzenText>
+        <RadzenText>@L["NoAccountsLinked"]</RadzenText>
     }
     else
     {
         <RadzenDataFilter @ref="_rowsFilter" TItem="AccountRow" Data="@_rows" Auto="true" class="mb-2">
             <Properties>
-                <RadzenDataFilterProperty Property="DisplayName" Title="Display Name" />
-                <RadzenDataFilterProperty Property="Account.ProviderName" Title="Provider" />
-                <RadzenDataFilterProperty Property="Account.LinkedUtc" Title="Linked" />
-                <RadzenDataFilterProperty Property="Account.LastSuccessfulAuthUtc" Title="Last Auth" />
+                <RadzenDataFilterProperty Property="DisplayName" Title="@L["ColDisplayName"]" />
+                <RadzenDataFilterProperty Property="Account.ProviderName" Title="@L["ColProvider"]" />
+                <RadzenDataFilterProperty Property="Account.LinkedUtc" Title="@L["ColLinked"]" />
+                <RadzenDataFilterProperty Property="Account.LastSuccessfulAuthUtc" Title="@L["ColLastAuth"]" />
             </Properties>
         </RadzenDataFilter>
         <RadzenDataGrid TItem="AccountRow" Data="@_rowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
             <Columns>
-                <RadzenDataGridColumn TItem="AccountRow" Property="DisplayName" Title="Display Name" />
-                <RadzenDataGridColumn TItem="AccountRow" Property="Account.ProviderName" Title="Provider" />
-                <RadzenDataGridColumn TItem="AccountRow" Property="Account.LinkedUtc" Title="Linked" />
-                <RadzenDataGridColumn TItem="AccountRow" Title="Last Auth">
+                <RadzenDataGridColumn TItem="AccountRow" Property="DisplayName" Title="@L["ColDisplayName"]" />
+                <RadzenDataGridColumn TItem="AccountRow" Property="Account.ProviderName" Title="@L["ColProvider"]" />
+                <RadzenDataGridColumn TItem="AccountRow" Property="Account.LinkedUtc" Title="@L["ColLinked"]" />
+                <RadzenDataGridColumn TItem="AccountRow" Title="@L["ColLastAuth"]">
                     <Template Context="row">@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</Template>
                 </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="AccountRow" Title="Active" Sortable="false" Filterable="false">
-                    <Template Context="row">@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? "Yes" : "")</Template>
+                <RadzenDataGridColumn TItem="AccountRow" Title="@L["ColActive"]" Sortable="false" Filterable="false">
+                    <Template Context="row">@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? L["Yes"] : "")</Template>
                 </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="AccountRow" Title="" Sortable="false" Filterable="false">
                     <Template Context="row">
-                        <RadzenButton Text="Select" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+                        <RadzenButton Text="@L["Select"]" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
                         @if (_confirmingRemoveId == row.Account.Id)
                         {
-                            <RadzenText>Are you sure?</RadzenText>
-                            <RadzenButton Text="Yes" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
-                            <RadzenButton Text="No" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
+                            <RadzenText>@L["AreYouSure"]</RadzenText>
+                            <RadzenButton Text="@L["Yes"]" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
+                            <RadzenButton Text="@L["No"]" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
                         }
                         else
                         {
-                            <RadzenButton Text="Remove" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
+                            <RadzenButton Text="@L["Remove"]" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
                         }
                     </Template>
                 </RadzenDataGridColumn>
@@ -63,8 +65,8 @@ else
     }
 }
 
-<RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">Add Account</RadzenText>
-<AuthForm IdPrefix="addaccount" SubmitLabel="Add Account" OnAuthenticated="HandleAccountAddedAsync" />
+<RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AddAccount"]</RadzenText>
+<AuthForm IdPrefix="addaccount" SubmitLabel="@L["AddAccount"]" OnAuthenticated="HandleAccountAddedAsync" />
 
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
@@ -126,12 +128,12 @@ else
 
             var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
             _statusMessage = resumed
-                ? "Switched active account and resumed session."
-                : "Switched active account, but the saved session could not be resumed. You may need to sign in again.";
+                ? L["SwitchedAndResumed"]
+                : L["SwitchedNotResumed"];
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Could not switch account: {ex.Message}";
+            _statusMessage = L["CouldNotSwitch", ex.Message];
         }
         finally
         {
@@ -155,11 +157,11 @@ else
             }
 
             await LoadAccountsAsync();
-            _statusMessage = "Account removed.";
+            _statusMessage = L["AccountRemoved"];
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Could not remove account: {ex.Message}";
+            _statusMessage = L["CouldNotRemove", ex.Message];
         }
         finally
         {
@@ -169,7 +171,7 @@ else
 
     private async Task HandleAccountAddedAsync(AuthResult result)
     {
-        _statusMessage = "Account added.";
+        _statusMessage = L["AccountAdded"];
         await LoadAccountsAsync();
     }
 }

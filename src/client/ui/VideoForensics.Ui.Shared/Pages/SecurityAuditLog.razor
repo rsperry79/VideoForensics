@@ -1,15 +1,17 @@
 @page "/settings/security-log"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
+@inject IStringLocalizer<SecurityAuditLog> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">Security Audit Log</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mb-4">
-    <label>Operator Id</label>
-    <RadzenTextBox @bind-Value="_operatorIdInput" Placeholder="(optional) filter by operator id" Style="max-width: 320px;" />
-    <RadzenButton Text="Refresh" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
+    <label>@L["OperatorIdLabel"]</label>
+    <RadzenTextBox @bind-Value="_operatorIdInput" Placeholder="@L["OperatorIdPlaceholder"]" Style="max-width: 320px;" />
+    <RadzenButton Text="@L["RefreshButton"]" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
 </RadzenStack>
 
 @if (_isLoading)
@@ -19,10 +21,7 @@
 else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - an Admin (or higher)
-        device is required to view the security audit log.
-    </RadzenText>
+    <RadzenText>@L["NotAuthorizedMessage"]</RadzenText>
 }
 else if (_loadError is not null)
 {
@@ -30,29 +29,29 @@ else if (_loadError is not null)
 }
 else if (_entries is null || _entries.Count == 0)
 {
-    <RadzenText>No audit log entries found.</RadzenText>
+    <RadzenText>@L["NoEntriesFound"]</RadzenText>
 }
 else
 {
     <RadzenDataFilter @ref="_entriesFilter" TItem="SecurityAuditLogEntry" Data="@_entries.OrderByDescending(e => e.TimestampUtc)" Auto="true" class="mb-2">
         <Properties>
-            <RadzenDataFilterProperty Property="TimestampUtc" Title="Timestamp (UTC)" />
-            <RadzenDataFilterProperty Property="EventType" Title="Event Type" />
-            <RadzenDataFilterProperty Property="OperatorId" Title="Operator Id" />
-            <RadzenDataFilterProperty Property="PairedDeviceId" Title="Paired Device Id" />
-            <RadzenDataFilterProperty Property="SourceIp" Title="Source IP" />
-            <RadzenDataFilterProperty Property="Details" Title="Details" />
+            <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
+            <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
+            <RadzenDataFilterProperty Property="OperatorId" Title="@L["ColOperatorId"]" />
+            <RadzenDataFilterProperty Property="PairedDeviceId" Title="@L["ColPairedDeviceId"]" />
+            <RadzenDataFilterProperty Property="SourceIp" Title="@L["ColSourceIp"]" />
+            <RadzenDataFilterProperty Property="Details" Title="@L["ColDetails"]" />
         </Properties>
     </RadzenDataFilter>
     <RadzenDataGrid TItem="SecurityAuditLogEntry" Data="@_entriesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
         <Columns>
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.TimestampUtc)" Title="Timestamp (UTC)" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.EventType)" Title="Event Type" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.OperatorId)" Title="Operator Id" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.PairedDeviceId)" Title="Paired Device Id" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.SourceIp)" Title="Source IP" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Title="Details">
-                <Template Context="row">@(row.Details ?? "-")</Template>
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.TimestampUtc)" Title="@L["ColTimestamp"]" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.EventType)" Title="@L["ColEventType"]" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.OperatorId)" Title="@L["ColOperatorId"]" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.PairedDeviceId)" Title="@L["ColPairedDeviceId"]" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.SourceIp)" Title="@L["ColSourceIp"]" />
+            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Title="@L["ColDetails"]">
+                <Template Context="row">@(row.Details ?? L["NotAvailable"].Value)</Template>
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
@@ -100,7 +99,7 @@ else
             var response = await client.GetAsync(url);
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view the security audit log.";
+                _authError = L["NotAuthorizedToView"];
                 _entries = null;
                 return;
             }
@@ -110,7 +109,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load security audit log: {ex.Message}";
+            _loadError = L["FailedToLoad", ex.Message];
         }
         finally
         {

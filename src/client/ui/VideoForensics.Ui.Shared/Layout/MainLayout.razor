@@ -1,12 +1,17 @@
 @inherits LayoutComponentBase
-@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
-@inject IProviderAuthService ProviderAuth
 @inject IAppLockPreferencesStore AppLockPreferences
 @inject IBlazorRenderModeProvider RenderModeProvider
+@inject NavigationManager Nav
+@inject ThemePreferenceService ThemeService
+@inject LayoutPreferencesState LayoutPrefs
+@inject IStringLocalizer<SharedResources> L
 
-<RadzenTheme Theme="material" />
+<RadzenTheme Theme="@ThemeService.EffectiveRadzenThemeName" />
 <RadzenComponents @rendermode="RenderModeProvider.InteractiveServerOrNull" />
 
 <RadzenLayout>
@@ -14,89 +19,46 @@
         <div class="app-bar">
             <RadzenText TextStyle="TextStyle.H6" class="app-bar-brand">VideoForensics</RadzenText>
 
-            <RadzenMenu class="app-bar-menu" Responsive="false">
-                <RadzenMenuItem Text="Dashboard" Path="/" Match="NavLinkMatch.All" />
-                <RadzenMenuItem Text="Full Workflow" Path="/workflow" />
+            <div class="top-tabs">
+                @foreach (var group in VisibleGroups)
+                {
+                    <RadzenButton Text="@L[group.Text]" Click="@(() => Nav.NavigateTo(group.Path))"
+                                  ButtonStyle="@(group.Key == ActiveGroup.Key ? ButtonStyle.Primary : ButtonStyle.Base)"
+                                  Variant="Variant.Flat" class="top-tab-button" />
+                }
+            </div>
 
-                <RadzenMenuItem Text="Collect">
-                    <RadzenMenuItem Text="Collect Videos" Path="/collect/videos" />
-                    <RadzenMenuItem Text="Collect Snapshots" Path="/collect/snapshots" />
-                </RadzenMenuItem>
-
-                <RadzenMenuItem Text="Analyze">
-                    <RadzenMenuItem Text="Forensic Reports" Path="/analyze/reports" />
-                    <RadzenMenuItem Text="Signal Anomalies" Path="/analyze/signal-anomalies" />
-                    <RadzenMenuItem Text="Access Control" Path="/analyze/access-control" />
-                    <RadzenMenuItem Text="Chain of Custody" Path="/analyze/chain-of-custody" />
-                    <RadzenMenuItem Text="Validate Evidence" Path="/analyze/validate/integrity" />
-                    <RadzenMenuItem Text="Jamming Analysis" Path="/analyze/jamming" />
-                </RadzenMenuItem>
-
-                <RadzenMenuItem Text="Events" Path="/events" />
-
-                <RadzenMenuItem Text="Devices">
-                    <RadzenMenuItem Text="Device Configuration" Path="/devices/config" />
-                    @if (HasRole(OperatorRole.SuperAdmin))
-                    {
-                        <RadzenMenuItem Text="Paired Devices" Path="/settings/devices" />
-                    }
-                    @if (!SessionState.IsSignedIn)
-                    {
-                        <RadzenMenuItem Text="Device Sign-In" Path="/device-signin" />
-                    }
-                </RadzenMenuItem>
-
-                <RadzenMenuItem Text="Tools">
-                    <RadzenMenuItem Text="Query API" Path="/query" />
-                    <RadzenMenuItem Text="Import / Export" Path="/tools/import-export" />
-                </RadzenMenuItem>
-            </RadzenMenu>
-
-            <RadzenMenu class="app-bar-settings" Responsive="false">
-                <RadzenMenuItem Text="Settings">
-                    <RadzenMenuItem Text="General" Path="/settings" />
-                    <RadzenMenuItem Text="Accounts" Path="/accounts" />
-                    <RadzenMenuItem Text="Infrastructure" Path="/settings/infrastructure" />
-                    @if (HasRole(OperatorRole.SuperAdmin))
-                    {
-                        <RadzenMenuItem Text="Operators" Path="/settings/operators" />
-                        <RadzenMenuItem Text="Network Access" Path="/settings/network" />
-                        <RadzenMenuItem Text="Remote Access" Path="/settings/remote-access" />
-                    }
-                    @if (HasRole(OperatorRole.Admin))
-                    {
-                        <RadzenMenuItem Text="Notifications" Path="/settings/notifications" />
-                        <RadzenMenuItem Text="Security Audit Log" Path="/settings/security-log" />
-                    }
-                    @if (AppLockPreferences.IsSupported)
-                    {
-                        <RadzenMenuItem Text="App Lock" Path="/settings/app-lock" />
-                    }
-                </RadzenMenuItem>
-            </RadzenMenu>
+            <RadzenButton Icon="tune" class="right-panel-toggle" Click="@ToggleRightPanelAsync"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" title="Toggle settings panel" />
         </div>
     </RadzenHeader>
+
     <RadzenBody>
-        <div class="app-body">
-            @Body
+        <div class="docked-body">
+            <div class="left-nav @(LayoutPrefs.LeftNavCollapsed ? "collapsed" : "")">
+                <RadzenButton Icon="@(LayoutPrefs.LeftNavCollapsed ? "chevron_right" : "chevron_left")"
+                              Click="@ToggleLeftNavAsync" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="left-nav-toggle" />
+                @if (!LayoutPrefs.LeftNavCollapsed)
+                {
+                    <div class="left-nav-items">
+                        @foreach (var item in ActiveGroupItems)
+                        {
+                            <RadzenButton Text="@L[item.Text]" Click="@(() => Nav.NavigateTo(item.Path))"
+                                          ButtonStyle="@(PathMatches(item.Path) ? ButtonStyle.Primary : ButtonStyle.Base)"
+                                          Variant="Variant.Flat" class="left-nav-item" />
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="page-body">
+                @Body
+            </div>
+
+            @if (!LayoutPrefs.RightPanelCollapsed)
+            {
+                <RightPanelHost />
+            }
         </div>
     </RadzenBody>
 </RadzenLayout>
-
-@code {
-    private OperatorRole? _role;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // IJSRuntime is unavailable during Blazor's static prerender pass, so the session can
-            // only be resolved once the circuit is connected (same pattern as SecurityOperators.razor).
-            await SessionState.EnsureLoadedAsync();
-            _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
-            StateHasChanged();
-        }
-    }
-
-    private bool HasRole(OperatorRole minimum) => SessionState.IsSignedIn && _role is not null && _role >= minimum;
-}

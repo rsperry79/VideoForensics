@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Import / Export</value>
+  </data>
+  <data name="ExportSectionTitle" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="PrepareForExport" xml:space="preserve">
+    <value>Prepare for Export</value>
+  </data>
+  <data name="Validated" xml:space="preserve">
+    <value>Validated:</value>
+  </data>
+  <data name="Backfilled" xml:space="preserve">
+    <value>Backfilled:</value>
+  </data>
+  <data name="MissingMedia" xml:space="preserve">
+    <value>Missing media:</value>
+  </data>
+  <data name="UnrecoverableSidecars" xml:space="preserve">
+    <value>Unrecoverable sidecars:</value>
+  </data>
+  <data name="OutputDirectoryPlaceholder" xml:space="preserve">
+    <value>Output directory</value>
+  </data>
+  <data name="ExportBackup" xml:space="preserve">
+    <value>Export Backup</value>
+  </data>
+  <data name="BackupCreated" xml:space="preserve">
+    <value>Backup created:</value>
+  </data>
+  <data name="SHA256" xml:space="preserve">
+    <value>SHA-256:</value>
+  </data>
+  <data name="ExportSummary" xml:space="preserve">
+    <value>Accounts: {0}, Locations: {1}, Devices: {2}, Events: {3}, Media items: {4}</value>
+  </data>
+  <data name="ImportSectionTitle" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="BackupZipPathPlaceholder" xml:space="preserve">
+    <value>Backup zip path</value>
+  </data>
+  <data name="MediaRootFolderPlaceholder" xml:space="preserve">
+    <value>Media root folder</value>
+  </data>
+  <data name="Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="ProviderAccountsSummary" xml:space="preserve">
+    <value>Accounts: inserted {0}, skipped existing {1}, orphaned {2}</value>
+  </data>
+  <data name="LocationsSummary" xml:space="preserve">
+    <value>Locations: inserted {0}, skipped existing {1}, orphaned {2}</value>
+  </data>
+  <data name="DevicesSummary" xml:space="preserve">
+    <value>Devices: inserted {0}, skipped existing {1}, orphaned {2}</value>
+  </data>
+  <data name="EventsSummary" xml:space="preserve">
+    <value>Events: inserted {0}, skipped existing {1}, orphaned {2}</value>
+  </data>
+  <data name="DownloadEventsSummary" xml:space="preserve">
+    <value>Download events: inserted {0}, skipped existing {1}, orphaned {2}</value>
+  </data>
+  <data name="MediaItemsSummary" xml:space="preserve">
+    <value>Media items: inserted {0}, skipped existing {1}, orphaned {2}, integrity issues {3}</value>
+  </data>
+</root>

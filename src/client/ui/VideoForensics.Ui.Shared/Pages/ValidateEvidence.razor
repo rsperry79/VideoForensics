@@ -1,12 +1,14 @@
 @page "/analyze/validate/integrity"
 @page "/analyze/validate/reconcile"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @inject IProviderAuthService AuthService
 @inject IEvidenceValidationService EvidenceValidationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
+@inject IStringLocalizer<ValidateEvidence> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Validate Evidence</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (_isLoading)
 {
@@ -15,14 +17,14 @@
 else if (!_isAuthenticated)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info">
-        You are not signed in. <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" /> to validate evidence.
+        @L["NotSignedInMessage"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" />
     </RadzenAlert>
 }
 else
 {
     <RadzenStack Orientation="Orientation.Horizontal" class="mb-4">
-        <RadzenButton Text="Verify Integrity" Click='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "integrity" ? ButtonStyle.Primary : ButtonStyle.Light)' />
-        <RadzenButton Text="Reconcile with Provider" Click='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "reconcile" ? ButtonStyle.Primary : ButtonStyle.Light)' />
+        <RadzenButton Text="@L["VerifyIntegrityTab"]" Click='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "integrity" ? ButtonStyle.Primary : ButtonStyle.Light)' />
+        <RadzenButton Text="@L["ReconcileTab"]" Click='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "reconcile" ? ButtonStyle.Primary : ButtonStyle.Light)' />
     </RadzenStack>
 
     @if (_activeTab == "integrity")
@@ -30,8 +32,8 @@ else
         <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
             <RadzenStack>
                 <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-                    TextProperty="Value" ValueProperty="Key" Placeholder="(All devices)" />
-                <RadzenButton Text="Verify" Click="VerifyIntegrityAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+                    TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesFilter"]" />
+                <RadzenButton Text="@L["VerifyButton"]" Click="VerifyIntegrityAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             </RadzenStack>
         </RadzenCard>
 
@@ -39,22 +41,22 @@ else
         {
             @if (_verificationResults.Count == 0)
             {
-                <RadzenText>No media items found to verify.</RadzenText>
+                <RadzenText>@L["NoMediaFound"]</RadzenText>
             }
             else
             {
                 <RadzenDataFilter @ref="_verificationResultsFilter" TItem="MediaVerificationResult" Data="@_verificationResults" Auto="true" class="mb-2">
                     <Properties>
-                        <RadzenDataFilterProperty Property="FileName" Title="File Name" />
-                        <RadzenDataFilterProperty Property="Status" Title="Status" />
-                        <RadzenDataFilterProperty Property="FailureReason" Title="Failure Reason" />
+                        <RadzenDataFilterProperty Property="FileName" Title="@L["ColFileName"]" />
+                        <RadzenDataFilterProperty Property="Status" Title="@L["ColStatus"]" />
+                        <RadzenDataFilterProperty Property="FailureReason" Title="@L["ColFailureReason"]" />
                     </Properties>
                 </RadzenDataFilter>
                 <RadzenDataGrid TItem="MediaVerificationResult" Data="@_verificationResultsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                     <Columns>
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FileName)" Title="File Name" />
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Title="Status"><Template Context="result"><span style="color:@StatusColor(result.Status)">@result.Status</span></Template></RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FailureReason)" Title="Failure Reason" />
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FileName)" Title="@L["ColFileName"]" />
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Title="@L["ColStatus"]"><Template Context="result"><span style="color:@StatusColor(result.Status)">@result.Status</span></Template></RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FailureReason)" Title="@L["ColFailureReason"]" />
                     </Columns>
                 </RadzenDataGrid>
             }
@@ -65,15 +67,15 @@ else
         <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
             <RadzenStack>
                 <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-                    TextProperty="Value" ValueProperty="Key" Placeholder="(Select a device)" />
-                <label>Provider Device ID</label> <RadzenTextBox @bind-Value="_providerDeviceId" Placeholder="Provider Device ID" />
+                    TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectDeviceFilter"]" />
+                <label>@L["ProviderDeviceIdLabel"]</label> <RadzenTextBox @bind-Value="_providerDeviceId" Placeholder="@L["ProviderDeviceIdPlaceholder"]" />
                 <label>
-                    From: <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
+                    @L["FromLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
                 </label>
                 <label>
-                    To: <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
+                    @L["ToLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
                 </label>
-                <RadzenButton Text="Reconcile" Click="ReconcileAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+                <RadzenButton Text="@L["ReconcileButton"]" Click="ReconcileAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
             </RadzenStack>
         </RadzenCard>
 
@@ -81,26 +83,26 @@ else
         {
             @if (_discrepancies.Count == 0)
             {
-                <RadzenText>No discrepancies found.</RadzenText>
+                <RadzenText>@L["NoDiscrepanciesFound"]</RadzenText>
             }
             else
             {
                 <RadzenDataFilter @ref="_discrepanciesFilter" TItem="ReconciliationDiscrepancy" Data="@_discrepancies" Auto="true" class="mb-2">
                     <Properties>
-                        <RadzenDataFilterProperty Property="Type" Title="Type" />
-                        <RadzenDataFilterProperty Property="ProviderEventId" Title="Provider Event ID" />
-                        <RadzenDataFilterProperty Property="FieldName" Title="Field" />
-                        <RadzenDataFilterProperty Property="StoredValue" Title="Stored Value" />
-                        <RadzenDataFilterProperty Property="ProviderValue" Title="Provider Value" />
+                        <RadzenDataFilterProperty Property="Type" Title="@L["ColType"]" />
+                        <RadzenDataFilterProperty Property="ProviderEventId" Title="@L["ColProviderEventId"]" />
+                        <RadzenDataFilterProperty Property="FieldName" Title="@L["ColField"]" />
+                        <RadzenDataFilterProperty Property="StoredValue" Title="@L["ColStoredValue"]" />
+                        <RadzenDataFilterProperty Property="ProviderValue" Title="@L["ColProviderValue"]" />
                     </Properties>
                 </RadzenDataFilter>
                 <RadzenDataGrid TItem="ReconciliationDiscrepancy" Data="@_discrepanciesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
                     <Columns>
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.Type)" Title="Type" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderEventId)" Title="Provider Event ID" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.FieldName)" Title="Field" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.StoredValue)" Title="Stored Value" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderValue)" Title="Provider Value" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.Type)" Title="@L["ColType"]" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderEventId)" Title="@L["ColProviderEventId"]" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.FieldName)" Title="@L["ColField"]" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.StoredValue)" Title="@L["ColStoredValue"]" />
+                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderValue)" Title="@L["ColProviderValue"]" />
                     </Columns>
                 </RadzenDataGrid>
             }

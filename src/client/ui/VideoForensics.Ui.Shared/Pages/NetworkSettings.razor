@@ -1,24 +1,23 @@
 @page "/settings/network"
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<NetworkSettings> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">Network Access</RadzenText>
+<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
 
 @if (!SessionState.IsSignedIn)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> to manage network access.
+        <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["SignInToManage"]
     </RadzenAlert>
 }
 
 <RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
-    Local is the safest default: the server is only reachable from its own machine, and pairing a
-    new device is impossible from anywhere else. Each wider tier is a deliberate choice - the app
-    never widens its own exposure on its own. Changing this setting takes effect only after the
-    server is restarted (Kestrel's listen addresses are fixed at startup).
+    @L["WarningText"]
 </RadzenAlert>
 
 @if (_isLoading)
@@ -29,8 +28,7 @@ else if (_authError is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
     <RadzenText>
-        Not authorized. <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> - a Super Admin device
-        signed in via the Local network tier is required to manage network access.
+        @L["AuthErrorHeader"] <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["AuthErrorDescription"]
     </RadzenText>
 }
 else if (_loadError is not null)
@@ -43,24 +41,24 @@ else
         <div>
             <div>
                 <input type="radio" id="tierLocal" name="tier" value="local" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Local))" @checked="_selectedTier == NetworkTier.Local" />
-                <label for="tierLocal"><b>Local</b> - reachable only from this machine (loopback). Default.</label>
+                <label for="tierLocal"><b>Local</b> - @L["LocalLabelText"]</label>
             </div>
             <div>
                 <input type="radio" id="tierNetwork" name="tier" value="network" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Network))" @checked="_selectedTier == NetworkTier.Network" />
-                <label for="tierNetwork"><b>Network</b> - reachable on the local network (LAN).</label>
+                <label for="tierNetwork"><b>Network</b> - @L["NetworkLabelText"]</label>
             </div>
             <div>
                 <input type="radio" id="tierInternet" name="tier" value="internet" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Internet))" @checked="_selectedTier == NetworkTier.Internet" />
-                <label for="tierInternet"><b>Internet</b> - reachable on the LAN, and eligible to use the <RadzenLink Path="/settings/remote-access" Text="Remote Access" /> Cloudflare Tunnel for internet reachability.</label>
+                <label for="tierInternet"><b>Internet</b> - @L["InternetLabelText"]</label>
             </div>
         </div>
 
         @if (_pendingTier is not null)
         {
             <RadzenAlert AlertStyle="AlertStyle.Info" class="mt-3">
-                Widening from @_currentTier to @_pendingTier requires a fresh passkey confirmation.
-                <RadzenButton Text="@(_isSaving ? "Confirming..." : "Confirm with Passkey")" Click="ConfirmWidenAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" class="mt-2" />
-                <RadzenButton Text="Cancel" Click="CancelPendingWiden" Variant="Variant.Text" class="mt-2" />
+                @L["ConfirmWiden", _currentTier, _pendingTier]
+                <RadzenButton Text="@(_isSaving ? L["ConfirmingButton"] : L["ConfirmButton"])" Click="ConfirmWidenAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" class="mt-2" />
+                <RadzenButton Text="@L["CancelButton"]" Click="CancelPendingWiden" Variant="Variant.Text" class="mt-2" />
             </RadzenAlert>
         }
 
@@ -111,7 +109,7 @@ else
             var response = await client.GetAsync("api/network-settings");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                _authError = "Not authorized to view network settings.";
+                _authError = L["AuthUnauthorized"];
                 return;
             }
 
@@ -123,7 +121,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Failed to load network settings: {ex.Message}";
+            _loadError = L["LoadFailed", ex.Message];
         }
         finally
         {
@@ -170,7 +168,7 @@ else
         catch (Exception ex)
         {
             _success = false;
-            _message = $"Failed: {ex.Message}";
+            _message = L["SaveFailed", ex.Message];
         }
         finally
         {
@@ -193,19 +191,19 @@ else
             {
                 var body = await SafeReadErrorAsync(response);
                 _success = false;
-                _message = body ?? $"Save failed: {response.StatusCode}";
+                _message = body ?? L["SaveFailed", response.StatusCode.ToString()];
                 _selectedTier = _currentTier;
                 return;
             }
 
             _currentTier = tier;
             _success = true;
-            _message = "Saved. Restart the server for this to take effect.";
+            _message = L["SavedMessage"];
         }
         catch (Exception ex)
         {
             _success = false;
-            _message = $"Save failed: {ex.Message}";
+            _message = L["SaveFailed", ex.Message];
             _selectedTier = _currentTier;
         }
     }

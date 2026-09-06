@@ -115,6 +115,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the provider API error log (status code + truncated response body per failed download attempt).</summary>
         public DbSet<ProviderApiErrorLog> ProviderApiErrorLogs { get; set; }
 
+        /// <summary>Gets or sets the per-operator UI preferences (theme mode, language).</summary>
+        public DbSet<OperatorPreferences> OperatorPreferences { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
