@@ -17,23 +17,22 @@ namespace VideoForensics.Data.Core.Services
             _cacheFreshnessService = cacheFreshnessService;
         }
 
-        public DeviceHealth CreateDeviceHealth(
+        public DeviceHealthSnapshot CreateDeviceHealth(
             Guid deviceId,
             int? batteryPct = null,
             int? rssi = null,
             string? wifiName = null,
             bool? isOnline = null)
         {
-            var health = new DeviceHealth
+            var health = new DeviceHealthSnapshot
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
                 BatteryPercentage = batteryPct.HasValue ? batteryPct.Value : null,
-                WifiSignalRssi = rssi,
+                Rssi = rssi,
                 WifiName = wifiName,
-                IsOnline = isOnline,
-                LastHeartbeatUtc = DateTime.UtcNow,
-                Status = isOnline == true ? "online" : "offline",
+                Connected = isOnline,
+                CapturedAtUtc = DateTime.UtcNow,
             };
 
             _ = _cacheFreshnessService.MarkSynced(health);

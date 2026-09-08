@@ -166,20 +166,6 @@ namespace VideoForensics.Data.Database.Tests
             };
         }
 
-        public static Annotation BuildAnnotation(string? entityType = null, Guid? entityId = null, string? key = null, string? value = null)
-        {
-            return new Annotation
-            {
-                Id = Guid.NewGuid(),
-                EntityType = entityType ?? "MediaItem",
-                EntityId = entityId ?? Guid.NewGuid(),
-                Source = "test",
-                Key = key ?? "testKey",
-                Value = value ?? "testValue",
-                CreatedAtUtc = DateTime.UtcNow
-            };
-        }
-
         public static ProviderReconciliationRecord BuildProviderReconciliationRecord(Guid? deviceId = null, string? providerEventId = null)
         {
             return new ProviderReconciliationRecord

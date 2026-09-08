@@ -241,14 +241,14 @@ namespace VideoForensics.Data.Database.Repositories
                 IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, fromUtc, toUtc, ct);
                 foreach (AnomalousGap gap in gaps)
                 {
-                    DeviceHealth? health = await db.DeviceHealthRecords
+                    DeviceHealthSnapshot? health = await db.DeviceHealthSnapshots
                         .Where(h => h.DeviceId == device.Id &&
-                                    h.LastHeartbeatUtc >= gap.StartUtc &&
-                                    h.LastHeartbeatUtc <= gap.EndUtc)
+                                    h.CapturedAtUtc >= gap.StartUtc &&
+                                    h.CapturedAtUtc <= gap.EndUtc)
                         .FirstOrDefaultAsync(ct);
 
                     var failureType = "Unknown";
-                    if (health?.IsOnline == false)
+                    if (health?.Connected == false)
                     {
                         failureType = "DeviceOffline";
                     }
@@ -256,7 +256,7 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         failureType = "LowBattery";
                     }
-                    else if (health?.WifiSignalRssi < -80)
+                    else if (health?.Rssi < -80)
                     {
                         failureType = "NoConnectivity";
                     }
@@ -269,7 +269,7 @@ namespace VideoForensics.Data.Database.Repositories
                         RecoveryAtUtc = gap.EndUtc,
                         DurationMinutes = gap.DurationMinutes,
                         FailureType = failureType,
-                        Evidence = health != null ? $"Battery={health.BatteryPercentage}% RSSI={health.WifiSignalRssi}" : "Unknown"
+                        Evidence = health != null ? $"Battery={health.BatteryPercentage}% RSSI={health.Rssi}" : "Unknown"
                     });
                 }
             }
