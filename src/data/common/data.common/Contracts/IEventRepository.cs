@@ -14,6 +14,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Upserts (inserts or updates) an event by device ID and provider event ID.</summary>
         Task<Event> UpsertAsync(Event @event, CancellationToken ct);
 
+        /// <summary>Creates a new event in the database.</summary>
+        Task<Event> CreateAsync(Event @event, CancellationToken ct);
+
+        /// <summary>Updates an existing event's metadata (EventType, OccurredAtUtc, SnapshotUrl).</summary>
+        Task UpdateAsync(Event @event, CancellationToken ct);
+
         /// <summary>Lists events for a device within a date range.</summary>
         Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 

@@ -247,6 +247,29 @@ namespace VideoForensics.Client.Core.Services
                         discrepancies.Count(d => d.Type == DiscrepancyType.NewEventFoundOnProvider));
                 }
 
+                // Auto-fix discrepancies: backfill missing events and update changed metadata
+                if (discrepancies.Count > 0)
+                {
+                    _logger.LogInformation("Starting auto-fix of {Count} discrepancies", discrepancies.Count);
+
+                    var fixResult = await _reconciliationService.AutoFixDiscrepanciesAsync(
+                        deviceId,
+                        discrepancies,
+                        async (providerDeviceId, from, to, cancellationToken) =>
+                            await _eventAndConfigService.GetEventsAsync(providerDeviceId, from, to, null, cancellationToken),
+                        ct);
+
+                    _logger.LogInformation(
+                        "Auto-fix completed: {Inserted} new events inserted, {Updated} metadata updated, {Failed} failed",
+                        fixResult.NewEventsInserted, fixResult.MetadataUpdated, fixResult.Failed);
+
+                    if (fixResult.Failed > 0)
+                    {
+                        _logger.LogWarning("Auto-fix had {FailureCount} failures: {Details}",
+                            fixResult.Failed, string.Join("; ", fixResult.ErrorDetails));
+                    }
+                }
+
                 // Record the reconciliation run (persists discrepancies and logs a summary)
                 await _reconciliationService.RecordReconciliationRunAsync(deviceId, discrepancies, ct);
 
