@@ -52,6 +52,13 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - **Input validation** at API boundaries only
 - **No plain-text passwords** — use provider APIs or hash + salt
 
+## Data Requirements
+
+- **All data from provider APIs must be recorded in the database.** Do not rely on JSON blobs or ephemeral storage. Provider responses must be parsed and stored in proper database columns/tables with appropriate schema. Raw JSON is only acceptable for metadata that doesn't fit the schema or for audit trail purposes.
+- **No unstructured JSON in core domain tables** — events, devices, locations, and other business entities must have structured schemas. JSON should be limited to optional metadata fields (e.g., `MetadataJson` for provider-specific data that can't be schema-normalized).
+- **Eliminate data duplication** — do not scope entities unnecessarily to provider accounts if they represent globally unique provider resources (e.g., ProviderLocationId is globally unique per provider, not per account). Use proper normalization and junction tables for multi-account sharing.
+- **Design the schema first** — if you're storing JSON because the schema is incomplete, fix the schema instead. Every provider API response field should have a home in the database.
+
 ## Testing
 
 - Location: `<project>/tests/<Feature>Tests.cs` (sibling `tests/` project next to the implementation)
