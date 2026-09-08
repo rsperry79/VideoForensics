@@ -38,5 +38,11 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Gets the export record repository.</summary>
         IExportRecordRepository ExportRecords { get; }
+
+        /// <summary>Gets the access audit log repository (compliance: evidence access tracking).</summary>
+        IAccessAuditLogRepository AccessAuditLogs { get; }
+
+        /// <summary>Gets the export audit record repository (compliance: export operation tracking).</summary>
+        IExportAuditRecordRepository ExportAuditRecords { get; }
     }
 }

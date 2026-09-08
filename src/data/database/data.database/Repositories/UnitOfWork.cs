@@ -80,6 +80,8 @@ namespace VideoForensics.Data.Database.Repositories
         public IDeviceConfigRepository DeviceConfig => new UnitOfWorkDeviceConfigRepository(_db, _logger);
         public IProviderReconciliationRepository ProviderReconciliation => new UnitOfWorkProviderReconciliationRepository(_db, _logger);
         public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
+        public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
+        public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
     }
 
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
@@ -763,6 +765,160 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<IReadOnlyList<ExportRecord>> ListAsync(CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<ExportRecord>)_db.ExportRecords.AsNoTracking().ToList());
+        }
+    }
+
+    internal class UnitOfWorkAccessAuditLogRepository : IAccessAuditLogRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkAccessAuditLogRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        public Task<AccessAuditLogEntity> RecordAccessAsync(
+            Guid evidenceId,
+            string userId,
+            string action,
+            string ipAddress,
+            string purpose,
+            CancellationToken ct)
+        {
+            var entry = new AccessAuditLogEntity
+            {
+                Id = Guid.NewGuid(),
+                EvidenceId = evidenceId,
+                UserId = userId,
+                Action = action,
+                IpAddress = ipAddress,
+                Purpose = purpose,
+                AccessedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _ = _db.AccessAuditLogs.Add(entry);
+            return Task.FromResult(entry);
+        }
+
+        public Task<AccessAuditLogEntity?> GetAsync(Guid logId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.AccessAuditLogs.AsNoTracking().FirstOrDefault(l => l.Id == logId));
+        }
+
+        public Task<IReadOnlyList<AccessAuditLogEntity>> GetForEvidenceAsync(Guid evidenceId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
+                .Where(l => l.EvidenceId == evidenceId)
+                .OrderByDescending(l => l.AccessedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<AccessAuditLogEntity>> GetByUserAsync(string userId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
+                .Where(l => l.UserId == userId)
+                .OrderByDescending(l => l.AccessedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<AccessAuditLogEntity>> GetByDateRangeAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
+                .Where(l => l.AccessedAtUtc >= fromUtc && l.AccessedAtUtc <= toUtc)
+                .OrderByDescending(l => l.AccessedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<AccessAuditLogEntity>> ListAsync(int skip = 0, int take = 1000, CancellationToken ct = default)
+        {
+            return Task.FromResult((IReadOnlyList<AccessAuditLogEntity>)_db.AccessAuditLogs.AsNoTracking()
+                .OrderByDescending(l => l.AccessedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .ToList());
+        }
+    }
+
+    internal class UnitOfWorkExportAuditRecordRepository : IExportAuditRecordRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkExportAuditRecordRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        public Task<ExportAuditRecordEntity> RecordExportAsync(
+            Guid locationId,
+            string exportedBy,
+            int eventsExported,
+            string exportFormat,
+            string purpose,
+            CancellationToken ct)
+        {
+            var record = new ExportAuditRecordEntity
+            {
+                Id = Guid.NewGuid(),
+                LocationId = locationId,
+                ExportedBy = exportedBy,
+                EventsExported = eventsExported,
+                ExportFormat = exportFormat,
+                Purpose = purpose,
+                ExportedAtUtc = DateTime.UtcNow
+            };
+            _ = _db.ExportAuditRecords.Add(record);
+            return Task.FromResult(record);
+        }
+
+        public Task<ExportAuditRecordEntity?> GetAsync(Guid recordId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.ExportAuditRecords.AsNoTracking().FirstOrDefault(r => r.Id == recordId));
+        }
+
+        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
+                .Where(r => r.LocationId == locationId)
+                .OrderByDescending(r => r.ExportedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetByUserAsync(string userId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
+                .Where(r => r.ExportedBy == userId)
+                .OrderByDescending(r => r.ExportedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<ExportAuditRecordEntity>> GetByDateRangeAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
+                .Where(r => r.ExportedAtUtc >= fromUtc && r.ExportedAtUtc <= toUtc)
+                .OrderByDescending(r => r.ExportedAtUtc)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<ExportAuditRecordEntity>> ListAsync(int skip = 0, int take = 1000, CancellationToken ct = default)
+        {
+            return Task.FromResult((IReadOnlyList<ExportAuditRecordEntity>)_db.ExportAuditRecords.AsNoTracking()
+                .OrderByDescending(r => r.ExportedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .ToList());
+        }
+
+        public Task<ExportStatistics> GetStatisticsAsync(CancellationToken ct)
+        {
+            var records = _db.ExportAuditRecords.AsNoTracking().ToList();
+            var statistics = new ExportStatistics
+            {
+                TotalExports = records.Count,
+                TotalEventsExported = records.Sum(r => r.EventsExported),
+                FirstExportAtUtc = records.Count > 0 ? records.Min(r => r.ExportedAtUtc) : null,
+                LastExportAtUtc = records.Count > 0 ? records.Max(r => r.ExportedAtUtc) : null,
+                UniqueExporters = records.Select(r => r.ExportedBy).Distinct().Count(),
+                ExportsByFormat = records
+                    .GroupBy(r => r.ExportFormat)
+                    .ToDictionary(g => g.Key, g => g.Count())
+            };
+            return Task.FromResult(statistics);
         }
     }
 }
