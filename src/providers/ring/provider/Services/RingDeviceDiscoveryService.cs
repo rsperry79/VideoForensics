@@ -145,6 +145,10 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _cachedLocations = result;
                 _cachedLocationsAt = DateTime.UtcNow;
+
+                // Capture location metadata as audit trail (non-critical, fire-and-forget)
+                _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
+
                 return result;
             }
             catch (Exception ex)
@@ -313,8 +317,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Persist device capabilities to database (non-critical, fire-and-forget)
-                // TODO: Fix type mismatch between Ring device Ids (string) and Guids
-                // _ = PersistDeviceCapabilitiesAsync(allAccountDevices, cancellationToken);
+                _ = Task.Run(() => PersistDeviceCapabilitiesAsync(allAccountDevices, cancellationToken), cancellationToken);
 
                 ReadOnlyCollection<Device> readOnlyDevices = allAccountDevices.AsReadOnly();
                 _cachedAllDevices = (readOnlyDevices, DateTime.UtcNow);
@@ -358,39 +361,141 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        // TODO: Fix type mismatch (Ring Device.Id is string, needs Guid conversion)
-        // private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
-        // {
-        //     if (_capabilitiesRepository == null)
-        //         return;
-        //
-        //     try
-        //     {
-        //         foreach (var device in devices)
-        //         {
-        //             // Skip if already persisted for this device
-        //             var existing = await _capabilitiesRepository.GetByDeviceIdAsync(device.Id, ct);
-        //             if (existing != null)
-        //                 continue;
-        //
-        //             var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
-        //             {
-        //                 Id = Guid.NewGuid(),
-        //                 DeviceId = device.Id,
-        //                 HasAudio = true,
-        //                 HasMotionDetection = true,
-        //                 HasCloudStorage = true
-        //             };
-        //
-        //             await _capabilitiesRepository.AddAsync(caps, ct);
-        //         }
-        //
-        //         _logger.LogDebug("Persisted capabilities for {DeviceCount} devices", devices.Count);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical)");
-        //     }
-        // }
+        /// <summary>
+        /// Captures and persists location metadata as an audit trail of location discovery.
+        /// Runs as a fire-and-forget background task for forensic completeness.
+        /// </summary>
+        private async Task PersistLocationMetadataAsync(IReadOnlyList<Location> locations, CancellationToken ct)
+        {
+            if (_metadataRepository == null)
+            {
+                _logger.LogDebug("Location metadata repository not available; skipping metadata capture");
+                return;
+            }
+
+            try
+            {
+                foreach (var location in locations)
+                {
+                    if (string.IsNullOrEmpty(location.Id))
+                    {
+                        _logger.LogWarning("Location has no ID; skipping metadata capture for this location");
+                        continue;
+                    }
+
+                    // Convert location string ID to deterministic Guid
+                    Guid locationGuid = GuidFromString(location.Id);
+
+                    // Check if metadata already captured for this discovery cycle
+                    var existing = await _metadataRepository.GetByLocationIdAsync(locationGuid, ct);
+                    if (existing != null && existing.CapturedAtUtc > DateTime.UtcNow.AddMinutes(-5))
+                    {
+                        _logger.LogDebug("Location metadata recently captured for location {LocationId}", location.Id);
+                        continue;
+                    }
+
+                    var metadata = new VideoForensics.Data.Common.Entities.LocationMetadata
+                    {
+                        Id = Guid.NewGuid(),
+                        LocationId = locationGuid,
+                        Name = location.Name,
+                        Address = location.Address,
+                        ProviderLocationId = location.Id,
+                        CapturedAtUtc = DateTime.UtcNow,
+                        Source = "Ring API Discovery"
+                    };
+
+                    await _metadataRepository.AddAsync(metadata, ct);
+                    _logger.LogDebug("Captured metadata for location {LocationId} ({LocationName})", location.Id, location.Name);
+                }
+
+                _logger.LogDebug("Location metadata capture completed for {LocationCount} location(s)", locations.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Skipping location metadata capture (non-critical operation failed)");
+            }
+        }
+
+        /// <summary>
+        /// Persists device capabilities for all devices discovered from Ring API.
+        /// Runs as a fire-and-forget background task since it's non-critical infrastructure.
+        /// Note: Ring device IDs are strings; we use a deterministic Guid hash for persistence.
+        /// </summary>
+        private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
+        {
+            if (_capabilitiesRepository == null)
+            {
+                _logger.LogDebug("Device capabilities repository not available; skipping persistence");
+                return;
+            }
+
+            try
+            {
+                foreach (var device in devices)
+                {
+                    if (string.IsNullOrEmpty(device.Id))
+                    {
+                        _logger.LogWarning("Device has no ID; skipping capability persistence for this device");
+                        continue;
+                    }
+
+                    // Convert Ring string device ID to a deterministic Guid using namespace hashing
+                    // This ensures the same device ID always maps to the same Guid across runs
+                    Guid deviceGuid = GuidFromString(device.Id);
+
+                    // Skip if already persisted for this device
+                    var existing = await _capabilitiesRepository.GetByDeviceIdAsync(deviceGuid, ct);
+                    if (existing != null)
+                    {
+                        _logger.LogDebug("Device capabilities already persisted for device {DeviceId}", device.Id);
+                        continue;
+                    }
+
+                    var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceGuid,
+                        HasAudio = true,
+                        HasMotionDetection = true,
+                        HasCloudStorage = true
+                    };
+
+                    await _capabilitiesRepository.AddAsync(caps, ct);
+                    _logger.LogDebug("Persisted capabilities for device {DeviceId} ({DeviceName})", device.Id, device.Name);
+                }
+
+                _logger.LogDebug("Device capabilities persistence completed for {DeviceCount} device(s)", devices.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical operation failed)");
+            }
+        }
+
+        /// <summary>
+        /// Converts a string device ID to a deterministic Guid using namespace-based GUID hashing.
+        /// This ensures consistent Guid generation for the same string across multiple runs.
+        /// </summary>
+        private static Guid GuidFromString(string deviceId)
+        {
+            // Use a fixed namespace GUID for Ring device IDs
+            var ringNamespace = new Guid("3d84d9b5-91d4-4c7f-b6a9-2e7c8f3d1e9a");
+
+            // Create version 5 (SHA-1) GUID from namespace and device ID
+            var bytes = System.Text.Encoding.UTF8.GetBytes(deviceId);
+            using (var sha1 = System.Security.Cryptography.SHA1.Create())
+            {
+                var hash = sha1.ComputeHash(bytes);
+                var guidBytes = new byte[16];
+                Array.Copy(hash, guidBytes, 16);
+
+                // Set version to 5 (SHA-1 based)
+                guidBytes[6] = (byte)((guidBytes[6] & 0x0f) | 0x50);
+                guidBytes[8] = (byte)((guidBytes[8] & 0x3f) | 0x80);
+
+                return new Guid(guidBytes);
+            }
+        }
     }
 }
