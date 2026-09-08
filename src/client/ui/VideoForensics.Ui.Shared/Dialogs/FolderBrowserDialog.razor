@@ -1,0 +1,66 @@
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@using Radzen
+@using Radzen.Blazor
+@inject IDirectoryBrowserService DirectoryBrowser
+@inject IStringLocalizer<SharedResources> L
+
+<div style="min-width: 480px;">
+    <RadzenText TextStyle="TextStyle.Subtitle2" Class="mb-2">@(_currentPath ?? "")</RadzenText>
+
+    <RadzenStack Style="max-height: 320px; overflow-y: auto;">
+        @if (_currentPath is not null)
+        {
+            <RadzenButton Text=".." Click="@NavigateUp" Variant="Variant.Text" ButtonStyle="ButtonStyle.Light" />
+        }
+        @foreach (var entry in _entries)
+        {
+            <RadzenButton Text="@entry.Name" Click="@(() => NavigateInto(entry.FullPath))" Variant="Variant.Text" ButtonStyle="ButtonStyle.Light" />
+        }
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal" Class="mt-4" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="@L["Cancel"]" Click="@(() => OnClosed.InvokeAsync(null))" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="@L["SelectThisFolder"]" Click="@(() => OnClosed.InvokeAsync(_currentPath))" ButtonStyle="ButtonStyle.Primary" Disabled="@(_currentPath is null)" />
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string?> OnClosed { get; set; }
+
+    private string? _currentPath;
+    private IReadOnlyList<DirectoryEntry> _entries = Array.Empty<DirectoryEntry>();
+    private IReadOnlyList<DirectoryEntry> _roots = Array.Empty<DirectoryEntry>();
+
+    protected override void OnInitialized()
+    {
+        _roots = DirectoryBrowser.GetRoots();
+        _entries = _roots;
+    }
+
+    private void NavigateInto(string path)
+    {
+        _currentPath = path;
+        _entries = DirectoryBrowser.GetSubdirectories(path);
+    }
+
+    private void NavigateUp()
+    {
+        if (_currentPath is null)
+        {
+            return;
+        }
+
+        var parent = System.IO.Directory.GetParent(_currentPath);
+        if (parent is null)
+        {
+            _currentPath = null;
+            _entries = _roots;
+        }
+        else
+        {
+            NavigateInto(parent.FullName);
+        }
+    }
+}

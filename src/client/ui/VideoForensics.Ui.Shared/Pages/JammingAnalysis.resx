@@ -92,4 +92,7 @@
   <data name="AnalysisFailed" xml:space="preserve">
     <value>Analysis failed.</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

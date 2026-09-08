@@ -6,115 +6,123 @@
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<RemoteAccess> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (!SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
-        <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["SignInToManage"]
-    </RadzenAlert>
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
 }
 
-<RadzenAlert AlertStyle="AlertStyle.Warning" Class="mb-4">
+<div class="alert alert-warning mb-4">
     @L["WarningText"]
-</RadzenAlert>
+</div>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        @L["AuthErrorHeader"] <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["AuthErrorDescription"]
-    </RadzenText>
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>
+        @L["AuthErrorHeader"] <a href="/device-signin">@L["SignInPrompt"]</a> @L["AuthErrorDescription"]
+    </span>
 }
 else if (_loadError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
+    <div class="alert alert-danger">@_loadError</div>
 }
 else
 {
-    <RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
-        <RadzenButton Text="@L["RefreshButton"]" Click="LoadStatusAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
-    </RadzenStack>
+    <div class="d-flex flex-row gap-2 mb-2">
+        <SfButton Content="@L["RefreshButton"]" OnClick="LoadStatusAsync" Disabled="@_isLoading" CssClass="e-flat" />
+    </div>
 
     @if (!_installed)
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-4">
+        <div class="alert alert-danger mb-4">
             <code>cloudflared</code> @L["CloudflaredNotFoundPrefix"]
-            <RadzenLink Path="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" Text="@L["CloudflaredDownloadLink"]" />
+            <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/">@L["CloudflaredDownloadLink"]</a>
             @L["CloudflaredNotFoundSuffix"]
-        </RadzenAlert>
+        </div>
     }
     else
     {
-        <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["CurrentStatus"]</RadzenText>
-        <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-            <RadzenStack>
-                <RadzenText>
-                    @L["StatusLabel"] <RadzenBadge BadgeStyle="@StatusBadgeStyle" Text="@_status" />
-                    @if (_kind != "None")
+        <h6 class="mt-4 mb-2">@L["CurrentStatus"]</h6>
+        <div class="card mb-4">
+            <div class="card-body pa-4">
+                <div class="d-flex flex-column gap-2">
+                    <span>
+                        @L["StatusLabel"] <span class="badge @GetBadgeClass()">@_status</span>
+                        @if (_kind != "None")
+                        {
+                            <span>(@_kind)</span>
+                        }
+                    </span>
+                    @if (_publicUrl is not null)
                     {
-                        <span>(@_kind)</span>
+                        <span>@L["PublicUrlLabel"] <a href="@_publicUrl">@_publicUrl</a></span>
                     }
-                </RadzenText>
-                @if (_publicUrl is not null)
-                {
-                    <RadzenText>@L["PublicUrlLabel"] <RadzenLink Path="@_publicUrl" Text="@_publicUrl" /></RadzenText>
-                }
-                @if (_tunnelErrorMessage is not null)
-                {
-                    <RadzenText>@_tunnelErrorMessage</RadzenText>
-                }
-                @if (_status is "Running" or "Starting")
-                {
-                    <RadzenButton Text="@L["StopTunnelButton"]" Click="StopAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Style="width: fit-content;" />
-                }
-                @if (_recentLogLines.Count > 0)
-                {
-                    <RadzenText TextStyle="TextStyle.Body2" Class="mt-2">@L["RecentLogLabel"]</RadzenText>
-                    <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
-                }
-            </RadzenStack>
-        </RadzenCard>
+                    @if (_tunnelErrorMessage is not null)
+                    {
+                        <span>@_tunnelErrorMessage</span>
+                    }
+                    @if (_status is "Running" or "Starting")
+                    {
+                        <div style="width: fit-content;">
+                            <SfButton Content="@L["StopTunnelButton"]" OnClick="StopAsync" CssClass="e-danger" />
+                        </div>
+                    }
+                    @if (_recentLogLines.Count > 0)
+                    {
+                        <small class="mt-2">@L["RecentLogLabel"]</small>
+                        <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _recentLogLines)</pre>
+                    }
+                </div>
+            </div>
+        </div>
 
         @if (_status is "Stopped" or "Failed")
         {
-            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["QuickTunnelHeading"]</RadzenText>
-            <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-                <RadzenText Class="mb-2">
-                    @L["QuickTunnelDescription"]
-                </RadzenText>
-                <RadzenButton Text="@(_isActing ? L["StartingQuickTunnelButton"] : L["StartQuickTunnelButton"])" Click="StartQuickTunnelAsync" Disabled="@_isActing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
-            </RadzenCard>
+            <h6 class="mt-4 mb-2">@L["QuickTunnelHeading"]</h6>
+            <div class="card mb-4">
+                <div class="card-body pa-4">
+                    <span class="mb-2 d-block">
+                        @L["QuickTunnelDescription"]
+                    </span>
+                    <SfButton Content="@(_isActing ? L["StartingQuickTunnelButton"] : L["StartQuickTunnelButton"])" OnClick="StartQuickTunnelAsync" Disabled="@_isActing" CssClass="e-primary" />
+                </div>
+            </div>
 
-            <RadzenText TextStyle="TextStyle.H6" Class="mt-4 mb-2">@L["NamedTunnelHeading"]</RadzenText>
-            <RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-                <RadzenText Class="mb-2">
-                    @L["NamedTunnelDescription"]
-                </RadzenText>
-                @if (_namedTunnels.Count == 0)
-                {
-                    <RadzenText TextStyle="TextStyle.Body2">@L["NoNamedTunnels"]</RadzenText>
-                }
-                else
-                {
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                        <label>@L["TunnelLabel"]</label>
-                        <RadzenDropDown TValue="string" @bind-Value="_selectedNamedTunnel" Data="@_namedTunnels" Placeholder="@L["SelectTunnelPlaceholder"]" Style="max-width: 260px;" />
-                        <RadzenButton Text="@(_isActing ? L["StartingNamedTunnelButton"] : L["StartNamedTunnelButton"])" Click="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
-                    </RadzenStack>
-                }
-            </RadzenCard>
+            <h6 class="mt-4 mb-2">@L["NamedTunnelHeading"]</h6>
+            <div class="card mb-4">
+                <div class="card-body pa-4">
+                    <span class="mb-2 d-block">
+                        @L["NamedTunnelDescription"]
+                    </span>
+                    @if (_namedTunnels.Count == 0)
+                    {
+                        <small>@L["NoNamedTunnels"]</small>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-row gap-2 align-items-center">
+                            <label>@L["TunnelLabel"]</label>
+                            <SfDropDownList TValue="string" TItem="string" @bind-Value="_selectedNamedTunnel" DataSource="@_namedTunnels" Placeholder="@L["SelectTunnelPlaceholder"]" Style="max-width: 260px;" />
+                            <SfButton Content="@(_isActing ? L["StartingNamedTunnelButton"] : L["StartNamedTunnelButton"])" OnClick="StartNamedTunnelAsync" Disabled="@(_isActing || _selectedNamedTunnel is null)" CssClass="e-primary" />
+                        </div>
+                    }
+                </div>
+            </div>
         }
     }
 }
 
 @if (_actionError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-4">@_actionError</RadzenAlert>
+    <div class="alert alert-danger mt-4">@_actionError</div>
 }
 
 @code {
@@ -133,12 +141,12 @@ else
     private List<string> _namedTunnels = new();
     private string? _selectedNamedTunnel;
 
-    private BadgeStyle StatusBadgeStyle => _status switch
+    private string GetBadgeClass() => _status switch
     {
-        "Running" => BadgeStyle.Success,
-        "Starting" => BadgeStyle.Info,
-        "Failed" => BadgeStyle.Danger,
-        _ => BadgeStyle.Light
+        "Running" => "bg-success",
+        "Starting" => "bg-info",
+        "Failed" => "bg-danger",
+        _ => "bg-light text-dark"
     };
 
     protected override async Task OnInitializedAsync()

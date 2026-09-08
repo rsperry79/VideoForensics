@@ -24,7 +24,7 @@
     <MauiVersion>10.0.100</MauiVersion>
 
     <!-- Display name -->
-    <ApplicationTitle>VideoForensics</ApplicationTitle>
+    <ApplicationTitle>Video Forensics</ApplicationTitle>
 
     <!-- App Identifier -->
     <ApplicationId>com.dvvictimprotection.videoforensics</ApplicationId>
@@ -51,7 +51,11 @@
          needs 2.1.12 - MSBuild picks 2.1.12 as primary since that's the one actually used for the
          app's real SQLite access; Workspaces' own SQLite-backed cache is never exercised by this
          app, so losing that reference is safe. Same rationale as the NU1608 suppression in
-         VideoForensics.Data.Database.Sqlite.csproj. -->
+         VideoForensics.Data.Database.Sqlite.csproj.
+         PRI249 warnings are from Syncfusion.Blazor.Themes CSS files in wwwroot which have filenames
+         (e.g., bootstrap5.3-dark.css) that the PRI resource compiler misinterprets as resource
+         qualifiers - these are NuGet package files and not part of our source, so the warnings are
+         harmless and are suppressed here. -->
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 

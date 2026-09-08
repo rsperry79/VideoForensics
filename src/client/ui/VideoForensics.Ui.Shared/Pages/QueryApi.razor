@@ -1,167 +1,203 @@
 @page "/query"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
 @inject IStringLocalizer<QueryApi> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["AccountStatus"]</RadzenText>
-    <RadzenButton Text="@L["CheckStatus"]" Click="RunAccountStatus" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small>@L["Locations"]</small>
+        <SfQueryBuilder @ref="_locationsFilter" TValue="Location" Class="mt-2 mb-2">
+            <QueryBuilderColumns>
+                <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
+                <QueryBuilderColumn Field="Name" Label="@L["ColName"]" />
+                <QueryBuilderColumn Field="Address" Label="@L["ColAddress"]" />
+            </QueryBuilderColumns>
+        </SfQueryBuilder>
+        <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyLocationsFilterAsync())" CssClass="e-primary mt-2" />
+    </div>
+
+    <div class="right-panel-section">
+        <small>@L["Devices"]</small>
+        <div class="d-flex flex-column gap-2 mb-2">
+            <div>
+                <label>@L["LabelLocationId"]</label>
+                <SfTextBox @bind-Value="_locationIdInput" Placeholder="@L["PlaceholderLocationId"]" CssClass="w-100" />
+            </div>
+            <SfQueryBuilder @ref="_devicesFilter" TValue="Device" Class="mt-2">
+                <QueryBuilderColumns>
+                    <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
+                    <QueryBuilderColumn Field="Name" Label="@L["ColName"]" />
+                    <QueryBuilderColumn Field="Type" Label="@L["ColType"]" />
+                    <QueryBuilderColumn Field="IsOnline" Label="@L["ColOnline"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                </QueryBuilderColumns>
+            </SfQueryBuilder>
+            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDevicesFilterAsync())" CssClass="e-primary mt-2" />
+        </div>
+    </div>
+
+    <div class="right-panel-section">
+        <small>@L["DeviceEvents"]</small>
+        <div class="d-flex flex-column gap-2 mb-2">
+            <div>
+                <label>@L["LabelDeviceId"]</label>
+                <SfTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" />
+            </div>
+            <div>
+                <label>@L["LabelFrom"]</label>
+                <input type="date" @bind="_eventsFromDate" class="w-100" />
+            </div>
+            <div>
+                <label>@L["LabelTo"]</label>
+                <input type="date" @bind="_eventsToDate" class="w-100" />
+            </div>
+            <SfQueryBuilder @ref="_eventsFilter" TValue="DeviceEvent" Class="mt-2">
+                <QueryBuilderColumns>
+                    <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
+                    <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
+                    <QueryBuilderColumn Field="Timestamp" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    <QueryBuilderColumn Field="SnapshotUrl" Label="@L["ColSnapshotUrl"]" />
+                </QueryBuilderColumns>
+            </SfQueryBuilder>
+            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEventsFilterAsync())" CssClass="e-primary mt-2" />
+        </div>
+    </div>
+</PageRightPanelContent>
+
+<div class="card border rounded pa-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>
+    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatus" CssClass="e-primary" />
     @if (_accountStatus is not null)
     {
-        <RadzenText Class="mt-2">@_accountStatus</RadzenText>
+        <p class="mt-2">@_accountStatus</p>
     }
-</RadzenCard>
+</div>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["Locations"]</RadzenText>
-    <RadzenButton Text="@L["GetLocations"]" Click="RunLocationsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@_locationsLoading" />
+<div class="card border rounded pa-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Locations"]</h5>
+    <SfButton Content="@L["GetLocations"]" OnClick="RunLocationsAsync" CssClass="e-primary" Disabled="@_locationsLoading" />
     @if (!string.IsNullOrEmpty(_locationsError))
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_locationsError</RadzenAlert>
+        <div class="alert alert-danger mt-2">@_locationsError</div>
     }
     @if (_locations is not null)
     {
         @if (_locations.Count == 0)
         {
-            <RadzenText Class="mt-2">@L["NoLocationsFound"]</RadzenText>
+            <p class="mt-2">@L["NoLocationsFound"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_locationsFilter" TItem="Location" Data="@_locations" Auto="true" Class="mt-2 mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
-                    <RadzenDataFilterProperty Property="Name" Title="@L["ColName"]" />
-                    <RadzenDataFilterProperty Property="Address" Title="@L["ColAddress"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="Location" Data="@_locationsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
-                <Columns>
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Id)" Title="@L["ColId"]" />
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Name)" Title="@L["ColName"]" />
-                    <RadzenDataGridColumn TItem="Location" Property="@nameof(Location.Address)" Title="@L["ColAddress"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" Class="mt-2">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" />
+                    <GridColumn Field="@nameof(Location.Name)" HeaderText="@L["ColName"]" />
+                    <GridColumn Field="@nameof(Location.Address)" HeaderText="@L["ColAddress"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
-</RadzenCard>
+</div>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["Devices"]</RadzenText>
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <label>@L["LabelLocationId"]</label>
-        <RadzenTextBox @bind-Value="_locationIdInput" Placeholder="@L["PlaceholderLocationId"]" Style="max-width: 200px;" />
-        <RadzenButton Text="@L["GetDevices"]" Click="RunDevicesAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
-    </RadzenStack>
+<div class="card border rounded pa-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Devices"]</h5>
+    <SfButton Content="@L["GetDevices"]" OnClick="RunDevicesAsync" CssClass="e-primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
     @if (!string.IsNullOrEmpty(_devicesError))
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_devicesError</RadzenAlert>
+        <div class="alert alert-danger mt-2">@_devicesError</div>
     }
     @if (_devices is not null)
     {
         @if (_devices.Count == 0)
         {
-            <RadzenText Class="mt-2">@L["NoDevicesFound"]</RadzenText>
+            <p class="mt-2">@L["NoDevicesFound"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_devicesFilter" TItem="Device" Data="@_devices" Auto="true" Class="mt-2 mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
-                    <RadzenDataFilterProperty Property="Name" Title="@L["ColName"]" />
-                    <RadzenDataFilterProperty Property="Type" Title="@L["ColType"]" />
-                    <RadzenDataFilterProperty Property="IsOnline" Title="@L["ColOnline"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
-                <Columns>
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Id)" Title="@L["ColId"]" />
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Name)" Title="@L["ColName"]" />
-                    <RadzenDataGridColumn TItem="Device" Property="@nameof(Device.Type)" Title="@L["ColType"]" />
-                    <RadzenDataGridColumn TItem="Device" Title="@L["ColOnline"]">
-                        <Template Context="row">@(row.IsOnline ? L["Yes"] : L["No"])</Template>
-                    </RadzenDataGridColumn>
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" Class="mt-2">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" />
+                    <GridColumn Field="@nameof(Device.Name)" HeaderText="@L["ColName"]" />
+                    <GridColumn Field="@nameof(Device.Type)" HeaderText="@L["ColType"]" />
+                    <GridColumn HeaderText="@L["ColOnline"]">
+                        <Template>
+                            @{
+                                var device = (Device)context;
+                                @(device.IsOnline ? L["Yes"] : L["No"])
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
     }
-</RadzenCard>
+</div>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["DeviceEvents"]</RadzenText>
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <label>@L["LabelDeviceId"]</label>
-        <RadzenTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" Style="max-width: 200px;" />
-        <label>@L["LabelFrom"]</label>
-        <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsFromDate" />
-        <label>@L["LabelTo"]</label>
-        <RadzenDatePicker TValue="DateTime" @bind-Value="_eventsToDate" />
-        <RadzenButton Text="@L["GetEvents"]" Click="RunEventsAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
-    </RadzenStack>
+<div class="card border rounded pa-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["DeviceEvents"]</h5>
+    <SfButton Content="@L["GetEvents"]" OnClick="RunEventsAsync" CssClass="e-primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
     @if (!string.IsNullOrEmpty(_eventsError))
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_eventsError</RadzenAlert>
+        <div class="alert alert-danger mt-2">@_eventsError</div>
     }
     @if (_events is not null)
     {
         @if (_events.Count == 0)
         {
-            <RadzenText Class="mt-2">@L["NoEventsFound"]</RadzenText>
+            <p class="mt-2">@L["NoEventsFound"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_eventsFilter" TItem="DeviceEvent" Data="@_events" Auto="true" Class="mt-2 mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="@L["ColId"]" />
-                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
-                    <RadzenDataFilterProperty Property="Timestamp" Title="@L["ColTimestamp"]" />
-                    <RadzenDataFilterProperty Property="SnapshotUrl" Title="@L["ColSnapshotUrl"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="DeviceEvent" Data="@_eventsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true" Class="mt-2">
-                <Columns>
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Id)" Title="@L["ColId"]" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.EventType)" Title="@L["ColEventType"]" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.Timestamp)" Title="@L["ColTimestamp"]" />
-                    <RadzenDataGridColumn TItem="DeviceEvent" Property="@nameof(DeviceEvent.SnapshotUrl)" Title="@L["ColSnapshotUrl"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" Class="mt-2">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" />
+                    <GridColumn Field="@nameof(DeviceEvent.EventType)" HeaderText="@L["ColEventType"]" />
+                    <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" />
+                    <GridColumn Field="@nameof(DeviceEvent.SnapshotUrl)" HeaderText="@L["ColSnapshotUrl"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
-</RadzenCard>
+</div>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mt-4 mb-2">@L["DeviceConfig"]</RadzenText>
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+<div class="card border rounded pa-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["DeviceConfig"]</h5>
+    <div class="d-flex flex-row gap-2 mb-2">
         <label>@L["LabelDeviceId"]</label>
-        <RadzenTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" Style="max-width: 200px;" />
-        <RadzenButton Text="@L["GetConfig"]" Click="RunDeviceConfigAsync" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
-    </RadzenStack>
+        <SfTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" Style="max-width: 200px;" />
+        <SfButton Content="@L["GetConfig"]" OnClick="RunDeviceConfigAsync" CssClass="e-primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+    </div>
     @if (!string.IsNullOrEmpty(_configError))
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_configError</RadzenAlert>
+        <div class="alert alert-danger mt-2">@_configError</div>
     }
     @if (_configLoadedOnce)
     {
         @if (_config is null)
         {
-            <RadzenText Class="mt-2">@L["NoConfigFound"]</RadzenText>
+            <p class="mt-2">@L["NoConfigFound"]</p>
         }
         else
         {
-            <RadzenDataGrid TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Data="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2">
-                <Columns>
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" Title="@L["ColMotionDetectionEnabled"]" />
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" Title="@L["ColMotionSensitivity"]" />
-                    <RadzenDataGridColumn TItem="VideoForensics.Providers.Common.Contracts.DeviceConfig" Property="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" Title="@L["ColRecordingMode"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="VideoForensics.Providers.Common.Contracts.DeviceConfig" DataSource="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2">
+                <GridColumns>
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" HeaderText="@L["ColMotionDetectionEnabled"]" />
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" HeaderText="@L["ColMotionSensitivity"]" />
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" HeaderText="@L["ColRecordingMode"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
-</RadzenCard>
+</div>
 
 @code {
     // Account Status
@@ -176,7 +212,8 @@
     private bool _locationsLoading;
     private string? _locationsError;
     private List<Location>? _locations;
-    private RadzenDataFilter<Location>? _locationsFilter;
+    private SfQueryBuilder<Location>? _locationsFilter;
+    private IEnumerable<Location> _filteredLocations = new List<Location>();
 
     private async Task RunLocationsAsync()
     {
@@ -186,6 +223,7 @@
         {
             var locations = await DeviceDiscoveryService.GetLocationsAsync(CancellationToken.None);
             _locations = locations.ToList();
+            _filteredLocations = _locations;
         }
         catch (Exception ex)
         {
@@ -197,12 +235,22 @@
         }
     }
 
+    private async Task ApplyLocationsFilterAsync()
+    {
+        if (_locationsFilter is not null)
+        {
+            var result = await _locationsFilter.GetFilteredRecordsAsync();
+            _filteredLocations = result?.ToList() ?? (_locations ?? new());
+        }
+    }
+
     // Devices
     private string _locationIdInput = string.Empty;
     private bool _devicesLoading;
     private string? _devicesError;
     private List<Device>? _devices;
-    private RadzenDataFilter<Device>? _devicesFilter;
+    private SfQueryBuilder<Device>? _devicesFilter;
+    private IEnumerable<Device> _filteredDevices = new List<Device>();
 
     private async Task RunDevicesAsync()
     {
@@ -212,6 +260,7 @@
         {
             var devices = await DeviceDiscoveryService.GetDevicesAsync(_locationIdInput, CancellationToken.None);
             _devices = devices.ToList();
+            _filteredDevices = _devices;
         }
         catch (Exception ex)
         {
@@ -223,6 +272,15 @@
         }
     }
 
+    private async Task ApplyDevicesFilterAsync()
+    {
+        if (_devicesFilter is not null)
+        {
+            var result = await _devicesFilter.GetFilteredRecordsAsync();
+            _filteredDevices = result?.ToList() ?? (_devices ?? new());
+        }
+    }
+
     // Device Events
     private string _eventsDeviceIdInput = string.Empty;
     private DateTime _eventsFromDate = DateTime.Today.AddDays(-90);
@@ -230,7 +288,8 @@
     private bool _eventsLoading;
     private string? _eventsError;
     private List<DeviceEvent>? _events;
-    private RadzenDataFilter<DeviceEvent>? _eventsFilter;
+    private SfQueryBuilder<DeviceEvent>? _eventsFilter;
+    private IEnumerable<DeviceEvent> _filteredEvents = new List<DeviceEvent>();
 
     private async Task RunEventsAsync()
     {
@@ -240,6 +299,7 @@
         {
             var events = await EventAndConfigService.GetEventsAsync(_eventsDeviceIdInput, _eventsFromDate, _eventsToDate, null, CancellationToken.None);
             _events = events.ToList();
+            _filteredEvents = _events;
         }
         catch (Exception ex)
         {
@@ -248,6 +308,15 @@
         finally
         {
             _eventsLoading = false;
+        }
+    }
+
+    private async Task ApplyEventsFilterAsync()
+    {
+        if (_eventsFilter is not null)
+        {
+            var result = await _eventsFilter.GetFilteredRecordsAsync();
+            _filteredEvents = result?.ToList() ?? (_events ?? new());
         }
     }
 

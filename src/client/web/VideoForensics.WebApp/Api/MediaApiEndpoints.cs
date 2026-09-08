@@ -1,3 +1,4 @@
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -20,18 +21,20 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapMediaApiEndpoints(this WebApplication app)
         {
-            _ = app.MapGet("/api/devices", async (IDeviceRepository devices, CancellationToken ct) =>
-                Results.Ok(await devices.ListAsync(ct))).RequireRateLimiting("media");
+            var group = app.MapGroup("/api/v1");
 
-            _ = app.MapGet("/api/media-items", async (Guid? deviceId, IMediaItemRepository mediaItems, CancellationToken ct) =>
+            _ = group.MapGet("/devices", async (IDeviceRepository devices, CancellationToken ct) =>
+                Results.Ok((await devices.ListAsync(ct)).Select(x => x.ToDto()))).RequireRateLimiting("media");
+
+            _ = group.MapGet("/media-items", async (Guid? deviceId, IMediaItemRepository mediaItems, CancellationToken ct) =>
             {
                 IReadOnlyList<MediaItem> items = deviceId.HasValue
                     ? await mediaItems.GetByDeviceIdAsync(deviceId.Value, ct)
                     : await mediaItems.ListAsync(ct);
-                return Results.Ok(items);
+                return Results.Ok(items.Select(x => x.ToDto()));
             }).RequireRateLimiting("media");
 
-            _ = app.MapGet("/api/integrity-records", async (string mediaItemIds, IIntegrityRecordRepository integrityRecords, CancellationToken ct) =>
+            _ = group.MapGet("/integrity-records", async (string mediaItemIds, IIntegrityRecordRepository integrityRecords, CancellationToken ct) =>
             {
                 var ids = mediaItemIds
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -41,10 +44,10 @@ namespace VideoForensics.WebApp.Api
                     .ToList();
 
                 IReadOnlyList<IntegrityRecord> records = await integrityRecords.GetLatestByMediaItemIdsAsync(ids, ct);
-                return Results.Ok(records);
+                return Results.Ok(records.Select(x => x.ToDto()));
             }).RequireRateLimiting("media");
 
-            _ = app.MapGet("/api/media/{id:guid}/content", async (Guid id, IMediaItemRepository mediaItems, IMediaStorageProvider storage, ILogger<Program> logger, CancellationToken ct) =>
+            _ = group.MapGet("/media/{id:guid}/content", async (Guid id, IMediaItemRepository mediaItems, IMediaStorageProvider storage, ILogger<Program> logger, CancellationToken ct) =>
             {
                 MediaItem? item = await mediaItems.GetAsync(id, ct);
                 if (item == null)

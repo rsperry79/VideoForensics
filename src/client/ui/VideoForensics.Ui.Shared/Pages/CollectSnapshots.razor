@@ -5,32 +5,32 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<CollectSnapshots> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToCollect"]</RadzenAlert>
+    <div class="alert alert-warning">@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToCollect"]</div>
 }
 else
 {
-    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
-        <RadzenTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
-        <RadzenButton Text="@L["StartDownload"]" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    <div class="d-flex flex-column gap-2 mb-4" style="gap: 0.5rem !important;">
+        <SfTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
+        <SfButton Content="@L["StartDownload"]" OnClick="StartDownloadAsync" Disabled="@_isDownloading" CssClass="e-primary" />
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@_errorMessage</RadzenAlert>
+            <div class="alert alert-danger">@_errorMessage</div>
         }
 
         @if (_downloadCompleted)
         {
-            <RadzenText>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</RadzenText>
+            <p>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</p>
         }
-    </RadzenStack>
+    </div>
 
     <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
 }

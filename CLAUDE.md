@@ -79,7 +79,20 @@ Respond to the user with **terse, direct output**:
 
 Do not read or explore files in the `docs/` directory unless explicitly asked by the user. (There is currently no `archive/` directory in this repo — if one is added later, the same rule applies to it.)
 
+## Client Requirements (client/server split)
+
+Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared`, `VideoForensics.Mcp`, or an MCP bridge process. Does not apply to `VideoForensics.WebApp` (it *is* the server). See the client/server split plan for full milestone context if one is active.
+
+- **No direct provider/data access from any client host.** A "client host" is MAUI, `VideoForensics.Mcp`, and any MCP bridge process. None of them may reference `providers-common`, `providers-core`, any concrete provider (Ring, etc.), or `data.common`/`data.core`/`data.database*` in their `.csproj`. They may reference `VideoForensics.Api.Contracts` (DTOs) and `VideoForensics.Hosting` (for `AddVideoForensicsClientApi` and its `Remote*` implementations) only.
+- **Interface names don't change.** `VideoForensics.Ui.Shared`'s `@inject IProviderAuthService`, `@inject IDeviceRepository`, etc. stay exactly as-is — a `Remote*` class implements the same interface a local implementation did, so DI substitution is silent and no `.razor` file needs editing for a client/server cutover.
+- **All wire calls use DTOs from `VideoForensics.Api.Contracts` and hit versioned `/api/v1/...` routes**, never a bare domain entity and never an unversioned route.
+- **Every `Remote*`/HTTP-backed class takes and forwards `CancellationToken`**, matching the interface signature it implements — no swallowing it.
+- **Auth:** every outgoing call carries the paired-device credential (bearer token), the same way as any existing `Remote*` repository — don't add a new auth mechanism per class.
+- **Local vs. Internet server address is never a client-editable setting** — only a cached Internet URL is stored client-side; the local address is always discovered fresh (e.g. via mDNS), never persisted.
+- **No stdio MCP process may bootstrap `AddVideoForensicsDataLayer()`/`AddVideoForensicsServerCore()`.** If a client-side MCP task seems to need one of those calls to work, that's a sign the task is being done wrong, not a sign to add the call back.
+- **Mapping naming convention:** DTO mapping extension methods are always `entity.ToDto()` and `dto.ToDomain()` — not `FromDto`, not a mix.
+
 ## Execution workflow
 
 - **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.
-- **Before committing or pushing, always:** do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change), then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures. This gate runs after feature-specific build+test verification already passed, and applies to every plan, not just large ones.
+- **Before committing or pushing, always:** ask the user for confirmation before running the clean-rebuild-and-test gate (it's slow and touches the whole solution, not just the current change). Once confirmed, do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change), then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures. This gate runs after feature-specific build+test verification already passed, and applies to every plan, not just large ones.

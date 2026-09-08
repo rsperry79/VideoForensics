@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -37,19 +38,19 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync("/api/media-items", ct);
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items", ct);
             _ = response.EnsureSuccessStatusCode();
-            List<MediaItem>? items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
-            return items ?? [];
+            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync($"/api/media-items?deviceId={deviceId}", ct);
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}", ct);
             _ = response.EnsureSuccessStatusCode();
-            List<MediaItem>? items = await response.Content.ReadFromJsonAsync<List<MediaItem>>(JsonOptions, ct);
-            return items ?? [];
+            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
         /// <inheritdoc />

@@ -3,94 +3,139 @@
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Buttons
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<AccessControl> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewAccessControl"]</RadzenAlert>
+    <div class="alert alert-warning">@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewAccessControl"]</div>
 }
 else
 {
-    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
-        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesPlaceholder"]" />
-        <label>@L["FromLabel"] <input type="date" @bind="_fromDate" /></label>
-        <label>@L["ToLabel"] <input type="date" @bind="_toDate" /></label>
-        <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-    </RadzenStack>
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <small>@L["FiltersLabel"]</small>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions"
+                Placeholder="@L["AllDevicesPlaceholder"]" class="w-100 mt-2"
+                ValueChange="@(async () => await RunReportAsync())">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+            <small class="mt-3 d-block">@L["FromLabel"]</small>
+            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <small class="mt-2 d-block">@L["ToLabel"]</small>
+            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
+        </div>
+
+        @if (_report is not null && _report.AccessEvents.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <small>@L["AccessEventsTitle"]</small>
+                <SfQueryBuilder @ref="_accessEventsFilter" TValue="AccessControlReport.AccessEvent" class="mb-2">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="AccessedAtUtc" Label="@L["ColAccessedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
+                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
+                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
+                        <QueryBuilderColumn Field="Details" Label="@L["ColDetails"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAccessEventsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+
+        @if (_report is not null && _report.ExportEvents.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <small>@L["ExportEventsTitle"]</small>
+                <SfQueryBuilder @ref="_exportEventsFilter" TValue="AccessControlReport.ExportEvent" class="mb-2">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="ExportedAtUtc" Label="@L["ColExportedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="ExportedByUserName" Label="@L["ColExportedBy"]" />
+                        <QueryBuilderColumn Field="CaseReference" Label="@L["ColCaseReference"]" />
+                        <QueryBuilderColumn Field="RecipientDescription" Label="@L["ColRecipient"]" />
+                        <QueryBuilderColumn Field="ItemCount" Label="@L["ColItemCount"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyExportEventsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+    </PageRightPanelContent>
 
     @if (_report is not null)
     {
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AccessEventsTitle"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["AccessEventsTitle"]</h5>
         @if (_report.AccessEvents.Count == 0)
         {
-            <RadzenText>@L["NoAccessEventsFound"]</RadzenText>
+            <span>@L["NoAccessEventsFound"]</span>
         }
         else
         {
-            <RadzenDataFilter @ref="_accessEventsFilter" TItem="AccessControlReport.AccessEvent" Data="@_report.AccessEvents" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="AccessedAtUtc" Title="@L["ColAccessedAt"]" />
-                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataFilterProperty Property="Details" Title="@L["ColDetails"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="AccessControlReport.AccessEvent" Data="@_accessEventsFilter?.View"
-                AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="AccessedAtUtc" Title="@L["ColAccessedAt"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.AccessEvent" Property="Details" Title="@L["ColDetails"]">
-                        <Template Context="row">@(row.Details ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" />
+                    <GridColumn HeaderText="@L["ColDetails"]">
+                        <Template>
+                            @{
+                                var row = (AccessControlReport.AccessEvent)context;
+                                @(row.Details ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["ExportEventsTitle"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["ExportEventsTitle"]</h5>
         @if (_report.ExportEvents.Count == 0)
         {
-            <RadzenText>@L["NoExportEventsFound"]</RadzenText>
+            <span>@L["NoExportEventsFound"]</span>
         }
         else
         {
-            <RadzenDataFilter @ref="_exportEventsFilter" TItem="AccessControlReport.ExportEvent" Data="@_report.ExportEvents" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="ExportedAtUtc" Title="@L["ColExportedAt"]" />
-                    <RadzenDataFilterProperty Property="ExportedByUserName" Title="@L["ColExportedBy"]" />
-                    <RadzenDataFilterProperty Property="CaseReference" Title="@L["ColCaseReference"]" />
-                    <RadzenDataFilterProperty Property="RecipientDescription" Title="@L["ColRecipient"]" />
-                    <RadzenDataFilterProperty Property="ItemCount" Title="@L["ColItemCount"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="AccessControlReport.ExportEvent" Data="@_exportEventsFilter?.View"
-                AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedAtUtc" Title="@L["ColExportedAt"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ExportedByUserName" Title="@L["ColExportedBy"]" />
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="CaseReference" Title="@L["ColCaseReference"]">
-                        <Template Context="row">@(row.CaseReference ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="RecipientDescription" Title="@L["ColRecipient"]">
-                        <Template Context="row">@(row.RecipientDescription ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="AccessControlReport.ExportEvent" Property="ItemCount" Title="@L["ColItemCount"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" />
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" />
+                    <GridColumn HeaderText="@L["ColCaseReference"]">
+                        <Template>
+                            @{
+                                var row = (AccessControlReport.ExportEvent)context;
+                                @(row.CaseReference ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColRecipient"]">
+                        <Template>
+                            @{
+                                var row = (AccessControlReport.ExportEvent)context;
+                                @(row.RecipientDescription ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
 }
@@ -103,8 +148,10 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private AccessControlReport? _report;
-    private RadzenDataFilter<AccessControlReport.AccessEvent>? _accessEventsFilter;
-    private RadzenDataFilter<AccessControlReport.ExportEvent>? _exportEventsFilter;
+    private SfQueryBuilder<AccessControlReport.AccessEvent>? _accessEventsFilter;
+    private SfQueryBuilder<AccessControlReport.ExportEvent>? _exportEventsFilter;
+    private IEnumerable<AccessControlReport.AccessEvent> _filteredAccessEvents = new List<AccessControlReport.AccessEvent>();
+    private IEnumerable<AccessControlReport.ExportEvent> _filteredExportEvents = new List<AccessControlReport.ExportEvent>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -135,5 +182,27 @@ else
             _fromDate,
             _toDate,
             CancellationToken.None);
+
+        // Initialize filtered lists with the full report data
+        _filteredAccessEvents = _report?.AccessEvents ?? new List<AccessControlReport.AccessEvent>();
+        _filteredExportEvents = _report?.ExportEvents ?? new List<AccessControlReport.ExportEvent>();
+    }
+
+    private async Task ApplyAccessEventsFilterAsync()
+    {
+        if (_accessEventsFilter is not null)
+        {
+            var result = await _accessEventsFilter.GetFilteredRecordsAsync();
+            _filteredAccessEvents = result?.ToList() ?? _report?.AccessEvents ?? new List<AccessControlReport.AccessEvent>();
+        }
+    }
+
+    private async Task ApplyExportEventsFilterAsync()
+    {
+        if (_exportEventsFilter is not null)
+        {
+            var result = await _exportEventsFilter.GetFilteredRecordsAsync();
+            _filteredExportEvents = result?.ToList() ?? _report?.ExportEvents ?? new List<AccessControlReport.ExportEvent>();
+        }
     }
 }

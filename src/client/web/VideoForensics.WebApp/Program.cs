@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 
-using Radzen;
+using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
 
@@ -24,6 +24,12 @@ using VideoForensics.WebApp.Hubs;
 // or a fresh install) by defaulting to Local, the safest "hasn't been configured yet" state (plan
 // §5.2's "Local-only by default").
 NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
+
+var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "syncfusion-license.key");
+if (File.Exists(syncfusionLicenseKeyPath))
+{
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
+}
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -51,7 +57,7 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
 
-builder.Services.AddRadzenComponents();
+builder.Services.AddSyncfusionBlazor();
 
 // WebAuthn/passkey pairing (plan §5.1/M6). ServerDomain/Origins are dev defaults for the
 // local/LAN case (§5.2's Local and Network tiers, no tunnel) - the Internet tier (Cloudflare
@@ -152,17 +158,57 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    // MCP HTTP endpoint rate limiting (Milestone 8): separate, more permissive policy than auth
+    // since authenticated paired devices can issue expensive analytical queries in tight loops
+    _ = options.AddPolicy("mcp", httpContext =>
+    {
+        INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
+        var key = resolver.ResolveClientIp(httpContext);
+        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 1000,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 10,
+            QueueLimit = 0
+        });
+    });
 });
 
-// Shared data layer + server-tier provider/orchestrator registrations (session provider, Ring's
-// four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
+// Shared data layer + server-tier provider/orchestrator registrations (session provider,
+// active provider's four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
 // VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. This is a deliberate, temporary
 // bootstrap shape for this milestone: VideoForensics.WebApp owns its own local SQLite DB and talks
-// to the Ring provider directly, same as console/MCP today. The long-term plan has this host as
+// to the active provider directly, same as console/MCP today. The long-term plan has this host as
 // "the server" behind a future client/server API split that MAUI will consume instead - that split
 // is separately scoped, later work.
+// The active provider is read from IConfiguration's "ActiveProvider" setting (from appsettings.json
+// or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
 builder.Services.AddVideoForensicsDataLayer();
-builder.Services.AddVideoForensicsServerCore();
+builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
+
+// Forensics query repositories (Phases 1-4) - MCP tools (Milestone 8 HTTP hosting)
+_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ITimelineRepository, VideoForensics.Data.Database.Repositories.TimelineRepository>();
+_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRepository, VideoForensics.Data.Database.Repositories.IntegrityRepository>();
+_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
+_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
+
+// MCP Tool classes (Phases 1-4) - Milestone 8 HTTP hosting
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.IntegrityTools>();
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.CorrelationTools>();
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.AuditTrailTools>();
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.JammingTools>();
+
+// MCP Server: HTTP transport, attribute-discovered tools (Milestone 8)
+_ = builder.Services
+    .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
+// WebApp-specific service for handling 2FA authentication attempts: stores credentials in memory
+// during the two-factor flow, with automatic 5-minute expiry.
+builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, VideoForensics.WebApp.Api.AuthAttemptCache>();
 builder.Services.AddHealthChecks();
 
 // LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
@@ -195,6 +241,15 @@ builder.Services.AddLocalization();
 // is a real ASP.NET Core host with interactive server components configured below. MAUI's
 // BlazorWebView registers NullBlazorRenderModeProvider instead - see IBlazorRenderModeProvider.
 builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazorRenderModeProvider>();
+
+// Native-dialog equivalents for the backup-export/import feature (Import/Export page): a browser can't
+// show a real OS save dialog, so export hands off to a normal browser download instead (see
+// WebFileDialogService/ExportDownloadTokenStore); folder selection for import's "media root" goes through
+// a shared in-app directory browser instead (see IDirectoryBrowserService), since it works identically on
+// both hosts (both run on the same local machine as the user in this app's deployment model).
+builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadTokenStore>();
+builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
+builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
 WebApplication app = builder.Build();
 
@@ -237,12 +292,30 @@ app.MapVideoForensicsHealthEndpoints();
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
+app.MapReportEndpoints();
+app.MapAuthEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceManagementEndpoints();
 app.MapSecurityAuditLogEndpoints();
 app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
+app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapExportDownloadEndpoints();
+app.MapBackupEndpoints();
+app.MapDeviceConfigEndpoints();
+app.MapEventEndpoints();
+app.MapDownloadEndpoints();
+app.MapAccountEndpoints();
+app.MapConfigEndpoints();
+app.MapDiscoveryEndpoints();
+
+// MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
+// Gated with paired-device authorization (matching other API endpoints)
+_ = app.MapMcp("/mcp")
+    .RequireAuthorization()
+    .RequireRateLimiting("mcp");
+
 app.MapHub<LiveHub>("/hubs/live");
 
 app.MapRazorComponents<App>()

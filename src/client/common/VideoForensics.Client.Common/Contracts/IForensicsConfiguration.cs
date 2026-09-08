@@ -46,6 +46,26 @@ namespace VideoForensics.Client.Common.Contracts
         /// live.
         /// </summary>
         NetworkTier ConfiguredNetworkTier { get; set; }
+
+        /// <summary>
+        /// Internet-reachable URL (scheme + host + port) that paired clients may use to connect
+        /// to this server over the Internet. Optional; if not set, clients cannot fall back to
+        /// Internet access if LAN discovery fails. SuperAdmin-only setting.
+        /// </summary>
+        string? InternetServerUrl { get; set; }
+
+        /// <summary>
+        /// Uniview NVR host address (IP address or hostname) for local-network downloads.
+        /// Only used by the Uniview provider for connecting to a local Uniview NVR device.
+        /// Optional; if not set, Uniview downloads will fail.
+        /// </summary>
+        string? UniviewNvrHost { get; set; }
+
+        /// <summary>
+        /// Path to the ffmpeg executable, used by the Uniview provider for video remuxing and snapshot capture.
+        /// Defaults to "ffmpeg" (assumes it's in PATH). Can be an absolute path to a specific ffmpeg binary.
+        /// </summary>
+        string? UniviewFfmpegPath { get; set; }
     }
 
     public enum RedactionLevel
@@ -92,5 +112,8 @@ namespace VideoForensics.Client.Common.Contracts
         public string SmtpFromAddress { get; set; } = "";
         public string NotificationRecipientEmail { get; set; } = "";
         public NetworkTier ConfiguredNetworkTier { get; set; } = NetworkTier.Local;
+        public string? InternetServerUrl { get; set; }
+        public string? UniviewNvrHost { get; set; }
+        public string? UniviewFfmpegPath { get; set; }
     }
 }

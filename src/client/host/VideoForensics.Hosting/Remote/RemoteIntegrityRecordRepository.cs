@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -29,10 +30,10 @@ namespace VideoForensics.Hosting.Remote
         public async Task<IReadOnlyList<IntegrityRecord>> GetLatestByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
             string ids = string.Join(',', mediaItemIds);
-            var response = await _httpClient.GetAsync($"/api/integrity-records?mediaItemIds={ids}", ct);
+            var response = await _httpClient.GetAsync($"/api/v1/integrity-records?mediaItemIds={ids}", ct);
             _ = response.EnsureSuccessStatusCode();
-            var records = await response.Content.ReadFromJsonAsync<List<IntegrityRecord>>(JsonOptions, ct);
-            return records ?? [];
+            var dtos = await response.Content.ReadFromJsonAsync<List<IntegrityRecordDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
         /// <inheritdoc />

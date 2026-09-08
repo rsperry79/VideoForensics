@@ -4,6 +4,9 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Client.Common
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IEventRepository EventRepository
@@ -11,118 +14,176 @@
 @inject ILegalHoldRepository LegalHoldRepository
 @inject IEvidenceValidationService EvidenceValidationService
 @inject NavigationManager NavigationManager
-@inject NotificationService NotificationService
-@inject ContextMenuService ContextMenuService
-@inject DialogService DialogService
 @inject IStringLocalizer<Events> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
+
+<SfToast @ref="_toastRef" />
+
+<SfDialog @bind-Visible="_eventDetailsDialogVisible" Header="@L["EventDetailsTitle"]" Width="600px" IsModal="true" Resizable="true" Draggable="true">
+    @if (_currentEventRow is not null)
+    {
+        <EventDetailsDialog
+            EventType="@_currentEventRow.EventType"
+            OccurredAtUtc="@_currentEventRow.OccurredAtUtc"
+            DiscoveredAtUtc="@_currentEventRow.DiscoveredAtUtc"
+            DownloadedAtUtc="@_currentEventRow.DownloadedAtUtc"
+            ProviderEventId="@_currentEventRow.ProviderEventId"
+            SnapshotUrl="@_currentEventRow.Event.SnapshotUrl"
+            MediaItemId="@(_currentEventRow.MediaItem?.Id)"
+            FileName="@(_currentEventRow.MediaItem?.FileName)"
+            MediaFormat="@(_currentEventRow.MediaItem?.MediaFormat)"
+            FileSizeBytes="@(_currentEventRow.MediaItem?.FileSizeBytes ?? 0L)"
+            Resolution="@(_currentEventRow.MediaItem?.Resolution)"
+            IntegrityStatusText="@_currentEventDetailsIntegrityStatus"
+            LegalHoldStatusText="@_currentEventDetailsLegalHoldStatus"
+            OnClosed="OnEventDetailsDialogClosed" />
+    }
+</SfDialog>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToBrowseEvents"]</RadzenAlert>
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToBrowseEvents"]</p>
 }
 else
 {
-    <RadzenStack Gap="0.75rem" class="mb-4">
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
-            <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
-                TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectADevice"]" Style="min-width: 220px;" />
-            <label>@L["FromLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
-            <label>@L["ToLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" Disabled="@_onlyUnansweredOrFlagged" /></label>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_onlyUnansweredOrFlagged" /> @L["ShowOnlyUnansweredOrFlagged"]</label>
-            <RadzenButton Text="@L["LoadEvents"]" Click="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" />
-        </RadzenStack>
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <h6>@L["Title"]</h6>
+            <div class="d-flex flex-column" style="gap: 0.5rem;">
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceIdStr" DataSource="@DeviceOptions"
+                    ValueChange="LoadEventsAsync" Placeholder="@L["SelectADevice"]" Style="min-width: 220px;">
+                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                </SfDropDownList>
+                <label>@L["FromLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="LoadEventsAsync" Disabled="@_onlyUnansweredOrFlagged" /></label>
+                <label>@L["ToLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="LoadEventsAsync" Disabled="@_onlyUnansweredOrFlagged" /></label>
+                <SfCheckBox TChecked="bool" @bind-Checked="_onlyUnansweredOrFlagged" @bind-Checked:after="LoadEventsAsync" Label="@L["ShowOnlyUnansweredOrFlagged"].Value" />
+            </div>
+        </div>
+        @if (_rows is not null)
+        {
+            <div class="right-panel-section">
+                <h6>Event Filters</h6>
+                <SfQueryBuilder @ref="_rowsFilter" TValue="EventRow">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
+                        <QueryBuilderColumn Field="OccurredAtUtc" Label="@L["ColOccurredAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="DiscoveredAtUtc" Label="@L["ColDiscoveredAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="DownloadedAtUtc" Label="@L["ColDownloadedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="ProviderEventId" Label="@L["ColProviderEventId"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyRowsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+    </PageRightPanelContent>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mb-4">
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <SfButton Content="@L["LoadEvents"]" OnClick="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" CssClass="e-primary" />
+        </div>
 
         @if (!string.IsNullOrEmpty(_error))
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
+            <div style="color: #d32f2f; padding: 12px; background-color: #ffebee; border-radius: 4px;">@_error</div>
         }
 
         @if (_pendingHoldRow is not null || _pendingReleaseRow is not null)
         {
-            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                <RadzenTextBox @bind-Value="_holdReasonInput" Placeholder="@(_pendingHoldRow is not null ? L["ReasonForHold"] : L["ReasonForRelease"])" Style="max-width: 260px;" />
-                <RadzenButton Text="@L["Confirm"]" Click="ConfirmPendingHoldActionAsync" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
-                <RadzenButton Text="@L["Cancel"]" Click="CancelPendingHoldAction" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" />
-            </RadzenStack>
+            <div style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
+                <input type="text" @bind-value="_holdReasonInput" placeholder="@(_pendingHoldRow is not null ? L["ReasonForHold"] : L["ReasonForRelease"])" style="max-width: 260px;" />
+                <SfButton Content="@L["Confirm"]" OnClick="ConfirmPendingHoldActionAsync" CssClass="e-primary e-small" />
+                <SfButton Content="@L["Cancel"]" OnClick="CancelPendingHoldAction" CssClass="e-flat e-small" />
+            </div>
         }
-    </RadzenStack>
+    </div>
 
     @if (_rows is not null)
     {
         @if (_rows.Count == 0)
         {
-            <RadzenText>@L["NoEventsFound"]</RadzenText>
+            <p>@L["NoEventsFound"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_rowsFilter" TItem="EventRow" Data="@_rows" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
-                    <RadzenDataFilterProperty Property="OccurredAtUtc" Title="@L["ColOccurredAt"]" />
-                    <RadzenDataFilterProperty Property="DiscoveredAtUtc" Title="@L["ColDiscoveredAt"]" />
-                    <RadzenDataFilterProperty Property="DownloadedAtUtc" Title="@L["ColDownloadedAt"]" />
-                    <RadzenDataFilterProperty Property="ProviderEventId" Title="@L["ColProviderEventId"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid @ref="_grid" TItem="EventRow" Data="@_rowsFilter?.View" AllowPaging="true" PageSize="20"
-                AllowSorting="true" AllowFiltering="true" SelectionMode="DataGridSelectionMode.Multiple"
-                @bind-Value="@_selectedRows" CellContextMenu="@ShowRowContextMenu">
-                <Columns>
-                    <RadzenDataGridColumn TItem="EventRow" Title="" Width="60px" Sortable="false" Filterable="false">
-                        <Template Context="row">
-                            @if (row.MediaItem is not null && IsImageFormat(row.MediaItem.MediaFormat))
-                            {
-                                <img src="@MediaContentUrl(row.MediaItem.Id)" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
-                            }
-                            else if (row.MediaItem is not null && IsVideoFormat(row.MediaItem.MediaFormat))
-                            {
-                                <RadzenIcon Icon="videocam" />
-                            }
-                            else
-                            {
-                                <RadzenIcon Icon="event" />
-                            }
-                        </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="" Width="60px" Sortable="false" Filterable="false">
-                        <Template Context="row">
-                            <RadzenButton Icon="play_arrow" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
-                                Disabled="@(row.MediaItem is null)" Click="@(() => OpenDetailsDialogAsync(row))" />
-                        </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.EventType)" Title="@L["ColEventType"]" Width="140px" />
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.OccurredAtUtc)" Title="@L["ColOccurredAt"]" Width="170px" />
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.DiscoveredAtUtc)" Title="@L["ColDiscoveredAt"]" Width="170px" />
-                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColDownloadedAt"]" Width="170px">
-                        <Template Context="row">@(row.DownloadedAtUtc?.ToString() ?? L["NotAvailable"])</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColMediaFormat"]" Width="110px">
-                        <Template Context="row">@(row.MediaItem?.MediaFormat ?? L["NotAvailable"])</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColIntegrity"]" Width="120px">
-                        <Template Context="row">
+            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+                        <Template>
                             @{
+                                var row = (EventRow)context;
+                                @if (row.MediaItem is not null && IsImageFormat(row.MediaItem.MediaFormat))
+                                {
+                                    <img src="@MediaContentUrl(row.MediaItem.Id)" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                                }
+                                else if (row.MediaItem is not null && IsVideoFormat(row.MediaItem.MediaFormat))
+                                {
+                                    <i class="material-icons">videocam</i>
+                                }
+                                else
+                                {
+                                    <i class="material-icons">event</i>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{
+                                var row = (EventRow)context;
+                                <SfButton OnClick="@(() => OpenDetailsDialogAsync(row))"
+                                    Disabled="@(row.MediaItem is null)" CssClass="e-flat">
+                                    <span class="material-icons" style="font-size: 18px;">play_arrow</span>
+                                </SfButton>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(EventRow.EventType)" HeaderText="@L["ColEventType"]" Width="140px" />
+                    <GridColumn Field="@nameof(EventRow.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" Width="170px" />
+                    <GridColumn Field="@nameof(EventRow.DiscoveredAtUtc)" HeaderText="@L["ColDiscoveredAt"]" Width="170px" />
+                    <GridColumn HeaderText="@L["ColDownloadedAt"]" Width="170px">
+                        <Template>
+                            @{
+                                var row = (EventRow)context;
+                                @(row.DownloadedAtUtc?.ToString() ?? L["NotAvailable"])
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColMediaFormat"]" Width="110px">
+                        <Template>
+                            @{
+                                var row = (EventRow)context;
+                                @(row.MediaItem?.MediaFormat ?? L["NotAvailable"])
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColIntegrity"]" Width="120px">
+                        <Template>
+                            @{
+                                var row = (EventRow)context;
                                 var (statusText, statusColor) = row.MediaItem is null
                                     ? (L["NotAvailable"].Value, "inherit")
                                     : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
+                                <span style="@($"color:{statusColor}")">@statusText</span>
                             }
-                            <RadzenText TextStyle="TextStyle.Body2" Style="@($"color:{statusColor}")">@statusText</RadzenText>
                         </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Title="@L["ColLegalHold"]" Width="110px">
-                        <Template Context="row">
-                            @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"] : L["NotAvailable"])
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColLegalHold"]" Width="110px">
+                        <Template>
+                            @{
+                                var row = (EventRow)context;
+                                @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"] : L["NotAvailable"])
+                            }
                         </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="EventRow" Property="@nameof(EventRow.ProviderEventId)" Title="@L["ColProviderEventId"]" Width="140px" />
-                </Columns>
-            </RadzenDataGrid>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(EventRow.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" Width="140px" />
+                </GridColumns>
+            </SfGrid>
         }
     }
 }
@@ -140,9 +201,25 @@ else
     private bool _loadingEvents;
     private string? _error;
     private List<EventRow>? _rows;
+    private IEnumerable<EventRow> _filteredRows = new List<EventRow>();
     private IList<EventRow>? _selectedRows;
-    private RadzenDataGrid<EventRow>? _grid;
-    private RadzenDataFilter<EventRow>? _rowsFilter;
+    private SfGrid<EventRow>? _grid;
+    private SfQueryBuilder<EventRow>? _rowsFilter;
+
+    private SfToast? _toastRef;
+    private bool _eventDetailsDialogVisible;
+    private EventRow? _currentEventRow;
+    private string _currentEventDetailsIntegrityStatus = string.Empty;
+    private string _currentEventDetailsLegalHoldStatus = string.Empty;
+
+    private List<object>? ContextMenuItems => new List<object>
+    {
+        new { Text = L["ViewDetails"], Id = "details" },
+        new { Text = L["ExportSelected"], Id = "export" },
+        new { Text = L["PlaceLegalHold"], Id = "hold" },
+        new { Text = L["ReleaseLegalHold"], Id = "release" },
+        new { Text = L["VerifyIntegrityDevice"], Id = "verify" },
+    };
 
     private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
     private IReadOnlyList<IntegrityRecord> _integrityRecords = new List<IntegrityRecord>();
@@ -230,6 +307,7 @@ else
             }
 
             _rows = rows;
+            _filteredRows = rows;
         }
         catch (Exception ex)
         {
@@ -241,59 +319,44 @@ else
         }
     }
 
-    private void ShowRowContextMenu(DataGridCellMouseEventArgs<EventRow> args)
+    private async Task ApplyRowsFilterAsync()
     {
-        var row = args.Data;
-        var hasMediaItem = row.MediaItem is not null;
-        var hasHold = hasMediaItem && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem!.Id);
-
-        var items = new List<ContextMenuItem>
+        if (_rowsFilter is not null && _rows is not null)
         {
-            new ContextMenuItem { Text = L["ViewDetails"], Value = "details" },
-            new ContextMenuItem { Text = L["ExportSelected"], Value = "export", Disabled = !hasMediaItem && (_selectedRows?.Count ?? 0) == 0 },
-        };
-
-        if (hasMediaItem && !hasHold)
-        {
-            items.Add(new ContextMenuItem { Text = L["PlaceLegalHold"], Value = "hold" });
+            var result = await _rowsFilter.GetFilteredRecordsAsync();
+            _filteredRows = result?.ToList() ?? _rows;
         }
-        else if (hasMediaItem && hasHold)
-        {
-            items.Add(new ContextMenuItem { Text = L["ReleaseLegalHold"], Value = "release" });
-        }
-
-        items.Add(new ContextMenuItem { Text = L["VerifyIntegrityDevice"], Value = "verify", Disabled = !hasMediaItem });
-
-        ContextMenuService.Open(args, items, e => OnContextMenuItemClick(e, row));
     }
 
-    private async void OnContextMenuItemClick(MenuItemEventArgs args, EventRow row)
+    private async Task OnGridContextMenuClicked(Syncfusion.Blazor.Grids.ContextMenuClickEventArgs<EventRow> args)
     {
-        ContextMenuService.Close();
-
-        switch (args.Value)
+        // Get the row from selected rows (grid should have the row selected when context menu is opened)
+        if (_selectedRows is { Count: > 0 } && _selectedRows[0] is EventRow row)
         {
-            case "details":
-                await OpenDetailsDialogAsync(row);
-                break;
-            case "export":
-                ExportRows(row);
-                break;
-            case "hold":
-                BeginPlaceHold(row);
-                break;
-            case "release":
-                BeginRelease(row);
-                break;
-            case "verify":
-                await VerifyIntegrityForDeviceAsync(row);
-                break;
-        }
+            switch (args.Item?.Id)
+            {
+                case "details":
+                    await OpenDetailsDialogAsync(row);
+                    break;
+                case "export":
+                    await ExportRows(row);
+                    break;
+                case "hold":
+                    BeginPlaceHold(row);
+                    break;
+                case "release":
+                    BeginRelease(row);
+                    break;
+                case "verify":
+                    await VerifyIntegrityForDeviceAsync(row);
+                    break;
+            }
 
-        StateHasChanged();
+            StateHasChanged();
+        }
     }
 
-    private void ExportRows(EventRow contextRow)
+    private async Task ExportRows(EventRow contextRow)
     {
         var ids = (_selectedRows is { Count: > 0 } ? _selectedRows : new List<EventRow> { contextRow })
             .Where(r => r.MediaItem is not null)
@@ -303,7 +366,10 @@ else
 
         if (ids.Count == 0)
         {
-            NotificationService.Notify(NotificationSeverity.Warning, L["NothingToExport"], L["NoSelectedRowsHaveMedia"]);
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["NothingToExport"], Content = L["NoSelectedRowsHaveMedia"], Icon = "e-warning" });
+            }
             return;
         }
 
@@ -343,13 +409,19 @@ else
         {
             var hold = await LegalHoldRepository.PlaceAsync(_pendingHoldRow.MediaItem.Id, _holdReasonInput, Environment.UserName, CancellationToken.None);
             _activeHoldsByMediaItemId[_pendingHoldRow.MediaItem.Id] = hold;
-            NotificationService.Notify(NotificationSeverity.Success, L["LegalHoldPlaced"]);
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["LegalHoldPlaced"], Icon = "e-success" });
+            }
         }
         else if (_pendingReleaseRow?.MediaItem is not null && _activeHoldsByMediaItemId.TryGetValue(_pendingReleaseRow.MediaItem.Id, out var activeHold))
         {
             await LegalHoldRepository.ReleaseAsync(activeHold.Id, Environment.UserName, _holdReasonInput, CancellationToken.None);
             _activeHoldsByMediaItemId.Remove(_pendingReleaseRow.MediaItem.Id);
-            NotificationService.Notify(NotificationSeverity.Success, L["LegalHoldReleased"]);
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["LegalHoldReleased"], Icon = "e-success" });
+            }
         }
 
         CancelPendingHoldAction();
@@ -367,27 +439,25 @@ else
         format.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
         format.Contains("video", StringComparison.OrdinalIgnoreCase);
 
-    private async Task OpenDetailsDialogAsync(EventRow row)
+    private Task OpenDetailsDialogAsync(EventRow row)
     {
         var (statusText, _) = row.MediaItem is null ? (L["NotAvailable"].Value, "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
         var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"].Value : L["NotAvailable"].Value;
 
-        await DialogService.OpenAsync<EventDetailsDialog>(L["EventDetailsTitle"], new Dictionary<string, object?>
-        {
-            { nameof(EventDetailsDialog.EventType), row.EventType },
-            { nameof(EventDetailsDialog.OccurredAtUtc), row.OccurredAtUtc },
-            { nameof(EventDetailsDialog.DiscoveredAtUtc), row.DiscoveredAtUtc },
-            { nameof(EventDetailsDialog.DownloadedAtUtc), row.DownloadedAtUtc },
-            { nameof(EventDetailsDialog.ProviderEventId), row.ProviderEventId },
-            { nameof(EventDetailsDialog.SnapshotUrl), row.Event.SnapshotUrl },
-            { nameof(EventDetailsDialog.MediaItemId), row.MediaItem?.Id },
-            { nameof(EventDetailsDialog.FileName), row.MediaItem?.FileName },
-            { nameof(EventDetailsDialog.MediaFormat), row.MediaItem?.MediaFormat },
-            { nameof(EventDetailsDialog.FileSizeBytes), row.MediaItem?.FileSizeBytes ?? 0L },
-            { nameof(EventDetailsDialog.Resolution), row.MediaItem?.Resolution },
-            { nameof(EventDetailsDialog.IntegrityStatusText), statusText },
-            { nameof(EventDetailsDialog.LegalHoldStatusText), holdText },
-        }, new DialogOptions { Width = "600px", Resizable = true, Draggable = true });
+        _currentEventRow = row;
+        _currentEventDetailsIntegrityStatus = statusText;
+        _currentEventDetailsLegalHoldStatus = holdText;
+        _eventDetailsDialogVisible = true;
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnEventDetailsDialogClosed()
+    {
+        _eventDetailsDialogVisible = false;
+        _currentEventRow = null;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task VerifyIntegrityForDeviceAsync(EventRow row)
@@ -399,10 +469,15 @@ else
 
         var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(row.Event.DeviceId, CancellationToken.None);
         var failed = results.Count(r => r.Status != "verified");
-        NotificationService.Notify(
-            failed == 0 ? NotificationSeverity.Success : NotificationSeverity.Warning,
-            L["IntegrityVerificationComplete"],
-            L["FilesVerifiedForDevice", results.Count - failed, results.Count]);
+        if (_toastRef is not null)
+        {
+            await _toastRef.ShowAsync(new ToastModel
+            {
+                Title = L["IntegrityVerificationComplete"],
+                Content = L["FilesVerifiedForDevice", results.Count - failed, results.Count],
+                Icon = failed == 0 ? "e-success" : "e-warning"
+            });
+        }
     }
 
     // Mirrors ForensicReportRenderer.DetermineMediaStatus (src/client/VideoForensics/ForensicReportRenderer.cs)

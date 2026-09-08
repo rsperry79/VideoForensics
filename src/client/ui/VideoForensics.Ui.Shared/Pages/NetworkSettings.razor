@@ -7,66 +7,66 @@
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<NetworkSettings> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (!SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
-        <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["SignInToManage"]
-    </RadzenAlert>
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
 }
 
-<RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
+<div class="alert alert-warning mb-4">
     @L["WarningText"]
-</RadzenAlert>
+</div>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        @L["AuthErrorHeader"] <RadzenLink Path="/device-signin" Text="@L["SignInPrompt"]" /> @L["AuthErrorDescription"]
-    </RadzenText>
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>
+        @L["AuthErrorHeader"] <a href="/device-signin">@L["SignInPrompt"]</a> @L["AuthErrorDescription"]
+    </span>
 }
 else if (_loadError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
+    <div class="alert alert-danger">@_loadError</div>
 }
 else
 {
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
+    <div class="card mb-4"><div class="card-body">
         <div>
             <div>
-                <input type="radio" id="tierLocal" name="tier" value="local" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Local))" @checked="_selectedTier == NetworkTier.Local" />
+                <input type="radio" id="tierLocal" name="tier" value="local" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Local))" @checked="_selectedTier == NetworkTier.Local" />
                 <label for="tierLocal"><b>Local</b> - @L["LocalLabelText"]</label>
             </div>
             <div>
-                <input type="radio" id="tierNetwork" name="tier" value="network" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Network))" @checked="_selectedTier == NetworkTier.Network" />
+                <input type="radio" id="tierNetwork" name="tier" value="network" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Network))" @checked="_selectedTier == NetworkTier.Network" />
                 <label for="tierNetwork"><b>Network</b> - @L["NetworkLabelText"]</label>
             </div>
             <div>
-                <input type="radio" id="tierInternet" name="tier" value="internet" @onchange="@((ChangeEventArgs e) => OnTierChanged(NetworkTier.Internet))" @checked="_selectedTier == NetworkTier.Internet" />
+                <input type="radio" id="tierInternet" name="tier" value="internet" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Internet))" @checked="_selectedTier == NetworkTier.Internet" />
                 <label for="tierInternet"><b>Internet</b> - @L["InternetLabelText"]</label>
             </div>
         </div>
 
         @if (_pendingTier is not null)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Info" class="mt-3">
+            <div class="alert alert-info mt-3">
                 @L["ConfirmWiden", _currentTier, _pendingTier]
-                <RadzenButton Text="@(_isSaving ? L["ConfirmingButton"] : L["ConfirmButton"])" Click="ConfirmWidenAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" class="mt-2" />
-                <RadzenButton Text="@L["CancelButton"]" Click="CancelPendingWiden" Variant="Variant.Text" class="mt-2" />
-            </RadzenAlert>
+                <SfButton Content="@(_isSaving ? L["ConfirmingButton"] : L["ConfirmButton"])" OnClick="ConfirmWidenAsync" CssClass="e-primary mt-2" Disabled="@_isSaving" />
+                <SfButton Content="@L["CancelButton"]" OnClick="CancelPendingWiden" CssClass="e-flat mt-2" />
+            </div>
         }
 
         @if (_message is not null)
         {
             <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
-    </RadzenCard>
+    </div></div>
 }
 
 @code {

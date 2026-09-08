@@ -5,38 +5,38 @@
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<Pair> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_token is null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@L["NoTokenAlert"]</RadzenAlert>
+    <div class="alert alert-danger">@L["NoTokenAlert"]</div>
 }
 else if (_result is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Success">
+    <div class="alert alert-success">
         @L["SuccessAlert", _result.Value.Role]
-        You can now <RadzenLink Path="/device-signin" Text="@L["SignInLink"]" />.
-    </RadzenAlert>
+        You can now <a href="/device-signin">@L["SignInLink"]</a>.
+    </div>
 }
 else
 {
-    <RadzenStack>
-        <RadzenText>@L["Instructions"]</RadzenText>
+    <div class="d-flex flex-column gap-2">
+        <span>@L["Instructions"]</span>
         <div>
             <label>@L["OperatorNameLabel"]</label>
-            <RadzenTextBox @bind-Value="_operatorDisplayName" Placeholder="@L["OperatorNamePlaceholder"]" />
+            <SfTextBox @bind-Value="_operatorDisplayName" Placeholder="@L["OperatorNamePlaceholder"]" />
         </div>
         <div>
             <label>@L["DeviceNameLabel"]</label>
-            <RadzenTextBox @bind-Value="_deviceName" Placeholder="@L["DeviceNamePlaceholder"]" />
+            <SfTextBox @bind-Value="_deviceName" Placeholder="@L["DeviceNamePlaceholder"]" />
         </div>
-        <RadzenButton Text="@(_isPairing ? L["PairWaiting"] : L["PairButton"])" Click="PairAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
+        <SfButton Content="@(_isPairing ? L["PairWaiting"] : L["PairButton"])" OnClick="PairAsync" CssClass="e-primary" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
 
         @if (_error is not null)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
+            <div class="alert alert-danger">@_error</div>
         }
-    </RadzenStack>
+    </div>
 }
 
 @code {

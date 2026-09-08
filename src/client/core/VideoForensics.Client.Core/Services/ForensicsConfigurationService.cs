@@ -68,6 +68,9 @@ namespace VideoForensics.Client.Core.Services
                 config.SmtpFromAddress = await GetStringSetting("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
                 config.NotificationRecipientEmail = await GetStringSetting("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 config.ConfiguredNetworkTier = await GetEnumSetting("ConfiguredNetworkTier", config.ConfiguredNetworkTier, cancellationToken);
+                config.InternetServerUrl = await GetStringSetting("InternetServerUrl", config.InternetServerUrl, cancellationToken);
+                config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
+                config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -108,6 +111,9 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
                 await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 await _settingRepository!.SetAsync("ConfiguredNetworkTier", config.ConfiguredNetworkTier.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? "", cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }

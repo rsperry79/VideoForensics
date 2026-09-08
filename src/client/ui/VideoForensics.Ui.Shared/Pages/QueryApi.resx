@@ -146,4 +146,7 @@
   <data name="FailedToGetConfig" xml:space="preserve">
     <value>Failed to get device config: {0}</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

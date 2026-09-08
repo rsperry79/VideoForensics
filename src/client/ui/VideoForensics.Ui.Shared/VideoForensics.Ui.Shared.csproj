@@ -24,14 +24,22 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.11" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.0" />
         <PackageReference Include="Radzen.Blazor" Version="11.2.2" />
+        <PackageReference Include="Syncfusion.Blazor.Core" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Buttons" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Calendars" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Grid" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Inputs" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Notifications" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Popups" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.ProgressBar" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.QueryBuilder" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Themes" Version="34.2.6" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
         <ProjectReference Include="..\..\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
-        <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
     </ItemGroup>
 
 </Project>

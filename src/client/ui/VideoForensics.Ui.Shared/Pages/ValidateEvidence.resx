@@ -101,4 +101,10 @@
   <data name="NotAvailable" xml:space="preserve">
     <value>-</value>
   </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

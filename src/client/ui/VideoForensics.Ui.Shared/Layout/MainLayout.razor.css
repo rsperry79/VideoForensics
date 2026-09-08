@@ -1,3 +1,26 @@
+.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    height: 56px;
+    flex: 0 0 auto;
+    border-bottom: 1px solid var(--rz-border-color, #e0e0e0);
+}
+
+.app-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
 .app-bar {
     display: flex;
     align-items: center;
@@ -6,10 +29,6 @@
     padding: 0 1rem;
 }
 
-.app-bar-brand {
-    margin-right: 1.5rem;
-    white-space: nowrap;
-}
 
 .top-tabs {
     display: flex;
@@ -49,9 +68,6 @@
     padding: 0.5rem 0.25rem;
 }
 
-.left-nav-toggle {
-    align-self: flex-end;
-}
 
 .left-nav-items {
     display: flex;

@@ -3,138 +3,208 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ForensicReports> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
-        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewReports"]
-    </RadzenAlert>
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewReports"]
+    </div>
 }
 else
 {
-    <RadzenStack>
-        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevices"]" />
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <input type="date" @bind="_fromDate" />
-            <input type="date" @bind="_toDate" />
-            <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-        </RadzenStack>
-    </RadzenStack>
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <span>@L["Filters"]</span>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions"
+                Placeholder="@L["AllDevices"]" class="w-100 mt-2" Change="OnDeviceSelectionChanged">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+            <small class="mt-3">@L["FromDate"]</small>
+            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <small class="mt-2">@L["ToDate"]</small>
+            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
+        </div>
+
+        @if (_report is not null && _report.EvidenceItems.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <span>@L["EvidenceItems"]</span>
+                <SfQueryBuilder @ref="_evidenceItemsFilter" TValue="MediaItem">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="Id" Label="@L["ColEvidenceId"]" />
+                        <QueryBuilderColumn Field="DeviceId" Label="@L["ColDeviceId"]" />
+                        <QueryBuilderColumn Field="FileName" Label="@L["ColFileName"]" />
+                        <QueryBuilderColumn Field="MediaFormat" Label="@L["ColFormat"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEvidenceItemsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+
+        @if (_report is not null && _report.AnomalousHealthSnapshots.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <span>@L["AnomalousHealthSnapshots"]</span>
+                <SfQueryBuilder @ref="_anomalousHealthSnapshotsFilter" TValue="DeviceHealthSnapshot">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="CapturedAtUtc" Label="@L["ColCapturedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="DeviceId" Label="@L["ColDeviceId"]" />
+                        <QueryBuilderColumn Field="Connected" Label="@L["ColConnected"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                        <QueryBuilderColumn Field="BatteryPercentage" Label="@L["ColBatteryPercent"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
+                        <QueryBuilderColumn Field="Rssi" Label="@L["ColRssi"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
+                        <QueryBuilderColumn Field="WifiName" Label="@L["ColWifi"]" />
+                        <QueryBuilderColumn Field="FirmwareVersion" Label="@L["ColFirmware"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAnomalousHealthSnapshotsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+
+        @if (_report is not null && _report.SignificantActions.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <span>@L["SignificantActions"]</span>
+                <SfQueryBuilder @ref="_significantActionsFilter" TValue="ActionLogEntry">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
+                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
+                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
+                        <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplySignificantActionsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+    </PageRightPanelContent>
 
     @if (_report is not null)
     {
-        @if (!string.IsNullOrWhiteSpace(_report.Summary))
-        {
-            <RadzenText>@_report.Summary</RadzenText>
-        }
-
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["EvidenceItems"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["EvidenceItems"]</h5>
         @if (_report.EvidenceItems.Count == 0)
         {
-            <RadzenText>@L["NoEvidenceItems"]</RadzenText>
+            <span>@L["NoEvidenceItems"]</span>
         }
         else
         {
-            <RadzenDataFilter @ref="_evidenceItemsFilter" TItem="MediaItem" Data="@_report.EvidenceItems" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="Id" Title="@L["ColEvidenceId"]" />
-                    <RadzenDataFilterProperty Property="DeviceId" Title="@L["ColDeviceId"]" />
-                    <RadzenDataFilterProperty Property="FileName" Title="@L["ColFileName"]" />
-                    <RadzenDataFilterProperty Property="MediaFormat" Title="@L["ColFormat"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="MediaItem" Data="@_evidenceItemsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="MediaItem" Title="@L["ColEvidenceId"]">
-                        <Template Context="item">@item.Id.ToString("N")[..8]</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="MediaItem" Title="@L["ColDeviceId"]">
-                        <Template Context="item">@item.DeviceId.ToString("N")[..8]</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="MediaItem" Property="FileName" Title="@L["ColFileName"]" />
-                    <RadzenDataGridColumn TItem="MediaItem" Property="MediaFormat" Title="@L["ColFormat"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn HeaderText="@L["ColEvidenceId"]">
+                        <Template>
+                            @{
+                                var item = (MediaItem)context;
+                                @(item.Id.ToString("N")[..8])
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColDeviceId"]">
+                        <Template>
+                            @{
+                                var item = (MediaItem)context;
+                                @(item.DeviceId.ToString("N")[..8])
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(MediaItem.FileName)" HeaderText="@L["ColFileName"]" />
+                    <GridColumn Field="@nameof(MediaItem.MediaFormat)" HeaderText="@L["ColFormat"]" />
+                </GridColumns>
+            </SfGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AnomalousHealthSnapshots"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["AnomalousHealthSnapshots"]</h5>
         @if (_report.AnomalousHealthSnapshots.Count == 0)
         {
-            <RadzenText>@L["NoAnomalousHealthSnapshots"]</RadzenText>
+            <span>@L["NoAnomalousHealthSnapshots"]</span>
         }
         else
         {
-            <RadzenDataFilter @ref="_anomalousHealthSnapshotsFilter" TItem="DeviceHealthSnapshot" Data="@_report.AnomalousHealthSnapshots" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
-                    <RadzenDataFilterProperty Property="DeviceId" Title="@L["ColDeviceId"]" />
-                    <RadzenDataFilterProperty Property="Connected" Title="@L["ColConnected"]" />
-                    <RadzenDataFilterProperty Property="BatteryPercentage" Title="@L["ColBatteryPercent"]" />
-                    <RadzenDataFilterProperty Property="Rssi" Title="@L["ColRssi"]" />
-                    <RadzenDataFilterProperty Property="WifiName" Title="@L["ColWifi"]" />
-                    <RadzenDataFilterProperty Property="FirmwareVersion" Title="@L["ColFirmware"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="DeviceHealthSnapshot" Data="@_anomalousHealthSnapshotsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColDeviceId"]">
-                        <Template Context="snapshot">@(snapshot.DeviceId?.ToString("N")[..8] ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColConnected"]">
-                        <Template Context="snapshot">@(snapshot.Connected?.ToString() ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColBatteryPercent"]">
-                        <Template Context="snapshot">@(snapshot.BatteryPercentage?.ToString() ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColRssi"]">
-                        <Template Context="snapshot">@(snapshot.Rssi?.ToString() ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColWifi"]">
-                        <Template Context="snapshot">@(snapshot.WifiName ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceHealthSnapshot" Title="@L["ColFirmware"]">
-                        <Template Context="snapshot">@(snapshot.FirmwareVersion ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="DeviceHealthSnapshot" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(DeviceHealthSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
+                    <GridColumn HeaderText="@L["ColDeviceId"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.DeviceId?.ToString("N")[..8] ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColConnected"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.Connected?.ToString() ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColBatteryPercent"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.BatteryPercentage?.ToString() ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColRssi"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.Rssi?.ToString() ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColWifi"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.WifiName ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColFirmware"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceHealthSnapshot)context;
+                                @(snapshot.FirmwareVersion ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["SignificantActions"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["SignificantActions"]</h5>
         @if (_report.SignificantActions.Count == 0)
         {
-            <RadzenText>@L["NoSignificantActions"]</RadzenText>
+            <span>@L["NoSignificantActions"]</span>
         }
         else
         {
-            <RadzenDataFilter @ref="_significantActionsFilter" TItem="ActionLogEntry" Data="@_report.SignificantActions" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="ActionLogEntry" Data="@_significantActionsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="@L["ColTimestamp"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
 }
@@ -147,9 +217,12 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ForensicAnalysisReport? _report;
-    private RadzenDataFilter<MediaItem>? _evidenceItemsFilter;
-    private RadzenDataFilter<DeviceHealthSnapshot>? _anomalousHealthSnapshotsFilter;
-    private RadzenDataFilter<ActionLogEntry>? _significantActionsFilter;
+    private SfQueryBuilder<MediaItem>? _evidenceItemsFilter;
+    private SfQueryBuilder<DeviceHealthSnapshot>? _anomalousHealthSnapshotsFilter;
+    private SfQueryBuilder<ActionLogEntry>? _significantActionsFilter;
+    private IEnumerable<MediaItem> _filteredEvidenceItems = new List<MediaItem>();
+    private IEnumerable<DeviceHealthSnapshot> _filteredAnomalousHealthSnapshots = new List<DeviceHealthSnapshot>();
+    private IEnumerable<ActionLogEntry> _filteredSignificantActions = new List<ActionLogEntry>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -180,5 +253,44 @@ else
             _fromDate,
             _toDate,
             CancellationToken.None);
+
+        if (_report is not null)
+        {
+            _filteredEvidenceItems = _report.EvidenceItems;
+            _filteredAnomalousHealthSnapshots = _report.AnomalousHealthSnapshots;
+            _filteredSignificantActions = _report.SignificantActions;
+        }
+    }
+
+    private async Task OnDeviceSelectionChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        await RunReportAsync();
+    }
+
+    private async Task ApplyEvidenceItemsFilterAsync()
+    {
+        if (_evidenceItemsFilter is not null && _report is not null)
+        {
+            var result = await _evidenceItemsFilter.GetFilteredRecordsAsync();
+            _filteredEvidenceItems = result?.ToList() ?? _report.EvidenceItems;
+        }
+    }
+
+    private async Task ApplyAnomalousHealthSnapshotsFilterAsync()
+    {
+        if (_anomalousHealthSnapshotsFilter is not null && _report is not null)
+        {
+            var result = await _anomalousHealthSnapshotsFilter.GetFilteredRecordsAsync();
+            _filteredAnomalousHealthSnapshots = result?.ToList() ?? _report.AnomalousHealthSnapshots;
+        }
+    }
+
+    private async Task ApplySignificantActionsFilterAsync()
+    {
+        if (_significantActionsFilter is not null && _report is not null)
+        {
+            var result = await _significantActionsFilter.GetFilteredRecordsAsync();
+            _filteredSignificantActions = result?.ToList() ?? _report.SignificantActions;
+        }
     }
 }

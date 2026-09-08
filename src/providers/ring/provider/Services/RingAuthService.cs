@@ -190,13 +190,29 @@ namespace VideoForensics.Providers.Ring.Services
         /// Caught by actually running the Web app: a fresh page load (new circuit) reported "not
         /// signed in" immediately after a successful sign-in in a different circuit, even though the
         /// shared session was still valid.
+        ///
+        /// When no in-memory session exists yet (e.g. a fresh process start), falls back to
+        /// attempting a restore from saved credentials (DB or filesystem refresh token) before
+        /// reporting unauthenticated. Without this, every page that calls IsAuthenticatedAsync -
+        /// Dashboard.razor and its ~13 siblings - reported "not signed in" on every app launch even
+        /// for a previously-authenticated user, because restore was otherwise only wired into the
+        /// /signin page's own OnInitializedAsync, which a normal cold start never visits.
         /// </summary>
         public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
         {
             Session? session = _sessionProvider.GetSession();
             if (session == null)
             {
-                return false;
+                if (!await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null, cancellationToken))
+                {
+                    return false;
+                }
+
+                session = _sessionProvider.GetSession();
+                if (session == null)
+                {
+                    return false;
+                }
             }
 
             try

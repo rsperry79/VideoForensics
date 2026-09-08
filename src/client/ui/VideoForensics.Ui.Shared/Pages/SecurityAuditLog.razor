@@ -2,65 +2,86 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using Syncfusion.Blazor.QueryBuilder
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<SecurityAuditLog> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
-<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mb-4">
-    <label>@L["OperatorIdLabel"]</label>
-    <RadzenTextBox @bind-Value="_operatorIdInput" Placeholder="@L["OperatorIdPlaceholder"]" Style="max-width: 320px;" />
-    <RadzenButton Text="@L["RefreshButton"]" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
-</RadzenStack>
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <span class="d-block mb-2">@L["OperatorIdLabel"]</span>
+        <div class="d-flex flex-row gap-2 align-items-center mb-2">
+            <SfTextBox @bind-Value="_operatorIdInput" Placeholder="@L["OperatorIdPlaceholder"]" />
+            <SfButton Content="@L["RefreshButton"]" OnClick="@LoadAsync" Disabled="@_isLoading" />
+        </div>
+    </div>
+
+    @if (_entries is not null && _entries.Count > 0)
+    {
+        <div class="right-panel-section">
+            <span class="d-block mb-2">@L["Filters"]</span>
+            <SfQueryBuilder @ref="_entriesFilter" TValue="SecurityAuditLogEntry">
+                <QueryBuilderColumns>
+                    <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
+                    <QueryBuilderColumn Field="OperatorId" Label="@L["ColOperatorId"]" />
+                    <QueryBuilderColumn Field="PairedDeviceId" Label="@L["ColPairedDeviceId"]" />
+                    <QueryBuilderColumn Field="SourceIp" Label="@L["ColSourceIp"]" />
+                    <QueryBuilderColumn Field="Details" Label="@L["ColDetails"]" />
+                </QueryBuilderColumns>
+            </SfQueryBuilder>
+            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEntriesFilterAsync())" CssClass="e-primary mt-2" />
+        </div>
+    }
+</PageRightPanelContent>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>@L["NotAuthorizedMessage"]</RadzenText>
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
 }
 else if (_loadError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
+    <div class="alert alert-danger">@_loadError</div>
 }
 else if (_entries is null || _entries.Count == 0)
 {
-    <RadzenText>@L["NoEntriesFound"]</RadzenText>
+    <span>@L["NoEntriesFound"]</span>
 }
 else
 {
-    <RadzenDataFilter @ref="_entriesFilter" TItem="SecurityAuditLogEntry" Data="@_entries.OrderByDescending(e => e.TimestampUtc)" Auto="true" class="mb-2">
-        <Properties>
-            <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
-            <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
-            <RadzenDataFilterProperty Property="OperatorId" Title="@L["ColOperatorId"]" />
-            <RadzenDataFilterProperty Property="PairedDeviceId" Title="@L["ColPairedDeviceId"]" />
-            <RadzenDataFilterProperty Property="SourceIp" Title="@L["ColSourceIp"]" />
-            <RadzenDataFilterProperty Property="Details" Title="@L["ColDetails"]" />
-        </Properties>
-    </RadzenDataFilter>
-    <RadzenDataGrid TItem="SecurityAuditLogEntry" Data="@_entriesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
-        <Columns>
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.TimestampUtc)" Title="@L["ColTimestamp"]" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.EventType)" Title="@L["ColEventType"]" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.OperatorId)" Title="@L["ColOperatorId"]" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.PairedDeviceId)" Title="@L["ColPairedDeviceId"]" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Property="@nameof(SecurityAuditLogEntry.SourceIp)" Title="@L["ColSourceIp"]" />
-            <RadzenDataGridColumn TItem="SecurityAuditLogEntry" Title="@L["ColDetails"]">
-                <Template Context="row">@(row.Details ?? L["NotAvailable"].Value)</Template>
-            </RadzenDataGridColumn>
-        </Columns>
-    </RadzenDataGrid>
+    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true">
+        <GridPageSettings PageSize="20"></GridPageSettings>
+        <GridColumns>
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.OperatorId)" HeaderText="@L["ColOperatorId"]" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.PairedDeviceId)" HeaderText="@L["ColPairedDeviceId"]" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" />
+            <GridColumn HeaderText="@L["ColDetails"]">
+                <Template>
+                    @{
+                        var row = (SecurityAuditLogEntry)context;
+                        @(row.Details ?? L["NotAvailable"].Value)
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
 }
 
 @code {
     private bool _isLoading = true;
     private List<SecurityAuditLogEntry>? _entries;
-    private RadzenDataFilter<SecurityAuditLogEntry>? _entriesFilter;
+    private SfQueryBuilder<SecurityAuditLogEntry>? _entriesFilter;
+    private IEnumerable<SecurityAuditLogEntry> _filteredEntries = new List<SecurityAuditLogEntry>();
     private string? _authError;
     private string? _loadError;
     private string _operatorIdInput = string.Empty;
@@ -106,6 +127,7 @@ else
 
             response.EnsureSuccessStatusCode();
             _entries = await response.Content.ReadFromJsonAsync<List<SecurityAuditLogEntry>>(JsonOptions);
+            _filteredEntries = _entries?.OrderByDescending(e => e.TimestampUtc).AsEnumerable() ?? new List<SecurityAuditLogEntry>();
         }
         catch (Exception ex)
         {
@@ -114,6 +136,22 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task ApplyEntriesFilterAsync()
+    {
+        if (_entriesFilter is not null)
+        {
+            var result = await _entriesFilter.GetFilteredRecordsAsync();
+            if (result is not null)
+            {
+                _filteredEntries = result.OrderByDescending(e => e.TimestampUtc);
+            }
+            else if (_entries is not null)
+            {
+                _filteredEntries = _entries.OrderByDescending(e => e.TimestampUtc);
+            }
         }
     }
 

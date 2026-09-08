@@ -98,4 +98,10 @@
   <data name="ColItemCount" xml:space="preserve">
     <value>Item Count</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
+  <data name="FiltersLabel" xml:space="preserve">
+    <value>Filters</value>
+  </data>
 </root>

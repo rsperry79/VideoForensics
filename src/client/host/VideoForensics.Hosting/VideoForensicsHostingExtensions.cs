@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common;
@@ -20,6 +21,8 @@ using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
+using VideoForensics.Providers.Uniview;
+using VideoForensics.Providers.Uniview.Services;
 
 namespace VideoForensics.Hosting
 {
@@ -51,66 +54,126 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>
-        /// Registers every provider's four services (today: Ring's auth/discovery/download/event-config,
+        /// Registers the selected provider's four services (auth/discovery/download/event-config,
         /// per CLAUDE.md's "Adding a New Provider" convention) plus the download-orchestration and
-        /// evidence-workflow services built on top of them. Only ever called by a host that is allowed
-        /// to talk to a provider directly (console, MCP, and later VideoForensics.WebApp as "the
-        /// server") - never by a thin client such as the planned MAUI app.
+        /// evidence-workflow services built on top of them. Today supports "Ring" (default) or "Uniview".
+        /// Only ever called by a host that is allowed to talk to a provider directly (console, MCP, and
+        /// later VideoForensics.WebApp as "the server") - never by a thin client such as the planned MAUI app.
         /// </summary>
-        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services)
+        /// <param name="services">The service collection to register into.</param>
+        /// <param name="activeProviderName">Name of the active provider ("Ring" or "Uniview"); defaults to "Ring" for backward compatibility.</param>
+        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring")
         {
-            // Shared session provider (must be singleton so all services/scopes observe the same
+            // MainLayout.razor (rendered by every host sharing Ui.Shared, WebApp included) @injects
+            // IServerConnectivityState/IServerLocationInformationService - these were only ever
+            // registered by AddVideoForensicsClientApi() for client hosts (MAUI), so a server-tier
+            // host calling AddVideoForensicsServerCore() alone had nothing to satisfy that injection
+            // and threw at render time. TryAddSingleton-based, so this is a safe default for the
+            // server's own UI (which is never "unreachable" from its own perspective) and won't
+            // conflict if a client host's own registrations also call this.
+            _ = services.AddServerLocationServices();
+
+            // Shared session providers (must be singleton so all services/scopes observe the same
             // keyed session map - see ISessionProvider's per-account redesign). ICredentialStore is
             // a plain file-based store with no Scoped dependency of its own, safe to stay Singleton.
+            // Both Ring and Uniview session providers are registered unconditionally - no harm even
+            // if the active provider doesn't use one, and future multi-provider support may need both.
             _ = services.AddSingleton<ISessionProvider, SessionProvider>();
+            _ = services.AddSingleton<IUniviewSessionProvider, UniviewSessionProvider>();
             _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
 
-            // Ring provider services, with factories providing typed loggers. Scoped, not Singleton
+            // Provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
-            // during M1): RingAuthService depends on ICredentialRepository/IRingAccountRepository/
-            // IProviderAccountRepository/IUserRepository, all Scoped - a Singleton capturing them is
-            // the same captive-dependency problem as the services below. Scoped-depending-on-Singleton
-            // (ISessionProvider, ICredentialStore) is fine; only the reverse is the bug. For today's
-            // single-root-scope console/MCP hosts this is observably identical to Singleton.
-            _ = services.AddScoped<IProviderAuthService>(provider =>
-                new RingAuthService(
-                    provider.GetRequiredService<ILogger<RingAuthService>>(),
-                    provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>(),
-                    provider.GetRequiredService<ICredentialRepository>(),
-                    provider.GetRequiredService<IRingAccountRepository>(),
-                    provider.GetRequiredService<IProviderAccountRepository>(),
-                    provider.GetRequiredService<IUserRepository>()
-                )
-            );
-            _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
-                new RingDeviceDiscoveryService(
-                    provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                    provider.GetRequiredService<ISessionProvider>()
-                )
-            );
-            _ = services.AddScoped<IMediaDownloadService>(provider =>
-                new RingMediaDownloadService(
-                    provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
-                    provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<IVideoForensicsDataClient>()
-                )
-            );
-            _ = services.AddScoped<IEventAndConfigService>(provider =>
-                new RingEventAndConfigService(
-                    provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
-                    provider.GetRequiredService<ISessionProvider>()
-                )
-            );
-            _ = services.AddScoped<IVideoProvider>(provider =>
-                new RingVideoProvider(
-                    provider.GetRequiredService<ILogger<RingVideoProvider>>(),
-                    provider.GetRequiredService<IProviderAuthService>(),
-                    provider.GetRequiredService<IDeviceDiscoveryService>(),
-                    provider.GetRequiredService<IMediaDownloadService>(),
-                    provider.GetRequiredService<IEventAndConfigService>()
-                )
-            );
+            // during M1): each auth service depends on Scoped repositories - a Singleton capturing
+            // them is the same captive-dependency problem as the services below. Scoped-depending-on-
+            // Singleton (ISessionProvider, ICredentialStore, IUniviewSessionProvider) is fine; only
+            // the reverse is the bug. For today's single-root-scope console/MCP hosts this is observably
+            // identical to Singleton.
+            if (string.Equals(activeProviderName, "Ring", StringComparison.OrdinalIgnoreCase))
+            {
+                _ = services.AddScoped<IProviderAuthService>(provider =>
+                    new RingAuthService(
+                        provider.GetRequiredService<ILogger<RingAuthService>>(),
+                        provider.GetRequiredService<ISessionProvider>(),
+                        provider.GetRequiredService<ICredentialStore>(),
+                        provider.GetRequiredService<ICredentialRepository>(),
+                        provider.GetRequiredService<IRingAccountRepository>(),
+                        provider.GetRequiredService<IProviderAccountRepository>(),
+                        provider.GetRequiredService<IUserRepository>()
+                    )
+                );
+                _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
+                    new RingDeviceDiscoveryService(
+                        provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
+                        provider.GetRequiredService<ISessionProvider>()
+                    )
+                );
+                _ = services.AddScoped<IMediaDownloadService>(provider =>
+                    new RingMediaDownloadService(
+                        provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
+                        provider.GetRequiredService<ISessionProvider>(),
+                        provider.GetRequiredService<IVideoForensicsDataClient>()
+                    )
+                );
+                _ = services.AddScoped<IEventAndConfigService>(provider =>
+                    new RingEventAndConfigService(
+                        provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
+                        provider.GetRequiredService<ISessionProvider>()
+                    )
+                );
+                _ = services.AddScoped<IVideoProvider>(provider =>
+                    new RingVideoProvider(
+                        provider.GetRequiredService<ILogger<RingVideoProvider>>(),
+                        provider.GetRequiredService<IProviderAuthService>(),
+                        provider.GetRequiredService<IDeviceDiscoveryService>(),
+                        provider.GetRequiredService<IMediaDownloadService>(),
+                        provider.GetRequiredService<IEventAndConfigService>()
+                    )
+                );
+            }
+            else if (string.Equals(activeProviderName, "Uniview", StringComparison.OrdinalIgnoreCase))
+            {
+                _ = services.AddScoped<IProviderAuthService>(provider =>
+                    new UniviewAuthService(
+                        provider.GetRequiredService<ILogger<UniviewAuthService>>(),
+                        provider.GetRequiredService<IUniviewSessionProvider>(),
+                        provider.GetRequiredService<IForensicsConfiguration>(),
+                        provider.GetRequiredService<ICredentialRepository>()
+                    )
+                );
+                _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
+                    new UniviewDeviceDiscoveryService(
+                        provider.GetRequiredService<ILogger<UniviewDeviceDiscoveryService>>(),
+                        provider.GetRequiredService<IUniviewSessionProvider>(),
+                        provider.GetRequiredService<IForensicsConfiguration>()
+                    )
+                );
+                _ = services.AddScoped<IMediaDownloadService>(provider =>
+                    new UniviewMediaDownloadService(
+                        provider.GetRequiredService<ILogger<UniviewMediaDownloadService>>(),
+                        provider.GetRequiredService<IUniviewSessionProvider>()
+                    )
+                );
+                _ = services.AddScoped<IEventAndConfigService>(provider =>
+                    new UniviewEventAndConfigService(
+                        provider.GetRequiredService<ILogger<UniviewEventAndConfigService>>(),
+                        provider.GetRequiredService<IUniviewSessionProvider>()
+                    )
+                );
+                _ = services.AddScoped<IVideoProvider>(provider =>
+                    new UniviewVideoProvider(
+                        provider.GetRequiredService<ILogger>(),
+                        provider.GetRequiredService<IProviderAuthService>(),
+                        provider.GetRequiredService<IDeviceDiscoveryService>(),
+                        provider.GetRequiredService<IMediaDownloadService>(),
+                        provider.GetRequiredService<IEventAndConfigService>()
+                    )
+                );
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unknown ActiveProvider '{activeProviderName}' - expected 'Ring' or 'Uniview'.");
+            }
 
             // Runtime configuration. Starts out holding class defaults; the caller loads persisted
             // settings into this same singleton via InitializeVideoForensicsDataAsync below, once the
@@ -242,6 +305,23 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>
+        /// Registers server location and connectivity state services (Task 1 & 2) that display
+        /// server connection information in the UI and detect offline states. Defaults to no-op
+        /// implementations suitable for the server itself; client hosts (MAUI) override these
+        /// with their own implementations that use local discovery and connectivity tracking.
+        /// </summary>
+        public static IServiceCollection AddServerLocationServices(this IServiceCollection services)
+        {
+            // Register default implementations for hosts where server location info is not tracked
+            // (e.g., WebApp where the current process IS the server). MAUI and other clients
+            // override these with their own implementations after this call.
+            services.TryAddSingleton<VideoForensics.Ui.Shared.Services.IServerLocationInformationService, VideoForensics.Ui.Shared.Services.DefaultServerLocationInformationService>();
+            services.TryAddSingleton<VideoForensics.Ui.Shared.Services.IServerConnectivityState, VideoForensics.Ui.Shared.Services.DefaultServerConnectivityState>();
+
+            return services;
+        }
+
+        /// <summary>
         /// Registers HTTP-backed read-only repository implementations that call the server's Minimal
         /// API (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs) instead of touching a local database
         /// or any provider directly - for a client host (MAUI) that talks to a remote server rather than
@@ -250,9 +330,38 @@ namespace VideoForensics.Hosting
         /// </summary>
         public static IServiceCollection AddVideoForensicsClientApi(this IServiceCollection services, Uri serverAddress)
         {
+            _ = services.AddServerLocationServices();
+
+            // Register the paired-device auth handler as transient, then configure it as a global default
+            // for all HTTP clients registered below. This single handler attaches the bearer token to every
+            // outgoing request from all 17 Remote* classes without requiring individual auth logic in each one.
+            _ = services.AddTransient<PairedDeviceAuthHandler>();
+            _ = services.ConfigureHttpClientDefaults(http => http.AddHttpMessageHandler<PairedDeviceAuthHandler>());
+
             _ = services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IReportGenerationService, RemoteReportGenerationService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEvidenceValidationService, RemoteEvidenceValidationService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEvidenceExportService, RemoteEvidenceExportService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
+
+            // Real-time push channel for download progress and urgent events (plan §6) - the caller
+            // (MAUI or other client) is responsible for calling StartAsync() when a valid session
+            // token is available and they wish to begin receiving updates.
+            _ = services.AddSingleton<ILiveHubConnection>(sp => new LiveHubConnection(serverAddress, sp));
+
             return services;
         }
 

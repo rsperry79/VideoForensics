@@ -89,4 +89,7 @@
   <data name="DeactivateFailed2" xml:space="preserve">
     <value>Deactivate failed: {0}</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

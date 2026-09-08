@@ -5,6 +5,8 @@ using QRCoder;
 
 using System.Text.Json;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -27,7 +29,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapPairingEndpoints(this WebApplication app)
         {
-            _ = app.MapPost("/api/pairing/initiate", async (
+            _ = app.MapPost("/api/v1/pairing/initiate", async (
                 HttpContext context,
                 IPairingTokenService pairingTokens,
                 IOperatorRepository operators,
@@ -59,7 +61,7 @@ namespace VideoForensics.WebApp.Api
             }).RequireAuthorization(policy => policy.RequireAssertion(_ => true)) // auth optional here - the handler above does the real gating (bootstrap case has no session at all)
               .RequireRateLimiting("auth");
 
-            _ = app.MapGet("/api/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
+            _ = app.MapGet("/api/v1/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
             {
                 var info = pairingTokens.Peek(token);
                 return info == null
@@ -72,7 +74,7 @@ namespace VideoForensics.WebApp.Api
             // image only encodes the same pairing URL a SuperAdmin could otherwise read off-screen
             // or copy as plain text - rendering it as an image is a UX convenience, not a new trust
             // boundary.
-            _ = app.MapGet("/api/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
+            _ = app.MapGet("/api/v1/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
             {
                 var info = pairingTokens.Peek(token);
                 if (info == null)
@@ -80,7 +82,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                string pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}";
+                string pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}&v=1";
 
                 using var generator = new QRCodeGenerator();
                 using var data = generator.CreateQrCode(pairingUrl, QRCodeGenerator.ECCLevel.Q);
@@ -90,7 +92,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.File(bytes, "image/png");
             }).RequireRateLimiting("auth");
 
-            _ = app.MapPost("/api/pairing/{token}/register/options", async (
+            _ = app.MapPost("/api/v1/pairing/{token}/register/options", async (
                 string token,
                 RegisterOptionsRequest request,
                 IPairingTokenService pairingTokens,
@@ -138,7 +140,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
             }).RequireRateLimiting("auth");
 
-            _ = app.MapPost("/api/pairing/{token}/register/complete", async (
+            _ = app.MapPost("/api/v1/pairing/{token}/register/complete", async (
                 string token,
                 RegisterCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
@@ -147,6 +149,7 @@ namespace VideoForensics.WebApp.Api
                 IPairedDeviceRepository pairedDevices,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
+                IForensicsConfiguration config,
                 HttpContext context,
                 IFido2 fido2,
                 CancellationToken ct) =>
@@ -216,10 +219,19 @@ namespace VideoForensics.WebApp.Api
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingCompleted, op.Id, pairedDevice.Id,
                     tierResolver.ResolveClientIp(context), $"device={pending.DeviceName}, role={pending.Role}", isUrgent: true, ct);
 
-                return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString() });
+                // If pairing occurred over Internet or Network (not LAN), provide the configured
+                // Internet-reachable URL so the device knows how to reach the server.
+                NetworkTier tier = tierResolver.ResolveTier(context);
+                string? initialInternetServerUrl = null;
+                if (tier != NetworkTier.Local && !string.IsNullOrEmpty(config.InternetServerUrl))
+                {
+                    initialInternetServerUrl = config.InternetServerUrl;
+                }
+
+                return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString(), initialInternetServerUrl });
             }).RequireRateLimiting("auth");
 
-            _ = app.MapPost("/api/auth/webauthn/assertion-options", async (
+            _ = app.MapPost("/api/v1/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IFido2 fido2,
@@ -248,7 +260,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
             }).RequireRateLimiting("auth");
 
-            _ = app.MapPost("/api/auth/webauthn/assertion-complete", async (
+            _ = app.MapPost("/api/v1/auth/webauthn/assertion-complete", async (
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
@@ -324,7 +336,7 @@ namespace VideoForensics.WebApp.Api
             // that protected endpoints require in addition to the normal session. See
             // IStepUpAuthService's doc comment for why this is kept deliberately separate from
             // session-start verification above.
-            _ = app.MapPost("/api/auth/webauthn/stepup-complete", async (
+            _ = app.MapPost("/api/v1/auth/webauthn/stepup-complete", async (
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
