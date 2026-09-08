@@ -55,8 +55,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device configuration snapshots.</summary>
         public DbSet<DeviceConfigSnapshot> DeviceConfigSnapshots { get; set; }
 
-        /// <summary>Gets or sets the annotations.</summary>
-        public DbSet<Annotation> Annotations { get; set; }
 
         /// <summary>Gets or sets the provider reconciliation records.</summary>
         public DbSet<ProviderReconciliationRecord> ProviderReconciliationRecords { get; set; }
@@ -82,8 +80,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device capabilities.</summary>
         public DbSet<DeviceCapabilities> DeviceCapabilities { get; set; }
 
-        /// <summary>Gets or sets the device health records.</summary>
-        public DbSet<DeviceHealth> DeviceHealthRecords { get; set; }
 
         /// <summary>Gets or sets the location metadata.</summary>
         public DbSet<LocationMetadata> LocationMetadata { get; set; }
@@ -94,11 +90,7 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the export audit records.</summary>
         public DbSet<ExportAuditRecordEntity> ExportAuditRecords { get; set; }
 
-        /// <summary>Gets or sets the redaction audit records.</summary>
-        public DbSet<RedactionAuditRecordEntity> RedactionAuditRecords { get; set; }
 
-        /// <summary>Gets or sets the modification audit records.</summary>
-        public DbSet<ModificationAuditRecordEntity> ModificationAuditRecords { get; set; }
 
         /// <summary>Gets or sets the Operators (plan §5.11).</summary>
         public DbSet<Operator> Operators { get; set; }

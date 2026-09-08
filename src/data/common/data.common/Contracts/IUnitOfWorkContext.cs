@@ -33,9 +33,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets the device config repository.</summary>
         IDeviceConfigRepository DeviceConfig { get; }
 
-        /// <summary>Gets the annotation repository.</summary>
-        IAnnotationRepository Annotations { get; }
-
         /// <summary>Gets the provider reconciliation repository.</summary>
         IProviderReconciliationRepository ProviderReconciliation { get; }
 

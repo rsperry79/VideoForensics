@@ -28,7 +28,6 @@ namespace VideoForensics.Providers.Ring.Tests
         public IActionLogRepository ActionLog { get; set; } = null!;
         public IEventRepository Events { get; set; } = null!;
         public IDeviceConfigRepository DeviceConfig { get; set; } = null!;
-        public IAnnotationRepository Annotations { get; set; } = null!;
         public IProviderReconciliationRepository ProviderReconciliation { get; set; } = null!;
         public IExportRecordRepository ExportRecords { get; set; } = null!;
     }
