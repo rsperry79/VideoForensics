@@ -80,4 +80,30 @@ namespace VideoForensics.Api.Contracts
         IReadOnlyList<Guid> ItemsExcludedForFailedIntegrity,
         string? ErrorMessage
     );
+
+    /// <summary>
+    /// Result of running full provider reconciliation with auto-fix across all devices.
+    /// </summary>
+    /// <param name="TotalDevicesScanned">Total number of devices scanned.</param>
+    /// <param name="TotalFilesVerified">Total number of media files verified for integrity.</param>
+    /// <param name="TotalFilesIntact">Number of files that passed integrity verification.</param>
+    /// <param name="TotalFilesFailed">Number of files that failed integrity verification.</param>
+    /// <param name="TotalFilesMissing">Number of files that are missing.</param>
+    /// <param name="TotalDiscrepanciesFound">Total number of discrepancies found during provider reconciliation.</param>
+    /// <param name="TotalDiscrepanciesFixed">Number of discrepancies that were auto-fixed.</param>
+    /// <param name="StartedAtUtc">UTC timestamp when the validation began.</param>
+    /// <param name="CompletedAtUtc">UTC timestamp when the validation completed.</param>
+    /// <param name="ErrorMessage">Error message if the validation failed entirely.</param>
+    public record BulkValidationResultDto(
+        int TotalDevicesScanned,
+        int TotalFilesVerified,
+        int TotalFilesIntact,
+        int TotalFilesFailed,
+        int TotalFilesMissing,
+        int TotalDiscrepanciesFound,
+        int TotalDiscrepanciesFixed,
+        DateTime StartedAtUtc,
+        DateTime CompletedAtUtc,
+        string? ErrorMessage
+    );
 }

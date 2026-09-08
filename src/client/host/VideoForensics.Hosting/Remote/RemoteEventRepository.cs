@@ -146,5 +146,17 @@ namespace VideoForensics.Hosting.Remote
             HttpResponseMessage response = await _httpClient.DeleteAsync($"/api/v1/events/{eventId}", ct);
             _ = response.EnsureSuccessStatusCode();
         }
+
+        /// <inheritdoc />
+        public Task<Event> CreateAsync(Event @event, CancellationToken ct)
+        {
+            throw new NotSupportedException(NoWritePathMessage);
+        }
+
+        /// <inheritdoc />
+        public Task UpdateAsync(Event @event, CancellationToken ct)
+        {
+            throw new NotSupportedException(NoWritePathMessage);
+        }
     }
 }

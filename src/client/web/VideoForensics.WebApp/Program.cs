@@ -209,6 +209,10 @@ _ = builder.Services
 // WebApp-specific service for handling 2FA authentication attempts: stores credentials in memory
 // during the two-factor flow, with automatic 5-minute expiry.
 builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, VideoForensics.WebApp.Api.AuthAttemptCache>();
+
+// Bulk validation service for running full validation across all devices.
+builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
+
 builder.Services.AddHealthChecks();
 
 // LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
