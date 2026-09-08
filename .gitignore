@@ -207,3 +207,8 @@ Generated/
 # IDE extensions
 .vscode/
 *.code-workspace
+
+# Local tooling/scratch output - not part of the project
+.mcp/
+build_output.txt
+scratchpad_*.cs
