@@ -11,7 +11,6 @@ public class DeviceLocationEntityTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var providerAccountId = Guid.NewGuid();
         string providerLocationId = "location-123";
         string name = "Front Door";
         string address = "123 Main St";
@@ -21,7 +20,6 @@ public class DeviceLocationEntityTests
         var location = new Location
         {
             Id = id,
-            ProviderAccountId = providerAccountId,
             ProviderLocationId = providerLocationId,
             Name = name,
             Address = address,
@@ -30,7 +28,6 @@ public class DeviceLocationEntityTests
 
         // Assert
         Assert.Equal(id, location.Id);
-        Assert.Equal(providerAccountId, location.ProviderAccountId);
         Assert.Equal(providerLocationId, location.ProviderLocationId);
         Assert.Equal(name, location.Name);
         Assert.Equal(address, location.Address);
@@ -44,7 +41,6 @@ public class DeviceLocationEntityTests
         var location = new Location
         {
             Id = Guid.NewGuid(),
-            ProviderAccountId = Guid.NewGuid(),
             ProviderLocationId = "location-123",
             Name = "Front Door",
             Address = null,

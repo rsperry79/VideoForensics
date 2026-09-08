@@ -29,12 +29,11 @@ namespace VideoForensics.Data.Database.Tests
             };
         }
 
-        public static Location BuildLocation(Guid? accountId = null, string? providerLocationId = null, string? name = null)
+        public static Location BuildLocation(string? providerLocationId = null, string? name = null)
         {
             return new Location
             {
                 Id = Guid.NewGuid(),
-                ProviderAccountId = accountId ?? Guid.NewGuid(),
                 ProviderLocationId = providerLocationId ?? $"loc_{Guid.NewGuid():N}",
                 Name = name ?? $"Test Location {Guid.NewGuid():N}",
                 Address = "123 Test St"
@@ -234,34 +233,6 @@ namespace VideoForensics.Data.Database.Tests
                 EventsExported = 10,
                 ExportFormat = "AES256Archive",
                 Purpose = "CaseFile"
-            };
-        }
-
-        public static RedactionAuditRecordEntity BuildRedactionAuditRecord(Guid? evidenceId = null, string? redactedBy = null)
-        {
-            return new RedactionAuditRecordEntity
-            {
-                Id = Guid.NewGuid(),
-                EvidenceId = evidenceId ?? Guid.NewGuid(),
-                RedactedAtUtc = DateTime.UtcNow,
-                RedactedBy = redactedBy ?? "TestReviewer",
-                ApprovedBy = "TestApprover",
-                ContentRedacted = "PII",
-                JustificationNotes = "Redacted for privacy compliance"
-            };
-        }
-
-        public static ModificationAuditRecordEntity BuildModificationAuditRecord(Guid? eventId = null, string? modifiedBy = null)
-        {
-            return new ModificationAuditRecordEntity
-            {
-                Id = Guid.NewGuid(),
-                EventId = eventId ?? Guid.NewGuid(),
-                ModifiedAtUtc = DateTime.UtcNow,
-                ModifiedBy = modifiedBy ?? "TestModifier",
-                ModificationType = "Annotation",
-                ChangeSummary = "Added investigator notes",
-                ApprovedByInvestigator = true
             };
         }
 
