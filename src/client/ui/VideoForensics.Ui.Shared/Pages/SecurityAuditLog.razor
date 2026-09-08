@@ -3,7 +3,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
-@using Syncfusion.Blazor.QueryBuilder
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<SecurityAuditLog> L
@@ -18,24 +17,6 @@
             <SfButton Content="@L["RefreshButton"]" OnClick="@LoadAsync" Disabled="@_isLoading" />
         </div>
     </div>
-
-    @if (_entries is not null && _entries.Count > 0)
-    {
-        <div class="right-panel-section">
-            <span class="d-block mb-2">@L["Filters"]</span>
-            <SfQueryBuilder @ref="_entriesFilter" TValue="SecurityAuditLogEntry">
-                <QueryBuilderColumns>
-                    <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
-                    <QueryBuilderColumn Field="OperatorId" Label="@L["ColOperatorId"]" />
-                    <QueryBuilderColumn Field="PairedDeviceId" Label="@L["ColPairedDeviceId"]" />
-                    <QueryBuilderColumn Field="SourceIp" Label="@L["ColSourceIp"]" />
-                    <QueryBuilderColumn Field="Details" Label="@L["ColDetails"]" />
-                </QueryBuilderColumns>
-            </SfQueryBuilder>
-            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEntriesFilterAsync())" CssClass="e-primary mt-2" />
-        </div>
-    }
 </PageRightPanelContent>
 
 @if (_isLoading)
@@ -57,7 +38,7 @@ else if (_entries is null || _entries.Count == 0)
 }
 else
 {
-    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true">
+    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
@@ -80,7 +61,6 @@ else
 @code {
     private bool _isLoading = true;
     private List<SecurityAuditLogEntry>? _entries;
-    private SfQueryBuilder<SecurityAuditLogEntry>? _entriesFilter;
     private IEnumerable<SecurityAuditLogEntry> _filteredEntries = new List<SecurityAuditLogEntry>();
     private string? _authError;
     private string? _loadError;
@@ -136,22 +116,6 @@ else
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    private async Task ApplyEntriesFilterAsync()
-    {
-        if (_entriesFilter is not null)
-        {
-            var result = await _entriesFilter.GetFilteredRecordsAsync();
-            if (result is not null)
-            {
-                _filteredEntries = result.OrderByDescending(e => e.TimestampUtc);
-            }
-            else if (_entries is not null)
-            {
-                _filteredEntries = _entries.OrderByDescending(e => e.TimestampUtc);
-            }
         }
     }
 

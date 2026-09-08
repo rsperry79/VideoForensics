@@ -2,7 +2,6 @@
 @using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
-@using Syncfusion.Blazor.QueryBuilder
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Notifications> L
@@ -93,20 +92,7 @@ else
         }
         else
         {
-            <PageRightPanelContent>
-                <div class="right-panel-section">
-                    <small>@L["UrgentEventOverrides"]</small>
-                    <SfQueryBuilder @ref="_urgencyRowsFilter" TValue="UrgencyRow" class="mb-2">
-                        <QueryBuilderColumns>
-                            <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
-                            <QueryBuilderColumn Field="DefaultUrgent" Label="@L["ColDefault"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                            <QueryBuilderColumn Field="EffectiveUrgent" Label="@L["ColEffective"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                        </QueryBuilderColumns>
-                    </SfQueryBuilder>
-                    <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyUrgencyFilterAsync())" CssClass="e-primary mt-2" />
-                </div>
-            </PageRightPanelContent>
-            <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(UrgencyRow.EventType)" HeaderText="@L["ColEventType"]" />
@@ -163,7 +149,6 @@ else
 
     private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
     private List<UrgencyRow> _urgencyRows = new();
-    private SfQueryBuilder<UrgencyRow>? _urgencyRowsFilter;
     private IEnumerable<UrgencyRow> _filteredUrgencyRows = new List<UrgencyRow>();
 
     protected override async Task OnInitializedAsync()
@@ -331,15 +316,6 @@ else
         {
             _settingsSuccess = false;
             _settingsMessage = L["FailedToClearOverride", ex.Message];
-        }
-    }
-
-    private async Task ApplyUrgencyFilterAsync()
-    {
-        if (_urgencyRowsFilter is not null)
-        {
-            var result = await _urgencyRowsFilter.GetFilteredRecordsAsync();
-            _filteredUrgencyRows = result?.ToList() ?? _urgencyRows;
         }
     }
 

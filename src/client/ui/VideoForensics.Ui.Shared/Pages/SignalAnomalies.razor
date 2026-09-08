@@ -5,7 +5,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -43,22 +42,6 @@ else
             </div>
         </div>
 
-        @if (_report is not null && _report.JammingByDevice.Count > 0)
-        {
-            <div class="right-panel-section">
-                <small>@L["JammingSummaryHeading"]</small>
-                <SfQueryBuilder @ref="_jammingByDeviceFilter" TValue="SignalAnomalyReport.JammingSummaryEntry" class="mb-2">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="DeviceName" Label="@L["ColDevice"]" />
-                        <QueryBuilderColumn Field="IncidentCount" Label="@L["ColIncidentCount"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="TotalJammedDurationMinutes" Label="@L["ColTotalJammedMin"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="AverageDegradationDb" Label="@L["ColAvgDegradation"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="MaxDegradationDb" Label="@L["ColMaxDegradation"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyJammingFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     @if (_report is not null)
@@ -106,7 +89,7 @@ else
         }
         else
         {
-            <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_filteredJammingByDevice" AllowPaging="true" AllowSorting="true">
+            <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_filteredJammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" />
@@ -144,7 +127,6 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private SignalAnomalyReport? _report;
-    private SfQueryBuilder<SignalAnomalyReport.JammingSummaryEntry>? _jammingByDeviceFilter;
     private IEnumerable<SignalAnomalyReport.JammingSummaryEntry> _filteredJammingByDevice = new List<SignalAnomalyReport.JammingSummaryEntry>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
@@ -183,12 +165,4 @@ else
         }
     }
 
-    private async Task ApplyJammingFilterAsync()
-    {
-        if (_jammingByDeviceFilter is not null)
-        {
-            var result = await _jammingByDeviceFilter.GetFilteredRecordsAsync();
-            _filteredJammingByDevice = result ?? (_report?.JammingByDevice ?? new List<SignalAnomalyReport.JammingSummaryEntry>());
-        }
-    }
 }

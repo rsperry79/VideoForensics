@@ -3,7 +3,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
-@using Syncfusion.Blazor.QueryBuilder
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
@@ -60,23 +59,7 @@ else if (_devices is null || _devices.Count == 0)
 }
 else
 {
-    <PageRightPanelContent>
-        <div class="right-panel-section">
-            <span>Filter Devices</span>
-            <SfQueryBuilder @ref="_devicesFilter" TValue="PairedDevice" class="mb-2">
-                <QueryBuilderColumns>
-                    <QueryBuilderColumn Field="DeviceName" Label="@L["ColDeviceName"]" />
-                    <QueryBuilderColumn Field="Role" Label="@L["ColRole"]" />
-                    <QueryBuilderColumn Field="PairedAtUtc" Label="@L["ColPairedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    <QueryBuilderColumn Field="LastSeenAtUtc" Label="@L["ColLastSeenUtc"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    <QueryBuilderColumn Field="LastSeenIp" Label="@L["ColLastSeenIp"]" />
-                    <QueryBuilderColumn Field="IsActive" Label="@L["StatusActive"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                </QueryBuilderColumns>
-            </SfQueryBuilder>
-            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDevicesFilterAsync())" CssClass="e-primary mt-2" />
-        </div>
-    </PageRightPanelContent>
-    <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true">
+    <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" />
@@ -152,7 +135,6 @@ else
 @code {
     private bool _isLoading = true;
     private List<PairedDevice>? _devices = new();
-    private SfQueryBuilder<PairedDevice>? _devicesFilter;
     private IEnumerable<PairedDevice> _filteredDevices = new List<PairedDevice>();
     private string? _authError;
     private string? _loadError;
@@ -257,15 +239,6 @@ else
     {
         _pendingRevokeDeviceId = null;
         _reasonInput = string.Empty;
-    }
-
-    private async Task ApplyDevicesFilterAsync()
-    {
-        if (_devicesFilter is not null)
-        {
-            var result = await _devicesFilter.GetFilteredRecordsAsync();
-            _filteredDevices = result?.ToList() ?? (_devices ?? new List<PairedDevice>());
-        }
     }
 
     private async Task ConfirmRevoke(Guid deviceId)

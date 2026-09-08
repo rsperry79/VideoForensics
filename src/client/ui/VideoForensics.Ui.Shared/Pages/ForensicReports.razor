@@ -5,7 +5,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -40,56 +39,6 @@ else
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
         </div>
 
-        @if (_report is not null && _report.EvidenceItems.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <span>@L["EvidenceItems"]</span>
-                <SfQueryBuilder @ref="_evidenceItemsFilter" TValue="MediaItem">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="Id" Label="@L["ColEvidenceId"]" />
-                        <QueryBuilderColumn Field="DeviceId" Label="@L["ColDeviceId"]" />
-                        <QueryBuilderColumn Field="FileName" Label="@L["ColFileName"]" />
-                        <QueryBuilderColumn Field="MediaFormat" Label="@L["ColFormat"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEvidenceItemsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
-
-        @if (_report is not null && _report.AnomalousHealthSnapshots.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <span>@L["AnomalousHealthSnapshots"]</span>
-                <SfQueryBuilder @ref="_anomalousHealthSnapshotsFilter" TValue="DeviceHealthSnapshot">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="CapturedAtUtc" Label="@L["ColCapturedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="DeviceId" Label="@L["ColDeviceId"]" />
-                        <QueryBuilderColumn Field="Connected" Label="@L["ColConnected"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                        <QueryBuilderColumn Field="BatteryPercentage" Label="@L["ColBatteryPercent"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="Rssi" Label="@L["ColRssi"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="WifiName" Label="@L["ColWifi"]" />
-                        <QueryBuilderColumn Field="FirmwareVersion" Label="@L["ColFirmware"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAnomalousHealthSnapshotsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
-
-        @if (_report is not null && _report.SignificantActions.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <span>@L["SignificantActions"]</span>
-                <SfQueryBuilder @ref="_significantActionsFilter" TValue="ActionLogEntry">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
-                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
-                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
-                        <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplySignificantActionsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     @if (_report is not null)
@@ -101,7 +50,7 @@ else
         }
         else
         {
-            <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn HeaderText="@L["ColEvidenceId"]">
@@ -133,7 +82,7 @@ else
         }
         else
         {
-            <SfGrid TValue="DeviceHealthSnapshot" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="DeviceHealthSnapshot" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceHealthSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
@@ -196,7 +145,7 @@ else
         }
         else
         {
-            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />
@@ -217,9 +166,6 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ForensicAnalysisReport? _report;
-    private SfQueryBuilder<MediaItem>? _evidenceItemsFilter;
-    private SfQueryBuilder<DeviceHealthSnapshot>? _anomalousHealthSnapshotsFilter;
-    private SfQueryBuilder<ActionLogEntry>? _significantActionsFilter;
     private IEnumerable<MediaItem> _filteredEvidenceItems = new List<MediaItem>();
     private IEnumerable<DeviceHealthSnapshot> _filteredAnomalousHealthSnapshots = new List<DeviceHealthSnapshot>();
     private IEnumerable<ActionLogEntry> _filteredSignificantActions = new List<ActionLogEntry>();
@@ -265,32 +211,5 @@ else
     private async Task OnDeviceSelectionChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
         await RunReportAsync();
-    }
-
-    private async Task ApplyEvidenceItemsFilterAsync()
-    {
-        if (_evidenceItemsFilter is not null && _report is not null)
-        {
-            var result = await _evidenceItemsFilter.GetFilteredRecordsAsync();
-            _filteredEvidenceItems = result?.ToList() ?? _report.EvidenceItems;
-        }
-    }
-
-    private async Task ApplyAnomalousHealthSnapshotsFilterAsync()
-    {
-        if (_anomalousHealthSnapshotsFilter is not null && _report is not null)
-        {
-            var result = await _anomalousHealthSnapshotsFilter.GetFilteredRecordsAsync();
-            _filteredAnomalousHealthSnapshots = result?.ToList() ?? _report.AnomalousHealthSnapshots;
-        }
-    }
-
-    private async Task ApplySignificantActionsFilterAsync()
-    {
-        if (_significantActionsFilter is not null && _report is not null)
-        {
-            var result = await _significantActionsFilter.GetFilteredRecordsAsync();
-            _filteredSignificantActions = result?.ToList() ?? _report.SignificantActions;
-        }
     }
 }

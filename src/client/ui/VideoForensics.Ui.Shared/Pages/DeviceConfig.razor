@@ -3,7 +3,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceConfigRepository DeviceConfigRepository
@@ -85,22 +84,7 @@ else
         }
         else
         {
-            <PageRightPanelContent>
-                <div class="right-panel-section">
-                    <small>@L["History"]</small>
-                    <SfQueryBuilder @ref="_historyFilter" TValue="DeviceConfigSnapshot">
-                        <QueryBuilderColumns>
-                            <QueryBuilderColumn Field="CapturedAtUtc" Label="@L["ColCapturedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                            <QueryBuilderColumn Field="MotionDetectionEnabled" Label="@L["ColMotionDetectionEnabled"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                            <QueryBuilderColumn Field="MotionSensitivity" Label="@L["ColMotionSensitivity"]" />
-                            <QueryBuilderColumn Field="RecordingMode" Label="@L["ColRecordingMode"]" />
-                            <QueryBuilderColumn Field="Source" Label="@L["ColSource"]" />
-                        </QueryBuilderColumns>
-                    </SfQueryBuilder>
-                    <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyHistoryFilterAsync())" CssClass="e-primary mt-2" />
-                </div>
-            </PageRightPanelContent>
-            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true">
+            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
@@ -146,7 +130,6 @@ else
     private string? _error;
     private DeviceConfigSnapshot? _latest;
     private List<DeviceConfigSnapshot> _history = new();
-    private SfQueryBuilder<DeviceConfigSnapshot>? _historyFilter;
     private IEnumerable<DeviceConfigSnapshot> _filteredHistory = new List<DeviceConfigSnapshot>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
@@ -196,12 +179,4 @@ else
         }
     }
 
-    private async Task ApplyHistoryFilterAsync()
-    {
-        if (_historyFilter is not null)
-        {
-            var result = await _historyFilter.GetFilteredRecordsAsync();
-            _filteredHistory = result?.ToList() ?? _history;
-        }
-    }
 }

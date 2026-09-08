@@ -5,7 +5,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.DropDowns
 @using Syncfusion.Blazor.Buttons
@@ -41,40 +40,6 @@ else
             <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
         </div>
-
-        @if (_report is not null && _report.AccessEvents.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <small>@L["AccessEventsTitle"]</small>
-                <SfQueryBuilder @ref="_accessEventsFilter" TValue="AccessControlReport.AccessEvent" class="mb-2">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="AccessedAtUtc" Label="@L["ColAccessedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
-                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
-                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
-                        <QueryBuilderColumn Field="Details" Label="@L["ColDetails"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAccessEventsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
-
-        @if (_report is not null && _report.ExportEvents.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <small>@L["ExportEventsTitle"]</small>
-                <SfQueryBuilder @ref="_exportEventsFilter" TValue="AccessControlReport.ExportEvent" class="mb-2">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="ExportedAtUtc" Label="@L["ColExportedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="ExportedByUserName" Label="@L["ColExportedBy"]" />
-                        <QueryBuilderColumn Field="CaseReference" Label="@L["ColCaseReference"]" />
-                        <QueryBuilderColumn Field="RecipientDescription" Label="@L["ColRecipient"]" />
-                        <QueryBuilderColumn Field="ItemCount" Label="@L["ColItemCount"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyExportEventsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     @if (_report is not null)
@@ -86,7 +51,7 @@ else
         }
         else
         {
-            <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" />
@@ -112,7 +77,7 @@ else
         }
         else
         {
-            <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" />
@@ -148,8 +113,6 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private AccessControlReport? _report;
-    private SfQueryBuilder<AccessControlReport.AccessEvent>? _accessEventsFilter;
-    private SfQueryBuilder<AccessControlReport.ExportEvent>? _exportEventsFilter;
     private IEnumerable<AccessControlReport.AccessEvent> _filteredAccessEvents = new List<AccessControlReport.AccessEvent>();
     private IEnumerable<AccessControlReport.ExportEvent> _filteredExportEvents = new List<AccessControlReport.ExportEvent>();
 
@@ -188,21 +151,4 @@ else
         _filteredExportEvents = _report?.ExportEvents ?? new List<AccessControlReport.ExportEvent>();
     }
 
-    private async Task ApplyAccessEventsFilterAsync()
-    {
-        if (_accessEventsFilter is not null)
-        {
-            var result = await _accessEventsFilter.GetFilteredRecordsAsync();
-            _filteredAccessEvents = result?.ToList() ?? _report?.AccessEvents ?? new List<AccessControlReport.AccessEvent>();
-        }
-    }
-
-    private async Task ApplyExportEventsFilterAsync()
-    {
-        if (_exportEventsFilter is not null)
-        {
-            var result = await _exportEventsFilter.GetFilteredRecordsAsync();
-            _filteredExportEvents = result?.ToList() ?? _report?.ExportEvents ?? new List<AccessControlReport.ExportEvent>();
-        }
-    }
 }

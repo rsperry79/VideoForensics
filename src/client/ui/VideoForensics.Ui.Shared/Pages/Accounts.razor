@@ -2,7 +2,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAuthService AuthService
@@ -30,21 +29,7 @@ else
     }
     else
     {
-        <PageRightPanelContent>
-            <div class="right-panel-section">
-                <h6>Filter</h6>
-                <SfQueryBuilder @ref="_rowsFilter" TValue="AccountRow">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="DisplayName" Label="@L["ColDisplayName"]" />
-                        <QueryBuilderColumn Field="Account.ProviderName" Label="@L["ColProvider"]" />
-                        <QueryBuilderColumn Field="Account.LinkedUtc" Label="@L["ColLinked"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="Account.LastSuccessfulAuthUtc" Label="@L["ColLastAuth"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyRowsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        </PageRightPanelContent>
-        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true">
+        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" />
@@ -100,7 +85,6 @@ else
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private List<AccountRow> _rows = new();
-    private SfQueryBuilder<AccountRow>? _rowsFilter;
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private bool _isLoading = true;
     private bool _isBusy;
@@ -146,15 +130,6 @@ else
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    private async Task ApplyRowsFilterAsync()
-    {
-        if (_rowsFilter is not null)
-        {
-            var result = await _rowsFilter.GetFilteredRecordsAsync();
-            _filteredRows = result?.ToList() ?? _rows;
         }
     }
 
