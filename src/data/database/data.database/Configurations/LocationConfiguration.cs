@@ -23,10 +23,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(l => l.Address)
                 .HasMaxLength(512);
 
-            _ = builder.HasIndex(l => new { l.ProviderAccountId, l.ProviderLocationId })
+            // ProviderLocationId is now globally unique (no longer scoped by ProviderAccountId)
+            _ = builder.HasIndex(l => l.ProviderLocationId)
                 .IsUnique();
-
-            _ = builder.HasIndex(l => l.ProviderAccountId);
         }
     }
 }

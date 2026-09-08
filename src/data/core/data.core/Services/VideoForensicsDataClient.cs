@@ -286,17 +286,14 @@ namespace VideoForensics.Data.Core.Services
             {
                 return await _unitOfWork.ExecuteAsync(async context =>
                 {
-                    // Try to find existing location
-                    IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(providerAccountId, ct);
-                    Location? existingLocation = locations.FirstOrDefault(l =>
-                        l.ProviderLocationId == providerLocationId);
+                    // Since ProviderLocationId is now globally unique, query globally
+                    Location? existingLocation = await context.Locations.GetByProviderLocationIdAsync(providerLocationId, ct);
 
                     if (existingLocation == null)
                     {
                         var location = new Location
                         {
                             Id = Guid.NewGuid(),
-                            ProviderAccountId = providerAccountId,
                             ProviderLocationId = providerLocationId,
                             Name = name,
                             Address = address,

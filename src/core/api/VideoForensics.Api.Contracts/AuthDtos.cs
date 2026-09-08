@@ -5,9 +5,11 @@ namespace VideoForensics.Api.Contracts;
 /// </summary>
 /// <param name="Username">The username/email credential for authentication with the provider.</param>
 /// <param name="Password">The password credential for authentication with the provider.</param>
+/// <param name="ProviderName">Optional provider name (e.g. "Ring", "Wyze", "Uniview") to authenticate against. Null means the server's single configured active provider (backward-compatible default) — used by the multi-provider "Add Account" flow to pick a specific provider instead.</param>
 public record LoginRequestDto(
     string Username,
-    string Password
+    string Password,
+    string? ProviderName = null
 );
 
 /// <summary>

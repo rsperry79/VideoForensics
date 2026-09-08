@@ -388,7 +388,7 @@ namespace VideoForensics.Data.Core.Tests
 
                 // Assert - The file should be created in the reports directory
                 var reportsDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
                     "Reports");
 

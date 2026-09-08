@@ -36,7 +36,7 @@ namespace VideoForensics.MauiApp
                 .GetResult();
 #endif
 
-            var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "syncfusion-license.key");
+            var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
             if (File.Exists(syncfusionLicenseKeyPath))
             {
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
@@ -55,9 +55,9 @@ namespace VideoForensics.MauiApp
             builder.Services.AddSyncfusionBlazor();
 
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
-            // lands under %AppData%/VideoForensics/logs, matching the console app's pattern
+            // lands under %ProgramData%/VideoForensics/logs, matching the console app's pattern
             // (src/client/VideoForensics/Program.cs).
-            var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics");
+            var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
             Directory.CreateDirectory(configDir);
             var logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);

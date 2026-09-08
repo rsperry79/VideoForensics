@@ -6,6 +6,7 @@
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAuthService AuthService
+@inject IMultiProviderAuthService MultiProviderAuthService
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<Accounts> L
@@ -93,7 +94,7 @@ else
 }
 
 <h5 class="mt-4 mb-2">@L["AddAccount"]</h5>
-<AuthForm IdPrefix="addaccount" SubmitLabel="@L["AddAccount"]" OnAuthenticated="HandleAccountAddedAsync" />
+<AuthForm IdPrefix="addaccount" SubmitLabel="@L["AddAccount"]" OnAuthenticated="HandleAccountAddedAsync" AvailableProviders="_availableProviders" />
 
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
@@ -105,10 +106,12 @@ else
     private bool _isBusy;
     private string? _statusMessage;
     private Guid? _confirmingRemoveId;
+    private IReadOnlyList<string>? _availableProviders;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAccountsAsync();
+        _availableProviders = await MultiProviderAuthService.GetAvailableProvidersAsync();
     }
 
     private async Task LoadAccountsAsync()

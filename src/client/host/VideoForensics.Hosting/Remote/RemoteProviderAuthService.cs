@@ -18,16 +18,20 @@ namespace VideoForensics.Hosting.Remote
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
         private readonly HttpClient _httpClient;
+        private readonly string? _providerName;
 
-        public RemoteProviderAuthService(HttpClient httpClient)
+        public RemoteProviderAuthService(HttpClient httpClient) : this(httpClient, providerName: null) { }
+
+        public RemoteProviderAuthService(HttpClient httpClient, string? providerName)
         {
             _httpClient = httpClient;
+            _providerName = providerName;
         }
 
         /// <inheritdoc />
         public async Task<AuthResult> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
         {
-            var request = new LoginRequestDto(username, password);
+            var request = new LoginRequestDto(username, password, _providerName);
 
             try
             {
@@ -75,7 +79,7 @@ namespace VideoForensics.Hosting.Remote
             CancellationToken cancellationToken = default)
         {
             // First, attempt the initial login to see if 2FA is required
-            var loginRequest = new LoginRequestDto(username, password);
+            var loginRequest = new LoginRequestDto(username, password, _providerName);
 
             try
             {

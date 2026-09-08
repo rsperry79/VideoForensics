@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             if (OperatingSystem.IsWindows())
             {
                 return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics");
             }
 
@@ -37,7 +37,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             if (OperatingSystem.IsWindows())
             {
                 return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics", "Logs");
             }
 
@@ -58,7 +58,7 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
             if (OperatingSystem.IsWindows())
             {
                 return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics");
             }
 

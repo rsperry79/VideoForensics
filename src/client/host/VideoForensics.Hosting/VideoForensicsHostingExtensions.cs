@@ -18,11 +18,13 @@ using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Remote;
+using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
+using VideoForensics.Providers.Wyze.Services;
 
 namespace VideoForensics.Hosting
 {
@@ -174,6 +176,28 @@ namespace VideoForensics.Hosting
             {
                 throw new InvalidOperationException($"Unknown ActiveProvider '{activeProviderName}' - expected 'Ring' or 'Uniview'.");
             }
+
+            // Independent of the single "active" provider above: lets "Add Account" authenticate against
+            // any registered provider by name, not just whichever one this server booted with.
+            var multiProviderAuthFactories = new Dictionary<string, Func<IServiceProvider, IProviderAuthService>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Ring"] = provider => new RingAuthService(
+                    provider.GetRequiredService<ILogger<RingAuthService>>(),
+                    provider.GetRequiredService<ISessionProvider>(),
+                    provider.GetRequiredService<ICredentialStore>(),
+                    provider.GetRequiredService<ICredentialRepository>(),
+                    provider.GetRequiredService<IRingAccountRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredService<IUserRepository>()),
+                ["Uniview"] = provider => new UniviewAuthService(
+                    provider.GetRequiredService<ILogger<UniviewAuthService>>(),
+                    provider.GetRequiredService<IUniviewSessionProvider>(),
+                    provider.GetRequiredService<IForensicsConfiguration>(),
+                    provider.GetRequiredService<ICredentialRepository>()),
+                ["Wyze"] = provider => new WyzeAuthService(
+                    provider.GetRequiredService<ILogger<WyzeAuthService>>()),
+            };
+            _ = services.AddScoped<IMultiProviderAuthService>(provider => new MultiProviderAuthService(provider, multiProviderAuthFactories));
 
             // Runtime configuration. Starts out holding class defaults; the caller loads persisted
             // settings into this same singleton via InitializeVideoForensicsDataAsync below, once the
@@ -342,6 +366,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IReportGenerationService, RemoteReportGenerationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceValidationService, RemoteEvidenceValidationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceExportService, RemoteEvidenceExportService>(c => c.BaseAddress = serverAddress);

@@ -27,19 +27,28 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
         }
 
-        /// <summary>Gets all locations for a provider account.</summary>
+        /// <summary>Gets all locations for a provider account (deprecated - returns all locations for backward compatibility).</summary>
+        [Obsolete("ProviderLocationId is now globally unique. Use ListAsync instead.")]
         public async Task<IReadOnlyList<Location>> GetByProviderAccountIdAsync(Guid accountId, CancellationToken ct)
         {
+            // For backward compatibility, return all locations
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Locations.Where(l => l.ProviderAccountId == accountId).ToListAsync(ct);
+            return await db.Locations.ToListAsync(ct);
         }
 
-        /// <summary>Gets a location by provider account ID and provider location ID.</summary>
-        public async Task<Location?> GetByProviderLocationIdAsync(Guid accountId, string providerLocationId, CancellationToken ct)
+        /// <summary>Gets a location by provider location ID (globally unique).</summary>
+        public async Task<Location?> GetByProviderLocationIdAsync(string providerLocationId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Locations.FirstOrDefaultAsync(
-                l => l.ProviderAccountId == accountId && l.ProviderLocationId == providerLocationId, ct);
+                l => l.ProviderLocationId == providerLocationId, ct);
+        }
+
+        /// <summary>Gets a location by provider location ID (accountId parameter ignored for backward compatibility).</summary>
+        public async Task<Location?> GetByProviderLocationIdAsync(Guid accountId, string providerLocationId, CancellationToken ct)
+        {
+            // accountId is ignored since ProviderLocationId is now globally unique
+            return await GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
         /// <summary>Lists all locations.</summary>

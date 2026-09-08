@@ -25,7 +25,7 @@ using VideoForensics.WebApp.Hubs;
 // §5.2's "Local-only by default").
 NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
 
-var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "syncfusion-license.key");
+var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
 if (File.Exists(syncfusionLicenseKeyPath))
 {
     Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
@@ -93,9 +93,9 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 // Windows, keyed by content-root path) - explicit here so a signed-in session actually survives a
 // server restart instead of depending on that heuristic continuing to resolve the same way. Keys
 // live next to the app's own database rather than the OS default location, matching how every
-// other piece of this app's persistent state is already rooted at %AppData%\VideoForensics.
+// other piece of this app's persistent state is already rooted at %ProgramData%\VideoForensics.
 var dataProtectionKeyPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "keys");
+    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
 Directory.CreateDirectory(dataProtectionKeyPath);
 builder.Services.AddDataProtection()
     .SetApplicationName("VideoForensics")
@@ -333,7 +333,7 @@ static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
 {
     try
     {
-        var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics", "videoforensics.db");
+        var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "videoforensics.db");
         if (!File.Exists(dbPath))
         {
             return NetworkTier.Local;

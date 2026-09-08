@@ -153,6 +153,7 @@ namespace VideoForensics.WebApp.Discovery
         {
             StopAdvertising();
             base.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

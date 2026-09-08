@@ -180,14 +180,24 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.Id == locationId));
         }
 
+        /// <summary>Gets all locations (deprecated method, returns all locations for backward compatibility).</summary>
+        [Obsolete("ProviderLocationId is now globally unique. Use ListAsync instead.")]
         public Task<IReadOnlyList<Location>> GetByProviderAccountIdAsync(Guid accountId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().Where(l => l.ProviderAccountId == accountId).ToList());
+            return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().ToList());
         }
 
+        /// <summary>Gets a location by provider location ID (globally unique).</summary>
+        public Task<Location?> GetByProviderLocationIdAsync(string providerLocationId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.ProviderLocationId == providerLocationId));
+        }
+
+        /// <summary>Gets a location by provider location ID (accountId parameter ignored for backward compatibility).</summary>
         public Task<Location?> GetByProviderLocationIdAsync(Guid accountId, string providerLocationId, CancellationToken ct)
         {
-            return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.ProviderAccountId == accountId && l.ProviderLocationId == providerLocationId));
+            // accountId is ignored since ProviderLocationId is now globally unique
+            return GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
         public Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)

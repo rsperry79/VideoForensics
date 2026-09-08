@@ -22,7 +22,7 @@ namespace VideoForensics.Mcp
         private static async Task Main(string[] args)
         {
             string configDir = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "VideoForensics");
             _ = Directory.CreateDirectory(configDir);
 
