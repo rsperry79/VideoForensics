@@ -34,7 +34,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Where(e => e.DeviceId == deviceId &&
                             e.OccurredAtUtc >= fromUtc &&
                             e.OccurredAtUtc <= toUtc)
-                .Join(db.DeviceHealthRecords.Where(h => h.DeviceId == deviceId),
+                .Join(db.DeviceHealthSnapshots.Where(h => h.DeviceId == deviceId),
                       e => e.DeviceId,
                       h => h.DeviceId,
                       (e, h) => new EventWithHealthCorrelation
@@ -43,9 +43,9 @@ namespace VideoForensics.Data.Database.Repositories
                           OccurredAtUtc = e.OccurredAtUtc,
                           EventType = e.EventType,
                           BatteryPercentage = h.BatteryPercentage,
-                          WifiSignalRssi = h.WifiSignalRssi,
-                          IsOnline = h.IsOnline,
-                          HealthStatus = DetermineHealthStatus(h.BatteryPercentage, h.WifiSignalRssi, h.IsOnline)
+                          WifiSignalRssi = h.Rssi,
+                          IsOnline = h.Connected,
+                          HealthStatus = DetermineHealthStatus(h.BatteryPercentage, h.Rssi, h.Connected)
                       })
                 .ToListAsync(ct);
 
@@ -65,18 +65,18 @@ namespace VideoForensics.Data.Database.Repositories
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var gapDeviceIds = gaps.Select(g => g.DeviceId).Distinct().ToList();
-            List<DeviceHealth> healthRecords = await db.DeviceHealthRecords
-                .Where(h => gapDeviceIds.Contains(h.DeviceId))
-                .OrderByDescending(h => h.LastHeartbeatUtc)
+            List<DeviceHealthSnapshot> healthRecords = await db.DeviceHealthSnapshots
+                .Where(h => h.DeviceId.HasValue && gapDeviceIds.Contains(h.DeviceId.Value))
+                .OrderByDescending(h => h.CapturedAtUtc)
                 .ToListAsync(ct);
 
             var healthGaps = new List<HealthRelatedGap>();
             foreach (TimelineGap gap in gaps)
             {
-                DeviceHealth? health = healthRecords
+                DeviceHealthSnapshot? health = healthRecords
                     .Where(h => h.DeviceId == gap.DeviceId &&
-                                h.LastHeartbeatUtc >= gap.StartUtc &&
-                                h.LastHeartbeatUtc <= gap.EndUtc)
+                                h.CapturedAtUtc >= gap.StartUtc &&
+                                h.CapturedAtUtc <= gap.EndUtc)
                     .FirstOrDefault();
 
                 if (health != null)
@@ -86,11 +86,11 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         issue = "LowBattery";
                     }
-                    else if (health.IsOnline == false)
+                    else if (health.Connected == false)
                     {
                         issue = "OfflineStatus";
                     }
-                    else if (health.WifiSignalRssi < -80)
+                    else if (health.Rssi < -80)
                     {
                         issue = "PoorWiFi";
                     }
@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Database.Repositories
                         DurationMinutes = gap.DurationMinutes,
                         HealthIssue = issue,
                         MinBattery = health.BatteryPercentage,
-                        MinRssi = health.WifiSignalRssi
+                        MinRssi = health.Rssi
                     });
                 }
             }
