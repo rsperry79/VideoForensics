@@ -78,7 +78,6 @@ namespace VideoForensics.Data.Database.Repositories
         public IActionLogRepository ActionLog => new UnitOfWorkActionLogRepository(_db, _logger);
         public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
         public IDeviceConfigRepository DeviceConfig => new UnitOfWorkDeviceConfigRepository(_db, _logger);
-        public IAnnotationRepository Annotations => new UnitOfWorkAnnotationRepository(_db, _logger);
         public IProviderReconciliationRepository ProviderReconciliation => new UnitOfWorkProviderReconciliationRepository(_db, _logger);
         public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
     }
@@ -671,66 +670,6 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<IReadOnlyList<DeviceConfigSnapshot>> ListAsync(CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<DeviceConfigSnapshot>)_db.DeviceConfigSnapshots.AsNoTracking().ToList());
-        }
-    }
-
-    internal class UnitOfWorkAnnotationRepository : IAnnotationRepository
-    {
-        private readonly VideoForensicsDbContext _db;
-        private readonly ILogger _logger;
-
-        public UnitOfWorkAnnotationRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
-
-        public Task<Annotation?> GetAsync(Guid annotationId, CancellationToken ct)
-        {
-            return Task.FromResult(_db.Annotations.AsNoTracking().FirstOrDefault(a => a.Id == annotationId));
-        }
-
-        public Task<Annotation> AddAsync(string entityType, Guid entityId, string source, string key, string value, CancellationToken ct)
-        {
-            var annotation = new Annotation { Id = Guid.NewGuid(), EntityType = entityType, EntityId = entityId, Source = source, Key = key, Value = value, CreatedAtUtc = DateTime.UtcNow };
-            _ = _db.Annotations.Add(annotation);
-            return Task.FromResult(annotation);
-        }
-
-        public Task<IReadOnlyList<Annotation>> GetForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
-        {
-            return Task.FromResult((IReadOnlyList<Annotation>)_db.Annotations.AsNoTracking()
-                .Where(a => a.EntityType == entityType && a.EntityId == entityId)
-                .ToList());
-        }
-
-        public Task<IReadOnlyList<Annotation>> SearchAsync(string key, string? value, CancellationToken ct)
-        {
-            IQueryable<Annotation> query = _db.Annotations.AsNoTracking().Where(a => a.Key == key);
-            if (!string.IsNullOrEmpty(value))
-            {
-                query = query.Where(a => a.Value == value);
-            }
-
-            return Task.FromResult((IReadOnlyList<Annotation>)query.ToList());
-        }
-
-        public Task DeleteAsync(Guid annotationId, CancellationToken ct)
-        {
-            Annotation? annotation = _db.Annotations.FirstOrDefault(a => a.Id == annotationId);
-            if (annotation != null)
-            {
-                _ = _db.Annotations.Remove(annotation);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
-        {
-            var annotations = _db.Annotations.Where(a => a.EntityType == entityType && a.EntityId == entityId).ToList();
-            if (annotations.Count > 0)
-            {
-                _db.Annotations.RemoveRange(annotations);
-            }
-
-            return Task.CompletedTask;
         }
     }
 
