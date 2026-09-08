@@ -2,7 +2,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
@@ -12,33 +11,12 @@
 
 <PageRightPanelContent>
     <div class="right-panel-section">
-        <small>@L["Locations"]</small>
-        <SfQueryBuilder @ref="_locationsFilter" TValue="Location">
-            <QueryBuilderColumns>
-                <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
-                <QueryBuilderColumn Field="Name" Label="@L["ColName"]" />
-                <QueryBuilderColumn Field="Address" Label="@L["ColAddress"]" />
-            </QueryBuilderColumns>
-        </SfQueryBuilder>
-        <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyLocationsFilterAsync())" CssClass="e-primary mt-2" />
-    </div>
-
-    <div class="right-panel-section">
         <small>@L["Devices"]</small>
         <div class="d-flex flex-column gap-2 mb-2">
             <div>
                 <label>@L["LabelLocationId"]</label>
                 <SfTextBox @bind-Value="_locationIdInput" Placeholder="@L["PlaceholderLocationId"]" CssClass="w-100" />
             </div>
-            <SfQueryBuilder @ref="_devicesFilter" TValue="Device" Class="mt-2">
-                <QueryBuilderColumns>
-                    <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
-                    <QueryBuilderColumn Field="Name" Label="@L["ColName"]" />
-                    <QueryBuilderColumn Field="Type" Label="@L["ColType"]" />
-                    <QueryBuilderColumn Field="IsOnline" Label="@L["ColOnline"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                </QueryBuilderColumns>
-            </SfQueryBuilder>
-            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDevicesFilterAsync())" CssClass="e-primary mt-2" />
         </div>
     </div>
 
@@ -57,15 +35,6 @@
                 <label>@L["LabelTo"]</label>
                 <input type="date" @bind="_eventsToDate" class="w-100" />
             </div>
-            <SfQueryBuilder @ref="_eventsFilter" TValue="DeviceEvent" Class="mt-2">
-                <QueryBuilderColumns>
-                    <QueryBuilderColumn Field="Id" Label="@L["ColId"]" />
-                    <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
-                    <QueryBuilderColumn Field="Timestamp" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    <QueryBuilderColumn Field="SnapshotUrl" Label="@L["ColSnapshotUrl"]" />
-                </QueryBuilderColumns>
-            </SfQueryBuilder>
-            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyEventsFilterAsync())" CssClass="e-primary mt-2" />
         </div>
     </div>
 </PageRightPanelContent>
@@ -94,7 +63,7 @@
         }
         else
         {
-            <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" Class="mt-2">
+            <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" />
@@ -121,7 +90,7 @@
         }
         else
         {
-            <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" Class="mt-2">
+            <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" />
@@ -156,7 +125,7 @@
         }
         else
         {
-            <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" Class="mt-2">
+            <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" />
@@ -212,7 +181,6 @@
     private bool _locationsLoading;
     private string? _locationsError;
     private List<Location>? _locations;
-    private SfQueryBuilder<Location>? _locationsFilter;
     private IEnumerable<Location> _filteredLocations = new List<Location>();
 
     private async Task RunLocationsAsync()
@@ -235,21 +203,11 @@
         }
     }
 
-    private async Task ApplyLocationsFilterAsync()
-    {
-        if (_locationsFilter is not null)
-        {
-            var result = await _locationsFilter.GetFilteredRecordsAsync();
-            _filteredLocations = result?.ToList() ?? (_locations ?? new());
-        }
-    }
-
     // Devices
     private string _locationIdInput = string.Empty;
     private bool _devicesLoading;
     private string? _devicesError;
     private List<Device>? _devices;
-    private SfQueryBuilder<Device>? _devicesFilter;
     private IEnumerable<Device> _filteredDevices = new List<Device>();
 
     private async Task RunDevicesAsync()
@@ -272,15 +230,6 @@
         }
     }
 
-    private async Task ApplyDevicesFilterAsync()
-    {
-        if (_devicesFilter is not null)
-        {
-            var result = await _devicesFilter.GetFilteredRecordsAsync();
-            _filteredDevices = result?.ToList() ?? (_devices ?? new());
-        }
-    }
-
     // Device Events
     private string _eventsDeviceIdInput = string.Empty;
     private DateTime _eventsFromDate = DateTime.Today.AddDays(-90);
@@ -288,7 +237,6 @@
     private bool _eventsLoading;
     private string? _eventsError;
     private List<DeviceEvent>? _events;
-    private SfQueryBuilder<DeviceEvent>? _eventsFilter;
     private IEnumerable<DeviceEvent> _filteredEvents = new List<DeviceEvent>();
 
     private async Task RunEventsAsync()
@@ -308,15 +256,6 @@
         finally
         {
             _eventsLoading = false;
-        }
-    }
-
-    private async Task ApplyEventsFilterAsync()
-    {
-        if (_eventsFilter is not null)
-        {
-            var result = await _eventsFilter.GetFilteredRecordsAsync();
-            _filteredEvents = result?.ToList() ?? (_events ?? new());
         }
     }
 

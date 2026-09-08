@@ -6,7 +6,6 @@
 @using VideoForensics.Client.Common
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IEventRepository EventRepository
@@ -64,22 +63,6 @@ else
                 <SfCheckBox TChecked="bool" @bind-Checked="_onlyUnansweredOrFlagged" @bind-Checked:after="LoadEventsAsync" Label="@L["ShowOnlyUnansweredOrFlagged"].Value" />
             </div>
         </div>
-        @if (_rows is not null)
-        {
-            <div class="right-panel-section">
-                <h6>Event Filters</h6>
-                <SfQueryBuilder @ref="_rowsFilter" TValue="EventRow">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
-                        <QueryBuilderColumn Field="OccurredAtUtc" Label="@L["ColOccurredAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="DiscoveredAtUtc" Label="@L["ColDiscoveredAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="DownloadedAtUtc" Label="@L["ColDownloadedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="ProviderEventId" Label="@L["ColProviderEventId"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyRowsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mb-4">
@@ -110,7 +93,7 @@ else
         }
         else
         {
-            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked">
+            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" AllowFiltering="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
@@ -204,7 +187,6 @@ else
     private IEnumerable<EventRow> _filteredRows = new List<EventRow>();
     private IList<EventRow>? _selectedRows;
     private SfGrid<EventRow>? _grid;
-    private SfQueryBuilder<EventRow>? _rowsFilter;
 
     private SfToast? _toastRef;
     private bool _eventDetailsDialogVisible;
@@ -316,15 +298,6 @@ else
         finally
         {
             _loadingEvents = false;
-        }
-    }
-
-    private async Task ApplyRowsFilterAsync()
-    {
-        if (_rowsFilter is not null && _rows is not null)
-        {
-            var result = await _rowsFilter.GetFilteredRecordsAsync();
-            _filteredRows = result?.ToList() ?? _rows;
         }
     }
 

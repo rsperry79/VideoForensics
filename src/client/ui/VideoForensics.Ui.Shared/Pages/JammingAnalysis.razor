@@ -4,7 +4,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject JammingToolsOrchestrator JammingTools
@@ -44,24 +43,6 @@ else
             </div>
         </div>
 
-        @if (_report is not null && _report.Incidents.Count > 0)
-        {
-            <div class="right-panel-section">
-                <small>@L["ColStart"]</small>
-                <SfQueryBuilder @ref="_incidentsFilter" TValue="JammingIncidentRecord">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="StartUtc" Label="@L["ColStart"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="EndUtc" Label="@L["ColEnd"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="AffectedEventCount" Label="@L["ColAffectedEvents"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="AverageDegradationDb" Label="@L["ColAvgDegradation"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Number" />
-                        <QueryBuilderColumn Field="Confidence" Label="@L["ColConfidence"]" />
-                        <QueryBuilderColumn Field="Source" Label="@L["ColSource"]" />
-                        <QueryBuilderColumn Field="Notes" Label="@L["ColNotes"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyIncidentsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     @if (_report is not null)
@@ -70,7 +51,7 @@ else
 
         @if (_report.Incidents.Count > 0)
         {
-            <SfGrid TValue="JammingIncidentRecord" DataSource="@_filteredIncidents" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="JammingIncidentRecord" DataSource="@_filteredIncidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" />
@@ -136,7 +117,6 @@ else
     private bool _analyzing;
     private string? _analyzeError;
     private JammingAnalysisReport? _report;
-    private SfQueryBuilder<JammingIncidentRecord>? _incidentsFilter;
     private IEnumerable<JammingIncidentRecord> _filteredIncidents = new List<JammingIncidentRecord>();
 
     private DateTime _manualStartUtc = DateTime.UtcNow.AddHours(-1);
@@ -193,14 +173,6 @@ else
         }
     }
 
-    private async Task ApplyIncidentsFilterAsync()
-    {
-        if (_incidentsFilter is not null && _report?.Incidents is not null)
-        {
-            var result = await _incidentsFilter.GetFilteredRecordsAsync();
-            _filteredIncidents = result?.ToList() ?? _report.Incidents;
-        }
-    }
 
     private async Task RecordIncidentAsync()
     {

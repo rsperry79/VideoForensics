@@ -5,7 +5,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -38,23 +37,6 @@ else
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary" class="mt-3 w-100" />
         </div>
 
-        @if (_report is not null && _report.AuditTrail.Count > 0)
-        {
-            <div class="right-panel-section mt-3">
-                <h6>@L["AuditTrailTitle"]</h6>
-                <SfQueryBuilder @ref="_auditTrailFilter" TValue="ActionLogEntry" class="mb-2">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
-                        <QueryBuilderColumn Field="ActorType" Label="@L["ColActorType"]" />
-                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
-                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
-                        <QueryBuilderColumn Field="EntityId" Label="@L["ColEntityId"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAuditTrailFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        }
     </PageRightPanelContent>
 
     @if (_report is not null)
@@ -75,7 +57,7 @@ else
         }
         else
         {
-            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true">
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
@@ -105,7 +87,6 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ChainOfCustodyReport? _report;
-    private SfQueryBuilder<ActionLogEntry>? _auditTrailFilter;
     private IEnumerable<ActionLogEntry> _filteredAuditTrail = new List<ActionLogEntry>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
@@ -138,14 +119,5 @@ else
             _toDate,
             CancellationToken.None);
         _filteredAuditTrail = _report?.AuditTrail ?? new List<ActionLogEntry>();
-    }
-
-    private async Task ApplyAuditTrailFilterAsync()
-    {
-        if (_auditTrailFilter is not null)
-        {
-            var result = await _auditTrailFilter.GetFilteredRecordsAsync();
-            _filteredAuditTrail = result?.ToList() ?? _report?.AuditTrail ?? new List<ActionLogEntry>();
-        }
     }
 }

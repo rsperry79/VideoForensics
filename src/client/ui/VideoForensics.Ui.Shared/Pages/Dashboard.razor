@@ -2,7 +2,6 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
@@ -26,21 +25,7 @@ else
     }
     else
     {
-        <PageRightPanelContent>
-            <div class="right-panel-section">
-                <h6>@L["Title"]</h6>
-                <SfQueryBuilder @ref="_devicesFilter" TValue="VideoForensics.Data.Common.Entities.Device">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="Name" Label="@L["ColumnName"]" />
-                        <QueryBuilderColumn Field="Type" Label="@L["ColumnType"]" />
-                        <QueryBuilderColumn Field="IsOnline" Label="@L["ColumnOnline"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                        <QueryBuilderColumn Field="LastSyncedUtc" Label="@L["ColumnLastSynced"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDevicesFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
-        </PageRightPanelContent>
-        <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true">
+        <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" HeaderText="@L["ColumnName"]" />
@@ -70,7 +55,6 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private SfQueryBuilder<VideoForensics.Data.Common.Entities.Device>? _devicesFilter;
     private IEnumerable<VideoForensics.Data.Common.Entities.Device> _filteredDevices = new List<VideoForensics.Data.Common.Entities.Device>();
 
     protected override async Task OnInitializedAsync()
@@ -88,15 +72,6 @@ else
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    private async Task ApplyDevicesFilterAsync()
-    {
-        if (_devicesFilter is not null)
-        {
-            var result = await _devicesFilter.GetFilteredRecordsAsync();
-            _filteredDevices = result?.ToList() ?? _devices;
         }
     }
 }

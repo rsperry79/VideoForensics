@@ -3,7 +3,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
-@using Syncfusion.Blazor.QueryBuilder
 @using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
@@ -42,20 +41,7 @@ else if (_operators is null || _operators.Count == 0)
 }
 else
 {
-    <PageRightPanelContent>
-        <div class="right-panel-section">
-            <h6>@L["Title"]</h6>
-            <SfQueryBuilder @ref="_operatorsFilter" TValue="Operator">
-                <QueryBuilderColumns>
-                    <QueryBuilderColumn Field="DisplayName" Label="@L["ColDisplayName"]" />
-                    <QueryBuilderColumn Field="CreatedAtUtc" Label="@L["ColCreatedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
-                    <QueryBuilderColumn Field="Active" Label="@L["ColActive"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
-                </QueryBuilderColumns>
-            </SfQueryBuilder>
-            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyOperatorsFilterAsync())" CssClass="e-primary mt-2" />
-        </div>
-    </PageRightPanelContent>
-    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true">
+    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" />
@@ -106,7 +92,6 @@ else
 @code {
     private bool _isLoading = true;
     private List<VideoForensics.Data.Common.Entities.Operator>? _operators;
-    private SfQueryBuilder<VideoForensics.Data.Common.Entities.Operator>? _operatorsFilter;
     private IEnumerable<VideoForensics.Data.Common.Entities.Operator> _filteredOperators = new List<VideoForensics.Data.Common.Entities.Operator>();
     private string? _authError;
     private string? _loadError;
@@ -227,14 +212,6 @@ else
         }
     }
 
-    private async Task ApplyOperatorsFilterAsync()
-    {
-        if (_operatorsFilter is not null)
-        {
-            var result = await _operatorsFilter.GetFilteredRecordsAsync();
-            _filteredOperators = result?.ToList() ?? (_operators ?? new List<Operator>());
-        }
-    }
 
     private HttpClient CreateClient()
     {

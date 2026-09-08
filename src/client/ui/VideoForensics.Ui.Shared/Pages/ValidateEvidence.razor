@@ -4,7 +4,6 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IEvidenceValidationService EvidenceValidationService
 @inject IDeviceRepository DeviceRepository
@@ -39,17 +38,6 @@ else
                     <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
                 </SfDropDownList>
             </div>
-            <div class="right-panel-section">
-                <span>@L["Filter"]</span>
-                <SfQueryBuilder @ref="_verificationResultsFilter" TValue="MediaVerificationResult">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="FileName" Label="@L["ColFileName"]" />
-                        <QueryBuilderColumn Field="Status" Label="@L["ColStatus"]" />
-                        <QueryBuilderColumn Field="FailureReason" Label="@L["ColFailureReason"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyVerificationResultsFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
         </PageRightPanelContent>
 
         <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" />
@@ -62,7 +50,7 @@ else
             }
             else
             {
-                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true">
+                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
                         <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" />
@@ -101,19 +89,6 @@ else
                 <span>@L["ToLabel"]</span>
                 <input type="date" @bind="_toDate" />
             </div>
-            <div class="right-panel-section">
-                <span>@L["Filter"]</span>
-                <SfQueryBuilder @ref="_discrepanciesFilter" TValue="ReconciliationDiscrepancy">
-                    <QueryBuilderColumns>
-                        <QueryBuilderColumn Field="Type" Label="@L["ColType"]" />
-                        <QueryBuilderColumn Field="ProviderEventId" Label="@L["ColProviderEventId"]" />
-                        <QueryBuilderColumn Field="FieldName" Label="@L["ColField"]" />
-                        <QueryBuilderColumn Field="StoredValue" Label="@L["ColStoredValue"]" />
-                        <QueryBuilderColumn Field="ProviderValue" Label="@L["ColProviderValue"]" />
-                    </QueryBuilderColumns>
-                </SfQueryBuilder>
-                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDiscrepanciesFilterAsync())" CssClass="e-primary mt-2" />
-            </div>
         </PageRightPanelContent>
 
         <SfButton Content="@L["ReconcileButton"]" OnClick="ReconcileAsync" CssClass="e-primary mb-4" />
@@ -126,7 +101,7 @@ else
             }
             else
             {
-                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true">
+                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
                         <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" />
@@ -152,8 +127,6 @@ else
     private string _activeTab = "integrity";
     private IReadOnlyList<MediaVerificationResult>? _verificationResults;
     private IReadOnlyList<ReconciliationDiscrepancy>? _discrepancies;
-    private SfQueryBuilder<MediaVerificationResult>? _verificationResultsFilter;
-    private SfQueryBuilder<ReconciliationDiscrepancy>? _discrepanciesFilter;
     private IEnumerable<MediaVerificationResult> _filteredVerificationResults = new List<MediaVerificationResult>();
     private IEnumerable<ReconciliationDiscrepancy> _filteredDiscrepancies = new List<ReconciliationDiscrepancy>();
 
@@ -206,24 +179,6 @@ else
             _toDate,
             CancellationToken.None);
         _filteredDiscrepancies = _discrepancies ?? new List<ReconciliationDiscrepancy>();
-    }
-
-    private async Task ApplyVerificationResultsFilterAsync()
-    {
-        if (_verificationResultsFilter is not null)
-        {
-            var result = await _verificationResultsFilter.GetFilteredRecordsAsync();
-            _filteredVerificationResults = result?.ToList() ?? (_verificationResults ?? new List<MediaVerificationResult>());
-        }
-    }
-
-    private async Task ApplyDiscrepanciesFilterAsync()
-    {
-        if (_discrepanciesFilter is not null)
-        {
-            var result = await _discrepanciesFilter.GetFilteredRecordsAsync();
-            _filteredDiscrepancies = result?.ToList() ?? (_discrepancies ?? new List<ReconciliationDiscrepancy>());
-        }
     }
 
     private static string StatusColor(string status) => status switch
