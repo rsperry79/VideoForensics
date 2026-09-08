@@ -2,109 +2,140 @@
 @page "/analyze/validate/reconcile"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IEvidenceValidationService EvidenceValidationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ValidateEvidence> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
-        @L["NotSignedInMessage"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="Sign in" />
-    </RadzenAlert>
+    <div class="alert alert-info">
+        @L["NotSignedInMessage"] <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a>
+    </div>
 }
 else
 {
-    <RadzenStack Orientation="Orientation.Horizontal" class="mb-4">
-        <RadzenButton Text="@L["VerifyIntegrityTab"]" Click='() => _activeTab = "integrity"' Variant='@(_activeTab == "integrity" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "integrity" ? ButtonStyle.Primary : ButtonStyle.Light)' />
-        <RadzenButton Text="@L["ReconcileTab"]" Click='() => _activeTab = "reconcile"' Variant='@(_activeTab == "reconcile" ? Variant.Filled : Variant.Outlined)' ButtonStyle='@(_activeTab == "reconcile" ? ButtonStyle.Primary : ButtonStyle.Light)' />
-    </RadzenStack>
+    <div class="d-flex flex-row gap-2 mb-4">
+        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='() => _activeTab = "integrity"' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-flat")' />
+        <SfButton Content="@L["ReconcileTab"]" OnClick='() => _activeTab = "reconcile"' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-flat")' />
+    </div>
 
     @if (_activeTab == "integrity")
     {
-        <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-            <RadzenStack>
-                <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-                    TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesFilter"]" />
-                <RadzenButton Text="@L["VerifyButton"]" Click="VerifyIntegrityAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-            </RadzenStack>
-        </RadzenCard>
+        <PageRightPanelContent>
+            <div class="right-panel-section">
+                <span>@L["AllDevicesFilter"]</span>
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["AllDevicesFilter"]">
+                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                </SfDropDownList>
+            </div>
+            <div class="right-panel-section">
+                <span>@L["Filter"]</span>
+                <SfQueryBuilder @ref="_verificationResultsFilter" TValue="MediaVerificationResult">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="FileName" Label="@L["ColFileName"]" />
+                        <QueryBuilderColumn Field="Status" Label="@L["ColStatus"]" />
+                        <QueryBuilderColumn Field="FailureReason" Label="@L["ColFailureReason"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyVerificationResultsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        </PageRightPanelContent>
+
+        <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" />
 
         @if (_verificationResults is not null)
         {
             @if (_verificationResults.Count == 0)
             {
-                <RadzenText>@L["NoMediaFound"]</RadzenText>
+                <span>@L["NoMediaFound"]</span>
             }
             else
             {
-                <RadzenDataFilter @ref="_verificationResultsFilter" TItem="MediaVerificationResult" Data="@_verificationResults" Auto="true" class="mb-2">
-                    <Properties>
-                        <RadzenDataFilterProperty Property="FileName" Title="@L["ColFileName"]" />
-                        <RadzenDataFilterProperty Property="Status" Title="@L["ColStatus"]" />
-                        <RadzenDataFilterProperty Property="FailureReason" Title="@L["ColFailureReason"]" />
-                    </Properties>
-                </RadzenDataFilter>
-                <RadzenDataGrid TItem="MediaVerificationResult" Data="@_verificationResultsFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
-                    <Columns>
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FileName)" Title="@L["ColFileName"]" />
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Title="@L["ColStatus"]"><Template Context="result"><span style="color:@StatusColor(result.Status)">@result.Status</span></Template></RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="MediaVerificationResult" Property="@nameof(MediaVerificationResult.FailureReason)" Title="@L["ColFailureReason"]" />
-                    </Columns>
-                </RadzenDataGrid>
+                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true">
+                    <GridPageSettings PageSize="20"></GridPageSettings>
+                    <GridColumns>
+                        <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" />
+                        <GridColumn HeaderText="@L["ColStatus"]">
+                            <Template>
+                                @{
+                                    var result = (MediaVerificationResult)context;
+                                    <span style="color:@StatusColor(result.Status)">@result.Status</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field="@nameof(MediaVerificationResult.FailureReason)" HeaderText="@L["ColFailureReason"]" />
+                    </GridColumns>
+                </SfGrid>
             }
         }
     }
     else
     {
-        <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-            <RadzenStack>
-                <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-                    TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectDeviceFilter"]" />
-                <label>@L["ProviderDeviceIdLabel"]</label> <RadzenTextBox @bind-Value="_providerDeviceId" Placeholder="@L["ProviderDeviceIdPlaceholder"]" />
-                <label>
-                    @L["FromLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_fromDate" />
-                </label>
-                <label>
-                    @L["ToLabel"] <RadzenDatePicker TValue="DateTime" @bind-Value="_toDate" />
-                </label>
-                <RadzenButton Text="@L["ReconcileButton"]" Click="ReconcileAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-            </RadzenStack>
-        </RadzenCard>
+        <PageRightPanelContent>
+            <div class="right-panel-section">
+                <span>@L["SelectDeviceFilter"]</span>
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["SelectDeviceFilter"]">
+                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                </SfDropDownList>
+            </div>
+            <div class="right-panel-section">
+                <span>@L["ProviderDeviceIdLabel"]</span>
+                <SfTextBox @bind-Value="_providerDeviceId" Placeholder="@L["ProviderDeviceIdPlaceholder"]" />
+            </div>
+            <div class="right-panel-section">
+                <span>@L["FromLabel"]</span>
+                <input type="date" @bind="_fromDate" />
+            </div>
+            <div class="right-panel-section">
+                <span>@L["ToLabel"]</span>
+                <input type="date" @bind="_toDate" />
+            </div>
+            <div class="right-panel-section">
+                <span>@L["Filter"]</span>
+                <SfQueryBuilder @ref="_discrepanciesFilter" TValue="ReconciliationDiscrepancy">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="Type" Label="@L["ColType"]" />
+                        <QueryBuilderColumn Field="ProviderEventId" Label="@L["ColProviderEventId"]" />
+                        <QueryBuilderColumn Field="FieldName" Label="@L["ColField"]" />
+                        <QueryBuilderColumn Field="StoredValue" Label="@L["ColStoredValue"]" />
+                        <QueryBuilderColumn Field="ProviderValue" Label="@L["ColProviderValue"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDiscrepanciesFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        </PageRightPanelContent>
+
+        <SfButton Content="@L["ReconcileButton"]" OnClick="ReconcileAsync" CssClass="e-primary mb-4" />
 
         @if (_discrepancies is not null)
         {
             @if (_discrepancies.Count == 0)
             {
-                <RadzenText>@L["NoDiscrepanciesFound"]</RadzenText>
+                <span>@L["NoDiscrepanciesFound"]</span>
             }
             else
             {
-                <RadzenDataFilter @ref="_discrepanciesFilter" TItem="ReconciliationDiscrepancy" Data="@_discrepancies" Auto="true" class="mb-2">
-                    <Properties>
-                        <RadzenDataFilterProperty Property="Type" Title="@L["ColType"]" />
-                        <RadzenDataFilterProperty Property="ProviderEventId" Title="@L["ColProviderEventId"]" />
-                        <RadzenDataFilterProperty Property="FieldName" Title="@L["ColField"]" />
-                        <RadzenDataFilterProperty Property="StoredValue" Title="@L["ColStoredValue"]" />
-                        <RadzenDataFilterProperty Property="ProviderValue" Title="@L["ColProviderValue"]" />
-                    </Properties>
-                </RadzenDataFilter>
-                <RadzenDataGrid TItem="ReconciliationDiscrepancy" Data="@_discrepanciesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
-                    <Columns>
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.Type)" Title="@L["ColType"]" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderEventId)" Title="@L["ColProviderEventId"]" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.FieldName)" Title="@L["ColField"]" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.StoredValue)" Title="@L["ColStoredValue"]" />
-                        <RadzenDataGridColumn TItem="ReconciliationDiscrepancy" Property="@nameof(ReconciliationDiscrepancy.ProviderValue)" Title="@L["ColProviderValue"]" />
-                    </Columns>
-                </RadzenDataGrid>
+                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true">
+                    <GridPageSettings PageSize="20"></GridPageSettings>
+                    <GridColumns>
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.FieldName)" HeaderText="@L["ColField"]" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.StoredValue)" HeaderText="@L["ColStoredValue"]" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderValue)" HeaderText="@L["ColProviderValue"]" />
+                    </GridColumns>
+                </SfGrid>
             }
         }
     }
@@ -121,8 +152,10 @@ else
     private string _activeTab = "integrity";
     private IReadOnlyList<MediaVerificationResult>? _verificationResults;
     private IReadOnlyList<ReconciliationDiscrepancy>? _discrepancies;
-    private RadzenDataFilter<MediaVerificationResult>? _verificationResultsFilter;
-    private RadzenDataFilter<ReconciliationDiscrepancy>? _discrepanciesFilter;
+    private SfQueryBuilder<MediaVerificationResult>? _verificationResultsFilter;
+    private SfQueryBuilder<ReconciliationDiscrepancy>? _discrepanciesFilter;
+    private IEnumerable<MediaVerificationResult> _filteredVerificationResults = new List<MediaVerificationResult>();
+    private IEnumerable<ReconciliationDiscrepancy> _filteredDiscrepancies = new List<ReconciliationDiscrepancy>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -156,6 +189,7 @@ else
     {
         Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
         _verificationResults = await EvidenceValidationService.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+        _filteredVerificationResults = _verificationResults ?? new List<MediaVerificationResult>();
     }
 
     private async Task ReconcileAsync()
@@ -171,6 +205,25 @@ else
             _fromDate,
             _toDate,
             CancellationToken.None);
+        _filteredDiscrepancies = _discrepancies ?? new List<ReconciliationDiscrepancy>();
+    }
+
+    private async Task ApplyVerificationResultsFilterAsync()
+    {
+        if (_verificationResultsFilter is not null)
+        {
+            var result = await _verificationResultsFilter.GetFilteredRecordsAsync();
+            _filteredVerificationResults = result?.ToList() ?? (_verificationResults ?? new List<MediaVerificationResult>());
+        }
+    }
+
+    private async Task ApplyDiscrepanciesFilterAsync()
+    {
+        if (_discrepanciesFilter is not null)
+        {
+            var result = await _discrepanciesFilter.GetFilteredRecordsAsync();
+            _filteredDiscrepancies = result?.ToList() ?? (_discrepancies ?? new List<ReconciliationDiscrepancy>());
+        }
     }
 
     private static string StatusColor(string status) => status switch

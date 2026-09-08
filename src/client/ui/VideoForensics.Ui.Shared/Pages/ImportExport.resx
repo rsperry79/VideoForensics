@@ -38,9 +38,6 @@
   <data name="ExportSectionTitle" xml:space="preserve">
     <value>Export</value>
   </data>
-  <data name="PrepareForExport" xml:space="preserve">
-    <value>Prepare for Export</value>
-  </data>
   <data name="Validated" xml:space="preserve">
     <value>Validated:</value>
   </data>
@@ -59,14 +56,23 @@
   <data name="ExportBackup" xml:space="preserve">
     <value>Export Backup</value>
   </data>
-  <data name="BackupCreated" xml:space="preserve">
-    <value>Backup created:</value>
+  <data name="ExportComplete" xml:space="preserve">
+    <value>Export complete.</value>
   </data>
-  <data name="SHA256" xml:space="preserve">
-    <value>SHA-256:</value>
+  <data name="AccountsCount" xml:space="preserve">
+    <value>Accounts:</value>
   </data>
-  <data name="ExportSummary" xml:space="preserve">
-    <value>Accounts: {0}, Locations: {1}, Devices: {2}, Events: {3}, Media items: {4}</value>
+  <data name="LocationsCount" xml:space="preserve">
+    <value>Locations:</value>
+  </data>
+  <data name="DevicesCount" xml:space="preserve">
+    <value>Devices:</value>
+  </data>
+  <data name="EventsCount" xml:space="preserve">
+    <value>Events:</value>
+  </data>
+  <data name="MediaItemsCount" xml:space="preserve">
+    <value>Media items:</value>
   </data>
   <data name="ImportSectionTitle" xml:space="preserve">
     <value>Import</value>
@@ -97,5 +103,23 @@
   </data>
   <data name="MediaItemsSummary" xml:space="preserve">
     <value>Media items: inserted {0}, skipped existing {1}, orphaned {2}, integrity issues {3}</value>
+  </data>
+  <data name="SelectBackupFile" xml:space="preserve">
+    <value>Select Backup File</value>
+  </data>
+  <data name="ChooseBackupFile" xml:space="preserve">
+    <value>Choose File</value>
+  </data>
+  <data name="SelectMediaRootFolder" xml:space="preserve">
+    <value>Select Media Root Folder</value>
+  </data>
+  <data name="BrowseMediaRootFolder" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="NoFileSelected" xml:space="preserve">
+    <value>No file selected</value>
+  </data>
+  <data name="NoFolderSelected" xml:space="preserve">
+    <value>No folder selected</value>
   </data>
 </root>

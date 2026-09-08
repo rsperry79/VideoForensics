@@ -1,96 +1,136 @@
 @page "/devices/config"
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceConfigRepository DeviceConfigRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<DeviceConfig> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewConfig"]</RadzenText>
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewConfig"]</p>
 }
 else
 {
-    <div class="device-config-form">
-        <div>
-            <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceIdStr" Data="@DeviceOptions"
-                TextProperty="Value" ValueProperty="Key" Placeholder="@L["SelectDevice"]" />
-        </div>
-        <div>
-            <RadzenButton Text="@L["LoadConfiguration"]" Click="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-        </div>
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <small>@L["SelectDevice"]</small>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" @bind-Value="_selectedDeviceIdStr" DataSource="@DeviceOptions" Placeholder="@L["SelectDevice"]">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+            <SfButton Content="@L["LoadConfiguration"]" OnClick="LoadConfigAsync" Disabled="@(_loading || string.IsNullOrEmpty(_selectedDeviceIdStr))" CssClass="e-primary mt-2" />
 
-        @if (!string.IsNullOrEmpty(_error))
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
-        }
-    </div>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger mt-2">@_error</div>
+            }
+        </div>
+    </PageRightPanelContent>
 
     @if (_loadedOnce)
     {
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["LatestConfiguration"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["LatestConfiguration"]</h5>
         @if (_latest is null)
         {
-            <RadzenText>@L["NoConfigSnapshot"]</RadzenText>
+            <p>@L["NoConfigSnapshot"]</p>
         }
         else
         {
-            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@(new[] { _latest })" AllowPaging="false">
-                <Columns>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="@L["ColCapturedAt"]" />
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionDetectionEnabled"]">
-                        <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionSensitivity"]">
-                        <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColRecordingMode"]">
-                        <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="@L["ColSource"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@(new[] { _latest })" AllowPaging="false">
+                <GridColumns>
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
+                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.MotionDetectionEnabled?.ToString() ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColMotionSensitivity"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.MotionSensitivity ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColRecordingMode"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.RecordingMode ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" />
+                </GridColumns>
+            </SfGrid>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["History"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["History"]</h5>
         @if (_history.Count == 0)
         {
-            <RadzenText>@L["NoConfigHistory"]</RadzenText>
+            <p>@L["NoConfigHistory"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_historyFilter" TItem="DeviceConfigSnapshot" Data="@_history.OrderByDescending(s => s.CapturedAtUtc)" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="CapturedAtUtc" Title="@L["ColCapturedAt"]" />
-                    <RadzenDataFilterProperty Property="MotionDetectionEnabled" Title="@L["ColMotionDetectionEnabled"]" />
-                    <RadzenDataFilterProperty Property="MotionSensitivity" Title="@L["ColMotionSensitivity"]" />
-                    <RadzenDataFilterProperty Property="RecordingMode" Title="@L["ColRecordingMode"]" />
-                    <RadzenDataFilterProperty Property="Source" Title="@L["ColSource"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="DeviceConfigSnapshot" Data="@_historyFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
-                <Columns>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" Title="@L["ColCapturedAt"]" />
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionDetectionEnabled"]">
-                        <Template Context="snapshot">@(snapshot.MotionDetectionEnabled?.ToString() ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColMotionSensitivity"]">
-                        <Template Context="snapshot">@(snapshot.MotionSensitivity ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Title="@L["ColRecordingMode"]">
-                        <Template Context="snapshot">@(snapshot.RecordingMode ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="DeviceConfigSnapshot" Property="@nameof(DeviceConfigSnapshot.Source)" Title="@L["ColSource"]" />
-                </Columns>
-            </RadzenDataGrid>
+            <PageRightPanelContent>
+                <div class="right-panel-section">
+                    <small>@L["History"]</small>
+                    <SfQueryBuilder @ref="_historyFilter" TValue="DeviceConfigSnapshot">
+                        <QueryBuilderColumns>
+                            <QueryBuilderColumn Field="CapturedAtUtc" Label="@L["ColCapturedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                            <QueryBuilderColumn Field="MotionDetectionEnabled" Label="@L["ColMotionDetectionEnabled"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                            <QueryBuilderColumn Field="MotionSensitivity" Label="@L["ColMotionSensitivity"]" />
+                            <QueryBuilderColumn Field="RecordingMode" Label="@L["ColRecordingMode"]" />
+                            <QueryBuilderColumn Field="Source" Label="@L["ColSource"]" />
+                        </QueryBuilderColumns>
+                    </SfQueryBuilder>
+                    <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyHistoryFilterAsync())" CssClass="e-primary mt-2" />
+                </div>
+            </PageRightPanelContent>
+            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
+                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.MotionDetectionEnabled?.ToString() ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColMotionSensitivity"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.MotionSensitivity ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColRecordingMode"]">
+                        <Template>
+                            @{
+                                var snapshot = (DeviceConfigSnapshot)context;
+                                @(snapshot.RecordingMode ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" />
+                </GridColumns>
+            </SfGrid>
         }
     }
 }
@@ -106,7 +146,8 @@ else
     private string? _error;
     private DeviceConfigSnapshot? _latest;
     private List<DeviceConfigSnapshot> _history = new();
-    private RadzenDataFilter<DeviceConfigSnapshot>? _historyFilter;
+    private SfQueryBuilder<DeviceConfigSnapshot>? _historyFilter;
+    private IEnumerable<DeviceConfigSnapshot> _filteredHistory = new List<DeviceConfigSnapshot>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -141,7 +182,8 @@ else
         {
             _latest = await DeviceConfigRepository.GetLatestAsync(deviceId, CancellationToken.None);
             var history = await DeviceConfigRepository.GetHistoryAsync(deviceId, CancellationToken.None);
-            _history = history.ToList();
+            _history = history.OrderByDescending(s => s.CapturedAtUtc).ToList();
+            _filteredHistory = _history;
             _loadedOnce = true;
         }
         catch (Exception ex)
@@ -151,6 +193,15 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task ApplyHistoryFilterAsync()
+    {
+        if (_historyFilter is not null)
+        {
+            var result = await _historyFilter.GetFilteredRecordsAsync();
+            _filteredHistory = result?.ToList() ?? _history;
         }
     }
 }

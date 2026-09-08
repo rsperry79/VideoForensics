@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -28,10 +29,10 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync("/api/devices", ct);
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/devices", ct);
             _ = response.EnsureSuccessStatusCode();
-            List<Device>? devices = await response.Content.ReadFromJsonAsync<List<Device>>(JsonOptions, ct);
-            return devices ?? [];
+            List<DeviceDto>? dtos = await response.Content.ReadFromJsonAsync<List<DeviceDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
         /// <inheritdoc />

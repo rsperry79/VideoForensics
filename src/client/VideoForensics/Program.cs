@@ -39,10 +39,13 @@ namespace VideoForensics
             });
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
-            // Ring's four services, download/evidence orchestrators, IForensicsConfigurationService,
+            // active provider's four services, download/evidence orchestrators, IForensicsConfigurationService,
             // JammingToolsOrchestrator) - see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs.
+            // The active provider is read from the VIDEOFORENSICS_ActiveProvider environment variable,
+            // defaulting to "Ring" for backward compatibility.
+            string activeProvider = Environment.GetEnvironmentVariable("VIDEOFORENSICS_ActiveProvider") ?? "Ring";
             _ = services.AddVideoForensicsDataLayer();
-            _ = services.AddVideoForensicsServerCore();
+            _ = services.AddVideoForensicsServerCore(activeProvider);
 
             // Register configuration and report rendering services (console-only; not part of the
             // shared server-core registration)

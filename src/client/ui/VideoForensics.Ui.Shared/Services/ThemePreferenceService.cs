@@ -53,8 +53,6 @@ namespace VideoForensics.Ui.Shared.Services
             _ => _prefersDark
         };
 
-        public string EffectiveRadzenThemeName => EffectiveIsDark ? "material-dark" : "material";
-
         public event Action? OnChange;
 
         public async Task InitializeAsync()
@@ -146,7 +144,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                await _js.InvokeVoidAsync("vfTheme.setStylesheet", EffectiveIsDark ? "material-dark" : "material");
+                await _js.InvokeVoidAsync("vfTheme.setStylesheet", EffectiveIsDark);
             }
             catch (JSException)
             {

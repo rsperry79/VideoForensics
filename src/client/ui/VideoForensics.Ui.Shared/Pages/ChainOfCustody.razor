@@ -3,72 +3,96 @@
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ChainOfCustody> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewChainOfCustody"]</RadzenAlert>
+    <div class="alert alert-warning">@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewChainOfCustody"]</div>
 }
 else
 {
-    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mb-4">
-        <RadzenDropDown TValue="string" @bind-Value="_selectedDeviceId" Data="@DeviceOptions"
-            TextProperty="Value" ValueProperty="Key" Placeholder="@L["AllDevicesPlaceholder"]" />
-        <label>@L["FromLabel"] <input type="date" @bind="_fromDate" /></label>
-        <label>@L["ToLabel"] <input type="date" @bind="_toDate" /></label>
-        <RadzenButton Text="@L["RunReport"]" Click="RunReportAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-    </RadzenStack>
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <h6>@L["Filters"]</h6>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions"
+                Placeholder="@L["AllDevicesPlaceholder"]" class="w-100 mt-2" ValueChange="@(async (ChangeEventArgs<string, KeyValuePair<string, string>> args) => await RunReportAsync())">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+            <small class="mt-3">@L["FromLabel"]</small>
+            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <small class="mt-2">@L["ToLabel"]</small>
+            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary" class="mt-3 w-100" />
+        </div>
+
+        @if (_report is not null && _report.AuditTrail.Count > 0)
+        {
+            <div class="right-panel-section mt-3">
+                <h6>@L["AuditTrailTitle"]</h6>
+                <SfQueryBuilder @ref="_auditTrailFilter" TValue="ActionLogEntry" class="mb-2">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="TimestampUtc" Label="@L["ColTimestamp"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="Actor" Label="@L["ColActor"]" />
+                        <QueryBuilderColumn Field="ActorType" Label="@L["ColActorType"]" />
+                        <QueryBuilderColumn Field="Action" Label="@L["ColAction"]" />
+                        <QueryBuilderColumn Field="EntityType" Label="@L["ColEntityType"]" />
+                        <QueryBuilderColumn Field="EntityId" Label="@L["ColEntityId"]" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyAuditTrailFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        }
+    </PageRightPanelContent>
 
     @if (_report is not null)
     {
         @if (_report.ChainIntegrityVerified)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Success">@L["ChainIntegrityVerified"]</RadzenAlert>
+            <div class="alert alert-success">@L["ChainIntegrityVerified"]</div>
         }
         else
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</RadzenAlert>
+            <div class="alert alert-danger">@L["ChainIntegrityFailed", _report.ChainVerificationStatus]</div>
         }
 
-        <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AuditTrailTitle"]</RadzenText>
+        <h5 class="mt-4 mb-2">@L["AuditTrailTitle"]</h5>
         @if (_report.AuditTrail.Count == 0)
         {
-            <RadzenText>@L["NoAuditTrailFound"]</RadzenText>
+            <p>@L["NoAuditTrailFound"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_auditTrailFilter" TItem="ActionLogEntry" Data="@_report.AuditTrail" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="TimestampUtc" Title="@L["ColTimestamp"]" />
-                    <RadzenDataFilterProperty Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataFilterProperty Property="ActorType" Title="@L["ColActorType"]" />
-                    <RadzenDataFilterProperty Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataFilterProperty Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataFilterProperty Property="EntityId" Title="@L["ColEntityId"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="ActionLogEntry" Data="@_auditTrailFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="TimestampUtc" Title="@L["ColTimestamp"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Actor" Title="@L["ColActor"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="ActorType" Title="@L["ColActorType"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="Action" Title="@L["ColAction"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Property="EntityType" Title="@L["ColEntityType"]" />
-                    <RadzenDataGridColumn TItem="ActionLogEntry" Title="@L["ColEntityId"]">
-                        <Template Context="entry">@(entry.EntityId?.ToString("N")[..8] ?? "-")</Template>
-                    </RadzenDataGridColumn>
-                </Columns>
-            </RadzenDataGrid>
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.ActorType)" HeaderText="@L["ColActorType"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" />
+                    <GridColumn HeaderText="@L["ColEntityId"]">
+                        <Template>
+                            @{
+                                var entry = (ActionLogEntry)context;
+                                @(entry.EntityId?.ToString("N")[..8] ?? "-")
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
     }
 }
@@ -81,7 +105,8 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ChainOfCustodyReport? _report;
-    private RadzenDataFilter<ActionLogEntry>? _auditTrailFilter;
+    private SfQueryBuilder<ActionLogEntry>? _auditTrailFilter;
+    private IEnumerable<ActionLogEntry> _filteredAuditTrail = new List<ActionLogEntry>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -112,5 +137,15 @@ else
             _fromDate,
             _toDate,
             CancellationToken.None);
+        _filteredAuditTrail = _report?.AuditTrail ?? new List<ActionLogEntry>();
+    }
+
+    private async Task ApplyAuditTrailFilterAsync()
+    {
+        if (_auditTrailFilter is not null)
+        {
+            var result = await _auditTrailFilter.GetFilteredRecordsAsync();
+            _filteredAuditTrail = result?.ToList() ?? _report?.AuditTrail ?? new List<ActionLogEntry>();
+        }
     }
 }

@@ -1,6 +1,4 @@
-@inject DialogService DialogService
-
-<RadzenStack Gap="0.75rem">
+<div style="display: flex; flex-direction: column; gap: 0.75rem;">
     @if (MediaItemId.HasValue)
     {
         @if (IsImage)
@@ -13,37 +11,39 @@
         }
     }
 
-    <RadzenText TextStyle="TextStyle.H6">Event</RadzenText>
-    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Type:</RadzenText><RadzenText>@EventType</RadzenText></RadzenStack>
-    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Occurred At (UTC):</RadzenText><RadzenText>@OccurredAtUtc</RadzenText></RadzenStack>
-    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Discovered At (UTC):</RadzenText><RadzenText>@DiscoveredAtUtc</RadzenText></RadzenStack>
-    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Downloaded At (UTC):</RadzenText><RadzenText>@(DownloadedAtUtc?.ToString() ?? "-")</RadzenText></RadzenStack>
-    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Provider Event ID:</RadzenText><RadzenText>@ProviderEventId</RadzenText></RadzenStack>
+    <h6>Event</h6>
+    <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Type:</span><span>@EventType</span></div>
+    <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Occurred At (UTC):</span><span>@OccurredAtUtc</span></div>
+    <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Discovered At (UTC):</span><span>@DiscoveredAtUtc</span></div>
+    <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Downloaded At (UTC):</span><span>@(DownloadedAtUtc?.ToString() ?? "-")</span></div>
+    <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Provider Event ID:</span><span>@ProviderEventId</span></div>
     @if (!string.IsNullOrEmpty(SnapshotUrl))
     {
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Snapshot URL:</RadzenText><RadzenText>@SnapshotUrl</RadzenText></RadzenStack>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Snapshot URL:</span><span>@SnapshotUrl</span></div>
     }
 
     @if (MediaItemId.HasValue)
     {
-        <RadzenText TextStyle="TextStyle.H6" class="mt-2">Downloaded Media</RadzenText>
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">File Name:</RadzenText><RadzenText>@FileName</RadzenText></RadzenStack>
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Format:</RadzenText><RadzenText>@MediaFormat</RadzenText></RadzenStack>
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">File Size:</RadzenText><RadzenText>@FormatFileSize(FileSizeBytes)</RadzenText></RadzenStack>
+        <h6 style="margin-top: 1rem;">Downloaded Media</h6>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">File Name:</span><span>@FileName</span></div>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Format:</span><span>@MediaFormat</span></div>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">File Size:</span><span>@FormatFileSize(FileSizeBytes)</span></div>
         @if (!string.IsNullOrEmpty(Resolution))
         {
-            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Resolution:</RadzenText><RadzenText>@Resolution</RadzenText></RadzenStack>
+            <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Resolution:</span><span>@Resolution</span></div>
         }
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Integrity:</RadzenText><RadzenText>@IntegrityStatusText</RadzenText></RadzenStack>
-        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem"><RadzenText TextStyle="TextStyle.Body2">Legal Hold:</RadzenText><RadzenText>@LegalHoldStatusText</RadzenText></RadzenStack>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Integrity:</span><span>@IntegrityStatusText</span></div>
+        <div style="display: flex; gap: 0.5rem;"><span style="font-weight: 500;">Legal Hold:</span><span>@LegalHoldStatusText</span></div>
     }
 
-    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="mt-3">
-        <RadzenButton Text="Close" Click="@(() => DialogService.Close())" ButtonStyle="ButtonStyle.Light" />
-    </RadzenStack>
-</RadzenStack>
+    <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <SfButton Content="Close" OnClick="@OnCloseClicked" CssClass="e-flat" />
+    </div>
+</div>
 
 @code {
+    [Parameter] public EventCallback OnClosed { get; set; }
+
     [Parameter] public string EventType { get; set; } = string.Empty;
     [Parameter] public DateTime OccurredAtUtc { get; set; }
     [Parameter] public DateTime DiscoveredAtUtc { get; set; }
@@ -70,6 +70,11 @@
     private bool IsVideo => MediaFormat is not null &&
         (MediaFormat.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
          MediaFormat.Contains("video", StringComparison.OrdinalIgnoreCase));
+
+    private async Task OnCloseClicked()
+    {
+        await OnClosed.InvokeAsync();
+    }
 
     private static string FormatFileSize(long bytes)
     {

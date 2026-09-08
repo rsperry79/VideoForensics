@@ -2,95 +2,112 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using Syncfusion.Blazor.QueryBuilder
+@using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<SecurityOperators> L
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (!SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" Class="mb-4">
-        <RadzenLink Path="/device-signin" Text="Sign in with your passkey" /> @L["SignInToManage"]
-    </RadzenAlert>
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+    </div>
 }
 
-<RadzenStack Orientation="Orientation.Horizontal" Class="mb-2">
-    <RadzenButton Text="@L["RefreshButton"]" Click="LoadAsync" Disabled="@_isLoading" Variant="Variant.Outlined" />
-</RadzenStack>
+<div class="d-flex flex-row gap-2 mb-2">
+    <SfButton Content="@L["RefreshButton"]" OnClick="LoadAsync" Disabled="@_isLoading" CssClass="e-flat" />
+</div>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>@L["NotAuthorizedMessage"]</RadzenText>
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
 }
 else if (_loadError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
+    <div class="alert alert-danger">@_loadError</div>
 }
 else if (_operators is null || _operators.Count == 0)
 {
-    <RadzenText>@L["NoOperatorsFound"]</RadzenText>
+    <span>@L["NoOperatorsFound"]</span>
 }
 else
 {
-    <RadzenDataFilter @ref="_operatorsFilter" TItem="Operator" Data="@_operators" Auto="true" class="mb-2">
-        <Properties>
-            <RadzenDataFilterProperty Property="DisplayName" Title="@L["ColDisplayName"]" />
-            <RadzenDataFilterProperty Property="CreatedAtUtc" Title="@L["ColCreatedAt"]" />
-            <RadzenDataFilterProperty Property="Active" Title="@L["ColActive"]" />
-        </Properties>
-    </RadzenDataFilter>
-    <RadzenDataGrid TItem="Operator" Data="@_operatorsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-        <Columns>
-            <RadzenDataGridColumn TItem="Operator" Property="DisplayName" Title="@L["ColDisplayName"]" />
-            <RadzenDataGridColumn TItem="Operator" Property="CreatedAtUtc" Title="@L["ColCreatedAt"]" />
-            <RadzenDataGridColumn TItem="Operator" Title="@L["ColActive"]" Sortable="false" Filterable="false">
-                <Template Context="context">
-                    @if (context.Active)
-                    {
-                        <span style="color: var(--rz-success);">@L["StatusActive"]</span>
-                    }
-                    else
-                    {
-                        <span style="color: var(--rz-danger);">@L["StatusInactive"]</span>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="Operator" Title="" Sortable="false" Filterable="false">
-                <Template Context="context">
-                    @if (context.Active)
-                    {
-                        <RadzenButton Text="@L["DeactivateButton"]" Click="() => BeginDeactivate(context.Id)" Variant="Variant.Outlined" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                        @if (_pendingDeactivateOperatorId == context.Id)
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <h6>@L["Title"]</h6>
+            <SfQueryBuilder @ref="_operatorsFilter" TValue="Operator">
+                <QueryBuilderColumns>
+                    <QueryBuilderColumn Field="DisplayName" Label="@L["ColDisplayName"]" />
+                    <QueryBuilderColumn Field="CreatedAtUtc" Label="@L["ColCreatedAt"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    <QueryBuilderColumn Field="Active" Label="@L["ColActive"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                </QueryBuilderColumns>
+            </SfQueryBuilder>
+            <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyOperatorsFilterAsync())" CssClass="e-primary mt-2" />
+        </div>
+    </PageRightPanelContent>
+    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true">
+        <GridPageSettings PageSize="20"></GridPageSettings>
+        <GridColumns>
+            <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" />
+            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" />
+            <GridColumn HeaderText="@L["ColActive"]">
+                <Template>
+                    @{
+                        var op = (Operator)context;
+                        @if (op.Active)
                         {
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Class="mt-2">
-                                <RadzenTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"]" Style="max-width: 260px;" />
-                                <RadzenButton Text="@L["ConfirmButton"]" Click="() => ConfirmDeactivate(context.Id)" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" />
-                                <RadzenButton Text="@L["CancelButton"]" Click="CancelPending" Variant="Variant.Outlined" Size="ButtonSize.Small" />
-                            </RadzenStack>
+                            <span style="color: var(--bs-success);">@L["StatusActive"]</span>
+                        }
+                        else
+                        {
+                            <span style="color: var(--bs-danger);">@L["StatusInactive"]</span>
                         }
                     }
                 </Template>
-            </RadzenDataGridColumn>
-        </Columns>
-    </RadzenDataGrid>
+            </GridColumn>
+            <GridColumn HeaderText="">
+                <Template>
+                    @{
+                        var op = (Operator)context;
+                        @if (op.Active)
+                        {
+                            <SfButton Content="@L["DeactivateButton"]" OnClick="() => BeginDeactivate(op.Id)" CssClass="e-flat e-danger" />
+                            @if (_pendingDeactivateOperatorId == op.Id)
+                            {
+                                <div class="d-flex flex-row align-items-center gap-2 mt-2">
+                                    <input type="text" @bind-value="_reasonInput" placeholder="@L["ReasonPlaceholder"]" style="max-width: 260px;" />
+                                    <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmDeactivate(op.Id)" CssClass="e-primary e-danger" />
+                                    <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
+                                </div>
+                            }
+                        }
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
 }
 
 @if (_actionError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-4">@_actionError</RadzenAlert>
+    <div class="alert alert-danger mt-4">@_actionError</div>
 }
 
 @code {
     private bool _isLoading = true;
-    private List<Operator>? _operators;
-    private RadzenDataFilter<Operator>? _operatorsFilter;
+    private List<VideoForensics.Data.Common.Entities.Operator>? _operators;
+    private SfQueryBuilder<VideoForensics.Data.Common.Entities.Operator>? _operatorsFilter;
+    private IEnumerable<VideoForensics.Data.Common.Entities.Operator> _filteredOperators = new List<VideoForensics.Data.Common.Entities.Operator>();
     private string? _authError;
     private string? _loadError;
     private string? _actionError;
@@ -133,6 +150,7 @@ else
 
             response.EnsureSuccessStatusCode();
             _operators = await response.Content.ReadFromJsonAsync<List<Operator>>(JsonOptions);
+            _filteredOperators = _operators ?? new List<Operator>();
         }
         catch (Exception ex)
         {
@@ -206,6 +224,15 @@ else
         catch
         {
             return null;
+        }
+    }
+
+    private async Task ApplyOperatorsFilterAsync()
+    {
+        if (_operatorsFilter is not null)
+        {
+            var result = await _operatorsFilter.GetFilteredRecordsAsync();
+            _filteredOperators = result?.ToList() ?? (_operators ?? new List<Operator>());
         }
     }
 

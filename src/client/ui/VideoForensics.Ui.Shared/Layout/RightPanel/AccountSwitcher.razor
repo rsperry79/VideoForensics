@@ -8,24 +8,25 @@
 @inject IStringLocalizer<SharedResources> L
 
 <div class="right-panel-section">
-    <RadzenText TextStyle="TextStyle.Subtitle2">@L["Active Account"]</RadzenText>
+    <small>@L["Active Account"]</small>
     @if (_isLoading)
     {
-        <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" Size="ProgressBarCircularSize.ExtraSmall" />
+        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
     }
     else if (_rows.Count == 0)
     {
-        <RadzenText TextStyle="TextStyle.Caption">No accounts linked yet.</RadzenText>
+        <small>No accounts linked yet.</small>
     }
     else
     {
-        <RadzenDropDown TValue="Guid?" Data="@_rows" TextProperty="DisplayName" ValueProperty="Id"
-                         Value="@ForensicsConfig.ActiveProviderAccountId" Disabled="@_isBusy"
-                         Change="@(args => SelectAccountAsync((Guid?)args))" class="w-100" />
+        <SfDropDownList TValue="Guid?" TItem="AccountRow" Value="@ForensicsConfig.ActiveProviderAccountId" ValueChanged="@(async (Guid? v) => await SelectAccountAsync(v))"
+                         DataSource="@_rows" Enabled="@(!_isBusy)" CssClass="w-100">
+            <DropDownListFieldSettings Text="DisplayName" Value="Id"></DropDownListFieldSettings>
+        </SfDropDownList>
     }
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
-        <RadzenText TextStyle="TextStyle.Caption">@_statusMessage</RadzenText>
+        <small>@_statusMessage</small>
     }
 </div>
 

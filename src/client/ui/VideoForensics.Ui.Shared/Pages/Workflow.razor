@@ -4,56 +4,56 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Workflow> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
-        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToUseWorkflow"]
-    </RadzenAlert>
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToUseWorkflow"]
+    </div>
 }
 else
 {
     <ol class="workflow-steps">
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step1Title"]</RadzenText>
-            <RadzenText>@L["Step1Description"]</RadzenText>
-            <RadzenLink Path="/accounts" Text="@L["GoToAccounts"]" />
+            <h5 class="mt-4 mb-2">@L["Step1Title"]</h5>
+            <span>@L["Step1Description"]</span>
+            <a href="/accounts">@L["GoToAccounts"]</a>
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step2Title"]</RadzenText>
-            <RadzenText>@L["Step2Description"]</RadzenText>
-            <RadzenLink Path="/collect/videos" Text="@L["CollectVideos"]" />
+            <h5 class="mt-4 mb-2">@L["Step2Title"]</h5>
+            <span>@L["Step2Description"]</span>
+            <a href="/collect/videos">@L["CollectVideos"]</a>
             &nbsp;|&nbsp;
-            <RadzenLink Path="/collect/snapshots" Text="@L["CollectSnapshots"]" />
+            <a href="/collect/snapshots">@L["CollectSnapshots"]</a>
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step3Title"]</RadzenText>
-            <RadzenText>@L["Step3Description"]</RadzenText>
-            <RadzenLink Path="/events" Text="@L["GoToEvents"]" />
+            <h5 class="mt-4 mb-2">@L["Step3Title"]</h5>
+            <span>@L["Step3Description"]</span>
+            <a href="/events">@L["GoToEvents"]</a>
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step4Title"]</RadzenText>
-            <RadzenText>@L["Step4Description"]</RadzenText>
-            <RadzenLink Path="/analyze/validate/integrity" Text="@L["GoToIntegrityValidation"]" />
+            <h5 class="mt-4 mb-2">@L["Step4Title"]</h5>
+            <span>@L["Step4Description"]</span>
+            <a href="/analyze/validate/integrity">@L["GoToIntegrityValidation"]</a>
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step5Title"]</RadzenText>
-            <RadzenText>@L["Step5Description"]</RadzenText>
-            <RadzenLink Path="/analyze/reports" Text="@L["Reports"]" />
+            <h5 class="mt-4 mb-2">@L["Step5Title"]</h5>
+            <span>@L["Step5Description"]</span>
+            <a href="/analyze/reports">@L["Reports"]</a>
             &nbsp;|&nbsp;
-            <RadzenLink Path="/analyze/jamming" Text="@L["JammingAnalysis"]" />
+            <a href="/analyze/jamming">@L["JammingAnalysis"]</a>
             &nbsp;|&nbsp;
-            <RadzenLink Path="/analyze/signal-anomalies" Text="@L["SignalAnomalies"]" />
+            <a href="/analyze/signal-anomalies">@L["SignalAnomalies"]</a>
         </li>
         <li>
-            <RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["Step6Title"]</RadzenText>
-            <RadzenText>@L["Step6Description"]</RadzenText>
-            <RadzenLink Path="/review/export" Text="@L["GoToExport"]" />
+            <h5 class="mt-4 mb-2">@L["Step6Title"]</h5>
+            <span>@L["Step6Description"]</span>
+            <a href="/review/export">@L["GoToExport"]</a>
         </li>
     </ol>
 }

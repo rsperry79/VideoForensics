@@ -86,4 +86,10 @@
   <data name="ColEntityId" xml:space="preserve">
     <value>Entity ID</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
+  <data name="Filters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
 </root>

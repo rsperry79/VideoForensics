@@ -90,7 +90,7 @@ namespace VideoForensics.WebApp.Discovery
 
         private void StartAdvertising()
         {
-            var port = ResolveListeningPort();
+            int? port = ResolveListeningPort();
             if (port is null)
             {
                 _logger.LogWarning("Could not determine the server's listening port; mDNS advertisement skipped");
@@ -138,7 +138,7 @@ namespace VideoForensics.WebApp.Discovery
                 return null;
             }
 
-            foreach (var address in addresses)
+            foreach (string address in addresses)
             {
                 if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
                 {

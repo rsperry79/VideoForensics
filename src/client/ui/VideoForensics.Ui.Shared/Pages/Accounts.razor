@@ -1,5 +1,8 @@
 @page "/accounts"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAuthService AuthService
@@ -7,72 +10,97 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<Accounts> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else
 {
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
-        <RadzenText>@_statusMessage</RadzenText>
+        <p>@_statusMessage</p>
     }
 
     @if (_rows.Count == 0)
     {
-        <RadzenText>@L["NoAccountsLinked"]</RadzenText>
+        <p>@L["NoAccountsLinked"]</p>
     }
     else
     {
-        <RadzenDataFilter @ref="_rowsFilter" TItem="AccountRow" Data="@_rows" Auto="true" class="mb-2">
-            <Properties>
-                <RadzenDataFilterProperty Property="DisplayName" Title="@L["ColDisplayName"]" />
-                <RadzenDataFilterProperty Property="Account.ProviderName" Title="@L["ColProvider"]" />
-                <RadzenDataFilterProperty Property="Account.LinkedUtc" Title="@L["ColLinked"]" />
-                <RadzenDataFilterProperty Property="Account.LastSuccessfulAuthUtc" Title="@L["ColLastAuth"]" />
-            </Properties>
-        </RadzenDataFilter>
-        <RadzenDataGrid TItem="AccountRow" Data="@_rowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-            <Columns>
-                <RadzenDataGridColumn TItem="AccountRow" Property="DisplayName" Title="@L["ColDisplayName"]" />
-                <RadzenDataGridColumn TItem="AccountRow" Property="Account.ProviderName" Title="@L["ColProvider"]" />
-                <RadzenDataGridColumn TItem="AccountRow" Property="Account.LinkedUtc" Title="@L["ColLinked"]" />
-                <RadzenDataGridColumn TItem="AccountRow" Title="@L["ColLastAuth"]">
-                    <Template Context="row">@(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")</Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="AccountRow" Title="@L["ColActive"]" Sortable="false" Filterable="false">
-                    <Template Context="row">@(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? L["Yes"] : "")</Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="AccountRow" Title="" Sortable="false" Filterable="false">
-                    <Template Context="row">
-                        <RadzenButton Text="@L["Select"]" Click="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-                        @if (_confirmingRemoveId == row.Account.Id)
-                        {
-                            <RadzenText>@L["AreYouSure"]</RadzenText>
-                            <RadzenButton Text="@L["Yes"]" Click="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" />
-                            <RadzenButton Text="@L["No"]" Click="() => _confirmingRemoveId = null" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" />
-                        }
-                        else
-                        {
-                            <RadzenButton Text="@L["Remove"]" Click="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" />
+        <PageRightPanelContent>
+            <div class="right-panel-section">
+                <h6>Filter</h6>
+                <SfQueryBuilder @ref="_rowsFilter" TValue="AccountRow">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="DisplayName" Label="@L["ColDisplayName"]" />
+                        <QueryBuilderColumn Field="Account.ProviderName" Label="@L["ColProvider"]" />
+                        <QueryBuilderColumn Field="Account.LinkedUtc" Label="@L["ColLinked"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                        <QueryBuilderColumn Field="Account.LastSuccessfulAuthUtc" Label="@L["ColLastAuth"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyRowsFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        </PageRightPanelContent>
+        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true">
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" />
+                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
+                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
+                <GridColumn HeaderText="@L["ColLastAuth"]">
+                    <Template>
+                        @{
+                            var row = (AccountRow)context;
+                            @(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")
                         }
                     </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColActive"]">
+                    <Template>
+                        @{
+                            var row = (AccountRow)context;
+                            @(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? L["Yes"] : "")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="">
+                    <Template>
+                        @{
+                            var row = (AccountRow)context;
+                            @if (_confirmingRemoveId == row.Account.Id)
+                            {
+                                <div class="d-flex gap-2">
+                                    <p>@L["AreYouSure"]</p>
+                                    <SfButton Content="@L["Yes"]" OnClick="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-success" />
+                                    <SfButton Content="@L["No"]" OnClick="() => _confirmingRemoveId = null" Disabled="@_isBusy" CssClass="e-outline" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex gap-2">
+                                    <SfButton Content="@L["Select"]" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-primary" />
+                                    <SfButton Content="@L["Remove"]" OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" CssClass="e-danger" />
+                                </div>
+                            }
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
     }
 }
 
-<RadzenText TextStyle="TextStyle.H5" class="mt-4 mb-2">@L["AddAccount"]</RadzenText>
+<h5 class="mt-4 mb-2">@L["AddAccount"]</h5>
 <AuthForm IdPrefix="addaccount" SubmitLabel="@L["AddAccount"]" OnAuthenticated="HandleAccountAddedAsync" />
 
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private List<AccountRow> _rows = new();
-    private RadzenDataFilter<AccountRow>? _rowsFilter;
+    private SfQueryBuilder<AccountRow>? _rowsFilter;
+    private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private bool _isLoading = true;
     private bool _isBusy;
     private string? _statusMessage;
@@ -110,10 +138,20 @@ else
             }
 
             _rows = rows;
+            _filteredRows = _rows;
         }
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task ApplyRowsFilterAsync()
+    {
+        if (_rowsFilter is not null)
+        {
+            var result = await _rowsFilter.GetFilteredRecordsAsync();
+            _filteredRows = result?.ToList() ?? _rows;
         }
     }
 
@@ -124,7 +162,15 @@ else
         try
         {
             ForensicsConfig.ActiveProviderAccountId = accountId;
-            await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+            try
+            {
+                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+            }
+            catch (NotSupportedException)
+            {
+                _statusMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
+                return;
+            }
 
             var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
             _statusMessage = resumed
@@ -153,7 +199,15 @@ else
             if (ForensicsConfig.ActiveProviderAccountId == accountId)
             {
                 ForensicsConfig.ActiveProviderAccountId = null;
-                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+                try
+                {
+                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+                }
+                catch (NotSupportedException)
+                {
+                    _statusMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
+                    return;
+                }
             }
 
             await LoadAccountsAsync();

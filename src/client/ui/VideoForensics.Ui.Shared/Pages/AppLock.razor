@@ -3,45 +3,48 @@
 @inject IAppLockPreferencesStore AppLockPreferences
 @inject IStringLocalizer<AppLock> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (!AppLockPreferences.IsSupported)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
+    <div class="alert alert-info">
         @L["UnsupportedAlert"]
-    </RadzenAlert>
+    </div>
 }
 else
 {
-    <RadzenText class="mb-4">
+    <p class="mb-4">
         @L["Description"]
-    </RadzenText>
+    </p>
 
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenDropDown TValue="int" Value="_selectedSeconds" ValueChanged="OnTimeoutChangedAsync"
-            Data="@(TimeoutOptions.Select(o => new { Value = o.Seconds, Text = o.Label }).ToList())"
-            ValueProperty="Value" TextProperty="Text" Placeholder="@L["TimeoutPlaceholder"]" Style="max-width: 320px;" />
+    <div class="card border pa-4 mb-4">
+        <SfDropDownList TValue="int" TItem="TimeoutOption" Value="@_selectedSeconds" ValueChanged="@OnTimeoutChangedAsync"
+            DataSource="@_timeoutOptionsList" CssClass="w-100" Style="max-width: 320px;">
+            <DropDownListFieldSettings Text="Text" Value="Value"></DropDownListFieldSettings>
+        </SfDropDownList>
         @if (_message is not null)
         {
-            <RadzenText class="mt-2">@_message</RadzenText>
+            <span class="mt-2 d-block">@_message</span>
         }
-    </RadzenCard>
+    </div>
 }
 
 @code {
-    private (int Seconds, string Label)[] TimeoutOptions = Array.Empty<(int, string)>();
+    private record TimeoutOption(int Value, string Text);
+
+    private List<TimeoutOption> _timeoutOptionsList = new();
 
     private int _selectedSeconds;
     private string? _message;
 
     protected override void OnInitialized()
     {
-        TimeoutOptions = new[]
+        _timeoutOptionsList = new()
         {
-            (0, L["TimeoutImmediate"].Value),
-            (60, L["TimeoutOneMinute"].Value),
-            (300, L["TimeoutFiveMinutes"].Value),
-            (900, L["TimeoutFifteenMinutes"].Value),
+            new(0, L["TimeoutImmediate"].Value),
+            new(60, L["TimeoutOneMinute"].Value),
+            new(300, L["TimeoutFiveMinutes"].Value),
+            new(900, L["TimeoutFifteenMinutes"].Value),
         };
 
         if (AppLockPreferences.IsSupported)

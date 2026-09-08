@@ -5,21 +5,21 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<CollectVideos> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToCollect"]</RadzenText>
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToCollect"]</p>
 }
 else
 {
     <div class="collect-form">
         <div>
-            <RadzenTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
+            <SfTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
         </div>
         <div>
             <label for="startDate">@L["StartDateLabel"]</label>
@@ -30,20 +30,20 @@ else
             <input id="endDate" type="date" @bind="_endDate" disabled="@_isDownloading" />
         </div>
         <div>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_force" /> @L["ForceFullRescan"]</label>
+            <SfCheckBox TChecked="bool" @bind-Checked="_force" Label="@L["ForceFullRescan"].Value" />
         </div>
         <div>
-            <RadzenButton Text="@L["StartDownload"]" Click="StartDownloadAsync" Disabled="@_isDownloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            <SfButton Content="@L["StartDownload"]" OnClick="StartDownloadAsync" Disabled="@_isDownloading" CssClass="e-primary" />
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger">@_errorMessage</RadzenAlert>
+            <div class="alert alert-danger">@_errorMessage</div>
         }
 
         @if (_downloadCompleted)
         {
-            <RadzenText>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</RadzenText>
+            <p>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</p>
         }
     </div>
 

@@ -1,147 +1,181 @@
 @page "/settings"
 @using VideoForensics.Client.Core.Tools
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
 @inject IProviderAuthService AuthService
 @inject IForensicsConfiguration Config
 @inject IForensicsConfigurationService ConfigService
 @inject ConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Settings> L
+@inject IServerLocationInformationService ServerLocationService
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
+
+<h6 class="mt-4 mb-2">@L["AppearanceSection"]</h6>
+<div class="card pa-4 mb-4">
+    <div class="card-body">
+        <ThemeLanguagePicker />
+    </div>
+</div>
+
+<h6 class="mt-4 mb-2">Server Connection</h6>
+<div class="card pa-4 mb-4">
+    <div class="card-body d-flex flex-column gap-2">
+        <div class="d-flex flex-row gap-3">
+            <div>
+                <strong>Connection Status:</strong>
+                <div class="text-muted">@ServerLocationService.LocationDescription</div>
+            </div>
+        </div>
+        @if (ServerLocationService.CurrentServerAddress is not null)
+        {
+            <div class="d-flex flex-row gap-3">
+                <div>
+                    <strong>Server Address:</strong>
+                    <div class="text-muted" style="font-family: monospace; word-break: break-all;">@ServerLocationService.CurrentServerAddress.AbsoluteUri</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
-        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToChangeSettings"]
-    </RadzenAlert>
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToChangeSettings"]
+    </div>
 }
 else
 {
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["ReportsSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack>
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableForensicAnalysisReports" ValueChanged="@(async (bool v) => await SaveForensicAnalysisReportsAsync(v))" /> @L["ForensicAnalysis"]</label>
+    <h6 class="mt-4 mb-2">@L["ReportsSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-column gap-2">
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableForensicAnalysisReports" @bind-Checked:after="@(async () => await SaveForensicAnalysisReportsAsync(Config.EnableForensicAnalysisReports))" Label="@L["ForensicAnalysis"].Value" />
             @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
             {
-                <RadzenText TextStyle="TextStyle.Caption" style="@(m1.Success ? "color: green;" : "color: red;")">@m1.Message</RadzenText>
+                <small style="@(m1.Success ? "color: green;" : "color: red;")">@m1.Message</small>
             }
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableSignalAnomalyReports" ValueChanged="@(async (bool v) => await SaveSignalAnomalyReportsAsync(v))" /> @L["SignalAnomaly"]</label>
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableSignalAnomalyReports" @bind-Checked:after="@(async () => await SaveSignalAnomalyReportsAsync(Config.EnableSignalAnomalyReports))" Label="@L["SignalAnomaly"].Value" />
             @if (_reportMessages.TryGetValue("SignalAnomaly", out var m2))
             {
-                <RadzenText TextStyle="TextStyle.Caption" style="@(m2.Success ? "color: green;" : "color: red;")">@m2.Message</RadzenText>
+                <small style="@(m2.Success ? "color: green;" : "color: red;")">@m2.Message</small>
             }
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableChainOfCustodyReports" ValueChanged="@(async (bool v) => await SaveChainOfCustodyReportsAsync(v))" /> @L["ChainOfCustody"]</label>
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableChainOfCustodyReports" @bind-Checked:after="@(async () => await SaveChainOfCustodyReportsAsync(Config.EnableChainOfCustodyReports))" Label="@L["ChainOfCustody"].Value" />
             @if (_reportMessages.TryGetValue("ChainOfCustody", out var m3))
             {
-                <RadzenText TextStyle="TextStyle.Caption" style="@(m3.Success ? "color: green;" : "color: red;")">@m3.Message</RadzenText>
+                <small style="@(m3.Success ? "color: green;" : "color: red;")">@m3.Message</small>
             }
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableEvidenceValidationReports" ValueChanged="@(async (bool v) => await SaveEvidenceValidationReportsAsync(v))" /> @L["EvidenceValidation"]</label>
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableEvidenceValidationReports" @bind-Checked:after="@(async () => await SaveEvidenceValidationReportsAsync(Config.EnableEvidenceValidationReports))" Label="@L["EvidenceValidation"].Value" />
             @if (_reportMessages.TryGetValue("EvidenceValidation", out var m4))
             {
-                <RadzenText TextStyle="TextStyle.Caption" style="@(m4.Success ? "color: green;" : "color: red;")">@m4.Message</RadzenText>
+                <small style="@(m4.Success ? "color: green;" : "color: red;")">@m4.Message</small>
             }
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableAccessControlMonitoring" ValueChanged="@(async (bool v) => await SaveAccessControlReportsAsync(v))" /> @L["AccessControl"]</label>
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableAccessControlMonitoring" @bind-Checked:after="@(async () => await SaveAccessControlReportsAsync(Config.EnableAccessControlMonitoring))" Label="@L["AccessControl"].Value" />
             @if (_reportMessages.TryGetValue("AccessControl", out var m5))
             {
-                <RadzenText TextStyle="TextStyle.Caption" style="@(m5.Success ? "color: green;" : "color: red;")">@m5.Message</RadzenText>
+                <small style="@(m5.Success ? "color: green;" : "color: red;")">@m5.Message</small>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["HealthSyncSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack>
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableHealthSync" ValueChanged="@(async (bool v) => await SaveHealthSyncAsync(v))" /> @L["EnableHealthSync"]</label>
+    <h6 class="mt-4 mb-2">@L["HealthSyncSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-column gap-2">
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableHealthSync" @bind-Checked:after="@(async () => await SaveHealthSyncAsync(Config.EnableHealthSync))" Label="@L["EnableHealthSync"].Value" />
             @if (_healthSyncMessage is not null)
             {
-                <RadzenText style="@(_healthSyncSuccess ? "color: green;" : "color: red;")">@_healthSyncMessage</RadzenText>
+                <span style="@(_healthSyncSuccess ? "color: green;" : "color: red;")">@_healthSyncMessage</span>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["NetworkDiscoverySection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack>
-            <label><RadzenCheckBox TValue="bool" Value="@Config.EnableMdnsAdvertisement" ValueChanged="@(async (bool v) => await SaveMdnsAdvertisementAsync(v))" /> @L["EnableMdnsAdvertisement"]</label>
+    <h6 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-column gap-2">
+            <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
             @if (_mdnsMessage is not null)
             {
-                <RadzenText style="@(_mdnsSuccess ? "color: green;" : "color: red;")">@_mdnsMessage</RadzenText>
+                <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")">@_mdnsMessage</span>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["RetentionSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <label>@L["RetentionDaysLabel"]</label> <RadzenNumeric TValue="int" @bind-Value="_retentionDays" Style="max-width: 200px;" />
-            <RadzenButton Text="@L["SaveButton"]" Click="SaveRetentionAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    <h6 class="mt-4 mb-2">@L["RetentionSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-row gap-2 align-items-center">
+            <label>@L["RetentionDaysLabel"]</label>
+            <SfNumericTextBox TValue="int" @bind-Value="_retentionDays" Style="max-width: 200px;" />
+            <SfButton Content="@L["SaveButton"]" OnClick="SaveRetentionAsync" CssClass="e-primary" />
             @if (_retentionMessage is not null)
             {
-                <RadzenText style="@(_retentionSuccess ? "color: green;" : "color: red;")">@_retentionMessage</RadzenText>
+                <span style="@(_retentionSuccess ? "color: green;" : "color: red;")">@_retentionMessage</span>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["DownloadsSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack Spacing="3">
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <label>@L["MaxConcurrentDownloads"]</label> <RadzenNumeric TValue="int" @bind-Value="_maxConcurrentDownloads" Style="max-width: 260px;" />
-                <RadzenButton Text="@L["SaveButton"]" Click="SaveMaxConcurrentAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    <h6 class="mt-4 mb-2">@L["DownloadsSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-column gap-3">
+            <div class="d-flex flex-row gap-2 align-items-center">
+                <label>@L["MaxConcurrentDownloads"]</label>
+                <SfNumericTextBox TValue="int" @bind-Value="_maxConcurrentDownloads" Style="max-width: 260px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveMaxConcurrentAsync" CssClass="e-primary" />
                 @if (_maxConcurrentMessage is not null)
                 {
-                    <RadzenText style="@(_maxConcurrentSuccess ? "color: green;" : "color: red;")">@_maxConcurrentMessage</RadzenText>
+                    <span style="@(_maxConcurrentSuccess ? "color: green;" : "color: red;")">@_maxConcurrentMessage</span>
                 }
-            </RadzenStack>
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <label>@L["DownloadLocation"]</label> <RadzenTextBox @bind-Value="_downloadLocation" Placeholder="@L["DownloadLocation"]" Style="max-width: 400px;" />
-                <RadzenButton Text="@L["SaveButton"]" Click="SaveDownloadLocationAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            </div>
+            <div class="d-flex flex-row gap-2 align-items-center">
+                <label>@L["DownloadLocation"]</label>
+                <SfTextBox Placeholder="@L["DownloadLocation"]" @bind-Value="_downloadLocation" Style="max-width: 400px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveDownloadLocationAsync" CssClass="e-primary" />
                 @if (_downloadLocationMessage is not null)
                 {
-                    <RadzenText style="@(_downloadLocationSuccess ? "color: green;" : "color: red;")">@_downloadLocationMessage</RadzenText>
+                    <span style="@(_downloadLocationSuccess ? "color: green;" : "color: red;")">@_downloadLocationMessage</span>
                 }
-            </RadzenStack>
-        </RadzenStack>
-    </RadzenCard>
+            </div>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["ReportingFormatSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack Spacing="3">
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenDropDown TValue="string" @bind-Value="_reportFormat" Data="@(new[] { "json", "xml", "csv" })" Style="max-width: 200px;" />
-                <RadzenButton Text="@L["SaveButton"]" Click="SaveReportFormatAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    <h6 class="mt-4 mb-2">@L["ReportingFormatSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-column gap-3">
+            <div class="d-flex flex-row gap-2 align-items-center">
+                <SfDropDownList TValue="string" TItem="string" @bind-Value="_reportFormat" DataSource="@(new[] { "json", "xml", "csv" })" Style="max-width: 200px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveReportFormatAsync" CssClass="e-primary" />
                 @if (_reportFormatMessage is not null)
                 {
-                    <RadzenText style="@(_reportFormatSuccess ? "color: green;" : "color: red;")">@_reportFormatMessage</RadzenText>
+                    <span style="@(_reportFormatSuccess ? "color: green;" : "color: red;")">@_reportFormatMessage</span>
                 }
-            </RadzenStack>
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenDropDown TValue="RedactionLevel" @bind-Value="_redactionLevel" Data="@(Enum.GetValues<RedactionLevel>())" Style="max-width: 200px;" />
-                <RadzenButton Text="@L["SaveButton"]" Click="SaveRedactionLevelAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+            </div>
+            <div class="d-flex flex-row gap-2 align-items-center">
+                <SfDropDownList TValue="RedactionLevel" TItem="RedactionLevel" @bind-Value="_redactionLevel" DataSource="@(Enum.GetValues<RedactionLevel>())" Style="max-width: 200px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveRedactionLevelAsync" CssClass="e-primary" />
                 @if (_redactionLevelMessage is not null)
                 {
-                    <RadzenText style="@(_redactionLevelSuccess ? "color: green;" : "color: red;")">@_redactionLevelMessage</RadzenText>
+                    <span style="@(_redactionLevelSuccess ? "color: green;" : "color: red;")">@_redactionLevelMessage</span>
                 }
-            </RadzenStack>
-        </RadzenStack>
-    </RadzenCard>
+            </div>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["LoggingSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <RadzenDropDown TValue="string" @bind-Value="_loggingLevel" Data="@(new[] { "Debug", "Information", "Warning", "Error", "Critical" })" Style="max-width: 200px;" />
-            <RadzenButton Text="@L["SaveButton"]" Click="SaveLoggingLevelAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
+    <h6 class="mt-4 mb-2">@L["LoggingSection"]</h6>
+    <div class="card pa-4 mb-4">
+        <div class="card-body d-flex flex-row gap-2 align-items-center">
+            <SfDropDownList TValue="string" TItem="string" @bind-Value="_loggingLevel" DataSource="@(new[] { "Debug", "Information", "Warning", "Error", "Critical" })" Style="max-width: 200px;" />
+            <SfButton Content="@L["SaveButton"]" OnClick="SaveLoggingLevelAsync" CssClass="e-primary" />
             @if (_loggingLevelMessage is not null)
             {
-                <RadzenText style="@(_loggingLevelSuccess ? "color: green;" : "color: red;")">@_loggingLevelMessage</RadzenText>
+                <span style="@(_loggingLevelSuccess ? "color: green;" : "color: red;")">@_loggingLevelMessage</span>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 }
 
 @code {
@@ -218,7 +252,16 @@ else
         try
         {
             Config.EnableHealthSync = enabled;
-            await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            try
+            {
+                await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            }
+            catch (NotSupportedException)
+            {
+                _healthSyncSuccess = false;
+                _healthSyncMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
+                return;
+            }
             _healthSyncSuccess = true;
             _healthSyncMessage = L["HealthSyncStatus", enabled ? "enabled" : "disabled"].Value;
         }
@@ -234,7 +277,16 @@ else
         try
         {
             Config.EnableMdnsAdvertisement = enabled;
-            await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            try
+            {
+                await ConfigService.SaveConfigurationAsync(Config, CancellationToken.None);
+            }
+            catch (NotSupportedException)
+            {
+                _mdnsSuccess = false;
+                _mdnsMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
+                return;
+            }
             _mdnsSuccess = true;
             _mdnsMessage = L["MdnsStatus", enabled ? "enabled" : "disabled"].Value;
         }

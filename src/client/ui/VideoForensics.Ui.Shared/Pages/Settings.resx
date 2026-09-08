@@ -44,6 +44,9 @@
   <data name="SignInToChangeSettings" xml:space="preserve">
     <value>to change settings.</value>
   </data>
+  <data name="AppearanceSection" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
   <data name="ReportsSection" xml:space="preserve">
     <value>Reports</value>
   </data>

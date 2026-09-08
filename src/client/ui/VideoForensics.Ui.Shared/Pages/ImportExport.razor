@@ -1,131 +1,173 @@
 @page "/tools/import-export"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Dialogs
+@using Microsoft.AspNetCore.Components.Forms
 @inject IBackupExportService BackupExportService
 @inject IBackupImportService BackupImportService
+@inject IFileDialogService FileDialogService
 @inject IStringLocalizer<ImportExport> L
+@inject IJSRuntime JsRuntime
 
-<RadzenText TextStyle="TextStyle.H4" Class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">@L["ExportSectionTitle"]</RadzenText>
+<div class="card mb-4">
+    <div class="card-body pa-4">
+        <h5 class="mb-2">@L["ExportSectionTitle"]</h5>
 
-    <div>
-        <RadzenButton Text="@L["PrepareForExport"]" Click="PrepareAsync" Disabled="@_isPreparing" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Secondary" />
-    </div>
-
-    @if (_prepareResult is not null)
-    {
-        <div class="mt-2">
-            <RadzenText>@L["Validated"] @_prepareResult.Validated</RadzenText>
-            <RadzenText>@L["Backfilled"] @_prepareResult.Backfilled</RadzenText>
-            <RadzenText>@L["MissingMedia"] @_prepareResult.MissingMedia</RadzenText>
-            <RadzenText>@L["UnrecoverableSidecars"] @_prepareResult.MissingSidecarUnrecoverable</RadzenText>
-            @foreach (var detail in _prepareResult.Details)
-            {
-                <RadzenText Class="mt-1">@detail</RadzenText>
-            }
-        </div>
-    }
-
-    <div class="mt-4">
-        <RadzenTextBox @bind-Value="_exportOutputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Disabled="@_isExporting" />
-    </div>
-    <div>
-        <RadzenButton Text="@L["ExportBackup"]" Click="ExportAsync" Disabled="@_isExporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
-    </div>
-
-    @if (_exportResult is not null)
-    {
-        @if (_exportResult.Success)
+        @if (_prepareResult is not null)
         {
             <div class="mt-2">
-                <RadzenText>@L["BackupCreated"] @_exportResult.ArchivePath</RadzenText>
-                <RadzenText>@L["SHA256"] @_exportResult.ArchiveSha256Hash</RadzenText>
-                <RadzenText>@L["ExportSummary", _exportResult.ProviderAccountCount, _exportResult.LocationCount, _exportResult.DeviceCount, _exportResult.EventCount, _exportResult.MediaItemCount]</RadzenText>
-            </div>
-        }
-        else
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_exportResult.ErrorMessage</RadzenAlert>
-        }
-    }
-</RadzenCard>
-
-<RadzenCard Variant="Variant.Outlined" Class="pa-4 mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="mb-2">@L["ImportSectionTitle"]</RadzenText>
-
-    <div>
-        <RadzenTextBox @bind-Value="_backupZipPath" Placeholder="@L["BackupZipPathPlaceholder"]" Disabled="@_isImporting" />
-    </div>
-    <div>
-        <RadzenTextBox @bind-Value="_mediaRootPath" Placeholder="@L["MediaRootFolderPlaceholder"]" Disabled="@_isImporting" />
-    </div>
-    <div>
-        <RadzenButton Text="@L["Import"]" Click="ImportAsync" Disabled="@_isImporting" Variant="Variant.Filled" ButtonStyle="ButtonStyle.Primary" />
-    </div>
-
-    @if (_importResult is not null)
-    {
-        @if (_importResult.Success)
-        {
-            <div class="mt-2">
-                <RadzenText>@L["ProviderAccountsSummary", _importResult.ProviderAccounts.Inserted, _importResult.ProviderAccounts.SkippedExisting, _importResult.ProviderAccounts.SkippedOrphaned]</RadzenText>
-                <RadzenText>@L["LocationsSummary", _importResult.Locations.Inserted, _importResult.Locations.SkippedExisting, _importResult.Locations.SkippedOrphaned]</RadzenText>
-                <RadzenText>@L["DevicesSummary", _importResult.Devices.Inserted, _importResult.Devices.SkippedExisting, _importResult.Devices.SkippedOrphaned]</RadzenText>
-                <RadzenText>@L["EventsSummary", _importResult.Events.Inserted, _importResult.Events.SkippedExisting, _importResult.Events.SkippedOrphaned]</RadzenText>
-                <RadzenText>@L["DownloadEventsSummary", _importResult.DownloadEvents.Inserted, _importResult.DownloadEvents.SkippedExisting, _importResult.DownloadEvents.SkippedOrphaned]</RadzenText>
-                <RadzenText>@L["MediaItemsSummary", _importResult.MediaItems.Inserted, _importResult.MediaItems.SkippedExisting, _importResult.MediaItems.SkippedOrphaned, _importResult.MediaItems.IntegrityIssues]</RadzenText>
-                @foreach (var detail in _importResult.Details)
+                <span>@L["Validated"] @_prepareResult.Validated</span>
+                <span>@L["Backfilled"] @_prepareResult.Backfilled</span>
+                <span>@L["MissingMedia"] @_prepareResult.MissingMedia</span>
+                <span>@L["UnrecoverableSidecars"] @_prepareResult.MissingSidecarUnrecoverable</span>
+                @foreach (var detail in _prepareResult.Details)
                 {
-                    <RadzenText Class="mt-1">@detail</RadzenText>
+                    <span class="mt-1">@detail</span>
                 }
             </div>
         }
-        else
+
+        <div class="mt-4">
+            <SfButton Content="@L["ExportBackup"]" OnClick="ExportAsync" Disabled="@_isExporting" CssClass="e-primary" />
+        </div>
+
+        @if (_exportResult is not null)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" Class="mt-2">@_importResult.ErrorMessage</RadzenAlert>
+            @if (_exportResult.Success)
+            {
+                <div class="mt-2">
+                    <span class="mt-2">@L["ExportComplete"]</span>
+                    <span>@L["AccountsCount"] @_exportResult.ProviderAccountCount</span>
+                    <span>@L["LocationsCount"] @_exportResult.LocationCount</span>
+                    <span>@L["DevicesCount"] @_exportResult.DeviceCount</span>
+                    <span>@L["EventsCount"] @_exportResult.EventCount</span>
+                    <span>@L["MediaItemsCount"] @_exportResult.MediaItemCount</span>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger mt-2">@_exportResult.ErrorMessage</div>
+            }
         }
-    }
-</RadzenCard>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body pa-4">
+        <h5 class="mb-2">@L["ImportSectionTitle"]</h5>
+
+        <div class="mt-2">
+            <small class="mb-1 d-block">@L["SelectBackupFile"]</small>
+            <InputFile @ref="_backupFileInput" OnChange="OnBackupFileSelected" style="display:none" />
+            <SfButton Content="@L["ChooseBackupFile"]" OnClick="TriggerBackupFilePickerAsync" CssClass="e-flat" />
+            <span class="mt-1 d-block">@(_selectedBackupFileName ?? L["NoFileSelected"])</span>
+        </div>
+
+        <div class="mt-4">
+            <small class="mb-1 d-block">@L["SelectMediaRootFolder"]</small>
+            <SfButton Content="@L["BrowseMediaRootFolder"]" OnClick="BrowseMediaRootFolderAsync" Disabled="@_isImporting" CssClass="e-flat" />
+            <span class="mt-1 d-block">@(_mediaRootPath ?? L["NoFolderSelected"])</span>
+        </div>
+
+        <div class="mt-4">
+            <SfButton Content="@L["Import"]" OnClick="ImportAsync" Disabled="@_isImporting" CssClass="e-primary" />
+        </div>
+
+        @if (_importResult is not null)
+        {
+            @if (_importResult.Success)
+            {
+                <div class="mt-2">
+                    <span>@L["ProviderAccountsSummary", _importResult.ProviderAccounts.Inserted, _importResult.ProviderAccounts.SkippedExisting, _importResult.ProviderAccounts.SkippedOrphaned]</span>
+                    <span>@L["LocationsSummary", _importResult.Locations.Inserted, _importResult.Locations.SkippedExisting, _importResult.Locations.SkippedOrphaned]</span>
+                    <span>@L["DevicesSummary", _importResult.Devices.Inserted, _importResult.Devices.SkippedExisting, _importResult.Devices.SkippedOrphaned]</span>
+                    <span>@L["EventsSummary", _importResult.Events.Inserted, _importResult.Events.SkippedExisting, _importResult.Events.SkippedOrphaned]</span>
+                    <span>@L["DownloadEventsSummary", _importResult.DownloadEvents.Inserted, _importResult.DownloadEvents.SkippedExisting, _importResult.DownloadEvents.SkippedOrphaned]</span>
+                    <span>@L["MediaItemsSummary", _importResult.MediaItems.Inserted, _importResult.MediaItems.SkippedExisting, _importResult.MediaItems.SkippedOrphaned, _importResult.MediaItems.IntegrityIssues]</span>
+                    @foreach (var detail in _importResult.Details)
+                    {
+                        <span class="mt-1 d-block">@detail</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger mt-2">@_importResult.ErrorMessage</div>
+            }
+        }
+    </div>
+</div>
+
+<SfDialog @bind-Visible="_folderBrowserDialogVisible" Header="@L["BrowseMediaRootFolder"]" Width="600px" IsModal="true">
+    <FolderBrowserDialog OnClosed="OnFolderBrowserDialogClosed" />
+</SfDialog>
 
 @code {
-    private bool _isPreparing;
     private bool _isExporting;
     private bool _isImporting;
+    private bool _folderBrowserDialogVisible;
 
     private PrepareExportResult? _prepareResult;
     private BackupExportResult? _exportResult;
     private BackupImportResult? _importResult;
 
-    private string _exportOutputDirectory = Path.Combine(
+    private string _backupZipPath = "";
+    private string? _mediaRootPath;
+    private string? _selectedBackupFileName;
+    private InputFile? _backupFileInput;
+
+    private readonly string _stagingDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "VideoForensics",
         "Backups");
 
-    private string _backupZipPath = "";
-    private string _mediaRootPath = "";
-
-    private async Task PrepareAsync()
-    {
-        _isPreparing = true;
-        _prepareResult = null;
-        try
-        {
-            _prepareResult = await BackupExportService.PrepareForExportAsync(CancellationToken.None);
-        }
-        finally
-        {
-            _isPreparing = false;
-        }
-    }
-
     private async Task ExportAsync()
     {
         _isExporting = true;
+        _prepareResult = null;
         _exportResult = null;
         try
         {
-            _exportResult = await BackupExportService.ExportBackupAsync(_exportOutputDirectory, CancellationToken.None);
+            // Prepare first, showing validation counts
+            _prepareResult = await BackupExportService.PrepareForExportAsync(CancellationToken.None);
+
+            // Then export
+            _exportResult = await BackupExportService.ExportBackupAsync(_stagingDirectory, CancellationToken.None);
+
+            if (_exportResult.Success && _exportResult.ArchivePath is not null)
+            {
+                // Write SHA-256 sidecar file
+                string? hashFilePath = null;
+                if (!string.IsNullOrEmpty(_exportResult.ArchiveSha256Hash))
+                {
+                    hashFilePath = _exportResult.ArchivePath + ".sha256.txt";
+                    await File.WriteAllTextAsync(hashFilePath, _exportResult.ArchiveSha256Hash, CancellationToken.None);
+                }
+
+                try
+                {
+                    await FileDialogService.SaveExportedArchiveAsync(
+                        _exportResult.ArchivePath,
+                        Path.GetFileName(_exportResult.ArchivePath),
+                        CancellationToken.None);
+
+                    // Also save the hash sidecar file
+                    if (hashFilePath is not null)
+                    {
+                        await FileDialogService.SaveExportedArchiveAsync(
+                            hashFilePath,
+                            Path.GetFileName(hashFilePath),
+                            CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log save dialog failure but don't corrupt the export result display
+                    Console.WriteLine($"Save dialog failed: {ex.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -135,6 +177,46 @@
         {
             _isExporting = false;
         }
+    }
+
+    private async Task TriggerBackupFilePickerAsync()
+    {
+        if (_backupFileInput is not null)
+        {
+            await JsRuntime.InvokeVoidAsync("vfClickElement", _backupFileInput.Element);
+        }
+    }
+
+    private async Task OnBackupFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var tempDir = Path.Combine(Path.GetTempPath(), "VideoForensicsImports");
+        Directory.CreateDirectory(tempDir);
+        var tempPath = Path.Combine(tempDir, $"{Guid.NewGuid()}.zip");
+
+        await using var stream = file.OpenReadStream(maxAllowedSize: 500_000_000);
+        await using var fileStream = File.Create(tempPath);
+        await stream.CopyToAsync(fileStream);
+
+        _backupZipPath = tempPath;
+        _selectedBackupFileName = file.Name;
+    }
+
+    private Task BrowseMediaRootFolderAsync()
+    {
+        _folderBrowserDialogVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OnFolderBrowserDialogClosed(string? path)
+    {
+        _folderBrowserDialogVisible = false;
+        if (path is not null)
+        {
+            _mediaRootPath = path;
+        }
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task ImportAsync()

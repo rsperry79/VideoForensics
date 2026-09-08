@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "webapp",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj", "--urls", "http://localhost:5162"],
+      "port": 5162
+    }
+  ]
+}

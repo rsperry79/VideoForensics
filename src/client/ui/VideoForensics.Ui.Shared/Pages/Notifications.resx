@@ -143,4 +143,7 @@
   <data name="FailedToClearOverride" xml:space="preserve">
     <value>Failed to clear override: {0}</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

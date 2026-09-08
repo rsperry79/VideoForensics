@@ -40,6 +40,9 @@ namespace VideoForensics.Data.Common.Entities
         public const string TunnelStopped = nameof(TunnelStopped);
         public const string ProviderRateLimitHit = nameof(ProviderRateLimitHit);
         public const string ProviderApiVolumeAnomaly = nameof(ProviderApiVolumeAnomaly);
+        public const string EvidenceExported = nameof(EvidenceExported);
+        public const string BackupExported = nameof(BackupExported);
+        public const string BackupImported = nameof(BackupImported);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -66,6 +69,9 @@ namespace VideoForensics.Data.Common.Entities
             [TunnelStopped] = true,
             [ProviderRateLimitHit] = true,
             [ProviderApiVolumeAnomaly] = true,
+            [EvidenceExported] = true,
+            [BackupExported] = true,
+            [BackupImported] = true,
         };
     }
 }

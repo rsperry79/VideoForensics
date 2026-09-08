@@ -6,24 +6,24 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<DeviceSignIn> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Success">@L["SignedInAlert", SessionState.OperatorId, SessionState.Role]</RadzenAlert>
-    <RadzenButton Text="@L["SignOut"]" Click="SignOutAsync" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" />
+    <div class="alert alert-success">@L["SignedInAlert", SessionState.OperatorId, SessionState.Role]</div>
+    <SfButton Content="@L["SignOut"]" OnClick="SignOutAsync" CssClass="e-flat" />
 }
 else
 {
-    <RadzenText>@L["SignInDescription"]</RadzenText>
+    <p>@L["SignInDescription"]</p>
 
-    <RadzenButton Click="SignInAsync" Disabled="@_isSigningIn" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled">
+    <SfButton OnClick="SignInAsync" Disabled="@_isSigningIn" CssClass="e-primary">
         @(_isSigningIn ? L["SignInWaiting"] : L["SignInButton"])
-    </RadzenButton>
+    </SfButton>
 
     @if (_error is not null)
     {
-        <RadzenAlert AlertStyle="AlertStyle.Danger">@_error</RadzenAlert>
+        <div class="alert alert-danger">@_error</div>
     }
 }
 

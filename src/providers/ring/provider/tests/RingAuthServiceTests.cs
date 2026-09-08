@@ -91,6 +91,33 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task IsAuthenticatedAsync_WithoutSessionButSavedCredentials_AttemptsRestoreAndReturnsFalseGracefully()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+
+            var credentialStore = new Mock<ICredentialStore>();
+            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
+                .Returns(new RingCredentials { RefreshToken = "saved-refresh-token-123" });
+
+            var credentialRepository = new Mock<ICredentialRepository>();
+            ILogger logger = new Mock<ILogger>().Object;
+            var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
+
+            // Act
+            // The restore fallback will attempt Session.AuthenticateWithCredentials internally,
+            // which will fail/throw without real network access, but should fail gracefully and
+            // return false without propagating the exception.
+            var result = await service.IsAuthenticatedAsync();
+
+            // Assert
+            Assert.False(result);
+            // Verify that the restore was attempted by checking that Load was called at least once
+            credentialStore.Verify(cs => cs.Load(It.IsAny<string>()), Times.AtLeastOnce);
+        }
+
+        [Fact]
         public async Task RefreshAuthAsync_WithoutSession_ReturnsFalse()
         {
             // Arrange

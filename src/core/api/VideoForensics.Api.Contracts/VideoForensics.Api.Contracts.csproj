@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <AssemblyName>VideoForensics.Api.Contracts</AssemblyName>
+        <RootNamespace>VideoForensics.Api.Contracts</RootNamespace>
+        <Version>1.0.0</Version>
+        <Authors>DV Victim Protection Team</Authors>
+        <Description>Data transfer objects (DTOs) shared between server and clients</Description>
+        <Copyright>2026</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../data/core/data.core/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../client/common/VideoForensics.Client.Common/VideoForensics.Client.Common.csproj" />
+    </ItemGroup>
+
+</Project>

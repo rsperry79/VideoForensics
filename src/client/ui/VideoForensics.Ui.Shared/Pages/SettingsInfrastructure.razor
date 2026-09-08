@@ -7,59 +7,63 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SettingsInfrastructure> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info">
-        @L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToChangeSettings"]
-    </RadzenAlert>
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToChangeSettings"]
+    </div>
 }
 else
 {
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["DataEncryptionSection"]</RadzenText>
-    <RadzenAlert AlertStyle="AlertStyle.Warning" class="mb-4">
+    <h6 class="mt-4 mb-2">@L["DataEncryptionSection"]</h6>
+    <div class="alert alert-warning mb-4">
         <strong>@L["EncryptionWarning"]</strong>
-    </RadzenAlert>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["KeyStorageSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <RadzenDropDown TValue="KeyStorageProvider" @bind-Value="_keyStorageProvider" Data="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
-            <RadzenButton Text="@L["SaveButton"]" Click="SaveKeyStorageProviderAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" />
-            @if (_keyStorageProviderMessage is not null)
+    <h6 class="mt-4 mb-2">@L["KeyStorageSection"]</h6>
+    <div class="card mb-4">
+        <div class="card-body pa-4">
+            <div class="d-flex flex-row gap-2">
+                <SfDropDownList TValue="KeyStorageProvider" TItem="KeyStorageProvider" @bind-Value="_keyStorageProvider" DataSource="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveKeyStorageProviderAsync" CssClass="e-primary" />
+                @if (_keyStorageProviderMessage is not null)
+                {
+                    <span style="@(_keyStorageProviderSuccess ? "color: green;" : "color: red;")">@_keyStorageProviderMessage</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <h6 class="mt-4 mb-2">@L["FactoryResetSection"]</h6>
+    <div class="card mb-4">
+        <div class="card-body pa-4">
+            @if (!_showFactoryResetConfirm)
             {
-                <RadzenText style="@(_keyStorageProviderSuccess ? "color: green;" : "color: red;")">@_keyStorageProviderMessage</RadzenText>
+                <SfButton Content="@L["FactoryResetButton"]" OnClick="() => _showFactoryResetConfirm = true" CssClass="e-danger" />
             }
-        </RadzenStack>
-    </RadzenCard>
+            else
+            {
+                <div class="alert alert-danger mb-2">
+                    <strong>@L["FactoryResetWarning"]</strong>
+                </div>
+                <div class="d-flex flex-row gap-2">
+                    <SfButton Content="@L["ConfirmDelete"]" OnClick="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" CssClass="e-danger" />
+                    <SfButton Content="@L["CancelButton"]" OnClick="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" CssClass="e-flat" />
+                </div>
+            }
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["FactoryResetSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        @if (!_showFactoryResetConfirm)
-        {
-            <RadzenButton Text="@L["FactoryResetButton"]" Click="() => _showFactoryResetConfirm = true" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
-        }
-        else
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">
-                <strong>@L["FactoryResetWarning"]</strong>
-            </RadzenAlert>
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenButton Text="@L["ConfirmDelete"]" Click="ConfirmFactoryResetAsync" Disabled="@_factoryResetting" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Filled" />
-                <RadzenButton Text="@L["CancelButton"]" Click="() => _showFactoryResetConfirm = false" Disabled="@_factoryResetting" Variant="Variant.Outlined" />
-            </RadzenStack>
-        }
-
-        @if (_factoryResetMessage is not null)
-        {
-            <RadzenText style="@(_factoryResetSuccess ? "color: green;" : "color: red;")" class="mt-2"><strong>@_factoryResetMessage</strong></RadzenText>
-        }
-    </RadzenCard>
+            @if (_factoryResetMessage is not null)
+            {
+                <span style="@(_factoryResetSuccess ? "color: green;" : "color: red;")" class="mt-2"><strong>@_factoryResetMessage</strong></span>
+            }
+        </div>
+    </div>
 }
 
 @code {

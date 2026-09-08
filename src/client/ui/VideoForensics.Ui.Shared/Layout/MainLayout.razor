@@ -5,47 +5,46 @@
 @using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
 @inject IAppLockPreferencesStore AppLockPreferences
-@inject IBlazorRenderModeProvider RenderModeProvider
 @inject NavigationManager Nav
 @inject ThemePreferenceService ThemeService
 @inject LayoutPreferencesState LayoutPrefs
 @inject IStringLocalizer<SharedResources> L
+@inject IServerConnectivityState ConnectivityState
 
-<RadzenTheme Theme="@ThemeService.EffectiveRadzenThemeName" />
-<RadzenComponents @rendermode="RenderModeProvider.InteractiveServerOrNull" />
+<div class="app-layout">
+    @if (ConnectivityState.IsUnreachable)
+    {
+        <div class="alert alert-danger" role="alert" style="margin: 0; border-radius: 0; border: none; padding: 12px 16px;">
+            <strong>Server Not Reachable</strong> — Could not connect to the server. Please check your connection or pair a new device.
+        </div>
+    }
 
-<RadzenLayout>
-    <RadzenHeader>
+    <div class="app-header">
         <div class="app-bar">
-            <RadzenText TextStyle="TextStyle.H6" class="app-bar-brand">VideoForensics</RadzenText>
+            <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="Toggle navigation" />
 
             <div class="top-tabs">
                 @foreach (var group in VisibleGroups)
                 {
-                    <RadzenButton Text="@L[group.Text]" Click="@(() => Nav.NavigateTo(group.Path))"
-                                  ButtonStyle="@(group.Key == ActiveGroup.Key ? ButtonStyle.Primary : ButtonStyle.Base)"
-                                  Variant="Variant.Flat" class="top-tab-button" />
+                    <SfButton Content="@L[group.Text]" OnClick="@(() => Nav.NavigateTo(group.Path))"
+                              CssClass="@("top-tab-button " + (group.Key == ActiveGroup.Key ? "e-primary" : "e-flat"))" />
                 }
             </div>
 
-            <RadzenButton Icon="tune" class="right-panel-toggle" Click="@ToggleRightPanelAsync"
-                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" title="Toggle settings panel" />
+            <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="Toggle settings panel" />
         </div>
-    </RadzenHeader>
+    </div>
 
-    <RadzenBody>
+    <div class="app-body">
         <div class="docked-body">
             <div class="left-nav @(LayoutPrefs.LeftNavCollapsed ? "collapsed" : "")">
-                <RadzenButton Icon="@(LayoutPrefs.LeftNavCollapsed ? "chevron_right" : "chevron_left")"
-                              Click="@ToggleLeftNavAsync" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="left-nav-toggle" />
                 @if (!LayoutPrefs.LeftNavCollapsed)
                 {
                     <div class="left-nav-items">
                         @foreach (var item in ActiveGroupItems)
                         {
-                            <RadzenButton Text="@L[item.Text]" Click="@(() => Nav.NavigateTo(item.Path))"
-                                          ButtonStyle="@(PathMatches(item.Path) ? ButtonStyle.Primary : ButtonStyle.Base)"
-                                          Variant="Variant.Flat" class="left-nav-item" />
+                            <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
+                                      CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
                         }
                     </div>
                 }
@@ -60,5 +59,5 @@
                 <RightPanelHost />
             }
         </div>
-    </RadzenBody>
-</RadzenLayout>
+    </div>
+</div>

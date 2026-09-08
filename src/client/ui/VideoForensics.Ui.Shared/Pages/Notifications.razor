@@ -1,126 +1,146 @@
 @page "/settings/notifications"
 @using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using Syncfusion.Blazor.QueryBuilder
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Notifications> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (!SessionState.IsSignedIn)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" class="mb-4">
-        <RadzenLink Path="/device-signin" Text="@L["SignInWithPasskey"]" /> @L["ToManageNotifications"]
-    </RadzenAlert>
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInWithPasskey"]</a> @L["ToManageNotifications"]
+    </div>
 }
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (_authError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger" class="mb-2">@_authError</RadzenAlert>
-    <RadzenText>
-        @L["NotAuthorized"] <RadzenLink Path="/device-signin" Text="@L["SignInWithPasskey"]" /> @L["SignInRequired"]
-    </RadzenText>
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <p>
+        @L["NotAuthorized"] <a href="/device-signin">@L["SignInWithPasskey"]</a> @L["SignInRequired"]
+    </p>
 }
 else if (_loadError is not null)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Danger">@_loadError</RadzenAlert>
+    <div class="alert alert-danger">@_loadError</div>
 }
 else
 {
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["EmailSection"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenStack>
-            <RadzenText>
+    <h6 class="mt-4 mb-2">@L["EmailSection"]</h6>
+    <div class="card border pa-4 mb-4">
+        <div class="d-flex flex-column gap-2">
+            <p>
                 @L["EmailDescription"]
-            </RadzenText>
-            <label><RadzenCheckBox TValue="bool" @bind-Value="_enableEmail" /> @L["EnableEmailNotifications"]</label>
-            <RadzenStack Orientation="Orientation.Horizontal">
+            </p>
+            <SfCheckBox TChecked="bool" @bind-Checked="_enableEmail" Label="@L["EnableEmailNotifications"].Value" />
+            <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelSmtpHost"]</label>
-                    <RadzenTextBox @bind-Value="_smtpHost" style="max-width: 260px;" />
+                    <input type="text" class="form-control" @bind="_smtpHost" style="max-width: 260px;" />
                 </div>
                 <div>
                     <label>@L["LabelPort"]</label>
-                    <RadzenNumeric TValue="int" @bind-Value="_smtpPort" style="max-width: 120px;" />
+                    <input type="number" class="form-control" @bind="_smtpPort" style="max-width: 120px;" />
                 </div>
-                <label><RadzenCheckBox TValue="bool" @bind-Value="_smtpUseTls" /> @L["LabelUseStarttls"]</label>
-            </RadzenStack>
-            <RadzenStack Orientation="Orientation.Horizontal">
+                <SfCheckBox TChecked="bool" @bind-Checked="_smtpUseTls" Label="@L["LabelUseStarttls"].Value" />
+            </div>
+            <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelSmtpUsername"]</label>
-                    <RadzenTextBox @bind-Value="_smtpUsername" style="max-width: 260px;" />
+                    <input type="text" class="form-control" @bind="_smtpUsername" style="max-width: 260px;" />
                 </div>
                 <div>
                     <label>@L["LabelSmtpPassword"]</label>
-                    <input type="password" @bind="_smtpPassword" placeholder="@L["PlaceholderPassword"]" style="max-width: 260px;" />
+                    <input type="password" class="form-control" @bind="_smtpPassword" placeholder="@L["PlaceholderPassword"]" style="max-width: 260px;" />
                 </div>
-            </RadzenStack>
-            <RadzenStack Orientation="Orientation.Horizontal">
+            </div>
+            <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelFromAddress"]</label>
-                    <RadzenTextBox @bind-Value="_smtpFromAddress" style="max-width: 300px;" />
+                    <input type="text" class="form-control" @bind="_smtpFromAddress" style="max-width: 300px;" />
                 </div>
                 <div>
                     <label>@L["LabelNotifyAddress"]</label>
-                    <RadzenTextBox @bind-Value="_recipientEmail" style="max-width: 300px;" />
+                    <input type="text" class="form-control" @bind="_recipientEmail" style="max-width: 300px;" />
                 </div>
-            </RadzenStack>
-            <RadzenStack Orientation="Orientation.Horizontal">
-                <RadzenButton Text="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" Click="SaveSettingsAsync" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Filled" Disabled="@_isSaving" />
-                <RadzenButton Text="@(_isSendingTest ? L["SendingTestButton"] : L["SendTestEmailButton"])" Click="SendTestEmailAsync" Variant="Variant.Outlined" Disabled="@_isSendingTest" />
-            </RadzenStack>
+            </div>
+            <div class="d-flex flex-row gap-2">
+                <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveSettingsAsync" CssClass="e-primary" Disabled="@_isSaving" />
+                <SfButton Content="@(_isSendingTest ? L["SendingTestButton"] : L["SendTestEmailButton"])" OnClick="SendTestEmailAsync" CssClass="e-flat" Disabled="@_isSendingTest" />
+            </div>
             @if (_settingsMessage is not null)
             {
                 <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
             }
-        </RadzenStack>
-    </RadzenCard>
+        </div>
+    </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mt-4 mb-2">@L["UrgentEventOverrides"]</RadzenText>
-    <RadzenCard Variant="Variant.Outlined" class="pa-4 mb-4">
-        <RadzenText class="mb-2">
+    <h6 class="mt-4 mb-2">@L["UrgentEventOverrides"]</h6>
+    <div class="card border pa-4 mb-4">
+        <p class="mb-2">
             @L["UrgencyDescription"]
-        </RadzenText>
+        </p>
         @if (_urgencyRows.Count == 0)
         {
-            <RadzenText>@L["NoEventTypes"]</RadzenText>
+            <p>@L["NoEventTypes"]</p>
         }
         else
         {
-            <RadzenDataFilter @ref="_urgencyRowsFilter" TItem="UrgencyRow" Data="@_urgencyRows" Auto="true" class="mb-2">
-                <Properties>
-                    <RadzenDataFilterProperty Property="EventType" Title="@L["ColEventType"]" />
-                    <RadzenDataFilterProperty Property="DefaultUrgent" Title="@L["ColDefault"]" />
-                    <RadzenDataFilterProperty Property="EffectiveUrgent" Title="@L["ColEffective"]" />
-                </Properties>
-            </RadzenDataFilter>
-            <RadzenDataGrid TItem="UrgencyRow" Data="@_urgencyRowsFilter?.View" AllowSorting="true" AllowPaging="true" PageSize="20">
-                <Columns>
-                    <RadzenDataGridColumn TItem="UrgencyRow" Property="EventType" Title="@L["ColEventType"]" />
-                    <RadzenDataGridColumn TItem="UrgencyRow" Title="@L["ColDefault"]" Sortable="false" Filterable="false">
-                        <Template Context="context">@(context.DefaultUrgent ? L["Urgent"] : L["Routine"])</Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="UrgencyRow" Title="@L["ColEffective"]" Sortable="false" Filterable="false">
-                        <Template Context="context">
-                            <label><RadzenCheckBox TValue="bool" Value="@context.EffectiveUrgent" ValueChanged="@(v => SetOverrideAsync(context.EventType, v))" /> @(context.EffectiveUrgent ? L["Urgent"] : L["Routine"])</label>
-                        </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="UrgencyRow" Title="" Sortable="false" Filterable="false">
-                        <Template Context="context">
-                            @if (context.OverrideUrgent is not null)
-                            {
-                                <RadzenButton Text="@L["ResetToDefault"]" Click="@(() => ClearOverrideAsync(context.EventType))" Variant="Variant.Text" />
+            <PageRightPanelContent>
+                <div class="right-panel-section">
+                    <small>@L["UrgentEventOverrides"]</small>
+                    <SfQueryBuilder @ref="_urgencyRowsFilter" TValue="UrgencyRow" class="mb-2">
+                        <QueryBuilderColumns>
+                            <QueryBuilderColumn Field="EventType" Label="@L["ColEventType"]" />
+                            <QueryBuilderColumn Field="DefaultUrgent" Label="@L["ColDefault"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                            <QueryBuilderColumn Field="EffectiveUrgent" Label="@L["ColEffective"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                        </QueryBuilderColumns>
+                    </SfQueryBuilder>
+                    <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyUrgencyFilterAsync())" CssClass="e-primary mt-2" />
+                </div>
+            </PageRightPanelContent>
+            <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(UrgencyRow.EventType)" HeaderText="@L["ColEventType"]" />
+                    <GridColumn HeaderText="@L["ColDefault"]" AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{
+                                var row = (UrgencyRow)context;
+                                @(row.DefaultUrgent ? L["Urgent"] : L["Routine"])
                             }
                         </Template>
-                    </RadzenDataGridColumn>
-                </Columns>
-            </RadzenDataGrid>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColEffective"]" AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{
+                                var row = (UrgencyRow)context;
+                                <label><SfCheckBox TChecked="bool" Checked="@row.EffectiveUrgent" CheckedChanged="@(v => SetOverrideAsync(row.EventType, v))" /> @(row.EffectiveUrgent ? L["Urgent"] : L["Routine"])</label>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{
+                                var row = (UrgencyRow)context;
+                                @if (row.OverrideUrgent is not null)
+                                {
+                                    <SfButton Content="@L["ResetToDefault"]" OnClick="@(() => ClearOverrideAsync(row.EventType))" CssClass="e-flat" />
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
         }
-    </RadzenCard>
+    </div>
 }
 
 @code {
@@ -143,7 +163,8 @@ else
 
     private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
     private List<UrgencyRow> _urgencyRows = new();
-    private RadzenDataFilter<UrgencyRow>? _urgencyRowsFilter;
+    private SfQueryBuilder<UrgencyRow>? _urgencyRowsFilter;
+    private IEnumerable<UrgencyRow> _filteredUrgencyRows = new List<UrgencyRow>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -199,6 +220,7 @@ else
                     r.GetProperty("overrideUrgent").ValueKind == System.Text.Json.JsonValueKind.Null ? null : r.GetProperty("overrideUrgent").GetBoolean(),
                     r.GetProperty("effectiveUrgent").GetBoolean()
                 )).ToList();
+                _filteredUrgencyRows = _urgencyRows;
             }
         }
         catch (Exception ex)
@@ -309,6 +331,15 @@ else
         {
             _settingsSuccess = false;
             _settingsMessage = L["FailedToClearOverride", ex.Message];
+        }
+    }
+
+    private async Task ApplyUrgencyFilterAsync()
+    {
+        if (_urgencyRowsFilter is not null)
+        {
+            var result = await _urgencyRowsFilter.GetFilteredRecordsAsync();
+            _filteredUrgencyRows = result?.ToList() ?? _urgencyRows;
         }
     }
 

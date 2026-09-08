@@ -128,6 +128,9 @@
   <data name="Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="SelectThisFolder" xml:space="preserve">
+    <value>Select This Folder</value>
+  </data>
   <data name="Yes" xml:space="preserve">
     <value>Yes</value>
   </data>

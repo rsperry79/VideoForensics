@@ -31,12 +31,14 @@ namespace VideoForensics.Mcp
             _ = builder.Logging.SetMinimumLevel(LogLevel.Information);
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
-            // Ring's four services, download/evidence orchestrators, JammingToolsOrchestrator) -
+            // active provider's four services, download/evidence orchestrators, JammingToolsOrchestrator) -
             // see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. MCP remains a
-            // server-tier host (it talks to Ring directly), unaffected by the client/server split
+            // server-tier host (it talks to the active provider directly), unaffected by the client/server split
             // that only applies to the planned MAUI app.
+            // The active provider is read from IConfiguration's "ActiveProvider" setting (from appsettings.json
+            // or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
             _ = builder.Services.AddVideoForensicsDataLayer();
-            _ = builder.Services.AddVideoForensicsServerCore();
+            _ = builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
             // Forensics query repositories (Phases 1-4) - MCP-specific, not shared with other hosts
             _ = builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();

@@ -74,8 +74,40 @@ namespace VideoForensics.WebApp.Api
 
                 return Results.Ok(new { requiresRestartToTakeEffect = true });
             });
+
+            _ = group.MapGet("/internet-url", (IForensicsConfiguration config) => Results.Ok(new
+            {
+                internetServerUrl = config.InternetServerUrl
+            }));
+
+            _ = group.MapPost("/internet-url", async (
+                SetInternetServerUrlRequest request,
+                IForensicsConfiguration config,
+                IForensicsConfigurationService configService,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? oldValue = config.InternetServerUrl;
+
+                // Setting InternetServerUrl is not a "widening" network-tier change in the sense that
+                // it does not change what Kestrel binds to - it only affects where paired clients know
+                // to find the server over the Internet. Therefore, it does not require step-up re-authentication,
+                // only SuperAdminLocal authorization inherited from the group.
+                config.InternetServerUrl = request.InternetServerUrl;
+                await configService.SaveConfigurationAsync(config, ct);
+
+                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"InternetServerUrl changed from '{oldValue}' to '{request.InternetServerUrl}'", isUrgent: true, ct);
+
+                return Results.Ok(new { internetServerUrl = config.InternetServerUrl });
+            });
         }
     }
 
     public record SetNetworkTierRequest(NetworkTier Tier);
+    public record SetInternetServerUrlRequest(string? InternetServerUrl);
 }

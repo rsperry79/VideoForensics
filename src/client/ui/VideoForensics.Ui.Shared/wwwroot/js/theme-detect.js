@@ -25,13 +25,13 @@ window.vfTheme = {
             // available; the initial getPrefersDark() snapshot still applies.
         }
     },
-    setStylesheet: function (themeBaseName) {
+    setStylesheet: function (isDark) {
         try {
-            var href = '_content/Radzen.Blazor/css/' + themeBaseName + '-base.css';
-            var link = document.getElementById('radzen-theme-link') || document.getElementById('vf-radzen-theme-link');
+            var href = isDark ? '_content/Syncfusion.Blazor.Themes/bootstrap5-dark.css' : '_content/Syncfusion.Blazor.Themes/bootstrap5.css';
+            var link = document.getElementById('vf-syncfusion-theme-link');
             if (!link) {
                 link = document.createElement('link');
-                link.id = 'vf-radzen-theme-link';
+                link.id = 'vf-syncfusion-theme-link';
                 link.rel = 'stylesheet';
                 document.head.appendChild(link);
             }

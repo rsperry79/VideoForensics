@@ -89,4 +89,7 @@
   <data name="AccountAdded" xml:space="preserve">
     <value>Account added.</value>
   </data>
+  <data name="ApplyFilter" xml:space="preserve">
+    <value>Apply Filter</value>
+  </data>
 </root>

@@ -1,48 +1,68 @@
 @page "/"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.QueryBuilder
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Dashboard> L
 
-<RadzenText TextStyle="TextStyle.H4" class="mb-4">@L["Title"]</RadzenText>
+<h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
 {
-    <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else if (!_isAuthenticated)
 {
-    <RadzenText>@L["NotSignedIn"] <RadzenLink Path="@NavigationManager.SignInPathWithReturnUrl()" Text="@L["SignIn"]" /> @L["SignInToViewDevices"]</RadzenText>
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewDevices"]</p>
 }
 else
 {
     @if (_devices.Count == 0)
     {
-        <RadzenText>@L["NoDevicesFound"]</RadzenText>
+        <p>@L["NoDevicesFound"]</p>
     }
     else
     {
-        <RadzenDataFilter @ref="_devicesFilter" TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devices" Auto="true" class="mb-2">
-            <Properties>
-                <RadzenDataFilterProperty Property="Name" Title="@L["ColumnName"]" />
-                <RadzenDataFilterProperty Property="Type" Title="@L["ColumnType"]" />
-                <RadzenDataFilterProperty Property="IsOnline" Title="@L["ColumnOnline"]" />
-                <RadzenDataFilterProperty Property="LastSyncedUtc" Title="@L["ColumnLastSynced"]" />
-            </Properties>
-        </RadzenDataFilter>
-        <RadzenDataGrid TItem="VideoForensics.Data.Common.Entities.Device" Data="@_devicesFilter?.View" AllowPaging="true" PageSize="20" AllowSorting="true">
-            <Columns>
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" Title="@L["ColumnName"]" />
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Property="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" Title="@L["ColumnType"]" />
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="@L["ColumnOnline"]">
-                    <Template Context="device">@(device.IsOnline ? L["Yes"] : L["No"])</Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn TItem="VideoForensics.Data.Common.Entities.Device" Title="@L["ColumnLastSynced"]">
-                    <Template Context="device">@(device.LastSyncedUtc?.ToString() ?? "-")</Template>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
+        <PageRightPanelContent>
+            <div class="right-panel-section">
+                <h6>@L["Title"]</h6>
+                <SfQueryBuilder @ref="_devicesFilter" TValue="VideoForensics.Data.Common.Entities.Device">
+                    <QueryBuilderColumns>
+                        <QueryBuilderColumn Field="Name" Label="@L["ColumnName"]" />
+                        <QueryBuilderColumn Field="Type" Label="@L["ColumnType"]" />
+                        <QueryBuilderColumn Field="IsOnline" Label="@L["ColumnOnline"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Boolean" />
+                        <QueryBuilderColumn Field="LastSyncedUtc" Label="@L["ColumnLastSynced"]" Type="Syncfusion.Blazor.QueryBuilder.ColumnType.Date" />
+                    </QueryBuilderColumns>
+                </SfQueryBuilder>
+                <SfButton Content="@L["ApplyFilter"]" OnClick="@(() => ApplyDevicesFilterAsync())" CssClass="e-primary mt-2" />
+            </div>
+        </PageRightPanelContent>
+        <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true">
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" HeaderText="@L["ColumnName"]" />
+                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" HeaderText="@L["ColumnType"]" />
+                <GridColumn HeaderText="@L["ColumnOnline"]">
+                    <Template>
+                        @{
+                            var device = (VideoForensics.Data.Common.Entities.Device)context;
+                            @(device.IsOnline ? L["Yes"] : L["No"])
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColumnLastSynced"]">
+                    <Template>
+                        @{
+                            var device = (VideoForensics.Data.Common.Entities.Device)context;
+                            @(device.LastSyncedUtc?.ToString() ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
     }
 }
 
@@ -50,7 +70,8 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private RadzenDataFilter<VideoForensics.Data.Common.Entities.Device>? _devicesFilter;
+    private SfQueryBuilder<VideoForensics.Data.Common.Entities.Device>? _devicesFilter;
+    private IEnumerable<VideoForensics.Data.Common.Entities.Device> _filteredDevices = new List<VideoForensics.Data.Common.Entities.Device>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -61,11 +82,21 @@ else
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+                _filteredDevices = _devices;
             }
         }
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task ApplyDevicesFilterAsync()
+    {
+        if (_devicesFilter is not null)
+        {
+            var result = await _devicesFilter.GetFilteredRecordsAsync();
+            _filteredDevices = result?.ToList() ?? _devices;
         }
     }
 }
