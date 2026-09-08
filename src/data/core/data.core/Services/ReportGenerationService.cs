@@ -289,7 +289,7 @@ namespace VideoForensics.Data.Core.Services
 
                 // Determine output directory (using a default reports directory)
                 var reportsDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
                     "Reports");
                 _ = Directory.CreateDirectory(reportsDir);

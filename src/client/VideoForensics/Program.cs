@@ -16,7 +16,7 @@ namespace VideoForensics
     {
         private static async Task Main(string[] args)
         {
-            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VideoForensics");
+            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
             _ = Directory.CreateDirectory(configDir);
 
             // Run demo mode if launched with --demo flag

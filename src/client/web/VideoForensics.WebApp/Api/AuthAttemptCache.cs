@@ -8,16 +8,16 @@ namespace VideoForensics.WebApp.Api
     public interface IAuthAttemptCache
     {
         /// <summary>
-        /// Stores username and password for a future two-factor authentication call.
+        /// Stores provider name (nullable), username and password for a future two-factor authentication call.
         /// Returns a new AuthAttemptId that ties the 2FA request back to this attempt.
         /// </summary>
-        Guid StoreAttempt(string username, string password);
+        Guid StoreAttempt(string? providerName, string username, string password);
 
         /// <summary>
         /// Retrieves and removes stored credentials for a given attempt ID.
         /// Returns null if the attempt doesn't exist or has expired.
         /// </summary>
-        (string? Username, string? Password)? GetAndRemoveAttempt(Guid attemptId);
+        (string? ProviderName, string? Username, string? Password)? GetAndRemoveAttempt(Guid attemptId);
     }
 
     /// <summary>
@@ -26,10 +26,10 @@ namespace VideoForensics.WebApp.Api
     public class AuthAttemptCache : IAuthAttemptCache
     {
         private readonly object _lock = new();
-        private readonly Dictionary<Guid, (string Username, string Password, DateTime ExpiresAt)> _attempts = new();
+        private readonly Dictionary<Guid, (string? ProviderName, string Username, string Password, DateTime ExpiresAt)> _attempts = new();
         private readonly TimeSpan _ttl = TimeSpan.FromMinutes(5);
 
-        public Guid StoreAttempt(string username, string password)
+        public Guid StoreAttempt(string? providerName, string username, string password)
         {
             lock (_lock)
             {
@@ -37,12 +37,12 @@ namespace VideoForensics.WebApp.Api
                 CleanExpiredAttempts();
 
                 var attemptId = Guid.NewGuid();
-                _attempts[attemptId] = (username, password, DateTime.UtcNow.Add(_ttl));
+                _attempts[attemptId] = (providerName, username, password, DateTime.UtcNow.Add(_ttl));
                 return attemptId;
             }
         }
 
-        public (string? Username, string? Password)? GetAndRemoveAttempt(Guid attemptId)
+        public (string? ProviderName, string? Username, string? Password)? GetAndRemoveAttempt(Guid attemptId)
         {
             lock (_lock)
             {
@@ -57,7 +57,7 @@ namespace VideoForensics.WebApp.Api
 
                     // Return and remove (consume the attempt)
                     _attempts.Remove(attemptId);
-                    return (attempt.Username, attempt.Password);
+                    return (attempt.ProviderName, attempt.Username, attempt.Password);
                 }
 
                 return null;

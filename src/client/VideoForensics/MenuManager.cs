@@ -273,7 +273,7 @@ namespace VideoForensics
             Console.WriteLine($"Exporting {mediaItemIds.Count} item(s)...");
 
             var outputDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "VideoForensics",
                 "Exports");
 

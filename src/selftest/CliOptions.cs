@@ -406,7 +406,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                                      that simply hasn't been downloaded yet is expected, not a
                                      failure - this is a completeness report, not a pass/fail gate).
           --db-path <path>          SQLite database file to check against. Default:
-                                     %AppData%\VideoForensics\videoforensics.db (same file the
+                                     %ProgramData%\VideoForensics\videoforensics.db (same file the
                                      main VideoForensics app uses). Only meaningful with --verify-db.
 
         CREDENTIALS (first match wins):

@@ -38,18 +38,27 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Complete two-factor authentication")
                 .WithDescription("Completes authentication by submitting a two-factor code received after an initial login attempt. " +
                     "The AuthAttemptId from the initial login response ties this request back to the original authentication attempt.");
+
+            _ = group.MapGet("/providers", (IMultiProviderAuthService multi, CancellationToken ct) => multi.GetAvailableProvidersAsync(ct))
+                .WithSummary("List provider names available for account linking")
+                .WithDescription("Returns the names of all providers this server can authenticate against (e.g. Ring, Wyze, Uniview), for populating a provider picker in the Add Account UI.");
         }
 
         private static async Task<IResult> LoginAsync(
             LoginRequestDto request,
             IProviderAuthService authService,
             IAuthAttemptCache attemptCache,
+            IMultiProviderAuthService multiProviderAuthService,
             CancellationToken ct)
         {
+            IProviderAuthService resolvedAuthService = string.IsNullOrEmpty(request.ProviderName)
+                ? authService
+                : multiProviderAuthService.GetService(request.ProviderName);
+
             try
             {
                 // Attempt initial authentication (without 2FA callback)
-                AuthResult result = await authService.AuthenticateAsync(
+                AuthResult result = await resolvedAuthService.AuthenticateAsync(
                     request.Username,
                     request.Password,
                     ct);
@@ -59,7 +68,7 @@ namespace VideoForensics.WebApp.Api
             catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 // 2FA is required: store credentials for the follow-up call and return a pending state
-                Guid attemptId = attemptCache.StoreAttempt(request.Username, request.Password);
+                Guid attemptId = attemptCache.StoreAttempt(request.ProviderName, request.Username, request.Password);
 
                 return Results.Ok(new AuthResultDto(
                     Success: false,
@@ -85,6 +94,7 @@ namespace VideoForensics.WebApp.Api
             TwoFactorRequestDto request,
             IProviderAuthService authService,
             IAuthAttemptCache attemptCache,
+            IMultiProviderAuthService multiProviderAuthService,
             CancellationToken ct)
         {
             // Retrieve stored credentials for this attempt
@@ -100,13 +110,17 @@ namespace VideoForensics.WebApp.Api
             string username = attempt.Value.Username!;
             string password = attempt.Value.Password!;
 
+            IProviderAuthService resolvedAuthService = string.IsNullOrEmpty(attempt.Value.ProviderName)
+                ? authService
+                : multiProviderAuthService.GetService(attempt.Value.ProviderName);
+
             try
             {
                 // Create a callback that returns the user's 2FA code
                 Func<Task<string>> codeProvider = () => Task.FromResult(request.Code);
 
                 // Attempt authentication with 2FA code
-                AuthResult result = await authService.AuthenticateWithTwoFactorAsync(
+                AuthResult result = await resolvedAuthService.AuthenticateWithTwoFactorAsync(
                     username,
                     password,
                     codeProvider,

@@ -168,7 +168,7 @@ namespace VideoForensics.Client.Core.Tools
         /// ~/Pictures/VideoForensics. Exists so tests can exercise this against a throwaway
         /// directory instead of the real one.</param>
         /// <param name="dbPathOverride">Overrides the database file to delete. Defaults to
-        /// %AppData%/VideoForensics/videoforensics.db. Exists so tests can exercise this against a
+        /// %ProgramData%/VideoForensics/videoforensics.db. Exists so tests can exercise this against a
         /// throwaway file instead of the real, live application database.</param>
         public async Task<(bool Success, string Message)> FactoryResetAsync(
             CancellationToken ct = default,
@@ -189,7 +189,7 @@ namespace VideoForensics.Client.Core.Tools
                 }
 
                 string dbPath = dbPathOverride ?? Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
                     "videoforensics.db");
 

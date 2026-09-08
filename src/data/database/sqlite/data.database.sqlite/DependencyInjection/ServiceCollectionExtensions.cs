@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,22 +16,49 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
         /// Adds SQLite as the concrete database provider for the VideoForensics data access layer.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        /// <param name="dbPath">Optional path to the SQLite database file. Defaults to %AppData%\VideoForensics\videoforensics.db.</param>
+        /// <param name="dbPath">Optional path to the SQLite database file. Defaults to %ProgramData%\VideoForensics\videoforensics.db.</param>
         /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddVideoForensicsSqlite(this IServiceCollection services, string? dbPath = null)
         {
             // Resolve default database path if not provided
             if (string.IsNullOrEmpty(dbPath))
             {
-                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                dbPath = Path.Combine(appDataPath, "VideoForensics", "videoforensics.db");
+                string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+                dbPath = Path.Combine(programDataPath, "VideoForensics", "videoforensics.db");
             }
 
             // Ensure parent directory exists
             string? dbDirectory = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dbDirectory))
             {
+                bool directoryExistedBefore = Directory.Exists(dbDirectory);
                 _ = Directory.CreateDirectory(dbDirectory);
+
+                // On Windows, %ProgramData% is machine-wide and not writable by normal users by default for newly-created
+                // subdirectories. Grant the built-in "Users" group Modify rights so the app can function whether run as a
+                // normal user, elevated process, or (eventually) Windows Service.
+                if (!directoryExistedBefore && OperatingSystem.IsWindows())
+                {
+                    try
+                    {
+                        var dirInfo = new DirectoryInfo(dbDirectory);
+                        var acl = dirInfo.GetAccessControl();
+                        var usersIdentity = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+                        acl.AddAccessRule(
+                            new FileSystemAccessRule(
+                                usersIdentity,
+                                FileSystemRights.Modify,
+                                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                                PropagationFlags.None,
+                                AccessControlType.Allow));
+                        dirInfo.SetAccessControl(acl);
+                    }
+                    catch
+                    {
+                        // Silently continue if ACL modification fails (e.g., sandboxed/restricted environment).
+                        // Never block app startup due to a permissions issue here.
+                    }
+                }
             }
 
             // Register DbContext factory with SQLite provider

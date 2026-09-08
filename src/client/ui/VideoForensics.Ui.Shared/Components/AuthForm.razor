@@ -3,7 +3,9 @@
    described in IProviderAuthService.AuthenticateWithTwoFactorAsync, plus the
    ActiveProviderAccountId bookkeeping that must happen on a successful login (see
    MenuManager.AuthenticateWithTwoFactorAsync in the console app for the equivalent flow). *@
+@using System.Linq
 @inject IProviderAuthService AuthService
+@inject IMultiProviderAuthService MultiProviderAuthService
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 
@@ -15,15 +17,22 @@
 @if (!_needsTwoFactor)
 {
     <EditForm Model="this" OnValidSubmit="SubmitCredentialsAsync">
+        @if (AvailableProviders is { Count: > 1 })
+        {
+            <div>
+                <label for="@($"{IdPrefix}-provider")">Provider:</label>
+                <SfDropDownList TValue="string" TItem="string" ID="@($"{IdPrefix}-provider")" DataSource="@AvailableProviders" @bind-Value="_selectedProvider" />
+            </div>
+        }
         <div>
             <label for="@($"{IdPrefix}-email")">Email:</label>
-            <InputText id="@($"{IdPrefix}-email")" @bind-Value="_email" />
+            <SfTextBox ID="@($"{IdPrefix}-email")" @bind-Value="_email" />
         </div>
         <div>
             <label for="@($"{IdPrefix}-password")">Password:</label>
-            <input id="@($"{IdPrefix}-password")" type="password" @bind="_password" @bind:event="oninput" />
+            <SfTextBox ID="@($"{IdPrefix}-password")" Type="Syncfusion.Blazor.Inputs.InputType.Password" @bind-Value="_password" />
         </div>
-        <button type="submit" disabled="@_isBusy">@(_isBusy ? "Signing in..." : SubmitLabel)</button>
+        <SfButton CssClass="e-primary" Type="Syncfusion.Blazor.Buttons.ButtonType.Submit" Disabled="@_isBusy" Content="@(_isBusy ? "Signing in..." : SubmitLabel)" />
     </EditForm>
 }
 else
@@ -31,9 +40,9 @@ else
     <EditForm Model="this" OnValidSubmit="SubmitTwoFactorAsync">
         <div>
             <label for="@($"{IdPrefix}-2fa")">Enter your 2FA code:</label>
-            <InputText id="@($"{IdPrefix}-2fa")" @bind-Value="_twoFactorCode" />
+            <SfTextBox ID="@($"{IdPrefix}-2fa")" @bind-Value="_twoFactorCode" />
         </div>
-        <button type="submit" disabled="@_isBusy">@(_isBusy ? "Verifying..." : "Verify")</button>
+        <SfButton CssClass="e-primary" Type="Syncfusion.Blazor.Buttons.ButtonType.Submit" Disabled="@_isBusy" Content="@(_isBusy ? "Verifying..." : "Verify")" />
     </EditForm>
 }
 
@@ -47,6 +56,8 @@ else
     /// <summary>Raised after a successful login, once ActiveProviderAccountId has been set/saved when applicable.</summary>
     [Parameter] public EventCallback<AuthResult> OnAuthenticated { get; set; }
 
+    [Parameter] public IReadOnlyList<string>? AvailableProviders { get; set; }
+
     private string _email = "";
     private string _password = "";
     private string _twoFactorCode = "";
@@ -54,6 +65,12 @@ else
     private bool _isBusy;
     private string? _errorMessage;
     private TaskCompletionSource<string>? _twoFactorTcs;
+    private string? _selectedProvider;
+
+    protected override void OnParametersSet()
+    {
+        _selectedProvider ??= AvailableProviders?.FirstOrDefault();
+    }
 
     private async Task SubmitCredentialsAsync()
     {
@@ -61,7 +78,11 @@ else
         _isBusy = true;
         try
         {
-            var result = await AuthService.AuthenticateWithTwoFactorAsync(_email, _password, TwoFactorCodeCallback);
+            IProviderAuthService effectiveAuthService = AvailableProviders is { Count: > 0 }
+                ? MultiProviderAuthService.GetService(_selectedProvider ?? AvailableProviders[0])
+                : AuthService;
+
+            var result = await effectiveAuthService.AuthenticateWithTwoFactorAsync(_email, _password, TwoFactorCodeCallback);
             if (result.Success)
             {
                 if (result.ProviderAccountId.HasValue && ForensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)

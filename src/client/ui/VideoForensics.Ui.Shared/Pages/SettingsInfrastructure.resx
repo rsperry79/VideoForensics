@@ -48,7 +48,7 @@
     <value>Data-at-Rest Encryption</value>
   </data>
   <data name="EncryptionWarning" xml:space="preserve">
-    <value>Neither the database nor downloaded media files are encrypted by this application. An application-level database encryption approach (SQLCipher) was evaluated and found to silently fail to apply schema changes under this platform's current SQLite provider version - a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe approach is available, protecting this data at rest is the owner's responsibility: enable full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding %AppData%\VideoForensics and your configured download location, and secure physical access to this machine.</value>
+    <value>Neither the database nor downloaded media files are encrypted by this application. An application-level database encryption approach (SQLCipher) was evaluated and found to silently fail to apply schema changes under this platform's current SQLite provider version - a data-integrity risk unacceptable for evidence storage, so it was not shipped. Until a safe approach is available, protecting this data at rest is the owner's responsibility: enable full-disk encryption (BitLocker on Windows, LUKS on Linux) on the drive holding %ProgramData%\VideoForensics and your configured download location, and secure physical access to this machine.</value>
   </data>
   <data name="KeyStorageSection" xml:space="preserve">
     <value>Key Storage Provider</value>
