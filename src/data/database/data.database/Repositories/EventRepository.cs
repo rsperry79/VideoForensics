@@ -78,6 +78,48 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <summary>Creates a new event in the database.</summary>
+        public async Task<Event> CreateAsync(Event @event, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            try
+            {
+                _ = await db.Events.AddAsync(@event, ct);
+                _ = await db.SaveChangesAsync(ct);
+                _logger.LogInformation("Event created: {EventId} ({ProviderEventId})", @event.Id, @event.ProviderEventId);
+                return @event;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating event: {ProviderEventId}", @event.ProviderEventId);
+                throw;
+            }
+        }
+
+        /// <summary>Updates an existing event's metadata (EventType, OccurredAtUtc, SnapshotUrl).</summary>
+        public async Task UpdateAsync(Event @event, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            try
+            {
+                Event? existing = await db.Events.FirstOrDefaultAsync(e => e.Id == @event.Id, ct);
+                if (existing != null)
+                {
+                    existing.EventType = @event.EventType;
+                    existing.OccurredAtUtc = @event.OccurredAtUtc;
+                    existing.SnapshotUrl = @event.SnapshotUrl;
+                    _ = db.Events.Update(existing);
+                    _ = await db.SaveChangesAsync(ct);
+                    _logger.LogInformation("Event updated: {EventId}", @event.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating event: {EventId}", @event.Id);
+                throw;
+            }
+        }
+
         /// <summary>Lists events for a device within a date range.</summary>
         public async Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)

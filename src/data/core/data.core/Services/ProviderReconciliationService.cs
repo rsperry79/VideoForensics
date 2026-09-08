@@ -13,17 +13,20 @@ namespace VideoForensics.Data.Core.Services
     internal class ProviderReconciliationService : IProviderReconciliationService
     {
         private readonly IProviderReconciliationRepository _reconciliationRepository;
+        private readonly IEventRepository _eventRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<ProviderReconciliationService> _logger;
 
         public ProviderReconciliationService(
             IProviderReconciliationRepository reconciliationRepository,
+            IEventRepository eventRepository,
             IUnitOfWork unitOfWork,
             IActionLogger actionLogger,
             ILogger<ProviderReconciliationService> logger)
         {
             _reconciliationRepository = reconciliationRepository;
+            _eventRepository = eventRepository;
             _unitOfWork = unitOfWork;
             _actionLogger = actionLogger;
             _logger = logger;
@@ -112,6 +115,163 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reconciliation history for device {DeviceId}", deviceId);
+                throw;
+            }
+        }
+
+        public async Task<AutoFixResult> AutoFixDiscrepanciesAsync(
+            Guid deviceId,
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies,
+            Func<string, DateTime, DateTime, CancellationToken, Task<IReadOnlyList<Event>>> fetchEventsFunc,
+            CancellationToken ct)
+        {
+            var result = new AutoFixResult();
+
+            try
+            {
+                _ = await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    DateTime fixedAtUtc = DateTime.UtcNow;
+
+                    // Process NewEventFoundOnProvider discrepancies
+                    var newEventDiscrepancies = discrepancies
+                        .Where(d => d.Type == DiscrepancyType.NewEventFoundOnProvider)
+                        .ToList();
+
+                    foreach (var discrepancy in newEventDiscrepancies)
+                    {
+                        try
+                        {
+                            // Fetch full event details from provider
+                            var providerEvents = await fetchEventsFunc(discrepancy.ProviderEventId, DateTime.MinValue, DateTime.MaxValue, ct);
+
+                            if (providerEvents.Count == 0)
+                            {
+                                result.Failed++;
+                                result.ErrorDetails.Add($"No events fetched for provider event {discrepancy.ProviderEventId}");
+                                _logger.LogWarning("No events fetched from provider for event {ProviderEventId}", discrepancy.ProviderEventId);
+                                continue;
+                            }
+
+                            var providerEvent = providerEvents[0];
+
+                            // Create Event entity
+                            var newEvent = new Event
+                            {
+                                Id = Guid.NewGuid(),
+                                DeviceId = deviceId,
+                                ProviderEventId = discrepancy.ProviderEventId,
+                                EventType = providerEvent.EventType,
+                                OccurredAtUtc = providerEvent.OccurredAtUtc,
+                                SnapshotUrl = providerEvent.SnapshotUrl,
+                                MetadataJson = providerEvent.MetadataJson,
+                                DiscoveredAtUtc = fixedAtUtc,
+                                ApiSourceHash = providerEvent.ApiSourceHash,
+                                EventIntegrityHash = providerEvent.EventIntegrityHash
+                            };
+
+                            // Store via repository
+                            _ = await _eventRepository.CreateAsync(newEvent, ct);
+                            result.NewEventsInserted++;
+
+                            _logger.LogInformation("Auto-fixed new event {ProviderEventId} for device {DeviceId}",
+                                discrepancy.ProviderEventId, deviceId);
+
+                            // Log to action log
+                            _ = await context.ActionLog.AppendAsync(
+                                "System",
+                                ActorType.System,
+                                "AutoFixNewEvent",
+                                nameof(Event),
+                                newEvent.Id,
+                                JsonSerializer.Serialize(new { ProviderEventId = discrepancy.ProviderEventId }),
+                                ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Failed++;
+                            result.ErrorDetails.Add($"Error fixing new event {discrepancy.ProviderEventId}: {ex.Message}");
+                            _logger.LogError(ex, "Error auto-fixing new event {ProviderEventId} for device {DeviceId}",
+                                discrepancy.ProviderEventId, deviceId);
+                        }
+                    }
+
+                    // Process MetadataChanged discrepancies
+                    var metadataDiscrepancies = discrepancies
+                        .Where(d => d.Type == DiscrepancyType.MetadataChanged)
+                        .ToList();
+
+                    foreach (var discrepancy in metadataDiscrepancies)
+                    {
+                        try
+                        {
+                            // Fetch the stored event
+                            var storedEvent = await _eventRepository.GetByProviderEventIdAsync(deviceId, discrepancy.ProviderEventId, ct);
+
+                            if (storedEvent == null)
+                            {
+                                result.Failed++;
+                                result.ErrorDetails.Add($"Stored event not found for provider event {discrepancy.ProviderEventId}");
+                                _logger.LogWarning("Stored event not found for provider event {ProviderEventId}", discrepancy.ProviderEventId);
+                                continue;
+                            }
+
+                            // Update only the changed fields
+                            string fieldName = discrepancy.FieldName ?? "Unknown";
+                            if (fieldName.Equals("EventType", StringComparison.OrdinalIgnoreCase))
+                            {
+                                storedEvent.EventType = discrepancy.ProviderValue ?? storedEvent.EventType;
+                            }
+                            else if (fieldName.Equals("OccurredAtUtc", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (DateTime.TryParse(discrepancy.ProviderValue, out DateTime parsedDateTime))
+                                {
+                                    storedEvent.OccurredAtUtc = parsedDateTime;
+                                }
+                            }
+                            else if (fieldName.Equals("SnapshotUrl", StringComparison.OrdinalIgnoreCase))
+                            {
+                                storedEvent.SnapshotUrl = discrepancy.ProviderValue;
+                            }
+
+                            // Update via repository
+                            await _eventRepository.UpdateAsync(storedEvent, ct);
+                            result.MetadataUpdated++;
+
+                            _logger.LogInformation("Auto-fixed metadata for event {ProviderEventId} field {FieldName} for device {DeviceId}",
+                                discrepancy.ProviderEventId, fieldName, deviceId);
+
+                            // Log to action log
+                            _ = await context.ActionLog.AppendAsync(
+                                "System",
+                                ActorType.System,
+                                "AutoFixMetadata",
+                                nameof(Event),
+                                storedEvent.Id,
+                                JsonSerializer.Serialize(new { ProviderEventId = discrepancy.ProviderEventId, FieldName = fieldName, OldValue = discrepancy.StoredValue, NewValue = discrepancy.ProviderValue }),
+                                ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Failed++;
+                            result.ErrorDetails.Add($"Error fixing metadata for {discrepancy.ProviderEventId}: {ex.Message}");
+                            _logger.LogError(ex, "Error auto-fixing metadata for event {ProviderEventId} for device {DeviceId}",
+                                discrepancy.ProviderEventId, deviceId);
+                        }
+                    }
+
+                    return true;
+                }, ct);
+
+                _logger.LogInformation(
+                    "Auto-fix completed for device {DeviceId}: {NewEventsInserted} new events, {MetadataUpdated} metadata updates, {Failed} failures",
+                    deviceId, result.NewEventsInserted, result.MetadataUpdated, result.Failed);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during auto-fix reconciliation for device {DeviceId}", deviceId);
                 throw;
             }
         }

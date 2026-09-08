@@ -16,5 +16,24 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>Gets the reconciliation history for a device.</summary>
         Task<IReadOnlyList<ProviderReconciliationRecord>> GetHistoryAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>
+        /// Auto-fix discrepancies by inserting new events and updating changed metadata from provider data.
+        /// Returns count of items fixed.
+        /// </summary>
+        Task<AutoFixResult> AutoFixDiscrepanciesAsync(
+            Guid deviceId,
+            IReadOnlyList<ReconciliationDiscrepancy> discrepancies,
+            Func<string, DateTime, DateTime, CancellationToken, Task<IReadOnlyList<Event>>> fetchEventsFunc,
+            CancellationToken ct);
+    }
+
+    /// <summary>Result of auto-fixing reconciliation discrepancies.</summary>
+    public class AutoFixResult
+    {
+        public int NewEventsInserted { get; set; }
+        public int MetadataUpdated { get; set; }
+        public int Failed { get; set; }
+        public List<string> ErrorDetails { get; set; } = new();
     }
 }

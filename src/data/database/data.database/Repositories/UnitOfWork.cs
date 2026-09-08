@@ -633,6 +633,26 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToDictionary(g => g.Key, g => g.Count());
             return Task.FromResult(summary);
         }
+
+        public Task<Event> CreateAsync(Event @event, CancellationToken ct)
+        {
+            _ = _db.Events.Add(@event);
+            return Task.FromResult(@event);
+        }
+
+        public Task UpdateAsync(Event @event, CancellationToken ct)
+        {
+            Event? existing = _db.Events.FirstOrDefault(e => e.Id == @event.Id);
+            if (existing != null)
+            {
+                existing.EventType = @event.EventType;
+                existing.OccurredAtUtc = @event.OccurredAtUtc;
+                existing.SnapshotUrl = @event.SnapshotUrl;
+                _ = _db.Events.Update(existing);
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     internal class UnitOfWorkDeviceConfigRepository : IDeviceConfigRepository
