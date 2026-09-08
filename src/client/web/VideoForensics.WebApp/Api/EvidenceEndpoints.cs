@@ -3,6 +3,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Services;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -88,6 +89,21 @@ namespace VideoForensics.WebApp.Api
             .RequireRateLimiting("media")
             .WithSummary("Export evidence to archive")
             .WithDescription("Exports selected media items into a password-protected archive with manifest and chain-of-custody records. This operation requires step-up authentication as it exposes evidence data beyond normal access controls.");
+
+            _ = group.MapPost("/validate-all", async (
+                BulkValidateAllRequest request,
+                BulkValidationService bulkValidationService,
+                CancellationToken ct) =>
+            {
+                BulkValidationResult result = await bulkValidationService.RunFullValidationAsync(
+                    request.FromUtcOverride,
+                    request.ToUtcOverride,
+                    ct);
+                return Results.Ok(result.ToDto());
+            })
+            .RequireRateLimiting("media")
+            .WithSummary("Validate all devices")
+            .WithDescription("Runs full provider reconciliation with auto-fix across all devices. Detects and fixes missing events, changed metadata, and integrity issues.");
         }
     }
 
@@ -121,6 +137,13 @@ namespace VideoForensics.WebApp.Api
         string? Passphrase
     );
 
+    /// <summary>Request to validate all devices with optional date range override.</summary>
+    /// <param name="FromUtcOverride">Override default start date (default: 90 days ago).</param>
+    /// <param name="ToUtcOverride">Override default end date (default: today).</param>
+    public record BulkValidateAllRequest(
+        DateTime? FromUtcOverride = null,
+        DateTime? ToUtcOverride = null);
+
     /// <summary>Extension methods for converting service contract results to API DTOs.</summary>
     internal static class EvidenceResultDtoExtensions
     {
@@ -153,6 +176,22 @@ namespace VideoForensics.WebApp.Api
                 ArchiveSha256Hash: result.ArchiveSha256Hash,
                 ItemsIncluded: result.ItemsIncluded,
                 ItemsExcludedForFailedIntegrity: result.ItemsExcludedForFailedIntegrity,
+                ErrorMessage: result.ErrorMessage
+            );
+        }
+
+        public static BulkValidationResultDto ToDto(this BulkValidationResult result)
+        {
+            return new BulkValidationResultDto(
+                TotalDevicesScanned: result.TotalDevicesScanned,
+                TotalFilesVerified: result.TotalFilesVerified,
+                TotalFilesIntact: result.TotalFilesIntact,
+                TotalFilesFailed: result.TotalFilesFailed,
+                TotalFilesMissing: result.TotalFilesMissing,
+                TotalDiscrepanciesFound: result.TotalDiscrepanciesFound,
+                TotalDiscrepanciesFixed: result.TotalDiscrepanciesFixed,
+                StartedAtUtc: result.StartedAtUtc,
+                CompletedAtUtc: result.CompletedAtUtc,
                 ErrorMessage: result.ErrorMessage
             );
         }

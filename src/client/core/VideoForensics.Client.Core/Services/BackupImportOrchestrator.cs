@@ -89,15 +89,6 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        var accountOk = importedAccountIds.Contains(location.ProviderAccountId) ||
-                            await ctx.ProviderAccounts.GetAsync(location.ProviderAccountId, ct) != null;
-                        if (!accountOk)
-                        {
-                            importResult.Locations.SkippedOrphaned++;
-                            importResult.Details.Add($"Skipped orphaned Location {location.Id}: account {location.ProviderAccountId} not found");
-                            continue;
-                        }
-
                         await ctx.Locations.AddAsync(location, ct);
                         importResult.Locations.Inserted++;
                         importedLocationIds.Add(location.Id);

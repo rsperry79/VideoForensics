@@ -256,7 +256,19 @@ namespace VideoForensics.Client.Core.Services
                         deviceId,
                         discrepancies,
                         async (providerDeviceId, from, to, cancellationToken) =>
-                            await _eventAndConfigService.GetEventsAsync(providerDeviceId, from, to, null, cancellationToken),
+                        {
+                            var deviceEvents = await _eventAndConfigService.GetEventsAsync(providerDeviceId, from, to, null, cancellationToken);
+                            return deviceEvents.Select(de => new Event
+                            {
+                                Id = Guid.NewGuid(),
+                                DeviceId = deviceId,
+                                ProviderEventId = de.Id,
+                                EventType = de.EventType,
+                                OccurredAtUtc = de.Timestamp,
+                                SnapshotUrl = de.SnapshotUrl,
+                                DiscoveredAtUtc = DateTime.UtcNow
+                            }).ToList() as IReadOnlyList<Event>;
+                        },
                         ct);
 
                     _logger.LogInformation(

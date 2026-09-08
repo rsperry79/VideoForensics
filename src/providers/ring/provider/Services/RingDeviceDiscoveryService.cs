@@ -383,30 +383,33 @@ namespace VideoForensics.Providers.Ring.Services
                         continue;
                     }
 
-                    // Convert location string ID to deterministic Guid
-                    Guid locationGuid = GuidFromString(location.Id);
+                    // TODO: LocationMetadata persistence incomplete - entity schema needs redesign
+                    // to support provider location ID, source, and simple address field.
+                    // Entity currently structured for address components only (StreetAddress, City, etc.)
+                    // Revisit when LocationMetadata feature fully specified.
 
-                    // Check if metadata already captured for this discovery cycle
-                    var existing = await _metadataRepository.GetByLocationIdAsync(locationGuid, ct);
-                    if (existing != null && existing.CapturedAtUtc > DateTime.UtcNow.AddMinutes(-5))
-                    {
-                        _logger.LogDebug("Location metadata recently captured for location {LocationId}", location.Id);
-                        continue;
-                    }
+                    //// Convert location string ID to deterministic Guid
+                    //Guid locationGuid = GuidFromString(location.Id);
 
-                    var metadata = new VideoForensics.Data.Common.Entities.LocationMetadata
-                    {
-                        Id = Guid.NewGuid(),
-                        LocationId = locationGuid,
-                        Name = location.Name,
-                        Address = location.Address,
-                        ProviderLocationId = location.Id,
-                        CapturedAtUtc = DateTime.UtcNow,
-                        Source = "Ring API Discovery"
-                    };
+                    //// Check if metadata already captured for this discovery cycle
+                    //var existing = await _metadataRepository.GetByLocationIdAsync(locationGuid, ct);
+                    //if (existing != null && existing.LastSyncedUtc > DateTime.UtcNow.AddMinutes(-5))
+                    //{
+                    //    _logger.LogDebug("Location metadata recently captured for location {LocationId}", location.Id);
+                    //    continue;
+                    //}
 
-                    await _metadataRepository.AddAsync(metadata, ct);
-                    _logger.LogDebug("Captured metadata for location {LocationId} ({LocationName})", location.Id, location.Name);
+                    //var metadata = new VideoForensics.Data.Common.Entities.LocationMetadata
+                    //{
+                    //    Id = Guid.NewGuid(),
+                    //    LocationId = locationGuid,
+                    //    StreetAddress = location.Address,
+                    //    LastSyncedUtc = DateTime.UtcNow,
+                    //    SyncStatus = SyncStatus.Pending
+                    //};
+
+                    //await _metadataRepository.AddAsync(metadata, ct);
+                    //_logger.LogDebug("Captured metadata for location {LocationId}", location.Id);
                 }
 
                 _logger.LogDebug("Location metadata capture completed for {LocationCount} location(s)", locations.Count);
