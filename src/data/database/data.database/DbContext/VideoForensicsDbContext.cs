@@ -52,6 +52,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the AI analysis snapshots.</summary>
         public DbSet<AiAnalysisSnapshot> AiAnalysisSnapshots { get; set; }
 
+        /// <summary>Gets or sets the AI analysis tags.</summary>
+        public DbSet<AiAnalysisTag> AiAnalysisTags { get; set; }
+
+        /// <summary>Gets or sets the AI analysis motion zones.</summary>
+        public DbSet<AiAnalysisMotionZone> AiAnalysisMotionZones { get; set; }
+
         /// <summary>Gets or sets the credentials.</summary>
         public DbSet<Credential> Credentials { get; set; }
 
