@@ -23,10 +23,15 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(e => e.SnapshotUrl)
                 .HasMaxLength(1024);
 
+            _ = builder.Property(e => e.RecordingStatus)
+                .HasMaxLength(256);
+
             _ = builder.HasIndex(e => new { e.DeviceId, e.ProviderEventId })
                 .IsUnique();
 
             _ = builder.HasIndex(e => e.DeviceId);
+
+            _ = builder.HasIndex(e => e.EventDetectionId);
         }
     }
 }

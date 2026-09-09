@@ -205,11 +205,68 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
-        public async Task<Event> UpsertEventAsync(Event evt, CancellationToken ct)
+        public async Task<Event> UpsertEventAsync(
+            Event evt,
+            CancellationToken ct,
+            EventDetection? detection = null,
+            List<EventDetectionZone>? zones = null,
+            List<EventSecurityAlert>? alerts = null,
+            List<EventDetectedPerson>? persons = null,
+            List<EventDetectionTypeOccurrence>? occurrences = null)
         {
             try
             {
-                return await _eventRepository.UpsertAsync(evt, ct);
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Upsert the Event record itself
+                    Event upserted = await context.Events.UpsertAsync(evt, ct);
+
+                    // Persist detection-related entities if provided
+                    if (detection != null)
+                    {
+                        detection.EventId = upserted.Id;
+                        await context.DetectionEntities.AddEventDetectionAsync(detection, ct);
+                        upserted.EventDetectionId = detection.Id;
+                    }
+
+                    if (zones != null && zones.Count > 0)
+                    {
+                        foreach (var zone in zones)
+                        {
+                            zone.EventDetectionId = detection?.Id ?? Guid.Empty;
+                        }
+                        await context.DetectionEntities.AddEventDetectionZonesAsync(zones, ct);
+                    }
+
+                    if (alerts != null && alerts.Count > 0)
+                    {
+                        foreach (var alert in alerts)
+                        {
+                            alert.EventId = upserted.Id;
+                        }
+                        await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, ct);
+                    }
+
+                    if (persons != null && persons.Count > 0)
+                    {
+                        foreach (var person in persons)
+                        {
+                            person.EventId = upserted.Id;
+                        }
+                        await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, ct);
+                    }
+
+                    if (occurrences != null && occurrences.Count > 0)
+                    {
+                        foreach (var occurrence in occurrences)
+                        {
+                            occurrence.EventDetectionId = detection?.Id ?? Guid.Empty;
+                        }
+                        await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, ct);
+                    }
+
+                    return upserted;
+                }, ct);
             }
             catch (Exception ex)
             {

@@ -30,10 +30,18 @@ namespace VideoForensics.Data.Core.Contracts
             List<DetectionTypeOccurrence>? occurrences = null);
 
         /// <summary>
-        /// Upserts an event record (independent of download status) by device ID + provider event ID.
-        /// Call once when an event is discovered, and again once it's downloaded/hashed to enrich it.
+        /// Upserts an event record (independent of download status) by device ID + provider event ID,
+        /// along with any related detection metadata. Call once when an event is discovered, and again
+        /// once it's downloaded/hashed to enrich it.
         /// </summary>
-        Task<Event> UpsertEventAsync(Event evt, CancellationToken ct);
+        Task<Event> UpsertEventAsync(
+            Event evt,
+            CancellationToken ct,
+            EventDetection? detection = null,
+            List<EventDetectionZone>? zones = null,
+            List<EventSecurityAlert>? alerts = null,
+            List<EventDetectedPerson>? persons = null,
+            List<EventDetectionTypeOccurrence>? occurrences = null);
 
         /// <summary>Resolves the effective start date for a download window, considering the watermark.</summary>
         Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct);

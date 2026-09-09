@@ -67,6 +67,21 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the events.</summary>
         public DbSet<Event> Events { get; set; }
 
+        /// <summary>Gets or sets the event detections.</summary>
+        public DbSet<EventDetection> EventDetections { get; set; }
+
+        /// <summary>Gets or sets the event detection zones.</summary>
+        public DbSet<EventDetectionZone> EventDetectionZones { get; set; }
+
+        /// <summary>Gets or sets the event detection type occurrences.</summary>
+        public DbSet<EventDetectionTypeOccurrence> EventDetectionTypeOccurrences { get; set; }
+
+        /// <summary>Gets or sets the event security alerts.</summary>
+        public DbSet<EventSecurityAlert> EventSecurityAlerts { get; set; }
+
+        /// <summary>Gets or sets the event detected persons.</summary>
+        public DbSet<EventDetectedPerson> EventDetectedPersons { get; set; }
+
         /// <summary>Gets or sets the device configuration snapshots.</summary>
         public DbSet<DeviceConfigSnapshot> DeviceConfigSnapshots { get; set; }
 
