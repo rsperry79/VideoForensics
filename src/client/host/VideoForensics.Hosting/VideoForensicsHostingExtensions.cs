@@ -401,7 +401,7 @@ namespace VideoForensics.Hosting
             await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct);
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
-            // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the
+            // IMediaItemRepository, IEventRepository, IForensicsConfigurationService, IPathMigrationService) - since the
             // registrations were fixed to be Scoped (see AddVideoForensicsServerCore), they can't be
             // resolved directly from the root `services` provider passed in here (that throws
             // "Cannot resolve scoped service ... from root provider" under strict scope validation,
@@ -409,6 +409,11 @@ namespace VideoForensics.Hosting
             // actually running VideoForensics.WebApp, not by any build). Create an explicit scope.
             using IServiceScope scope = services.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
+
+            // Run path migration (moves media from legacy user locations to ProgramData)
+            IPathMigrationService pathMigration = sp.GetRequiredService<IPathMigrationService>();
+            await pathMigration.MigrateToNewStorageAsync(ct);
+            logger.LogInformation("Path migration completed.");
 
             const string backfillFlagKey = "EventsBackfillFromDownloadEventsCompleted";
             IAppSettingRepository appSettingRepo = sp.GetRequiredService<IAppSettingRepository>();
