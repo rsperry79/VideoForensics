@@ -30,6 +30,8 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(lm => lm.TimeZoneId)
                 .HasMaxLength(256);
 
+            _ = builder.Property(lm => lm.IsOwner);
+
             _ = builder.Property(lm => lm.ApiResponseHash)
                 .HasMaxLength(256);
 

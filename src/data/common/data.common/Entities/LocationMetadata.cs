@@ -13,6 +13,7 @@ namespace VideoForensics.Data.Common.Entities
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public string? TimeZoneId { get; set; }
+        public bool? IsOwner { get; set; }
         public DateTime? LastSyncedUtc { get; set; }
         public SyncStatus SyncStatus { get; set; } = SyncStatus.Pending;
         public string? ApiResponseHash { get; set; }

@@ -107,9 +107,23 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the Ring account records.</summary>
         public DbSet<RingAccount> RingAccounts { get; set; }
 
+        /// <summary>Gets or sets the Ring account feature records.</summary>
+        public DbSet<RingAccountFeatures> RingAccountFeatures { get; set; }
+
         /// <summary>Gets or sets the device capabilities.</summary>
         public DbSet<DeviceCapabilities> DeviceCapabilities { get; set; }
 
+        /// <summary>Gets or sets the device health metrics.</summary>
+        public DbSet<DeviceHealth> DeviceHealths { get; set; }
+
+        /// <summary>Gets or sets the device features.</summary>
+        public DbSet<DeviceFeatures> DeviceFeatures { get; set; }
+
+        /// <summary>Gets or sets the device locations.</summary>
+        public DbSet<DeviceLocation> DeviceLocations { get; set; }
+
+        /// <summary>Gets or sets the device alerts.</summary>
+        public DbSet<DeviceAlerts> DeviceAlerts { get; set; }
 
         /// <summary>Gets or sets the location metadata.</summary>
         public DbSet<LocationMetadata> LocationMetadata { get; set; }

@@ -5,6 +5,7 @@ namespace VideoForensics.Data.Common.Entities
     {
         public Guid Id { get; set; }
         public Guid ProviderAccountId { get; set; }
+        public Guid? RingAccountFeaturesId { get; set; }
         public required string SubscriptionLevel { get; set; }
         public string? Features { get; set; }
         public int? RateLimitPerMinute { get; set; }
