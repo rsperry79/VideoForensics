@@ -27,6 +27,8 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(ra => ra.ProviderAccountId)
                 .IsUnique();
+
+            _ = builder.HasIndex(ra => ra.RingAccountFeaturesId);
         }
     }
 }

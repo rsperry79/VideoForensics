@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VideoForensics.Data.Database.DbContext;
 
@@ -10,9 +11,11 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    partial class VideoForensicsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909065926_Add_DeviceMetadataNormalization_HealthFeaturesLocationAlerts")]
+    partial class Add_DeviceMetadataNormalization_HealthFeaturesLocationAlerts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
@@ -1251,9 +1254,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
-                    b.Property<bool?>("IsOwner")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
 
@@ -1742,9 +1742,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("RateLimitRemaining")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("RingAccountFeaturesId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("SubscriptionLevel")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1758,71 +1755,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderAccountId")
                         .IsUnique();
 
-                    b.HasIndex("RingAccountFeaturesId");
-
                     b.ToTable("RingAccounts");
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountFeatures", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("CanActivateAlarmSystem")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanChangeDeviceSettings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanDeleteRecordings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanPauseRecordings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanSaveLiveView")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanSaveRecordings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanShareRecordings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanViewLiveView")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanViewRecordings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool?>("CanViewSnapshotsOnly")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FirstName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("RingAccountId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RingAccountId");
-
-                    b.ToTable("RingAccountFeatures");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityAlert", b =>
