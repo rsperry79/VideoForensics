@@ -13,6 +13,7 @@ namespace VideoForensics.Data.Common.Entities
         public string? OtaStatus { get; set; }
         public bool? IsOnline { get; set; }
         public DateTime? LastHeartbeatUtc { get; set; }
+        public string? FirmwareVersion { get; set; }
         public DateTime CapturedAtUtc { get; set; }
     }
 }

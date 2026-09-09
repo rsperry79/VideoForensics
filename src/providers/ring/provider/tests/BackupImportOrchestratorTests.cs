@@ -136,11 +136,10 @@ namespace VideoForensics.Providers.Ring.Tests
             string tempDir = CreateTempDirectory();
             try
             {
-                var location = new Location { Id = Guid.NewGuid(), ProviderAccountId = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
+                var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
                 var zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), locations: new List<Location> { location });
 
                 _ = _mockLocations.Setup(r => r.GetAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Location?)null);
-                _ = _mockAccounts.Setup(r => r.GetAsync(location.ProviderAccountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
                 WireUnitOfWork();
 
                 var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);

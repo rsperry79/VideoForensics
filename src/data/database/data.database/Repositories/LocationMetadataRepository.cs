@@ -31,6 +31,12 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.LocationMetadata.FirstOrDefaultAsync(m => m.LocationId == locationId, ct);
         }
 
+        public async Task<LocationMetadata?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.LocationMetadata.FirstOrDefaultAsync(m => m.ApiResponseHash == apiResponseHash, ct);
+        }
+
         public async Task AddAsync(LocationMetadata metadata, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

@@ -248,6 +248,51 @@ else
     }
 }
 
+// SECTION 7: Check for orphaned records
+Console.WriteLine("\n\nSECTION 7: ORPHANED RECORDS (Foreign Key Violations)");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var orphanedEvents = await db.Events
+    .Where(e => !db.Devices.Any(d => d.Id == e.DeviceId))
+    .CountAsync();
+
+var orphanedMediaItems = await db.MediaItems
+    .Where(m => !db.Devices.Any(d => d.Id == m.DeviceId))
+    .CountAsync();
+
+var orphanedDetections = await db.MediaItemDetections
+    .Where(mid => !db.MediaItems.Any(m => m.Id == mid.MediaItemId))
+    .CountAsync();
+
+var orphanedEventDetections = await db.EventDetections
+    .Where(ed => !db.Events.Any(e => e.Id == ed.EventId))
+    .CountAsync();
+
+var orphanedDevices = await db.Devices
+    .Where(d => !db.Locations.Any(l => l.Id == d.LocationId))
+    .CountAsync();
+
+var orphanedDownloadEvents = await db.DownloadEvents
+    .Where(de => !db.Devices.Any(d => d.Id == de.DeviceId))
+    .CountAsync();
+
+if (orphanedEvents > 0)
+    Console.WriteLine($"⚠️  {orphanedEvents} orphaned Events (Device deleted?)");
+if (orphanedMediaItems > 0)
+    Console.WriteLine($"⚠️  {orphanedMediaItems} orphaned MediaItems (Device deleted?)");
+if (orphanedDetections > 0)
+    Console.WriteLine($"⚠️  {orphanedDetections} orphaned MediaItemDetections (MediaItem deleted?)");
+if (orphanedEventDetections > 0)
+    Console.WriteLine($"⚠️  {orphanedEventDetections} orphaned EventDetections (Event deleted?)");
+if (orphanedDevices > 0)
+    Console.WriteLine($"⚠️  {orphanedDevices} orphaned Devices (Location deleted?)");
+if (orphanedDownloadEvents > 0)
+    Console.WriteLine($"⚠️  {orphanedDownloadEvents} orphaned DownloadEvents (ProviderAccount deleted?)");
+
+if (orphanedEvents == 0 && orphanedMediaItems == 0 && orphanedDetections == 0 &&
+    orphanedEventDetections == 0 && orphanedDevices == 0 && orphanedDownloadEvents == 0)
+    Console.WriteLine("✅ No orphaned records found.");
+
 Console.WriteLine("\nNext steps:");
 Console.WriteLine("  1. Run the SQL queries in db_duplicate_check.sql for detailed analysis");
 Console.WriteLine("  2. Review the consolidation roadmap in database_redundancy_analysis.md");

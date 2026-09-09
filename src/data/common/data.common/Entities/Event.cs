@@ -1,5 +1,18 @@
 namespace VideoForensics.Data.Common.Entities
 {
+    /// <summary>Download status for an event.</summary>
+    public enum EventDownloadStatus
+    {
+        /// <summary>No download attempt has been made.</summary>
+        NotAttempted = 0,
+
+        /// <summary>Download was attempted but failed.</summary>
+        DownloadFailed = 1,
+
+        /// <summary>Event was successfully downloaded.</summary>
+        Downloaded = 2
+    }
+
     /// <summary>An event detected by a device, independent of whether it was downloaded.</summary>
     public class Event
     {
@@ -16,5 +29,7 @@ namespace VideoForensics.Data.Common.Entities
         public string? EventIntegrityHash { get; set; }
         public Guid? EventDetectionId { get; set; }
         public string? RecordingStatus { get; set; }
+        public EventDownloadStatus DownloadStatus { get; set; } = EventDownloadStatus.NotAttempted;
+        public DateTime? DownloadFailedAtUtc { get; set; }
     }
 }

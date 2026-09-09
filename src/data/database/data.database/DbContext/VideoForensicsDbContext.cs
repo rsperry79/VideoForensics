@@ -34,12 +34,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the detection type occurrences.</summary>
         public DbSet<DetectionTypeOccurrence> DetectionTypeOccurrences { get; set; }
 
-        /// <summary>Gets or sets the detection zones.</summary>
-        public DbSet<DetectionZone> DetectionZones { get; set; }
-
-        /// <summary>Gets or sets the security alerts.</summary>
-        public DbSet<SecurityAlert> SecurityAlerts { get; set; }
-
         /// <summary>Gets or sets the detected persons.</summary>
         public DbSet<DetectedPerson> DetectedPersons { get; set; }
 
@@ -124,9 +118,6 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the device features.</summary>
         public DbSet<DeviceFeatures> DeviceFeatures { get; set; }
-
-        /// <summary>Gets or sets the device locations.</summary>
-        public DbSet<DeviceLocation> DeviceLocations { get; set; }
 
         /// <summary>Gets or sets the device alerts.</summary>
         public DbSet<DeviceAlerts> DeviceAlerts { get; set; }

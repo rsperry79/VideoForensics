@@ -18,6 +18,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthSnapshotRepository _deviceHealthSnapshotRepository;
+        private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
@@ -37,6 +38,7 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthSnapshotRepository deviceHealthSnapshotRepository,
+            IDeviceHealthRepository deviceHealthRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -54,6 +56,7 @@ namespace VideoForensics.Data.Core.Services
             _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthSnapshotRepository = deviceHealthSnapshotRepository;
+            _deviceHealthRepository = deviceHealthRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -89,6 +92,19 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording device health snapshot for device {DeviceId}", snapshot.DeviceId);
+                throw;
+            }
+        }
+
+        public async Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct)
+        {
+            try
+            {
+                return await _deviceHealthRepository.AddAsync(health, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
                 throw;
             }
         }
@@ -159,15 +175,18 @@ namespace VideoForensics.Data.Core.Services
                         await context.DetectionEntities.AddMediaItemDetectionAsync(detection, ct);
                     }
 
-                    if (zones != null && zones.Count > 0)
-                    {
-                        await context.DetectionEntities.AddDetectionZonesAsync(zones, ct);
-                    }
-
-                    if (alerts != null && alerts.Count > 0)
-                    {
-                        await context.DetectionEntities.AddSecurityAlertsAsync(alerts, ct);
-                    }
+                    // NOTE: DetectionZone and SecurityAlert tables were removed from schema.
+                    // These parameters are kept in the method signature for backward compatibility
+                    // but are no longer persisted. Future refactoring should remove them entirely.
+                    // if (zones != null && zones.Count > 0)
+                    // {
+                    //     await context.DetectionEntities.AddDetectionZonesAsync(zones, ct);
+                    // }
+                    //
+                    // if (alerts != null && alerts.Count > 0)
+                    // {
+                    //     await context.DetectionEntities.AddSecurityAlertsAsync(alerts, ct);
+                    // }
 
                     if (persons != null && persons.Count > 0)
                     {
@@ -388,7 +407,6 @@ namespace VideoForensics.Data.Core.Services
                             ProviderLocationId = providerLocationId,
                             Name = name,
                             Address = address,
-                            MetadataJson = metadataJson,
                             ApiResponseHash = apiResponseHash,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
@@ -464,15 +482,47 @@ namespace VideoForensics.Data.Core.Services
                     {
                         if (existingDevice.LocationId != locationId)
                         {
-                            _logger.LogInformation("Relocating device {DeviceName} ({DeviceId}) from location {OldLocationId} to {NewLocationId}",
-                                existingDevice.Name, existingDevice.Id, existingDevice.LocationId, locationId);
+                            // Check if device already exists at target location (race condition check)
+                            var inTargetLocation = await context.Devices
+                                .GetByProviderDeviceIdAsync(locationId, providerDeviceId, ct);
+
+                            if (inTargetLocation != null)
+                            {
+                                return inTargetLocation;  // Already exists there, use it
+                            }
+
+                            // Create NEW Device record instead of relocating
+                            // Devices are identified by (LocationId, ProviderDeviceId) pair.
+                            // If device moves to different location, it's a NEW device record.
+                            // This preserves forensic history and location-based queries.
+                            // Events at old location still reference old device record.
+                            var newDevice = new Device
+                            {
+                                Id = Guid.NewGuid(),
+                                LocationId = locationId,  // NEW location
+                                ProviderDeviceId = providerDeviceId,
+                                Name = name,
+                                Type = type,
+                                IsOnline = isOnline,
+                                MetadataJson = metadataJson,
+                                ApiResponseHash = apiResponseHash,
+                                LastSyncedUtc = DateTime.UtcNow,
+                                SyncStatus = SyncStatus.Synced
+                            };
+
+                            await context.Devices.AddAsync(newDevice, ct);
+                            _logger.LogInformation(
+                                "Device {DeviceName} ({ProviderDeviceId}) moved to new location; creating new record (NewDeviceId: {NewDeviceId}). " +
+                                "Old device {OldDeviceId} at location {OldLocationId} retained for history.",
+                                name, providerDeviceId, newDevice.Id, existingDevice.Id, existingDevice.LocationId);
+
+                            return newDevice;
                         }
 
-                        // Update device properties if it exists
+                        // Update device properties if it exists in the same location
                         existingDevice.Name = name;
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
-                        existingDevice.LocationId = locationId;
                         await context.Devices.UpdateAsync(existingDevice, ct);
                         _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;

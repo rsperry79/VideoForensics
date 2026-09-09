@@ -51,6 +51,13 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct);
         }
 
+        /// <summary>Gets a media item by API source hash for deduplication.</summary>
+        public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.MediaItems.FirstOrDefaultAsync(m => m.ApiSourceHash == apiSourceHash, ct);
+        }
+
         /// <summary>Gets media items by download event ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {

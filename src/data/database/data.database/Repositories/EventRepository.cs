@@ -35,6 +35,13 @@ namespace VideoForensics.Data.Database.Repositories
                 e => e.DeviceId == deviceId && e.ProviderEventId == providerEventId, ct);
         }
 
+        /// <summary>Gets an event by API source hash for deduplication.</summary>
+        public async Task<Event?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events.FirstOrDefaultAsync(e => e.ApiSourceHash == apiSourceHash, ct);
+        }
+
         /// <summary>Upserts (inserts or updates) an event by device ID and provider event ID.</summary>
         public async Task<Event> UpsertAsync(Event @event, CancellationToken ct)
         {
@@ -64,6 +71,13 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.DownloadedAtUtc = @event.DownloadedAtUtc ?? existing.DownloadedAtUtc;
                     existing.ApiSourceHash = @event.ApiSourceHash ?? existing.ApiSourceHash;
                     existing.EventIntegrityHash = @event.EventIntegrityHash ?? existing.EventIntegrityHash;
+
+                    // Update DownloadStatus based on DownloadedAtUtc
+                    if (existing.DownloadedAtUtc.HasValue)
+                    {
+                        existing.DownloadStatus = EventDownloadStatus.Downloaded;
+                    }
+
                     _ = db.Events.Update(existing);
                     _logger.LogInformation("Event upserted (updated): {EventId}", @event.Id);
                 }
@@ -200,6 +214,29 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.Events.ToListAsync(ct);
+        }
+
+        /// <summary>Updates an event's download failure status and timestamp.</summary>
+        public async Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            try
+            {
+                Event? @event = await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
+                if (@event != null)
+                {
+                    @event.DownloadStatus = EventDownloadStatus.DownloadFailed;
+                    @event.DownloadFailedAtUtc = failureTime;
+                    _ = db.Events.Update(@event);
+                    _ = await db.SaveChangesAsync(ct);
+                    _logger.LogInformation("Event download failure recorded: {EventId} at {FailureTime}", eventId, failureTime);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating event download failure: {EventId}", eventId);
+                throw;
+            }
         }
 
         /// <summary>Deletes an event.</summary>

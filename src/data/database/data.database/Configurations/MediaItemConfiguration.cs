@@ -44,6 +44,8 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(m => m.DeviceId);
             _ = builder.HasIndex(m => m.DownloadEventId);
+
+            _ = builder.HasIndex(m => new { m.DeviceId, m.RecordedAtUtc }).IsUnique();
         }
     }
 }

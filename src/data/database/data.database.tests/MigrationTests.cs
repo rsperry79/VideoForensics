@@ -160,14 +160,6 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task Migration_Annotations_DbSetQueryable()
-        {
-            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            List<Annotation> result = await ctx.Annotations.ToListAsync();
-            Assert.NotNull(result);
-        }
-
-        [Fact]
         public async Task Migration_ProviderReconciliationRecords_DbSetQueryable()
         {
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();

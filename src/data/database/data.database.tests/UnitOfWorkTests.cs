@@ -179,7 +179,7 @@ namespace VideoForensics.Data.Database.Tests
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
-                Location location = TestDataBuilder.BuildLocation(accountId);
+                Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
                 await context.Locations.AddAsync(location, CancellationToken.None);
 
@@ -270,7 +270,6 @@ namespace VideoForensics.Data.Database.Tests
                     var location = new Location
                     {
                         Id = Guid.NewGuid(),
-                        ProviderAccountId = accountId,
                         ProviderLocationId = providerLocationId,
                         Name = locationName,
                         Address = address
@@ -298,7 +297,6 @@ namespace VideoForensics.Data.Database.Tests
                     var location = new Location
                     {
                         Id = Guid.NewGuid(),
-                        ProviderAccountId = accountId,
                         ProviderLocationId = providerLocationId,
                         Name = locationName,
                         Address = address
@@ -348,7 +346,7 @@ namespace VideoForensics.Data.Database.Tests
                 account.Id = accountId;
                 await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
 
-                Location location = TestDataBuilder.BuildLocation(accountId);
+                Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
                 await context.Locations.AddAsync(location, CancellationToken.None);
 

@@ -202,6 +202,12 @@ namespace VideoForensics.Data.Database.Repositories
             return GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
+        /// <summary>Gets a location by API response hash for deduplication.</summary>
+        public Task<Location?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.ApiResponseHash == apiResponseHash));
+        }
+
         public Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().ToList());
@@ -241,6 +247,12 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct)
         {
             return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId));
+        }
+
+        /// <summary>Gets a device by API response hash for deduplication.</summary>
+        public Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Devices.AsNoTracking().FirstOrDefault(d => d.ApiResponseHash == apiResponseHash));
         }
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
@@ -293,6 +305,12 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));
+        }
+
+        /// <summary>Gets a media item by API source hash for deduplication.</summary>
+        public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.ApiSourceHash == apiSourceHash));
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
@@ -554,6 +572,12 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(_db.Events.AsNoTracking().FirstOrDefault(e => e.DeviceId == deviceId && e.ProviderEventId == providerEventId));
         }
 
+        /// <summary>Gets an event by API source hash for deduplication.</summary>
+        public Task<Event?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Events.AsNoTracking().FirstOrDefault(e => e.ApiSourceHash == apiSourceHash));
+        }
+
         public Task<Event> UpsertAsync(Event @event, CancellationToken ct)
         {
             Event? existing = _db.Events.FirstOrDefault(e => e.DeviceId == @event.DeviceId && e.ProviderEventId == @event.ProviderEventId);
@@ -650,6 +674,20 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.OccurredAtUtc = @event.OccurredAtUtc;
                 existing.SnapshotUrl = @event.SnapshotUrl;
                 _ = _db.Events.Update(existing);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>Updates an event's download failure status and timestamp.</summary>
+        public Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct)
+        {
+            Event? @event = _db.Events.FirstOrDefault(e => e.Id == eventId);
+            if (@event != null)
+            {
+                @event.DownloadStatus = EventDownloadStatus.DownloadFailed;
+                @event.DownloadFailedAtUtc = failureTime;
+                _ = _db.Events.Update(@event);
             }
 
             return Task.CompletedTask;
@@ -959,24 +997,6 @@ namespace VideoForensics.Data.Database.Repositories
             if (detection != null)
             {
                 _ = _db.MediaItemDetections.Add(detection);
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task AddDetectionZonesAsync(List<DetectionZone> zones, CancellationToken ct)
-        {
-            if (zones != null && zones.Count > 0)
-            {
-                _db.DetectionZones.AddRange(zones);
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task AddSecurityAlertsAsync(List<SecurityAlert> alerts, CancellationToken ct)
-        {
-            if (alerts != null && alerts.Count > 0)
-            {
-                _db.SecurityAlerts.AddRange(alerts);
             }
             return Task.CompletedTask;
         }

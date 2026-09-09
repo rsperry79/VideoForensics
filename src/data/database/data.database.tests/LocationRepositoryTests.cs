@@ -30,15 +30,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationRepository_AddAndGet_RoundTrips()
         {
-            var accountId = Guid.NewGuid();
-            Location location = TestDataBuilder.BuildLocation(accountId, "loc_123", "Front Door");
+            Location location = TestDataBuilder.BuildLocation("loc_123", "Front Door");
 
             await _repository.AddAsync(location, CancellationToken.None);
             Location? retrieved = await _repository.GetAsync(location.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(location.Id, retrieved.Id);
-            Assert.Equal(accountId, retrieved.ProviderAccountId);
             Assert.Equal("loc_123", retrieved.ProviderLocationId);
             Assert.Equal("Front Door", retrieved.Name);
         }
@@ -46,32 +44,28 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationRepository_GetByProviderLocationId_FindsLocation()
         {
-            var accountId = Guid.NewGuid();
-            Location location = TestDataBuilder.BuildLocation(accountId, "loc_456");
+            Location location = TestDataBuilder.BuildLocation("loc_456");
 
             await _repository.AddAsync(location, CancellationToken.None);
-            Location? retrieved = await _repository.GetByProviderLocationIdAsync(accountId, "loc_456", CancellationToken.None);
+            Location? retrieved = await _repository.GetByProviderLocationIdAsync("loc_456", CancellationToken.None);
 
             Assert.NotNull(retrieved);
             Assert.Equal(location.Id, retrieved.Id);
         }
 
         [Fact]
-        public async Task LocationRepository_GetByProviderAccountId_ReturnsAllForAccount()
+        public async Task LocationRepository_GetByProviderAccountId_ReturnsAllLocations()
         {
-            var accountId = Guid.NewGuid();
-            var otherAccountId = Guid.NewGuid();
-
-            Location loc1 = TestDataBuilder.BuildLocation(accountId);
-            Location loc2 = TestDataBuilder.BuildLocation(accountId);
-            Location loc3 = TestDataBuilder.BuildLocation(otherAccountId);
+            Location loc1 = TestDataBuilder.BuildLocation();
+            Location loc2 = TestDataBuilder.BuildLocation();
+            Location loc3 = TestDataBuilder.BuildLocation();
 
             await _repository.AddAsync(loc1, CancellationToken.None);
             await _repository.AddAsync(loc2, CancellationToken.None);
             await _repository.AddAsync(loc3, CancellationToken.None);
 
-            IReadOnlyList<Location> list = await _repository.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-            Assert.Equal(2, list.Count);
+            IReadOnlyList<Location> list = await _repository.GetByProviderAccountIdAsync(Guid.NewGuid(), CancellationToken.None);
+            Assert.Equal(3, list.Count);
         }
 
         [Fact]
@@ -116,9 +110,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationRepository_UniqueConstraint_DuplicateAccountLocationComboThrows()
         {
-            var accountId = Guid.NewGuid();
-            Location loc1 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
-            Location loc2 = TestDataBuilder.BuildLocation(accountId, "dup_loc");
+            Location loc1 = TestDataBuilder.BuildLocation("dup_loc");
+            Location loc2 = TestDataBuilder.BuildLocation("dup_loc");
 
             await _repository.AddAsync(loc1, CancellationToken.None);
 

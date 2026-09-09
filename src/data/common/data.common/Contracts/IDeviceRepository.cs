@@ -14,6 +14,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets a device by location ID and provider device ID.</summary>
         Task<Device?> GetByProviderDeviceIdAsync(Guid locationId, string providerDeviceId, CancellationToken ct);
 
+        /// <summary>Gets a device by API response hash for deduplication.</summary>
+        Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct);
+
         /// <summary>Lists all devices.</summary>
         Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct);
 
