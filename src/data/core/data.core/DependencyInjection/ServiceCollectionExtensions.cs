@@ -15,6 +15,15 @@ namespace VideoForensics.Data.Core.DependencyInjection
         /// <summary>Adds all Data.Core services to the service collection.</summary>
         public static IServiceCollection AddVideoForensicsDataCore(this IServiceCollection services, int? retentionDays = null)
         {
+            // Phase 0 path migration (one-time on startup) - Scoped because it depends on Scoped repositories
+            _ = services.AddScoped<IPathMigrationService>(provider =>
+                new PathMigrationService(
+                    provider.GetRequiredService<ILogger<PathMigrationService>>(),
+                    provider.GetRequiredService<IUnitOfWork>(),
+                    provider.GetRequiredService<IMediaItemRepository>()
+                )
+            );
+
             // Phase 1 core services
             _ = services.AddScoped<IWatermarkService, WatermarkService>();
             _ = services.AddActionLogger();

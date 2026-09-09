@@ -1,0 +1,254 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Hosting;
+
+// Build services
+var services = new ServiceCollection();
+services.AddVideoForensicsDataLayer();
+var provider = services.BuildServiceProvider();
+
+// Get database context
+var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+await using var db = await factory.CreateDbContextAsync();
+
+Console.WriteLine("═══════════════════════════════════════════════════════════════");
+Console.WriteLine("DATABASE REDUNDANCY DIAGNOSTIC REPORT");
+Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+// SECTION 1: Duplicate Provider IDs
+Console.WriteLine("SECTION 1: DUPLICATE PROVIDER IDS (Missing Unique Constraints)");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var duplicateDevices = await db.Devices
+    .GroupBy(d => new { d.LocationId, d.ProviderDeviceId })
+    .Where(g => g.Count() > 1)
+    .Select(g => new
+    {
+        LocationId = g.Key.LocationId,
+        ProviderDeviceId = g.Key.ProviderDeviceId,
+        Count = g.Count(),
+        DeviceIds = string.Join(", ", g.Select(d => d.Id.ToString().Substring(0, 8)))
+    })
+    .ToListAsync();
+
+if (duplicateDevices.Count > 0)
+{
+    Console.WriteLine($"⚠️  FOUND {duplicateDevices.Count} duplicate device entries:");
+    foreach (var dup in duplicateDevices.Take(10))
+    {
+        Console.WriteLine($"  • Location: {dup.LocationId.ToString().Substring(0, 8)}..., ProviderDeviceId: {dup.ProviderDeviceId}, Count: {dup.Count}");
+    }
+}
+else
+{
+    Console.WriteLine("✅ No duplicate devices found.");
+}
+
+var duplicateEvents = await db.Events
+    .GroupBy(e => new { e.DeviceId, e.ProviderEventId })
+    .Where(g => g.Count() > 1)
+    .Select(g => new
+    {
+        DeviceId = g.Key.DeviceId,
+        ProviderEventId = g.Key.ProviderEventId,
+        Count = g.Count()
+    })
+    .ToListAsync();
+
+if (duplicateEvents.Count > 0)
+{
+    Console.WriteLine($"\n⚠️  FOUND {duplicateEvents.Count} duplicate event entries:");
+    foreach (var dup in duplicateEvents.Take(10))
+    {
+        Console.WriteLine($"  • Device: {dup.DeviceId.ToString().Substring(0, 8)}..., ProviderEventId: {dup.ProviderEventId}, Count: {dup.Count}");
+    }
+}
+else
+{
+    Console.WriteLine("\n✅ No duplicate events found.");
+}
+
+// SECTION 2: Redundant Detection Data
+Console.WriteLine("\n\nSECTION 2: REDUNDANT DETECTION DATA");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var mediaDetectionCount = await db.MediaItemDetections.CountAsync();
+var eventDetectionCount = await db.EventDetections.CountAsync();
+
+Console.WriteLine($"MediaItemDetection rows: {mediaDetectionCount:N0}");
+Console.WriteLine($"EventDetection rows:     {eventDetectionCount:N0}");
+
+if (mediaDetectionCount > 0 && eventDetectionCount > 0)
+{
+    var avgMediaDetections = Math.Round((double)mediaDetectionCount / await db.MediaItems.CountAsync(), 2);
+    var avgEventDetections = Math.Round((double)eventDetectionCount / await db.Events.CountAsync(), 2);
+    Console.WriteLine($"\nAverage detections per MediaItem: {avgMediaDetections}");
+    Console.WriteLine($"Average detections per Event:     {avgEventDetections}");
+}
+
+var securityAlertCount = await db.SecurityAlerts.CountAsync();
+var eventSecurityAlertCount = await db.EventSecurityAlerts.CountAsync();
+Console.WriteLine($"\nSecurityAlert rows:       {securityAlertCount:N0}");
+Console.WriteLine($"EventSecurityAlert rows:  {eventSecurityAlertCount:N0}");
+
+var detectionZoneCount = await db.DetectionZones.CountAsync();
+var eventDetectionZoneCount = await db.EventDetectionZones.CountAsync();
+Console.WriteLine($"\nDetectionZone rows:       {detectionZoneCount:N0}");
+Console.WriteLine($"EventDetectionZone rows:  {eventDetectionZoneCount:N0}");
+
+// SECTION 3: Device Health Redundancy
+Console.WriteLine("\n\nSECTION 3: DEVICE HEALTH REDUNDANCY");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var deviceHealthCount = await db.DeviceHealths.CountAsync();
+var deviceHealthSnapshotCount = await db.DeviceHealthSnapshots.CountAsync();
+
+Console.WriteLine($"DeviceHealth rows:          {deviceHealthCount:N0}");
+Console.WriteLine($"DeviceHealthSnapshot rows:  {deviceHealthSnapshotCount:N0}");
+
+if (deviceHealthSnapshotCount > 0)
+{
+    Console.WriteLine("\n⚠️  DeviceHealthSnapshot is still being used!");
+
+    var snapshotDeviceIdNull = await db.DeviceHealthSnapshots.Where(s => s.DeviceId == null).CountAsync();
+    Console.WriteLine($"   • With NULL DeviceId: {snapshotDeviceIdNull:N0}");
+
+    var snapshotDeviceIdNotNull = await db.DeviceHealthSnapshots.Where(s => s.DeviceId != null).CountAsync();
+    Console.WriteLine($"   • With non-NULL DeviceId: {snapshotDeviceIdNotNull:N0}");
+
+    // Check date range
+    var snapshotDates = await db.DeviceHealthSnapshots
+        .GroupBy(s => s.CapturedAtUtc.Date)
+        .OrderByDescending(g => g.Key)
+        .Select(g => new { Date = g.Key, Count = g.Count() })
+        .Take(5)
+        .ToListAsync();
+
+    if (snapshotDates.Count > 0)
+    {
+        Console.WriteLine($"\n   Recent snapshot dates:");
+        foreach (var date in snapshotDates)
+        {
+            Console.WriteLine($"     • {date.Date}: {date.Count} records");
+        }
+    }
+}
+else
+{
+    Console.WriteLine("✅ DeviceHealthSnapshot table is empty.");
+}
+
+// SECTION 4: Device Features Redundancy
+Console.WriteLine("\n\nSECTION 4: DEVICE FEATURES REDUNDANCY");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var deviceCapabilitiesCount = await db.DeviceCapabilities.CountAsync();
+var deviceFeaturesCount = await db.DeviceFeatures.CountAsync();
+
+Console.WriteLine($"DeviceCapabilities rows:  {deviceCapabilitiesCount:N0}");
+Console.WriteLine($"DeviceFeatures rows:      {deviceFeaturesCount:N0}");
+
+var bothTables = await db.DeviceCapabilities
+    .Join(db.DeviceFeatures, dc => dc.DeviceId, df => df.DeviceId, (dc, df) => new { dc.DeviceId })
+    .Select(x => x.DeviceId)
+    .Distinct()
+    .CountAsync();
+
+var capOnly = await db.DeviceCapabilities
+    .Where(dc => !db.DeviceFeatures.Any(df => df.DeviceId == dc.DeviceId))
+    .CountAsync();
+
+var featuresOnly = await db.DeviceFeatures
+    .Where(df => !db.DeviceCapabilities.Any(dc => dc.DeviceId == df.DeviceId))
+    .CountAsync();
+
+Console.WriteLine($"\nDevices with both tables:     {bothTables}");
+Console.WriteLine($"Devices with Capabilities only: {capOnly}");
+Console.WriteLine($"Devices with Features only:     {featuresOnly}");
+
+if (bothTables > 0)
+{
+    Console.WriteLine($"\n⚠️  {bothTables} devices have BOTH DeviceCapabilities and DeviceFeatures!");
+}
+
+// SECTION 5: Location Data Redundancy
+Console.WriteLine("\n\nSECTION 5: LOCATION DATA REDUNDANCY");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var locationsWithAddress = await db.Locations.Where(l => l.Address != null).CountAsync();
+var deviceLocationsWithAddress = await db.DeviceLocations.Where(dl => dl.Address != null).CountAsync();
+
+Console.WriteLine($"Locations with Address:        {locationsWithAddress:N0}");
+Console.WriteLine($"DeviceLocations with Address:  {deviceLocationsWithAddress:N0}");
+
+var addressMismatches = await db.Locations
+    .Join(db.Devices, l => l.Id, d => d.LocationId, (l, d) => new { LocationId = l.Id, LocationAddress = l.Address, DeviceId = d.Id })
+    .Join(db.DeviceLocations, x => x.DeviceId, dl => dl.DeviceId, (x, dl) => new { x.LocationAddress, DeviceLocationAddress = dl.Address })
+    .Where(x => x.LocationAddress != null && x.DeviceLocationAddress != null && x.LocationAddress != x.DeviceLocationAddress)
+    .CountAsync();
+
+if (addressMismatches > 0)
+{
+    Console.WriteLine($"\n⚠️  {addressMismatches} devices have DIFFERENT addresses in Location vs DeviceLocation!");
+}
+
+// SECTION 6: Data Quality Metrics
+Console.WriteLine("\n\nSECTION 6: OVERALL TABLE SIZES");
+Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
+
+var tableStats = new[]
+{
+    ("MediaItems", await db.MediaItems.CountAsync()),
+    ("Events", await db.Events.CountAsync()),
+    ("Devices", await db.Devices.CountAsync()),
+    ("Locations", await db.Locations.CountAsync()),
+    ("SecurityAlerts (both)", securityAlertCount + eventSecurityAlertCount),
+    ("Detections (both)", mediaDetectionCount + eventDetectionCount),
+    ("DetectionZones (both)", detectionZoneCount + eventDetectionZoneCount),
+    ("DeviceHealth (both)", deviceHealthCount + deviceHealthSnapshotCount),
+};
+
+foreach (var (name, count) in tableStats.OrderByDescending(x => x.Item2))
+{
+    Console.WriteLine($"  {name,-30} {count:N0} rows");
+}
+
+// SECTION 7: Summary
+Console.WriteLine("\n\nSUMMARY & RECOMMENDATIONS");
+Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+var issues = new List<string>();
+
+if (duplicateDevices.Count > 0)
+    issues.Add($"❌ {duplicateDevices.Count} duplicate devices (fix with unique constraint)");
+if (duplicateEvents.Count > 0)
+    issues.Add($"❌ {duplicateEvents.Count} duplicate events (fix with unique constraint)");
+if (deviceHealthSnapshotCount > 0)
+    issues.Add($"❌ DeviceHealthSnapshot still populated ({deviceHealthSnapshotCount} rows)");
+if (bothTables > 0)
+    issues.Add($"⚠️  {bothTables} devices with both DeviceCapabilities AND DeviceFeatures (merge needed)");
+if (addressMismatches > 0)
+    issues.Add($"⚠️  {addressMismatches} address mismatches between Location and DeviceLocation");
+
+if (issues.Count == 0)
+{
+    Console.WriteLine("✅ Database looks clean! No critical redundancy issues detected.");
+}
+else
+{
+    Console.WriteLine("Issues found:");
+    foreach (var issue in issues)
+    {
+        Console.WriteLine($"  {issue}");
+    }
+}
+
+Console.WriteLine("\nNext steps:");
+Console.WriteLine("  1. Run the SQL queries in db_duplicate_check.sql for detailed analysis");
+Console.WriteLine("  2. Review the consolidation roadmap in database_redundancy_analysis.md");
+Console.WriteLine("  3. Backup database before making structural changes");

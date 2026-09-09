@@ -5,8 +5,17 @@ namespace VideoForensics.Client.Core.Utilities
     /// <summary>Utilities for detecting and constructing save paths.</summary>
     public static class PathUtilities
     {
-        /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Pictures/VideoForensics.</summary>
+        /// <summary>Returns the system-wide media storage location for the service.</summary>
         public static string GetDefaultDownloadLocation()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics",
+                "media");
+        }
+
+        /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Pictures/VideoForensics (legacy location).</summary>
+        internal static string GetLegacyDownloadLocation()
         {
             // Try to detect OneDrive path first (Windows)
             string? oneDrivePath = GetOneDrivePath();
@@ -36,8 +45,17 @@ namespace VideoForensics.Client.Core.Utilities
                 "VideoForensics");
         }
 
-        /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Documents/VideoForensics.</summary>
+        /// <summary>Returns the system-wide backup storage location for the service.</summary>
         public static string GetDefaultQueryExportLocation()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics",
+                "backup");
+        }
+
+        /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Documents/VideoForensics (legacy location).</summary>
+        internal static string GetLegacyQueryExportLocation()
         {
             string? oneDrivePath = GetOneDrivePath();
             if (!string.IsNullOrEmpty(oneDrivePath))
