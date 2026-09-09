@@ -121,6 +121,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     table.PrimaryKey("PK_SecurityAlerts", x => x.Id);
                 });
 
+            // Clean up duplicate ProviderLocationId values before creating unique constraint
+            migrationBuilder.Sql(
+                """
+                DELETE FROM Locations
+                WHERE rowid NOT IN (
+                    SELECT MIN(rowid) FROM Locations
+                    GROUP BY ProviderLocationId
+                )
+                """);
+
             migrationBuilder.CreateIndex(
                 name: "IX_Locations_ProviderLocationId",
                 table: "Locations",
