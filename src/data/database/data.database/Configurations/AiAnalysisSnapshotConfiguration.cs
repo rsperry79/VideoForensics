@@ -16,6 +16,16 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(2048);
 
             _ = builder.HasIndex(a => a.DownloadEventId);
+
+            _ = builder.HasMany(a => a.Tags)
+                .WithOne(t => t.AiAnalysisSnapshot)
+                .HasForeignKey(t => t.AiAnalysisSnapshotId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            _ = builder.HasMany(a => a.MotionZones)
+                .WithOne(m => m.AiAnalysisSnapshot)
+                .HasForeignKey(m => m.AiAnalysisSnapshotId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
