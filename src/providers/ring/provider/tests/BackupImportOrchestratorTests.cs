@@ -30,6 +30,9 @@ namespace VideoForensics.Providers.Ring.Tests
         public IDeviceConfigRepository DeviceConfig { get; set; } = null!;
         public IProviderReconciliationRepository ProviderReconciliation { get; set; } = null!;
         public IExportRecordRepository ExportRecords { get; set; } = null!;
+        public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
+        public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
+        public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
     }
 
     public class BackupImportOrchestratorTests

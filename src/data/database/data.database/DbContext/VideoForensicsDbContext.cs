@@ -28,6 +28,21 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the media items.</summary>
         public DbSet<MediaItem> MediaItems { get; set; }
 
+        /// <summary>Gets or sets the media item detections.</summary>
+        public DbSet<MediaItemDetection> MediaItemDetections { get; set; }
+
+        /// <summary>Gets or sets the detection type occurrences.</summary>
+        public DbSet<DetectionTypeOccurrence> DetectionTypeOccurrences { get; set; }
+
+        /// <summary>Gets or sets the detection zones.</summary>
+        public DbSet<DetectionZone> DetectionZones { get; set; }
+
+        /// <summary>Gets or sets the security alerts.</summary>
+        public DbSet<SecurityAlert> SecurityAlerts { get; set; }
+
+        /// <summary>Gets or sets the detected persons.</summary>
+        public DbSet<DetectedPerson> DetectedPersons { get; set; }
+
         /// <summary>Gets or sets the download events.</summary>
         public DbSet<DownloadEvent> DownloadEvents { get; set; }
 

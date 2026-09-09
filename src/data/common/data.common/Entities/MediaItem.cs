@@ -6,6 +6,7 @@ namespace VideoForensics.Data.Common.Entities
         public Guid Id { get; set; }
         public Guid DeviceId { get; set; }
         public Guid? DownloadEventId { get; set; }
+        public Guid? MediaItemDetectionId { get; set; }
         public required string FileName { get; set; }
         public required string FilePath { get; set; }
         public required string MediaFormat { get; set; }

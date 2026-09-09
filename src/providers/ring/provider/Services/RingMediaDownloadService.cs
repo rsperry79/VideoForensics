@@ -8,6 +8,9 @@ using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+using DetectionZone = VideoForensics.Data.Common.Entities.DetectionZone;
+using SecurityAlert = VideoForensics.Data.Common.Entities.SecurityAlert;
+using DetectedPerson = VideoForensics.Data.Common.Entities.DetectedPerson;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
@@ -438,7 +441,19 @@ namespace VideoForensics.Providers.Ring.Services
                                             ApiSourceHash = Hash
                                         };
 
-                                        _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, rateLimitCts.Token);
+                                        // Extract structured CV metadata
+                                        var mediaItemDetectionId = Guid.NewGuid();
+                                        var (detection, zones, alerts, persons, occurrences) = ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
+
+                                        _ = await _dataClient.RecordDownloadEventAsync(
+                                            downloadEvent,
+                                            mediaItem,
+                                            rateLimitCts.Token,
+                                            detection,
+                                            zones,
+                                            alerts,
+                                            persons,
+                                            occurrences);
 
                                         await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
                                             @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
@@ -821,6 +836,7 @@ namespace VideoForensics.Providers.Ring.Services
                             ApiSourceHash = Hash
                         };
 
+                        // Snapshots don't have CV properties, so no detection metadata to extract
                         _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, cancellationToken);
                     }
                     catch (Exception ex)
@@ -890,6 +906,131 @@ namespace VideoForensics.Providers.Ring.Services
                     ErrorMessage: $"Download failed: {ex.Message}"
                 );
             }
+        }
+
+        /// <summary>
+        /// Extracts structured CV metadata from a Ring event and creates related database entities.
+        /// </summary>
+        private (MediaItemDetection detection, List<DetectionZone> zones, List<SecurityAlert> alerts, List<DetectedPerson> persons, List<DetectionTypeOccurrence> occurrences) ExtractMetadata(Entities.DoorbotHistoryEvent @event, Guid mediaItemId, Guid mediaItemDetectionId)
+        {
+            var zones = new List<DetectionZone>();
+            var alerts = new List<SecurityAlert>();
+            var persons = new List<DetectedPerson>();
+            var occurrences = new List<DetectionTypeOccurrence>();
+
+            Entities.CvProperties? cv = @event.CvProperties;
+            if (cv == null)
+            {
+                // No CV data, return minimal detection record
+                var emptyDetection = new MediaItemDetection
+                {
+                    Id = mediaItemDetectionId,
+                    MediaItemId = mediaItemId
+                };
+                return (emptyDetection, zones, alerts, persons, occurrences);
+            }
+
+            // Create MediaItemDetection from CV properties
+            var detection = new MediaItemDetection
+            {
+                Id = mediaItemDetectionId,
+                MediaItemId = mediaItemId,
+                PersonDetected = cv.PersonDetected,
+                StreamBroken = cv.StreamBroken,
+                DetectionType = cv.DetectionType,
+                FullDescription = cv.FullDescription,
+                ShortDescription = cv.ShortDescription,
+                Similarity = cv.Similarity.HasValue ? (decimal)cv.Similarity.Value : null,
+                Anomaly = cv.Anomaly.HasValue ? (decimal)cv.Anomaly.Value : null,
+                ModelVersion = cv.DetectionDetails?.ModelVersion
+            };
+
+            // Add detection details confidence if available
+            if (cv.DetectionDetails?.Confidence.HasValue == true)
+            {
+                detection.Confidence = (decimal)cv.DetectionDetails.Confidence.Value;
+            }
+
+            // Extract detection zones
+            if (cv.DetectionDetails?.Zones != null)
+            {
+                foreach (var zone in cv.DetectionDetails.Zones)
+                {
+                    if (zone != null && !string.IsNullOrEmpty(zone.Id))
+                    {
+                        zones.Add(new DetectionZone
+                        {
+                            Id = Guid.NewGuid(),
+                            MediaItemDetectionId = mediaItemDetectionId,
+                            ZoneId = zone.Id,
+                            ZoneName = zone.Name,
+                            Confidence = zone.Confidence.HasValue ? (decimal)zone.Confidence.Value : null
+                        });
+                    }
+                }
+            }
+
+            // Extract security alerts
+            if (cv.SecurityAlerts != null && cv.SecurityAlerts.Alerts != null)
+            {
+                foreach (var alertText in cv.SecurityAlerts.Alerts)
+                {
+                    if (!string.IsNullOrEmpty(alertText))
+                    {
+                        alerts.Add(new SecurityAlert
+                        {
+                            Id = Guid.NewGuid(),
+                            MediaItemId = mediaItemId,
+                            Severity = cv.SecurityAlerts.Severity,
+                            AlertText = alertText
+                        });
+                    }
+                }
+            }
+
+            // Extract detected persons
+            if (cv.Profiles != null)
+            {
+                foreach (var profile in cv.Profiles)
+                {
+                    if (profile != null && !string.IsNullOrEmpty(profile.Id))
+                    {
+                        persons.Add(new DetectedPerson
+                        {
+                            Id = Guid.NewGuid(),
+                            MediaItemId = mediaItemId,
+                            ProfileId = profile.Id,
+                            ProfileName = profile.Name,
+                            Confidence = profile.Confidence.HasValue ? (decimal)profile.Confidence.Value : null,
+                            ThumbnailUrl = profile.ThumbnailUrl
+                        });
+                    }
+                }
+            }
+
+            // Extract detection type occurrences from verified timestamps
+            if (cv.DetectionTypes != null)
+            {
+                foreach (var detectionType in cv.DetectionTypes)
+                {
+                    if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
+                    {
+                        foreach (var epochMs in detectionType.VerifiedTimestamps)
+                        {
+                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
+                            occurrences.Add(new DetectionTypeOccurrence
+                            {
+                                Id = Guid.NewGuid(),
+                                MediaItemDetectionId = mediaItemDetectionId,
+                                DetectionType = detectionType.DetectionType,
+                                DetectedAtUtc = detectedAtUtc
+                            });
+                        }
+                    }
+                }
+            }
+
+            return (detection, zones, alerts, persons, occurrences);
         }
 
         /// <summary>

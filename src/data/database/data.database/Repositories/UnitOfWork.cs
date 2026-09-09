@@ -82,6 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
         public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
+        public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
     }
 
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
@@ -939,6 +940,63 @@ namespace VideoForensics.Data.Database.Repositories
                     .ToDictionary(g => g.Key, g => g.Count())
             };
             return Task.FromResult(statistics);
+        }
+    }
+
+    internal class DetectionEntityProvider : IDetectionEntityProvider
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public DetectionEntityProvider(VideoForensicsDbContext db, ILogger logger)
+        {
+            _db = db;
+            _logger = logger;
+        }
+
+        public Task AddMediaItemDetectionAsync(MediaItemDetection detection, CancellationToken ct)
+        {
+            if (detection != null)
+            {
+                _ = _db.MediaItemDetections.Add(detection);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task AddDetectionZonesAsync(List<DetectionZone> zones, CancellationToken ct)
+        {
+            if (zones != null && zones.Count > 0)
+            {
+                _db.DetectionZones.AddRange(zones);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task AddSecurityAlertsAsync(List<SecurityAlert> alerts, CancellationToken ct)
+        {
+            if (alerts != null && alerts.Count > 0)
+            {
+                _db.SecurityAlerts.AddRange(alerts);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task AddDetectedPersonsAsync(List<DetectedPerson> persons, CancellationToken ct)
+        {
+            if (persons != null && persons.Count > 0)
+            {
+                _db.DetectedPersons.AddRange(persons);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task AddDetectionTypeOccurrencesAsync(List<DetectionTypeOccurrence> occurrences, CancellationToken ct)
+        {
+            if (occurrences != null && occurrences.Count > 0)
+            {
+                _db.DetectionTypeOccurrences.AddRange(occurrences);
+            }
+            return Task.CompletedTask;
         }
     }
 }

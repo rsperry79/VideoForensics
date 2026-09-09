@@ -117,7 +117,15 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
-        public async Task<DownloadEvent> RecordDownloadEventAsync(DownloadEvent evt, MediaItem? media, CancellationToken ct)
+        public async Task<DownloadEvent> RecordDownloadEventAsync(
+            DownloadEvent evt,
+            MediaItem? media,
+            CancellationToken ct,
+            MediaItemDetection? detection = null,
+            List<DetectionZone>? zones = null,
+            List<SecurityAlert>? alerts = null,
+            List<DetectedPerson>? persons = null,
+            List<DetectionTypeOccurrence>? occurrences = null)
         {
             try
             {
@@ -143,6 +151,32 @@ namespace VideoForensics.Data.Core.Services
                     if (media != null)
                     {
                         await context.MediaItems.AddAsync(media, ct);
+                    }
+
+                    // Persist detection-related entities if provided
+                    if (detection != null)
+                    {
+                        await context.DetectionEntities.AddMediaItemDetectionAsync(detection, ct);
+                    }
+
+                    if (zones != null && zones.Count > 0)
+                    {
+                        await context.DetectionEntities.AddDetectionZonesAsync(zones, ct);
+                    }
+
+                    if (alerts != null && alerts.Count > 0)
+                    {
+                        await context.DetectionEntities.AddSecurityAlertsAsync(alerts, ct);
+                    }
+
+                    if (persons != null && persons.Count > 0)
+                    {
+                        await context.DetectionEntities.AddDetectedPersonsAsync(persons, ct);
+                    }
+
+                    if (occurrences != null && occurrences.Count > 0)
+                    {
+                        await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
                     _ = await context.ActionLog.AppendAsync(
