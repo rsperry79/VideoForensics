@@ -13,9 +13,9 @@ namespace VideoForensics.Hosting.BackgroundServices
 {
     /// <summary>
     /// Periodically polls every registered IProviderHealthSource (Ring today; more providers later,
-    /// registered the same way) and persists a DeviceHealthSnapshot per device via the same
-    /// IVideoForensicsDataClient.RecordDeviceHealthSnapshotAsync entrypoint the per-download-batch
-    /// capture already uses - one persistence path, not two. This is what makes jamming detection
+    /// registered the same way) and persists a DeviceHealth metric per device via the same
+    /// IVideoForensicsDataClient.RecordDeviceHealthAsync entrypoint the per-download-batch
+    /// capture now uses - one persistence path, not two. This is what makes jamming detection
     /// (JammingToolsOrchestrator) have RSSI history to analyze even between actual video downloads,
     /// see the plan's §3.
     ///
@@ -141,24 +141,24 @@ namespace VideoForensics.Hosting.BackgroundServices
                             continue;
                         }
 
-                        var snapshot = new DeviceHealthSnapshot
+                        var health = new DeviceHealth
                         {
                             Id = Guid.NewGuid(),
                             DeviceId = device.Id,
-                            Connected = reading.Connected,
+                            IsOnline = reading.Connected,
                             BatteryPercentage = reading.BatteryPercentage,
-                            Rssi = reading.Rssi,
+                            WifiSignalRssi = reading.Rssi,
                             WifiName = reading.WifiName,
                             FirmwareVersion = reading.FirmwareVersion,
                             CapturedAtUtc = DateTime.UtcNow
                         };
 
-                        _ = await dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
+                        _ = await dataClient.RecordDeviceHealthAsync(health, ct);
                         persisted++;
                     }
 
                     _logger.LogInformation(
-                        "Health sync tick: {SourceType} returned {ReadingCount} reading(s), persisted {PersistedCount} snapshot(s)",
+                        "Health sync tick: {SourceType} returned {ReadingCount} reading(s), persisted {PersistedCount} metric(s)",
                         healthSource.GetType().Name, readings.Count, persisted);
                 }
                 catch (Exception ex)

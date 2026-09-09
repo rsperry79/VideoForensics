@@ -51,6 +51,13 @@ namespace VideoForensics.Data.Database.Repositories
             return await GetByProviderLocationIdAsync(providerLocationId, ct);
         }
 
+        /// <summary>Gets a location by API response hash for deduplication.</summary>
+        public async Task<Location?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Locations.FirstOrDefaultAsync(l => l.ApiResponseHash == apiResponseHash, ct);
+        }
+
         /// <summary>Lists all locations.</summary>
         public async Task<IReadOnlyList<Location>> ListAsync(CancellationToken ct)
         {

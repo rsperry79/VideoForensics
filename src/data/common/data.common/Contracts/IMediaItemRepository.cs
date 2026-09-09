@@ -17,6 +17,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct);
 
+        /// <summary>Gets a media item by API source hash for deduplication.</summary>
+        Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct);
+
         /// <summary>Gets media items by download event ID.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct);
 

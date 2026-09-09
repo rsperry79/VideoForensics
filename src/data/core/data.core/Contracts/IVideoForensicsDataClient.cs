@@ -87,6 +87,9 @@ namespace VideoForensics.Data.Core.Contracts
         /// <summary>Records a point-in-time device health/connectivity telemetry snapshot.</summary>
         Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct);
 
+        /// <summary>Records a time-series device health metric.</summary>
+        Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
+
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);
 

@@ -138,14 +138,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
             try
             {
                 int devicesWithMeta = await db.Devices.CountAsync(d => d.MetadataJson != null);
-                int locationsWithMeta = await db.Locations.CountAsync(l => l.MetadataJson != null);
                 int eventsWithMeta = await db.Events.CountAsync(e => e.MetadataJson != null);
                 int totalEvents = await db.Events.CountAsync();
                 int mediaItemsWithMeta = await db.MediaItems.CountAsync(m => m.MetadataJson != null);
                 int totalMediaItems = await db.MediaItems.CountAsync();
 
                 report.DevicesWithMetadata = devicesWithMeta;
-                report.LocationsWithMetadata = locationsWithMeta;
                 report.EventsWithMetadata = eventsWithMeta;
                 report.TotalEvents = totalEvents;
                 report.MediaItemsWithMetadata = mediaItemsWithMeta;

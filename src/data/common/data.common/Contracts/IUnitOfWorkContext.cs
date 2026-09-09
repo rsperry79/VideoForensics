@@ -57,12 +57,6 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Adds a media item detection to the current transaction context.</summary>
         Task AddMediaItemDetectionAsync(MediaItemDetection detection, CancellationToken ct);
 
-        /// <summary>Adds detection zones to the current transaction context.</summary>
-        Task AddDetectionZonesAsync(List<DetectionZone> zones, CancellationToken ct);
-
-        /// <summary>Adds security alerts to the current transaction context.</summary>
-        Task AddSecurityAlertsAsync(List<SecurityAlert> alerts, CancellationToken ct);
-
         /// <summary>Adds detected persons to the current transaction context.</summary>
         Task AddDetectedPersonsAsync(List<DetectedPerson> persons, CancellationToken ct);
 

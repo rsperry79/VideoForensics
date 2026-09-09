@@ -11,6 +11,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets capabilities for a device.</summary>
         Task<DeviceCapabilities?> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct);
 
+        /// <summary>Gets capabilities by API response hash for deduplication.</summary>
+        Task<DeviceCapabilities?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct);
+
         /// <summary>Adds new capabilities record.</summary>
         Task AddAsync(DeviceCapabilities capabilities, CancellationToken ct);
 

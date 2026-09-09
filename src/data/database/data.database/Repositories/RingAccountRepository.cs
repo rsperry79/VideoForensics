@@ -31,6 +31,12 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.RingAccounts.FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
         }
 
+        public async Task<RingAccount?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.RingAccounts.FirstOrDefaultAsync(a => a.ApiResponseHash == apiResponseHash, ct);
+        }
+
         public async Task AddAsync(RingAccount account, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

@@ -14,7 +14,6 @@ public class DeviceLocationEntityTests
         string providerLocationId = "location-123";
         string name = "Front Door";
         string address = "123 Main St";
-        string metadataJson = "{\"timezone\": \"UTC\"}";
 
         // Act
         var location = new Location
@@ -22,8 +21,7 @@ public class DeviceLocationEntityTests
             Id = id,
             ProviderLocationId = providerLocationId,
             Name = name,
-            Address = address,
-            MetadataJson = metadataJson
+            Address = address
         };
 
         // Assert
@@ -31,7 +29,6 @@ public class DeviceLocationEntityTests
         Assert.Equal(providerLocationId, location.ProviderLocationId);
         Assert.Equal(name, location.Name);
         Assert.Equal(address, location.Address);
-        Assert.Equal(metadataJson, location.MetadataJson);
     }
 
     [Fact]
@@ -43,13 +40,11 @@ public class DeviceLocationEntityTests
             Id = Guid.NewGuid(),
             ProviderLocationId = "location-123",
             Name = "Front Door",
-            Address = null,
-            MetadataJson = null
+            Address = null
         };
 
         // Assert
         Assert.Null(location.Address);
-        Assert.Null(location.MetadataJson);
     }
 
     [Fact]

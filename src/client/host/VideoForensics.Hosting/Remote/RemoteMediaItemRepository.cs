@@ -72,6 +72,12 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            throw new NotSupportedException("Remote API doesn't yet support GetByApiSourceHashAsync");
+        }
+
+        /// <inheritdoc />
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
             throw new NotSupportedException(NotSupportedMessage);

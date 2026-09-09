@@ -18,6 +18,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(dh => dh.OtaStatus)
                 .HasMaxLength(256);
 
+            _ = builder.Property(dh => dh.FirmwareVersion)
+                .HasMaxLength(256);
+
             _ = builder.HasIndex(dh => new { dh.DeviceId, dh.CapturedAtUtc });
         }
     }

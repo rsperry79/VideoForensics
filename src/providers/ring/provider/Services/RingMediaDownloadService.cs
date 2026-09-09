@@ -1501,7 +1501,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         /// <summary>
         /// Fetches this device's current battery/connectivity telemetry and persists it as a
-        /// DeviceHealthSnapshot, so gap-analysis can later explain a recording gap with real data
+        /// DeviceHealth metric, so gap-analysis can later explain a recording gap with real data
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
@@ -1517,25 +1517,25 @@ namespace VideoForensics.Providers.Ring.Services
                     return;
                 }
 
-                var snapshot = new DeviceHealthSnapshot
+                var deviceHealth = new Data.Common.Entities.DeviceHealth
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceGuid,
-                    Connected = health.Connected,
+                    IsOnline = health.Connected,
                     BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                    Rssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
+                    WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
                     WifiName = health.WifiName,
                     FirmwareVersion = health.FirmwareVersion,
                     CapturedAtUtc = DateTime.UtcNow
                 };
 
-                _ = await _dataClient.RecordDeviceHealthSnapshotAsync(snapshot, ct);
-                _logger.LogInformation("Captured health snapshot for device {DeviceId}: battery={Battery}%, connected={Connected}, rssi={Rssi}",
-                    providerDeviceId, snapshot.BatteryPercentage, snapshot.Connected, snapshot.Rssi);
+                _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
+                _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                    providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health snapshot for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogWarning(ex, "Failed to capture device health metric for device {DeviceId} (non-critical)", providerDeviceId);
             }
         }
 

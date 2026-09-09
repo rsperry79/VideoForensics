@@ -76,19 +76,19 @@ namespace VideoForensics.Hosting.Tests
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -55, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
                 ]);
 
-            DeviceHealthSnapshot? captured = null;
-            _ = dataClient.Setup(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()))
-                .Callback<DeviceHealthSnapshot, CancellationToken>((s, _) => captured = s)
-                .ReturnsAsync((DeviceHealthSnapshot s, CancellationToken _) => s);
+            DeviceHealth? captured = null;
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((DeviceHealth h, CancellationToken _) => h);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
             Assert.NotNull(captured);
             Assert.Equal(device.Id, captured!.DeviceId);
-            Assert.Equal(-55, captured.Rssi);
+            Assert.Equal(-55, captured.WifiSignalRssi);
             Assert.Equal(87m, captured.BatteryPercentage);
             Assert.Equal("HomeWifi", captured.WifiName);
-            dataClient.Verify(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Once);
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -107,7 +107,7 @@ namespace VideoForensics.Hosting.Tests
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            dataClient.Verify(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Never);
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace VideoForensics.Hosting.Tests
             // Must not throw - one provider's failure must not stop the whole tick.
             await service.RunOneTickAsync(CancellationToken.None);
 
-            dataClient.Verify(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Never);
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -166,7 +166,7 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             healthSource.Verify(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()), Times.Never);
-            dataClient.Verify(d => d.RecordDeviceHealthSnapshotAsync(It.IsAny<DeviceHealthSnapshot>(), It.IsAny<CancellationToken>()), Times.Never);
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

@@ -51,6 +51,12 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public Task<Event?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
+        {
+            throw new NotSupportedException("Remote API doesn't yet support GetByApiSourceHashAsync");
+        }
+
+        /// <inheritdoc />
         public async Task<Event> UpsertAsync(Event @event, CancellationToken ct)
         {
             var dto = new EventDto(
@@ -155,6 +161,12 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         public Task UpdateAsync(Event @event, CancellationToken ct)
+        {
+            throw new NotSupportedException(NoWritePathMessage);
+        }
+
+        /// <inheritdoc />
+        public Task UpdateDownloadFailureAsync(Guid eventId, DateTime failedAtUtc, CancellationToken ct)
         {
             throw new NotSupportedException(NoWritePathMessage);
         }

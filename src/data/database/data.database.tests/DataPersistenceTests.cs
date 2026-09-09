@@ -76,7 +76,6 @@ namespace VideoForensics.Data.Database.Tests
             var location = new Location
             {
                 Id = Guid.NewGuid(),
-                ProviderAccountId = Guid.NewGuid(),
                 ProviderLocationId = "loc-456",
                 Name = "Home",
                 LastSyncedUtc = DateTime.UtcNow,
@@ -154,10 +153,10 @@ namespace VideoForensics.Data.Database.Tests
                 LastHeartbeatUtc = DateTime.UtcNow
             };
 
-            _ = db.DeviceHealthRecords.Add(health);
+            _ = db.DeviceHealths.Add(health);
             _ = await db.SaveChangesAsync();
 
-            DeviceHealth? retrieved = await db.DeviceHealthRecords.FirstOrDefaultAsync(h => h.Id == health.Id);
+            DeviceHealth? retrieved = await db.DeviceHealths.FirstOrDefaultAsync(h => h.Id == health.Id);
             Assert.NotNull(retrieved);
             Assert.Equal(85m, retrieved.BatteryPercentage);
             Assert.True(retrieved.IsOnline);

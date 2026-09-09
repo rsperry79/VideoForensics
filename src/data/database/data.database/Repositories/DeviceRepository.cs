@@ -42,6 +42,13 @@ namespace VideoForensics.Data.Database.Repositories
                 d => d.LocationId == locationId && d.ProviderDeviceId == providerDeviceId, ct);
         }
 
+        /// <summary>Gets a device by API response hash for deduplication.</summary>
+        public async Task<Device?> GetByApiHashAsync(string apiResponseHash, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Devices.FirstOrDefaultAsync(d => d.ApiResponseHash == apiResponseHash, ct);
+        }
+
         /// <summary>Lists all devices.</summary>
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {

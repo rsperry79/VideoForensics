@@ -766,6 +766,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("DownloadedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DownloadFailedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DownloadStatus")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("EventDetectionId")
                         .HasColumnType("TEXT");
 

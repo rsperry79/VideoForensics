@@ -11,6 +11,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets an event by device ID and provider event ID.</summary>
         Task<Event?> GetByProviderEventIdAsync(Guid deviceId, string providerEventId, CancellationToken ct);
 
+        /// <summary>Gets an event by API source hash for deduplication.</summary>
+        Task<Event?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct);
+
         /// <summary>Upserts (inserts or updates) an event by device ID and provider event ID.</summary>
         Task<Event> UpsertAsync(Event @event, CancellationToken ct);
 
@@ -40,6 +43,9 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Lists all events.</summary>
         Task<IReadOnlyList<Event>> ListAsync(CancellationToken ct);
+
+        /// <summary>Updates an event's download failure status and timestamp.</summary>
+        Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct);
 
         /// <summary>Deletes an event.</summary>
         Task DeleteAsync(Guid eventId, CancellationToken ct);

@@ -21,6 +21,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
         private readonly Mock<IDeviceHealthSnapshotRepository> _mockDeviceHealthSnapshotRepository;
+        private readonly Mock<IDeviceHealthRepository> _mockDeviceHealthRepository;
         private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IWatermarkService> _mockWatermarkService;
@@ -43,6 +44,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockDeviceHealthSnapshotRepository = new Mock<IDeviceHealthSnapshotRepository>();
+            _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockWatermarkService = new Mock<IWatermarkService>();
@@ -61,6 +63,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthSnapshotRepository.Object,
+                _mockDeviceHealthRepository.Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
@@ -565,10 +568,10 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
 
-            // Setup Locations repository to return empty list
+            // Setup Locations repository to return null (no existing location)
             _ = mockLocationRepoInContext
-                .Setup(x => x.GetByProviderAccountIdAsync(providerAccountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Location?)null);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
@@ -586,7 +589,6 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal(providerLocationId, result.ProviderLocationId);
             Assert.Equal(locationName, result.Name);
             Assert.Equal(address, result.Address);
-            Assert.Equal(providerAccountId, result.ProviderAccountId);
 
             mockLocationRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<Location>(), It.IsAny<CancellationToken>()),
@@ -605,7 +607,6 @@ namespace VideoForensics.Data.Core.Tests
             var existingLocation = new Location
             {
                 Id = Guid.NewGuid(),
-                ProviderAccountId = providerAccountId,
                 ProviderLocationId = providerLocationId,
                 Name = locationName,
                 Address = address
@@ -617,8 +618,8 @@ namespace VideoForensics.Data.Core.Tests
             _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
 
             _ = mockLocationRepoInContext
-                .Setup(x => x.GetByProviderAccountIdAsync(providerAccountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync([existingLocation]);
+                .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingLocation);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
@@ -688,11 +689,12 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task EnsureDeviceAsync_RelocatesDeviceFoundUnderDifferentLocation()
+        public async Task EnsureDeviceAsync_CreatesNewDeviceWhenMovedToNewLocation()
         {
-            // Arrange: device was previously recorded under a placeholder/synthetic location (as
-            // happened before locations were resolved per-device); it must be relocated to the real
-            // location rather than creating a duplicate row with the same ProviderDeviceId.
+            // Arrange: device was previously recorded under a placeholder/synthetic location.
+            // When the same ProviderDeviceId appears in a different location, we create a NEW
+            // Device record (not relocate). This preserves forensic history: events at the old
+            // location still reference the old device record.
             var placeholderLocationId = Guid.NewGuid();
             var realLocationId = Guid.NewGuid();
             var providerDeviceId = "device-789";
@@ -712,7 +714,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
 
-            // Not found under the real location (that's the whole point)...
+            // Not found under the real location...
             _ = mockDeviceRepoInContext
                 .Setup(x => x.GetByLocationIdAsync(realLocationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
@@ -720,6 +722,10 @@ namespace VideoForensics.Data.Core.Tests
             _ = mockDeviceRepoInContext
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync([existingDevice]);
+            // No device exists at the real location yet.
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByProviderDeviceIdAsync(realLocationId, providerDeviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Device?)null);
 
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(
@@ -732,16 +738,18 @@ namespace VideoForensics.Data.Core.Tests
             Device result = await _dataClient.EnsureDeviceAsync(
                 realLocationId, providerDeviceId, "Front Camera", "camera", true, ct: CancellationToken.None);
 
-            // Assert: same device Id (no duplicate created), now pointing at the real location.
-            Assert.Equal(existingDevice.Id, result.Id);
+            // Assert: NEW device created with different Id, both at real location.
+            // Old device remains at placeholder location for history preservation.
+            Assert.NotEqual(existingDevice.Id, result.Id);
             Assert.Equal(realLocationId, result.LocationId);
+            Assert.Equal(providerDeviceId, result.ProviderDeviceId);
 
             mockDeviceRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-            mockDeviceRepoInContext.Verify(
-                x => x.UpdateAsync(It.Is<Device>(d => d.LocationId == realLocationId), It.IsAny<CancellationToken>()),
                 Times.Once);
+            mockDeviceRepoInContext.Verify(
+                x => x.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]

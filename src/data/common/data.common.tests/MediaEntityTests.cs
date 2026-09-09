@@ -302,8 +302,6 @@ public class MediaEntityTests
         bool personDetected = true;
         decimal confidenceScore = 0.95m;
         string fullDescription = "Person detected at front door";
-        string tagsJson = "[\"person\", \"adult\"]";
-        string motionZonesJson = "[{\"x\": 0, \"y\": 0, \"width\": 100, \"height\": 100}]";
 
         // Act
         var snapshot = new AiAnalysisSnapshot
@@ -312,9 +310,7 @@ public class MediaEntityTests
             DownloadEventId = downloadEventId,
             PersonDetected = personDetected,
             ConfidenceScore = confidenceScore,
-            FullDescription = fullDescription,
-            TagsJson = tagsJson,
-            MotionZonesJson = motionZonesJson
+            FullDescription = fullDescription
         };
 
         // Assert
@@ -323,8 +319,6 @@ public class MediaEntityTests
         Assert.True(snapshot.PersonDetected);
         Assert.Equal(confidenceScore, snapshot.ConfidenceScore);
         Assert.Equal(fullDescription, snapshot.FullDescription);
-        Assert.Equal(tagsJson, snapshot.TagsJson);
-        Assert.Equal(motionZonesJson, snapshot.MotionZonesJson);
     }
 
     [Fact]
@@ -337,16 +331,12 @@ public class MediaEntityTests
             DownloadEventId = Guid.NewGuid(),
             PersonDetected = null,
             ConfidenceScore = null,
-            FullDescription = null,
-            TagsJson = null,
-            MotionZonesJson = null
+            FullDescription = null
         };
 
         // Assert
         Assert.Null(snapshot.PersonDetected);
         Assert.Null(snapshot.ConfidenceScore);
         Assert.Null(snapshot.FullDescription);
-        Assert.Null(snapshot.TagsJson);
-        Assert.Null(snapshot.MotionZonesJson);
     }
 }
