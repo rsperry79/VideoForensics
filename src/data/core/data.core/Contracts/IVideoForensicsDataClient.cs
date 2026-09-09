@@ -17,9 +17,17 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>
         /// Records a download event and associated media item(s) atomically via IUnitOfWork,
-        /// along with an action log entry.
+        /// along with an action log entry and any related detection metadata.
         /// </summary>
-        Task<DownloadEvent> RecordDownloadEventAsync(DownloadEvent evt, MediaItem? media, CancellationToken ct);
+        Task<DownloadEvent> RecordDownloadEventAsync(
+            DownloadEvent evt,
+            MediaItem? media,
+            CancellationToken ct,
+            MediaItemDetection? detection = null,
+            List<DetectionZone>? zones = null,
+            List<SecurityAlert>? alerts = null,
+            List<DetectedPerson>? persons = null,
+            List<DetectionTypeOccurrence>? occurrences = null);
 
         /// <summary>
         /// Upserts an event record (independent of download status) by device ID + provider event ID.

@@ -1,3 +1,5 @@
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Context providing repository instances bound to a shared transaction for multi-entity atomicity.</summary>
@@ -44,5 +46,27 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Gets the export audit record repository (compliance: export operation tracking).</summary>
         IExportAuditRecordRepository ExportAuditRecords { get; }
+
+        /// <summary>Exposes DbSets for detection-related entities to enable direct persistence in transactions.</summary>
+        IDetectionEntityProvider DetectionEntities { get; }
+    }
+
+    /// <summary>Provides access to detection-related DbSets within a transaction context.</summary>
+    public interface IDetectionEntityProvider
+    {
+        /// <summary>Adds a media item detection to the current transaction context.</summary>
+        Task AddMediaItemDetectionAsync(MediaItemDetection detection, CancellationToken ct);
+
+        /// <summary>Adds detection zones to the current transaction context.</summary>
+        Task AddDetectionZonesAsync(List<DetectionZone> zones, CancellationToken ct);
+
+        /// <summary>Adds security alerts to the current transaction context.</summary>
+        Task AddSecurityAlertsAsync(List<SecurityAlert> alerts, CancellationToken ct);
+
+        /// <summary>Adds detected persons to the current transaction context.</summary>
+        Task AddDetectedPersonsAsync(List<DetectedPerson> persons, CancellationToken ct);
+
+        /// <summary>Adds detection type occurrences to the current transaction context.</summary>
+        Task AddDetectionTypeOccurrencesAsync(List<DetectionTypeOccurrence> occurrences, CancellationToken ct);
     }
 }
