@@ -14,5 +14,7 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? DownloadedAtUtc { get; set; }
         public string? ApiSourceHash { get; set; }
         public string? EventIntegrityHash { get; set; }
+        public Guid? EventDetectionId { get; set; }
+        public string? RecordingStatus { get; set; }
     }
 }

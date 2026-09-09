@@ -909,6 +909,133 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Extracts structured CV metadata from a Ring event for EventDetection entities.
+        /// </summary>
+        private (EventDetection detection, List<EventDetectionZone> zones, List<EventSecurityAlert> alerts, List<EventDetectedPerson> persons, List<EventDetectionTypeOccurrence> occurrences) ExtractEventMetadata(Entities.DoorbotHistoryEvent @event, Guid eventId)
+        {
+            var zones = new List<EventDetectionZone>();
+            var alerts = new List<EventSecurityAlert>();
+            var persons = new List<EventDetectedPerson>();
+            var occurrences = new List<EventDetectionTypeOccurrence>();
+
+            Entities.CvProperties? cv = @event.CvProperties;
+            if (cv == null)
+            {
+                // No CV data, return minimal detection record
+                var emptyDetection = new EventDetection
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId
+                };
+                return (emptyDetection, zones, alerts, persons, occurrences);
+            }
+
+            var detectionId = Guid.NewGuid();
+
+            // Create EventDetection from CV properties
+            var detection = new EventDetection
+            {
+                Id = detectionId,
+                EventId = eventId,
+                PersonDetected = cv.PersonDetected,
+                StreamBroken = cv.StreamBroken,
+                DetectionType = cv.DetectionType,
+                FullDescription = cv.FullDescription,
+                ShortDescription = cv.ShortDescription,
+                Similarity = cv.Similarity.HasValue ? (decimal)cv.Similarity.Value : null,
+                Anomaly = cv.Anomaly.HasValue ? (decimal)cv.Anomaly.Value : null,
+                ModelVersion = cv.DetectionDetails?.ModelVersion
+            };
+
+            // Add detection details confidence if available
+            if (cv.DetectionDetails?.Confidence.HasValue == true)
+            {
+                detection.Confidence = (decimal)cv.DetectionDetails.Confidence.Value;
+            }
+
+            // Extract detection zones
+            if (cv.DetectionDetails?.Zones != null)
+            {
+                foreach (var zone in cv.DetectionDetails.Zones)
+                {
+                    if (zone != null && !string.IsNullOrEmpty(zone.Id))
+                    {
+                        zones.Add(new EventDetectionZone
+                        {
+                            Id = Guid.NewGuid(),
+                            EventDetectionId = detectionId,
+                            ZoneId = zone.Id,
+                            ZoneName = zone.Name,
+                            Confidence = zone.Confidence.HasValue ? (decimal)zone.Confidence.Value : null
+                        });
+                    }
+                }
+            }
+
+            // Extract security alerts
+            if (cv.SecurityAlerts != null && cv.SecurityAlerts.Alerts != null)
+            {
+                foreach (var alertText in cv.SecurityAlerts.Alerts)
+                {
+                    if (!string.IsNullOrEmpty(alertText))
+                    {
+                        alerts.Add(new EventSecurityAlert
+                        {
+                            Id = Guid.NewGuid(),
+                            EventId = eventId,
+                            Severity = cv.SecurityAlerts.Severity,
+                            AlertText = alertText
+                        });
+                    }
+                }
+            }
+
+            // Extract detected persons
+            if (cv.Profiles != null)
+            {
+                foreach (var profile in cv.Profiles)
+                {
+                    if (profile != null && !string.IsNullOrEmpty(profile.Id))
+                    {
+                        persons.Add(new EventDetectedPerson
+                        {
+                            Id = Guid.NewGuid(),
+                            EventId = eventId,
+                            ProfileId = profile.Id,
+                            ProfileName = profile.Name,
+                            Confidence = profile.Confidence.HasValue ? (decimal)profile.Confidence.Value : null,
+                            ThumbnailUrl = profile.ThumbnailUrl
+                        });
+                    }
+                }
+            }
+
+            // Extract detection type occurrences from verified timestamps
+            if (cv.DetectionTypes != null)
+            {
+                foreach (var detectionType in cv.DetectionTypes)
+                {
+                    if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
+                    {
+                        foreach (var epochMs in detectionType.VerifiedTimestamps)
+                        {
+                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
+                            occurrences.Add(new EventDetectionTypeOccurrence
+                            {
+                                Id = Guid.NewGuid(),
+                                EventDetectionId = detectionId,
+                                DetectionType = detectionType.DetectionType,
+                                DetectedAtUtc = detectedAtUtc
+                            });
+                        }
+                    }
+                }
+            }
+
+            return (detection, zones, alerts, persons, occurrences);
+        }
+
+        /// <summary>
         /// Extracts structured CV metadata from a Ring event and creates related database entities.
         /// </summary>
         private (MediaItemDetection detection, List<DetectionZone> zones, List<SecurityAlert> alerts, List<DetectedPerson> persons, List<DetectionTypeOccurrence> occurrences) ExtractMetadata(Entities.DoorbotHistoryEvent @event, Guid mediaItemId, Guid mediaItemDetectionId)
@@ -1061,7 +1188,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 (string Json, string Hash) = SerializeMetadata(apiResponse);
-                Event upserted = await _dataClient.UpsertEventAsync(new Event
+                Event evt = new Event
                 {
                     Id = Guid.NewGuid(),
                     DeviceId = deviceGuid,
@@ -1073,8 +1200,23 @@ namespace VideoForensics.Providers.Ring.Services
                     DownloadedAtUtc = downloadedAtUtc,
                     EventIntegrityHash = hash,
                     MetadataJson = Json,
-                    ApiSourceHash = Hash
-                }, ct);
+                    ApiSourceHash = Hash,
+                    RecordingStatus = (apiResponse as Entities.DoorbotHistoryEvent)?.Recording?.Status
+                };
+
+                // Extract detection metadata if the API response is a DoorbotHistoryEvent
+                EventDetection? detection = null;
+                List<EventDetectionZone>? zones = null;
+                List<EventSecurityAlert>? alerts = null;
+                List<EventDetectedPerson>? persons = null;
+                List<EventDetectionTypeOccurrence>? occurrences = null;
+
+                if (apiResponse is Entities.DoorbotHistoryEvent doorbotEvent)
+                {
+                    (detection, zones, alerts, persons, occurrences) = ExtractEventMetadata(doorbotEvent, evt.Id);
+                }
+
+                Event upserted = await _dataClient.UpsertEventAsync(evt, ct, detection, zones, alerts, persons, occurrences);
                 return upserted.Id;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

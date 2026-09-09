@@ -68,5 +68,20 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Adds detection type occurrences to the current transaction context.</summary>
         Task AddDetectionTypeOccurrencesAsync(List<DetectionTypeOccurrence> occurrences, CancellationToken ct);
+
+        /// <summary>Adds an event detection to the current transaction context.</summary>
+        Task AddEventDetectionAsync(EventDetection detection, CancellationToken ct);
+
+        /// <summary>Adds event detection zones to the current transaction context.</summary>
+        Task AddEventDetectionZonesAsync(List<EventDetectionZone> zones, CancellationToken ct);
+
+        /// <summary>Adds event security alerts to the current transaction context.</summary>
+        Task AddEventSecurityAlertsAsync(List<EventSecurityAlert> alerts, CancellationToken ct);
+
+        /// <summary>Adds event detected persons to the current transaction context.</summary>
+        Task AddEventDetectedPersonsAsync(List<EventDetectedPerson> persons, CancellationToken ct);
+
+        /// <summary>Adds event detection type occurrences to the current transaction context.</summary>
+        Task AddEventDetectionTypeOccurrencesAsync(List<EventDetectionTypeOccurrence> occurrences, CancellationToken ct);
     }
 }
