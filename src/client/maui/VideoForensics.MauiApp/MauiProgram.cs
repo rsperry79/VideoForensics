@@ -85,7 +85,8 @@ namespace VideoForensics.MauiApp
             Directory.CreateDirectory(dataProtectionKeyPath);
             builder.Services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
-                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
+                .ProtectKeysWithDpapi();
 
             // Cutover to HTTP-backed remote repositories (Milestone 5 completion). MAUI now talks
             // exclusively to a remote server's Minimal API instead of owning its own local SQLite DB

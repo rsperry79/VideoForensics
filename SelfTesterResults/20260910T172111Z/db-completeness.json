@@ -1,0 +1,101 @@
+{
+  "DbPath": "C:\\ProgramData\\VideoForensics\\videoforensics.db",
+  "GeneratedAtUtc": "2026-09-10T17:21:35.4032139Z",
+  "Devices": [
+    {
+      "Kind": "Doorbot",
+      "ProviderId": "704352492",
+      "Name": "Front Doom",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Doorbot",
+      "ProviderId": "276383860",
+      "Name": "Front Door",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "560232760",
+      "Name": "Front 2.0",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "631205250",
+      "Name": "Garden",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "440844705",
+      "Name": "Fast Food",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "637582470",
+      "Name": "Dinner Too",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "541397215",
+      "Name": "Middle Earth",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "StickupCam",
+      "ProviderId": "566171120",
+      "Name": "Dinner cam",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Chime",
+      "ProviderId": "357278690",
+      "Name": "Garage",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Chime",
+      "ProviderId": "709076499",
+      "Name": "St Michael",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Chime",
+      "ProviderId": "278369705",
+      "Name": "Doorbell",
+      "FoundInDb": true
+    }
+  ],
+  "Locations": [
+    {
+      "Kind": "Location",
+      "ProviderId": "0d45a443-ad11-4660-9b08-1d592875634a",
+      "Name": "Narnia",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Location",
+      "ProviderId": "684e7cdb-45e1-4b1f-ac6f-e3211592a5ad",
+      "Name": "Doom Doom",
+      "FoundInDb": true
+    },
+    {
+      "Kind": "Location",
+      "ProviderId": "3497369a-2252-bd28-e2b3-60399f48b934",
+      "Name": "Federal Way",
+      "FoundInDb": true
+    }
+  ],
+  "MissingDeviceCount": 0,
+  "MissingLocationCount": 0,
+  "DevicesWithMetadata": 14,
+  "LocationsWithMetadata": 0,
+  "EventsWithMetadata": 14352,
+  "MediaItemsWithMetadata": 13757,
+  "TotalEvents": 14352,
+  "TotalMediaItems": 13757,
+  "MetadataCompleteness": "Events: 100% (14352/14352), MediaItems: 100% (13757/13757)"
+}
