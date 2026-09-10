@@ -3,14 +3,13 @@ using VideoForensics.Providers.Ring;
 namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>
-    /// Helper class for creating real Ring API sessions for integration testing. Reads the shared
-    /// credentials file (refresh token, or username/password) via <see cref="CredentialResolver"/> -
-    /// the same file SelfTester's `--auth` flow writes to.
+    /// Helper class for creating real Ring API sessions for integration testing. Reads credentials
+    /// from the database via <see cref="CredentialResolver"/>.
     /// Never performs its own interactive/2FA authentication (tests aren't interactive) - if
     /// credentials aren't available or don't work, callers get a clear error pointing at how to fix
     /// it via the SelfTester authentication flow.
     ///
-    /// To populate the credentials file:
+    /// To populate the database with credentials:
     ///   cd src/selftest
     ///   dotnet run -- --auth
     /// </summary>
@@ -18,7 +17,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
     {
         private const string SetupPointer =
             "Run 'dotnet run -- --auth' from src/selftest to authenticate (handles two-factor " +
-            "accounts too) and save a reusable refresh token.";
+            "accounts too) and save credentials to the database.";
 
         /// <summary>
         /// Creates and authenticates a session using the shared credentials file, preferring a
@@ -33,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             if (auth == null)
             {
                 throw new InvalidOperationException(
-                    $"Ring API credentials not found at {CredentialResolver.AuthPath}.\n{SetupPointer}");
+                    $"Ring API credentials not found in database.\n{SetupPointer}");
             }
 
             try
@@ -56,7 +55,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to authenticate with the Ring API using the saved credentials at {CredentialResolver.AuthPath}. " +
+                    $"Failed to authenticate with the Ring API using the saved credentials in the database. " +
                     $"They may be stale or invalid.\n{SetupPointer}\nUnderlying error: {ex.Message}", ex);
             }
         }
@@ -71,7 +70,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             ResolvedCredentials? auth = CredentialResolver.Resolve(null, null, null);
             return auth?.UserName == null || auth.Password == null
                 ? throw new InvalidOperationException(
-                    $"Ring API username/password not found at {CredentialResolver.AuthPath}.\n{SetupPointer}")
+                    $"Ring API username/password not found in database.\n{SetupPointer}")
                 : new Session(auth.UserName, auth.Password);
         }
 
@@ -101,7 +100,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         /// </summary>
         public static string GetSetupInstructions()
         {
-            return $"Ring API credentials not found or not usable at {CredentialResolver.AuthPath}.\n{SetupPointer}";
+            return $"Ring API credentials not found or not usable in database.\n{SetupPointer}";
         }
     }
 }

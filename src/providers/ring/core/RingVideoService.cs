@@ -50,7 +50,6 @@ namespace VideoForensics.Providers.Ring
         public RingCredentials Auth { get; set; } = new();
         public readonly string SavedSettingsFolder;
         public readonly string SavedSettingsFile;
-        public readonly string AuthFile;
         private readonly IMediaValidator mediaValidator;
         private readonly IJsonSerializer jsonSerializer;
         private readonly ConcurrentBag<FailedDownload> newFailures = [];
@@ -83,7 +82,6 @@ namespace VideoForensics.Providers.Ring
 
             SavedSettingsFolder = dataDirectory;
             SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");
-            AuthFile = Path.Combine(dataDirectory, "auth.json");
 
             try
             {
