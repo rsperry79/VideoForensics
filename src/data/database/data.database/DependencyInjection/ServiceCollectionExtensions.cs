@@ -17,6 +17,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
         public static IServiceCollection AddVideoForensicsDatabase(this IServiceCollection services)
         {
             // Ensure data protection is available (used by CredentialEncryptionProvider)
+            // DAPI protection is configured by the host (WebApp/MauiApp) when available
             _ = services.AddDataProtection();
 
             // Register credential encryption provider

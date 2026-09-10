@@ -99,7 +99,8 @@ var dataProtectionKeyPath = Path.Combine(
 Directory.CreateDirectory(dataProtectionKeyPath);
 builder.Services.AddDataProtection()
     .SetApplicationName("VideoForensics")
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
+    .ProtectKeysWithDpapi();
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
 // paired clients (MAUI) - the WebApp's own UI doesn't consume this hub at all (see LiveHub's doc
