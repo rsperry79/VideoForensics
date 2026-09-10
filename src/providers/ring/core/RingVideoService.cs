@@ -109,58 +109,11 @@ namespace VideoForensics.Providers.Ring
             {
                 Filter = defaultFilter ?? new Filter();
             }
-
-            Auth = credentialStore.Load(AuthFile);
-            if (string.IsNullOrWhiteSpace(Auth.RefreshToken) && string.IsNullOrWhiteSpace(Auth.Password))
-            {
-                MigrateLegacyAuth(contents);
-            }
-
-            if (credentialStore.SanitizeClearTextPassword(SavedSettingsFile, AuthFile))
-            {
-                log.LogWarning("Found and encrypted a clear-text password in {file}", SavedSettingsFile);
-            }
         }
 
-        /// <summary>
-        /// One-time migration for credentials previously stored inline in RingVideosConfig.json's
-        /// "Authentication" property, back when the console app owned encryption itself. Only runs
-        /// when no auth.json exists yet; the migrated credentials are written out via CredentialStore
-        /// so the old inline copy is dropped the next time settings are saved.
-        /// </summary>
-        private void MigrateLegacyAuth(string savedSettingsContents)
-        {
-            if (string.IsNullOrEmpty(savedSettingsContents))
-            {
-                return;
-            }
-
-            try
-            {
-                using var doc = JsonDocument.Parse(savedSettingsContents);
-                if (!doc.RootElement.TryGetProperty("Authentication", out JsonElement authElement))
-                {
-                    return;
-                }
-
-                RingCredentials legacyAuth = credentialStore.LoadFromJson(authElement.GetRawText());
-                if (!string.IsNullOrWhiteSpace(legacyAuth.RefreshToken) || !string.IsNullOrWhiteSpace(legacyAuth.Password))
-                {
-                    Auth = legacyAuth;
-                    credentialStore.Save(AuthFile, Auth);
-                    log.LogInformation("Migrated saved credentials from {oldFile} to {authFile}", SavedSettingsFile, AuthFile);
-                }
-            }
-            catch (Exception exe)
-            {
-                log.LogWarning(exe, "Failed to migrate legacy credentials from {oldFile}", SavedSettingsFile);
-            }
-        }
 
         private void SaveSettings(DateTime? lastSuccessUtc, DateTime? lastFailureUtc)
         {
-
-            credentialStore.Save(AuthFile, Auth);
             //Set "next dates" on filter
             if (lastFailureUtc.HasValue && !Filter.Snapshots)
             {
@@ -186,7 +139,6 @@ namespace VideoForensics.Providers.Ring
 
             System.IO.File.WriteAllText(SavedSettingsFile, config);
             log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
-            log.LogInformation($"Saved refresh token (length: {Auth.RefreshToken?.Length ?? 0})");
         }
 
         /// <summary>
