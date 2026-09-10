@@ -291,107 +291,6 @@ namespace VideoForensics.Providers.Ring.SelfTester
             return false;
         }
 
-        /// <summary>
-        /// Migrates credentials from auth.json file to the database if they exist and haven't been migrated yet.
-        /// </summary>
-        private static async Task MigrateAuthJsonToDbAsync(CliOptions options)
-        {
-            try
-            {
-                string authJsonPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics", "auth.json");
-
-                if (!File.Exists(authJsonPath))
-                {
-                    return;
-                }
-
-                string? dbPath = options.DbPath;
-                if (dbPath == null)
-                {
-                    string programDataPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                        "VideoForensics", "videoforensics.db");
-                    string appDataPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "VideoForensics", "videoforensics.db");
-                    dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
-                }
-
-                if (!File.Exists(dbPath))
-                {
-                    return;
-                }
-
-                // Try to load credentials from auth.json
-                string authJsonContent = await File.ReadAllTextAsync(authJsonPath);
-                var authJsonDoc = JsonDocument.Parse(authJsonContent);
-                var authRoot = authJsonDoc.RootElement;
-
-                string? username = authRoot.TryGetProperty("UserName", out var userProp) ? userProp.GetString() : null;
-                if (string.IsNullOrEmpty(username))
-                {
-                    return;
-                }
-
-                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
-                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
-
-                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
-
-                var ringAccount = await db.RingAccounts.FirstOrDefaultAsync();
-                if (ringAccount == null)
-                {
-                    return;
-                }
-
-                // Check if credentials already migrated
-                var existingCred = await db.Credentials.FirstOrDefaultAsync(
-                    c => c.ProviderAccountId == ringAccount.ProviderAccountId && c.CredentialType == "RefreshToken");
-
-                if (existingCred != null)
-                {
-                    return; // Already migrated
-                }
-
-                // Try to migrate the refresh token
-                if (authRoot.TryGetProperty("RefreshToken", out var tokenProp))
-                {
-                    string? encryptedToken = tokenProp.GetString();
-                    if (!string.IsNullOrEmpty(encryptedToken))
-                    {
-                        string? decrypted = await DecryptCredentialAsync(encryptedToken);
-                        if (!string.IsNullOrEmpty(decrypted))
-                        {
-                            var encryptWithAes = new AesEncryption();
-                            string aesEncrypted = encryptWithAes.Encrypt(decrypted);
-
-                            if (!string.IsNullOrEmpty(aesEncrypted))
-                            {
-                                var credential = new Credential
-                                {
-                                    Id = Guid.NewGuid(),
-                                    ProviderAccountId = ringAccount.ProviderAccountId,
-                                    CredentialType = "RefreshToken",
-                                    EncryptedValue = aesEncrypted,
-                                    EncryptionProvider = "AES-256",
-                                    CreatedUtc = DateTime.UtcNow
-                                };
-                                _ = db.Credentials.Add(credential);
-                                _ = await db.SaveChangesAsync();
-                                Console.Error.WriteLine("Migrated refresh token from auth.json to database");
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"Debug: Migration from auth.json failed: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// Persists the authenticated refresh token to the database for future use.
@@ -478,14 +377,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
         }
 
         /// <summary>
-        /// Attempts to load stored refresh token from the VideoForensics database as a fallback
-        /// when file-based credential resolution fails. Checks ProgramData first, then AppData.
-        /// Also migrates credentials from auth.json to the database on first use.
+        /// Loads stored refresh token from the VideoForensics database.
+        /// Checks ProgramData first, then AppData.
         /// </summary>
         private static async Task<ResolvedCredentials?> TryLoadCredentialsFromDbAsync(CliOptions options)
         {
-            // First, try to migrate credentials from auth.json to the database
-            await MigrateAuthJsonToDbAsync(options);
 
             string? dbPath = options.DbPath;
 
@@ -651,11 +547,15 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
                 services.AddLogging();
 
-                // Add database and data layer
-                var dbPath = Path.Combine(
+                // Add database and data layer - use same path as main selftest (ProgramData first, then AppData)
+                string? dbPath = null;
+                string programDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "VideoForensics", "videoforensics.db");
+                string appDataPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics",
-                    "VideoForensics.db");
+                    "VideoForensics", "videoforensics.db");
+                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
 
                 services.AddDbContextFactory<VideoForensicsDbContext>(opt =>
                     opt.UseSqlite($"Data Source={dbPath}"));

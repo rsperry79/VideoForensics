@@ -1,23 +1,18 @@
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
-    /// Discovers and decrypts credentials saved by the VideoForensics database.
-    /// Used by legacy integration tests; modern flows use database-based credential storage.
+    /// [DEPRECATED] Credentials are now stored exclusively in the database via RingAuthService.
+    /// Use RealSessionHelper instead, which loads credentials from the database.
     /// </summary>
     internal static class RingVideosCredentialLocator
     {
-        private static readonly string AuthPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "VideoForensics", "auth.json");
-
+        [Obsolete("Credentials are now stored in the database, not auth.json. Use RealSessionHelper instead.")]
         public static bool TryLoad(out string? userName, out string? password, out string? refreshToken)
         {
-            RingCredentials saved = new CredentialStore().Load(AuthPath);
-            userName = saved.UserName;
-            password = saved.Password;
-            refreshToken = saved.RefreshToken;
-
-            return !string.IsNullOrEmpty(refreshToken) || (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(password));
+            userName = null;
+            password = null;
+            refreshToken = null;
+            return false;
         }
     }
 }
