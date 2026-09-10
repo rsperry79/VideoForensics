@@ -68,15 +68,7 @@ namespace VideoForensics.Providers.Ring.Services
                     // Persist credentials to secure store
                     if (credentials.RefreshToken != null)
                     {
-                        try
-                        {
-                            _credentialStore.Save(CredentialResolver.AuthPath, credentials);
-                            _logger.LogInformation("Credentials saved to secure store at {AuthPath}", CredentialResolver.AuthPath);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to persist credentials to filesystem");
-                        }
+                        // Credentials are persisted to database only - no filesystem storage
                     }
 
                     // Persist Ring account data to database and save refresh token
@@ -124,14 +116,14 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             else
                             {
-                                _logger.LogWarning("Database persistence failed for account {AccountId} — using filesystem-only fallback", resolvedAccountId);
+                                _logger.LogError("Database persistence failed for account {AccountId} — credentials must be in database", resolvedAccountId);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to create provider account record");
-                        // Continue - account creation is optional, refresh token is persisted to filesystem
+                        // Continue - account creation is optional, refresh token is persisted to database
                     }
 
                     return new AuthResult(
@@ -192,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// shared session was still valid.
         ///
         /// When no in-memory session exists yet (e.g. a fresh process start), falls back to
-        /// attempting a restore from saved credentials (DB or filesystem refresh token) before
+        /// attempting a restore from saved credentials (database refresh token) before
         /// reporting unauthenticated. Without this, every page that calls IsAuthenticatedAsync -
         /// Dashboard.razor and its ~13 siblings - reported "not signed in" on every app launch even
         /// for a previously-authenticated user, because restore was otherwise only wired into the
@@ -286,26 +278,14 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId}, falling back to filesystem", providerAccountId);
+                        _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", providerAccountId);
                     }
                 }
 
-                // Fall back to filesystem (backward compatibility)
+                // Credentials must be in database only - no filesystem fallback
                 if (credentials?.RefreshToken == null)
                 {
-                    try
-                    {
-                        RingCredentials saved = _credentialStore.Load(CredentialResolver.AuthPath);
-                        if (!string.IsNullOrWhiteSpace(saved.RefreshToken))
-                        {
-                            credentials = saved;
-                            _logger.LogWarning("Restoring Ring credentials from filesystem - consider migrating to database storage");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to restore credentials from filesystem");
-                    }
+                    _logger.LogError("Ring credentials not found in database for account {AccountId}. Use --auth to save credentials to database.", providerAccountId);
                 }
 
                 if (credentials?.RefreshToken == null)
@@ -334,9 +314,6 @@ namespace VideoForensics.Providers.Ring.Services
 
                 try
                 {
-                    // Update filesystem for backward compatibility
-                    _credentialStore.Save(CredentialResolver.AuthPath, credentials);
-
                     // Update database if we have a provider account ID
                     Guid resolvedAccountId = providerAccountId ?? (
                         string.IsNullOrWhiteSpace(credentials.UserName)
