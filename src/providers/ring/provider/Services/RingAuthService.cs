@@ -117,13 +117,28 @@ namespace VideoForensics.Providers.Ring.Services
                             else
                             {
                                 _logger.LogError("Database persistence failed for account {AccountId} — credentials must be in database", resolvedAccountId);
+                                return new AuthResult(
+                                    Success: false,
+                                    ErrorMessage: "Failed to persist credentials to database"
+                                );
                             }
+                        }
+                        else
+                        {
+                            _logger.LogError("Failed to resolve or create provider account");
+                            return new AuthResult(
+                                Success: false,
+                                ErrorMessage: "Failed to create provider account record"
+                            );
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to create provider account record");
-                        // Continue - account creation is optional, refresh token is persisted to database
+                        return new AuthResult(
+                            Success: false,
+                            ErrorMessage: $"Failed to persist authentication: {ex.Message}"
+                        );
                     }
 
                     return new AuthResult(
