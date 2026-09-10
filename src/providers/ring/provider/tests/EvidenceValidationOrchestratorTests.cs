@@ -216,6 +216,9 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(liveEvents);
 
+            _ = _mockReconciliationService.Setup(s => s.AutoFixDiscrepanciesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Client.Common.Contracts.AutoFixResult { NewEventsInserted = 0, MetadataUpdated = 0, Failed = 0, ErrorDetails = [] });
+
             _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -271,6 +274,9 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([liveEvent]);
 
+            _ = _mockReconciliationService.Setup(s => s.AutoFixDiscrepanciesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Client.Common.Contracts.AutoFixResult { NewEventsInserted = 0, MetadataUpdated = 0, Failed = 0, ErrorDetails = [] });
+
             _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -318,6 +324,9 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([liveEvent]);
+
+            _ = _mockReconciliationService.Setup(s => s.AutoFixDiscrepanciesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<Func<string, DateTime, DateTime, CancellationToken, Task<IReadOnlyList<Event>>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Client.Common.Contracts.AutoFixResult { NewEventsInserted = 1, MetadataUpdated = 0, Failed = 0, ErrorDetails = [] });
 
             _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
