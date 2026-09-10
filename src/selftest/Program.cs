@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
@@ -6,6 +7,7 @@ using System.Text.Json.Serialization;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Implementations;
@@ -615,9 +617,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
         /// </summary>
         private static async Task<int> RunInteractiveAuthAsync(CliOptions options)
         {
-            var credentialStore = new CredentialStore();
-            Console.WriteLine("Ring interactive login - saves a reusable refresh token so future runs");
-            Console.WriteLine($"don't need this again. Credentials are written to:\n  {CredentialResolver.AuthPath}\n");
+            Console.WriteLine("Ring interactive login - saves credentials to database for future runs");
+            Console.WriteLine("and handles two-factor authentication.\n");
 
             string? userName = options.UserName;
             if (string.IsNullOrWhiteSpace(userName))
@@ -644,41 +645,72 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return 2;
             }
 
-            Session session;
             try
             {
-                session = await InteractiveAuth.AuthenticateAsync(userName, password, async () =>
+                // Set up minimal DI for database persistence
+                var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+                services.AddLogging();
+
+                // Add database and data layer
+                var dbPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "VideoForensics",
+                    "VideoForensics.db");
+
+                services.AddDbContextFactory<VideoForensicsDbContext>(opt =>
+                    opt.UseSqlite($"Data Source={dbPath}"));
+
+                services.AddDataProtection();
+                services.AddVideoForensicsDatabase();
+
+                var sp = services.BuildServiceProvider();
+
+                var logger = sp.GetRequiredService<ILogger<RingAuthService>>();
+                var sessionProvider = new SessionProvider();
+                var credentialStore = new CredentialStore();
+                var credentialRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ICredentialRepository>();
+                var providerAccountRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+                var userRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUserRepository>();
+                var ringAccountRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IRingAccountRepository>();
+
+                var authService = new RingAuthService(
+                    logger,
+                    sessionProvider,
+                    credentialStore,
+                    credentialRepository,
+                    ringAccountRepository,
+                    providerAccountRepository,
+                    userRepository);
+
+                // Authenticate and save to database
+                var result = await authService.AuthenticateWithTwoFactorAsync(
+                    userName,
+                    password,
+                    async () =>
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Two-factor authentication is enabled on this account - Ring just sent a code via text/e-mail.");
+                        Console.Write("Enter the code: ");
+                        await Task.CompletedTask;
+                        return Console.ReadLine() ?? "";
+                    });
+
+                if (!result.Success)
                 {
-                    Console.WriteLine();
-                    Console.WriteLine("Two-factor authentication is enabled on this account - Ring just sent a code via text/e-mail.");
-                    Console.Write("Enter the code: ");
-                    await Task.CompletedTask;
-                    return Console.ReadLine() ?? "";
-                });
+                    Console.Error.WriteLine($"Error: {result.ErrorMessage}");
+                    return 2;
+                }
+
+                Console.WriteLine();
+                Console.WriteLine($"Authenticated and saved credentials to database.");
+                Console.WriteLine("Future SelfTester runs will use this automatically.");
+                return 0;
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"Error: authentication failed: {ex.Message}");
                 return 2;
             }
-
-            if (session.OAuthToken?.RefreshToken == null)
-            {
-                Console.Error.WriteLine("Error: authentication reported success but no refresh token was returned - nothing was saved.");
-                return 2;
-            }
-
-            credentialStore.Save(CredentialResolver.AuthPath, new RingCredentials
-            {
-                UserName = userName,
-                Password = password,
-                RefreshToken = session.OAuthToken.RefreshToken
-            });
-
-            Console.WriteLine();
-            Console.WriteLine($"Authenticated and saved credentials to {CredentialResolver.AuthPath}.");
-            Console.WriteLine("Future SelfTester runs will use this automatically.");
-            return 0;
         }
 
         /// <summary>

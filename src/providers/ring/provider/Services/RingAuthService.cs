@@ -259,6 +259,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 RingCredentials? credentials = null;
+                Guid? resolvedAccountId = providerAccountId;
 
                 // Try database first if providerAccountId provided
                 if (providerAccountId.HasValue)
@@ -279,6 +280,46 @@ namespace VideoForensics.Providers.Ring.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", providerAccountId);
+                    }
+                }
+                else if (_providerAccountRepository != null)
+                {
+                    // If no specific account provided, try to find credentials from any Ring account
+                    try
+                    {
+                        var ringAccounts = await _providerAccountRepository.ListActiveAsync(cancellationToken);
+                        var ringAccountsForProvider = ringAccounts.Where(pa => pa.ProviderName == "Ring").ToList();
+
+                        if (ringAccountsForProvider.Count > 0)
+                        {
+                            // Try each account until we find one with saved credentials
+                            foreach (var account in ringAccountsForProvider.OrderByDescending(a => a.LastSuccessfulAuthUtc))
+                            {
+                                try
+                                {
+                                    (string CredentialType, string DecryptedValue)? credentialEntity = await _credentialRepository.GetAsync(
+                                        account.Id,
+                                        "RefreshToken",
+                                        cancellationToken);
+
+                                    if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
+                                    {
+                                        _logger.LogInformation("Restoring Ring session from database for account {AccountId}", account.Id);
+                                        credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
+                                        resolvedAccountId = account.Id;
+                                        break;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", account.Id);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to list Ring provider accounts");
                     }
                 }
 
@@ -315,15 +356,16 @@ namespace VideoForensics.Providers.Ring.Services
                 try
                 {
                     // Update database if we have a provider account ID
-                    Guid resolvedAccountId = providerAccountId ?? (
-                        string.IsNullOrWhiteSpace(credentials.UserName)
+                    if (resolvedAccountId == null || resolvedAccountId == Guid.Empty)
+                    {
+                        resolvedAccountId = string.IsNullOrWhiteSpace(credentials.UserName)
                             ? Guid.Empty
-                            : await GetOrCreateProviderAccountAsync(credentials.UserName, cancellationToken)
-                    );
+                            : await GetOrCreateProviderAccountAsync(credentials.UserName, cancellationToken);
+                    }
 
                     if (resolvedAccountId != Guid.Empty)
                     {
-                        await PersistRingAccountAsync(credentials.UserName ?? "unknown", session, resolvedAccountId, cancellationToken);
+                        await PersistRingAccountAsync(credentials.UserName ?? "unknown", session, resolvedAccountId.Value, cancellationToken);
                     }
                 }
                 catch (Exception ex)
