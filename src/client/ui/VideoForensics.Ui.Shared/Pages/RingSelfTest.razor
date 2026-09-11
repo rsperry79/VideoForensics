@@ -100,13 +100,13 @@
                 <!-- Doorbot ID -->
                 <div>
                     <label for="doorbotId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DoorbotId"]</label>
-                    <input type="number" id="doorbotId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _doorbotIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@_doorbotIdInput?.ToString() ?? \"\"" placeholder="@L["DoorbotIdPlaceholder"]" class="form-control form-control-sm" />
+                    <input type="number" id="doorbotId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _doorbotIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@(_doorbotIdInput?.ToString() ?? "")" placeholder="@L["DoorbotIdPlaceholder"]" class="form-control form-control-sm" />
                 </div>
 
                 <!-- Chime ID -->
                 <div>
                     <label for="chimeId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeId"]</label>
-                    <input type="number" id="chimeId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@_chimeIdInput?.ToString() ?? \"\"" placeholder="@L["ChimeIdPlaceholder"]" class="form-control form-control-sm" />
+                    <input type="number" id="chimeId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@(_chimeIdInput?.ToString() ?? "")" placeholder="@L["ChimeIdPlaceholder"]" class="form-control form-control-sm" />
                 </div>
 
                 <!-- History Limit -->
@@ -132,25 +132,25 @@
                         <!-- Siren Duration -->
                         <div style="margin-top: 0.5rem;">
                             <label for="sirenDuration" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["SirenDurationSeconds"]</label>
-                            <input type="number" id="sirenDuration" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _sirenDurationInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_sirenDurationInput?.ToString() ?? \"\"" placeholder="@L["SirenDurationPlaceholder"]" class="form-control form-control-sm" />
+                            <input type="number" id="sirenDuration" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _sirenDurationInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_sirenDurationInput?.ToString() ?? "")" placeholder="@L["SirenDurationPlaceholder"]" class="form-control form-control-sm" />
                         </div>
 
                         <!-- Volume Level -->
                         <div style="margin-top: 0.5rem;">
                             <label for="volumeLevel" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["VolumeLevel"]</label>
-                            <input type="number" id="volumeLevel" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _volumeLevelInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_volumeLevelInput?.ToString() ?? \"\"" placeholder="@L["VolumeLevelPlaceholder"]" class="form-control form-control-sm" />
+                            <input type="number" id="volumeLevel" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _volumeLevelInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_volumeLevelInput?.ToString() ?? "")" placeholder="@L["VolumeLevelPlaceholder"]" class="form-control form-control-sm" />
                         </div>
 
                         <!-- Chime Type Value -->
                         <div style="margin-top: 0.5rem;">
                             <label for="chimeTypeValue" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeTypeValue"]</label>
-                            <input type="number" id="chimeTypeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeTypeValueInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_chimeTypeValueInput?.ToString() ?? \"\"" placeholder="@L["ChimeTypeValuePlaceholder"]" class="form-control form-control-sm" />
+                            <input type="number" id="chimeTypeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeTypeValueInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_chimeTypeValueInput?.ToString() ?? "")" placeholder="@L["ChimeTypeValuePlaceholder"]" class="form-control form-control-sm" />
                         </div>
 
                         <!-- DND Seconds -->
                         <div style="margin-top: 0.5rem;">
                             <label for="dndSeconds" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DndSeconds"]</label>
-                            <input type="number" id="dndSeconds" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dndSecondsInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_dndSecondsInput?.ToString() ?? \"\"" placeholder="@L["DndSecondsPlaceholder"]" class="form-control form-control-sm" />
+                            <input type="number" id="dndSeconds" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dndSecondsInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_dndSecondsInput?.ToString() ?? "")" placeholder="@L["DndSecondsPlaceholder"]" class="form-control form-control-sm" />
                         </div>
 
                         <!-- Location Mode Value -->
@@ -327,6 +327,29 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 
             _readOnlyEndpoints = _allEndpoints.Where(e => !e.Destructive && !e.Physical).ToList();
             _destructiveEndpoints = _allEndpoints.Where(e => e.Destructive || e.Physical).ToList();
+
+            // Check if a run is already in progress or completed
+            try
+            {
+                var status = await SelfTestService.GetStatusAsync();
+                _runStatus = status;
+
+                if (status.Status == SelfTestRunStatus.Running)
+                {
+                    // Resume polling
+                    _isRunning = true;
+                    StartPolling();
+                }
+                else if (status.Status == SelfTestRunStatus.Completed)
+                {
+                    // Fetch and display results
+                    _result = await SelfTestService.GetResultAsync();
+                }
+            }
+            catch
+            {
+                // If we can't get status, continue silently
+            }
         }
         finally
         {
@@ -424,6 +447,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
                     if (_runStatus.Status == SelfTestRunStatus.Completed)
                     {
                         _result = await SelfTestService.GetResultAsync();
+                        await InvokeAsync(StateHasChanged);
                     }
                     break;
                 }
@@ -436,6 +460,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         finally
         {
             _isRunning = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
