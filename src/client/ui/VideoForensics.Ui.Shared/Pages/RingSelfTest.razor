@@ -1,0 +1,472 @@
+@page "/tools/ring-selftest"
+@using VideoForensics.Api.Contracts
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@implements IAsyncDisposable
+@inject IRingSelfTestService SelfTestService
+@inject IStringLocalizer<RingSelfTest> L
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h4 style="margin: 0;">@L["Title"]</h4>
+    <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary"
+        Disabled="@(_isRunning || (_hasDestructive && !_confirmDestructive) || _isLoading)" />
+</div>
+
+<PageRightPanelContent>
+    @if (_isLoading)
+    {
+        <div class="right-panel-section">
+            <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <!-- Endpoint Selection -->
+        <div class="right-panel-section">
+            <small style="font-weight: bold;">@L["Endpoints"]</small>
+
+            <!-- Read-only endpoints -->
+            @if (_readOnlyEndpoints.Count > 0)
+            {
+                <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                    <small style="color: #666;">@L["ReadOnlyEndpoints"]</small>
+                    @foreach (var endpoint in _readOnlyEndpoints)
+                    {
+                        <div style="margin-top: 0.5rem;">
+                            <input type="checkbox" id="ep_@endpoint.Key"
+                                @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleEndpoint(endpoint.Key, (bool)e.Value!))"
+                                checked="@_selectedEndpoints.Contains(endpoint.Key)" />
+                            <label for="ep_@endpoint.Key" style="margin-left: 0.5rem; cursor: pointer;">
+                                @endpoint.DisplayName
+                            </label>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Destructive/Physical endpoints -->
+            @if (_destructiveEndpoints.Count > 0)
+            {
+                <div style="border: 1px solid #dc3545; background-color: #fff5f5; padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem;">
+                    <small style="color: #dc3545; font-weight: bold;">@L["DestructivePhysicalEndpoints"]</small>
+                    @foreach (var endpoint in _destructiveEndpoints)
+                    {
+                        <div style="margin-top: 0.5rem;">
+                            <input type="checkbox" id="ep_@endpoint.Key"
+                                @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleEndpoint(endpoint.Key, (bool)e.Value!))"
+                                checked="@_selectedEndpoints.Contains(endpoint.Key)" />
+                            <label for="ep_@endpoint.Key" style="margin-left: 0.5rem; cursor: pointer;">
+                                @endpoint.DisplayName
+                            </label>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Warning Banner for Destructive -->
+        @if (_hasDestructive)
+        {
+            <div class="right-panel-section">
+                <div class="alert alert-warning">
+                    <strong>@L["WarningTitle"]</strong>
+                    <p style="margin: 0.5rem 0 0 0;">@L["WarningMessage"]</p>
+                </div>
+
+                <!-- Confirmation Checkbox -->
+                <div style="margin-top: 0.5rem;">
+                    <input type="checkbox" id="confirmDestructive"
+                        @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _confirmDestructive = (bool)e.Value!)"
+                        checked="@_confirmDestructive" />
+                    <label for="confirmDestructive" style="margin-left: 0.5rem; cursor: pointer;">
+                        @L["ConfirmDestructive"]
+                    </label>
+                </div>
+            </div>
+        }
+
+        <!-- Settings -->
+        <div class="right-panel-section">
+            <small style="font-weight: bold;">@L["Settings"]</small>
+
+            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Location ID -->
+                <div>
+                    <label for="locationId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationId"]</label>
+                    <input type="text" id="locationId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _locationIdInput = (string)e.Value!)" value="@_locationIdInput" placeholder="@L["LocationIdPlaceholder"]" class="form-control form-control-sm" />
+                </div>
+
+                <!-- Doorbot ID -->
+                <div>
+                    <label for="doorbotId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DoorbotId"]</label>
+                    <input type="number" id="doorbotId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _doorbotIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@_doorbotIdInput?.ToString() ?? \"\"" placeholder="@L["DoorbotIdPlaceholder"]" class="form-control form-control-sm" />
+                </div>
+
+                <!-- Chime ID -->
+                <div>
+                    <label for="chimeId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeId"]</label>
+                    <input type="number" id="chimeId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@_chimeIdInput?.ToString() ?? \"\"" placeholder="@L["ChimeIdPlaceholder"]" class="form-control form-control-sm" />
+                </div>
+
+                <!-- History Limit -->
+                <div>
+                    <label for="historyLimit" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["HistoryLimit"]</label>
+                    <input type="number" id="historyLimit" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _historyLimitInput = int.TryParse(e.Value?.ToString(), out var val) ? val : 5)" value="@_historyLimitInput" min="1" class="form-control form-control-sm" />
+                </div>
+
+                <!-- No Physical Checkbox -->
+                <div>
+                    <input type="checkbox" id="noPhysical" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _noPhysicalInput = (bool)e.Value!)" checked="@_noPhysicalInput" />
+                    <label for="noPhysical" style="margin-left: 0.5rem; cursor: pointer; font-size: 0.85rem;">
+                        @L["NoPhysical"]
+                    </label>
+                </div>
+
+                <!-- Destructive-only fields -->
+                @if (_hasDestructive)
+                {
+                    <div style="border-top: 1px solid #ddd; padding-top: 0.75rem; margin-top: 0.75rem;">
+                        <small style="color: #666;">@L["DestructiveParameters"]</small>
+
+                        <!-- Siren Duration -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="sirenDuration" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["SirenDurationSeconds"]</label>
+                            <input type="number" id="sirenDuration" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _sirenDurationInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_sirenDurationInput?.ToString() ?? \"\"" placeholder="@L["SirenDurationPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Volume Level -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="volumeLevel" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["VolumeLevel"]</label>
+                            <input type="number" id="volumeLevel" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _volumeLevelInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_volumeLevelInput?.ToString() ?? \"\"" placeholder="@L["VolumeLevelPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Chime Type Value -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="chimeTypeValue" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeTypeValue"]</label>
+                            <input type="number" id="chimeTypeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeTypeValueInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_chimeTypeValueInput?.ToString() ?? \"\"" placeholder="@L["ChimeTypeValuePlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- DND Seconds -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="dndSeconds" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DndSeconds"]</label>
+                            <input type="number" id="dndSeconds" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dndSecondsInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@_dndSecondsInput?.ToString() ?? \"\"" placeholder="@L["DndSecondsPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Location Mode Value -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="locationModeValue" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationModeValue"]</label>
+                            <input type="text" id="locationModeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _locationModeValueInput = (string)e.Value!)" value="@_locationModeValueInput" placeholder="@L["LocationModeValuePlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Ding Id -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="dingId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DingId"]</label>
+                            <input type="text" id="dingId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dingIdInput = (string)e.Value!)" value="@_dingIdInput" placeholder="@L["DingIdPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Asset Uuid -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="assetUuid" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["AssetUuid"]</label>
+                            <input type="text" id="assetUuid" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _assetUuidInput = (string)e.Value!)" value="@_assetUuidInput" placeholder="@L["AssetUuidPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+
+                        <!-- Push Token -->
+                        <div style="margin-top: 0.5rem;">
+                            <label for="pushToken" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["PushToken"]</label>
+                            <input type="text" id="pushToken" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _pushTokenInput = (string)e.Value!)" value="@_pushTokenInput" placeholder="@L["PushTokenPlaceholder"]" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Error message from run rejection -->
+        @if (!string.IsNullOrEmpty(_runError))
+        {
+            <div class="right-panel-section">
+                <div class="alert alert-danger">
+                    @_runError
+                </div>
+            </div>
+        }
+    }
+</PageRightPanelContent>
+
+<!-- Results Panel -->
+@if (_runStatus?.Status == SelfTestRunStatus.Completed && _result is not null)
+{
+    <div style="margin-top: 2rem;">
+        <h5>@L["Results"]</h5>
+
+        <!-- Summary -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #0066cc;">@_result.Summary.TotalCalls</div>
+                <div style="color: #666; margin-top: 0.25rem;">@L["TotalCalls"]</div>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">@_result.Summary.Succeeded</div>
+                <div style="color: #666; margin-top: 0.25rem;">@L["Succeeded"]</div>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 0.25rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: @(_result.Summary.Failed > 0 ? "#dc3545" : "#999");">@_result.Summary.Failed</div>
+                <div style="color: #666; margin-top: 0.25rem;">@L["Failed"]</div>
+            </div>
+        </div>
+
+        <!-- Calls Table -->
+        @if (_result.Calls.Count > 0)
+        {
+            <SfGrid TValue="SelfTestCallDto" DataSource="@_result.Calls" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(SelfTestCallDto.DisplayName)" HeaderText="@L["ColEndpoint"]" />
+                    <GridColumn Field="@nameof(SelfTestCallDto.Target)" HeaderText="@L["ColTarget"]" />
+                    <GridColumn Field="@nameof(SelfTestCallDto.DurationMs)" HeaderText="@L["ColDuration"]" />
+                    <GridColumn HeaderText="@L["ColSuccess"]">
+                        <Template>
+                            @{
+                                var call = (SelfTestCallDto)context;
+                                <span style="@(call.Success ? "color: #28a745; font-weight: bold;" : "color: #dc3545; font-weight: bold;");">
+                                    @(call.Success ? L["Success"] : L["Failed"])
+                                </span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(SelfTestCallDto.Error)" HeaderText="@L["ColError"]" />
+                    <GridColumn HeaderText="@L["ColRestore"]">
+                        <Template>
+                            @{
+                                var call = (SelfTestCallDto)context;
+                                @if (call.RestoreAttempted)
+                                {
+                                    <span style="@(call.RestoreSuccess == true ? "color: #28a745;" : "color: #dc3545;");">
+                                        @(call.RestoreSuccess == true ? L["RestoreSuccess"] : (call.RestoreSuccess == false ? L["RestoreFailed"] : ""))
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(call.RestoreError))
+                                    {
+                                        <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">@call.RestoreError</div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color: #999;">@(call.RestoreSkippedReason ?? "-")</span>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColSchemaIssues"]">
+                        <Template>
+                            @{
+                                var call = (SelfTestCallDto)context;
+                                @if (call.SchemaIssues.Count > 0)
+                                {
+                                    <span style="color: #dc3545;">@call.SchemaIssues.Count @L["Issues"]</span>
+                                }
+                                else
+                                {
+                                    <span style="color: #999;">-</span>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+}
+else if (_runStatus?.Status == SelfTestRunStatus.Failed)
+{
+    <div style="margin-top: 2rem;">
+        <div class="alert alert-danger">
+            <strong>@L["RunFailed"]</strong>
+            <p style="margin: 0.5rem 0 0 0;">@_runStatus.Error</p>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isRunning;
+    private List<SelfTestEndpointDto> _allEndpoints = new();
+    private List<SelfTestEndpointDto> _readOnlyEndpoints = new();
+    private List<SelfTestEndpointDto> _destructiveEndpoints = new();
+    private HashSet<string> _selectedEndpoints = new();
+    private bool _hasDestructive;
+    private bool _confirmDestructive;
+    private string? _runError;
+
+    private PeriodicTimer? _pollTimer;
+    private Task? _pollLoopTask;
+
+    // Input fields for settings
+    private string _locationIdInput = "";
+    private long? _doorbotIdInput;
+    private long? _chimeIdInput;
+    private int _historyLimitInput = 5;
+    private bool _noPhysicalInput;
+    private int? _sirenDurationInput;
+    private int? _volumeLevelInput;
+    private int? _chimeTypeValueInput;
+    private int? _dndSecondsInput;
+    private string _locationModeValueInput = "";
+    private string _dingIdInput = "";
+    private string _assetUuidInput = "";
+    private string _pushTokenInput = "";
+
+    private SelfTestStatusDto? _runStatus;
+    private SelfTestResultDto? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var endpoints = await SelfTestService.ListEndpointsAsync();
+            _allEndpoints = endpoints.ToList();
+
+            _readOnlyEndpoints = _allEndpoints.Where(e => !e.Destructive && !e.Physical).ToList();
+            _destructiveEndpoints = _allEndpoints.Where(e => e.Destructive || e.Physical).ToList();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleEndpoint(string key, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _selectedEndpoints.Add(key);
+        }
+        else
+        {
+            _selectedEndpoints.Remove(key);
+        }
+
+        UpdateDestructiveFlag();
+    }
+
+    private void UpdateDestructiveFlag()
+    {
+        _hasDestructive = _selectedEndpoints.Any(key =>
+            _allEndpoints.FirstOrDefault(e => e.Key == key) is { } ep &&
+            (ep.Destructive || ep.Physical)
+        );
+    }
+
+    private async Task RunReportAsync()
+    {
+        _isRunning = true;
+        _runError = null;
+        _result = null;
+        _runStatus = null;
+
+        try
+        {
+            // Build request with selected endpoints and input field values
+            var requestDto = new SelfTestRunRequestDto(
+                Endpoints: _selectedEndpoints.ToList(),
+                LocationId: string.IsNullOrWhiteSpace(_locationIdInput) ? null : Guid.Parse(_locationIdInput),
+                DoorbotId: _doorbotIdInput,
+                ChimeId: _chimeIdInput,
+                HistoryLimit: _historyLimitInput,
+                Destructive: _hasDestructive,
+                NoPhysical: _noPhysicalInput,
+                SirenDurationSeconds: _sirenDurationInput,
+                VolumeLevel: _volumeLevelInput,
+                ChimeTypeValue: _chimeTypeValueInput,
+                DndSeconds: _dndSecondsInput,
+                LocationModeValue: string.IsNullOrWhiteSpace(_locationModeValueInput) ? null : _locationModeValueInput,
+                DingId: string.IsNullOrWhiteSpace(_dingIdInput) ? null : _dingIdInput,
+                AssetUuid: string.IsNullOrWhiteSpace(_assetUuidInput) ? null : _assetUuidInput,
+                PushToken: string.IsNullOrWhiteSpace(_pushTokenInput) ? null : _pushTokenInput
+            );
+
+            var response = await SelfTestService.StartRunAsync(requestDto);
+            if (!response.Accepted)
+            {
+                _runError = response.Error ?? L["UnknownError"].Value;
+                _isRunning = false;
+                return;
+            }
+
+            // Start polling
+            StartPolling();
+        }
+        catch (Exception ex)
+        {
+            _runError = $"Error: {ex.Message}";
+            _isRunning = false;
+        }
+    }
+
+    private void StartPolling()
+    {
+        _pollTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        _pollLoopTask = RunPollLoopAsync(_pollTimer);
+    }
+
+    private async Task RunPollLoopAsync(PeriodicTimer timer)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync())
+            {
+                await PollOnceAsync();
+                await InvokeAsync(StateHasChanged);
+
+                if (_runStatus?.Status == SelfTestRunStatus.Completed ||
+                    _runStatus?.Status == SelfTestRunStatus.Failed)
+                {
+                    // Fetch final result if completed
+                    if (_runStatus.Status == SelfTestRunStatus.Completed)
+                    {
+                        _result = await SelfTestService.GetResultAsync();
+                    }
+                    break;
+                }
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Timer disposed - normal shutdown
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+
+    private async Task PollOnceAsync()
+    {
+        try
+        {
+            _runStatus = await SelfTestService.GetStatusAsync();
+        }
+        catch
+        {
+            // Continue polling even if status check fails
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (_pollTimer is not null)
+        {
+            _pollTimer.Dispose();
+        }
+        if (_pollLoopTask is not null)
+        {
+            try
+            {
+                await _pollLoopTask;
+            }
+            catch
+            {
+                // Swallow exceptions from poll loop cleanup
+            }
+        }
+    }
+}

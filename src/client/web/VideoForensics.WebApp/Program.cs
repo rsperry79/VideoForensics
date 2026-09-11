@@ -318,6 +318,7 @@ app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapEventEndpoints();
 app.MapDownloadEndpoints();
+app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();

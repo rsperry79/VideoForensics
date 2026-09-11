@@ -66,7 +66,8 @@ namespace VideoForensics.Ui.Shared.Layout
             new("tools", "Tools", "/query", new List<NavItem>
             {
                 new("Query API", "/query"),
-                new("Import / Export", "/tools/import-export")
+                new("Import / Export", "/tools/import-export"),
+                new("Ring Self-Test", "/tools/ring-selftest")
             }),
 
             new("settings", "Settings", "/settings", new List<NavItem>
