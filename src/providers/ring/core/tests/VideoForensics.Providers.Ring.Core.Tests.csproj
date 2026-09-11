@@ -26,6 +26,8 @@
     <ProjectReference Include="../VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../../auth/VideoForensics.Providers.Ring.Auth.csproj" />
     <ProjectReference Include="../../video/VideoForensics.Providers.Ring.Video.csproj" />
+    <ProjectReference Include="../../provider/VideoForensics.Providers.Ring.csproj" />
+    <ProjectReference Include="../../../../client/host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.0" />
