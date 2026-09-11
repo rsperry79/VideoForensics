@@ -97,10 +97,17 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 var dataProtectionKeyPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
 Directory.CreateDirectory(dataProtectionKeyPath);
-builder.Services.AddDataProtection()
+var dataProtectionBuilder = builder.Services.AddDataProtection()
     .SetApplicationName("VideoForensics")
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
-    .ProtectKeysWithDpapi();
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+// DPAPI encrypts the key-ring file at rest but is Windows-only (this app is platform-agnostic -
+// see PlatformDirectoryService/CredentialEncryptionFactory for the same Windows/other-OS split).
+// On Linux/macOS the key-ring falls back to ASP.NET Core's unencrypted-on-disk default, protected
+// only by filesystem permissions on the ProgramData-equivalent directory above.
+if (OperatingSystem.IsWindows())
+{
+    dataProtectionBuilder.ProtectKeysWithDpapi();
+}
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
 // paired clients (MAUI) - the WebApp's own UI doesn't consume this hub at all (see LiveHub's doc
