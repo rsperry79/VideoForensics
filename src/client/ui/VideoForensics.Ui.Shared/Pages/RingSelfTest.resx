@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Ring Self-Test</value>
+  </data>
+  <data name="RunReport" xml:space="preserve">
+    <value>Run Report</value>
+  </data>
+  <data name="Endpoints" xml:space="preserve">
+    <value>Endpoints</value>
+  </data>
+  <data name="ReadOnlyEndpoints" xml:space="preserve">
+    <value>Read-only endpoints</value>
+  </data>
+  <data name="DestructivePhysicalEndpoints" xml:space="preserve">
+    <value>Destructive / Physical endpoints</value>
+  </data>
+  <data name="WarningTitle" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="WarningMessage" xml:space="preserve">
+    <value>These actions affect real devices and hardware. Some changes cannot be undone. Proceed with caution.</value>
+  </data>
+  <data name="ConfirmDestructive" xml:space="preserve">
+    <value>I understand the risks and want to proceed</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="LocationId" xml:space="preserve">
+    <value>Location ID</value>
+  </data>
+  <data name="LocationIdPlaceholder" xml:space="preserve">
+    <value>e.g., 550e8400-e29b-41d4-a716-446655440000</value>
+  </data>
+  <data name="DoorbotId" xml:space="preserve">
+    <value>Doorbot ID</value>
+  </data>
+  <data name="DoorbotIdPlaceholder" xml:space="preserve">
+    <value>e.g., 123456789</value>
+  </data>
+  <data name="ChimeId" xml:space="preserve">
+    <value>Chime ID</value>
+  </data>
+  <data name="ChimeIdPlaceholder" xml:space="preserve">
+    <value>e.g., 987654321</value>
+  </data>
+  <data name="HistoryLimit" xml:space="preserve">
+    <value>History Limit</value>
+  </data>
+  <data name="NoPhysical" xml:space="preserve">
+    <value>Skip physical endpoints</value>
+  </data>
+  <data name="DestructiveParameters" xml:space="preserve">
+    <value>Destructive Parameters</value>
+  </data>
+  <data name="SirenDurationSeconds" xml:space="preserve">
+    <value>Siren Duration (seconds)</value>
+  </data>
+  <data name="SirenDurationPlaceholder" xml:space="preserve">
+    <value>e.g., 10</value>
+  </data>
+  <data name="VolumeLevel" xml:space="preserve">
+    <value>Volume Level</value>
+  </data>
+  <data name="VolumeLevelPlaceholder" xml:space="preserve">
+    <value>e.g., 100</value>
+  </data>
+  <data name="ChimeTypeValue" xml:space="preserve">
+    <value>Chime Type Value</value>
+  </data>
+  <data name="ChimeTypeValuePlaceholder" xml:space="preserve">
+    <value>e.g., 0</value>
+  </data>
+  <data name="DndSeconds" xml:space="preserve">
+    <value>DND Seconds</value>
+  </data>
+  <data name="DndSecondsPlaceholder" xml:space="preserve">
+    <value>e.g., 3600</value>
+  </data>
+  <data name="LocationModeValue" xml:space="preserve">
+    <value>Location Mode Value</value>
+  </data>
+  <data name="LocationModeValuePlaceholder" xml:space="preserve">
+    <value>e.g., home</value>
+  </data>
+  <data name="DingId" xml:space="preserve">
+    <value>Ding ID</value>
+  </data>
+  <data name="DingIdPlaceholder" xml:space="preserve">
+    <value>e.g., ding-123-abc</value>
+  </data>
+  <data name="AssetUuid" xml:space="preserve">
+    <value>Asset UUID</value>
+  </data>
+  <data name="AssetUuidPlaceholder" xml:space="preserve">
+    <value>e.g., 550e8400-e29b-41d4-a716-446655440000</value>
+  </data>
+  <data name="PushToken" xml:space="preserve">
+    <value>Push Token</value>
+  </data>
+  <data name="PushTokenPlaceholder" xml:space="preserve">
+    <value>e.g., token-xyz</value>
+  </data>
+  <data name="Results" xml:space="preserve">
+    <value>Results</value>
+  </data>
+  <data name="TotalCalls" xml:space="preserve">
+    <value>Total Calls</value>
+  </data>
+  <data name="Succeeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="ColEndpoint" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="ColTarget" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="ColDuration" xml:space="preserve">
+    <value>Duration (ms)</value>
+  </data>
+  <data name="ColSuccess" xml:space="preserve">
+    <value>Result</value>
+  </data>
+  <data name="ColError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="ColRestore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="RestoreSuccess" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="RestoreFailed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="ColSchemaIssues" xml:space="preserve">
+    <value>Schema Issues</value>
+  </data>
+  <data name="Issues" xml:space="preserve">
+    <value>issues</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="RunFailed" xml:space="preserve">
+    <value>Run Failed</value>
+  </data>
+  <data name="UnknownError" xml:space="preserve">
+    <value>An unknown error occurred</value>
+  </data>
+</root>

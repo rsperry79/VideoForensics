@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
@@ -134,6 +135,11 @@ namespace VideoForensics.Hosting
                         provider.GetRequiredService<IEventAndConfigService>()
                     )
                 );
+
+                // Ring self-test orchestrator and service: run state must survive across scoped requests,
+                // so registered as Singleton (same reasoning as ISessionProvider).
+                _ = services.AddSingleton<RingSelfTestOrchestrator>();
+                _ = services.AddScoped<IRingSelfTestService, LocalRingSelfTestService>();
             }
             else if (string.Equals(activeProviderName, "Uniview", StringComparison.OrdinalIgnoreCase))
             {
@@ -383,6 +389,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
