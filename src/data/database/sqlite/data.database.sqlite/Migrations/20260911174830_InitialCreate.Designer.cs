@@ -11,8 +11,8 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    [Migration("20260905235026_AddProviderApiErrorLog")]
-    partial class AddProviderApiErrorLog
+    [Migration("20260911174830_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -117,6 +117,39 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("ActionLogEntries");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisMotionZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AiAnalysisSnapshotId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ZoneName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AiAnalysisSnapshotId");
+
+                    b.HasIndex("AiAnalysisSnapshotId", "ZoneId")
+                        .IsUnique();
+
+                    b.ToTable("AiAnalysisMotionZones");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -133,14 +166,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("MotionZonesJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool?>("PersonDetected")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("TagsJson")
-                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -149,45 +176,28 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("AiAnalysisSnapshots");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.Annotation", b =>
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisTag", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAtUtc")
+                    b.Property<Guid>("AiAnalysisSnapshotId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EntityType")
+                    b.Property<string>("TagName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(2048)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EntityType", "EntityId");
+                    b.HasIndex("AiAnalysisSnapshotId");
 
-                    b.HasIndex("Key", "Value");
+                    b.HasIndex("AiAnalysisSnapshotId", "TagName")
+                        .IsUnique();
 
-                    b.ToTable("Annotations");
+                    b.ToTable("AiAnalysisTags");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AppSetting", b =>
@@ -258,6 +268,62 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("Credentials");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DetectedPerson", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileName")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaItemId", "ProfileId");
+
+                    b.ToTable("DetectedPersons");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DetectionTypeOccurrence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DetectedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MediaItemDetectionId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaItemDetectionId");
+
+                    b.ToTable("DetectionTypeOccurrences");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Device", b =>
                 {
                     b.Property<Guid>("Id")
@@ -265,6 +331,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ApiResponseHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeviceFeaturesId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeviceHealthId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeviceLocationId")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsOnline")
@@ -315,6 +390,29 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("Devices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAlerts", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlertType")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "AlertType");
+
+                    b.ToTable("DeviceAlerts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceCapabilities", b =>
@@ -414,21 +512,67 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceConfigSnapshots");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatures", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("AdvancedMotionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("MotionMessageEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MotionsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("NightVisionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("PeopleOnlyEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ShadowCorrectionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ShowRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceFeatures");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ApiResponseHash")
-                        .HasMaxLength(256)
+                    b.Property<decimal?>("BatteryPercentage")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("BatteryPercentage")
+                    b.Property<decimal?>("BatteryVoltageValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CapturedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsExternalPowerConnected")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool?>("IsOnline")
                         .HasColumnType("INTEGER");
@@ -436,18 +580,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastHeartbeatUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("LastSyncedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("OtaStatus")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("SyncStatus")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("WifiName")
                         .HasMaxLength(256)
@@ -458,10 +593,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceId")
-                        .IsUnique();
+                    b.HasIndex("DeviceId", "CapturedAtUtc");
 
-                    b.ToTable("DeviceHealthRecords");
+                    b.ToTable("DeviceHealths");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealthSnapshot", b =>
@@ -582,7 +716,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("DiscoveredAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DownloadFailedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DownloadStatus")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("DownloadedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EventDetectionId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EventIntegrityHash")
@@ -604,6 +747,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("RecordingStatus")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SnapshotUrl")
                         .HasMaxLength(1024)
                         .HasColumnType("TEXT");
@@ -612,10 +759,167 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
+                    b.HasIndex("EventDetectionId");
+
                     b.HasIndex("DeviceId", "ProviderEventId")
                         .IsUnique();
 
                     b.ToTable("Events");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectedPerson", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileName")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.ToTable("EventDetectedPersons");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Anomaly")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FullDescription")
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PersonDetected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ShortDescription")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Similarity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("StreamBroken")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.ToTable("EventDetections");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectionTypeOccurrence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DetectedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventDetectionId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventDetectionId");
+
+                    b.ToTable("EventDetectionTypeOccurrences");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectionZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventDetectionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ZoneName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventDetectionId", "ZoneId");
+
+                    b.ToTable("EventDetectionZones");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventSecurityAlert", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlertText")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Severity")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.ToTable("EventSecurityAlerts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ExportAuditRecordEntity", b =>
@@ -915,15 +1219,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderLocationId")
@@ -936,9 +1234,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderAccountId");
-
-                    b.HasIndex("ProviderAccountId", "ProviderLocationId")
+                    b.HasIndex("ProviderLocationId")
                         .IsUnique();
 
                     b.ToTable("Locations");
@@ -961,6 +1257,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("Country")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsOwner")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
@@ -1056,6 +1355,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("MediaItemDetectionId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
@@ -1090,46 +1392,57 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("Sha256Hash");
 
+                    b.HasIndex("DeviceId", "RecordedAtUtc")
+                        .IsUnique();
+
                     b.ToTable("MediaItems");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.ModificationAuditRecordEntity", b =>
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaItemDetection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("ApprovedByInvestigator")
+                    b.Property<decimal?>("Anomaly")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FullDescription")
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PersonDetected")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ChangeSummary")
-                        .IsRequired()
-                        .HasMaxLength(2000)
+                    b.Property<string>("ShortDescription")
+                        .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("EventId")
+                    b.Property<decimal?>("Similarity")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ModificationType")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ModifiedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                    b.Property<bool?>("StreamBroken")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EventId");
+                    b.HasIndex("MediaItemId");
 
-                    b.HasIndex("ModifiedAtUtc");
-
-                    b.ToTable("ModificationAuditRecords");
+                    b.ToTable("MediaItemDetections");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>
@@ -1152,6 +1465,35 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Operators");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorPreferences", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CultureName")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OperatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThemeMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperatorId")
+                        .IsUnique();
+
+                    b.ToTable("OperatorPreferences");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.PairedDevice", b =>
@@ -1374,47 +1716,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("ProviderReconciliationRecords");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RedactionAuditRecordEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApprovedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentRedacted")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("EvidenceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("JustificationNotes")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("RedactedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RedactedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EvidenceId");
-
-                    b.HasIndex("RedactedAtUtc");
-
-                    b.ToTable("RedactionAuditRecords");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1451,6 +1752,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("RateLimitRemaining")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid?>("RingAccountFeaturesId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SubscriptionLevel")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1464,7 +1768,71 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderAccountId")
                         .IsUnique();
 
+                    b.HasIndex("RingAccountFeaturesId");
+
                     b.ToTable("RingAccounts");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountFeatures", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("CanActivateAlarmSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanChangeDeviceSettings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanDeleteRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanPauseRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanSaveLiveView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanSaveRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanShareRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanViewLiveView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanViewRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CanViewSnapshotsOnly")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RingAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RingAccountId");
+
+                    b.ToTable("RingAccountFeatures");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityAuditLogEntry", b =>
@@ -1536,6 +1904,35 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisMotionZone", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", "AiAnalysisSnapshot")
+                        .WithMany("MotionZones")
+                        .HasForeignKey("AiAnalysisSnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AiAnalysisSnapshot");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisTag", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", "AiAnalysisSnapshot")
+                        .WithMany("Tags")
+                        .HasForeignKey("AiAnalysisSnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AiAnalysisSnapshot");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>
+                {
+                    b.Navigation("MotionZones");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

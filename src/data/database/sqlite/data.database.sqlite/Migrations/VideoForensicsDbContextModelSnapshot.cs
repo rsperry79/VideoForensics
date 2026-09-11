@@ -321,34 +321,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DetectionTypeOccurrences");
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DetectionZone", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("Confidence")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("MediaItemDetectionId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ZoneId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ZoneName")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MediaItemDetectionId", "ZoneId");
-
-                    b.ToTable("DetectionZones");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Device", b =>
                 {
                     b.Property<Guid>("Id")
@@ -592,6 +564,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("IsExternalPowerConnected")
                         .HasColumnType("INTEGER");
 
@@ -658,32 +634,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId", "CapturedAtUtc");
 
                     b.ToTable("DeviceHealthSnapshots");
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceLocation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DeviceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("REAL");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("REAL");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeviceId");
-
-                    b.ToTable("DeviceLocations");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DownloadEvent", b =>
@@ -763,14 +713,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("DiscoveredAtUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DownloadedAtUtc")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime?>("DownloadFailedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("DownloadStatus")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DownloadedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("EventDetectionId")
                         .HasColumnType("TEXT");
@@ -1266,9 +1216,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1441,6 +1388,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DownloadEventId");
 
                     b.HasIndex("Sha256Hash");
+
+                    b.HasIndex("DeviceId", "RecordedAtUtc")
+                        .IsUnique();
 
                     b.ToTable("MediaItems");
                 });
@@ -1880,30 +1830,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("RingAccountId");
 
                     b.ToTable("RingAccountFeatures");
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityAlert", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AlertText")
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("MediaItemId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Severity")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MediaItemId");
-
-                    b.ToTable("SecurityAlerts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityAuditLogEntry", b =>
