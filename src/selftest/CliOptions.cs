@@ -347,7 +347,8 @@ namespace VideoForensics.Providers.Ring.SelfTester
           --auth                    Interactive one-time login: prompts for your Ring username and
                                      password (masked), handles a two-factor code challenge if your
                                      account requires one, then saves the resulting refresh token to
-                                     the shared credentials file (stored in the VideoForensics database).
+                                     the VideoForensics database and marks the account "active"
+                                     (same as signing in through the desktop app's UI).
                                      Every other SelfTester run picks this up automatically afterward.
                                      Run this first if you see a "no credentials found" or
                                      "requires two-factor authentication" error. Ignores --endpoints and
@@ -405,16 +406,19 @@ namespace VideoForensics.Providers.Ring.SelfTester
                                      index.json; does not affect the exit code (a device/location
                                      that simply hasn't been downloaded yet is expected, not a
                                      failure - this is a completeness report, not a pass/fail gate).
-          --db-path <path>          SQLite database file to check against. Default:
+          --db-path <path>          SQLite database file to use. Default:
                                      %ProgramData%\VideoForensics\videoforensics.db (same file the
-                                     main VideoForensics app uses). Only meaningful with --verify-db.
+                                     main VideoForensics app uses). Applies to credential storage and
+                                     --verify-db alike.
 
         CREDENTIALS (first match wins):
-          --username / --password   Explicit account credentials.
-          --refresh-token           An OAuth refresh token from a prior session.
-          RING_USERNAME / RING_PASSWORD / RING_REFRESH_TOKEN environment variables.
-          Otherwise: auto-discovered from the VideoForensics database's stored, encrypted credentials
-          on this machine, if present and decryptable.
+          The active account's saved refresh token - the same IForensicsConfiguration.ActiveProviderAccountId
+          "current account" the desktop UI's account switcher sets, restored via RingAuthService
+          (the same database-backed auth code the WebApp and legacy console app use). If no account
+          is marked active, falls back to the most-recently-authenticated Ring account in the database.
+          --username / --password   Explicit account credentials (used only if no saved account restores).
+          --refresh-token           An OAuth refresh token from a prior session (used only if no saved account restores).
+          RING_USERNAME / RING_PASSWORD / RING_REFRESH_TOKEN environment variables (same fallback tier).
 
         EXIT CODES:
           0  every requested call succeeded (or --list was used)

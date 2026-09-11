@@ -26,6 +26,7 @@
     <ProjectReference Include="../data/common/data.common/VideoForensics.Data.Common.csproj" />
     <ProjectReference Include="../data/database/data.database/VideoForensics.Data.Database.csproj" />
     <ProjectReference Include="../data/database/sqlite/data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
+    <ProjectReference Include="../client/host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
   </ItemGroup>
 
 </Project>
