@@ -454,17 +454,30 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
-            // Persist Ring account record for data governance
-            var ringAccount = new RingAccount
+            // Upsert by ProviderAccountId (unique) - re-authenticating an already-known account must
+            // update the existing row, not insert a second one (RingAccounts.ProviderAccountId is
+            // UNIQUE, so a blind insert on every auth fails with SQLite Error 19 the second time
+            // around).
+            RingAccount? existing = await _ringAccountRepository.GetByProviderAccountIdAsync(providerAccountId, ct);
+            if (existing != null)
             {
-                Id = Guid.NewGuid(),
-                ProviderAccountId = providerAccountId,
-                SubscriptionLevel = "unknown",
-                AccountEmail = username,
-                AuthenticatedAtUtc = DateTime.UtcNow
-            };
+                existing.AccountEmail = username;
+                existing.AuthenticatedAtUtc = DateTime.UtcNow;
+                await _ringAccountRepository.UpdateAsync(existing, ct);
+            }
+            else
+            {
+                var ringAccount = new RingAccount
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderAccountId = providerAccountId,
+                    SubscriptionLevel = "unknown",
+                    AccountEmail = username,
+                    AuthenticatedAtUtc = DateTime.UtcNow
+                };
+                await _ringAccountRepository.AddAsync(ringAccount, ct);
+            }
 
-            await _ringAccountRepository.AddAsync(ringAccount, ct);
             _logger.LogInformation("Persisted Ring authentication for {Username}", username);
         }
     }
