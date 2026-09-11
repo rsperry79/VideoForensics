@@ -63,17 +63,21 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         /// <summary>
-        /// Credentials auto-discovered from the RingVideos app's saved config (if App.config doesn't
-        /// already provide a refresh token or username/password of its own).
+        /// Credentials auto-discovered from the database (via RealSessionHelper/RingAuthService), if
+        /// App.config doesn't already provide a refresh token or username/password of its own.
         /// </summary>
         private static readonly Lazy<(string? UserName, string? Password, string? RefreshToken)> AutoDiscoveredCredentials = new(() =>
         {
             bool hasAppConfigCredentials = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingRefreshToken"])
                 || (!string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"]) && !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"]));
 
-            if (!hasAppConfigCredentials && RingVideosCredentialLocator.TryLoad(out string? userName, out string? password, out string? refreshToken))
+            if (!hasAppConfigCredentials)
             {
-                return (userName, password, refreshToken);
+                string? refreshToken = Mocks.RealSessionHelper.TryGetSavedRefreshToken();
+                if (refreshToken != null)
+                {
+                    return (null, null, refreshToken);
+                }
             }
 
             return (null, null, null);
