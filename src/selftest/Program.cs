@@ -76,10 +76,17 @@ namespace VideoForensics.Providers.Ring.SelfTester
             string dataProtectionKeyPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
             _ = Directory.CreateDirectory(dataProtectionKeyPath);
-            _ = services.AddDataProtection()
+            var dataProtectionBuilder = services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
-                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
-                .ProtectKeysWithDpapi();
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+            // DPAPI is Windows-only; this app is platform-agnostic (see PlatformDirectoryService/
+            // CredentialEncryptionFactory for the same split), so non-Windows hosts fall back to
+            // ASP.NET Core's unencrypted-on-disk key-ring default, protected only by filesystem
+            // permissions on the ProgramData-equivalent directory above.
+            if (OperatingSystem.IsWindows())
+            {
+                dataProtectionBuilder.ProtectKeysWithDpapi();
+            }
 
             _ = services.AddVideoForensicsDataLayer(dbPath);
             _ = services.AddVideoForensicsServerCore("Ring");

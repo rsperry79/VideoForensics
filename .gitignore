@@ -212,3 +212,4 @@ Generated/
 .mcp/
 build_output.txt
 scratchpad_*.cs
+SelfTesterResults/

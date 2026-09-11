@@ -83,10 +83,17 @@ namespace VideoForensics.MauiApp
 
             var dataProtectionKeyPath = Path.Combine(configDir, "keys");
             Directory.CreateDirectory(dataProtectionKeyPath);
-            builder.Services.AddDataProtection()
+            var mauiDataProtectionBuilder = builder.Services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
-                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
-                .ProtectKeysWithDpapi();
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+            // DPAPI encrypts the key-ring file at rest but is Windows-only; this app also targets
+            // non-Windows MAUI targets (Android/iOS/Mac Catalyst), so the key-ring falls back to
+            // ASP.NET Core's unencrypted-on-disk default there, protected only by OS-level app-sandbox
+            // file permissions (see PlatformDirectoryService/CredentialEncryptionFactory for the same split).
+            if (OperatingSystem.IsWindows())
+            {
+                mauiDataProtectionBuilder.ProtectKeysWithDpapi();
+            }
 
             // Cutover to HTTP-backed remote repositories (Milestone 5 completion). MAUI now talks
             // exclusively to a remote server's Minimal API instead of owning its own local SQLite DB
