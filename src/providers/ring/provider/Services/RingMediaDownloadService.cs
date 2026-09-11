@@ -8,8 +8,6 @@ using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
-using DetectionZone = VideoForensics.Data.Common.Entities.DetectionZone;
-using SecurityAlert = VideoForensics.Data.Common.Entities.SecurityAlert;
 using DetectedPerson = VideoForensics.Data.Common.Entities.DetectedPerson;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
@@ -443,15 +441,13 @@ namespace VideoForensics.Providers.Ring.Services
 
                                         // Extract structured CV metadata
                                         var mediaItemDetectionId = Guid.NewGuid();
-                                        var (detection, zones, alerts, persons, occurrences) = ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
+                                        var (detection, persons, occurrences) = ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
 
                                         _ = await _dataClient.RecordDownloadEventAsync(
                                             downloadEvent,
                                             mediaItem,
                                             rateLimitCts.Token,
                                             detection,
-                                            zones,
-                                            alerts,
                                             persons,
                                             occurrences);
 
@@ -1037,11 +1033,12 @@ namespace VideoForensics.Providers.Ring.Services
 
         /// <summary>
         /// Extracts structured CV metadata from a Ring event and creates related database entities.
+        /// Detection zones and security alerts are captured separately by ExtractEventMetadata (as
+        /// EventDetectionZone/EventSecurityAlert, keyed to the Event rather than the MediaItemDetection) -
+        /// not duplicated here.
         /// </summary>
-        private (MediaItemDetection detection, List<DetectionZone> zones, List<SecurityAlert> alerts, List<DetectedPerson> persons, List<DetectionTypeOccurrence> occurrences) ExtractMetadata(Entities.DoorbotHistoryEvent @event, Guid mediaItemId, Guid mediaItemDetectionId)
+        private (MediaItemDetection detection, List<DetectedPerson> persons, List<DetectionTypeOccurrence> occurrences) ExtractMetadata(Entities.DoorbotHistoryEvent @event, Guid mediaItemId, Guid mediaItemDetectionId)
         {
-            var zones = new List<DetectionZone>();
-            var alerts = new List<SecurityAlert>();
             var persons = new List<DetectedPerson>();
             var occurrences = new List<DetectionTypeOccurrence>();
 
@@ -1054,7 +1051,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Id = mediaItemDetectionId,
                     MediaItemId = mediaItemId
                 };
-                return (emptyDetection, zones, alerts, persons, occurrences);
+                return (emptyDetection, persons, occurrences);
             }
 
             // Create MediaItemDetection from CV properties
@@ -1076,43 +1073,6 @@ namespace VideoForensics.Providers.Ring.Services
             if (cv.DetectionDetails?.Confidence.HasValue == true)
             {
                 detection.Confidence = (decimal)cv.DetectionDetails.Confidence.Value;
-            }
-
-            // Extract detection zones
-            if (cv.DetectionDetails?.Zones != null)
-            {
-                foreach (var zone in cv.DetectionDetails.Zones)
-                {
-                    if (zone != null && !string.IsNullOrEmpty(zone.Id))
-                    {
-                        zones.Add(new DetectionZone
-                        {
-                            Id = Guid.NewGuid(),
-                            MediaItemDetectionId = mediaItemDetectionId,
-                            ZoneId = zone.Id,
-                            ZoneName = zone.Name,
-                            Confidence = zone.Confidence.HasValue ? (decimal)zone.Confidence.Value : null
-                        });
-                    }
-                }
-            }
-
-            // Extract security alerts
-            if (cv.SecurityAlerts != null && cv.SecurityAlerts.Alerts != null)
-            {
-                foreach (var alertText in cv.SecurityAlerts.Alerts)
-                {
-                    if (!string.IsNullOrEmpty(alertText))
-                    {
-                        alerts.Add(new SecurityAlert
-                        {
-                            Id = Guid.NewGuid(),
-                            MediaItemId = mediaItemId,
-                            Severity = cv.SecurityAlerts.Severity,
-                            AlertText = alertText
-                        });
-                    }
-                }
             }
 
             // Extract detected persons
@@ -1157,7 +1117,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
             }
 
-            return (detection, zones, alerts, persons, occurrences);
+            return (detection, persons, occurrences);
         }
 
         /// <summary>

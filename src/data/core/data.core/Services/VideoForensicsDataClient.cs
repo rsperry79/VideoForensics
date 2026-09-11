@@ -138,8 +138,6 @@ namespace VideoForensics.Data.Core.Services
             MediaItem? media,
             CancellationToken ct,
             MediaItemDetection? detection = null,
-            List<DetectionZone>? zones = null,
-            List<SecurityAlert>? alerts = null,
             List<DetectedPerson>? persons = null,
             List<DetectionTypeOccurrence>? occurrences = null)
         {
@@ -174,19 +172,6 @@ namespace VideoForensics.Data.Core.Services
                     {
                         await context.DetectionEntities.AddMediaItemDetectionAsync(detection, ct);
                     }
-
-                    // NOTE: DetectionZone and SecurityAlert tables were removed from schema.
-                    // These parameters are kept in the method signature for backward compatibility
-                    // but are no longer persisted. Future refactoring should remove them entirely.
-                    // if (zones != null && zones.Count > 0)
-                    // {
-                    //     await context.DetectionEntities.AddDetectionZonesAsync(zones, ct);
-                    // }
-                    //
-                    // if (alerts != null && alerts.Count > 0)
-                    // {
-                    //     await context.DetectionEntities.AddSecurityAlertsAsync(alerts, ct);
-                    // }
 
                     if (persons != null && persons.Count > 0)
                     {

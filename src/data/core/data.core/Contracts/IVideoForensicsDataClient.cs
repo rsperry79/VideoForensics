@@ -24,8 +24,6 @@ namespace VideoForensics.Data.Core.Contracts
             MediaItem? media,
             CancellationToken ct,
             MediaItemDetection? detection = null,
-            List<DetectionZone>? zones = null,
-            List<SecurityAlert>? alerts = null,
             List<DetectedPerson>? persons = null,
             List<DetectionTypeOccurrence>? occurrences = null);
 
