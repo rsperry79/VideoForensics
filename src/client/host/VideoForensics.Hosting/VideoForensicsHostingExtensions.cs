@@ -41,9 +41,11 @@ namespace VideoForensics.Hosting
         /// hosts (console, MCP) for their real DB, and eventually a MAUI client for its local
         /// offline-review cache.
         /// </summary>
-        public static IServiceCollection AddVideoForensicsDataLayer(this IServiceCollection services)
+        /// <param name="services">The service collection to register into.</param>
+        /// <param name="dbPath">Optional override for the SQLite database file path; defaults to %ProgramData%\VideoForensics\videoforensics.db (see AddVideoForensicsSqlite).</param>
+        public static IServiceCollection AddVideoForensicsDataLayer(this IServiceCollection services, string? dbPath = null)
         {
-            _ = services.AddVideoForensicsSqlite();
+            _ = services.AddVideoForensicsSqlite(dbPath);
             _ = services.AddVideoForensicsDatabase();
             _ = services.AddVideoForensicsDataCore();
 

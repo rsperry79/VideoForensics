@@ -1,43 +1,90 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Data.Database.DependencyInjection;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     internal static class Program
     {
-        // Simple logger for RingAuthService
-        private class ConsoleLogger : ILogger
+        /// <summary>Marker type for the initialization logger's category name - Program itself is static and can't be used as a generic type argument.</summary>
+        private sealed class SelfTesterLogCategory
         {
-            public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        }
+
+        /// <summary>
+        /// Console logger matching the tool's quiet-by-default CLI output: only warnings/errors are
+        /// printed, everything else (Info-level DI/repository logging) is suppressed.
+        /// </summary>
+        private sealed class ConsoleWarningErrorLoggerProvider : ILoggerProvider
+        {
+            public ILogger CreateLogger(string categoryName)
             {
-                return null!;
+                return new ConsoleWarningErrorLogger();
             }
 
-            public bool IsEnabled(LogLevel logLevel)
+            public void Dispose()
             {
-                return true;
             }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            private sealed class ConsoleWarningErrorLogger : ILogger
             {
-                string message = formatter(state, exception);
-                if (logLevel is LogLevel.Error or LogLevel.Warning)
+                public IDisposable BeginScope<TState>(TState state) where TState : notnull
                 {
-                    Console.Error.WriteLine($"[{logLevel}] {message}");
+                    return null!;
+                }
+
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return logLevel is LogLevel.Error or LogLevel.Warning;
+                }
+
+                public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                {
+                    if (IsEnabled(logLevel))
+                    {
+                        Console.Error.WriteLine($"[{logLevel}] {formatter(state, exception)}");
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Builds the same DI composition root every other VideoForensics host uses (WebApp, the
+        /// legacy console app) - see VideoForensicsHostingExtensions. This is what makes SelfTester
+        /// share RingAuthService's database-backed credential storage (and its DAPI-protected
+        /// encryption keys) with the rest of the app, instead of hand-rolling its own registrations
+        /// that could silently drift out of sync (as happened before: a bare AddDataProtection() with
+        /// no fixed key-ring path meant a token saved by one run couldn't reliably be decrypted by
+        /// the next).
+        /// </summary>
+        private static IServiceProvider BuildServiceProvider(string? dbPath)
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(new ConsoleWarningErrorLoggerProvider()));
+
+            // Same fixed key-ring location and DAPI protection as VideoForensics.WebApp/MauiApp -
+            // must match exactly, or a refresh token saved by one host can't be decrypted by another.
+            string dataProtectionKeyPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
+            _ = Directory.CreateDirectory(dataProtectionKeyPath);
+            _ = services.AddDataProtection()
+                .SetApplicationName("VideoForensics")
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath))
+                .ProtectKeysWithDpapi();
+
+            _ = services.AddVideoForensicsDataLayer(dbPath);
+            _ = services.AddVideoForensicsServerCore("Ring");
+
+            return services.BuildServiceProvider();
         }
 
         private static readonly JsonSerializerOptions IndexJsonOptions = new()
@@ -84,17 +131,39 @@ namespace VideoForensics.Providers.Ring.SelfTester
             EndpointRegistry.AssetUuid = options.AssetUuid;
             EndpointRegistry.PushToken = options.PushToken;
 
-            // Use RingAuthService (same as main app) to load credentials
-            var logger = new ConsoleLogger();
-            var sessionProvider = new SessionProvider();
-            var credentialStore = new CredentialStore();
-            var authService = new RingAuthService(logger, sessionProvider, credentialStore);
+            // Same DI composition root as WebApp/the legacy console app, so credentials and their
+            // encryption keys are shared with the rest of the app instead of living in a SelfTester-only silo.
+            IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath);
+
+            var initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
+            try
+            {
+                await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(serviceProvider, initLogger, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: database initialization failed: {ex.Message}");
+                return 2;
+            }
+
+            using IServiceScope authScope = serviceProvider.CreateScope();
+            var authService = authScope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+            var sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
+
+            // "The currently active account" mirrors the UI's own account switcher: the single
+            // IForensicsConfiguration.ActiveProviderAccountId setting persisted in AppSettings, loaded
+            // by InitializeVideoForensicsDataAsync above. Falls back to RingAuthService's own
+            // most-recently-authenticated-Ring-account heuristic when nothing has been selected yet.
+            var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+            Guid? activeAccountId = forensicsConfig.ActiveProviderAccountId;
 
             Session session;
             try
             {
-                // Try to restore from saved credentials (file-based or database)
-                bool restored = await authService.RestoreFromSavedCredentialsAsync();
+                bool restored = activeAccountId.HasValue
+                    ? await authService.RestoreFromSavedCredentialsAsync(activeAccountId)
+                    : await authService.RestoreFromSavedCredentialsAsync();
+
                 if (!restored)
                 {
                     // If no saved credentials, try explicit options
@@ -186,20 +255,10 @@ namespace VideoForensics.Providers.Ring.SelfTester
         /// </summary>
         private static async Task RunDbCompletenessCheckAsync(Session session, CliOptions options, string outputDir)
         {
-            string? dbPath = options.DbPath;
-
-            // If no path specified, try ProgramData first, then AppData
-            if (dbPath == null)
-            {
-                string programDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics", "videoforensics.db");
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics", "videoforensics.db");
-
-                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
-            }
+            // Same default as AddVideoForensicsSqlite: %ProgramData%\VideoForensics\videoforensics.db.
+            string dbPath = options.DbPath ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics", "videoforensics.db");
 
             if (!options.Quiet)
             {
@@ -292,207 +351,6 @@ namespace VideoForensics.Providers.Ring.SelfTester
         }
 
 
-        /// <summary>
-        /// Persists the authenticated refresh token to the database for future use.
-        /// </summary>
-        private static async Task PersistRefreshTokenToDbAsync(Session session, CliOptions options)
-        {
-            try
-            {
-                string? newRefreshToken = session.OAuthToken?.RefreshToken;
-                if (string.IsNullOrEmpty(newRefreshToken))
-                {
-                    return;
-                }
-
-                string? dbPath = options.DbPath;
-                if (dbPath == null)
-                {
-                    string programDataPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                        "VideoForensics", "videoforensics.db");
-                    string appDataPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "VideoForensics", "videoforensics.db");
-                    dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
-                }
-
-                if (!File.Exists(dbPath))
-                {
-                    return;
-                }
-
-                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
-                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
-
-                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
-
-                var ringAccount = await db.RingAccounts.FirstOrDefaultAsync();
-                if (ringAccount == null)
-                {
-                    return;
-                }
-
-                // Encrypt the refresh token
-                var aesEncryption = new AesEncryption();
-                string encryptedToken = aesEncryption.Encrypt(newRefreshToken);
-
-                if (string.IsNullOrEmpty(encryptedToken))
-                {
-                    return;
-                }
-
-                // Store or update the credential
-                var credential = await db.Credentials.FirstOrDefaultAsync(
-                    c => c.ProviderAccountId == ringAccount.ProviderAccountId && c.CredentialType == "RefreshToken");
-
-                if (credential == null)
-                {
-                    credential = new Credential
-                    {
-                        Id = Guid.NewGuid(),
-                        ProviderAccountId = ringAccount.ProviderAccountId,
-                        CredentialType = "RefreshToken",
-                        EncryptedValue = encryptedToken,
-                        EncryptionProvider = "AES-256",
-                        CreatedUtc = DateTime.UtcNow
-                    };
-                    _ = db.Credentials.Add(credential);
-                }
-                else
-                {
-                    credential.EncryptedValue = encryptedToken;
-                    credential.RotatedUtc = DateTime.UtcNow;
-                    _ = db.Credentials.Update(credential);
-                }
-
-                _ = await db.SaveChangesAsync();
-                Console.Error.WriteLine("Refresh token persisted to database");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"Warning: Failed to persist refresh token to database: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Loads stored refresh token from the VideoForensics database.
-        /// Checks ProgramData first, then AppData.
-        /// </summary>
-        private static async Task<ResolvedCredentials?> TryLoadCredentialsFromDbAsync(CliOptions options)
-        {
-
-            string? dbPath = options.DbPath;
-
-            // If no path specified, try ProgramData first, then AppData
-            if (dbPath == null)
-            {
-                string programDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics", "videoforensics.db");
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics", "videoforensics.db");
-
-                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
-            }
-
-            if (!File.Exists(dbPath))
-            {
-                return null;
-            }
-
-            try
-            {
-                var optionsBuilder = new DbContextOptionsBuilder<VideoForensicsDbContext>();
-                _ = optionsBuilder.UseSqlite($"Data Source={dbPath};Pooling=true;Cache=Shared",
-                    b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite"));
-
-                await using var db = new VideoForensicsDbContext(optionsBuilder.Options);
-
-                var ringAccounts = await db.RingAccounts.ToListAsync();
-                if (ringAccounts.Count == 0)
-                {
-                    return null;
-                }
-
-                var ringAccount = ringAccounts.First();
-                Console.Error.WriteLine($"Found Ring account: {ringAccount.AccountEmail} (ID: {ringAccount.ProviderAccountId})");
-
-                var credentials = await db.Credentials
-                    .Where(c => c.ProviderAccountId == ringAccount.ProviderAccountId)
-                    .ToListAsync();
-
-                Console.Error.WriteLine($"Found {credentials.Count} credentials for this account");
-
-                var refreshTokenCred = credentials.FirstOrDefault(c => c.CredentialType == "RefreshToken");
-
-                if (refreshTokenCred == null)
-                {
-                    Console.Error.WriteLine("No RefreshToken credential found");
-                    return null;
-                }
-
-                Console.Error.WriteLine($"Found RefreshToken credential, attempting decryption...");
-
-                // Decrypt the refresh token
-                string? decrypted = await DecryptCredentialAsync(refreshTokenCred.EncryptedValue);
-                if (string.IsNullOrEmpty(decrypted))
-                {
-                    Console.Error.WriteLine("Failed to decrypt RefreshToken");
-                    return null;
-                }
-
-                Console.Error.WriteLine($"Successfully loaded credentials from database: {ringAccount.AccountEmail}");
-                return new ResolvedCredentials(
-                    ringAccount.AccountEmail,
-                    null,
-                    decrypted,
-                    $"database:{dbPath}");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"Error loading credentials from database: {ex.Message}");
-                Console.Error.WriteLine($"Stack: {ex.StackTrace}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Decrypts a credential value using the configured encryption provider.
-        /// </summary>
-        private static async Task<string?> DecryptCredentialAsync(string encryptedValue)
-        {
-            try
-            {
-                // Try AES decryption (cross-platform)
-                var aesEncryption = new AesEncryption();
-                string decrypted = aesEncryption.Decrypt(encryptedValue);
-                if (!string.IsNullOrEmpty(decrypted))
-                {
-                    return decrypted;
-                }
-
-                // Try DPAPI if AES fails (Windows-only)
-                if (OperatingSystem.IsWindows())
-                {
-                    var dpapi = new WindowsDpapiEncryption();
-                    decrypted = dpapi.Decrypt(encryptedValue);
-                    if (!string.IsNullOrEmpty(decrypted))
-                    {
-                        return decrypted;
-                    }
-                }
-
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         private const string ReadmePointer = "Run 'dotnet run -- --auth' first to set up authentication.";
 
         private static void WriteNoCredentialsError()
@@ -504,12 +362,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
         }
 
         /// <summary>
-        /// Interactive one-time login: prompts for credentials, authenticates via
-        /// Ring.Api.InteractiveAuth (handling a 2FA challenge if one comes back), and
-        /// saves the result to the shared credentials file via CredentialStore. This is the console
-        /// I/O half of that flow - InteractiveAuth itself knows nothing about Console, so the same
-        /// authenticate-with-2FA-retry logic is reusable by anything else (tests included) without
-        /// going through this executable.
+        /// Interactive one-time login: prompts for credentials, authenticates via RingAuthService
+        /// (handling a 2FA challenge if one comes back), and saves the result to the database - the
+        /// same IProviderAuthService/ICredentialRepository path the WebApp and legacy console app use.
+        /// Also makes the authenticated account "the active account" (IForensicsConfiguration.ActiveProviderAccountId),
+        /// matching what the UI's AuthForm.razor does after a sign-in.
         /// </summary>
         private static async Task<int> RunInteractiveAuthAsync(CliOptions options)
         {
@@ -543,44 +400,15 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
             try
             {
-                // Set up minimal DI for database persistence
-                var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-                services.AddLogging();
+                // Same DI composition root as the normal (non-auth) run and every other host
+                // (WebApp, the legacy console app) - see BuildServiceProvider.
+                IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath);
 
-                // Add database and data layer - use same path as main selftest (ProgramData first, then AppData)
-                string? dbPath = null;
-                string programDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics", "videoforensics.db");
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "VideoForensics", "videoforensics.db");
-                dbPath = File.Exists(programDataPath) ? programDataPath : appDataPath;
+                var initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
+                await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(serviceProvider, initLogger, CancellationToken.None);
 
-                services.AddDbContextFactory<VideoForensicsDbContext>(opt =>
-                    opt.UseSqlite($"Data Source={dbPath}"));
-
-                services.AddDataProtection();
-                services.AddVideoForensicsDatabase();
-
-                var sp = services.BuildServiceProvider();
-
-                var logger = sp.GetRequiredService<ILogger<RingAuthService>>();
-                var sessionProvider = new SessionProvider();
-                var credentialStore = new CredentialStore();
-                var credentialRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ICredentialRepository>();
-                var providerAccountRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
-                var userRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUserRepository>();
-                var ringAccountRepository = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IRingAccountRepository>();
-
-                var authService = new RingAuthService(
-                    logger,
-                    sessionProvider,
-                    credentialStore,
-                    credentialRepository,
-                    ringAccountRepository,
-                    providerAccountRepository,
-                    userRepository);
+                using IServiceScope scope = serviceProvider.CreateScope();
+                var authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
 
                 // Authenticate and save to database
                 var result = await authService.AuthenticateWithTwoFactorAsync(
@@ -599,6 +427,16 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 {
                     Console.Error.WriteLine($"Error: {result.ErrorMessage}");
                     return 2;
+                }
+
+                // Make this the active account, exactly like AuthForm.razor does after a UI sign-in -
+                // so a normal (non-auth) SelfTester run picks it up via IForensicsConfiguration.ActiveProviderAccountId.
+                var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+                if (result.ProviderAccountId.HasValue && forensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
+                {
+                    forensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
+                    var configService = scope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>();
+                    await configService.SaveConfigurationAsync(forensicsConfig);
                 }
 
                 Console.WriteLine();
