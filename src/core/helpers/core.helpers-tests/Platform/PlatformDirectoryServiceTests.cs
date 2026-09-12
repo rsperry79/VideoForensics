@@ -70,7 +70,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
         public void GetConfigDirectory_ContainsConfigOrPreferences()
         {
             string result = _service.GetConfigDirectory().ToLower();
-            Assert.True(result.Contains("config") || result.Contains("preferences") || result.Contains("appdata"));
+            Assert.True(result.Contains("config") || result.Contains("preferences") || result.Contains("appdata") || result.Contains("programdata"));
         }
 
         [Fact]

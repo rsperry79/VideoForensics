@@ -20,7 +20,6 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IDownloadEventRepository> _mockDownloadEventRepository;
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
-        private readonly Mock<IDeviceHealthSnapshotRepository> _mockDeviceHealthSnapshotRepository;
         private readonly Mock<IDeviceHealthRepository> _mockDeviceHealthRepository;
         private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
@@ -43,7 +42,6 @@ namespace VideoForensics.Data.Core.Tests
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
             _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
-            _mockDeviceHealthSnapshotRepository = new Mock<IDeviceHealthSnapshotRepository>();
             _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
@@ -62,7 +60,6 @@ namespace VideoForensics.Data.Core.Tests
                 _mockDownloadEventRepository.Object,
                 _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
-                _mockDeviceHealthSnapshotRepository.Object,
                 _mockDeviceHealthRepository.Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
@@ -72,33 +69,6 @@ namespace VideoForensics.Data.Core.Tests
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
                 _mockLogger.Object);
-        }
-
-        [Fact]
-        public async Task RecordDeviceHealthSnapshotAsync_DelegatesToDeviceHealthSnapshotRepository()
-        {
-            // Arrange
-            var snapshot = new DeviceHealthSnapshot
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = Guid.NewGuid(),
-                BatteryPercentage = 55m,
-                Connected = true,
-                CapturedAtUtc = DateTime.UtcNow
-            };
-
-            _ = _mockDeviceHealthSnapshotRepository
-                .Setup(x => x.AppendSnapshotAsync(snapshot, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(snapshot);
-
-            // Act
-            DeviceHealthSnapshot result = await _dataClient.RecordDeviceHealthSnapshotAsync(snapshot, CancellationToken.None);
-
-            // Assert
-            Assert.Equal(snapshot, result);
-            _mockDeviceHealthSnapshotRepository.Verify(
-                x => x.AppendSnapshotAsync(snapshot, It.IsAny<CancellationToken>()),
-                Times.Once);
         }
 
         [Fact]
