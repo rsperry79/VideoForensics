@@ -64,7 +64,9 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.AddAsync(loc2, CancellationToken.None);
             await _repository.AddAsync(loc3, CancellationToken.None);
 
+            #pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
             IReadOnlyList<Location> list = await _repository.GetByProviderAccountIdAsync(Guid.NewGuid(), CancellationToken.None);
+            #pragma warning restore CS0618
             Assert.Equal(3, list.Count);
         }
 

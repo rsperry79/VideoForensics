@@ -23,7 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
     <ProjectReference Include="..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
-    <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
-    <ProjectReference Include="..\..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
+    <ProjectReference Include="..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
   </ItemGroup>
 </Project>

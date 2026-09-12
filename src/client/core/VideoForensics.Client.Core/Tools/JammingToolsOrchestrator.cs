@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Core.Tools
     {
         private readonly ILogger<JammingToolsOrchestrator> _logger;
         private readonly IJammingRepository _jammingRepository;
-        private readonly IDeviceHealthSnapshotRepository _healthSnapshotRepository;
+        private readonly IDeviceHealthRepository _healthRepository;
 
         // A drop of at least this many dB below the device's own baseline RSSI is treated as
         // "degraded" for a single reading. Matches the playbook in JammingAnalysisResource
@@ -23,11 +23,11 @@ namespace VideoForensics.Client.Core.Tools
         public JammingToolsOrchestrator(
             ILogger<JammingToolsOrchestrator> logger,
             IJammingRepository jammingRepository,
-            IDeviceHealthSnapshotRepository healthSnapshotRepository)
+            IDeviceHealthRepository healthRepository)
         {
             _logger = logger;
             _jammingRepository = jammingRepository;
-            _healthSnapshotRepository = healthSnapshotRepository;
+            _healthRepository = healthRepository;
         }
 
         public async Task<(bool Success, string Message, JammingStatsSummary? Stats)> RunJammingDetectionNotificationAsync(
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.Core.Tools
         /// Unified jamming analysis: detects incidents from captured RSSI history, persists them,
         /// recomputes device stats, and returns everything in one call.
         ///
-        /// Detection runs against DeviceHealthSnapshot rows (real RSSI readings captured once per
+        /// Detection runs against DeviceHealth rows (real RSSI readings captured once per
         /// download batch — see RingMediaDownloadService.CaptureDeviceHealthSnapshotAsync). Ring's
         /// /doorbots/history endpoint does not return RSSI on individual historical events (the
         /// embedded Doorbot stub's Health is always null there), so per-event RSSI does not exist to
@@ -211,10 +211,10 @@ namespace VideoForensics.Client.Core.Tools
         /// </summary>
         private async Task<int> DetectAndPersistIncidentsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            IReadOnlyList<DeviceHealthSnapshot> history = await _healthSnapshotRepository.GetHistoryAsync(deviceId, ct);
+            IReadOnlyList<DeviceHealth> history = await _healthRepository.GetHistoryAsync(deviceId, ct);
 
             var readings = history
-                .Where(s => s.Rssi.HasValue && s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)
+                .Where(s => s.WifiSignalRssi.HasValue && s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)
                 .OrderBy(s => s.CapturedAtUtc)
                 .ToList();
 
@@ -227,7 +227,7 @@ namespace VideoForensics.Client.Core.Tools
                 return 0;
             }
 
-            var baselineRssi = Median(readings.Select(r => (double)r.Rssi!.Value));
+            var baselineRssi = Median(readings.Select(r => (double)r.WifiSignalRssi!.Value));
 
             IReadOnlyList<JammingIncidentRecord> existingIncidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
             var alreadyDetectedStarts = existingIncidents
@@ -240,7 +240,7 @@ namespace VideoForensics.Client.Core.Tools
 
             for (var i = 0; i <= readings.Count; i++)
             {
-                var isDegraded = i < readings.Count && (baselineRssi - readings[i].Rssi!.Value) >= DegradationThresholdDb;
+                var isDegraded = i < readings.Count && (baselineRssi - readings[i].WifiSignalRssi!.Value) >= DegradationThresholdDb;
 
                 if (isDegraded && runStart == -1)
                 {
@@ -251,12 +251,12 @@ namespace VideoForensics.Client.Core.Tools
                     var runLength = i - runStart;
                     if (runLength >= MinConsecutiveReadingsForIncident)
                     {
-                        List<DeviceHealthSnapshot> runReadings = readings.GetRange(runStart, runLength);
+                        List<DeviceHealth> runReadings = readings.GetRange(runStart, runLength);
                         DateTime incidentStart = runReadings[0].CapturedAtUtc;
 
                         if (!alreadyDetectedStarts.Contains(incidentStart))
                         {
-                            var avgDegradation = baselineRssi - runReadings.Average(r => r.Rssi!.Value);
+                            var avgDegradation = baselineRssi - runReadings.Average(r => r.WifiSignalRssi!.Value);
 
                             _ = await _jammingRepository.UpsertIncidentAsync(new JammingIncidentRecord
                             {

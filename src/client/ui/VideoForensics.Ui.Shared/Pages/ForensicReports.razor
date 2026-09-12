@@ -82,30 +82,30 @@ else
         }
         else
         {
-            <SfGrid TValue="DeviceHealthSnapshot" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="DeviceHealth" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(DeviceHealthSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
+                    <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
                     <GridColumn HeaderText="@L["ColDeviceId"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
-                                @(snapshot.DeviceId?.ToString("N")[..8] ?? "-")
+                                var snapshot = (DeviceHealth)context;
+                                @(snapshot.DeviceId.ToString("N")[..8])
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="@L["ColConnected"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
-                                @(snapshot.Connected?.ToString() ?? "-")
+                                var snapshot = (DeviceHealth)context;
+                                @(snapshot.IsOnline?.ToString() ?? "-")
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="@L["ColBatteryPercent"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
+                                var snapshot = (DeviceHealth)context;
                                 @(snapshot.BatteryPercentage?.ToString() ?? "-")
                             }
                         </Template>
@@ -113,15 +113,15 @@ else
                     <GridColumn HeaderText="@L["ColRssi"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
-                                @(snapshot.Rssi?.ToString() ?? "-")
+                                var snapshot = (DeviceHealth)context;
+                                @(snapshot.WifiSignalRssi?.ToString() ?? "-")
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn HeaderText="@L["ColWifi"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
+                                var snapshot = (DeviceHealth)context;
                                 @(snapshot.WifiName ?? "-")
                             }
                         </Template>
@@ -129,7 +129,7 @@ else
                     <GridColumn HeaderText="@L["ColFirmware"]">
                         <Template>
                             @{
-                                var snapshot = (DeviceHealthSnapshot)context;
+                                var snapshot = (DeviceHealth)context;
                                 @(snapshot.FirmwareVersion ?? "-")
                             }
                         </Template>
@@ -167,7 +167,7 @@ else
     private DateTime _toDate = DateTime.UtcNow.Date;
     private ForensicAnalysisReport? _report;
     private IEnumerable<MediaItem> _filteredEvidenceItems = new List<MediaItem>();
-    private IEnumerable<DeviceHealthSnapshot> _filteredAnomalousHealthSnapshots = new List<DeviceHealthSnapshot>();
+    private IEnumerable<DeviceHealth> _filteredAnomalousHealthSnapshots = new List<DeviceHealth>();
     private IEnumerable<ActionLogEntry> _filteredSignificantActions = new List<ActionLogEntry>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
