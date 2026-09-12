@@ -17,7 +17,6 @@ namespace VideoForensics.Data.Core.Services
         private readonly IDownloadEventRepository _downloadEventRepository;
         private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
-        private readonly IDeviceHealthSnapshotRepository _deviceHealthSnapshotRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
@@ -37,7 +36,6 @@ namespace VideoForensics.Data.Core.Services
             IDownloadEventRepository downloadEventRepository,
             IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
-            IDeviceHealthSnapshotRepository deviceHealthSnapshotRepository,
             IDeviceHealthRepository deviceHealthRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
@@ -55,7 +53,6 @@ namespace VideoForensics.Data.Core.Services
             _downloadEventRepository = downloadEventRepository;
             _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
-            _deviceHealthSnapshotRepository = deviceHealthSnapshotRepository;
             _deviceHealthRepository = deviceHealthRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
@@ -79,19 +76,6 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error registering device {DeviceName}", device.Name);
-                throw;
-            }
-        }
-
-        public async Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct)
-        {
-            try
-            {
-                return await _deviceHealthSnapshotRepository.AppendSnapshotAsync(snapshot, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error recording device health snapshot for device {DeviceId}", snapshot.DeviceId);
                 throw;
             }
         }

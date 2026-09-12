@@ -150,16 +150,16 @@ namespace VideoForensics.Data.Database.Tests
             };
         }
 
-        public static DeviceHealthSnapshot BuildDeviceHealthSnapshot(Guid? deviceId = null)
+        public static DeviceHealth BuildDeviceHealth(Guid? deviceId = null)
         {
-            return new DeviceHealthSnapshot
+            return new DeviceHealth
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId ?? Guid.NewGuid(),
-                Connected = true,
                 BatteryPercentage = 80m,
-                Rssi = -50,
+                WifiSignalRssi = -50,
                 WifiName = "TestNetwork",
+                IsOnline = true,
                 FirmwareVersion = "1.0.0",
                 CapturedAtUtc = DateTime.UtcNow
             };

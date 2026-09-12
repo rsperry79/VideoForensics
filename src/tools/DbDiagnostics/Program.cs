@@ -91,56 +91,27 @@ if (mediaDetectionCount > 0 && eventDetectionCount > 0)
     Console.WriteLine($"Average detections per Event:     {avgEventDetections}");
 }
 
-var securityAlertCount = await db.SecurityAlerts.CountAsync();
-var eventSecurityAlertCount = await db.EventSecurityAlerts.CountAsync();
-Console.WriteLine($"\nSecurityAlert rows:       {securityAlertCount:N0}");
-Console.WriteLine($"EventSecurityAlert rows:  {eventSecurityAlertCount:N0}");
-
-var detectionZoneCount = await db.DetectionZones.CountAsync();
-var eventDetectionZoneCount = await db.EventDetectionZones.CountAsync();
-Console.WriteLine($"\nDetectionZone rows:       {detectionZoneCount:N0}");
-Console.WriteLine($"EventDetectionZone rows:  {eventDetectionZoneCount:N0}");
-
-// SECTION 3: Device Health Redundancy
-Console.WriteLine("\n\nSECTION 3: DEVICE HEALTH REDUNDANCY");
+// SECTION 3: Device Health
+Console.WriteLine("\n\nSECTION 3: DEVICE HEALTH");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
 var deviceHealthCount = await db.DeviceHealths.CountAsync();
-var deviceHealthSnapshotCount = await db.DeviceHealthSnapshots.CountAsync();
+Console.WriteLine($"DeviceHealth rows: {deviceHealthCount:N0}");
 
-Console.WriteLine($"DeviceHealth rows:          {deviceHealthCount:N0}");
-Console.WriteLine($"DeviceHealthSnapshot rows:  {deviceHealthSnapshotCount:N0}");
+var healthDates = await db.DeviceHealths
+    .GroupBy(h => h.CapturedAtUtc.Date)
+    .OrderByDescending(g => g.Key)
+    .Select(g => new { Date = g.Key, Count = g.Count() })
+    .Take(5)
+    .ToListAsync();
 
-if (deviceHealthSnapshotCount > 0)
+if (healthDates.Count > 0)
 {
-    Console.WriteLine("\n⚠️  DeviceHealthSnapshot is still being used!");
-
-    var snapshotDeviceIdNull = await db.DeviceHealthSnapshots.Where(s => s.DeviceId == null).CountAsync();
-    Console.WriteLine($"   • With NULL DeviceId: {snapshotDeviceIdNull:N0}");
-
-    var snapshotDeviceIdNotNull = await db.DeviceHealthSnapshots.Where(s => s.DeviceId != null).CountAsync();
-    Console.WriteLine($"   • With non-NULL DeviceId: {snapshotDeviceIdNotNull:N0}");
-
-    // Check date range
-    var snapshotDates = await db.DeviceHealthSnapshots
-        .GroupBy(s => s.CapturedAtUtc.Date)
-        .OrderByDescending(g => g.Key)
-        .Select(g => new { Date = g.Key, Count = g.Count() })
-        .Take(5)
-        .ToListAsync();
-
-    if (snapshotDates.Count > 0)
+    Console.WriteLine($"\n   Recent dates:");
+    foreach (var date in healthDates)
     {
-        Console.WriteLine($"\n   Recent snapshot dates:");
-        foreach (var date in snapshotDates)
-        {
-            Console.WriteLine($"     • {date.Date}: {date.Count} records");
-        }
+        Console.WriteLine($"     • {date.Date}: {date.Count} records");
     }
-}
-else
-{
-    Console.WriteLine("✅ DeviceHealthSnapshot table is empty.");
 }
 
 // SECTION 4: Device Features Redundancy
@@ -176,28 +147,7 @@ if (bothTables > 0)
     Console.WriteLine($"\n⚠️  {bothTables} devices have BOTH DeviceCapabilities and DeviceFeatures!");
 }
 
-// SECTION 5: Location Data Redundancy
-Console.WriteLine("\n\nSECTION 5: LOCATION DATA REDUNDANCY");
-Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
-
-var locationsWithAddress = await db.Locations.Where(l => l.Address != null).CountAsync();
-var deviceLocationsWithAddress = await db.DeviceLocations.Where(dl => dl.Address != null).CountAsync();
-
-Console.WriteLine($"Locations with Address:        {locationsWithAddress:N0}");
-Console.WriteLine($"DeviceLocations with Address:  {deviceLocationsWithAddress:N0}");
-
-var addressMismatches = await db.Locations
-    .Join(db.Devices, l => l.Id, d => d.LocationId, (l, d) => new { LocationId = l.Id, LocationAddress = l.Address, DeviceId = d.Id })
-    .Join(db.DeviceLocations, x => x.DeviceId, dl => dl.DeviceId, (x, dl) => new { x.LocationAddress, DeviceLocationAddress = dl.Address })
-    .Where(x => x.LocationAddress != null && x.DeviceLocationAddress != null && x.LocationAddress != x.DeviceLocationAddress)
-    .CountAsync();
-
-if (addressMismatches > 0)
-{
-    Console.WriteLine($"\n⚠️  {addressMismatches} devices have DIFFERENT addresses in Location vs DeviceLocation!");
-}
-
-// SECTION 6: Data Quality Metrics
+// SECTION 5: Data Quality Metrics
 Console.WriteLine("\n\nSECTION 6: OVERALL TABLE SIZES");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
@@ -207,10 +157,8 @@ var tableStats = new[]
     ("Events", await db.Events.CountAsync()),
     ("Devices", await db.Devices.CountAsync()),
     ("Locations", await db.Locations.CountAsync()),
-    ("SecurityAlerts (both)", securityAlertCount + eventSecurityAlertCount),
     ("Detections (both)", mediaDetectionCount + eventDetectionCount),
-    ("DetectionZones (both)", detectionZoneCount + eventDetectionZoneCount),
-    ("DeviceHealth (both)", deviceHealthCount + deviceHealthSnapshotCount),
+    ("DeviceHealth", deviceHealthCount),
 };
 
 foreach (var (name, count) in tableStats.OrderByDescending(x => x.Item2))
@@ -228,12 +176,8 @@ if (duplicateDevices.Count > 0)
     issues.Add($"❌ {duplicateDevices.Count} duplicate devices (fix with unique constraint)");
 if (duplicateEvents.Count > 0)
     issues.Add($"❌ {duplicateEvents.Count} duplicate events (fix with unique constraint)");
-if (deviceHealthSnapshotCount > 0)
-    issues.Add($"❌ DeviceHealthSnapshot still populated ({deviceHealthSnapshotCount} rows)");
 if (bothTables > 0)
     issues.Add($"⚠️  {bothTables} devices with both DeviceCapabilities AND DeviceFeatures (merge needed)");
-if (addressMismatches > 0)
-    issues.Add($"⚠️  {addressMismatches} address mismatches between Location and DeviceLocation");
 
 if (issues.Count == 0)
 {

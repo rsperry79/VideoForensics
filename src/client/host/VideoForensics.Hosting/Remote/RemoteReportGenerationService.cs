@@ -123,18 +123,21 @@ namespace VideoForensics.Hosting.Remote
     /// <summary>Extension methods for mapping report DTOs back to domain models.</summary>
     internal static class ReportDtoToDomainMapping
     {
-        /// <summary>Converts a DeviceHealthSnapshotDto to a DeviceHealthSnapshot entity.</summary>
-        internal static VideoForensics.Data.Common.Entities.DeviceHealthSnapshot ToDomain(this DeviceHealthSnapshotDto dto)
+        /// <summary>Converts a DeviceHealthDto to a DeviceHealth entity.</summary>
+        internal static VideoForensics.Data.Common.Entities.DeviceHealth ToDomain(this DeviceHealthDto dto)
         {
-            return new VideoForensics.Data.Common.Entities.DeviceHealthSnapshot
+            return new VideoForensics.Data.Common.Entities.DeviceHealth
             {
                 Id = dto.Id,
                 DeviceId = dto.DeviceId,
-                DownloadEventId = dto.DownloadEventId,
-                Connected = dto.Connected,
                 BatteryPercentage = dto.BatteryPercentage,
-                Rssi = dto.Rssi,
+                BatteryVoltageValue = dto.BatteryVoltageValue,
+                WifiSignalRssi = dto.WifiSignalRssi,
                 WifiName = dto.WifiName,
+                IsExternalPowerConnected = dto.IsExternalPowerConnected,
+                OtaStatus = dto.OtaStatus,
+                IsOnline = dto.IsOnline,
+                LastHeartbeatUtc = dto.LastHeartbeatUtc,
                 FirmwareVersion = dto.FirmwareVersion,
                 CapturedAtUtc = dto.CapturedAtUtc
             };
