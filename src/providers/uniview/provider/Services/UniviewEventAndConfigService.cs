@@ -52,6 +52,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             return [];
         }
 
+        var clockOffset = await client.GetClockOffsetAsync(cancellationToken);
         var events = new List<DeviceEvent>();
 
         // Query segment listings month by month to avoid the per-query result cap
@@ -78,16 +79,18 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                         continue;
 
                     var eventId = $"{deviceId}-{segment.Begin.ToUnixTimeSeconds()}";
+                    var correctedBegin = segment.Begin + clockOffset;
+                    var correctedEnd = segment.End + clockOffset;
                     var metadata = new Dictionary<string, string>
                     {
-                        ["EndTime"] = segment.End.UtcDateTime.ToString("O"),
+                        ["EndTime"] = correctedEnd.UtcDateTime.ToString("O"),
                     };
 
                     var deviceEvent = new DeviceEvent(
                         Id: eventId,
                         DeviceId: deviceId,
                         EventType: "motion",
-                        Timestamp: segment.Begin.UtcDateTime,
+                        Timestamp: correctedBegin.UtcDateTime,
                         SnapshotUrl: null, // No per-event snapshot API available
                         Metadata: metadata);
 
