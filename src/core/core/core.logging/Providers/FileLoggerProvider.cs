@@ -1,6 +1,9 @@
+using System;
+using System.IO;
+
 using Microsoft.Extensions.Logging;
 
-namespace VideoForensics.Logging
+namespace VideoForensics.Core.Logging.Providers
 {
     /// <summary>
     /// Minimal file-backed <see cref="ILoggerProvider"/>. The app previously registered logging

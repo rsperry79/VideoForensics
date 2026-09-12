@@ -5,6 +5,7 @@ using Spectre.Console;
 
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Hosting;
@@ -35,7 +36,7 @@ namespace VideoForensics
             _ = services.AddLogging(builder =>
             {
                 _ = builder.SetMinimumLevel(LogLevel.Information);
-                _ = builder.AddProvider(new VideoForensics.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
+                _ = builder.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
             });
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,

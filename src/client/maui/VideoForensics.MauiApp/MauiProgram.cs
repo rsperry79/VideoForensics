@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Net.Http;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
@@ -61,7 +62,7 @@ namespace VideoForensics.MauiApp
             Directory.CreateDirectory(configDir);
             var logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);
-            builder.Logging.AddProvider(new VideoForensics.MauiApp.Logging.FileLoggerProvider(logFilePath, LogLevel.Information));
+            builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
 
             // AddVideoForensicsDataLayer() -> AddVideoForensicsDatabase() registers a bare
             // AddDataProtection() for CredentialEncryptionProvider. The first time anything resolves
