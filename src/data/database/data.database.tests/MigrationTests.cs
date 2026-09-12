@@ -82,33 +82,11 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task Migration_DeviceHealthSnapshots_DbSetQueryable()
+        public async Task Migration_DeviceHealths_DbSetQueryable()
         {
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            List<DeviceHealthSnapshot> result = await ctx.DeviceHealthSnapshots.ToListAsync();
+            List<DeviceHealth> result = await ctx.DeviceHealths.ToListAsync();
             Assert.NotNull(result);
-        }
-
-        [Fact]
-        public async Task Migration_DeviceHealthSnapshots_HasNullableDeviceIdColumn()
-        {
-            await using VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var snapshot = new VideoForensics.Data.Common.Entities.DeviceHealthSnapshot
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = Guid.NewGuid(),
-                DownloadEventId = null,
-                BatteryPercentage = 42m,
-                CapturedAtUtc = DateTime.UtcNow
-            };
-
-            _ = ctx.DeviceHealthSnapshots.Add(snapshot);
-            _ = await ctx.SaveChangesAsync();
-
-            DeviceHealthSnapshot? reloaded = await ctx.DeviceHealthSnapshots.FindAsync(snapshot.Id);
-            Assert.NotNull(reloaded);
-            Assert.Equal(snapshot.DeviceId, reloaded!.DeviceId);
-            Assert.Null(reloaded.DownloadEventId);
         }
 
         [Fact]

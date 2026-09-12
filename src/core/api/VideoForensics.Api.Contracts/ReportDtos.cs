@@ -1,25 +1,31 @@
 ﻿namespace VideoForensics.Api.Contracts
 {
     /// <summary>
-    /// Data transfer object for a device health/connectivity telemetry snapshot.
+    /// Data transfer object for a device health/connectivity telemetry metric.
     /// </summary>
-    /// <param name="Id">Unique identifier for this snapshot.</param>
-    /// <param name="DeviceId">The device this snapshot is associated with. Null if generic system snapshot.</param>
-    /// <param name="DownloadEventId">The download event this snapshot coincided with, if applicable. Null otherwise.</param>
-    /// <param name="Connected">True if the device was connected at snapshot time, False if disconnected, Null if unknown.</param>
+    /// <param name="Id">Unique identifier for this health record.</param>
+    /// <param name="DeviceId">The device this health record is associated with.</param>
     /// <param name="BatteryPercentage">Device battery level as a percentage (0-100), if applicable. Null for wired devices or unknown.</param>
-    /// <param name="Rssi">Signal strength (RSSI) in dBm, if applicable. Null for wired devices or unknown.</param>
+    /// <param name="BatteryVoltageValue">Device battery voltage, if applicable. Null for wired devices or unknown.</param>
+    /// <param name="WifiSignalRssi">Signal strength (RSSI) in dBm, if applicable. Null for wired devices or unknown.</param>
     /// <param name="WifiName">SSID of the connected WiFi network, if applicable. Null for non-WiFi or unknown.</param>
-    /// <param name="FirmwareVersion">Device firmware version at time of snapshot. Null if unknown.</param>
-    /// <param name="CapturedAtUtc">Timestamp when this snapshot was captured, in UTC.</param>
-    public record DeviceHealthSnapshotDto(
+    /// <param name="IsExternalPowerConnected">True if external power is connected, if applicable. Null if unknown.</param>
+    /// <param name="OtaStatus">Over-the-air update status, if applicable. Null if unknown.</param>
+    /// <param name="IsOnline">True if the device was online at capture time, False if offline, Null if unknown.</param>
+    /// <param name="LastHeartbeatUtc">Timestamp of the last known heartbeat, in UTC. Null if unknown.</param>
+    /// <param name="FirmwareVersion">Device firmware version at time of capture. Null if unknown.</param>
+    /// <param name="CapturedAtUtc">Timestamp when this health metric was captured, in UTC.</param>
+    public record DeviceHealthDto(
         Guid Id,
-        Guid? DeviceId,
-        Guid? DownloadEventId,
-        bool? Connected,
+        Guid DeviceId,
         decimal? BatteryPercentage,
-        int? Rssi,
+        decimal? BatteryVoltageValue,
+        int? WifiSignalRssi,
         string? WifiName,
+        bool? IsExternalPowerConnected,
+        string? OtaStatus,
+        bool? IsOnline,
+        DateTime? LastHeartbeatUtc,
         string? FirmwareVersion,
         DateTime CapturedAtUtc
     );
@@ -87,7 +93,7 @@
         DateTime ReportFromUtc,
         DateTime ReportToUtc,
         IReadOnlyList<MediaItemDto> EvidenceItems,
-        IReadOnlyList<DeviceHealthSnapshotDto> AnomalousHealthSnapshots,
+        IReadOnlyList<DeviceHealthDto> AnomalousHealthSnapshots,
         IReadOnlyList<ActionLogEntryDto> SignificantActions,
         string? Summary
     );
@@ -217,17 +223,20 @@
     /// <summary>Extension methods for mapping domain report models to ReportDtos.</summary>
     public static class ReportDtoMapping
     {
-        /// <summary>Converts a DeviceHealthSnapshot entity to a DeviceHealthSnapshotDto.</summary>
-        public static DeviceHealthSnapshotDto ToDto(this VideoForensics.Data.Common.Entities.DeviceHealthSnapshot entity)
+        /// <summary>Converts a DeviceHealth entity to a DeviceHealthDto.</summary>
+        public static DeviceHealthDto ToDto(this VideoForensics.Data.Common.Entities.DeviceHealth entity)
         {
-            return new DeviceHealthSnapshotDto(
+            return new DeviceHealthDto(
                 Id: entity.Id,
                 DeviceId: entity.DeviceId,
-                DownloadEventId: entity.DownloadEventId,
-                Connected: entity.Connected,
                 BatteryPercentage: entity.BatteryPercentage,
-                Rssi: entity.Rssi,
+                BatteryVoltageValue: entity.BatteryVoltageValue,
+                WifiSignalRssi: entity.WifiSignalRssi,
                 WifiName: entity.WifiName,
+                IsExternalPowerConnected: entity.IsExternalPowerConnected,
+                OtaStatus: entity.OtaStatus,
+                IsOnline: entity.IsOnline,
+                LastHeartbeatUtc: entity.LastHeartbeatUtc,
                 FirmwareVersion: entity.FirmwareVersion,
                 CapturedAtUtc: entity.CapturedAtUtc
             );
