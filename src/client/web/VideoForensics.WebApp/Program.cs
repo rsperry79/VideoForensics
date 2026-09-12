@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
+
+using VideoForensics.Core.Logging.DependencyInjection;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -33,6 +36,11 @@ if (File.Exists(syncfusionLicenseKeyPath))
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Windows Service hosting - enables running under Windows Service Control Manager while keeping
+// dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when
+// not running under the SCM, so no conditional is needed).
+builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics");
+
 var listenPort = ResolveConfiguredPort(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -52,6 +60,14 @@ builder.WebHost.ConfigureKestrel(options =>
         options.ListenAnyIP(listenPort);
     }
 });
+
+// Register file-based logging + Windows Event Log (service visibility) + Linux syslog. Log file
+// lands under %ProgramData%/VideoForensics/logs, matching the console/MAUI apps' pattern.
+var loggingConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+Directory.CreateDirectory(loggingConfigDir);
+var logFilePath = Path.Combine(loggingConfigDir, "logs", $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

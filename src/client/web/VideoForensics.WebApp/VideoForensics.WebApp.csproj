@@ -23,6 +23,9 @@
     <PackageReference Include="Fido2" Version="4.0.1" />
     <PackageReference Include="Fido2.AspNet" Version="4.0.1" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
+    <!-- Windows Service hosting (plan: allows dotnet run/debug unchanged, becomes a Windows Service
+         in production when installed via deploy/install-service.ps1). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.11" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
@@ -31,6 +34,7 @@
     <ProjectReference Include="..\..\..\core\api\VideoForensics.Api.Contracts\VideoForensics.Api.Contracts.csproj" />
     <ProjectReference Include="..\..\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\core\core\core.logging\VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 
 </Project>

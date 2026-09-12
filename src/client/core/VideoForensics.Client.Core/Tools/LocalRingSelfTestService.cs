@@ -92,8 +92,10 @@ namespace VideoForensics.Client.Core.Tools
                 ChimeIdFilter: request.ChimeId
             );
 
-            // Pick output directory following the console tool's convention
+            // Pick output directory under ProgramData, matching other persistent state in this app
             string outputDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics",
                 "SelfTesterResults",
                 DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
             _ = Directory.CreateDirectory(outputDir);
