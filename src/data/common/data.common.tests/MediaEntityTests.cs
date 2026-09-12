@@ -230,28 +230,26 @@ public class MediaEntityTests
     }
 
     [Fact]
-    public void DeviceHealthSnapshot_PropertiesRoundTrip_ReturnsSetValues()
+    public void DeviceHealth_PropertiesRoundTrip_ReturnsSetValues()
     {
         // Arrange
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var downloadEventId = Guid.NewGuid();
-        bool connected = true;
+        bool isOnline = true;
         decimal batteryPercentage = 75.5m;
-        int rssi = -45;
+        int wifiSignalRssi = -45;
         string wifiName = "HomeNetwork";
         string firmwareVersion = "2.8.32";
         var capturedAtUtc = DateTime.UtcNow;
 
         // Act
-        var snapshot = new DeviceHealthSnapshot
+        var snapshot = new DeviceHealth
         {
             Id = id,
             DeviceId = deviceId,
-            DownloadEventId = downloadEventId,
-            Connected = connected,
+            IsOnline = isOnline,
             BatteryPercentage = batteryPercentage,
-            Rssi = rssi,
+            WifiSignalRssi = wifiSignalRssi,
             WifiName = wifiName,
             FirmwareVersion = firmwareVersion,
             CapturedAtUtc = capturedAtUtc
@@ -260,35 +258,34 @@ public class MediaEntityTests
         // Assert
         Assert.Equal(id, snapshot.Id);
         Assert.Equal(deviceId, snapshot.DeviceId);
-        Assert.Equal(downloadEventId, snapshot.DownloadEventId);
-        Assert.True(snapshot.Connected);
+        Assert.True(snapshot.IsOnline);
         Assert.Equal(batteryPercentage, snapshot.BatteryPercentage);
-        Assert.Equal(rssi, snapshot.Rssi);
+        Assert.Equal(wifiSignalRssi, snapshot.WifiSignalRssi);
         Assert.Equal(wifiName, snapshot.WifiName);
         Assert.Equal(firmwareVersion, snapshot.FirmwareVersion);
         Assert.Equal(capturedAtUtc, snapshot.CapturedAtUtc);
     }
 
     [Fact]
-    public void DeviceHealthSnapshot_WithOptionalNullValues_ReturnsNulls()
+    public void DeviceHealth_WithOptionalNullValues_ReturnsNulls()
     {
         // Arrange & Act
-        var snapshot = new DeviceHealthSnapshot
+        var snapshot = new DeviceHealth
         {
             Id = Guid.NewGuid(),
-            DownloadEventId = Guid.NewGuid(),
-            Connected = null,
+            DeviceId = Guid.NewGuid(),
+            IsOnline = null,
             BatteryPercentage = null,
-            Rssi = null,
+            WifiSignalRssi = null,
             WifiName = null,
             FirmwareVersion = null,
             CapturedAtUtc = DateTime.UtcNow
         };
 
         // Assert
-        Assert.Null(snapshot.Connected);
+        Assert.Null(snapshot.IsOnline);
         Assert.Null(snapshot.BatteryPercentage);
-        Assert.Null(snapshot.Rssi);
+        Assert.Null(snapshot.WifiSignalRssi);
         Assert.Null(snapshot.WifiName);
         Assert.Null(snapshot.FirmwareVersion);
     }

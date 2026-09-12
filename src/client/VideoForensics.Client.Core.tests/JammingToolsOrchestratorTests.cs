@@ -11,18 +11,18 @@ namespace VideoForensics.Client.Core.Tests
     {
         private readonly Mock<ILogger<JammingToolsOrchestrator>> _loggerMock;
         private readonly Mock<IJammingRepository> _repositoryMock;
-        private readonly Mock<IDeviceHealthSnapshotRepository> _healthSnapshotRepositoryMock;
+        private readonly Mock<IDeviceHealthRepository> _healthRepositoryMock;
         private readonly JammingToolsOrchestrator _orchestrator;
 
         public JammingToolsOrchestratorTests()
         {
             _loggerMock = new Mock<ILogger<JammingToolsOrchestrator>>();
             _repositoryMock = new Mock<IJammingRepository>();
-            _healthSnapshotRepositoryMock = new Mock<IDeviceHealthSnapshotRepository>();
+            _healthRepositoryMock = new Mock<IDeviceHealthRepository>();
             _orchestrator = new JammingToolsOrchestrator(
                 _loggerMock.Object,
                 _repositoryMock.Object,
-                _healthSnapshotRepositoryMock.Object);
+                _healthRepositoryMock.Object);
         }
 
         [Fact]
@@ -181,11 +181,11 @@ namespace VideoForensics.Client.Core.Tests
             var deviceId = Guid.NewGuid();
             var now = DateTime.UtcNow;
 
-            _healthSnapshotRepositoryMock
+            _healthRepositoryMock
                 .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceHealthSnapshot>
+                .ReturnsAsync(new List<DeviceHealth>
                 {
-                    new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -40, CapturedAtUtc = now }
+                    new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -40, CapturedAtUtc = now }
                 });
             _repositoryMock
                 .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
@@ -213,17 +213,17 @@ namespace VideoForensics.Client.Core.Tests
             // (20 dB degradation) across 3 consecutive readings, then recovery back to baseline.
             // Degraded readings are a minority of the sample, as in realistic conditions, so the
             // median baseline isn't skewed by the incident itself.
-            var readings = new List<DeviceHealthSnapshot>();
+            var readings = new List<DeviceHealth>();
             for (var i = 0; i < 8; i++)
             {
-                readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -40 - (i % 3), CapturedAtUtc = t0.AddMinutes(i) });
+                readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -40 - (i % 3), CapturedAtUtc = t0.AddMinutes(i) });
             }
-            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -60, CapturedAtUtc = t0.AddMinutes(8) });
-            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -62, CapturedAtUtc = t0.AddMinutes(9) });
-            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -59, CapturedAtUtc = t0.AddMinutes(10) });
-            readings.Add(new DeviceHealthSnapshot { DeviceId = deviceId, Rssi = -39, CapturedAtUtc = t0.AddMinutes(11) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -60, CapturedAtUtc = t0.AddMinutes(8) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -62, CapturedAtUtc = t0.AddMinutes(9) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -59, CapturedAtUtc = t0.AddMinutes(10) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -39, CapturedAtUtc = t0.AddMinutes(11) });
 
-            _healthSnapshotRepositoryMock
+            _healthRepositoryMock
                 .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(readings);
             _repositoryMock

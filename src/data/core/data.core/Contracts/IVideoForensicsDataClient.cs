@@ -82,9 +82,6 @@ namespace VideoForensics.Data.Core.Contracts
         /// <summary>Updates the account-level download watermark to track the latest successful batch download completion.</summary>
         Task UpdateAccountDownloadWatermarkAsync(Guid providerAccountId, DateTime latestDownloadTime, CancellationToken ct);
 
-        /// <summary>Records a point-in-time device health/connectivity telemetry snapshot.</summary>
-        Task<DeviceHealthSnapshot> RecordDeviceHealthSnapshotAsync(DeviceHealthSnapshot snapshot, CancellationToken ct);
-
         /// <summary>Records a time-series device health metric.</summary>
         Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
 

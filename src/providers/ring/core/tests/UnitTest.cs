@@ -71,7 +71,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             bool hasAppConfigCredentials = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingRefreshToken"])
                 || (!string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingUsername"]) && !string.IsNullOrEmpty(ConfigurationManager.AppSettings["RingPassword"]));
 
+            #pragma warning disable CS0618 // Intentional fallback to legacy credential file for local dev auto-discovery
             if (!hasAppConfigCredentials && RingVideosCredentialLocator.TryLoad(out string? userName, out string? password, out string? refreshToken))
+            #pragma warning restore CS0618
             {
                 return (userName, password, refreshToken);
             }

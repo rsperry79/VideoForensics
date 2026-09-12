@@ -40,9 +40,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the download events.</summary>
         public DbSet<DownloadEvent> DownloadEvents { get; set; }
 
-        /// <summary>Gets or sets the device health snapshots.</summary>
-        public DbSet<DeviceHealthSnapshot> DeviceHealthSnapshots { get; set; }
-
         /// <summary>Gets or sets the AI analysis snapshots.</summary>
         public DbSet<AiAnalysisSnapshot> AiAnalysisSnapshots { get; set; }
 
