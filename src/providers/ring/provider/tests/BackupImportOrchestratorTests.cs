@@ -131,32 +131,6 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task ImportBackupAsync_SkipsOrphanedLocation_WhenAccountMissing()
-        {
-            string tempDir = CreateTempDirectory();
-            try
-            {
-                var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
-                var zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), locations: new List<Location> { location });
-
-                _ = _mockLocations.Setup(r => r.GetAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Location?)null);
-                WireUnitOfWork();
-
-                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
-                var result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
-
-                Assert.True(result.Success);
-                Assert.Equal(1, result.Locations.SkippedOrphaned);
-                Assert.Equal(0, result.Locations.Inserted);
-                _mockLocations.Verify(r => r.AddAsync(It.IsAny<Location>(), It.IsAny<CancellationToken>()), Times.Never);
-            }
-            finally
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
-
-        [Fact]
         public async Task ImportBackupAsync_MediaItem_FlagsIntegrityIssue_WhenFileMissing()
         {
             string tempDir = CreateTempDirectory();

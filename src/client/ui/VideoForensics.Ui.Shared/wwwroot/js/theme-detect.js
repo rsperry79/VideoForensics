@@ -38,6 +38,7 @@ window.vfTheme = {
             if (!link.href.endsWith(href)) {
                 link.href = href;
             }
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         } catch (e) {
             // Best-effort - page keeps whatever theme was last successfully applied.
         }

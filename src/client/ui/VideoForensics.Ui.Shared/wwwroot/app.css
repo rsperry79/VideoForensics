@@ -1,6 +1,25 @@
+:root {
+    --vf-bg-color: #ffffff;
+    --vf-text-color: #000000;
+    --vf-border-color: #ddd;
+    --vf-input-bg: #ffffff;
+    --vf-input-text: #000000;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+    --vf-bg-color: #1e1e1e;
+    --vf-text-color: #ffffff;
+    --vf-border-color: #444444;
+    --vf-input-bg: #2d2d2d;
+    --vf-input-text: #ffffff;
+}
+
 html, body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--vf-bg-color);
+    color: var(--vf-text-color);
 }
 
 table {
@@ -9,7 +28,7 @@ table {
 }
 
 th, td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--vf-border-color);
     padding: 0.5rem;
     text-align: left;
 }

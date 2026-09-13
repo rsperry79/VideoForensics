@@ -99,6 +99,14 @@ Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared
 - **No stdio MCP process may bootstrap `AddVideoForensicsDataLayer()`/`AddVideoForensicsServerCore()`.** If a client-side MCP task seems to need one of those calls to work, that's a sign the task is being done wrong, not a sign to add the call back.
 - **Mapping naming convention:** DTO mapping extension methods are always `entity.ToDto()` and `dto.ToDomain()` — not `FromDto`, not a mix.
 
+## UI Layout (Desktop-First)
+
+`VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
+- Web app (full browser)
+- MAUI desktop (WinUI on Windows)
+
+**Mobile optimization is pending.** MAUI mobile (iOS/Android) needs a separate, touch-friendly layout with collapsible panels and vertical stacking instead of side-by-side panes. Do not add mobile-specific layout logic to MainLayout—create a new mobile layout component or detect platform and swap layouts at the Routes level.
+
 ## Execution workflow
 
 - **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.

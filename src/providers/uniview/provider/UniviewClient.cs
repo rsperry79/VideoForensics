@@ -25,6 +25,9 @@ public sealed class UniviewClient : IDisposable
     private readonly CookieContainer _cookies = new();
 
     private string? _nonce;
+    private TimeSpan? _cachedClockOffset;
+    private DateTime _clockOffsetCachedAtUtc;
+    private static readonly TimeSpan ClockOffsetCacheDuration = TimeSpan.FromMinutes(15);
 
     public UniviewClient(string host, string username, string password, string ffmpegPath = "ffmpeg")
     {
@@ -339,6 +342,37 @@ public sealed class UniviewClient : IDisposable
     public Task SetTimeNtpAsync(JsonObject data, CancellationToken ct = default) =>
         SetLapiAsync("/LAPI/V1.0/System/TimeNTP", data, ct);
 
+    /// <summary>
+    /// Returns the delta to add to the device's raw recording-index timestamps
+    /// (segment.Begin/End from ListSegmentsAsync) to correct them to this
+    /// machine's real UTC clock. The recording index is always raw UTC
+    /// regardless of the device's configured TimeZone (see docs/NVR_API.md
+    /// section 6), but the device's own clock can still drift from true UTC
+    /// if its NTP sync is stale or disabled. Computed by comparing the
+    /// device's NTP-synced clock (/LAPI/V1.0/System/TimeNTP's DeviceTime)
+    /// against DateTimeOffset.UtcNow at the moment of the call. Cached for
+    /// 15 minutes since drift changes slowly and this avoids an extra round
+    /// trip per download/query. Apply this offset only when persisting or
+    /// displaying a timestamp - never to the raw values used to query or
+    /// download from the device itself.
+    /// </summary>
+    public async Task<TimeSpan> GetClockOffsetAsync(CancellationToken ct = default)
+    {
+        if (_cachedClockOffset is { } cached && DateTime.UtcNow - _clockOffsetCachedAtUtc < ClockOffsetCacheDuration)
+            return cached;
+
+        var requestedAt = DateTimeOffset.UtcNow;
+        var data = await GetTimeNtpAsync(ct);
+        var deviceTimeSeconds = data?["DeviceTime"]?.GetValue<long>()
+            ?? throw new InvalidOperationException($"TimeNTP response missing DeviceTime: {data}");
+        var deviceTime = DateTimeOffset.FromUnixTimeSeconds(deviceTimeSeconds);
+
+        var offset = requestedAt - deviceTime;
+        _cachedClockOffset = offset;
+        _clockOffsetCachedAtUtc = DateTime.UtcNow;
+        return offset;
+    }
+
     /// <summary>Daylight saving time rule (begin/end month-week-day-hour, bias in minutes).</summary>
     public Task<JsonNode?> GetDstAsync(CancellationToken ct = default) =>
         GetLapiAsync("/LAPI/V1.0/System/Time/DST", ct);
@@ -645,18 +679,21 @@ public sealed class UniviewClient : IDisposable
                 "resourceCode+time-range combination has been downloaded very recently; retrying " +
                 "with a different segment (or waiting) usually succeeds. See docs/NVR_API.md section 6.");
 
+        var clockOffset = await GetClockOffsetAsync(ct);
+        var correctedBegin = segment.Begin + clockOffset;
+
         var hasAudio = new FileInfo(audioStreamPath).Length > 0;
-        await MuxToMp4Async(elementaryStreamPath, hasAudio ? audioStreamPath : null, destinationPath, segment.Begin, ct);
+        await MuxToMp4Async(elementaryStreamPath, hasAudio ? audioStreamPath : null, destinationPath, correctedBegin, ct);
         File.Delete(elementaryStreamPath);
         File.Delete(audioStreamPath);
 
-        // segment.Begin/End use the device's own naive-local wall-clock
-        // convention (see docs/NVR_API.md section 6) - the same digits
-        // shown in the recording index and burned into the filename. Stamp
-        // the file's OS timestamps with those same digits (as local time on
-        // this machine) so sorting/viewing by date in Explorer reflects the
-        // actual recording time, not whenever this tool happened to run.
-        var recordedAt = DateTime.SpecifyKind(segment.Begin.DateTime, DateTimeKind.Local);
+        // segment.Begin uses the device's own raw recording-index digits
+        // (always UTC regardless of the device's TimeZone setting - see
+        // docs/NVR_API.md section 6), corrected here by the device's
+        // NTP-clock-vs-our-clock delta (GetClockOffsetAsync) so the file's
+        // OS timestamps and embedded creation_time reflect the actual
+        // real-world recording time rather than raw device-clock drift.
+        var recordedAt = DateTime.SpecifyKind(correctedBegin.DateTime, DateTimeKind.Local);
         File.SetCreationTime(destinationPath, recordedAt);
         File.SetLastWriteTime(destinationPath, recordedAt);
     }
