@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.Layouts
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Resources
@@ -36,28 +37,53 @@
     </div>
 
     <div class="app-body">
-        <div class="docked-body">
-            <div class="left-nav @(LayoutPrefs.LeftNavCollapsed ? "collapsed" : "")">
-                @if (!LayoutPrefs.LeftNavCollapsed)
-                {
-                    <div class="left-nav-items">
-                        @foreach (var item in ActiveGroupItems)
-                        {
-                            <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
-                                      CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
-                        }
-                    </div>
-                }
-            </div>
-
-            <div class="page-body">
-                @Body
-            </div>
-
-            @if (!LayoutPrefs.RightPanelCollapsed)
+        <SfSplitter @ref="_splitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">
+            @if (!LayoutPrefs.LeftNavCollapsed)
             {
-                <RightPanelHost />
+                <SplitterPanes>
+                    <SplitterPane Size="@($"{_leftNavWidth}px")" Min="48px" Max="400px" CssClass="splitter-left-nav">
+                        <div class="left-nav-items">
+                            @foreach (var item in ActiveGroupItems)
+                            {
+                                <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
+                                          CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
+                            }
+                        </div>
+                    </SplitterPane>
+                    <SplitterPane Size="*" CssClass="splitter-page-body">
+                        <div class="page-body">
+                            @Body
+                        </div>
+                    </SplitterPane>
+                    @if (!LayoutPrefs.RightPanelCollapsed)
+                    {
+                        <SplitterPane Size="@($"{_rightPanelWidth}px")" Min="250px" Max="500px" CssClass="splitter-right-panel">
+                            <RightPanelHost />
+                        </SplitterPane>
+                    }
+                </SplitterPanes>
             }
-        </div>
+            else
+            {
+                <SplitterPanes>
+                    <SplitterPane Size="48px" Min="48px" Max="48px" CssClass="splitter-left-nav-collapsed">
+                        <div class="left-nav-toggle-collapsed" title="Toggle navigation">
+                            <SfButton Content="☰" CssClass="e-flat" OnClick="@ToggleLeftNavAsync" />
+                        </div>
+                    </SplitterPane>
+                    <SplitterPane Size="*" CssClass="splitter-page-body">
+                        <div class="page-body">
+                            @Body
+                        </div>
+                    </SplitterPane>
+                    @if (!LayoutPrefs.RightPanelCollapsed)
+                    {
+                        <SplitterPane Size="@($"{_rightPanelWidth}px")" Min="250px" Max="500px" CssClass="splitter-right-panel">
+                            <RightPanelHost />
+                        </SplitterPane>
+                    }
+                </SplitterPanes>
+            }
+        </SfSplitter>
     </div>
 </div>

@@ -29,7 +29,6 @@
     padding: 0 1rem;
 }
 
-
 .top-tabs {
     display: flex;
     align-items: center;
@@ -46,28 +45,50 @@
     margin-left: auto;
 }
 
-.docked-body {
-    display: flex;
-    align-items: stretch;
-    min-height: 100%;
-    width: 100%;
+/* Splitter pane styling */
+.splitter-left-nav,
+.splitter-left-nav-collapsed {
+    border-right: 1px solid var(--rz-border-color, #e0e0e0);
 }
 
-.left-nav {
+.splitter-left-nav {
+    padding: 0.5rem;
+    overflow-y: auto;
+}
+
+.splitter-left-nav-collapsed {
+    padding: 0.5rem 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.left-nav-toggle-collapsed {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.splitter-page-body {
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--rz-border-color, #e0e0e0);
-    padding: 0.5rem;
-    width: 220px;
-    flex: 0 0 auto;
-    transition: width 0.15s ease;
+    overflow: hidden;
 }
 
-.left-nav.collapsed {
-    width: 48px;
-    padding: 0.5rem 0.25rem;
+.page-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 1.5rem;
+    overflow-y: auto;
 }
 
+.splitter-right-panel {
+    border-left: 1px solid var(--rz-border-color, #e0e0e0);
+    padding: 1rem;
+    overflow-y: auto;
+}
 
 .left-nav-items {
     display: flex;
@@ -81,25 +102,17 @@
     text-align: left;
 }
 
-.page-body {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding: 1.5rem;
-}
-
-.right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    border-left: 1px solid var(--rz-border-color, #e0e0e0);
-    padding: 1rem;
-    width: 280px;
-    flex: 0 0 auto;
-    overflow-y: auto;
-}
-
 .right-panel-section {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+/* Syncfusion Splitter theme adjustments */
+:global(.e-splitter-layout) {
+    background-color: var(--vf-bg-color);
+}
+
+:global(.e-splitter-layout .e-splitter-bar) {
+    background-color: var(--vf-border-color);
 }

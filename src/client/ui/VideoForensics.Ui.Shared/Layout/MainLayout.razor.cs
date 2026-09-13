@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Data.Common.Entities;
 
@@ -9,6 +10,9 @@ namespace VideoForensics.Ui.Shared.Layout
     {
         private OperatorRole? _role;
         private string _currentPath = "/";
+        private SfSplitter? _splitter;
+        private double _leftNavWidth = 220;
+        private double _rightPanelWidth = 280;
 
         private IReadOnlyList<NavGroup> VisibleGroups => NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
 
@@ -50,6 +54,16 @@ namespace VideoForensics.Ui.Shared.Layout
 
                 await LayoutPrefs.EnsureLoadedAsync();
                 await ThemeService.InitializeAsync();
+
+                // Load saved splitter pane sizes
+                if (LayoutPrefs.LeftNavWidth > 0)
+                {
+                    _leftNavWidth = LayoutPrefs.LeftNavWidth;
+                }
+                if (LayoutPrefs.RightPanelWidth > 0)
+                {
+                    _rightPanelWidth = LayoutPrefs.RightPanelWidth;
+                }
 
                 StateHasChanged();
             }

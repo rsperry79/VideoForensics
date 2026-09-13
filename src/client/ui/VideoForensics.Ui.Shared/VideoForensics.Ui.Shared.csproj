@@ -34,6 +34,7 @@
         <PackageReference Include="Syncfusion.Blazor.Popups" Version="34.2.6" />
         <PackageReference Include="Syncfusion.Blazor.ProgressBar" Version="34.2.6" />
         <PackageReference Include="Syncfusion.Blazor.QueryBuilder" Version="34.2.6" />
+        <PackageReference Include="Syncfusion.Blazor.Layouts" Version="34.2.6" />
         <PackageReference Include="Syncfusion.Blazor.Themes" Version="34.2.6" />
     </ItemGroup>
 

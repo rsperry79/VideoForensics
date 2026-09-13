@@ -91,30 +91,25 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task IsAuthenticatedAsync_WithoutSessionButSavedCredentials_AttemptsRestoreAndReturnsFalseGracefully()
+        public async Task IsAuthenticatedAsync_WithoutSessionOrSavedCredentials_ReturnsFalse()
         {
-            // Arrange
+            // No session and no providerAccountRepository means no database lookup path is taken.
+            // Credentials are database-only (see RestoreFromSavedCredentialsWithAccountAsync's
+            // "Credentials must be in database only" policy). Without both a session and DB access,
+            // credential restore fails fast without touching credentialStore.
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
             var credentialStore = new Mock<ICredentialStore>();
-            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
-                .Returns(new RingCredentials { RefreshToken = "saved-refresh-token-123" });
-
             var credentialRepository = new Mock<ICredentialRepository>();
             ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            // The restore fallback will attempt Session.AuthenticateWithCredentials internally,
-            // which will fail/throw without real network access, but should fail gracefully and
-            // return false without propagating the exception.
             var result = await service.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
-            // Verify that the restore was attempted by checking that Load was called at least once
-            credentialStore.Verify(cs => cs.Load(It.IsAny<string>()), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -180,10 +175,11 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ConstructorAcceptsNullCredentialRepository()
         {
-            // credentialRepository (and the other DB-backed repositories after it) are optional -
-            // RingAuthService falls back to filesystem-only credential storage when they're not
-            // supplied (see RestoreFromSavedCredentialsWithAccountAsync's filesystem fallback), so
-            // the constructor intentionally does not require them.
+            // credentialRepository (and the other DB-backed repositories after it) are optional
+            // constructor parameters. When they are null, credential restore has no database path
+            // to try and simply returns false/fails fast — it does NOT fall back to any filesystem
+            // storage. Credentials are database-only (see RestoreFromSavedCredentialsWithAccountAsync's
+            // "Credentials must be in database only" policy).
             ILogger logger = new Mock<ILogger>().Object;
             var sessionProvider = new Mock<ISessionProvider>();
             var credentialStore = new Mock<ICredentialStore>();
@@ -259,18 +255,16 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RestoreFromSavedCredentialsAsync_WithNullAccountId_FallsBackToFilesystem()
+        public async Task RestoreFromSavedCredentialsAsync_WithNullAccountIdAndNoProviderAccountRepository_ReturnsFalse()
         {
-            // Arrange
-            var testRefreshToken = "test-refresh-token-456";
-
+            // With no providerAccountRepository, the DB-by-account-id path is unavailable, and
+            // with accountId=null, the scan-all-accounts DB path is also unavailable.
+            // Credentials are database-only (per RestoreFromSavedCredentialsWithAccountAsync's
+            // "Credentials must be in database only" policy), so restore fails fast and returns false.
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
             var credentialStore = new Mock<ICredentialStore>();
-            _ = credentialStore.Setup(cs => cs.Load(It.IsAny<string>()))
-                .Returns(new RingCredentials { RefreshToken = testRefreshToken });
-
             var credentialRepository = new Mock<ICredentialRepository>();
             ILogger logger = new Mock<ILogger>().Object;
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
@@ -279,10 +273,10 @@ namespace VideoForensics.Providers.Ring.Tests
             var result = await service.RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null);
 
             // Assert
+            Assert.False(result);
             credentialRepository.Verify(
                 cr => cr.GetAsync(It.IsAny<Guid>(), "RefreshToken", It.IsAny<CancellationToken>()),
                 Times.Never);
-            credentialStore.Verify(cs => cs.Load(It.IsAny<string>()), Times.AtLeastOnce);
         }
 
         [Fact]

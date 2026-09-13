@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.Versioning;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -39,7 +40,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableEventLog && OperatingSystem.IsWindows())
             {
-                logging.AddEventLog(settings => settings.SourceName = "VideoForensics");
+                AddWindowsEventLog(logging);
             }
 
             if (enableSyslog && OperatingSystem.IsLinux())
@@ -52,5 +53,9 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             return logging;
         }
+
+        [SupportedOSPlatform("windows")]
+        private static void AddWindowsEventLog(ILoggingBuilder logging) =>
+            logging.AddEventLog(settings => settings.SourceName = "VideoForensics");
     }
 }
