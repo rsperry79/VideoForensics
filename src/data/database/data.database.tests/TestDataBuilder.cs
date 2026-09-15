@@ -278,5 +278,26 @@ namespace VideoForensics.Data.Database.Tests
                 LastUpdatedUtc = DateTime.UtcNow
             };
         }
+
+        public static DeviceCapabilities BuildDeviceCapabilities(Guid? deviceId = null, string? resolution = null, string? apiHash = null)
+        {
+            return new DeviceCapabilities
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId ?? Guid.NewGuid(),
+                Resolution = resolution ?? "1920x1080",
+                HasAudio = true,
+                HasNightVision = true,
+                HasMotionDetection = true,
+                HasCloudStorage = true,
+                StorageType = "Cloud",
+                MaxStorageDays = 30,
+                FirmwareVersion = "1.0.0",
+                HardwareModel = "TestModel",
+                LastSyncedUtc = DateTime.UtcNow,
+                SyncStatus = SyncStatus.Synced,
+                ApiResponseHash = apiHash ?? $"{Guid.NewGuid():N}{Guid.NewGuid():N}"
+            };
+        }
     }
 }

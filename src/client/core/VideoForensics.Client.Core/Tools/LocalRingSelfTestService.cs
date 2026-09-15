@@ -1,4 +1,5 @@
 using VideoForensics.Api.Contracts;
+using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Client.Core.Tools
@@ -10,9 +11,9 @@ namespace VideoForensics.Client.Core.Tools
     /// </summary>
     public class LocalRingSelfTestService : IRingSelfTestService
     {
-        private readonly RingSelfTestOrchestrator _orchestrator;
+        private readonly IRingSelfTestOrchestrator _orchestrator;
 
-        public LocalRingSelfTestService(RingSelfTestOrchestrator orchestrator)
+        public LocalRingSelfTestService(IRingSelfTestOrchestrator orchestrator)
         {
             _orchestrator = orchestrator;
         }

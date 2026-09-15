@@ -341,5 +341,487 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Equal("Unknown", name);
         }
     }
+
+    public class RingVideoServiceConstructorTests
+    {
+        [Fact]
+        public void RingVideoService_CanBeInstantiatedWithValidDependencies()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Act
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+
+                // Assert
+                Assert.NotNull(service);
+                Assert.NotNull(service.Filter);
+                Assert.NotNull(service.Auth);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void RingVideoService_SetsDefaultFilterOnConstruction()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Act
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+
+                // Assert
+                Assert.NotNull(service.Filter);
+                Assert.Equal(10000, service.Filter.VideoCount);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void RingVideoService_SetsDefaultAuthOnConstruction()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Act
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+
+                // Assert
+                Assert.NotNull(service.Auth);
+                Assert.Null(service.Auth.UserName);
+                Assert.Null(service.Auth.Password);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void RingVideoService_InitializesSavedSettingsPath()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Act
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+
+                // Assert
+                Assert.Equal(tempDir, service.SavedSettingsFolder);
+                Assert.Equal(Path.Combine(tempDir, "RingVideosConfig.json"), service.SavedSettingsFile);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    public class RingVideoServiceGetFilterMessageTests
+    {
+        [Fact]
+        public void GetFilterMessage_IncludesStartDate()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                var startDate = new DateTime(2024, 1, 15);
+                service.Filter.StartDateTime = startDate;
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Start Date", message);
+                Assert.Contains(startDate.ToString(), message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesEndDate()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                var endDate = new DateTime(2024, 1, 20);
+                service.Filter.EndDateTime = endDate;
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("End Date", message);
+                Assert.Contains(endDate.ToString(), message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesVideoCount()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.VideoCount = 500;
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Max downloads", message);
+                Assert.Contains("500", message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesOnlyStarred()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.OnlyStarred = true;
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Only Starred", message);
+                Assert.Contains("True", message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesOnlyPersonDetected()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.OnlyPersonDetected = true;
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Only Person", message);
+                Assert.Contains("True", message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesDetectionType()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.DetectionType = "person";
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Detection", message);
+                Assert.Contains("person", message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetFilterMessage_IncludesDownloadPath()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.DownloadPath = "C:\\Videos";
+
+                // Act
+                var message = service.GetFilterMessage();
+
+                // Assert
+                Assert.Contains("Download Path", message);
+                Assert.Contains("C:\\Videos", message);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    public class RingVideoServicePrintFilterMessageTests
+    {
+        [Fact]
+        public void PrintFilterMessage_CallsReporterInfo()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                var firstLine = "Test first line";
+
+                // Act
+                service.PrintFilterMessage(firstLine);
+
+                // Assert
+                Assert.True(reporter.InfoCalled, "Reporter.Info should have been called");
+                Assert.True(reporter.HighlightCalled, "Reporter.Highlight should have been called");
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+#nullable enable
+    public class RingVideoServiceSettingsPersistenceTests
+    {
+        [Fact]
+        public void Settings_CanBeSavedToFile()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service.Filter.VideoCount = 250;
+                service.Filter.OnlyStarred = true;
+
+                // Act
+                var saveMethod = service.GetType().GetMethod("SaveSettings",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                saveMethod?.Invoke(service, new object?[] { null, null });
+
+                // Assert
+                Assert.True(File.Exists(service.SavedSettingsFile), "Settings file should exist");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+        }
+
+        [Fact]
+        public void Settings_CanBeLoadedFromFile()
+        {
+            // Arrange
+            var logger = new MockLogger();
+            var reporter = new MockReporter();
+            var credentialStore = new MockCredentialStore();
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Create a settings file
+                var service1 = new RingVideoService(logger, reporter, credentialStore, tempDir);
+                service1.Filter.VideoCount = 300;
+                var saveMethod = service1.GetType().GetMethod("SaveSettings",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                saveMethod?.Invoke(service1, new object?[] { null, null });
+
+                // Load it in a new service instance
+                var service2 = new RingVideoService(logger, reporter, credentialStore, tempDir);
+
+                // Assert
+                Assert.Equal(300, service2.Filter.VideoCount);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+        }
+    }
+
+    // Mock implementations for testing
+    internal class MockLogger : Microsoft.Extensions.Logging.ILogger<RingVideoService>
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(
+            Microsoft.Extensions.Logging.LogLevel logLevel,
+            Microsoft.Extensions.Logging.EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) { }
+    }
+
+    internal class MockReporter : IDownloadReporter
+    {
+        public bool InfoCalled { get; set; }
+        public bool HighlightCalled { get; set; }
+        public List<string> Messages { get; } = [];
+
+        public void Info(string message)
+        {
+            InfoCalled = true;
+            Messages.Add(message);
+        }
+
+        public void Warning(string message) => Messages.Add(message);
+        public void Error(string message) => Messages.Add(message);
+        public void Highlight(string message)
+        {
+            HighlightCalled = true;
+            Messages.Add(message);
+        }
+
+        public void UpdateFooter(string status) { }
+        public object BeginItem(string label) => new MockItemScope();
+        public void WriteItem(object item, string text) { }
+        public void UpdateItem(object item, string status) { }
+        public void CompleteItem(object item, string status) { }
+        public void ErrorItem(object item, string status) { }
+        public void WarnItem(object item, string status) { }
+        public void ReleaseItem(object item) { }
+        public void ClearItems() { }
+        public void EnsureCapacity(int count) { }
+
+        public Task<T> RunWithStatusAsync<T>(string message, Func<Func<string, Task>, Task<T>> operation)
+        {
+            return operation(async msg => { });
+        }
+
+        public Task RunWithStatusAsync(string message, Func<Func<string, Task>, Task> operation)
+        {
+            return operation(async msg => { });
+        }
+
+        public Task<string> PromptTwoFactorCodeAsync()
+        {
+            return Task.FromResult("123456");
+        }
+    }
+
+    internal class MockItemScope
+    {
+        public string Id => Guid.NewGuid().ToString();
+    }
+
+    internal class MockCredentialStore : ICredentialStore
+    {
+        public RingCredentials Load(string path) => new();
+        public RingCredentials LoadFromJson(string json) => new();
+        public void Save(string path, RingCredentials credentials) { }
+        public void SetCredentials(string path, string userName, string password = null, string refreshToken = null) { }
+        public bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password") => false;
+    }
 }
 

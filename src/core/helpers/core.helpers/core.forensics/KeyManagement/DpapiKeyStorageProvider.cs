@@ -10,7 +10,7 @@ namespace VideoForensics.Forensics.KeyManagement
     /// Windows DPAPI (Data Protection API) based key storage provider (placeholder).
     /// Platform-specific implementation deferred. Using file-based encryption as fallback.
     /// </summary>
-    internal class DpapiKeyStorageProvider : IKeyStorageProvider
+    public class DpapiKeyStorageProvider : IKeyStorageProvider
     {
         public string ProviderName => "Windows DPAPI";
         public bool IsAvailable => false;

@@ -47,14 +47,14 @@ namespace VideoForensics.Hosting.Remote
                 // 202 Accepted: run was queued successfully
                 if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
                 {
-                    var dto = await response.Content.ReadFromJsonAsync<SelfTestRunResponseDto>(cancellationToken: cancellationToken);
+                    SelfTestRunResponseDto? dto = await TryReadRunResponseAsync(response, cancellationToken);
                     return dto ?? new SelfTestRunResponseDto(Accepted: true);
                 }
 
                 // 409 Conflict: already running (response body contains the rejection details)
                 if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
-                    var dto = await response.Content.ReadFromJsonAsync<SelfTestRunResponseDto>(cancellationToken: cancellationToken);
+                    SelfTestRunResponseDto? dto = await TryReadRunResponseAsync(response, cancellationToken);
                     return dto ?? new SelfTestRunResponseDto(Accepted: false, Error: "A self-test run is already in progress.");
                 }
 
@@ -77,6 +77,19 @@ namespace VideoForensics.Hosting.Remote
                     Accepted: false,
                     Error: $"Failed to start self-test run: {ex.Message}"
                 );
+            }
+        }
+
+        /// <summary>Reads a <see cref="SelfTestRunResponseDto"/> from the response body, tolerating an empty or non-JSON body.</summary>
+        private static async Task<SelfTestRunResponseDto?> TryReadRunResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await response.Content.ReadFromJsonAsync<SelfTestRunResponseDto>(cancellationToken: cancellationToken);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
             }
         }
 
