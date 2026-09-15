@@ -52,10 +52,17 @@
          app's real SQLite access; Workspaces' own SQLite-backed cache is never exercised by this
          app, so losing that reference is safe. Same rationale as the NU1608 suppression in
          VideoForensics.Data.Database.Sqlite.csproj.
-         PRI249 warnings are from Syncfusion.Blazor.Themes CSS files in wwwroot which have filenames
-         (e.g., bootstrap5.3-dark.css) that the PRI resource compiler misinterprets as resource
-         qualifiers - these are NuGet package files and not part of our source, so the warnings are
-         harmless and are suppressed here. -->
+         PRI249 warnings are from Syncfusion.Blazor.Themes/Radzen.Blazor CSS files in wwwroot which
+         have filenames (e.g., bootstrap5.3-dark.css) that the PRI layout indexer (fed by the
+         project's ContentFilesProjectOutputGroup, i.e. every static web asset) misinterprets as
+         resource qualifiers - it splits on "." by default, so "5.3-dark-lite" reads as qualifier
+         "3-DARK-LITE". These are NuGet package files, not our source, and the build still succeeds,
+         so the warning is harmless. It CANNOT be suppressed with NoWarn or MSBuildWarningsAsMessages
+         (tried and verified with a clean rebuild) - WinAppSdkGenerateProjectPriFile logs it without
+         setting a diagnostic Code, so neither mechanism (which match on Code) ever sees it. The only
+         real fix is a custom AppxPriConfigXmlDefaultSnippetPath PRI config overriding the folder
+         indexer's qualifier delimiter for the wwwroot subtree specifically - not worth the risk of
+         breaking PRI generation for the whole app over a cosmetic warning. -->
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
