@@ -26,6 +26,9 @@ namespace VideoForensics.Data.Common.Entities
         public const string PairingInitiated = nameof(PairingInitiated);
         public const string PairingCompleted = nameof(PairingCompleted);
         public const string PairingRevoked = nameof(PairingRevoked);
+        public const string DeviceCodeIssued = nameof(DeviceCodeIssued);
+        public const string DeviceCodeApproved = nameof(DeviceCodeApproved);
+        public const string DeviceCodeExpired = nameof(DeviceCodeExpired);
         public const string OperatorDeactivated = nameof(OperatorDeactivated);
         public const string AuthSuccess = nameof(AuthSuccess);
         public const string AuthFailure = nameof(AuthFailure);
@@ -55,6 +58,9 @@ namespace VideoForensics.Data.Common.Entities
             [PairingInitiated] = false,
             [PairingCompleted] = true,
             [PairingRevoked] = true,
+            [DeviceCodeIssued] = false,
+            [DeviceCodeApproved] = true,
+            [DeviceCodeExpired] = false,
             [OperatorDeactivated] = true,
             [AuthSuccess] = false,
             [AuthFailure] = true,

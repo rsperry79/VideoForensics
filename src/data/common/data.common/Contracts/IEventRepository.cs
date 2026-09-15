@@ -44,6 +44,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists all events.</summary>
         Task<IReadOnlyList<Event>> ListAsync(CancellationToken ct);
 
+        /// <summary>Lists events with true database-level pagination (OrderBy+Skip+Take), unlike the full-table ListAsync.</summary>
+        Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct);
+
         /// <summary>Updates an event's download failure status and timestamp.</summary>
         Task UpdateDownloadFailureAsync(Guid eventId, DateTime failureTime, CancellationToken ct);
 

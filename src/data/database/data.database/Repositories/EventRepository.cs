@@ -24,14 +24,14 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<Event?> GetAsync(Guid eventId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
+            return await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
         }
 
         /// <summary>Gets an event by device ID and provider event ID.</summary>
         public async Task<Event?> GetByProviderEventIdAsync(Guid deviceId, string providerEventId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events.FirstOrDefaultAsync(
+            return await db.Events.AsNoTracking().FirstOrDefaultAsync(
                 e => e.DeviceId == deviceId && e.ProviderEventId == providerEventId, ct);
         }
 
@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<Event?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events.FirstOrDefaultAsync(e => e.ApiSourceHash == apiSourceHash, ct);
+            return await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.ApiSourceHash == apiSourceHash, ct);
         }
 
         /// <summary>Upserts (inserts or updates) an event by device ID and provider event ID.</summary>
@@ -139,7 +139,7 @@ namespace VideoForensics.Data.Database.Repositories
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .ToListAsync(ct);
         }
@@ -149,7 +149,7 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
                             x.Event.OccurredAtUtc >= fromUtc &&
@@ -163,7 +163,7 @@ namespace VideoForensics.Data.Database.Repositories
             Guid deviceId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId &&
                             e.EventType == eventType &&
                             e.OccurredAtUtc >= fromUtc &&
@@ -176,7 +176,7 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, string eventType, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
                             x.Event.EventType == eventType &&
@@ -191,7 +191,7 @@ namespace VideoForensics.Data.Database.Repositories
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Join(db.Devices, e => e.DeviceId, d => d.Id, (e, d) => new { Event = e, Device = d })
                 .Where(x => x.Device.LocationId == locationId &&
                             x.Event.OccurredAtUtc >= fromUtc &&
@@ -204,7 +204,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events
+            return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId)
                 .ToListAsync(ct);
         }
@@ -213,7 +213,29 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Event>> ListAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Events.ToListAsync(ct);
+            return await db.Events.AsNoTracking().ToListAsync(ct);
+        }
+
+        /// <summary>Lists events with true database-level pagination (OrderBy+Skip+Take), unlike the full-table ListAsync.</summary>
+        public async Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            int totalCount = await db.Events.AsNoTracking().CountAsync(ct);
+
+            var items = await db.Events.AsNoTracking()
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .ThenBy(e => e.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PaginatedResult<Event>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>Updates an event's download failure status and timestamp.</summary>

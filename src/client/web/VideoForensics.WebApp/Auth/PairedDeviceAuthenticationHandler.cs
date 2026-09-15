@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 
 using VideoForensics.Data.Common.Contracts;
@@ -16,9 +18,12 @@ namespace VideoForensics.WebApp.Auth
 
     /// <summary>
     /// Validates the "Authorization: Bearer &lt;token&gt;" header issued by the pairing/assertion
-    /// endpoints (plan §5.1/§5.10). Every request re-checks the paired device's CURRENT revocation
-    /// status against the database - not just the token's own signature/expiry - so a revoked
-    /// device is locked out within one request round-trip (§5.4), not only once its token expires.
+    /// endpoints (plan §5.1/§5.10). Accepts two credential types:
+    /// - Session tokens issued by browser-based pairing (WebAuthn)
+    /// - Long-lived fallback API keys issued by device-code-based pairing (for headless CLI)
+    /// Every request re-checks the paired device's CURRENT revocation status against the
+    /// database - not just the token's own signature/expiry - so a revoked device is locked out
+    /// within one request round-trip (§5.4), not only once its token expires.
     /// </summary>
     public class PairedDeviceAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
@@ -49,32 +54,63 @@ namespace VideoForensics.WebApp.Auth
             }
 
             var principal = _tokenService.Validate(token);
-            if (principal == null)
+            if (principal != null)
             {
-                return AuthenticateResult.Fail("Invalid or expired session token.");
+                // Session-token path (browser-based pairing with WebAuthn)
+                // Re-checked on EVERY request, deliberately not cached in the token itself - see the
+                // class doc comment. A device revoked mid-session must be rejected here immediately.
+                var device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
+                if (device == null || !device.IsActive)
+                {
+                    return AuthenticateResult.Fail("Invalid or expired credential.");
+                }
+
+                var tier = _tierResolver.ResolveTier(Context);
+                var claims = new[]
+                {
+                    new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
+                    new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.PairedDeviceId.ToString()),
+                    new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
+                    new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                };
+
+                var identity = new ClaimsIdentity(claims, PairedDeviceAuthenticationDefaults.SchemeName);
+                var claimsPrincipal = new ClaimsPrincipal(identity);
+                var ticket = new AuthenticationTicket(claimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
+                return AuthenticateResult.Success(ticket);
             }
 
-            // Re-checked on EVERY request, deliberately not cached in the token itself - see the
-            // class doc comment. A device revoked mid-session must be rejected here immediately.
-            var device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
-            if (device == null || !device.IsActive)
+            // Fallback-API-key path (device-code-based pairing for headless CLI)
+            // Hash the raw token and look it up in the database.
+            string apiKeyHash = HashApiKey(token);
+            var fallbackDevice = await _pairedDeviceRepository.GetByFallbackApiKeyHashAsync(apiKeyHash, Context.RequestAborted);
+            if (fallbackDevice == null || !fallbackDevice.IsActive)
             {
-                return AuthenticateResult.Fail("This device's pairing has been revoked.");
+                return AuthenticateResult.Fail("Invalid or expired credential.");
             }
 
-            var tier = _tierResolver.ResolveTier(Context);
-            var claims = new[]
+            var fallbackTier = _tierResolver.ResolveTier(Context);
+            var fallbackClaims = new[]
             {
-                new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
-                new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.PairedDeviceId.ToString()),
-                new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
-                new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                new Claim(VideoForensicsClaimTypes.OperatorId, fallbackDevice.OperatorId.ToString()),
+                new Claim(VideoForensicsClaimTypes.PairedDeviceId, fallbackDevice.Id.ToString()),
+                new Claim(VideoForensicsClaimTypes.Role, fallbackDevice.Role.ToString()),
+                new Claim(VideoForensicsClaimTypes.NetworkTier, fallbackTier.ToString())
             };
 
-            var identity = new ClaimsIdentity(claims, PairedDeviceAuthenticationDefaults.SchemeName);
-            var claimsPrincipal = new ClaimsPrincipal(identity);
-            var ticket = new AuthenticationTicket(claimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
-            return AuthenticateResult.Success(ticket);
+            var fallbackIdentity = new ClaimsIdentity(fallbackClaims, PairedDeviceAuthenticationDefaults.SchemeName);
+            var fallbackClaimsPrincipal = new ClaimsPrincipal(fallbackIdentity);
+            var fallbackTicket = new AuthenticationTicket(fallbackClaimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
+            return AuthenticateResult.Success(fallbackTicket);
+        }
+
+        /// <summary>
+        /// Computes the SHA-256 hash of the raw API key and returns it as a lowercase hex string.
+        /// </summary>
+        private static string HashApiKey(string apiKey)
+        {
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+            return Convert.ToHexStringLower(hash);
         }
 
         /// <summary>

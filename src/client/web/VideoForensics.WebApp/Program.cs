@@ -110,7 +110,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 // server restart instead of depending on that heuristic continuing to resolve the same way. Keys
 // live next to the app's own database rather than the OS default location, matching how every
 // other piece of this app's persistent state is already rooted at %ProgramData%\VideoForensics.
-var dataProtectionKeyPath = Path.Combine(
+string dataProtectionKeyPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
 Directory.CreateDirectory(dataProtectionKeyPath);
 var dataProtectionBuilder = builder.Services.AddDataProtection()
@@ -323,6 +323,7 @@ app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
 app.MapPairingEndpoints();
+app.MapDeviceCodePairingEndpoints();
 app.MapDeviceManagementEndpoints();
 app.MapSecurityAuditLogEndpoints();
 app.MapRemoteAccessEndpoints();
