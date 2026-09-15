@@ -16,7 +16,7 @@ namespace VideoForensics.Forensics.KeyManagement
     /// Used as fallback when TPM and platform-specific providers are unavailable.
     /// Keys are encrypted at rest with AES-256-GCM.
     /// </summary>
-    internal class FileBasedKeyStorageProvider : IKeyStorageProvider
+    public class FileBasedKeyStorageProvider : IKeyStorageProvider
     {
         private readonly string _keyStorePath;
         private readonly string _masterKeyPath;

@@ -15,7 +15,7 @@ namespace VideoForensics.Forensics.KeyManagement
     /// Currently returns false for IsAvailable. Will fall back to DPAPI or file-based encryption.
     /// Full TPM implementation requires native interop or platform-specific NuGet packages.
     /// </summary>
-    internal class TpmKeyStorageProvider : IKeyStorageProvider
+    public class TpmKeyStorageProvider : IKeyStorageProvider
     {
         private const string TpmKeyNamespace = "RingForensics_";
 

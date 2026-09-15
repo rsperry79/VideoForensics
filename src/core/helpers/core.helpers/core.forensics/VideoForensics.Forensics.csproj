@@ -26,4 +26,8 @@
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="VideoForensics.Forensics.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100d59d3f502827bb652c2a2130300aa19bb0e4eb16e1c41c2bd6b83a637bcf8fce9d4ee7094fd9f04735c5a0913a2136eebefb1c069e2c5a83e86f01c21ac9bdddea921bd597aa2f879461f615c66ee48cd8cd36cc9b16177599b87850a22a12977018b2da999f89b2666ec7728dd7dd5e6449c0f83f579f6e97f34bdb40d903be" />
+    </ItemGroup>
+
 </Project>

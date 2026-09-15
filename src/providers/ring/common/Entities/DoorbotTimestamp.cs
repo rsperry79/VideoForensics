@@ -23,6 +23,7 @@ namespace VideoForensics.Providers.Ring.Entities
         /// <summary>
         /// The Date and Time to which the TimestampEpoch translates
         /// </summary>
+        [JsonIgnore]
         public DateTime? Timestamp => !TimestampEpoch.HasValue ? null : new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(TimestampEpoch.Value).ToLocalTime();
     }
 }

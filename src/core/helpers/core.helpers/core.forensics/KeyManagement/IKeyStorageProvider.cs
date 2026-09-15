@@ -8,7 +8,7 @@ namespace VideoForensics.Forensics.KeyManagement
     /// Platform-agnostic interface for storing and retrieving cryptographic keys.
     /// Implementations support TPM, DPAPI, Keychain, libsecret, and encrypted file storage.
     /// </summary>
-    internal interface IKeyStorageProvider
+    public interface IKeyStorageProvider
     {
         /// <summary>
         /// Name of the key storage provider implementation.

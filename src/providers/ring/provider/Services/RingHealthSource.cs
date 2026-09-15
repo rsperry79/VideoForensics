@@ -19,8 +19,8 @@ namespace VideoForensics.Providers.Ring.Services
 
         public RingHealthSource(ILogger<RingHealthSource> logger, ISessionProvider sessionProvider)
         {
-            _logger = logger;
-            _sessionProvider = sessionProvider;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
         }
 
         public async Task<IReadOnlyList<DeviceHealthReading>> FetchHealthAsync(CancellationToken ct)

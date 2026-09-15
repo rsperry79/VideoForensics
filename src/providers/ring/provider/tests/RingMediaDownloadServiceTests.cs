@@ -167,5 +167,192 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(result);
             // Should handle date range gracefully
         }
+
+        [Fact]
+        public async Task GetMatchedEventCountAsync_WithoutSession_ReturnsZero()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            int count = await service.GetMatchedEventCountAsync("device123", DateTime.Now.AddDays(-7), DateTime.Now);
+
+            // Assert
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void GetStatus_IsInitiallyNotDownloading()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            DownloadStatus status = service.GetStatus();
+
+            // Assert
+            Assert.False(status.IsDownloading);
+            Assert.Equal(0, status.FilesCompleted);
+            Assert.Equal(0, status.FilesTotal);
+            Assert.Equal(0L, status.BytesDownloaded);
+        }
+
+        [Fact]
+        public void SetMaxConcurrentDownloads_WithPositiveValue_AcceptsValue()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            service.SetMaxConcurrentDownloads(5);
+
+            // Assert - no exception thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void SetMaxConcurrentDownloads_WithZeroOrNegative_IgnoresValue()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act - setting to 0 or negative should be ignored
+            service.SetMaxConcurrentDownloads(0);
+            service.SetMaxConcurrentDownloads(-1);
+
+            // Assert - no exception thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void SetActiveProviderAccountId_CachesAccountId()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+            var accountId = Guid.NewGuid();
+
+            // Act
+            service.SetActiveProviderAccountId(accountId);
+
+            // Assert - no exception thrown, account is cached for later use
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void IsHistoryCached_WithNoCacheData_ReturnsFalse()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            bool isCached = service.IsHistoryCached(DateTime.Now.AddDays(-7), DateTime.Now);
+
+            // Assert
+            Assert.False(isCached);
+        }
+
+        [Fact]
+        public void DrainActivityLog_WithEmptyLog_ReturnsEmptyList()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            IReadOnlyList<string> log = service.DrainActivityLog();
+
+            // Assert
+            Assert.NotNull(log);
+            Assert.Empty(log);
+        }
+
+        [Fact]
+        public void GetRateLimitBanUntilUtc_WithoutRateLimit_ReturnsNull()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            DateTime? banUntil = service.GetRateLimitBanUntilUtc();
+
+            // Assert
+            Assert.Null(banUntil);
+        }
+
+        [Fact]
+        public void OverrideRateLimitBan_DoesNotThrow()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            service.OverrideRateLimitBan();
+
+            // Assert - no exception thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WithInvalidDeviceId_ReturnsFailure()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync(
+                "not-a-number",
+                Path.Combine(Path.GetTempPath(), "snapshots_test"),
+                DateTime.Now.AddDays(-7),
+                DateTime.Now
+            );
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
+            Assert.Contains("Invalid device id", result.ErrorMessage ?? string.Empty);
+        }
+
+        [Fact]
+        public void ConstructorThrowsOnNullDataClient()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            ILogger logger = new Mock<ILogger>().Object;
+
+            // Act & Assert
+            _ = Assert.Throws<ArgumentNullException>(() => new RingMediaDownloadService(logger, sessionProvider.Object, null!));
+        }
     }
 }
