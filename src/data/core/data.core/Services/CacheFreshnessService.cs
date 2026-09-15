@@ -86,9 +86,9 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Computes hash of entity for change detection.</summary>
         public string ComputeHash<T>(T entity) where T : class
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(entity);
+            string json = System.Text.Json.JsonSerializer.Serialize(entity);
             using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
+            byte[] hash = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
             return Convert.ToHexString(hash);
         }
 
@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Core.Services
                 return true;
             }
 
-            var currentHash = ComputeHash(entity);
+            string currentHash = ComputeHash(entity);
             return currentHash != previousHash;
         }
     }

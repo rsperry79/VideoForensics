@@ -64,7 +64,7 @@ namespace VideoForensics.Providers.Ring
                 RefreshToken = _encryption.Encrypt(credentials.RefreshToken)
             };
 
-            var directory = Path.GetDirectoryName(path);
+            string directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
                 _ = Directory.CreateDirectory(directory);
@@ -88,7 +88,7 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                var json = File.ReadAllText(filePath);
+                string json = File.ReadAllText(filePath);
                 if (JsonNode.Parse(json) is not JsonObject obj)
                 {
                     return false;
@@ -99,7 +99,7 @@ namespace VideoForensics.Providers.Ring
                     return false;
                 }
 
-                var clearText = clearValue.GetValue<string>();
+                string clearText = clearValue.GetValue<string>();
                 if (string.IsNullOrWhiteSpace(clearText))
                 {
                     return false;
@@ -135,14 +135,15 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 var fileInfo = new FileInfo(filePath);
-                var fileSecurity = fileInfo.GetAccessControl();
+                FileSecurity fileSecurity = fileInfo.GetAccessControl();
                 fileSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-                var currentUser = WindowsIdentity.GetCurrent().User;
+                SecurityIdentifier currentUser = WindowsIdentity.GetCurrent().User;
                 if (currentUser != null)
                 {
                     fileSecurity.AddAccessRule(new FileSystemAccessRule(
                         currentUser, FileSystemRights.FullControl, AccessControlType.Allow));
                 }
+
                 fileInfo.SetAccessControl(fileSecurity);
             }
             catch

@@ -25,8 +25,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // G.711 payload: 8 raw mu-law samples
-            var audioPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8 };
-            var rtpPacket = new byte[RtpHeaderBase.Length + audioPayload.Length];
+            byte[] audioPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8 };
+            byte[] rtpPacket = new byte[RtpHeaderBase.Length + audioPayload.Length];
             Array.Copy(RtpHeaderBase, rtpPacket, RtpHeaderBase.Length);
             Array.Copy(audioPayload, 0, rtpPacket, RtpHeaderBase.Length, audioPayload.Length);
 
@@ -45,7 +45,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // RTP packets must be at least 12 bytes
-            var tooShort = new byte[] { 0x80, 0x00 };
+            byte[] tooShort = new byte[] { 0x80, 0x00 };
 
             // Act
             extractor.ProcessRtpPacket(tooShort);
@@ -62,7 +62,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // Set version to 1 (invalid, should be 2)
-            var packet = new byte[RtpHeaderBase.Length + 8];
+            byte[] packet = new byte[RtpHeaderBase.Length + 8];
             Array.Copy(RtpHeaderBase, packet, RtpHeaderBase.Length);
             packet[0] = 0x40; // V=1
 
@@ -80,14 +80,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             using var output = new MemoryStream();
             var extractor = new RtpAudioExtractor(output);
 
-            var payload1 = new byte[] { 0x11, 0x22, 0x33, 0x44 };
-            var payload2 = new byte[] { 0x55, 0x66, 0x77, 0x88 };
+            byte[] payload1 = new byte[] { 0x11, 0x22, 0x33, 0x44 };
+            byte[] payload2 = new byte[] { 0x55, 0x66, 0x77, 0x88 };
 
-            var packet1 = new byte[RtpHeaderBase.Length + payload1.Length];
+            byte[] packet1 = new byte[RtpHeaderBase.Length + payload1.Length];
             Array.Copy(RtpHeaderBase, packet1, RtpHeaderBase.Length);
             Array.Copy(payload1, 0, packet1, RtpHeaderBase.Length, payload1.Length);
 
-            var packet2 = new byte[RtpHeaderBase.Length + payload2.Length];
+            byte[] packet2 = new byte[RtpHeaderBase.Length + payload2.Length];
             Array.Copy(RtpHeaderBase, packet2, RtpHeaderBase.Length);
             Array.Copy(payload2, 0, packet2, RtpHeaderBase.Length, payload2.Length);
 
@@ -96,7 +96,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             extractor.ProcessRtpPacket(packet2);
 
             // Assert
-            var expected = new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+            byte[] expected = new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
             Assert.Equal(expected, output.ToArray());
         }
 
@@ -108,7 +108,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // Build packet with RTP extension (X bit set)
-            var header = new byte[]
+            byte[] header = new byte[]
             {
                 0x90, // V=2, P=0, X=1, CC=0
                 0x00, // M=0, PT=0 (PCMU)
@@ -120,8 +120,8 @@ namespace VideoForensics.Providers.Uniview.Tests
                 0xFF, 0xFF, 0xFF, 0xFF, // Extension data
             };
 
-            var payload = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
-            var rtpPacket = new byte[header.Length + payload.Length];
+            byte[] payload = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
+            byte[] rtpPacket = new byte[header.Length + payload.Length];
             Array.Copy(header, rtpPacket, header.Length);
             Array.Copy(payload, 0, rtpPacket, header.Length, payload.Length);
 
@@ -140,7 +140,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // Build packet with CSRC list (CC=2)
-            var header = new byte[]
+            byte[] header = new byte[]
             {
                 0x82, // V=2, P=0, X=0, CC=2
                 0x00, // M=0, PT=0
@@ -151,8 +151,8 @@ namespace VideoForensics.Providers.Uniview.Tests
                 0x22, 0x22, 0x22, 0x22, // CSRC 2
             };
 
-            var payload = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
-            var rtpPacket = new byte[header.Length + payload.Length];
+            byte[] payload = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
+            byte[] rtpPacket = new byte[header.Length + payload.Length];
             Array.Copy(header, rtpPacket, header.Length);
             Array.Copy(payload, 0, rtpPacket, header.Length, payload.Length);
 
@@ -171,7 +171,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var extractor = new RtpAudioExtractor(output);
 
             // RTP packet with no payload
-            var rtpPacket = new byte[RtpHeaderBase.Length];
+            byte[] rtpPacket = new byte[RtpHeaderBase.Length];
             Array.Copy(RtpHeaderBase, rtpPacket, RtpHeaderBase.Length);
 
             // Act

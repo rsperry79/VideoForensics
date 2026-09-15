@@ -90,8 +90,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            var isAuthenticated = _session.IsAuthenticated;
-            var authToken = _session.AuthenticationToken;
+            bool isAuthenticated = _session.IsAuthenticated;
+            string authToken = _session.AuthenticationToken;
 
             // Assert
             Assert.True(isAuthenticated, "Session should be authenticated after successful Authenticate() call");
@@ -113,7 +113,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            var username = _session.Username;
+            string username = _session.Username;
             Uri oauthUrl = _session.OAuthUrl;
             Uri baseUrl = _session.BaseUrl;
 
@@ -213,11 +213,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            var auth1 = _session.IsAuthenticated;
+            bool auth1 = _session.IsAuthenticated;
             _ = await _session.GetRingDevices(); // Make API call
-            var auth2 = _session.IsAuthenticated;
+            bool auth2 = _session.IsAuthenticated;
             _ = await _session.GetLocations(); // Make another API call
-            var auth3 = _session.IsAuthenticated;
+            bool auth3 = _session.IsAuthenticated;
 
             // Assert
             Assert.True(auth1 && auth2 && auth3, "Session should remain authenticated across multiple calls");
@@ -238,9 +238,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            var token1 = _session.AuthenticationToken;
+            string token1 = _session.AuthenticationToken;
             _ = await _session.GetRingDevices();
-            var token2 = _session.AuthenticationToken;
+            string token2 = _session.AuthenticationToken;
 
             // Assert
             Assert.NotNull(token1);
@@ -258,7 +258,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Displays instructions for setting up real integration tests")]
         public void PrintPhase4SetupInstructions()
         {
-            var instructions = RealSessionHelper.GetSetupInstructions();
+            string instructions = RealSessionHelper.GetSetupInstructions();
             Console.WriteLine(instructions);
         }
     }

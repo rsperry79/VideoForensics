@@ -3,8 +3,6 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 
-using VideoForensics.Providers.Ring;
-
 namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>

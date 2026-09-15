@@ -151,7 +151,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task GetDevicesAsync_DeduplicatesAcrossCollections()
         {
             // Arrange
-            var locationId = "11111111-1111-1111-1111-111111111111";
+            string locationId = "11111111-1111-1111-1111-111111111111";
             var doorbot = new Doorbot { Id = 123, Description = "Front Door", LocationId = Guid.Parse(locationId) };
             var authorizedDoorbot = new Doorbot { Id = 123, Description = "Front Door (Authorized)", LocationId = Guid.Parse(locationId) };
 
@@ -187,7 +187,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task GetDevicesAsync_DeduplicatesStickupCamsAndDoorbots()
         {
             // Arrange
-            var locationId = "22222222-2222-2222-2222-222222222222";
+            string locationId = "22222222-2222-2222-2222-222222222222";
             var doorbot = new Doorbot { Id = 100, Description = "Doorbot 100", LocationId = Guid.Parse(locationId) };
             var stickupCam = new StickupCam { Id = 100, Description = "Same ID Stickup", LocationId = Guid.Parse(locationId) };
 
@@ -223,7 +223,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task GetDevicesAsync_IncludesMultipleDistinctDevices()
         {
             // Arrange
-            var locationId = "33333333-3333-3333-3333-333333333333";
+            string locationId = "33333333-3333-3333-3333-333333333333";
             var doorbot = new Doorbot { Id = 200, Description = "Front Door", LocationId = Guid.Parse(locationId) };
             var stickupCam = new StickupCam { Id = 201, Description = "Backyard", LocationId = Guid.Parse(locationId) };
 
@@ -263,7 +263,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // account and belong in discovery results for forensic completeness (see
             // DbCompletenessChecker, which flags a chime present on the account but absent from
             // the DB).
-            var locationId = "44444444-4444-4444-4444-444444444444";
+            string locationId = "44444444-4444-4444-4444-444444444444";
             var doorbot = new Doorbot { Id = 300, Description = "Front Door", LocationId = Guid.Parse(locationId) };
             var chime = new Chime { Id = 999, Description = "Speaker", LocationId = Guid.Parse(locationId) };
 
@@ -299,7 +299,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task GetDevicesAsync_HandlesNullStickupCamIdWithDeviceIdFallback()
         {
             // Arrange - Test the edge case where StickupCam.Id is null and falls back to DeviceId
-            var locationId = "55555555-5555-5555-5555-555555555555";
+            string locationId = "55555555-5555-5555-5555-555555555555";
             var stickupCamWithoutId = new StickupCam
             {
                 Id = null,

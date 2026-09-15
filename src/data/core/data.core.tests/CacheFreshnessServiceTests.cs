@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Core.Tests
                 LastSyncedUtc = DateTime.UtcNow.AddMinutes(-5)
             };
 
-            var isStale = _service.IsStale(device, maxAgeMinutes: 60);
+            bool isStale = _service.IsStale(device, maxAgeMinutes: 60);
             Assert.False(isStale);
         }
 
@@ -69,7 +69,7 @@ namespace VideoForensics.Data.Core.Tests
                 LastSyncedUtc = DateTime.UtcNow.AddHours(-2)
             };
 
-            var isStale = _service.IsStale(device, maxAgeMinutes: 60);
+            bool isStale = _service.IsStale(device, maxAgeMinutes: 60);
             Assert.True(isStale);
         }
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Data.Core.Tests
                 LastSyncedUtc = null
             };
 
-            var isStale = _service.IsStale(device, maxAgeMinutes: 60);
+            bool isStale = _service.IsStale(device, maxAgeMinutes: 60);
             Assert.True(isStale);
         }
 
@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Core.Tests
                 LastSyncedUtc = DateTime.UtcNow.AddMinutes(-25)
             };
 
-            var age = _service.GetAgeMinutes(device);
+            int age = _service.GetAgeMinutes(device);
             Assert.True(age is >= 24 and <= 26);
         }
 
@@ -119,8 +119,8 @@ namespace VideoForensics.Data.Core.Tests
                 Type = "doorbot"
             };
 
-            var previousHash = "oldhash";
-            var changed = _service.HasChanged(device, previousHash);
+            string previousHash = "oldhash";
+            bool changed = _service.HasChanged(device, previousHash);
             Assert.True(changed);
         }
 
@@ -136,7 +136,7 @@ namespace VideoForensics.Data.Core.Tests
                 Type = "doorbot"
             };
 
-            var changed = _service.HasChanged(device, previousHash: null);
+            bool changed = _service.HasChanged(device, previousHash: null);
             Assert.True(changed);
         }
 

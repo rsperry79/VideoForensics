@@ -32,12 +32,7 @@ namespace VideoForensics.Providers.Ring.Converters
             if (reader.TokenType == JsonTokenType.String)
             {
                 string? value = reader.GetString();
-                if (string.IsNullOrEmpty(value))
-                {
-                    return null;
-                }
-
-                return Guid.TryParse(value, out var guid) ? guid : DerivePseudoGuid(value);
+                return string.IsNullOrEmpty(value) ? null : Guid.TryParse(value, out global::System.Guid guid) ? guid : DerivePseudoGuid(value);
             }
 
             return null;

@@ -28,7 +28,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
         {
-            var tmpPath = mediaFilePath + ".tmp";
+            string tmpPath = mediaFilePath + ".tmp";
             try
             {
                 var psi = new ProcessStartInfo
@@ -69,7 +69,9 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogWarning(ex, "Exception tagging media file {Path}", mediaFilePath);
                 if (File.Exists(tmpPath))
                 {
-                    try { File.Delete(tmpPath); } catch { }
+                    try
+                    { File.Delete(tmpPath); }
+                    catch { }
                 }
 
                 return false;
@@ -94,16 +96,13 @@ namespace VideoForensics.Providers.Ring.Services
                     return null;
                 }
 
-                var output = (await process.StandardOutput.ReadToEndAsync(ct)).Trim();
+                string output = (await process.StandardOutput.ReadToEndAsync(ct)).Trim();
                 await process.WaitForExitAsync(ct);
 
-                if (output.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
-                    Guid.TryParse(output[CommentPrefix.Length..], out var id))
-                {
-                    return id;
-                }
-
-                return null;
+                return output.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
+                    Guid.TryParse(output[CommentPrefix.Length..], out Guid id)
+                    ? id
+                    : null;
             }
             catch (Exception ex)
             {

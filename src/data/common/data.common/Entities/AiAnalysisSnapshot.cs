@@ -10,9 +10,9 @@ namespace VideoForensics.Data.Common.Entities
         public string? FullDescription { get; set; }
 
         /// <summary>Gets or sets the collection of tags for this analysis snapshot.</summary>
-        public ICollection<AiAnalysisTag> Tags { get; set; } = new List<AiAnalysisTag>();
+        public ICollection<AiAnalysisTag> Tags { get; set; } = [];
 
         /// <summary>Gets or sets the collection of motion zones for this analysis snapshot.</summary>
-        public ICollection<AiAnalysisMotionZone> MotionZones { get; set; } = new List<AiAnalysisMotionZone>();
+        public ICollection<AiAnalysisMotionZone> MotionZones { get; set; } = [];
     }
 }

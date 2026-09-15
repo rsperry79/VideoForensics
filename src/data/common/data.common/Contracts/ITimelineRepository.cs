@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Common.Contracts
         public int TotalGaps { get; set; }
         public int LargestGapMinutes { get; set; }
         public decimal CoveragePercentage { get; set; }
-        public IReadOnlyList<TimelineGap> SignificantGaps { get; set; } = new List<TimelineGap>();
+        public IReadOnlyList<TimelineGap> SignificantGaps { get; set; } = [];
         public Dictionary<string, int> EventTypeDistribution { get; set; } = [];
         public string IntegrityStatus { get; set; } = "Unknown"; // "Intact", "Gaps", "Critical"
     }

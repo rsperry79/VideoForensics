@@ -1,7 +1,3 @@
-using VideoForensics.Forensics.Implementations;
-using VideoForensics.Forensics.Interfaces;
-using VideoForensics.Forensics.Models;
-
 namespace VideoForensics.Forensics.Tests
 {
     public class ForensicAnalyzerTests
@@ -22,7 +18,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -44,7 +40,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -65,7 +61,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -86,7 +82,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -111,7 +107,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -137,13 +133,13 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
             Assert.Contains("integrity-verified", result.Tags);
             Assert.True(result.AnalysisData.ContainsKey("checksum-types"));
-            var checksumTypes = (string)result.AnalysisData["checksum-types"];
+            string checksumTypes = (string)result.AnalysisData["checksum-types"];
             Assert.Contains("sha256", checksumTypes);
             Assert.Contains("md5", checksumTypes);
         }
@@ -152,7 +148,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task AnalyzeEvidenceAsync_WithNullEvidence_ThrowsArgumentNullException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(
                 () => _analyzer.AnalyzeEvidenceAsync(null!));
         }
 
@@ -168,7 +164,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _analyzer.AnalyzeEvidenceAsync(evidence);
+            ForensicAnalysisResult result = await _analyzer.AnalyzeEvidenceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -186,7 +182,7 @@ namespace VideoForensics.Forensics.Tests
             var sequence = new List<EvidenceMetadata>();
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
@@ -199,8 +195,7 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = DateTime.UtcNow,
                     EventType = "motion"
@@ -208,7 +203,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
@@ -219,17 +214,15 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithRapidSequence_DetectsAnomaly()
         {
             // Arrange
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime,
                     EventType = "motion"
                 },
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime.AddSeconds(2),
                     EventType = "motion"
@@ -237,12 +230,12 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
             Assert.NotEmpty(results);
-            var rapidAnomaly = results.FirstOrDefault(r => r.Tags.Contains("rapid-succession"));
+            ForensicAnalysisResult? rapidAnomaly = results.FirstOrDefault(r => r.Tags.Contains("rapid-succession"));
             Assert.NotNull(rapidAnomaly);
             Assert.Equal(AnalysisSeverity.Warning, rapidAnomaly.Severity);
             Assert.Contains("Rapid event sequence", rapidAnomaly.Finding);
@@ -252,17 +245,15 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithNormalTimeGap_NoAnomaly()
         {
             // Arrange
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime,
                     EventType = "motion"
                 },
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime.AddMinutes(5),
                     EventType = "motion"
@@ -270,7 +261,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
@@ -283,29 +274,25 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithEventTypeClustering_DetectsPattern()
         {
             // Arrange
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime,
                     EventType = "motion"
                 },
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime.AddSeconds(60),
                     EventType = "motion"
                 },
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime.AddSeconds(120),
                     EventType = "motion"
                 },
-                new EvidenceMetadata
-                {
+                new() {
                     SourceDeviceId = "device-1",
                     EventTimestamp = baseTime.AddSeconds(180),
                     EventType = "motion"
@@ -313,11 +300,11 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
-            var clusteringAnomaly = results.FirstOrDefault(r => r.Tags.Contains("event-clustering"));
+            ForensicAnalysisResult? clusteringAnomaly = results.FirstOrDefault(r => r.Tags.Contains("event-clustering"));
             Assert.NotNull(clusteringAnomaly);
             Assert.Contains("multiple events", clusteringAnomaly.Finding, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("4", clusteringAnomaly.Finding);
@@ -327,7 +314,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithNullSequence_ThrowsArgumentNullException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(
                 () => _analyzer.DetectAnomaliesAsync(null!));
         }
 
@@ -335,23 +322,23 @@ namespace VideoForensics.Forensics.Tests
         public async Task DetectAnomaliesAsync_WithMixedEventTypes_OnlyClusterDuplicateTypes()
         {
             // Arrange
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata { EventTimestamp = baseTime, EventType = "motion" },
-                new EvidenceMetadata { EventTimestamp = baseTime.AddSeconds(60), EventType = "sound" },
-                new EvidenceMetadata { EventTimestamp = baseTime.AddSeconds(120), EventType = "motion" },
-                new EvidenceMetadata { EventTimestamp = baseTime.AddSeconds(180), EventType = "motion" }
+                new() { EventTimestamp = baseTime, EventType = "motion" },
+                new() { EventTimestamp = baseTime.AddSeconds(60), EventType = "sound" },
+                new() { EventTimestamp = baseTime.AddSeconds(120), EventType = "motion" },
+                new() { EventTimestamp = baseTime.AddSeconds(180), EventType = "motion" }
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
             var clusteringAnomalies = results.Where(r => r.Tags.Contains("event-clustering")).ToList();
             // Should only detect clustering for "motion" (3 occurrences > 2), not "sound" (1)
-            var motionClustering = clusteringAnomalies.FirstOrDefault(r => r.Tags.Contains("motion"));
+            ForensicAnalysisResult? motionClustering = clusteringAnomalies.FirstOrDefault(r => r.Tags.Contains("motion"));
             Assert.NotNull(motionClustering);
         }
 
@@ -361,12 +348,12 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var sequence = new List<EvidenceMetadata>
             {
-                new EvidenceMetadata { EventTimestamp = null, EventType = "motion" },
-                new EvidenceMetadata { EventTimestamp = null, EventType = "motion" }
+                new() { EventTimestamp = null, EventType = "motion" },
+                new() { EventTimestamp = null, EventType = "motion" }
             };
 
             // Act
-            var results = await _analyzer.DetectAnomaliesAsync(sequence);
+            IEnumerable<ForensicAnalysisResult> results = await _analyzer.DetectAnomaliesAsync(sequence);
 
             // Assert
             Assert.NotNull(results);
@@ -383,8 +370,7 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var results = new List<ForensicAnalysisResult>
             {
-                new ForensicAnalysisResult
-                {
+                new() {
                     Finding = "Motion detected",
                     Severity = AnalysisSeverity.Info,
                     Recommendation = "Review footage"
@@ -392,7 +378,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report);
@@ -408,7 +394,7 @@ namespace VideoForensics.Forensics.Tests
             var results = new List<ForensicAnalysisResult>();
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report);
@@ -422,12 +408,12 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var results = new List<ForensicAnalysisResult>
             {
-                new ForensicAnalysisResult { Finding = "Test finding", Severity = AnalysisSeverity.Info }
+                new() { Finding = "Test finding", Severity = AnalysisSeverity.Info }
             };
-            var analysisType = "temporal-pattern-analysis";
+            string analysisType = "temporal-pattern-analysis";
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results, analysisType);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results, analysisType);
 
             // Assert
             Assert.NotNull(report);
@@ -440,14 +426,14 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var results = new List<ForensicAnalysisResult>
             {
-                new ForensicAnalysisResult { Finding = "Critical issue", Severity = AnalysisSeverity.Critical },
-                new ForensicAnalysisResult { Finding = "Warning issue", Severity = AnalysisSeverity.Warning },
-                new ForensicAnalysisResult { Finding = "Warning issue 2", Severity = AnalysisSeverity.Warning },
-                new ForensicAnalysisResult { Finding = "Info issue", Severity = AnalysisSeverity.Info }
+                new() { Finding = "Critical issue", Severity = AnalysisSeverity.Critical },
+                new() { Finding = "Warning issue", Severity = AnalysisSeverity.Warning },
+                new() { Finding = "Warning issue 2", Severity = AnalysisSeverity.Warning },
+                new() { Finding = "Info issue", Severity = AnalysisSeverity.Info }
             };
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report);
@@ -463,7 +449,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetAnalysisReportAsync_WithNullResults_ThrowsArgumentNullException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(
                 () => _analyzer.GetAnalysisReportAsync(null!));
         }
 
@@ -472,11 +458,11 @@ namespace VideoForensics.Forensics.Tests
         {
             // Arrange
             var results = new List<ForensicAnalysisResult>();
-            var beforeGeneration = DateTime.UtcNow;
+            DateTime beforeGeneration = DateTime.UtcNow;
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
-            var afterGeneration = DateTime.UtcNow;
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
+            DateTime afterGeneration = DateTime.UtcNow;
 
             // Assert
             Assert.NotNull(report);
@@ -492,8 +478,8 @@ namespace VideoForensics.Forensics.Tests
             var results = new List<ForensicAnalysisResult>();
 
             // Act
-            var report1 = await _analyzer.GetAnalysisReportAsync(results);
-            var report2 = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report1 = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report2 = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report1.ReportId);
@@ -507,13 +493,13 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var results = new List<ForensicAnalysisResult>
             {
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Critical },
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Warning },
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Info }
+                new() { Severity = AnalysisSeverity.Critical },
+                new() { Severity = AnalysisSeverity.Warning },
+                new() { Severity = AnalysisSeverity.Info }
             };
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report.Metadata);
@@ -528,13 +514,13 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var results = new List<ForensicAnalysisResult>
             {
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Critical },
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Critical },
-                new ForensicAnalysisResult { Severity = AnalysisSeverity.Warning }
+                new() { Severity = AnalysisSeverity.Critical },
+                new() { Severity = AnalysisSeverity.Critical },
+                new() { Severity = AnalysisSeverity.Warning }
             };
 
             // Act
-            var report = await _analyzer.GetAnalysisReportAsync(results);
+            ForensicAnalysisReport report = await _analyzer.GetAnalysisReportAsync(results);
 
             // Assert
             Assert.NotNull(report);

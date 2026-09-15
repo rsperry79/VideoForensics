@@ -30,9 +30,9 @@ namespace VideoForensics.Hosting.Remote
         public async Task<IReadOnlyList<IntegrityRecord>> GetLatestByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
         {
             string ids = string.Join(',', mediaItemIds);
-            var response = await _httpClient.GetAsync($"/api/v1/integrity-records?mediaItemIds={ids}", ct);
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/integrity-records?mediaItemIds={ids}", ct);
             _ = response.EnsureSuccessStatusCode();
-            var dtos = await response.Content.ReadFromJsonAsync<List<IntegrityRecordDto>>(JsonOptions, ct);
+            List<IntegrityRecordDto>? dtos = await response.Content.ReadFromJsonAsync<List<IntegrityRecordDto>>(JsonOptions, ct);
             return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 

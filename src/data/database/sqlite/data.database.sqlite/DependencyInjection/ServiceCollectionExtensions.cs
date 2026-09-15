@@ -1,7 +1,8 @@
-using System.Security.AccessControl;
-using System.Security.Principal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
@@ -42,7 +43,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                     try
                     {
                         var dirInfo = new DirectoryInfo(dbDirectory);
-                        var acl = dirInfo.GetAccessControl();
+                        DirectorySecurity acl = dirInfo.GetAccessControl();
                         var usersIdentity = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
                         acl.AddAccessRule(
                             new FileSystemAccessRule(

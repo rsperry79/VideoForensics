@@ -235,7 +235,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     foreach (Entities.Doorbot d in devices.Doorbots)
                     {
-                        var deviceId = d.Id.ToString();
+                        string deviceId = d.Id.ToString();
                         deviceMap[deviceId] = new Device(
                             Id: deviceId,
                             Name: d.Description ?? "Unknown Device",
@@ -251,7 +251,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     foreach (Entities.StickupCam d in devices.StickupCams)
                     {
-                        var deviceId = d.Id?.ToString() ?? d.DeviceId;
+                        string deviceId = d.Id?.ToString() ?? d.DeviceId;
                         if (!deviceMap.ContainsKey(deviceId))
                         {
                             deviceMap[deviceId] = new Device(
@@ -270,7 +270,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     foreach (Entities.Doorbot d in devices.AuthorizedDoorbots)
                     {
-                        var deviceId = d.Id.ToString();
+                        string deviceId = d.Id.ToString();
                         if (!deviceMap.ContainsKey(deviceId))
                         {
                             deviceMap[deviceId] = new Device(
@@ -293,7 +293,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     foreach (Entities.Chime c in devices.Chimes)
                     {
-                        var deviceId = c.Id.ToString();
+                        string deviceId = c.Id.ToString();
                         if (!deviceMap.ContainsKey(deviceId))
                         {
                             deviceMap[deviceId] = new Device(
@@ -375,7 +375,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
                     if (string.IsNullOrEmpty(location.Id))
                     {
@@ -435,7 +435,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                foreach (var device in devices)
+                foreach (Device device in devices)
                 {
                     if (string.IsNullOrEmpty(device.Id))
                     {
@@ -448,7 +448,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Guid deviceGuid = GuidFromString(device.Id);
 
                     // Skip if already persisted for this device
-                    var existing = await _capabilitiesRepository.GetByDeviceIdAsync(deviceGuid, ct);
+                    Data.Common.Entities.DeviceCapabilities? existing = await _capabilitiesRepository.GetByDeviceIdAsync(deviceGuid, ct);
                     if (existing != null)
                     {
                         _logger.LogDebug("Device capabilities already persisted for device {DeviceId}", device.Id);
@@ -483,22 +483,20 @@ namespace VideoForensics.Providers.Ring.Services
         private static Guid GuidFromString(string deviceId)
         {
             // Use a fixed namespace GUID for Ring device IDs
-            var ringNamespace = new Guid("3d84d9b5-91d4-4c7f-b6a9-2e7c8f3d1e9a");
+            _ = new Guid("3d84d9b5-91d4-4c7f-b6a9-2e7c8f3d1e9a");
 
             // Create version 5 (SHA-1) GUID from namespace and device ID
-            var bytes = System.Text.Encoding.UTF8.GetBytes(deviceId);
-            using (var sha1 = System.Security.Cryptography.SHA1.Create())
-            {
-                var hash = sha1.ComputeHash(bytes);
-                var guidBytes = new byte[16];
-                Array.Copy(hash, guidBytes, 16);
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(deviceId);
+            using var sha1 = System.Security.Cryptography.SHA1.Create();
+            byte[] hash = sha1.ComputeHash(bytes);
+            byte[] guidBytes = new byte[16];
+            Array.Copy(hash, guidBytes, 16);
 
-                // Set version to 5 (SHA-1 based)
-                guidBytes[6] = (byte)((guidBytes[6] & 0x0f) | 0x50);
-                guidBytes[8] = (byte)((guidBytes[8] & 0x3f) | 0x80);
+            // Set version to 5 (SHA-1 based)
+            guidBytes[6] = (byte)((guidBytes[6] & 0x0f) | 0x50);
+            guidBytes[8] = (byte)((guidBytes[8] & 0x3f) | 0x80);
 
-                return new Guid(guidBytes);
-            }
+            return new Guid(guidBytes);
         }
     }
 }

@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using VideoForensics.Client.Core.Services;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -30,11 +33,11 @@ namespace VideoForensics.Client.Core.Tests
         public async Task RunFullValidationAsync_NoDevices_ReturnsZeroValidated()
         {
             var devices = new List<Device>();
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(0, result.DevicesValidated);
@@ -47,14 +50,14 @@ namespace VideoForensics.Client.Core.Tests
         {
             var devices = new List<Device>
             {
-                new Device { Id = Guid.NewGuid(), Name = "Camera1", ProviderDeviceId = null, Type = "camera" },
-                new Device { Id = Guid.NewGuid(), Name = "Camera2", ProviderDeviceId = "", Type = "camera" }
+                new() { Id = Guid.NewGuid(), Name = "Camera1", ProviderDeviceId = null, Type = "camera" },
+                new() { Id = Guid.NewGuid(), Name = "Camera2", ProviderDeviceId = "", Type = "camera" }
             };
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(0, result.DevicesValidated);
@@ -71,15 +74,15 @@ namespace VideoForensics.Client.Core.Tests
             var device = new Device { Id = deviceId, Name = "TestCamera", ProviderDeviceId = "ring-123", Type = "camera" };
             var devices = new List<Device> { device };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(deviceId, "ring-123", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
@@ -97,23 +100,23 @@ namespace VideoForensics.Client.Core.Tests
             var device2Id = Guid.NewGuid();
             var devices = new List<Device>
             {
-                new Device { Id = device1Id, Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" },
-                new Device { Id = device2Id, Name = "Camera2", ProviderDeviceId = "ring-2", Type = "camera" }
+                new() { Id = device1Id, Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" },
+                new() { Id = device2Id, Name = "Camera2", ProviderDeviceId = "ring-2", Type = "camera" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(device1Id, "ring-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(device2Id, "ring-2", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(2, result.DevicesValidated);
@@ -129,20 +132,20 @@ namespace VideoForensics.Client.Core.Tests
 
             var discrepancies = new List<ReconciliationDiscrepancy>
             {
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event3" }
+                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
+                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
+                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event3" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(deviceId, "ring-123", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(discrepancies);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
@@ -159,20 +162,20 @@ namespace VideoForensics.Client.Core.Tests
             var device = new Device { Id = deviceId, Name = "FailingCamera", ProviderDeviceId = "ring-bad", Type = "camera" };
             var devices = new List<Device> { device };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(deviceId, "ring-bad", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("API connection failed"));
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(0, result.DevicesValidated);
             Assert.Equal(1, result.FailedDevices);
-            Assert.Single(result.ErrorsByDevice);
+            _ = Assert.Single(result.ErrorsByDevice);
             Assert.Contains("API connection failed", result.ErrorsByDevice[0]);
         }
 
@@ -185,29 +188,29 @@ namespace VideoForensics.Client.Core.Tests
 
             var devices = new List<Device>
             {
-                new Device { Id = successDeviceId, Name = "GoodCamera", ProviderDeviceId = "ring-good", Type = "camera" },
-                new Device { Id = failDeviceId, Name = "FailCamera", ProviderDeviceId = "ring-fail", Type = "camera" },
-                new Device { Id = skipDeviceId, Name = "SkipCamera", ProviderDeviceId = null, Type = "camera" }
+                new() { Id = successDeviceId, Name = "GoodCamera", ProviderDeviceId = "ring-good", Type = "camera" },
+                new() { Id = failDeviceId, Name = "FailCamera", ProviderDeviceId = "ring-fail", Type = "camera" },
+                new() { Id = skipDeviceId, Name = "SkipCamera", ProviderDeviceId = null, Type = "camera" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(successDeviceId, "ring-good", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(failDeviceId, "ring-fail", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Network timeout"));
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
             Assert.Equal(1, result.FailedDevices);
-            Assert.Single(result.ErrorsByDevice);
+            _ = Assert.Single(result.ErrorsByDevice);
         }
 
         [Fact]
@@ -220,15 +223,15 @@ namespace VideoForensics.Client.Core.Tests
             var customStart = DateTime.Parse("2024-01-01");
             var customEnd = DateTime.Parse("2024-01-31");
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(deviceId, "ring-123", customStart, customEnd, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            var result = await _service.RunFullValidationAsync(customStart, customEnd);
+            BulkValidationResult result = await _service.RunFullValidationAsync(customStart, customEnd);
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
@@ -244,20 +247,20 @@ namespace VideoForensics.Client.Core.Tests
             var device = new Device { Id = deviceId, Name = "TestCamera", ProviderDeviceId = "ring-123", Type = "camera" };
             var devices = new List<Device> { device };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(
                     It.IsAny<Guid>(),
                     It.IsAny<string>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
@@ -278,18 +281,18 @@ namespace VideoForensics.Client.Core.Tests
         {
             var devices = new List<Device>
             {
-                new Device { Id = Guid.NewGuid(), Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" }
+                new() { Id = Guid.NewGuid(), Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.True(result.ElapsedTime.TotalMilliseconds >= 0);
@@ -300,12 +303,12 @@ namespace VideoForensics.Client.Core.Tests
         public async Task RunFullValidationAsync_AcceptsCancellationToken()
         {
             var devices = new List<Device>();
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            var ct = CancellationToken.None;
-            var result = await _service.RunFullValidationAsync(ct: ct);
+            CancellationToken ct = CancellationToken.None;
+            BulkValidationResult result = await _service.RunFullValidationAsync(ct: ct);
 
             Assert.NotNull(result);
             _deviceRepositoryMock.Verify(r => r.ListAsync(ct), Times.Once);
@@ -320,23 +323,23 @@ namespace VideoForensics.Client.Core.Tests
 
             var discrepancies = new List<ReconciliationDiscrepancy>
             {
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event3" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event4" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event5" },
-                new ReconciliationDiscrepancy { Type = DiscrepancyType.MissingFromProvider, ProviderEventId = "event6" }
+                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
+                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event2" },
+                new() { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event3" },
+                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event4" },
+                new() { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event5" },
+                new() { Type = DiscrepancyType.MissingFromProvider, ProviderEventId = "event6" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(deviceId, "ring-123", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(discrepancies);
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(1, result.DevicesValidated);
@@ -354,38 +357,38 @@ namespace VideoForensics.Client.Core.Tests
 
             var devices = new List<Device>
             {
-                new Device { Id = device1Id, Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" },
-                new Device { Id = device2Id, Name = "Camera2", ProviderDeviceId = "ring-2", Type = "camera" },
-                new Device { Id = device3Id, Name = "Camera3", ProviderDeviceId = "ring-3", Type = "camera" }
+                new() { Id = device1Id, Name = "Camera1", ProviderDeviceId = "ring-1", Type = "camera" },
+                new() { Id = device2Id, Name = "Camera2", ProviderDeviceId = "ring-2", Type = "camera" },
+                new() { Id = device3Id, Name = "Camera3", ProviderDeviceId = "ring-3", Type = "camera" }
             };
 
-            _deviceRepositoryMock
+            _ = _deviceRepositoryMock
                 .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(devices);
 
             // Device 1: 2 discrepancies
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(device1Id, "ring-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>
-                {
+                .ReturnsAsync(
+                [
                     new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event1" },
                     new ReconciliationDiscrepancy { Type = DiscrepancyType.MetadataChanged, ProviderEventId = "event2" }
-                });
+                ]);
 
             // Device 2: 1 discrepancy
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(device2Id, "ring-2", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>
-                {
+                .ReturnsAsync(
+                [
                     new ReconciliationDiscrepancy { Type = DiscrepancyType.NewEventFoundOnProvider, ProviderEventId = "event3" }
-                });
+                ]);
 
             // Device 3: throws exception
-            _validationServiceMock
+            _ = _validationServiceMock
                 .Setup(s => s.ReconcileWithProviderAsync(device3Id, "ring-3", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Device offline"));
 
-            var result = await _service.RunFullValidationAsync();
+            BulkValidationResult result = await _service.RunFullValidationAsync();
 
             Assert.NotNull(result);
             Assert.Equal(2, result.DevicesValidated);
@@ -393,7 +396,7 @@ namespace VideoForensics.Client.Core.Tests
             Assert.Equal(3, result.TotalDiscrepancies);
             Assert.Equal(2, result.NewEventsInserted);
             Assert.Equal(1, result.MetadataUpdated);
-            Assert.Single(result.ErrorsByDevice);
+            _ = Assert.Single(result.ErrorsByDevice);
         }
     }
 }

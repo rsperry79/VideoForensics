@@ -222,7 +222,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             int totalCount = await db.Events.AsNoTracking().CountAsync(ct);
 
-            var items = await db.Events.AsNoTracking()
+            List<Event> items = await db.Events.AsNoTracking()
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .ThenBy(e => e.Id)
                 .Skip((pageNumber - 1) * pageSize)

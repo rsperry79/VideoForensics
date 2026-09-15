@@ -26,7 +26,7 @@ namespace VideoForensics.WebApp.Api
     public class AuthAttemptCache : IAuthAttemptCache
     {
         private readonly object _lock = new();
-        private readonly Dictionary<Guid, (string? ProviderName, string Username, string Password, DateTime ExpiresAt)> _attempts = new();
+        private readonly Dictionary<Guid, (string? ProviderName, string Username, string Password, DateTime ExpiresAt)> _attempts = [];
         private readonly TimeSpan _ttl = TimeSpan.FromMinutes(5);
 
         public Guid StoreAttempt(string? providerName, string username, string password)
@@ -46,17 +46,17 @@ namespace VideoForensics.WebApp.Api
         {
             lock (_lock)
             {
-                if (_attempts.TryGetValue(attemptId, out var attempt))
+                if (_attempts.TryGetValue(attemptId, out (string? ProviderName, string Username, string Password, DateTime ExpiresAt) attempt))
                 {
                     // Check if expired
                     if (attempt.ExpiresAt <= DateTime.UtcNow)
                     {
-                        _attempts.Remove(attemptId);
+                        _ = _attempts.Remove(attemptId);
                         return null;
                     }
 
                     // Return and remove (consume the attempt)
-                    _attempts.Remove(attemptId);
+                    _ = _attempts.Remove(attemptId);
                     return (attempt.ProviderName, attempt.Username, attempt.Password);
                 }
 
@@ -66,15 +66,15 @@ namespace VideoForensics.WebApp.Api
 
         private void CleanExpiredAttempts()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var expiredIds = _attempts
                 .Where(kvp => kvp.Value.ExpiresAt <= now)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
-            foreach (var id in expiredIds)
+            foreach (Guid id in expiredIds)
             {
-                _attempts.Remove(id);
+                _ = _attempts.Remove(id);
             }
         }
     }

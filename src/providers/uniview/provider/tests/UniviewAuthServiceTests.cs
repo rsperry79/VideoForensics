@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -24,7 +26,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
             // Session provider returns null (not authenticated)
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewAuthService(
                 mockLogger.Object,
@@ -33,7 +35,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockCredentialRepository.Object);
 
             // Act
-            var status = service.GetAuthStatus();
+            string status = service.GetAuthStatus();
 
             // Assert
             Assert.Equal("Not authenticated", status);
@@ -50,7 +52,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             // Create a real UniviewClient instance (won't connect unless methods are called)
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewAuthService(
                 mockLogger.Object,
@@ -61,7 +63,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act
-                var status = service.GetAuthStatus();
+                string status = service.GetAuthStatus();
 
                 // Assert
                 Assert.Equal("Authenticated", status);
@@ -81,7 +83,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewAuthService(
                 mockLogger.Object,
@@ -90,7 +92,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockCredentialRepository.Object);
 
             // Act
-            var result = await service.IsAuthenticatedAsync(CancellationToken.None);
+            bool result = await service.IsAuthenticatedAsync(CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -105,7 +107,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewAuthService(
                 mockLogger.Object,
@@ -114,7 +116,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockCredentialRepository.Object);
 
             // Act
-            var result = await service.RefreshAuthAsync(CancellationToken.None);
+            bool result = await service.RefreshAuthAsync(CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -130,7 +132,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
             // No credentials stored - GetAsync returns null
-            mockCredentialRepository
+            _ = mockCredentialRepository
                 .Setup(c => c.GetAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(null as (string CredentialType, string DecryptedValue)?);
 
@@ -141,7 +143,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockCredentialRepository.Object);
 
             // Act
-            var result = await service.RestoreFromSavedCredentialsAsync(CancellationToken.None);
+            bool result = await service.RestoreFromSavedCredentialsAsync(CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -159,7 +161,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var accountId = Guid.NewGuid();
 
             // Credential repository returns null (no saved credentials)
-            mockCredentialRepository
+            _ = mockCredentialRepository
                 .Setup(c => c.GetAsync(accountId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(null as (string CredentialType, string DecryptedValue)?);
 
@@ -170,7 +172,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockCredentialRepository.Object);
 
             // Act
-            var result = await service.RestoreFromSavedCredentialsAsync(accountId, CancellationToken.None);
+            bool result = await service.RestoreFromSavedCredentialsAsync(accountId, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -185,7 +187,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewAuthService(
                     null!,
                     mockSessionProvider.Object,
@@ -202,7 +204,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewAuthService(
                     mockLogger.Object,
                     null!,
@@ -219,7 +221,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockCredentialRepository = new Mock<ICredentialRepository>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewAuthService(
                     mockLogger.Object,
                     mockSessionProvider.Object,
@@ -236,7 +238,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewAuthService(
                     mockLogger.Object,
                     mockSessionProvider.Object,

@@ -20,7 +20,7 @@ namespace VideoForensics.Forensics.Implementations
         /// </summary>
         public Task<ValidationResult> ValidateCompletenessAsync(EvidenceMetadata evidence)
         {
-            var result = new ValidationResult { IsValid = true, Errors = new(), Warnings = new() };
+            var result = new ValidationResult { IsValid = true, Errors = [], Warnings = [] };
 
             if (evidence == null)
             {
@@ -73,7 +73,7 @@ namespace VideoForensics.Forensics.Implementations
         /// </summary>
         public Task<ValidationResult> ValidateIntegrityAsync(EvidenceMetadata evidence)
         {
-            var result = new ValidationResult { IsValid = true, Errors = new(), Warnings = new() };
+            var result = new ValidationResult { IsValid = true, Errors = [], Warnings = [] };
 
             if (evidence == null)
             {
@@ -98,7 +98,7 @@ namespace VideoForensics.Forensics.Implementations
             }
 
             // Validate that checksums have recognized hash algorithms
-            var validAlgorithms = new[] { "sha256", "sha1", "md5", "blake2b" };
+            string[] validAlgorithms = new[] { "sha256", "sha1", "md5", "blake2b" };
             var invalidAlgorithms = evidence.Checksums.Keys
                 .Where(key => !validAlgorithms.Contains(key.ToLowerInvariant()))
                 .ToList();
@@ -118,7 +118,7 @@ namespace VideoForensics.Forensics.Implementations
         /// </summary>
         public Task<ValidationResult> ValidateComplianceAsync(EvidenceMetadata evidence)
         {
-            var result = new ValidationResult { IsValid = true, Errors = new(), Warnings = new() };
+            var result = new ValidationResult { IsValid = true, Errors = [], Warnings = [] };
 
             if (evidence == null)
             {
@@ -148,14 +148,14 @@ namespace VideoForensics.Forensics.Implementations
             }
             else
             {
-                var now = DateTime.UtcNow;
+                DateTime now = DateTime.UtcNow;
                 if (evidence.ExtractionTimestamp > now)
                 {
                     result.IsValid = false;
                     result.Errors.Add("ExtractionTimestamp cannot be in the future.");
                 }
 
-                var tenYearsAgo = now.AddYears(-10);
+                DateTime tenYearsAgo = now.AddYears(-10);
                 if (evidence.ExtractionTimestamp < tenYearsAgo)
                 {
                     result.Warnings.Add("Evidence is older than 10 years; chain of custody may be questioned.");
@@ -171,9 +171,9 @@ namespace VideoForensics.Forensics.Implementations
         /// </summary>
         public async Task<EvidenceValidationReport> GetValidationReportAsync(EvidenceMetadata evidence)
         {
-            var completenessResult = await ValidateCompletenessAsync(evidence);
-            var integrityResult = await ValidateIntegrityAsync(evidence);
-            var complianceResult = await ValidateComplianceAsync(evidence);
+            ValidationResult completenessResult = await ValidateCompletenessAsync(evidence);
+            ValidationResult integrityResult = await ValidateIntegrityAsync(evidence);
+            ValidationResult complianceResult = await ValidateComplianceAsync(evidence);
 
             var allErrors = new List<string>();
             allErrors.AddRange(completenessResult.Errors);
@@ -185,7 +185,7 @@ namespace VideoForensics.Forensics.Implementations
             allWarnings.AddRange(integrityResult.Warnings);
             allWarnings.AddRange(complianceResult.Warnings);
 
-            var isValidOverall = completenessResult.IsValid && integrityResult.IsValid && complianceResult.IsValid;
+            bool isValidOverall = completenessResult.IsValid && integrityResult.IsValid && complianceResult.IsValid;
 
             var report = new EvidenceValidationReport
             {

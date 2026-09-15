@@ -76,14 +76,14 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerEventId = "event-123";
+            string providerEventId = "event-123";
 
             _ = _mockDownloadEventRepository
                 .Setup(x => x.ExistsForProviderEventIdAsync(deviceId, providerEventId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceId, providerEventId, CancellationToken.None);
+            bool result = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceId, providerEventId, CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -97,14 +97,14 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerEventId = "event-456";
+            string providerEventId = "event-456";
 
             _ = _mockDownloadEventRepository
                 .Setup(x => x.ExistsForProviderEventIdAsync(deviceId, providerEventId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceId, providerEventId, CancellationToken.None);
+            bool result = await _dataClient.IsMediaAlreadyDownloadedAsync(deviceId, providerEventId, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -305,10 +305,10 @@ namespace VideoForensics.Data.Core.Tests
         public async Task EnsureUserAndAccountAsync_CreatesNewUserWhenNoneExists()
         {
             // Arrange
-            var providerName = "Ring";
-            var providerUserKey = "user-key-123";
-            var displayName = "John Doe";
-            var email = "john@example.com";
+            string providerName = "Ring";
+            string providerUserKey = "user-key-123";
+            string displayName = "John Doe";
+            string email = "john@example.com";
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockUserRepoInContext = new Mock<IUserRepository>();
@@ -386,10 +386,10 @@ namespace VideoForensics.Data.Core.Tests
         public async Task EnsureUserAndAccountAsync_ReusesExistingUserAndAccount()
         {
             // Arrange
-            var providerName = "Ring";
-            var providerUserKey = "user-key-456";
-            var displayName = "Jane Smith";
-            var email = "jane@example.com";
+            string providerName = "Ring";
+            string providerUserKey = "user-key-456";
+            string displayName = "Jane Smith";
+            string email = "jane@example.com";
 
             var existingUser = new User
             {
@@ -529,9 +529,9 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var providerAccountId = Guid.NewGuid();
-            var providerLocationId = "location-123";
-            var locationName = "Front Door";
-            var address = "123 Main St";
+            string providerLocationId = "location-123";
+            string locationName = "Front Door";
+            string address = "123 Main St";
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockLocationRepoInContext = new Mock<ILocationRepository>();
@@ -570,9 +570,9 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var providerAccountId = Guid.NewGuid();
-            var providerLocationId = "location-456";
-            var locationName = "Back Door";
-            var address = "123 Main St, Back";
+            string providerLocationId = "location-456";
+            string locationName = "Back Door";
+            string address = "123 Main St, Back";
 
             var existingLocation = new Location
             {
@@ -615,10 +615,10 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var locationId = Guid.NewGuid();
-            var providerDeviceId = "device-123";
-            var deviceName = "Front Camera";
-            var deviceType = "camera";
-            var isOnline = true;
+            string providerDeviceId = "device-123";
+            string deviceName = "Front Camera";
+            string deviceType = "camera";
+            bool isOnline = true;
 
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
@@ -667,7 +667,7 @@ namespace VideoForensics.Data.Core.Tests
             // location still reference the old device record.
             var placeholderLocationId = Guid.NewGuid();
             var realLocationId = Guid.NewGuid();
-            var providerDeviceId = "device-789";
+            string providerDeviceId = "device-789";
 
             var existingDevice = new Device
             {
@@ -727,10 +727,10 @@ namespace VideoForensics.Data.Core.Tests
         {
             // Arrange
             var locationId = Guid.NewGuid();
-            var providerDeviceId = "device-456";
-            var newDeviceName = "Front Camera Updated";
-            var newDeviceType = "doorbell";
-            var isOnline = false;
+            string providerDeviceId = "device-456";
+            string newDeviceName = "Front Camera Updated";
+            string newDeviceType = "doorbell";
+            bool isOnline = false;
 
             var existingDevice = new Device
             {

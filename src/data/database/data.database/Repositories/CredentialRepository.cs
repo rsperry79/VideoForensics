@@ -40,7 +40,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             try
             {
-                var decryptedValue = await _encryptionProvider.DecryptAsync(credential.EncryptedValue, ct);
+                string decryptedValue = await _encryptionProvider.DecryptAsync(credential.EncryptedValue, ct);
                 return (credential.CredentialType, decryptedValue);
             }
             catch (Exception ex)
@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
+                string encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
 
                 Credential? credential = await db.Credentials.FirstOrDefaultAsync(
                     c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType, ct);

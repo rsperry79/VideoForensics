@@ -89,27 +89,17 @@ namespace VideoForensics.Hosting
 
         public DeviceCodePairingSession? GetByUserCode(string userCode)
         {
-            if (_sessionsByUserCode.TryGetValue(userCode, out var session) && session.ExpiresAtUtc > DateTime.UtcNow)
-            {
-                return session;
-            }
-
-            return null;
+            return _sessionsByUserCode.TryGetValue(userCode, out DeviceCodePairingSession? session) && session.ExpiresAtUtc > DateTime.UtcNow ? session : null;
         }
 
         public DeviceCodePairingSession? GetByDeviceCode(string deviceCode)
         {
-            if (_sessionsByDeviceCode.TryGetValue(deviceCode, out var session) && session.ExpiresAtUtc > DateTime.UtcNow)
-            {
-                return session;
-            }
-
-            return null;
+            return _sessionsByDeviceCode.TryGetValue(deviceCode, out DeviceCodePairingSession? session) && session.ExpiresAtUtc > DateTime.UtcNow ? session : null;
         }
 
         public bool TryApprove(string userCode, string apiKey)
         {
-            var session = GetByUserCode(userCode);
+            DeviceCodePairingSession? session = GetByUserCode(userCode);
             if (session == null || session.Status != DeviceCodePairingStatus.Pending)
             {
                 return false;
@@ -122,7 +112,7 @@ namespace VideoForensics.Hosting
 
         public string? TryConsumeApiKey(string deviceCode)
         {
-            var session = GetByDeviceCode(deviceCode);
+            DeviceCodePairingSession? session = GetByDeviceCode(deviceCode);
             if (session == null || session.Status != DeviceCodePairingStatus.Approved || session.ApiKey == null)
             {
                 return null;
@@ -135,11 +125,11 @@ namespace VideoForensics.Hosting
 
         private void PruneExpired()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var expiredDeviceCodes = new List<string>();
             var expiredUserCodes = new List<string>();
 
-            foreach (var kvp in _sessionsByDeviceCode)
+            foreach (KeyValuePair<string, DeviceCodePairingSession> kvp in _sessionsByDeviceCode)
             {
                 if (kvp.Value.ExpiresAtUtc <= now)
                 {
@@ -147,7 +137,7 @@ namespace VideoForensics.Hosting
                 }
             }
 
-            foreach (var kvp in _sessionsByUserCode)
+            foreach (KeyValuePair<string, DeviceCodePairingSession> kvp in _sessionsByUserCode)
             {
                 if (kvp.Value.ExpiresAtUtc <= now)
                 {
@@ -155,12 +145,12 @@ namespace VideoForensics.Hosting
                 }
             }
 
-            foreach (var code in expiredDeviceCodes)
+            foreach (string code in expiredDeviceCodes)
             {
                 _ = _sessionsByDeviceCode.TryRemove(code, out _);
             }
 
-            foreach (var code in expiredUserCodes)
+            foreach (string code in expiredUserCodes)
             {
                 _ = _sessionsByUserCode.TryRemove(code, out _);
             }
@@ -168,7 +158,7 @@ namespace VideoForensics.Hosting
 
         private static string GenerateUserCode(int length)
         {
-            var code = new char[length];
+            char[] code = new char[length];
             using (var rng = RandomNumberGenerator.Create())
             {
                 byte[] buffer = new byte[length];

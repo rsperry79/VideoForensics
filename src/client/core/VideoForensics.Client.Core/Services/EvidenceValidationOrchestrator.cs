@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
@@ -84,7 +84,7 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        var passed = await _integrityService.VerifyAsync(item.Id, ct);
+                        bool passed = await _integrityService.VerifyAsync(item.Id, ct);
                         results.Add(new MediaVerificationResult
                         {
                             MediaItemId = item.Id,
@@ -252,12 +252,12 @@ namespace VideoForensics.Client.Core.Services
                 {
                     _logger.LogInformation("Starting auto-fix of {Count} discrepancies", discrepancies.Count);
 
-                    var fixResult = await _reconciliationService.AutoFixDiscrepanciesAsync(
+                    AutoFixResult fixResult = await _reconciliationService.AutoFixDiscrepanciesAsync(
                         deviceId,
                         discrepancies,
                         async (providerDeviceId, from, to, cancellationToken) =>
                         {
-                            var deviceEvents = await _eventAndConfigService.GetEventsAsync(providerDeviceId, from, to, null, cancellationToken);
+                            IReadOnlyList<DeviceEvent> deviceEvents = await _eventAndConfigService.GetEventsAsync(providerDeviceId, from, to, null, cancellationToken);
                             return deviceEvents.Select(de => new Event
                             {
                                 Id = Guid.NewGuid(),
@@ -267,7 +267,7 @@ namespace VideoForensics.Client.Core.Services
                                 OccurredAtUtc = de.Timestamp,
                                 SnapshotUrl = de.SnapshotUrl,
                                 DiscoveredAtUtc = DateTime.UtcNow
-                            }).ToList() as IReadOnlyList<Event>;
+                            }).ToList();
                         },
                         ct);
 
@@ -325,7 +325,7 @@ namespace VideoForensics.Client.Core.Services
         /// <summary>Detects rate-limit errors from provider API responses.</summary>
         private bool IsRateLimitError(Exception ex)
         {
-            var message = ex.Message ?? string.Empty;
+            string message = ex.Message ?? string.Empty;
 
             return message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
@@ -336,12 +336,7 @@ namespace VideoForensics.Client.Core.Services
         /// <summary>Case-insensitive string equality check, treating null and empty as different.</summary>
         private static bool StringEquals(string? a, string? b)
         {
-            if (a == null && b == null)
-            {
-                return true;
-            }
-
-            return a != null && b != null && a.Equals(b, StringComparison.OrdinalIgnoreCase);
+            return (a == null && b == null) || (a != null && b != null && a.Equals(b, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

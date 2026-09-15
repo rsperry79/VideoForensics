@@ -14,7 +14,7 @@ public class UserAndAccountEntityTests
         string providerUserKey = "ring:user123";
         string displayName = "John Doe";
         string email = "john@example.com";
-        var createdUtc = DateTime.UtcNow;
+        DateTime createdUtc = DateTime.UtcNow;
 
         // Act
         var user = new User
@@ -58,8 +58,8 @@ public class UserAndAccountEntityTests
         var id = Guid.NewGuid();
         var userId = Guid.NewGuid();
         string providerName = "Ring";
-        var linkedUtc = DateTime.UtcNow;
-        var lastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1);
+        DateTime linkedUtc = DateTime.UtcNow;
+        DateTime lastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1);
         bool isActive = true;
 
         // Act

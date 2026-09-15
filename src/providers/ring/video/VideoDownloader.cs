@@ -35,7 +35,7 @@ namespace VideoForensics.Providers.Ring
 
         public async Task DownloadToFileAsync(string url, string saveAsPath)
         {
-            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
             {
                 throw new ArgumentException("A valid absolute URL is required to download a recording", nameof(url));
             }
@@ -44,16 +44,16 @@ namespace VideoForensics.Providers.Ring
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
             request.Headers.Range = new RangeHeaderValue(0, null);
 
-            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             _ = response.EnsureSuccessStatusCode();
 
-            await using var fileStream = File.Create(saveAsPath);
+            await using FileStream fileStream = File.Create(saveAsPath);
             await response.Content.CopyToAsync(fileStream);
         }
 
         private async Task<byte[]> DownloadBytesAsync(string url)
         {
-            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
             {
                 throw new ArgumentException("A valid absolute URL is required to download a recording", nameof(url));
             }
@@ -62,7 +62,7 @@ namespace VideoForensics.Providers.Ring
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
             request.Headers.Range = new RangeHeaderValue(0, null);
 
-            using var response = await _httpClient.SendAsync(request);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request);
             return await response.Content.ReadAsByteArrayAsync();
         }
 

@@ -1,4 +1,5 @@
 using VideoForensics.Client.Core.Utilities;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -8,7 +9,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultDownloadLocation_ReturnsSystemPath()
         {
-            var result = PathUtilities.GetDefaultDownloadLocation();
+            string result = PathUtilities.GetDefaultDownloadLocation();
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -19,8 +20,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultDownloadLocation_ContainsProgramDataFolder()
         {
-            var result = PathUtilities.GetDefaultDownloadLocation();
-            var programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string result = PathUtilities.GetDefaultDownloadLocation();
+            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
             Assert.True(result.StartsWith(programDataPath));
         }
@@ -28,8 +29,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultDownloadLocation_Consistent()
         {
-            var result1 = PathUtilities.GetDefaultDownloadLocation();
-            var result2 = PathUtilities.GetDefaultDownloadLocation();
+            string result1 = PathUtilities.GetDefaultDownloadLocation();
+            string result2 = PathUtilities.GetDefaultDownloadLocation();
 
             Assert.Equal(result1, result2);
         }
@@ -37,7 +38,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultDownloadLocation_EndsWithMedia()
         {
-            var result = PathUtilities.GetDefaultDownloadLocation();
+            string result = PathUtilities.GetDefaultDownloadLocation();
 
             Assert.EndsWith("media", result);
         }
@@ -45,7 +46,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultQueryExportLocation_ReturnsSystemPath()
         {
-            var result = PathUtilities.GetDefaultQueryExportLocation();
+            string result = PathUtilities.GetDefaultQueryExportLocation();
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -56,8 +57,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultQueryExportLocation_ContainsProgramDataFolder()
         {
-            var result = PathUtilities.GetDefaultQueryExportLocation();
-            var programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            string result = PathUtilities.GetDefaultQueryExportLocation();
+            string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
             Assert.True(result.StartsWith(programDataPath));
         }
@@ -65,8 +66,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultQueryExportLocation_Consistent()
         {
-            var result1 = PathUtilities.GetDefaultQueryExportLocation();
-            var result2 = PathUtilities.GetDefaultQueryExportLocation();
+            string result1 = PathUtilities.GetDefaultQueryExportLocation();
+            string result2 = PathUtilities.GetDefaultQueryExportLocation();
 
             Assert.Equal(result1, result2);
         }
@@ -74,7 +75,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultQueryExportLocation_EndsWithBackup()
         {
-            var result = PathUtilities.GetDefaultQueryExportLocation();
+            string result = PathUtilities.GetDefaultQueryExportLocation();
 
             Assert.EndsWith("backup", result);
         }
@@ -82,11 +83,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_ValidInputs_CombinesPaths()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Front Door";
-            var cameraName = "Camera 1";
+            string basePath = @"C:\Videos";
+            string locationName = "Front Door";
+            string cameraName = "Camera 1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             Assert.NotNull(result);
             Assert.Contains("Front Door", result);
@@ -96,11 +97,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_FollowsExpectedStructure()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Living Room";
-            var cameraName = "Main Camera";
+            string basePath = @"C:\Videos";
+            string locationName = "Living Room";
+            string cameraName = "Main Camera";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             Assert.True(result.Contains(basePath));
             Assert.True(result.EndsWith(@"Living Room\Main Camera") || result.EndsWith("Living Room/Main Camera"));
@@ -109,8 +110,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_NullLocationName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, null!, "Camera");
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, null!, "Camera");
 
             Assert.Contains("Unknown", result);
         }
@@ -118,8 +119,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_EmptyLocationName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, "", "Camera");
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, "", "Camera");
 
             Assert.Contains("Unknown", result);
         }
@@ -127,8 +128,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_WhitespaceLocationName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, "   ", "Camera");
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, "   ", "Camera");
 
             Assert.Contains("Unknown", result);
         }
@@ -136,8 +137,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_NullCameraName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, "Location", null!);
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, "Location", null!);
 
             Assert.Contains("Unknown", result);
         }
@@ -145,8 +146,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_EmptyCameraName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, "Location", "");
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, "Location", "");
 
             Assert.Contains("Unknown", result);
         }
@@ -154,8 +155,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_WhitespaceCameraName_SanitizesToUnknown()
         {
-            var basePath = @"C:\Videos";
-            var result = PathUtilities.BuildSavePath(basePath, "Location", "   ");
+            string basePath = @"C:\Videos";
+            string result = PathUtilities.BuildSavePath(basePath, "Location", "   ");
 
             Assert.Contains("Unknown", result);
         }
@@ -163,11 +164,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_RemovesInvalidPathCharacters()
         {
-            var basePath = @"C:\Videos";
-            var locationName = @"Front/Door\|Camera?";
-            var cameraName = "Camera:1";
+            string basePath = @"C:\Videos";
+            string locationName = @"Front/Door\|Camera?";
+            string cameraName = "Camera:1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
             string appendedSegments = result[basePath.Length..];
 
             // Invalid characters should be removed from the appended segments (basePath's own
@@ -180,11 +181,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_TrimsWhitespace()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "  Front Door  ";
-            var cameraName = "  Camera 1  ";
+            string basePath = @"C:\Videos";
+            string locationName = "  Front Door  ";
+            string cameraName = "  Camera 1  ";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Whitespace should be trimmed
             Assert.DoesNotContain("  Front Door", result);
@@ -194,11 +195,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_SpecialCharacters_Sanitized()
         {
-            var basePath = @"C:\Videos";
-            var locationName = @"Front<>Door";
-            var cameraName = "Camera*1";
+            string basePath = @"C:\Videos";
+            string locationName = @"Front<>Door";
+            string cameraName = "Camera*1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Special characters should be removed or sanitized
             Assert.DoesNotContain("<", result);
@@ -209,11 +210,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_AllInvalidCharacters_BecomesUnknown()
         {
-            var basePath = @"C:\Videos";
-            var locationName = @"<>?:|";
-            var cameraName = @"*?:<>\|";
+            string basePath = @"C:\Videos";
+            string locationName = @"<>?:|";
+            string cameraName = @"*?:<>\|";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             Assert.Contains("Unknown", result);
         }
@@ -221,7 +222,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetOneDrivePath_ReturnsStringOrNull()
         {
-            var result = PathUtilities.GetOneDrivePath();
+            string? result = PathUtilities.GetOneDrivePath();
 
             // Result can be null (no OneDrive) or a valid path
             if (result != null)
@@ -234,7 +235,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetOneDrivePath_IfExists_IsValidDirectory()
         {
-            var result = PathUtilities.GetOneDrivePath();
+            string? result = PathUtilities.GetOneDrivePath();
 
             if (result != null)
             {
@@ -246,8 +247,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetOneDrivePath_Consistent()
         {
-            var result1 = PathUtilities.GetOneDrivePath();
-            var result2 = PathUtilities.GetOneDrivePath();
+            string? result1 = PathUtilities.GetOneDrivePath();
+            string? result2 = PathUtilities.GetOneDrivePath();
 
             Assert.Equal(result1, result2);
         }
@@ -255,11 +256,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_LongLocationName_StillValid()
         {
-            var basePath = @"C:\Videos";
-            var locationName = new string('A', 100);
-            var cameraName = "Camera 1";
+            string basePath = @"C:\Videos";
+            string locationName = new('A', 100);
+            string cameraName = "Camera 1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -268,11 +269,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_LongCameraName_StillValid()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Location";
-            var cameraName = new string('A', 100);
+            string basePath = @"C:\Videos";
+            string locationName = "Location";
+            string cameraName = new('A', 100);
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -281,11 +282,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_MixedCase_Preserved()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "FrOnt DoOr";
-            var cameraName = "CaMeRa 1";
+            string basePath = @"C:\Videos";
+            string locationName = "FrOnt DoOr";
+            string cameraName = "CaMeRa 1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Case should generally be preserved (unless trimmed/sanitized)
             Assert.True(result.Contains("FrOnt") || result.Contains("Front"));
@@ -294,11 +295,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_NumbersAndSymbols_Preserved()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Front Door 123";
-            var cameraName = "Camera (Main)";
+            string basePath = @"C:\Videos";
+            string locationName = "Front Door 123";
+            string cameraName = "Camera (Main)";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Numbers and some symbols should be preserved
             Assert.Contains("123", result);
@@ -307,11 +308,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_UnicodeCharacters_Handled()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Café";
-            var cameraName = "カメラ";
+            string basePath = @"C:\Videos";
+            string locationName = "Café";
+            string cameraName = "カメラ";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Should either preserve or sanitize unicode gracefully
             Assert.NotNull(result);
@@ -321,7 +322,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultDownloadLocation_NotEmpty()
         {
-            var result = PathUtilities.GetDefaultDownloadLocation();
+            string result = PathUtilities.GetDefaultDownloadLocation();
 
             Assert.NotEmpty(result);
         }
@@ -329,7 +330,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDefaultQueryExportLocation_NotEmpty()
         {
-            var result = PathUtilities.GetDefaultQueryExportLocation();
+            string result = PathUtilities.GetDefaultQueryExportLocation();
 
             Assert.NotEmpty(result);
         }
@@ -337,25 +338,25 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_TwoLevelStructure()
         {
-            var basePath = @"C:\Root";
-            var locationName = "Loc1";
-            var cameraName = "Cam1";
+            string basePath = @"C:\Root";
+            string locationName = "Loc1";
+            string cameraName = "Cam1";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Path should have structure: basePath\location\camera
-            var parts = result.Split(new[] { Path.DirectorySeparatorChar }, StringSplitOptions.None);
+            string[] parts = result.Split(new[] { Path.DirectorySeparatorChar }, StringSplitOptions.None);
             Assert.True(parts.Length >= 3, "Path should have at least 3 components (base + location + camera)");
         }
 
         [Fact]
         public void BuildSavePath_HandlesBackslashesInInput()
         {
-            var basePath = @"C:\Videos";
-            var locationName = @"Front\Back";
-            var cameraName = "Camera";
+            string basePath = @"C:\Videos";
+            string locationName = @"Front\Back";
+            string cameraName = "Camera";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Backslash is an invalid path character and should be sanitized
             Assert.NotNull(result);
@@ -364,11 +365,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_SanitizationDoesNotCreateDoubleUnknown()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Valid Location";
-            var cameraName = "Valid Camera";
+            string basePath = @"C:\Videos";
+            string locationName = "Valid Location";
+            string cameraName = "Valid Camera";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Both names are valid, so should not contain "Unknown"
             Assert.DoesNotContain("Unknown", result);
@@ -377,11 +378,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_CombinesPathsCorrectly()
         {
-            var basePath = @"C:\Base";
-            var locationName = "Location";
-            var cameraName = "Camera";
+            string basePath = @"C:\Base";
+            string locationName = "Location";
+            string cameraName = "Camera";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Result should start with base path
             Assert.True(result.StartsWith(basePath));
@@ -390,14 +391,14 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void BuildSavePath_SanitizesOnly_DoesNotRemoveValidCharacters()
         {
-            var basePath = @"C:\Videos";
-            var locationName = "Front-Door_1";
-            var cameraName = "Camera-2_Main";
+            string basePath = @"C:\Videos";
+            string locationName = "Front-Door_1";
+            string cameraName = "Camera-2_Main";
 
-            var result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
+            string result = PathUtilities.BuildSavePath(basePath, locationName, cameraName);
 
             // Hyphens and underscores are typically valid, so should be preserved
-            Assert.True(result.Contains("Front-Door_1") || result.Contains("Front") && result.Contains("Door"));
+            Assert.True(result.Contains("Front-Door_1") || (result.Contains("Front") && result.Contains("Door")));
         }
     }
 }

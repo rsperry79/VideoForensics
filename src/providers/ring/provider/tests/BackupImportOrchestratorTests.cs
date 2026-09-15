@@ -94,12 +94,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 zipStream.CloseEntry();
             }
 
-            WriteEntry("accounts.json", JsonSerializer.Serialize(accounts ?? new List<ProviderAccount>(), jsonOptions));
-            WriteEntry("locations.json", JsonSerializer.Serialize(locations ?? new List<Location>(), jsonOptions));
-            WriteEntry("devices.json", JsonSerializer.Serialize(devices ?? new List<Device>(), jsonOptions));
-            WriteEntry("events.json", JsonSerializer.Serialize(events ?? new List<Event>(), jsonOptions));
-            WriteEntry("download_events.json", JsonSerializer.Serialize(downloadEvents ?? new List<DownloadEvent>(), jsonOptions));
-            WriteEntry("media_items.json", JsonSerializer.Serialize(mediaItems ?? new List<ExportedMediaItem>(), jsonOptions));
+            WriteEntry("accounts.json", JsonSerializer.Serialize(accounts ?? [], jsonOptions));
+            WriteEntry("locations.json", JsonSerializer.Serialize(locations ?? [], jsonOptions));
+            WriteEntry("devices.json", JsonSerializer.Serialize(devices ?? [], jsonOptions));
+            WriteEntry("events.json", JsonSerializer.Serialize(events ?? [], jsonOptions));
+            WriteEntry("download_events.json", JsonSerializer.Serialize(downloadEvents ?? [], jsonOptions));
+            WriteEntry("media_items.json", JsonSerializer.Serialize(mediaItems ?? [], jsonOptions));
 
             return zipPath;
         }
@@ -111,13 +111,13 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "ring" };
-                var zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), accounts: new List<ProviderAccount> { account });
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), accounts: [account]);
 
                 _ = _mockAccounts.Setup(r => r.GetAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(account);
                 WireUnitOfWork();
 
                 var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
-                var result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
                 Assert.Equal(1, result.ProviderAccounts.SkippedExisting);
@@ -147,14 +147,14 @@ namespace VideoForensics.Providers.Ring.Tests
                     MediaFormat = "mp4",
                     Sha256Hash = "abc123"
                 };
-                var zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: new List<ExportedMediaItem> { exportedItem });
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), mediaItems: [exportedItem]);
 
                 _ = _mockMediaItems.Setup(r => r.GetAsync(exportedItem.Id, It.IsAny<CancellationToken>())).ReturnsAsync((MediaItem?)null);
                 _ = _mockDevices.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Cam", Type = "camera" });
                 WireUnitOfWork();
 
                 var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
-                var result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
                 Assert.Equal(1, result.MediaItems.Inserted);

@@ -91,16 +91,16 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             };
 
             // TSV format: tab-separated values with headers
-            var header = "Timestamp\tLocationName\tCameraName\tCameraId\tEventId\tEventType\tCreatedAt\tErrorDescription";
+            string header = "Timestamp\tLocationName\tCameraName\tCameraId\tEventId\tEventType\tCreatedAt\tErrorDescription";
             var lines = new List<string> { header };
 
             foreach (FailedDownload d in downloads)
             {
-                var line = $"{d.Timestamp}\t{d.LocationName}\t{d.CameraName}\t{d.CameraId}\t{d.EventId}\t{d.EventType}\t{d.CreatedAt}\t{d.ErrorDescription}";
+                string line = $"{d.Timestamp}\t{d.LocationName}\t{d.CameraName}\t{d.CameraId}\t{d.EventId}\t{d.EventType}\t{d.CreatedAt}\t{d.ErrorDescription}";
                 lines.Add(line);
             }
 
-            var tsvContent = string.Join(Environment.NewLine, lines);
+            string tsvContent = string.Join(Environment.NewLine, lines);
             Assert.False(string.IsNullOrEmpty(tsvContent));
             Assert.True(tsvContent.Contains("Timeout"));
             Assert.True(tsvContent.Contains("Doorbell"));

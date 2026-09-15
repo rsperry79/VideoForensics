@@ -25,7 +25,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
             {
-                var user = await users.GetAsync(id, ct);
+                User? user = await users.GetAsync(id, ct);
                 return user == null ? Results.NotFound() : Results.Ok(user.ToDto());
             })
                 .RequireRateLimiting("media")
@@ -34,7 +34,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/users/by-provider-key/{providerUserKey}", async (string providerUserKey, IUserRepository users, CancellationToken ct) =>
             {
-                var user = await users.GetByProviderKeyAsync(providerUserKey, ct);
+                User? user = await users.GetByProviderKeyAsync(providerUserKey, ct);
                 return user == null ? Results.NotFound() : Results.Ok(user.ToDto());
             })
                 .RequireRateLimiting("media")
@@ -68,7 +68,7 @@ namespace VideoForensics.WebApp.Api
                 IUserRepository users,
                 CancellationToken ct) =>
             {
-                var user = await users.GetAsync(id, ct);
+                User? user = await users.GetAsync(id, ct);
                 if (user == null)
                 {
                     return Results.NotFound();
@@ -89,7 +89,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapDelete("/users/{id:guid}", async (Guid id, IUserRepository users, CancellationToken ct) =>
             {
-                var user = await users.GetAsync(id, ct);
+                User? user = await users.GetAsync(id, ct);
                 if (user == null)
                 {
                     return Results.NotFound();
@@ -118,7 +118,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
             {
-                var account = await accounts.GetAsync(id, ct);
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
                 return account == null ? Results.NotFound() : Results.Ok(account.ToDto());
             })
                 .RequireRateLimiting("media")
@@ -133,7 +133,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/provider-accounts/by-user-and-provider", async (Guid userId, string providerName, IProviderAccountRepository accounts, CancellationToken ct) =>
             {
-                var account = await accounts.GetByUserAndProviderAsync(userId, providerName, ct);
+                ProviderAccount? account = await accounts.GetByUserAndProviderAsync(userId, providerName, ct);
                 return account == null ? Results.NotFound() : Results.Ok(account.ToDto());
             })
                 .RequireRateLimiting("media")
@@ -169,7 +169,7 @@ namespace VideoForensics.WebApp.Api
                 IProviderAccountRepository accounts,
                 CancellationToken ct) =>
             {
-                var account = await accounts.GetAsync(id, ct);
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
                 {
                     return Results.NotFound();
@@ -196,7 +196,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapDelete("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
             {
-                var account = await accounts.GetAsync(id, ct);
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
                 {
                     return Results.NotFound();

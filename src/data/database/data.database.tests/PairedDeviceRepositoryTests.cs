@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Tests
                 operatorId: operatorId,
                 deviceName: "TestDevice",
                 webAuthnCredentialId: "cred_123");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
@@ -112,14 +112,14 @@ namespace VideoForensics.Data.Database.Tests
                 webAuthnCredentialId: "cred_123",
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Manual revocation");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
 
             // Assert
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.RevokedAtUtc);
+            _ = Assert.NotNull(retrieved.RevokedAtUtc);
             Assert.False(retrieved.IsActive);
         }
 
@@ -138,7 +138,7 @@ namespace VideoForensics.Data.Database.Tests
                 deviceName: "WebAuthnDevice",
                 webAuthnCredentialId: credentialId,
                 webAuthnPublicKey: new byte[] { 1, 2, 3, 4 });
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetByWebAuthnCredentialIdAsync(credentialId, CancellationToken.None);
@@ -160,7 +160,7 @@ namespace VideoForensics.Data.Database.Tests
                 webAuthnCredentialId: credentialId,
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Device compromised");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetByWebAuthnCredentialIdAsync(credentialId, CancellationToken.None);
@@ -192,8 +192,8 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device1 = BuildPairedDevice(operatorId: operatorId1, webAuthnCredentialId: credentialId1);
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId2, webAuthnCredentialId: credentialId2);
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetByWebAuthnCredentialIdAsync(credentialId2, CancellationToken.None);
@@ -217,7 +217,7 @@ namespace VideoForensics.Data.Database.Tests
                 operatorId: operatorId,
                 deviceName: "FallbackDevice",
                 fallbackApiKeyHash: apiKeyHash);
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetByFallbackApiKeyHashAsync(apiKeyHash, CancellationToken.None);
@@ -239,7 +239,7 @@ namespace VideoForensics.Data.Database.Tests
                 fallbackApiKeyHash: apiKeyHash,
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Key compromised");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             PairedDevice? retrieved = await _repository.GetByFallbackApiKeyHashAsync(apiKeyHash, CancellationToken.None);
@@ -290,8 +290,8 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
-            var publicKey = new byte[] { 5, 6, 7, 8 };
+            DateTime now = DateTime.UtcNow;
+            byte[] publicKey = new byte[] { 5, 6, 7, 8 };
             const string fingerprint = "custom_fingerprint";
 
             PairedDevice device = BuildPairedDevice(
@@ -304,7 +304,7 @@ namespace VideoForensics.Data.Database.Tests
                 pairedAtUtc: now);
 
             // Act
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Assert
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -328,7 +328,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice(deviceName: "Original");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             device.DeviceName = "Updated";
@@ -347,9 +347,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             device.LastSeenAtUtc = now;
             device.LastSeenIp = "192.168.1.100";
             device.LastSeenTier = NetworkTier.Network;
@@ -370,9 +370,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             device.RevokedAtUtc = now;
             device.RevokedReason = "Manual update";
 
@@ -382,7 +382,7 @@ namespace VideoForensics.Data.Database.Tests
             // Assert
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.RevokedAtUtc);
+            _ = Assert.NotNull(retrieved.RevokedAtUtc);
             Assert.Equal("Manual update", retrieved.RevokedReason);
         }
 
@@ -401,9 +401,9 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId2, deviceName: "Device2");
             PairedDevice device3 = BuildPairedDevice(operatorId: operatorId1, deviceName: "Device3");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
-            await _repository.AddAsync(device3, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device3, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListAsync(CancellationToken.None);
@@ -416,15 +416,15 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ListAsync_SortsByPairedAtUtcDescending()
         {
             // Arrange
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
 
             PairedDevice device1 = BuildPairedDevice(deviceName: "Device1", pairedAtUtc: baseTime.AddMinutes(-2));
             PairedDevice device2 = BuildPairedDevice(deviceName: "Device2", pairedAtUtc: baseTime);
             PairedDevice device3 = BuildPairedDevice(deviceName: "Device3", pairedAtUtc: baseTime.AddMinutes(-1));
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
-            await _repository.AddAsync(device3, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device3, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListAsync(CancellationToken.None);
@@ -446,8 +446,8 @@ namespace VideoForensics.Data.Database.Tests
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Test");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListAsync(CancellationToken.None);
@@ -481,9 +481,9 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId1, deviceName: "Op1Device2");
             PairedDevice device3 = BuildPairedDevice(operatorId: operatorId2, deviceName: "Op2Device1");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
-            await _repository.AddAsync(device3, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device3, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListForOperatorAsync(operatorId1, CancellationToken.None);
@@ -498,13 +498,13 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var baseTime = DateTime.UtcNow;
+            DateTime baseTime = DateTime.UtcNow;
 
             PairedDevice device1 = BuildPairedDevice(operatorId: operatorId, deviceName: "Device1", pairedAtUtc: baseTime.AddMinutes(-1));
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId, deviceName: "Device2", pairedAtUtc: baseTime);
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListForOperatorAsync(operatorId, CancellationToken.None);
@@ -528,8 +528,8 @@ namespace VideoForensics.Data.Database.Tests
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Test");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             // Act
             IReadOnlyList<PairedDevice> list = await _repository.ListForOperatorAsync(operatorId, CancellationToken.None);
@@ -557,9 +557,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice(webAuthnCredentialId: "cred_to_revoke");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
-            var beforeRevoke = DateTime.UtcNow;
+            DateTime beforeRevoke = DateTime.UtcNow;
             const string reason = "User requested revocation";
 
             // Act
@@ -568,7 +568,7 @@ namespace VideoForensics.Data.Database.Tests
             // Assert
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.RevokedAtUtc);
+            _ = Assert.NotNull(retrieved.RevokedAtUtc);
             Assert.True(retrieved.RevokedAtUtc >= beforeRevoke);
             Assert.Equal(reason, retrieved.RevokedReason);
             Assert.False(retrieved.IsActive);
@@ -580,7 +580,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             const string credentialId = "cred_revoke_test";
             PairedDevice device = BuildPairedDevice(webAuthnCredentialId: credentialId);
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             await _repository.RevokeAsync(device.Id, "Testing revocation", CancellationToken.None);
@@ -596,7 +596,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             const string apiKeyHash = "hash_revoke_test";
             PairedDevice device = BuildPairedDevice(fallbackApiKeyHash: apiKeyHash);
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             await _repository.RevokeAsync(device.Id, "Testing revocation", CancellationToken.None);
@@ -620,7 +620,7 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device = BuildPairedDevice(
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Original reason");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             await _repository.RevokeAsync(device.Id, "New reason", CancellationToken.None);
@@ -644,8 +644,8 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device1 = BuildPairedDevice(operatorId: operatorId, deviceName: "Device1");
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId, deviceName: "Device2");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             const string reason = "Operator deactivated";
 
@@ -675,14 +675,14 @@ namespace VideoForensics.Data.Database.Tests
                 revokedAtUtc: DateTime.UtcNow,
                 revokedReason: "Previously revoked");
 
-            await _repository.AddAsync(activeDevice, CancellationToken.None);
-            await _repository.AddAsync(revokedDevice, CancellationToken.None);
+            _ = await _repository.AddAsync(activeDevice, CancellationToken.None);
+            _ = await _repository.AddAsync(revokedDevice, CancellationToken.None);
 
             // Act
             IReadOnlyList<Guid> revokedIds = await _repository.RevokeAllForOperatorAsync(operatorId, "New revocation", CancellationToken.None);
 
             // Assert - only the active device should be in the returned list
-            Assert.Single(revokedIds);
+            _ = Assert.Single(revokedIds);
             Assert.Contains(activeDevice.Id, revokedIds);
             Assert.DoesNotContain(revokedDevice.Id, revokedIds);
         }
@@ -697,17 +697,17 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device1 = BuildPairedDevice(operatorId: operatorId1, deviceName: "Op1Device");
             PairedDevice device2 = BuildPairedDevice(operatorId: operatorId2, deviceName: "Op2Device");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
 
             // Act
-            await _repository.RevokeAllForOperatorAsync(operatorId1, "Revoke operator 1", CancellationToken.None);
+            _ = await _repository.RevokeAllForOperatorAsync(operatorId1, "Revoke operator 1", CancellationToken.None);
 
             // Assert
             PairedDevice? op1Device = await _repository.GetAsync(device1.Id, CancellationToken.None);
             PairedDevice? op2Device = await _repository.GetAsync(device2.Id, CancellationToken.None);
 
-            Assert.NotNull(op1Device.RevokedAtUtc);
+            _ = Assert.NotNull(op1Device.RevokedAtUtc);
             Assert.Null(op2Device.RevokedAtUtc);
         }
 
@@ -731,7 +731,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice(webAuthnCredentialId: "cred_auth");
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             await _repository.RecordSuccessfulAuthAsync(
@@ -752,9 +752,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
-            var beforeAuth = DateTime.UtcNow;
+            DateTime beforeAuth = DateTime.UtcNow;
             const string sourceIp = "203.0.113.42";
 
             // Act
@@ -768,7 +768,7 @@ namespace VideoForensics.Data.Database.Tests
             // Assert
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.LastSeenAtUtc);
+            _ = Assert.NotNull(retrieved.LastSeenAtUtc);
             Assert.True(retrieved.LastSeenAtUtc >= beforeAuth);
             Assert.Equal(sourceIp, retrieved.LastSeenIp);
             Assert.Equal(NetworkTier.Internet, retrieved.LastSeenTier);
@@ -782,9 +782,9 @@ namespace VideoForensics.Data.Database.Tests
             PairedDevice device2 = BuildPairedDevice(deviceName: "Device2");
             PairedDevice device3 = BuildPairedDevice(deviceName: "Device3");
 
-            await _repository.AddAsync(device1, CancellationToken.None);
-            await _repository.AddAsync(device2, CancellationToken.None);
-            await _repository.AddAsync(device3, CancellationToken.None);
+            _ = await _repository.AddAsync(device1, CancellationToken.None);
+            _ = await _repository.AddAsync(device2, CancellationToken.None);
+            _ = await _repository.AddAsync(device3, CancellationToken.None);
 
             // Act - record auth from different tiers
             await _repository.RecordSuccessfulAuthAsync(device1.Id, 1, "10.0.0.1", NetworkTier.Local, CancellationToken.None);
@@ -806,7 +806,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act
             await _repository.RecordSuccessfulAuthAsync(
@@ -840,7 +840,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act - simulate multiple authentications with increasing sign count
             await _repository.RecordSuccessfulAuthAsync(device.Id, 1, "10.0.0.1", NetworkTier.Local, CancellationToken.None);
@@ -862,7 +862,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             // Act & Assert - initially active
             PairedDevice? active = await _repository.GetAsync(device.Id, CancellationToken.None);
@@ -895,8 +895,8 @@ namespace VideoForensics.Data.Database.Tests
                 deviceName: "Fallback",
                 fallbackApiKeyHash: "hash_fallback");
 
-            await _repository.AddAsync(webAuthnDevice, CancellationToken.None);
-            await _repository.AddAsync(fallbackDevice, CancellationToken.None);
+            _ = await _repository.AddAsync(webAuthnDevice, CancellationToken.None);
+            _ = await _repository.AddAsync(fallbackDevice, CancellationToken.None);
 
             // Act
             PairedDevice? retrievedWebAuthn = await _repository.GetByWebAuthnCredentialIdAsync("cred_webauthn", CancellationToken.None);
@@ -913,11 +913,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             PairedDevice device = BuildPairedDevice();
-            await _repository.AddAsync(device, CancellationToken.None);
+            _ = await _repository.AddAsync(device, CancellationToken.None);
 
             await _repository.RevokeAsync(device.Id, "Compromised", CancellationToken.None);
 
-            var beforeAuth = DateTime.UtcNow;
+            _ = DateTime.UtcNow;
 
             // Act - attempt to record auth on revoked device (should still work, but device remains revoked)
             await _repository.RecordSuccessfulAuthAsync(device.Id, 99, "192.168.1.1", NetworkTier.Network, CancellationToken.None);
@@ -925,7 +925,7 @@ namespace VideoForensics.Data.Database.Tests
             // Assert
             PairedDevice? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.RevokedAtUtc);
+            _ = Assert.NotNull(retrieved.RevokedAtUtc);
             Assert.Equal(99U, retrieved.WebAuthnSignCount);
             Assert.Equal("192.168.1.1", retrieved.LastSeenIp);
         }

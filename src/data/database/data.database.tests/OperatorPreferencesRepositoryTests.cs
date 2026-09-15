@@ -253,7 +253,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task OperatorPreferencesRepository_Upsert_UpdatesTimestamp()
         {
             var operatorId = Guid.NewGuid();
-            var time1 = DateTime.UtcNow;
+            DateTime time1 = DateTime.UtcNow;
 
             var preferences = new OperatorPreferences
             {
@@ -266,9 +266,9 @@ namespace VideoForensics.Data.Database.Tests
 
             await _repository.UpsertAsync(preferences, CancellationToken.None);
 
-            var retrieved1 = await _repository.GetAsync(operatorId, CancellationToken.None);
+            OperatorPreferences? retrieved1 = await _repository.GetAsync(operatorId, CancellationToken.None);
             Assert.NotNull(retrieved1);
-            var firstTimestamp = retrieved1.UpdatedAtUtc;
+            DateTime firstTimestamp = retrieved1.UpdatedAtUtc;
 
             // Wait a bit and update
             await Task.Delay(10);
@@ -284,7 +284,7 @@ namespace VideoForensics.Data.Database.Tests
 
             await _repository.UpsertAsync(updated, CancellationToken.None);
 
-            var retrieved2 = await _repository.GetAsync(operatorId, CancellationToken.None);
+            OperatorPreferences? retrieved2 = await _repository.GetAsync(operatorId, CancellationToken.None);
             Assert.NotNull(retrieved2);
 
             // Timestamp should be updated (though we can't be too strict about timing)

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 
-using VideoForensics.Providers.Ring.Models;
-
 namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>

@@ -20,7 +20,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task AddAsync_CreatesNewRecord_WhenValidRecordProvided()
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
             var record = new IntegrityRecord
             {
                 Id = Guid.NewGuid(),
@@ -35,8 +35,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(record, CancellationToken.None);
 
             // Verify record was saved by querying it back
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
             Assert.Equal(record.Id, result[0].Id);
             Assert.Equal(mediaItemId, result[0].MediaItemId);
             Assert.Equal("abc123def456", result[0].Sha256Hash);
@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task AddAsync_CreatesFailedRecord_WhenValidationFails()
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
             var record = new IntegrityRecord
             {
                 Id = Guid.NewGuid(),
@@ -60,8 +60,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             await _repository.AddAsync(record, CancellationToken.None);
 
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
             Assert.False(result[0].Passed);
             Assert.Equal("Hash mismatch: expected expected_hash, got actual_hash", result[0].FailureReason);
         }
@@ -69,7 +69,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task AddAsync_AllowsMultipleRecordsForSameMediaItem()
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
             DateTime firstTime = DateTime.UtcNow;
             DateTime secondTime = firstTime.AddMinutes(5);
 
@@ -100,8 +100,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(record2, CancellationToken.None);
 
             // Both records should exist in database
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result); // But GetLatest should only return the newest one
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result); // But GetLatest should only return the newest one
             Assert.Equal(record2.Id, result[0].Id); // Should be the second record
             Assert.Equal(secondTime, result[0].VerifiedAtUtc);
         }
@@ -109,9 +109,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task AddAsync_PreservesAllFields_WhenRecordAdded()
         {
-            Guid mediaItemId = Guid.NewGuid();
-            Guid recordId = Guid.NewGuid();
-            DateTime verifiedAt = new DateTime(2026, 5, 15, 10, 30, 0, DateTimeKind.Utc);
+            var mediaItemId = Guid.NewGuid();
+            var recordId = Guid.NewGuid();
+            var verifiedAt = new DateTime(2026, 5, 15, 10, 30, 0, DateTimeKind.Utc);
 
             var record = new IntegrityRecord
             {
@@ -126,9 +126,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             await _repository.AddAsync(record, CancellationToken.None);
 
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
-            var retrieved = result[0];
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
+            IntegrityRecord retrieved = result[0];
             Assert.Equal(recordId, retrieved.Id);
             Assert.Equal(mediaItemId, retrieved.MediaItemId);
             Assert.Equal("a1b2c3d4e5f6", retrieved.Sha256Hash);
@@ -145,8 +145,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsLatestRecord_WhenMultipleRecordsExist()
         {
-            Guid mediaItemId = Guid.NewGuid();
-            var baseTime = DateTime.UtcNow;
+            var mediaItemId = Guid.NewGuid();
+            DateTime baseTime = DateTime.UtcNow;
 
             // Add three records for same media item at different times
             var record1 = new IntegrityRecord
@@ -184,8 +184,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(record3, CancellationToken.None);
 
             // Should return only the latest
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
             Assert.Equal(record3.Id, result[0].Id);
             Assert.Equal("hash3", result[0].Sha256Hash);
             Assert.True(result[0].Passed);
@@ -194,9 +194,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsEmptyList_WhenNoRecordsExist()
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
 
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -204,10 +204,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsMultipleLatestRecords_WhenMultipleMediaItemsQueried()
         {
-            Guid mediaItemId1 = Guid.NewGuid();
-            Guid mediaItemId2 = Guid.NewGuid();
-            Guid mediaItemId3 = Guid.NewGuid();
-            var baseTime = DateTime.UtcNow;
+            var mediaItemId1 = Guid.NewGuid();
+            var mediaItemId2 = Guid.NewGuid();
+            var mediaItemId3 = Guid.NewGuid();
+            DateTime baseTime = DateTime.UtcNow;
 
             // Add records for first media item
             var record1 = new IntegrityRecord
@@ -258,7 +258,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(record3, CancellationToken.None);
 
             // Query all three
-            var result = await _repository.GetLatestByMediaItemIdsAsync(
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(
                 new[] { mediaItemId1, mediaItemId2, mediaItemId3 },
                 CancellationToken.None);
 
@@ -274,8 +274,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_SkipsMediaItemsWithNoRecords_WhenMixed()
         {
-            Guid mediaItemIdWithRecord = Guid.NewGuid();
-            Guid mediaItemIdWithoutRecord = Guid.NewGuid();
+            var mediaItemIdWithRecord = Guid.NewGuid();
+            var mediaItemIdWithoutRecord = Guid.NewGuid();
 
             // Add record only for first media item
             var record = new IntegrityRecord
@@ -290,18 +290,18 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(record, CancellationToken.None);
 
             // Query both, but second has no records
-            var result = await _repository.GetLatestByMediaItemIdsAsync(
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(
                 new[] { mediaItemIdWithRecord, mediaItemIdWithoutRecord },
                 CancellationToken.None);
 
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal(mediaItemIdWithRecord, result[0].MediaItemId);
         }
 
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsRecords_WithEmptyMediaItemIdList()
         {
-            var result = await _repository.GetLatestByMediaItemIdsAsync(
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(
                 Enumerable.Empty<Guid>(),
                 CancellationToken.None);
 
@@ -311,8 +311,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsLatestByTimestamp_RegardlessOfInsertionOrder()
         {
-            Guid mediaItemId = Guid.NewGuid();
-            var baseTime = DateTime.UtcNow;
+            var mediaItemId = Guid.NewGuid();
+            DateTime baseTime = DateTime.UtcNow;
 
             // Insert in non-chronological order
             var record3 = new IntegrityRecord
@@ -348,8 +348,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
             await _repository.AddAsync(record2, CancellationToken.None);
 
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
             Assert.Equal(record3.Id, result[0].Id);
             Assert.Equal("hash3", result[0].Sha256Hash);
         }
@@ -357,7 +357,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetLatestByMediaItemIdsAsync_ReturnsSingleRecord_WhenOnlyOneRecordExists()
         {
-            Guid mediaItemId = Guid.NewGuid();
+            var mediaItemId = Guid.NewGuid();
             var record = new IntegrityRecord
             {
                 Id = Guid.NewGuid(),
@@ -370,8 +370,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             await _repository.AddAsync(record, CancellationToken.None);
 
-            var result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
-            Assert.Single(result);
+            IReadOnlyList<IntegrityRecord> result = await _repository.GetLatestByMediaItemIdsAsync(new[] { mediaItemId }, CancellationToken.None);
+            _ = Assert.Single(result);
             Assert.Equal(record.Id, result[0].Id);
         }
 
@@ -382,11 +382,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task Workflow_AddMultipleRecordsAndRetrieveLatest()
         {
-            var mediaItems = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
-            var baseTime = DateTime.UtcNow;
+            Guid[] mediaItems = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+            DateTime baseTime = DateTime.UtcNow;
 
             // Add initial records
-            foreach (var mediaItemId in mediaItems)
+            foreach (Guid mediaItemId in mediaItems)
             {
                 var record = new IntegrityRecord
                 {
@@ -401,7 +401,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             }
 
             // Verify all records exist
-            var initialResult = await _repository.GetLatestByMediaItemIdsAsync(mediaItems, CancellationToken.None);
+            IReadOnlyList<IntegrityRecord> initialResult = await _repository.GetLatestByMediaItemIdsAsync(mediaItems, CancellationToken.None);
             Assert.Equal(3, initialResult.Count);
             Assert.All(initialResult, r => Assert.True(r.Passed));
 
@@ -419,10 +419,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(recheck, CancellationToken.None);
 
             // Get latest - first item should now show failure
-            var updated = await _repository.GetLatestByMediaItemIdsAsync(mediaItems, CancellationToken.None);
+            IReadOnlyList<IntegrityRecord> updated = await _repository.GetLatestByMediaItemIdsAsync(mediaItems, CancellationToken.None);
             Assert.Equal(3, updated.Count);
 
-            var firstItemResult = updated.FirstOrDefault(r => r.MediaItemId == mediaItems[0]);
+            IntegrityRecord? firstItemResult = updated.FirstOrDefault(r => r.MediaItemId == mediaItems[0]);
             Assert.NotNull(firstItemResult);
             Assert.False(firstItemResult.Passed);
             Assert.Equal("Recheck detected corruption", firstItemResult.FailureReason);

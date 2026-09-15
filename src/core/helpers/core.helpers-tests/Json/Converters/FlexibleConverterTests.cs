@@ -87,7 +87,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json.Converters
             // object/array token corrupts deserialization of every property that follows it in
             // the containing object, not just the one it was applied to.
             string json = "{\"LedStatus\":{\"seconds_remaining\":0},\"NextField\":\"ok\"}";
-            var result = JsonSerializer.Deserialize<DeviceWithLedStatus>(json, _options);
+            DeviceWithLedStatus? result = JsonSerializer.Deserialize<DeviceWithLedStatus>(json, _options);
             Assert.NotNull(result);
             Assert.Null(result!.LedStatus);
             Assert.Equal("ok", result.NextField);

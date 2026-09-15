@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
 
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var downloadEventId = Guid.NewGuid();
-            var providerEventId = "ring_evt_001";
+            string providerEventId = "ring_evt_001";
             DateTime now = DateTime.UtcNow;
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: true);
@@ -101,8 +101,8 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var downloadEventId = Guid.NewGuid();
-            var providerEventId = "ring_evt_002";
-            var mediaItemHash = "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz";
+            string providerEventId = "ring_evt_002";
+            string mediaItemHash = "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz";
             DateTime now = DateTime.UtcNow;
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: true);
@@ -137,7 +137,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var downloadEventId = Guid.NewGuid();
-            var providerEventId = "ring_evt_003";
+            string providerEventId = "ring_evt_003";
             DateTime now = DateTime.UtcNow;
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: false);
@@ -168,7 +168,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task EventBackfillService_BackfillFromDownloadEventsAsync_MultipleDownloadEvents_CreatesMultipleEvents()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Create three download events
             DownloadEvent event1 = TestDataBuilder.BuildDownloadEvent(deviceId, "evt_1", success: true);
@@ -209,7 +209,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task EventBackfillService_BackfillFromDownloadEventsAsync_EventTypeNull_SetsToUnknown()
         {
             var deviceId = Guid.NewGuid();
-            var providerEventId = "ring_evt_004";
+            string providerEventId = "ring_evt_004";
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: true);
             downloadEvent.EventType = null;
@@ -237,9 +237,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var downloadEventId = Guid.NewGuid();
-            var providerEventId = "ring_evt_005";
-            var hash1 = "hash_001_abc";
-            var hash2 = "hash_002_def";
+            string providerEventId = "ring_evt_005";
+            string hash1 = "hash_001_abc";
+            string hash2 = "hash_002_def";
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: true);
             downloadEvent.Id = downloadEventId;
@@ -285,7 +285,7 @@ namespace VideoForensics.Data.Database.Tests
             var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await EventBackfillService.BackfillFromDownloadEventsAsync(
                     _downloadEventRepository,
                     _mediaItemRepository,
@@ -327,7 +327,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             var downloadEventId = Guid.NewGuid();
-            var providerEventId = "ring_evt_006";
+            string providerEventId = "ring_evt_006";
 
             DownloadEvent downloadEvent = TestDataBuilder.BuildDownloadEvent(deviceId, providerEventId, success: true);
             downloadEvent.Id = downloadEventId;
@@ -359,7 +359,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task EventBackfillService_BackfillFromDownloadEventsAsync_MixedSuccessAndFailedDownloads_BackfillsAll()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Successful download
             DownloadEvent successEvent = TestDataBuilder.BuildDownloadEvent(deviceId, "evt_success", success: true);
@@ -392,7 +392,7 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.NotNull(successCreated);
             Assert.NotNull(failureCreated);
-            Assert.NotNull(successCreated.DownloadedAtUtc);
+            _ = Assert.NotNull(successCreated.DownloadedAtUtc);
             Assert.Null(failureCreated.DownloadedAtUtc);
         }
     }

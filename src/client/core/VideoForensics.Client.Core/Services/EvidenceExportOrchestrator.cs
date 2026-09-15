@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -74,7 +73,7 @@ namespace VideoForensics.Client.Core.Services
                         }
 
                         // Verify integrity; exclude items that fail verification
-                        var verificationPassed = await _integrityVerificationService.VerifyAsync(mediaItemId, ct);
+                        bool verificationPassed = await _integrityVerificationService.VerifyAsync(mediaItemId, ct);
                         if (!verificationPassed)
                         {
                             _logger.LogWarning(
@@ -119,7 +118,7 @@ namespace VideoForensics.Client.Core.Services
                     }).ToList()
                 };
 
-                var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+                string manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
 
                 // Step 3: Build chain_of_custody.json (per-item action log history)
                 var chainOfCustodyItems = new List<object>();
@@ -148,11 +147,11 @@ namespace VideoForensics.Client.Core.Services
                     }
                 }
 
-                var chainOfCustodyJson = JsonSerializer.Serialize(chainOfCustodyItems, new JsonSerializerOptions { WriteIndented = true });
+                string chainOfCustodyJson = JsonSerializer.Serialize(chainOfCustodyItems, new JsonSerializerOptions { WriteIndented = true });
 
                 // Step 4: Create ZIP archive
-                var archiveFileName = $"Evidence_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-                var archivePath = Path.Combine(outputDirectory, archiveFileName);
+                string archiveFileName = $"Evidence_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
+                string archivePath = Path.Combine(outputDirectory, archiveFileName);
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
@@ -215,7 +214,7 @@ namespace VideoForensics.Client.Core.Services
                 }
 
                 // Step 5: Compute archive hash and record the export
-                var archiveHash = await ComputeFileHashAsync(archivePath, ct);
+                string archiveHash = await ComputeFileHashAsync(archivePath, ct);
                 var exportedItems = itemsToExport.Select(x => (x.Item.Id, x.Sha256AtExport)).ToList();
 
                 _ = await _exportRecordService.RecordExportAsync(
@@ -256,7 +255,7 @@ namespace VideoForensics.Client.Core.Services
         {
             using var hashAlgorithm = SHA256.Create();
             using FileStream fileStream = File.OpenRead(filePath);
-            var hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
+            byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
     }

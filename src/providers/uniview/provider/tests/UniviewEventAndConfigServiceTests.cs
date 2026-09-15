@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -21,14 +24,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act
-            var events = await service.GetEventsAsync("1", DateTime.Now.AddDays(-7), DateTime.Now, cancellationToken: CancellationToken.None);
+            IReadOnlyList<DeviceEvent> events = await service.GetEventsAsync("1", DateTime.Now.AddDays(-7), DateTime.Now, cancellationToken: CancellationToken.None);
 
             // Assert
             Assert.Empty(events);
@@ -42,7 +45,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
@@ -51,7 +54,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act - request events with unsupported type (only "motion" is supported)
-                var events = await service.GetEventsAsync(
+                IReadOnlyList<DeviceEvent> events = await service.GetEventsAsync(
                     "1",
                     DateTime.Now.AddDays(-7),
                     DateTime.Now,
@@ -75,14 +78,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await service.GetEventsAsync(
                     "invalid",
                     DateTime.Now.AddDays(-7),
@@ -97,14 +100,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act
-            var config = await service.GetDeviceConfigAsync("1", CancellationToken.None);
+            DeviceConfig? config = await service.GetDeviceConfigAsync("1", CancellationToken.None);
 
             // Assert
             Assert.Null(config);
@@ -118,14 +121,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await service.GetDeviceConfigAsync("invalid", CancellationToken.None));
         }
 
@@ -136,7 +139,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
@@ -149,7 +152,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 RecordingMode: "off");
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("1", config, CancellationToken.None);
+            bool result = await service.UpdateDeviceConfigAsync("1", config, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -163,7 +166,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
@@ -176,7 +179,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 RecordingMode: "off");
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await service.UpdateDeviceConfigAsync("invalid", config, CancellationToken.None));
         }
 
@@ -218,7 +221,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewEventAndConfigService(
                 mockLogger.Object,
@@ -231,7 +234,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 // that the code doesn't reject it early due to case sensitivity
                 // Actually, this will throw InvalidOperationException since client isn't logged in,
                 // which means it got past the case-insensitive check. That's what we're testing.
-                await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                     await service.GetEventsAsync(
                         "1",
                         DateTime.Now.AddDays(-7),

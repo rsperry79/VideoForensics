@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Tests
             };
 
             // Act
-            var result = await _repository.AppendAsync(entry, CancellationToken.None);
+            SecurityAuditLogEntry result = await _repository.AppendAsync(entry, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -79,11 +79,11 @@ namespace VideoForensics.Data.Database.Tests
             };
 
             // Act
-            await _repository.AppendAsync(entry, CancellationToken.None);
+            _ = await _repository.AppendAsync(entry, CancellationToken.None);
 
             // Assert - retrieve via ListAsync to verify persistence
-            var entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
-            Assert.Single(entries);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
+            _ = Assert.Single(entries);
             Assert.Equal(entry.Id, entries[0].Id);
             Assert.Equal(SecurityAuditEventTypes.PairingCompleted, entries[0].EventType);
         }
@@ -117,8 +117,8 @@ namespace VideoForensics.Data.Database.Tests
             };
 
             // Act
-            var resultUrgent = await _repository.AppendAsync(urgentEntry, CancellationToken.None);
-            var resultNonUrgent = await _repository.AppendAsync(nonUrgentEntry, CancellationToken.None);
+            SecurityAuditLogEntry resultUrgent = await _repository.AppendAsync(urgentEntry, CancellationToken.None);
+            SecurityAuditLogEntry resultNonUrgent = await _repository.AppendAsync(nonUrgentEntry, CancellationToken.None);
 
             // Assert
             Assert.True(resultUrgent.IsUrgent);
@@ -142,7 +142,7 @@ namespace VideoForensics.Data.Database.Tests
             };
 
             // Act
-            var result = await _repository.AppendAsync(entry, CancellationToken.None);
+            SecurityAuditLogEntry result = await _repository.AppendAsync(entry, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -159,7 +159,7 @@ namespace VideoForensics.Data.Database.Tests
             var operator1 = Guid.NewGuid();
             var operator2 = Guid.NewGuid();
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow,
@@ -171,7 +171,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsUrgent = false
             }, CancellationToken.None);
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow.AddSeconds(1),
@@ -184,7 +184,7 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             // Act
-            var entries = await _repository.ListAsync(null, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(null, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, entries.Count);
@@ -197,7 +197,7 @@ namespace VideoForensics.Data.Database.Tests
             var targetOperator = Guid.NewGuid();
             var otherOperator = Guid.NewGuid();
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow,
@@ -209,7 +209,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsUrgent = false
             }, CancellationToken.None);
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow.AddSeconds(1),
@@ -221,7 +221,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsUrgent = false
             }, CancellationToken.None);
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow.AddSeconds(2),
@@ -234,7 +234,7 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             // Act
-            var entries = await _repository.ListAsync(targetOperator, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(targetOperator, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, entries.Count);
@@ -248,7 +248,7 @@ namespace VideoForensics.Data.Database.Tests
             var targetOperator = Guid.NewGuid();
             var otherOperator = Guid.NewGuid();
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = DateTime.UtcNow,
@@ -261,7 +261,7 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             // Act
-            var entries = await _repository.ListAsync(targetOperator, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(targetOperator, 10, CancellationToken.None);
 
             // Assert
             Assert.Empty(entries);
@@ -272,7 +272,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             var entry1 = new SecurityAuditLogEntry
             {
@@ -310,12 +310,12 @@ namespace VideoForensics.Data.Database.Tests
                 IsUrgent = false
             };
 
-            await _repository.AppendAsync(entry1, CancellationToken.None);
-            await _repository.AppendAsync(entry2, CancellationToken.None);
-            await _repository.AppendAsync(entry3, CancellationToken.None);
+            _ = await _repository.AppendAsync(entry1, CancellationToken.None);
+            _ = await _repository.AppendAsync(entry2, CancellationToken.None);
+            _ = await _repository.AppendAsync(entry3, CancellationToken.None);
 
             // Act
-            var entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(3, entries.Count);
@@ -329,11 +329,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             for (int i = 0; i < 10; i++)
             {
-                await _repository.AppendAsync(new SecurityAuditLogEntry
+                _ = await _repository.AppendAsync(new SecurityAuditLogEntry
                 {
                     Id = Guid.NewGuid(),
                     TimestampUtc = now.AddSeconds(i),
@@ -347,7 +347,7 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act
-            var entries = await _repository.ListAsync(operatorId, 5, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 5, CancellationToken.None);
 
             // Assert
             Assert.Equal(5, entries.Count);
@@ -358,11 +358,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             for (int i = 0; i < 3; i++)
             {
-                await _repository.AppendAsync(new SecurityAuditLogEntry
+                _ = await _repository.AppendAsync(new SecurityAuditLogEntry
                 {
                     Id = Guid.NewGuid(),
                     TimestampUtc = now.AddSeconds(i),
@@ -376,7 +376,7 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act
-            var entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(3, entries.Count);
@@ -388,12 +388,12 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var operator1 = Guid.NewGuid();
             var operator2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Add 8 entries for operator1
             for (int i = 0; i < 8; i++)
             {
-                await _repository.AppendAsync(new SecurityAuditLogEntry
+                _ = await _repository.AppendAsync(new SecurityAuditLogEntry
                 {
                     Id = Guid.NewGuid(),
                     TimestampUtc = now.AddSeconds(i),
@@ -409,7 +409,7 @@ namespace VideoForensics.Data.Database.Tests
             // Add 5 entries for operator2
             for (int i = 0; i < 5; i++)
             {
-                await _repository.AppendAsync(new SecurityAuditLogEntry
+                _ = await _repository.AppendAsync(new SecurityAuditLogEntry
                 {
                     Id = Guid.NewGuid(),
                     TimestampUtc = now.AddSeconds(i),
@@ -423,8 +423,8 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act
-            var operator1Entries = await _repository.ListAsync(operator1, 5, CancellationToken.None);
-            var operator2Entries = await _repository.ListAsync(operator2, 3, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> operator1Entries = await _repository.ListAsync(operator1, 5, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> operator2Entries = await _repository.ListAsync(operator2, 3, CancellationToken.None);
 
             // Assert
             Assert.Equal(5, operator1Entries.Count); // max results limit applied
@@ -439,7 +439,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var eventTypes = new[]
+            string[] eventTypes = new[]
             {
                 SecurityAuditEventTypes.PairingInitiated,
                 SecurityAuditEventTypes.PairingCompleted,
@@ -448,10 +448,10 @@ namespace VideoForensics.Data.Database.Tests
                 SecurityAuditEventTypes.SessionVerified
             };
 
-            var now = DateTime.UtcNow;
-            foreach (var eventType in eventTypes)
+            DateTime now = DateTime.UtcNow;
+            foreach (string? eventType in eventTypes)
             {
-                await _repository.AppendAsync(new SecurityAuditLogEntry
+                _ = await _repository.AppendAsync(new SecurityAuditLogEntry
                 {
                     Id = Guid.NewGuid(),
                     TimestampUtc = now.AddSeconds(Array.IndexOf(eventTypes, eventType)),
@@ -465,12 +465,12 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act
-            var entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(5, entries.Count);
             var retrievedEventTypes = entries.Select(e => e.EventType).ToList();
-            foreach (var eventType in eventTypes)
+            foreach (string? eventType in eventTypes)
             {
                 Assert.Contains(eventType, retrievedEventTypes);
             }
@@ -483,9 +483,9 @@ namespace VideoForensics.Data.Database.Tests
             var operatorId = Guid.NewGuid();
             var pairedDevice1 = Guid.NewGuid();
             var pairedDevice2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = now,
@@ -497,7 +497,7 @@ namespace VideoForensics.Data.Database.Tests
                 IsUrgent = true
             }, CancellationToken.None);
 
-            await _repository.AppendAsync(new SecurityAuditLogEntry
+            _ = await _repository.AppendAsync(new SecurityAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 TimestampUtc = now.AddSeconds(1),
@@ -510,7 +510,7 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             // Act
-            var entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
+            IReadOnlyList<SecurityAuditLogEntry> entries = await _repository.ListAsync(operatorId, 10, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, entries.Count);

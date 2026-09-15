@@ -1,8 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VideoForensics.Providers.Ring.Services
 {
     /// <summary>
@@ -68,7 +65,7 @@ namespace VideoForensics.Providers.Ring.Services
 
         public bool IsRateLimitError(Exception ex)
         {
-            var message = ex.Message ?? string.Empty;
+            string message = ex.Message ?? string.Empty;
 
             return message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||

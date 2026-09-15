@@ -1,6 +1,3 @@
-using VideoForensics.Forensics.Interfaces;
-using VideoForensics.Forensics.Models;
-
 namespace VideoForensics.Forensics.Tests.Fixtures
 {
     /// <summary>
@@ -94,7 +91,7 @@ namespace VideoForensics.Forensics.Tests.Fixtures
         {
             IEnumerable<ChainOfCustodyEntry> custody = await GetChainOfCustodyAsync(evidenceId);
             var custodyList = custody.ToList();
-            var isVerified = await VerifyCustodyIntegrityAsync(evidenceId);
+            bool isVerified = await VerifyCustodyIntegrityAsync(evidenceId);
 
             return new ChainOfCustodyReport
             {

@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Providers.Ring;
@@ -20,7 +22,7 @@ namespace VideoForensics.Client.Core.Tools
 
         public Task<IReadOnlyList<SelfTestEndpointDto>> ListEndpointsAsync(CancellationToken cancellationToken = default)
         {
-            var endpoints = EndpointRegistry.All
+            ReadOnlyCollection<SelfTestEndpointDto> endpoints = EndpointRegistry.All
                 .Select(descriptor => new SelfTestEndpointDto(
                     Key: descriptor.Key,
                     DisplayName: descriptor.DisplayName,
@@ -104,7 +106,7 @@ namespace VideoForensics.Client.Core.Tools
             // Try to start the run
             bool accepted = _orchestrator.TryStartRun(options, outputDir);
 
-            var response = accepted
+            SelfTestRunResponseDto response = accepted
                 ? new SelfTestRunResponseDto(Accepted: true, Error: null)
                 : new SelfTestRunResponseDto(Accepted: false, Error: "A self-test run is already in progress.");
 
@@ -113,7 +115,7 @@ namespace VideoForensics.Client.Core.Tools
 
         public Task<SelfTestStatusDto> GetStatusAsync(CancellationToken cancellationToken = default)
         {
-            var (status, startedAtUtc, completedAtUtc, error) = _orchestrator.GetStatus();
+            (SelfTestRunStatus status, DateTime? startedAtUtc, DateTime? completedAtUtc, string? error) = _orchestrator.GetStatus();
 
             var statusDto = new SelfTestStatusDto(
                 Status: status,
@@ -133,7 +135,7 @@ namespace VideoForensics.Client.Core.Tools
                 return Task.FromResult<SelfTestResultDto?>(null);
             }
 
-            var calls = indexDoc.Calls
+            ReadOnlyCollection<SelfTestCallDto> calls = indexDoc.Calls
                 .Select(callRecord => new SelfTestCallDto(
                     Endpoint: callRecord.Endpoint,
                     DisplayName: callRecord.DisplayName,

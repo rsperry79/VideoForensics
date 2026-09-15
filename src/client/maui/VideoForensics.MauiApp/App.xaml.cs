@@ -31,8 +31,8 @@ public partial class App : Application
                 return;
             }
 
-            var elapsed = DateTime.UtcNow - _backgroundedAtUtc.Value;
-            var timeout = _services.GetRequiredService<IAppLockPreferencesStore>().GetIdleLockTimeout();
+            TimeSpan elapsed = DateTime.UtcNow - _backgroundedAtUtc.Value;
+            TimeSpan timeout = _services.GetRequiredService<IAppLockPreferencesStore>().GetIdleLockTimeout();
             _backgroundedAtUtc = null;
 
             if (elapsed >= timeout)
@@ -46,7 +46,7 @@ public partial class App : Application
 
     private ContentPage BuildLockPage(Window window)
     {
-        var authGate = _services.GetRequiredService<ILocalAuthGate>();
+        ILocalAuthGate authGate = _services.GetRequiredService<ILocalAuthGate>();
         AppLockPage lockPage = new(authGate);
         lockPage.Unlocked += (_, _) => window.Page = new MainPage();
         return lockPage;

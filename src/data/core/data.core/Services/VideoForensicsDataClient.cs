@@ -219,37 +219,41 @@ namespace VideoForensics.Data.Core.Services
 
                     if (zones != null && zones.Count > 0)
                     {
-                        foreach (var zone in zones)
+                        foreach (EventDetectionZone zone in zones)
                         {
                             zone.EventDetectionId = detection?.Id ?? Guid.Empty;
                         }
+
                         await context.DetectionEntities.AddEventDetectionZonesAsync(zones, ct);
                     }
 
                     if (alerts != null && alerts.Count > 0)
                     {
-                        foreach (var alert in alerts)
+                        foreach (EventSecurityAlert alert in alerts)
                         {
                             alert.EventId = upserted.Id;
                         }
+
                         await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, ct);
                     }
 
                     if (persons != null && persons.Count > 0)
                     {
-                        foreach (var person in persons)
+                        foreach (EventDetectedPerson person in persons)
                         {
                             person.EventId = upserted.Id;
                         }
+
                         await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, ct);
                     }
 
                     if (occurrences != null && occurrences.Count > 0)
                     {
-                        foreach (var occurrence in occurrences)
+                        foreach (EventDetectionTypeOccurrence occurrence in occurrences)
                         {
                             occurrence.EventDetectionId = detection?.Id ?? Guid.Empty;
                         }
+
                         await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
@@ -452,7 +456,7 @@ namespace VideoForensics.Data.Core.Services
                         if (existingDevice.LocationId != locationId)
                         {
                             // Check if device already exists at target location (race condition check)
-                            var inTargetLocation = await context.Devices
+                            Device? inTargetLocation = await context.Devices
                                 .GetByProviderDeviceIdAsync(locationId, providerDeviceId, ct);
 
                             if (inTargetLocation != null)

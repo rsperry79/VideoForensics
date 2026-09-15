@@ -131,14 +131,7 @@ namespace VideoForensics.Data.Database.Repositories
                 summary.LastIncidentUtc = incidents.Count > 0 ? incidents.Max(i => i.StartUtc) : null;
                 summary.LastUpdatedUtc = DateTime.UtcNow;
 
-                if (existing == null)
-                {
-                    _ = db.JammingStatsSummaries.Add(summary);
-                }
-                else
-                {
-                    _ = db.JammingStatsSummaries.Update(summary);
-                }
+                _ = existing == null ? db.JammingStatsSummaries.Add(summary) : db.JammingStatsSummaries.Update(summary);
 
                 _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Recomputed jamming stats for device {DeviceId}: {IncidentCount} incidents", deviceId, summary.IncidentCount);

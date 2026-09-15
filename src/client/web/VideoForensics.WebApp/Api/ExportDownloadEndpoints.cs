@@ -16,13 +16,13 @@ namespace VideoForensics.WebApp.Api
                 string? fileName,
                 VideoForensics.WebApp.Services.ExportDownloadTokenStore tokenStore) =>
             {
-                var filePath = tokenStore.TryConsume(token);
+                string? filePath = tokenStore.TryConsume(token);
                 if (filePath is null || !File.Exists(filePath))
                 {
                     return Results.NotFound();
                 }
 
-                var downloadName = string.IsNullOrWhiteSpace(fileName) ? Path.GetFileName(filePath) : fileName;
+                string downloadName = string.IsNullOrWhiteSpace(fileName) ? Path.GetFileName(filePath) : fileName;
                 return Results.File(filePath, "application/octet-stream", downloadName);
             });
         }

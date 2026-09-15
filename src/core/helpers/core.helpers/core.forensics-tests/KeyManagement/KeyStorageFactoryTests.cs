@@ -1,12 +1,7 @@
+using VideoForensics.Forensics.KeyManagement;
+
 namespace VideoForensics.Forensics.Tests.KeyManagement
 {
-    using System;
-    using System.IO;
-    using System.Threading.Tasks;
-    using VideoForensics.Forensics.Exceptions;
-    using VideoForensics.Forensics.KeyManagement;
-    using Xunit;
-
     public class KeyStorageFactoryTests : IDisposable
     {
         private readonly string _tempDirectory;
@@ -14,7 +9,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public KeyStorageFactoryTests()
         {
             _tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(_tempDirectory);
+            _ = Directory.CreateDirectory(_tempDirectory);
         }
 
         public void Dispose()
@@ -29,7 +24,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetDefaultProviderAsync_Always_ReturnsAvailableProvider()
         {
             // Act
-            var provider = await KeyStorageFactory.GetDefaultProviderAsync();
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
             // Assert
             Assert.NotNull(provider);
@@ -41,31 +36,31 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         {
             // Act - Since TPM and DPAPI are not available on test machine,
             // the default should be file-based encrypted storage
-            var provider = await KeyStorageFactory.GetDefaultProviderAsync();
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
             // Assert
             Assert.NotNull(provider);
             Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
-            Assert.IsType<FileBasedKeyStorageProvider>(provider);
+            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
         }
 
         [Fact]
         public void CreateTpmProvider_Always_ReturnsTpmProvider()
         {
             // Act
-            var provider = KeyStorageFactory.CreateTpmProvider();
+            IKeyStorageProvider provider = KeyStorageFactory.CreateTpmProvider();
 
             // Assert
             Assert.NotNull(provider);
             Assert.Equal("TPM 2.0", provider.ProviderName);
-            Assert.IsType<TpmKeyStorageProvider>(provider);
+            _ = Assert.IsType<TpmKeyStorageProvider>(provider);
         }
 
         [Fact]
         public void CreateTpmProvider_AlwaysReturnsFalseForIsAvailable()
         {
             // Act
-            var provider = KeyStorageFactory.CreateTpmProvider();
+            IKeyStorageProvider provider = KeyStorageFactory.CreateTpmProvider();
 
             // Assert
             Assert.False(provider.IsAvailable);
@@ -75,19 +70,19 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public void CreateDpapiProvider_Always_ReturnsDpapiProvider()
         {
             // Act
-            var provider = KeyStorageFactory.CreateDpapiProvider();
+            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider();
 
             // Assert
             Assert.NotNull(provider);
             Assert.Equal("Windows DPAPI", provider.ProviderName);
-            Assert.IsType<DpapiKeyStorageProvider>(provider);
+            _ = Assert.IsType<DpapiKeyStorageProvider>(provider);
         }
 
         [Fact]
         public void CreateDpapiProvider_WithStoragePath_IgnoresPath()
         {
             // Act - DPAPI provider doesn't use storage path but should accept it
-            var provider = KeyStorageFactory.CreateDpapiProvider(_tempDirectory);
+            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider(_tempDirectory);
 
             // Assert
             Assert.NotNull(provider);
@@ -98,7 +93,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public void CreateDpapiProvider_AlwaysReturnsFalseForIsAvailable()
         {
             // Act
-            var provider = KeyStorageFactory.CreateDpapiProvider();
+            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider();
 
             // Assert
             Assert.False(provider.IsAvailable);
@@ -108,19 +103,19 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public void CreateFileBasedProvider_WithValidPath_ReturnsFileBasedProvider()
         {
             // Act
-            var provider = KeyStorageFactory.CreateFileBasedProvider(_tempDirectory);
+            IKeyStorageProvider provider = KeyStorageFactory.CreateFileBasedProvider(_tempDirectory);
 
             // Assert
             Assert.NotNull(provider);
             Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
-            Assert.IsType<FileBasedKeyStorageProvider>(provider);
+            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
         }
 
         [Fact]
         public void CreateFileBasedProvider_Always_ReturnsAvailableProvider()
         {
             // Act
-            var provider = KeyStorageFactory.CreateFileBasedProvider(_tempDirectory);
+            IKeyStorageProvider provider = KeyStorageFactory.CreateFileBasedProvider(_tempDirectory);
 
             // Assert
             Assert.True(provider.IsAvailable);
@@ -132,12 +127,12 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             // Arrange
             string path1 = Path.Combine(_tempDirectory, "storage1");
             string path2 = Path.Combine(_tempDirectory, "storage2");
-            Directory.CreateDirectory(path1);
-            Directory.CreateDirectory(path2);
+            _ = Directory.CreateDirectory(path1);
+            _ = Directory.CreateDirectory(path2);
 
             // Act
-            var provider1 = KeyStorageFactory.CreateFileBasedProvider(path1);
-            var provider2 = KeyStorageFactory.CreateFileBasedProvider(path2);
+            IKeyStorageProvider provider1 = KeyStorageFactory.CreateFileBasedProvider(path1);
+            IKeyStorageProvider provider2 = KeyStorageFactory.CreateFileBasedProvider(path2);
 
             // Assert
             Assert.NotNull(provider1);
@@ -150,12 +145,12 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetDefaultProviderAsync_CanStoreAndRetrieveKeys()
         {
             // Arrange
-            var provider = await KeyStorageFactory.GetDefaultProviderAsync();
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
             string keyId = "factory-test-key";
 
             // Act
             string thumbprint = await provider.GenerateKeyPairAsync(keyId);
-            var keys = await provider.ListKeysAsync();
+            IEnumerable<string> keys = await provider.ListKeysAsync();
 
             // Assert
             Assert.NotEmpty(thumbprint);
@@ -170,7 +165,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             // it falls back to the next available provider (File-Based)
 
             // Act
-            var provider = await KeyStorageFactory.GetDefaultProviderAsync();
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
             // Assert
             // TPM is not available on most test machines, so we get File-Based

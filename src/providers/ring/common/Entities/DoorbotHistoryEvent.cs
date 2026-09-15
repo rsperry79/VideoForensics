@@ -18,18 +18,7 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("created_at")]
         public string CreatedAt { get; set; }
 
-        public DateTime? CreatedAtDateTime
-        {
-            get
-            {
-                if (field.HasValue)
-                {
-                    return field.Value;
-                }
-
-                return !DateTime.TryParse(CreatedAt, out DateTime result) ? null : (field = result);
-            }
-        }
+        public DateTime? CreatedAtDateTime => field.HasValue ? field.Value : !DateTime.TryParse(CreatedAt, out DateTime result) ? null : (field = result);
 
         /// <summary>
         /// Boolean indicating if the ring was answered

@@ -35,8 +35,8 @@ namespace VideoForensics.Data.Core.Services
                 }
 
                 using FileStream fileStream = File.OpenRead(filePath);
-                var hash = await SHA256.HashDataAsync(fileStream, ct);
-                var hashHex = Convert.ToHexString(hash).ToLowerInvariant();
+                byte[] hash = await SHA256.HashDataAsync(fileStream, ct);
+                string hashHex = Convert.ToHexString(hash).ToLowerInvariant();
 
                 _logger.LogInformation("Computed SHA-256 for {FilePath}: {Hash}", filePath, hashHex);
                 return hashHex;
@@ -66,8 +66,8 @@ namespace VideoForensics.Data.Core.Services
 
             try
             {
-                var currentHash = await ComputeHashAsync(mediaItem.FilePath, ct);
-                var passed = currentHash.Equals(mediaItem.Sha256Hash, StringComparison.OrdinalIgnoreCase);
+                string currentHash = await ComputeHashAsync(mediaItem.FilePath, ct);
+                bool passed = currentHash.Equals(mediaItem.Sha256Hash, StringComparison.OrdinalIgnoreCase);
 
                 _logger.LogInformation(
                     "Verification {Result} for {FilePath}: stored={StoredHash}, current={CurrentHash}",

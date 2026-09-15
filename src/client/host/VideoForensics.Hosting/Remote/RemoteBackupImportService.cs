@@ -31,22 +31,20 @@ namespace VideoForensics.Hosting.Remote
             }
 
             // Create multipart/form-data request
-            using (var formContent = new MultipartFormDataContent())
-            using (Stream fileStream = System.IO.File.OpenRead(backupZipPath))
-            {
-                var fileContent = new StreamContent(fileStream);
-                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
-                formContent.Add(fileContent, "backupFile", Path.GetFileName(backupZipPath));
+            using var formContent = new MultipartFormDataContent();
+            using Stream fileStream = System.IO.File.OpenRead(backupZipPath);
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+            formContent.Add(fileContent, "backupFile", Path.GetFileName(backupZipPath));
 
-                // Add the media root path as a form field
-                formContent.Add(new StringContent(mediaRootPath), "mediaRootPath");
+            // Add the media root path as a form field
+            formContent.Add(new StringContent(mediaRootPath), "mediaRootPath");
 
-                HttpResponseMessage response = await _httpClient.PostAsync("/api/v1/backup/import", formContent, ct);
-                _ = response.EnsureSuccessStatusCode();
+            HttpResponseMessage response = await _httpClient.PostAsync("/api/v1/backup/import", formContent, ct);
+            _ = response.EnsureSuccessStatusCode();
 
-                BackupImportResultDto? dto = await response.Content.ReadFromJsonAsync<BackupImportResultDto>(JsonOptions, ct);
-                return (dto ?? throw new InvalidOperationException("Server returned null import result")).ToDomain();
-            }
+            BackupImportResultDto? dto = await response.Content.ReadFromJsonAsync<BackupImportResultDto>(JsonOptions, ct);
+            return (dto ?? throw new InvalidOperationException("Server returned null import result")).ToDomain();
         }
     }
 

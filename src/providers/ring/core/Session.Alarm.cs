@@ -48,7 +48,7 @@ namespace VideoForensics.Providers.Ring
             var ticketUri = new Uri(RingAppApiBaseUrl,
                 $"clap/tickets?locationID={locationId:D}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws");
             string response = await _httpUtility.GetContents(ticketUri, AuthenticationToken, _hardwareId);
-            var ticketResponse = JsonSerializer.Deserialize<ClapTicketResponse>(response);
+            ClapTicketResponse? ticketResponse = JsonSerializer.Deserialize<ClapTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Host) || string.IsNullOrEmpty(ticketResponse.Ticket))
             {

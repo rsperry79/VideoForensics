@@ -50,7 +50,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.RecordAsync(entry, CancellationToken.None);
             IReadOnlyList<ProviderApiErrorLog> results = await _repository.GetByEventIdAsync(eventId, CancellationToken.None);
 
-            var retrieved = Assert.Single(results);
+            ProviderApiErrorLog retrieved = Assert.Single(results);
             Assert.Equal(entry.Id, retrieved.Id);
             Assert.Equal(eventId, retrieved.EventId);
             Assert.Equal(404, retrieved.HttpStatusCode);
@@ -82,7 +82,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.RecordAsync(entry, CancellationToken.None);
             IReadOnlyList<ProviderApiErrorLog> results = await _repository.GetByDeviceIdAsync(deviceId, CancellationToken.None);
 
-            var retrieved = Assert.Single(results);
+            ProviderApiErrorLog retrieved = Assert.Single(results);
             Assert.Null(retrieved.EventId);
             Assert.Equal(deviceId, retrieved.DeviceId);
         }

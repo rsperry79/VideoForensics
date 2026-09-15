@@ -71,6 +71,7 @@ namespace VideoForensics.Client.Core.Tools
                         _error = "No active Ring session";
                         _completedAtUtc = DateTime.UtcNow;
                     }
+
                     _logger.LogError("Cannot start self-test run: no active Ring session");
                     return;
                 }
@@ -98,6 +99,7 @@ namespace VideoForensics.Client.Core.Tools
                     _error = ex.Message;
                     _completedAtUtc = DateTime.UtcNow;
                 }
+
                 _logger.LogError(ex, "Self-test run failed");
             }
         }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net;
 
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
@@ -51,7 +50,7 @@ namespace VideoForensics.Hosting
         private readonly IServiceProvider _serviceProvider;
         private readonly PairedSessionState _sessionState;
         private HubConnection? _connection;
-        private readonly object _lockObj = new object();
+        private readonly object _lockObj = new();
 
         public event Action<DownloadProgressPayload>? DownloadProgressReceived;
         public event Action<NotificationEvent>? UrgentEventReceived;
@@ -94,12 +93,12 @@ namespace VideoForensics.Hosting
                 .WithAutomaticReconnect()
                 .Build();
 
-            _connection.On<DownloadProgressPayload>("DownloadProgress", payload =>
+            _ = _connection.On<DownloadProgressPayload>("DownloadProgress", payload =>
             {
                 DownloadProgressReceived?.Invoke(payload);
             });
 
-            _connection.On<NotificationEvent>("UrgentEvent", notificationEvent =>
+            _ = _connection.On<NotificationEvent>("UrgentEvent", notificationEvent =>
             {
                 UrgentEventReceived?.Invoke(notificationEvent);
             });

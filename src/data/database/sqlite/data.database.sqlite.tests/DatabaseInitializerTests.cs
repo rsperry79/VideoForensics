@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using System.Data.Common;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
@@ -33,9 +36,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = services.AddVideoForensicsSqlite(dbPath);
                 _ = services.AddLogging();
 
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                var logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+                ILogger<DatabaseInitializerTests> logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
 
                 // Act
                 await DatabaseInitializer.InitializeAsync(factory, logger);
@@ -44,8 +47,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 Assert.True(File.Exists(dbPath), "Database file should exist after initialization");
 
                 // Verify migrations were applied - query a table
-                await using var context = await factory.CreateDbContextAsync();
-                var users = await context.Users.ToListAsync();
+                await using VideoForensicsDbContext context = await factory.CreateDbContextAsync();
+                List<User> users = await context.Users.ToListAsync();
                 Assert.NotNull(users);
 
                 await provider.DisposeAsync();
@@ -86,9 +89,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = services.AddVideoForensicsSqlite(dbPath);
                 _ = services.AddLogging();
 
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                var logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+                ILogger<DatabaseInitializerTests> logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
 
                 // Initialize the database for the first time
                 await DatabaseInitializer.InitializeAsync(factory, logger);
@@ -138,19 +141,19 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = services.AddVideoForensicsSqlite(dbPath);
                 _ = services.AddLogging();
 
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                var logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+                ILogger<DatabaseInitializerTests> logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
 
                 // Act
                 await DatabaseInitializer.InitializeAsync(factory, logger);
 
                 // Assert - Check WAL mode via SQL pragma
-                await using var context = await factory.CreateDbContextAsync();
-                var connection = context.Database.GetDbConnection();
+                await using VideoForensicsDbContext context = await factory.CreateDbContextAsync();
+                DbConnection connection = context.Database.GetDbConnection();
 
                 await connection.OpenAsync();
-                using var command = connection.CreateCommand();
+                using DbCommand command = connection.CreateCommand();
                 command.CommandText = "PRAGMA journal_mode;";
                 string? result = await command.ExecuteScalarAsync() as string;
 
@@ -205,9 +208,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                     _ = builder.AddProvider(new TestLoggerProvider(logMessages));
                 });
 
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                var logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+                ILogger<DatabaseInitializerTests> logger = provider.GetRequiredService<ILogger<DatabaseInitializerTests>>();
 
                 // Act
                 await DatabaseInitializer.InitializeAsync(factory, logger);

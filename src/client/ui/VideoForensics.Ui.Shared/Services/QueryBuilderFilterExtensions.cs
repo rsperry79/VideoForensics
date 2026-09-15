@@ -1,6 +1,7 @@
+using Syncfusion.Blazor.QueryBuilder;
+
 using System.Linq.Expressions;
 using System.Reflection;
-using Syncfusion.Blazor.QueryBuilder;
 
 namespace VideoForensics.Ui.Shared.Services;
 
@@ -25,7 +26,7 @@ public static class QueryBuilderFilterExtensions
             return items;
         }
 
-        var predicate = BuildPredicate<T>(rule);
+        Expression<Func<T, bool>>? predicate = BuildPredicate<T>(rule);
         return predicate != null ? items.AsQueryable().Where(predicate) : items;
     }
 
@@ -43,9 +44,9 @@ public static class QueryBuilderFilterExtensions
         {
             var predicates = new List<Expression<Func<T, bool>>>();
 
-            foreach (var nestedRule in rule.Rules)
+            foreach (RuleModel? nestedRule in rule.Rules)
             {
-                var nestedPredicate = BuildPredicate<T>(nestedRule);
+                Expression<Func<T, bool>>? nestedPredicate = BuildPredicate<T>(nestedRule);
                 if (nestedPredicate != null)
                 {
                     predicates.Add(nestedPredicate);
@@ -63,17 +64,12 @@ public static class QueryBuilderFilterExtensions
             }
 
             // Combine predicates using the specified condition (AND or OR)
-            var isAnd = rule.Condition?.Equals("and", StringComparison.OrdinalIgnoreCase) ?? true;
+            bool isAnd = rule.Condition?.Equals("and", StringComparison.OrdinalIgnoreCase) ?? true;
             return CombinePredicates(predicates, isAnd);
         }
 
         // Handle single field rule
-        if (string.IsNullOrEmpty(rule.Field))
-        {
-            return null;
-        }
-
-        return BuildFieldPredicate<T>(rule.Field, rule.Operator, rule.Value);
+        return string.IsNullOrEmpty(rule.Field) ? null : (Expression<Func<T, bool>>)BuildFieldPredicate<T>(rule.Field, rule.Operator, rule.Value);
     }
 
     /// <summary>
@@ -84,10 +80,10 @@ public static class QueryBuilderFilterExtensions
     /// </summary>
     private static Expression<Func<T, bool>>? BuildFieldPredicate<T>(string fieldName, string? op, object? value) where T : class
     {
-        var parameter = Expression.Parameter(typeof(T), "x");
+        ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
 
         // Handle nested properties with dot notation (e.g., "Account.ProviderName")
-        var memberAccess = BuildNestedPropertyAccess(parameter, typeof(T), fieldName);
+        Expression? memberAccess = BuildNestedPropertyAccess(parameter, typeof(T), fieldName);
 
         if (memberAccess == null)
         {
@@ -95,8 +91,8 @@ public static class QueryBuilderFilterExtensions
         }
 
         // Get the property type from the member access expression
-        var propertyType = memberAccess.Type;
-        var operatorLower = op?.ToLowerInvariant() ?? "equal";
+        Type propertyType = memberAccess.Type;
+        string operatorLower = op?.ToLowerInvariant() ?? "equal";
 
         Expression? comparison = operatorLower switch
         {
@@ -112,12 +108,7 @@ public static class QueryBuilderFilterExtensions
             _ => BuildEqualityComparison(memberAccess, value, propertyType),
         };
 
-        if (comparison == null)
-        {
-            return null;
-        }
-
-        return Expression.Lambda<Func<T, bool>>(comparison, parameter);
+        return comparison == null ? null : Expression.Lambda<Func<T, bool>>(comparison, parameter);
     }
 
     /// <summary>
@@ -126,12 +117,12 @@ public static class QueryBuilderFilterExtensions
     /// </summary>
     private static Expression? BuildNestedPropertyAccess(Expression parameter, Type type, string fieldName)
     {
-        var parts = fieldName.Split('.');
+        string[] parts = fieldName.Split('.');
         Expression current = parameter;
 
-        foreach (var part in parts)
+        foreach (string part in parts)
         {
-            var property = type.GetProperty(part, BindingFlags.IgnoreCase | BindingFlags.Public);
+            PropertyInfo? property = type.GetProperty(part, BindingFlags.IgnoreCase | BindingFlags.Public);
             if (property == null)
             {
                 return null; // Property not found
@@ -146,8 +137,8 @@ public static class QueryBuilderFilterExtensions
 
     private static Expression BuildEqualityComparison(Expression memberAccess, object? value, Type propertyType)
     {
-        var convertedValue = ConvertValue(value, propertyType);
-        var constant = Expression.Constant(convertedValue, propertyType);
+        object? convertedValue = ConvertValue(value, propertyType);
+        ConstantExpression constant = Expression.Constant(convertedValue, propertyType);
         return Expression.Equal(memberAccess, constant);
     }
 
@@ -158,15 +149,15 @@ public static class QueryBuilderFilterExtensions
             return null;
         }
 
-        var stringValue = value.ToString();
+        string? stringValue = value.ToString();
         if (string.IsNullOrEmpty(stringValue))
         {
             return null;
         }
 
         // For string properties, use string.Contains
-        var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-        var constant = Expression.Constant(stringValue, typeof(string));
+        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+        ConstantExpression constant = Expression.Constant(stringValue, typeof(string));
 
         return Expression.Call(
             Expression.Convert(memberAccess, typeof(string)),
@@ -181,14 +172,14 @@ public static class QueryBuilderFilterExtensions
             return null;
         }
 
-        var stringValue = value.ToString();
+        string? stringValue = value.ToString();
         if (string.IsNullOrEmpty(stringValue))
         {
             return null;
         }
 
-        var startsWithMethod = typeof(string).GetMethod("StartsWith", new[] { typeof(string) });
-        var constant = Expression.Constant(stringValue, typeof(string));
+        MethodInfo? startsWithMethod = typeof(string).GetMethod("StartsWith", new[] { typeof(string) });
+        ConstantExpression constant = Expression.Constant(stringValue, typeof(string));
 
         return Expression.Call(
             Expression.Convert(memberAccess, typeof(string)),
@@ -203,14 +194,14 @@ public static class QueryBuilderFilterExtensions
             return null;
         }
 
-        var stringValue = value.ToString();
+        string? stringValue = value.ToString();
         if (string.IsNullOrEmpty(stringValue))
         {
             return null;
         }
 
-        var endsWithMethod = typeof(string).GetMethod("EndsWith", new[] { typeof(string) });
-        var constant = Expression.Constant(stringValue, typeof(string));
+        MethodInfo? endsWithMethod = typeof(string).GetMethod("EndsWith", new[] { typeof(string) });
+        ConstantExpression constant = Expression.Constant(stringValue, typeof(string));
 
         return Expression.Call(
             Expression.Convert(memberAccess, typeof(string)),
@@ -220,29 +211,29 @@ public static class QueryBuilderFilterExtensions
 
     private static Expression BuildGreaterThanComparison(Expression memberAccess, object? value, Type propertyType)
     {
-        var convertedValue = ConvertValue(value, propertyType);
-        var constant = Expression.Constant(convertedValue, propertyType);
+        object? convertedValue = ConvertValue(value, propertyType);
+        ConstantExpression constant = Expression.Constant(convertedValue, propertyType);
         return Expression.GreaterThan(memberAccess, constant);
     }
 
     private static Expression BuildLessThanComparison(Expression memberAccess, object? value, Type propertyType)
     {
-        var convertedValue = ConvertValue(value, propertyType);
-        var constant = Expression.Constant(convertedValue, propertyType);
+        object? convertedValue = ConvertValue(value, propertyType);
+        ConstantExpression constant = Expression.Constant(convertedValue, propertyType);
         return Expression.LessThan(memberAccess, constant);
     }
 
     private static Expression BuildGreaterThanOrEqualComparison(Expression memberAccess, object? value, Type propertyType)
     {
-        var convertedValue = ConvertValue(value, propertyType);
-        var constant = Expression.Constant(convertedValue, propertyType);
+        object? convertedValue = ConvertValue(value, propertyType);
+        ConstantExpression constant = Expression.Constant(convertedValue, propertyType);
         return Expression.GreaterThanOrEqual(memberAccess, constant);
     }
 
     private static Expression BuildLessThanOrEqualComparison(Expression memberAccess, object? value, Type propertyType)
     {
-        var convertedValue = ConvertValue(value, propertyType);
-        var constant = Expression.Constant(convertedValue, propertyType);
+        object? convertedValue = ConvertValue(value, propertyType);
+        ConstantExpression constant = Expression.Constant(convertedValue, propertyType);
         return Expression.LessThanOrEqual(memberAccess, constant);
     }
 
@@ -261,23 +252,18 @@ public static class QueryBuilderFilterExtensions
             return predicates[0];
         }
 
-        var parameter = Expression.Parameter(typeof(T), "x");
+        ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
         Expression? combined = null;
 
-        foreach (var predicate in predicates)
+        foreach (Expression<Func<T, bool>> predicate in predicates)
         {
-            var invokedPredicate = Expression.Invoke(predicate, parameter);
+            InvocationExpression invokedPredicate = Expression.Invoke(predicate, parameter);
 
-            if (combined == null)
-            {
-                combined = invokedPredicate;
-            }
-            else
-            {
-                combined = isAnd
+            combined = combined == null
+                ? invokedPredicate
+                : isAnd
                     ? Expression.AndAlso(combined, invokedPredicate)
                     : Expression.OrElse(combined, invokedPredicate);
-            }
         }
 
         return Expression.Lambda<Func<T, bool>>(combined!, parameter);

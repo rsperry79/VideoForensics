@@ -45,18 +45,18 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WithValidCredentials_ReturnsSuccessfulAuthResult()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
-            var authToken = "auth-token-12345";
-            var expiresAt = DateTime.UtcNow.AddHours(1);
+            string username = "testuser";
+            string password = "password123";
+            string authToken = "auth-token-12345";
+            DateTime expiresAt = DateTime.UtcNow.AddHours(1);
             var providerAccountId = Guid.NewGuid();
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal("/api/v1/auth/login", request.RequestUri?.PathAndQuery);
 
-                var body = await request.Content!.ReadFromJsonAsync<LoginRequestDto>();
+                LoginRequestDto? body = await request.Content!.ReadFromJsonAsync<LoginRequestDto>();
                 Assert.NotNull(body);
                 Assert.Equal(username, body.Username);
                 Assert.Equal(password, body.Password);
@@ -69,7 +69,7 @@ namespace VideoForensics.Hosting.Tests
                     ProviderAccountId: providerAccountId
                 );
 
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -79,7 +79,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync(username, password);
+            AuthResult result = await service.AuthenticateAsync(username, password);
 
             // Assert
             Assert.NotNull(result);
@@ -94,18 +94,18 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WithProviderName_SendsProviderNameInRequest()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
-            var providerName = "Ring";
+            string username = "testuser";
+            string password = "password123";
+            string providerName = "Ring";
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
-                var body = await request.Content!.ReadFromJsonAsync<LoginRequestDto>();
+                LoginRequestDto? body = await request.Content!.ReadFromJsonAsync<LoginRequestDto>();
                 Assert.NotNull(body);
                 Assert.Equal(providerName, body.ProviderName);
 
                 var response = new AuthResultDto(Success: true, AuthToken: "token");
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -115,7 +115,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient, providerName);
 
             // Act
-            await service.AuthenticateAsync(username, password);
+            _ = await service.AuthenticateAsync(username, password);
 
             // Assert (verification happens in the handler)
         }
@@ -124,17 +124,17 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WithInvalidCredentials_ReturnsFailureAuthResult()
         {
             // Arrange
-            var username = "testuser";
-            var password = "wrongpassword";
+            string username = "testuser";
+            string password = "wrongpassword";
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 var response = new AuthResultDto(
                     Success: false,
                     ErrorMessage: "Invalid username or password"
                 );
 
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -144,7 +144,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync(username, password);
+            AuthResult result = await service.AuthenticateAsync(username, password);
 
             // Assert
             Assert.NotNull(result);
@@ -157,11 +157,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WhenTwoFactorRequired_ReturnsTwoFactorRequiredMessage()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
+            string username = "testuser";
+            string password = "password123";
             var authAttemptId = Guid.NewGuid();
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 var response = new AuthResultDto(
                     Success: false,
@@ -169,7 +169,7 @@ namespace VideoForensics.Hosting.Tests
                     AuthAttemptId: authAttemptId
                 );
 
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -179,7 +179,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync(username, password);
+            AuthResult result = await service.AuthenticateAsync(username, password);
 
             // Assert
             Assert.NotNull(result);
@@ -192,7 +192,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WithNullResponse_ReturnsFailureWithNullMessage()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -203,7 +203,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync("user", "pass");
+            AuthResult result = await service.AuthenticateAsync("user", "pass");
 
             // Assert
             Assert.NotNull(result);
@@ -215,7 +215,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_WithHttpRequestException_ReturnsFailureWithExceptionMessage()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 throw new HttpRequestException("Connection timeout");
             });
@@ -223,7 +223,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync("user", "pass");
+            AuthResult result = await service.AuthenticateAsync("user", "pass");
 
             // Assert
             Assert.NotNull(result);
@@ -236,7 +236,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_With401Unauthorized_ReturnsFailure()
         {
             // Arrange
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized)
                 {
@@ -247,7 +247,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act - EnsureSuccessStatusCode throws, but AuthenticateAsync catches and returns failed result
-            var result = await service.AuthenticateAsync("user", "wrongpass");
+            AuthResult result = await service.AuthenticateAsync("user", "wrongpass");
 
             // Assert
             Assert.NotNull(result);
@@ -260,10 +260,10 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var tcs = new TaskCompletionSource<bool>();
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 var response = new AuthResultDto(Success: true, AuthToken: "token");
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -274,7 +274,7 @@ namespace VideoForensics.Hosting.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            var result = await service.AuthenticateAsync("user", "pass", cts.Token);
+            AuthResult result = await service.AuthenticateAsync("user", "pass", cts.Token);
 
             // Assert - if we get here without cancellation, token was properly forwarded
             Assert.NotNull(result);
@@ -284,12 +284,12 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateWithTwoFactorAsync_WithSuccessfulLogin_NoTwoFactorNeeded_ReturnsAuthResult()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
-            var authToken = "auth-token-12345";
-            var twoFactorProviderCalled = false;
+            string username = "testuser";
+            string password = "password123";
+            string authToken = "auth-token-12345";
+            bool twoFactorProviderCalled = false;
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal("/api/v1/auth/login", request.RequestUri?.PathAndQuery);
@@ -301,7 +301,7 @@ namespace VideoForensics.Hosting.Tests
                     RequiresTwoFactor: false
                 );
 
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -311,7 +311,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateWithTwoFactorAsync(
+            AuthResult result = await service.AuthenticateWithTwoFactorAsync(
                 username,
                 password,
                 async () =>
@@ -332,15 +332,15 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateWithTwoFactorAsync_WithTwoFactorRequired_CallsProviderAndSubmitCode()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
-            var twoFactorCode = "123456";
+            string username = "testuser";
+            string password = "password123";
+            string twoFactorCode = "123456";
             var authAttemptId = Guid.NewGuid();
-            var authToken = "final-auth-token";
-            var requestCount = 0;
-            var twoFactorCodeProviderCalls = 0;
+            string authToken = "final-auth-token";
+            int requestCount = 0;
+            int twoFactorCodeProviderCalls = 0;
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 requestCount++;
 
@@ -356,7 +356,7 @@ namespace VideoForensics.Hosting.Tests
                         AuthAttemptId: authAttemptId
                     );
 
-                    var json = await JsonContent.Create(response).ReadAsStringAsync();
+                    string json = await JsonContent.Create(response).ReadAsStringAsync();
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -368,7 +368,7 @@ namespace VideoForensics.Hosting.Tests
                     Assert.Equal(HttpMethod.Post, request.Method);
                     Assert.Equal("/api/v1/auth/login/two-factor", request.RequestUri?.PathAndQuery);
 
-                    var body = await request.Content!.ReadFromJsonAsync<TwoFactorRequestDto>();
+                    TwoFactorRequestDto? body = await request.Content!.ReadFromJsonAsync<TwoFactorRequestDto>();
                     Assert.NotNull(body);
                     Assert.Equal(authAttemptId, body.AuthAttemptId);
                     Assert.Equal(twoFactorCode, body.Code);
@@ -378,7 +378,7 @@ namespace VideoForensics.Hosting.Tests
                         AuthToken: authToken
                     );
 
-                    var json = await JsonContent.Create(response).ReadAsStringAsync();
+                    string json = await JsonContent.Create(response).ReadAsStringAsync();
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -391,7 +391,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateWithTwoFactorAsync(
+            AuthResult result = await service.AuthenticateWithTwoFactorAsync(
                 username,
                 password,
                 async () =>
@@ -413,11 +413,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateWithTwoFactorAsync_WithTwoFactorCodeProviderThrows_ReturnsFailure()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
+            string username = "testuser";
+            string password = "password123";
             var authAttemptId = Guid.NewGuid();
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 var response = new AuthResultDto(
                     Success: false,
@@ -425,7 +425,7 @@ namespace VideoForensics.Hosting.Tests
                     AuthAttemptId: authAttemptId
                 );
 
-                var json = await JsonContent.Create(response).ReadAsStringAsync();
+                string json = await JsonContent.Create(response).ReadAsStringAsync();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -435,7 +435,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.AuthenticateWithTwoFactorAsync(
                     username,
                     password,
@@ -448,12 +448,12 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateWithTwoFactorAsync_WithTwoFactorResponseNull_ReturnsFailure()
         {
             // Arrange
-            var username = "testuser";
-            var password = "password123";
+            string username = "testuser";
+            string password = "password123";
             var authAttemptId = Guid.NewGuid();
-            var requestCount = 0;
+            int requestCount = 0;
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 requestCount++;
 
@@ -465,7 +465,7 @@ namespace VideoForensics.Hosting.Tests
                         AuthAttemptId: authAttemptId
                     );
 
-                    var json = await JsonContent.Create(response).ReadAsStringAsync();
+                    string json = await JsonContent.Create(response).ReadAsStringAsync();
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -485,7 +485,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateWithTwoFactorAsync(
+            AuthResult result = await service.AuthenticateWithTwoFactorAsync(
                 username,
                 password,
                 async () => "123456"
@@ -501,7 +501,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateWithTwoFactorAsync_WithHttpRequestException_ReturnsFailure()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 throw new HttpRequestException("Connection failed");
             });
@@ -509,7 +509,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateWithTwoFactorAsync(
+            AuthResult result = await service.AuthenticateWithTwoFactorAsync(
                 "user",
                 "pass",
                 async () => "123456"
@@ -527,9 +527,9 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var authAttemptId = Guid.NewGuid();
-            var requestCount = 0;
+            int requestCount = 0;
 
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
                 requestCount++;
 
@@ -541,7 +541,7 @@ namespace VideoForensics.Hosting.Tests
                         AuthAttemptId: authAttemptId
                     );
 
-                    var json = await JsonContent.Create(response).ReadAsStringAsync();
+                    string json = await JsonContent.Create(response).ReadAsStringAsync();
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -550,7 +550,7 @@ namespace VideoForensics.Hosting.Tests
                 else if (requestCount == 2)
                 {
                     var response = new AuthResultDto(Success: true, AuthToken: "token");
-                    var json = await JsonContent.Create(response).ReadAsStringAsync();
+                    string json = await JsonContent.Create(response).ReadAsStringAsync();
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
@@ -564,7 +564,7 @@ namespace VideoForensics.Hosting.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            var result = await service.AuthenticateWithTwoFactorAsync(
+            AuthResult result = await service.AuthenticateWithTwoFactorAsync(
                 "user",
                 "pass",
                 async () => "123456",
@@ -579,68 +579,68 @@ namespace VideoForensics.Hosting.Tests
         public async Task IsAuthenticatedAsync_Always_ThrowsNotSupportedException()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotSupportedException>(() => service.IsAuthenticatedAsync());
+            _ = await Assert.ThrowsAsync<NotSupportedException>(() => service.IsAuthenticatedAsync());
         }
 
         [Fact]
         public async Task RefreshAuthAsync_Always_ThrowsNotSupportedException()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotSupportedException>(() => service.RefreshAuthAsync());
+            _ = await Assert.ThrowsAsync<NotSupportedException>(() => service.RefreshAuthAsync());
         }
 
         [Fact]
         public async Task RestoreFromSavedCredentialsAsync_NoArg_Always_ThrowsNotSupportedException()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotSupportedException>(() => service.RestoreFromSavedCredentialsAsync());
+            _ = await Assert.ThrowsAsync<NotSupportedException>(() => service.RestoreFromSavedCredentialsAsync());
         }
 
         [Fact]
         public async Task RestoreFromSavedCredentialsAsync_WithProviderAccountId_Always_ThrowsNotSupportedException()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotSupportedException>(() => service.RestoreFromSavedCredentialsAsync(Guid.NewGuid()));
+            _ = await Assert.ThrowsAsync<NotSupportedException>(() => service.RestoreFromSavedCredentialsAsync(Guid.NewGuid()));
         }
 
         [Fact]
         public void GetAuthStatus_Always_ThrowsNotSupportedException()
         {
             // Arrange
-            var httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act & Assert
-            Assert.Throws<NotSupportedException>(() => service.GetAuthStatus());
+            _ = Assert.Throws<NotSupportedException>(service.GetAuthStatus);
         }
 
         [Fact]
         public async Task AuthenticateAsync_WithCaseSensitiveJsonResponse_DeserializesCorrectly()
         {
             // Arrange - test case-insensitive JSON deserialization
-            var username = "testuser";
-            var password = "password123";
-            var httpClient = CreateHttpClient(request =>
+            string username = "testuser";
+            string password = "password123";
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 // Return JSON with PascalCase even though the DTO expects it
                 // The JsonSerializerOptions in RemoteProviderAuthService should handle this
-                var jsonContent = @"{
+                string jsonContent = @"{
                     ""success"": true,
                     ""authToken"": ""token123"",
                     ""expiresAt"": ""2025-12-31T23:59:59Z"",
@@ -656,7 +656,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteProviderAuthService(httpClient);
 
             // Act
-            var result = await service.AuthenticateAsync(username, password);
+            AuthResult result = await service.AuthenticateAsync(username, password);
 
             // Assert
             Assert.NotNull(result);

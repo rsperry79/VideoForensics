@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(readings);
-            var reading = Assert.Single(readings);
+            DeviceHealthReading reading = Assert.Single(readings);
             Assert.Equal("12345", reading.ProviderDeviceId);
             Assert.True(reading.Connected);
             Assert.Equal(75m, reading.BatteryPercentage);
@@ -144,7 +144,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(readings);
-            var reading = Assert.Single(readings);
+            DeviceHealthReading reading = Assert.Single(readings);
             Assert.Equal("54321", reading.ProviderDeviceId);
             Assert.False(reading.Connected);
             Assert.Equal(20m, reading.BatteryPercentage);
@@ -194,7 +194,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(readings);
-            var reading = Assert.Single(readings);
+            DeviceHealthReading reading = Assert.Single(readings);
             Assert.Equal("99999", reading.ProviderDeviceId);
             Assert.True(reading.Connected);
             Assert.Equal(95m, reading.BatteryPercentage);
@@ -240,15 +240,15 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(readings);
             Assert.Equal(3, readings.Count);
 
-            var doorReading = readings.First(r => r.ProviderDeviceId == "100");
+            DeviceHealthReading doorReading = readings.First(r => r.ProviderDeviceId == "100");
             Assert.True(doorReading.Connected);
             Assert.Equal(80m, doorReading.BatteryPercentage);
 
-            var stickupReading = readings.First(r => r.ProviderDeviceId == "200");
+            DeviceHealthReading stickupReading = readings.First(r => r.ProviderDeviceId == "200");
             Assert.True(stickupReading.Connected);
             Assert.Equal(60m, stickupReading.BatteryPercentage);
 
-            var authorizedReading = readings.First(r => r.ProviderDeviceId == "300");
+            DeviceHealthReading authorizedReading = readings.First(r => r.ProviderDeviceId == "300");
             Assert.False(authorizedReading.Connected);
             Assert.Equal(10m, authorizedReading.BatteryPercentage);
         }
@@ -367,7 +367,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(readings);
-            var reading = Assert.Single(readings);
+            DeviceHealthReading reading = Assert.Single(readings);
             Assert.Equal("222", reading.ProviderDeviceId);
             Assert.True(reading.Connected);
             Assert.Null(reading.BatteryPercentage);
@@ -432,7 +432,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.NotNull(readings);
-            var reading = Assert.Single(readings);
+            DeviceHealthReading reading = Assert.Single(readings);
             Assert.Equal(-46, reading.Rssi);
         }
 

@@ -1,6 +1,4 @@
-using System;
 using System.Threading;
-using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Clients;
 using VideoForensics.Providers.Ring.Interfaces;
@@ -25,11 +23,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 AuthenticateCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (AuthenticateException != null)
-                {
-                    throw AuthenticateException;
-                }
-                return Task.FromResult(true);
+                return AuthenticateException != null ? throw AuthenticateException : Task.FromResult(true);
             }
 
             public Task<bool> RefreshSession(CancellationToken cancellationToken = default)
@@ -40,6 +34,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 {
                     throw RefreshSessionException;
                 }
+
                 IsAuthenticated = true;
                 return Task.FromResult(true);
             }
@@ -48,11 +43,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 EnsureSessionValidCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (EnsureSessionValidException != null)
-                {
-                    throw EnsureSessionValidException;
-                }
-                return Task.CompletedTask;
+                return EnsureSessionValidException != null ? throw EnsureSessionValidException : Task.CompletedTask;
             }
         }
         #endregion
@@ -75,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void AuthenticationClient_Constructor_WithNullService_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AuthenticationClient(null));
+            _ = Assert.Throws<ArgumentNullException>(() => new AuthenticationClient(null));
         }
         #endregion
 
@@ -88,7 +79,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.SignInAsync("test@example.com", "password");
+            _ = await client.SignInAsync("test@example.com", "password");
 
             // Assert
             Assert.True(mockService.AuthenticateCalled);
@@ -102,7 +93,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("", "password"));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("", "password"));
         }
 
         [Fact]
@@ -113,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync(null, "password"));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync(null, "password"));
         }
 
         [Fact]
@@ -124,7 +115,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("test@example.com", ""));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("test@example.com", ""));
         }
 
         [Fact]
@@ -135,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("test@example.com", null));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInAsync("test@example.com", null));
         }
 
         [Fact]
@@ -146,7 +137,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.SignInAsync("user@example.com", "mypassword");
+            _ = await client.SignInAsync("user@example.com", "mypassword");
 
             // Assert
             Assert.True(mockService.AuthenticateCalled);
@@ -160,7 +151,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            var result = await client.SignInAsync("test@example.com", "password");
+            bool result = await client.SignInAsync("test@example.com", "password");
 
             // Assert
             Assert.True(result);
@@ -173,10 +164,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var mockService = new MockAuthenticationService();
             var client = new AuthenticationClient(mockService);
             var cts = new CancellationTokenSource();
-            var token = cts.Token;
+            CancellationToken token = cts.Token;
 
             // Act
-            await client.SignInAsync("test@example.com", "password", token);
+            _ = await client.SignInAsync("test@example.com", "password", token);
 
             // Assert
             Assert.Equal(token, mockService.LastCancellationToken);
@@ -193,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => client.SignInAsync("test@example.com", "password"));
+            Exception ex = await Assert.ThrowsAsync<Exception>(() => client.SignInAsync("test@example.com", "password"));
             Assert.Equal("Authentication failed", ex.Message);
         }
         #endregion
@@ -207,7 +198,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.SignInWithTwoFactorAsync("123456");
+            _ = await client.SignInWithTwoFactorAsync("123456");
 
             // Assert
             Assert.True(mockService.AuthenticateCalled);
@@ -221,7 +212,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInWithTwoFactorAsync(""));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInWithTwoFactorAsync(""));
         }
 
         [Fact]
@@ -232,7 +223,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.SignInWithTwoFactorAsync(null));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.SignInWithTwoFactorAsync(null));
         }
 
         [Fact]
@@ -243,7 +234,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            var result = await client.SignInWithTwoFactorAsync("123456");
+            bool result = await client.SignInWithTwoFactorAsync("123456");
 
             // Assert
             Assert.True(result);
@@ -256,10 +247,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var mockService = new MockAuthenticationService();
             var client = new AuthenticationClient(mockService);
             var cts = new CancellationTokenSource();
-            var token = cts.Token;
+            CancellationToken token = cts.Token;
 
             // Act
-            await client.SignInWithTwoFactorAsync("123456", token);
+            _ = await client.SignInWithTwoFactorAsync("123456", token);
 
             // Assert
             Assert.Equal(token, mockService.LastCancellationToken);
@@ -276,7 +267,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => client.SignInWithTwoFactorAsync("123456"));
+            Exception ex = await Assert.ThrowsAsync<Exception>(() => client.SignInWithTwoFactorAsync("123456"));
             Assert.Equal("2FA validation failed", ex.Message);
         }
         #endregion
@@ -290,7 +281,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.RefreshAuthenticationAsync();
+            _ = await client.RefreshAuthenticationAsync();
 
             // Assert
             Assert.True(mockService.RefreshSessionCalled);
@@ -304,7 +295,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            var result = await client.RefreshAuthenticationAsync();
+            bool result = await client.RefreshAuthenticationAsync();
 
             // Assert
             Assert.True(result);
@@ -317,10 +308,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var mockService = new MockAuthenticationService();
             var client = new AuthenticationClient(mockService);
             var cts = new CancellationTokenSource();
-            var token = cts.Token;
+            CancellationToken token = cts.Token;
 
             // Act
-            await client.RefreshAuthenticationAsync(token);
+            _ = await client.RefreshAuthenticationAsync(token);
 
             // Assert
             Assert.Equal(token, mockService.LastCancellationToken);
@@ -337,7 +328,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => client.RefreshAuthenticationAsync());
+            Exception ex = await Assert.ThrowsAsync<Exception>(() => client.RefreshAuthenticationAsync());
             Assert.Equal("Refresh token expired", ex.Message);
         }
 
@@ -349,7 +340,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.RefreshAuthenticationAsync();
+            _ = await client.RefreshAuthenticationAsync();
 
             // Assert
             Assert.True(mockService.IsAuthenticated);
@@ -379,7 +370,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var mockService = new MockAuthenticationService();
             var client = new AuthenticationClient(mockService);
             var cts = new CancellationTokenSource();
-            var token = cts.Token;
+            CancellationToken token = cts.Token;
 
             // Act
             await client.SignOutAsync(token);
@@ -415,7 +406,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            await client.IsAuthenticatedAsync();
+            _ = await client.IsAuthenticatedAsync();
 
             // Assert
             Assert.True(mockService.EnsureSessionValidCalled);
@@ -429,7 +420,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            var result = await client.IsAuthenticatedAsync();
+            bool result = await client.IsAuthenticatedAsync();
 
             // Assert
             Assert.True(result);
@@ -443,7 +434,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act
-            var result = await client.IsAuthenticatedAsync();
+            bool result = await client.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
@@ -456,10 +447,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var mockService = new MockAuthenticationService();
             var client = new AuthenticationClient(mockService);
             var cts = new CancellationTokenSource();
-            var token = cts.Token;
+            CancellationToken token = cts.Token;
 
             // Act
-            await client.IsAuthenticatedAsync(token);
+            _ = await client.IsAuthenticatedAsync(token);
 
             // Assert
             Assert.Equal(token, mockService.LastCancellationToken);
@@ -476,7 +467,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new AuthenticationClient(mockService);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => client.IsAuthenticatedAsync());
+            Exception ex = await Assert.ThrowsAsync<Exception>(() => client.IsAuthenticatedAsync());
             Assert.Equal("Session validation failed", ex.Message);
         }
         #endregion

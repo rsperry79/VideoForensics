@@ -110,7 +110,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var records = await db.ExportAuditRecords.ToListAsync(ct);
+                List<ExportAuditRecordEntity> records = await db.ExportAuditRecords.ToListAsync(ct);
 
                 var statistics = new ExportStatistics
                 {

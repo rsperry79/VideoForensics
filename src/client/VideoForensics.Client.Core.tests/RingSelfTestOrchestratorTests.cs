@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -26,7 +29,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetStatus_BeforeAnyRun_ReturnsIdle()
         {
-            var (status, startedAtUtc, completedAtUtc, error) = _orchestrator.GetStatus();
+            (SelfTestRunStatus status, DateTime? startedAtUtc, DateTime? completedAtUtc, string? error) = _orchestrator.GetStatus();
 
             Assert.Equal(SelfTestRunStatus.Idle, status);
             Assert.Null(startedAtUtc);
@@ -37,8 +40,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryStartRun_FirstCall_ReturnsTrue()
         {
-            var outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(outputDir);
             try
             {
                 var options = new RunOptions(
@@ -49,9 +52,9 @@ namespace VideoForensics.Client.Core.Tests
                     DoorbotIdFilter: null,
                     ChimeIdFilter: null);
 
-                _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
+                _ = _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
-                var result = _orchestrator.TryStartRun(options, outputDir);
+                bool result = _orchestrator.TryStartRun(options, outputDir);
                 Assert.True(result);
             }
             finally
@@ -66,8 +69,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryStartRun_FirstCallTransitionsStatusToRunning()
         {
-            var outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(outputDir);
             try
             {
                 var options = new RunOptions(
@@ -78,14 +81,14 @@ namespace VideoForensics.Client.Core.Tests
                     DoorbotIdFilter: null,
                     ChimeIdFilter: null);
 
-                _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
+                _ = _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
                 // Immediately after TryStartRun returns, status should be Running
-                _orchestrator.TryStartRun(options, outputDir);
+                _ = _orchestrator.TryStartRun(options, outputDir);
 
-                var (status, startedAtUtc, completedAtUtc, error) = _orchestrator.GetStatus();
+                (SelfTestRunStatus status, DateTime? startedAtUtc, DateTime? completedAtUtc, string? error) = _orchestrator.GetStatus();
                 Assert.Equal(SelfTestRunStatus.Running, status);
-                Assert.NotNull(startedAtUtc);
+                _ = Assert.NotNull(startedAtUtc);
                 Assert.Null(completedAtUtc);
             }
             finally
@@ -100,8 +103,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryStartRun_ConcurrentCallWhileRunning_ReturnsFalse()
         {
-            var outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(outputDir);
             try
             {
                 var options = new RunOptions(
@@ -115,21 +118,21 @@ namespace VideoForensics.Client.Core.Tests
                 // Mock with a delay so the first run stays in Running state
                 // This ensures the second call finds the status still Running
                 var delaySource = new TaskCompletionSource<bool>();
-                _sessionProviderMock
+                _ = _sessionProviderMock
                     .Setup(sp => sp.GetSession())
                     .Returns(() =>
                     {
                         // Simulate a delay by blocking on a tcs that never completes
-                        delaySource.Task.Wait(TimeSpan.FromMilliseconds(500));
+                        _ = delaySource.Task.Wait(TimeSpan.FromMilliseconds(500));
                         return null;
                     });
 
                 // First call starts the run
-                var result1 = _orchestrator.TryStartRun(options, outputDir);
+                bool result1 = _orchestrator.TryStartRun(options, outputDir);
                 Assert.True(result1);
 
                 // Immediately after, second call should fail (already running)
-                var result2 = _orchestrator.TryStartRun(options, outputDir);
+                bool result2 = _orchestrator.TryStartRun(options, outputDir);
                 Assert.False(result2);
             }
             finally
@@ -144,15 +147,15 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetResult_BeforeAnyRun_ReturnsNull()
         {
-            var result = _orchestrator.GetResult();
+            IndexDocument? result = _orchestrator.GetResult();
             Assert.Null(result);
         }
 
         [Fact]
         public void GetResult_ImmediatelyAfterStart_ReturnsNull()
         {
-            var outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(outputDir);
+            string outputDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(outputDir);
             try
             {
                 var options = new RunOptions(
@@ -163,12 +166,12 @@ namespace VideoForensics.Client.Core.Tests
                     DoorbotIdFilter: null,
                     ChimeIdFilter: null);
 
-                _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
+                _ = _sessionProviderMock.Setup(sp => sp.GetSession()).Returns((Session?)null);
 
-                _orchestrator.TryStartRun(options, outputDir);
+                _ = _orchestrator.TryStartRun(options, outputDir);
 
                 // Result should be null immediately after start (not completed yet)
-                var result = _orchestrator.GetResult();
+                IndexDocument? result = _orchestrator.GetResult();
                 Assert.Null(result);
             }
             finally

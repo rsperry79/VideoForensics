@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+
 using VideoForensics.Providers.Ring.Converters;
 
 namespace VideoForensics.Providers.Ring.Common.Tests;
@@ -17,8 +18,8 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
             Converters = { new LenientNullableGuidConverter() }
         };
 
-        var json = "null";
-        var result = JsonSerializer.Deserialize<Guid?>(json, options);
+        string json = "null";
+        Guid? result = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Null(result);
     }
@@ -31,8 +32,8 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
             Converters = { new LenientNullableGuidConverter() }
         };
 
-        var json = "\"\"";
-        var result = JsonSerializer.Deserialize<Guid?>(json, options);
+        string json = "\"\"";
+        Guid? result = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Null(result);
     }
@@ -46,8 +47,8 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
         };
 
         var expectedGuid = Guid.NewGuid();
-        var json = $"\"{expectedGuid:D}\"";
-        var result = JsonSerializer.Deserialize<Guid?>(json, options);
+        string json = $"\"{expectedGuid:D}\"";
+        Guid? result = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Equal(expectedGuid, result);
     }
@@ -60,11 +61,11 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
             Converters = { new LenientNullableGuidConverter() }
         };
 
-        var invalidGuidString = "c22vpq-55qqu-0";
-        var json = $"\"{invalidGuidString}\"";
-        var result = JsonSerializer.Deserialize<Guid?>(json, options);
+        string invalidGuidString = "c22vpq-55qqu-0";
+        string json = $"\"{invalidGuidString}\"";
+        Guid? result = JsonSerializer.Deserialize<Guid?>(json, options);
 
-        Assert.NotNull(result);
+        _ = Assert.NotNull(result);
         Assert.NotEqual(Guid.Empty, result);
     }
 
@@ -76,11 +77,11 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
             Converters = { new LenientNullableGuidConverter() }
         };
 
-        var invalidGuidString = "c22vpq-55qqu-0";
-        var json = $"\"{invalidGuidString}\"";
+        string invalidGuidString = "c22vpq-55qqu-0";
+        string json = $"\"{invalidGuidString}\"";
 
-        var result1 = JsonSerializer.Deserialize<Guid?>(json, options);
-        var result2 = JsonSerializer.Deserialize<Guid?>(json, options);
+        Guid? result1 = JsonSerializer.Deserialize<Guid?>(json, options);
+        Guid? result2 = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Equal(result1, result2);
     }
@@ -93,11 +94,11 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
             Converters = { new LenientNullableGuidConverter() }
         };
 
-        var invalidString1 = "c22vpq-55qqu-0";
-        var invalidString2 = "c22vpq-55qqu-1";
+        string invalidString1 = "c22vpq-55qqu-0";
+        string invalidString2 = "c22vpq-55qqu-1";
 
-        var result1 = JsonSerializer.Deserialize<Guid?>($"\"{invalidString1}\"", options);
-        var result2 = JsonSerializer.Deserialize<Guid?>($"\"{invalidString2}\"", options);
+        Guid? result1 = JsonSerializer.Deserialize<Guid?>($"\"{invalidString1}\"", options);
+        Guid? result2 = JsonSerializer.Deserialize<Guid?>($"\"{invalidString2}\"", options);
 
         Assert.NotEqual(result1, result2);
     }
@@ -111,7 +112,7 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
         };
 
         var guid = Guid.NewGuid();
-        var json = JsonSerializer.Serialize(guid, options);
+        string json = JsonSerializer.Serialize(guid, options);
 
         Assert.Contains(guid.ToString(), json);
     }
@@ -125,7 +126,7 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
         };
 
         Guid? nullGuid = null;
-        var json = JsonSerializer.Serialize(nullGuid, options);
+        string json = JsonSerializer.Serialize(nullGuid, options);
 
         Assert.Equal("null", json);
     }
@@ -139,8 +140,8 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
         };
 
         var originalGuid = Guid.NewGuid();
-        var json = JsonSerializer.Serialize((Guid?)originalGuid, options);
-        var deserializedGuid = JsonSerializer.Deserialize<Guid?>(json, options);
+        string json = JsonSerializer.Serialize((Guid?)originalGuid, options);
+        Guid? deserializedGuid = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Equal(originalGuid, deserializedGuid);
     }
@@ -154,8 +155,8 @@ public class LenientNullableGuidConverter_JsonRoundTrip_Tests
         };
 
         Guid? originalGuid = null;
-        var json = JsonSerializer.Serialize(originalGuid, options);
-        var deserializedGuid = JsonSerializer.Deserialize<Guid?>(json, options);
+        string json = JsonSerializer.Serialize(originalGuid, options);
+        Guid? deserializedGuid = JsonSerializer.Deserialize<Guid?>(json, options);
 
         Assert.Null(deserializedGuid);
     }

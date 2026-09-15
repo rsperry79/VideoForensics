@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;

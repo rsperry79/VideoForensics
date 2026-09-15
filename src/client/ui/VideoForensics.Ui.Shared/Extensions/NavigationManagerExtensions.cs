@@ -12,7 +12,7 @@ namespace VideoForensics.Ui.Shared.Extensions
         /// </summary>
         public static string SignInPathWithReturnUrl(this NavigationManager navigationManager)
         {
-            var returnUrl = "/" + navigationManager.ToBaseRelativePath(navigationManager.Uri);
+            string returnUrl = "/" + navigationManager.ToBaseRelativePath(navigationManager.Uri);
             return $"/signin?returnUrl={Uri.EscapeDataString(returnUrl)}";
         }
     }

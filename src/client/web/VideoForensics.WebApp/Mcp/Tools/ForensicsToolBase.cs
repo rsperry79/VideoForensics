@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace VideoForensics.WebApp.Mcp.Tools
 {
     /// <summary>Abstract base class for forensics tool implementations. Consolidates common logging and repository patterns.</summary>

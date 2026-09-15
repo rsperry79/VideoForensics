@@ -1,13 +1,11 @@
+using System.Security.Cryptography;
+using System.Text;
+
+using VideoForensics.Forensics.Exceptions;
+using VideoForensics.Forensics.KeyManagement;
+
 namespace VideoForensics.Forensics.Tests.KeyManagement
 {
-    using System;
-    using System.IO;
-    using System.Security.Cryptography;
-    using System.Text;
-    using VideoForensics.Forensics.Exceptions;
-    using VideoForensics.Forensics.KeyManagement;
-    using Xunit;
-
     public class FileBasedKeyStorageProviderTests : IDisposable
     {
         private readonly string _tempDirectory;
@@ -16,7 +14,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public FileBasedKeyStorageProviderTests()
         {
             _tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(_tempDirectory);
+            _ = Directory.CreateDirectory(_tempDirectory);
             _provider = new FileBasedKeyStorageProvider(_tempDirectory);
         }
 
@@ -145,7 +143,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             byte[] dataToSign = Encoding.UTF8.GetBytes("Test data");
 
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.SignDataAsync("non-existent-key", dataToSign));
         }
 
@@ -223,12 +221,12 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             string keyId1 = "list-key-1";
             string keyId2 = "list-key-2";
             string keyId3 = "list-key-3";
-            await _provider.GenerateKeyPairAsync(keyId1);
-            await _provider.GenerateKeyPairAsync(keyId2);
-            await _provider.GenerateKeyPairAsync(keyId3);
+            _ = await _provider.GenerateKeyPairAsync(keyId1);
+            _ = await _provider.GenerateKeyPairAsync(keyId2);
+            _ = await _provider.GenerateKeyPairAsync(keyId3);
 
             // Act
-            var keys = await _provider.ListKeysAsync();
+            IEnumerable<string> keys = await _provider.ListKeysAsync();
 
             // Assert
             var keyList = keys.ToList();
@@ -243,7 +241,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task ListKeysAsync_WithNoKeys_ReturnsEmptyList()
         {
             // Act
-            var keys = await _provider.ListKeysAsync();
+            IEnumerable<string> keys = await _provider.ListKeysAsync();
 
             // Assert
             Assert.Empty(keys);
@@ -255,12 +253,12 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             // Arrange
             string keyId1 = "list-key-1";
             string keyId2 = "list-key-2";
-            await _provider.GenerateKeyPairAsync(keyId1);
-            await _provider.GenerateKeyPairAsync(keyId2);
+            _ = await _provider.GenerateKeyPairAsync(keyId1);
+            _ = await _provider.GenerateKeyPairAsync(keyId2);
 
             // Act
             await _provider.DeleteKeyAsync(keyId1, "officer-001");
-            var keys = await _provider.ListKeysAsync();
+            IEnumerable<string> keys = await _provider.ListKeysAsync();
 
             // Assert
             var keyList = keys.ToList();
@@ -275,7 +273,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         {
             // Arrange
             string keyId = "delete-key";
-            await _provider.GenerateKeyPairAsync(keyId);
+            _ = await _provider.GenerateKeyPairAsync(keyId);
             string keyPath = Path.Combine(_tempDirectory, $"{keyId}.key");
             string pubKeyPath = Path.Combine(_tempDirectory, $"{keyId}.pub");
             string metaPath = Path.Combine(_tempDirectory, $"{keyId}.meta");
@@ -305,10 +303,10 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         {
             // Arrange
             string keyId = "metadata-key";
-            await _provider.GenerateKeyPairAsync(keyId);
+            _ = await _provider.GenerateKeyPairAsync(keyId);
 
             // Act
-            var metadata = await _provider.GetKeyMetadataAsync(keyId);
+            KeyMetadata metadata = await _provider.GetKeyMetadataAsync(keyId);
 
             // Assert
             Assert.NotNull(metadata);
@@ -326,7 +324,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             string keyId = "non-existent-key";
 
             // Act
-            var metadata = await _provider.GetKeyMetadataAsync(keyId);
+            KeyMetadata metadata = await _provider.GetKeyMetadataAsync(keyId);
 
             // Assert
             Assert.NotNull(metadata);
@@ -345,7 +343,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             string thumbprint = await _provider.GenerateKeyPairAsync(keyId);
             string signature = await _provider.SignDataAsync(keyId, originalData);
             bool isValid = await _provider.VerifySignatureAsync(keyId, originalData, signature);
-            var metadata = await _provider.GetKeyMetadataAsync(keyId);
+            KeyMetadata metadata = await _provider.GetKeyMetadataAsync(keyId);
 
             // Assert
             Assert.NotEmpty(thumbprint);
@@ -358,7 +356,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         {
             // Arrange
             string keyId = "persist-key";
-            await _provider.GenerateKeyPairAsync(keyId);
+            _ = await _provider.GenerateKeyPairAsync(keyId);
             byte[] dataToSign = Encoding.UTF8.GetBytes("Test data");
             string signature1 = await _provider.SignDataAsync(keyId, dataToSign);
 

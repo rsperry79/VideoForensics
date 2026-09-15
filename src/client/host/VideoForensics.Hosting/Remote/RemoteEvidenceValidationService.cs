@@ -27,7 +27,7 @@ namespace VideoForensics.Hosting.Remote
         public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(Guid? deviceId, CancellationToken ct)
         {
             var request = new VerifyLocalIntegrityRequest(deviceId);
-            var jsonContent = JsonSerializer.Serialize(request);
+            string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/verify-local-integrity")
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -55,7 +55,7 @@ namespace VideoForensics.Hosting.Remote
             CancellationToken ct)
         {
             var request = new ReconcileWithProviderRequest(deviceId, providerDeviceId, fromUtc, toUtc);
-            var jsonContent = JsonSerializer.Serialize(request);
+            string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/reconcile")
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")

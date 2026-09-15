@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -32,7 +31,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/status", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
             {
-                var installed = await tunnels.IsInstalledAsync(ct);
+                bool installed = await tunnels.IsInstalledAsync(ct);
                 TunnelState state = tunnels.GetState();
                 return Results.Ok(new
                 {
@@ -62,7 +61,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.Json(new { error = "Set the network tier to Network or Internet (Network Settings) before starting a tunnel." }, statusCode: StatusCodes.Status400BadRequest);
                 }
 
-                var port = ResolveListeningPort(server);
+                int? port = ResolveListeningPort(server);
                 if (port is null)
                 {
                     return Results.Json(new { error = "Could not determine the server's own listening port." }, statusCode: StatusCodes.Status500InternalServerError);
@@ -113,7 +112,7 @@ namespace VideoForensics.WebApp.Api
         private static Task LogTunnelEventAsync(
             ISecurityAuditLogger auditLog, INetworkTierResolver tierResolver, HttpContext context, string eventType, string? details, CancellationToken ct)
         {
-            var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             return auditLog.LogAsync(eventType,
                 Guid.TryParse(operatorIdClaim, out Guid operatorId) ? operatorId : null,
                 null, tierResolver.ResolveClientIp(context), details, isUrgent: true, ct);
@@ -127,7 +126,7 @@ namespace VideoForensics.WebApp.Api
                 return null;
             }
 
-            foreach (var address in addresses)
+            foreach (string address in addresses)
             {
                 if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
                 {

@@ -12,7 +12,7 @@ namespace VideoForensics.MauiApp.AppLock
 
         public TimeSpan GetIdleLockTimeout()
         {
-            var seconds = Preferences.Default.Get(PreferenceKey, (int)DefaultTimeout.TotalSeconds);
+            int seconds = Preferences.Default.Get(PreferenceKey, (int)DefaultTimeout.TotalSeconds);
             return TimeSpan.FromSeconds(seconds);
         }
 

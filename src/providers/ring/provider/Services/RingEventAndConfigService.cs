@@ -74,7 +74,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return null;
                 }
 
-                if (!long.TryParse(deviceId, out var doorbotId))
+                if (!long.TryParse(deviceId, out long doorbotId))
                 {
                     _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
                     return null;

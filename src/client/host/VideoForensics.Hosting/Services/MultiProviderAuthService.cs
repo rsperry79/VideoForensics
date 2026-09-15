@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.Services
@@ -23,17 +21,16 @@ namespace VideoForensics.Hosting.Services
             _factories = factories;
         }
 
-        public Task<IReadOnlyList<string>> GetAvailableProvidersAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>(_factories.Keys.ToList());
+        public Task<IReadOnlyList<string>> GetAvailableProvidersAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(_factories.Keys.ToList());
+        }
 
         public IProviderAuthService GetService(string providerName)
         {
-            if (!_factories.TryGetValue(providerName, out Func<IServiceProvider, IProviderAuthService>? factory))
-            {
-                throw new ArgumentException($"Unknown provider '{providerName}'. Available: {string.Join(", ", _factories.Keys)}", nameof(providerName));
-            }
-
-            return factory(_serviceProvider);
+            return !_factories.TryGetValue(providerName, out Func<IServiceProvider, IProviderAuthService>? factory)
+                ? throw new ArgumentException($"Unknown provider '{providerName}'. Available: {string.Join(", ", _factories.Keys)}", nameof(providerName))
+                : factory(_serviceProvider);
         }
     }
 }

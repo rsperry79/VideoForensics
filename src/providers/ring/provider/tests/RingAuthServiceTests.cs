@@ -67,7 +67,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.IsAuthenticatedAsync();
+            bool result = await service.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
@@ -84,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.IsAuthenticatedAsync();
+            bool result = await service.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
@@ -106,7 +106,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.IsAuthenticatedAsync();
+            bool result = await service.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
@@ -124,7 +124,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.RefreshAuthAsync();
+            bool result = await service.RefreshAuthAsync();
 
             // Assert
             Assert.False(result);
@@ -141,7 +141,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var status = service.GetAuthStatus();
+            string status = service.GetAuthStatus();
 
             // Assert
             Assert.NotNull(status);
@@ -216,7 +216,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 userRepository.Object);
 
             // Act
-            var result = await service.RestoreFromSavedCredentialsAsync();
+            bool result = await service.RestoreFromSavedCredentialsAsync();
 
             // Assert
             Assert.False(result);
@@ -229,7 +229,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var accountId = Guid.NewGuid();
-            var testRefreshToken = "test-refresh-token-123";
+            string testRefreshToken = "test-refresh-token-123";
 
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
@@ -246,7 +246,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.RestoreFromSavedCredentialsWithAccountAsync(accountId);
+            bool result = await service.RestoreFromSavedCredentialsWithAccountAsync(accountId);
 
             // Assert
             credentialRepository.Verify(
@@ -270,7 +270,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var service = new RingAuthService(logger, sessionProvider.Object, credentialStore.Object, credentialRepository.Object);
 
             // Act
-            var result = await service.RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null);
+            bool result = await service.RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null);
 
             // Assert
             Assert.False(result);

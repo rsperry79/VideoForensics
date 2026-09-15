@@ -262,7 +262,7 @@ namespace VideoForensics.Data.Core.Tests
                     .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(mediaItems);
 
-                foreach (var item in mediaItems)
+                foreach (MediaItem item in mediaItems)
                 {
                     _ = _mockMediaItemRepository
                         .Setup(x => x.GetAsync(item.Id, It.IsAny<CancellationToken>()))
@@ -306,7 +306,7 @@ namespace VideoForensics.Data.Core.Tests
 
         private static async Task<string> ComputeExpectedHash(string filePath)
         {
-            using var fileStream = File.OpenRead(filePath);
+            using FileStream fileStream = File.OpenRead(filePath);
             byte[] hash = await SHA256.HashDataAsync(fileStream, CancellationToken.None);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }

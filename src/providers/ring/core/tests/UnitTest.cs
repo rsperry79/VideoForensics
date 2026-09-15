@@ -106,7 +106,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             set
             {
-                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                Configuration configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 if (configFile.AppSettings.Settings["TwoFactorAuthenticationToken"] != null)
                 {
                     configFile.AppSettings.Settings["TwoFactorAuthenticationToken"].Value = value;
@@ -133,7 +133,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             set
             {
-                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                Configuration configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 if (configFile.AppSettings.Settings["RingRefreshToken"] != null)
                 {
                     configFile.AppSettings.Settings["RingRefreshToken"].Value = value;
@@ -184,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.NotNull(session);
 
             // Request a new authenticated session based on the RefreshToken
-            var refreshedSession = await Session.GetSessionByRefreshToken(session.OAuthToken.RefreshToken);
+            Session refreshedSession = await Session.GetSessionByRefreshToken(session.OAuthToken.RefreshToken);
             Assert.True(refreshedSession.IsAuthenticated, "Failed to authenticate using refresh token");
         }
 
@@ -218,7 +218,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var devices = await session.GetRingDevices();
+            Entities.Devices devices = await session.GetRingDevices();
             Assert.True(devices.Chimes.Count > 0 || devices.Doorbots.Count > 0 || devices.AuthorizedDoorbots.Count > 0 || devices.StickupCams.Count > 0, "No doorbots, stickup cams and/or chimes returned");
         }
 
@@ -252,7 +252,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var doorbotHistory = await session.GetDoorbotsHistory();
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory();
             Assert.True(doorbotHistory.Count > 0, "No doorbot history items returned");
             Assert.True(doorbotHistory.Count == 20, $"{doorbotHistory.Count} doorbot history items returned while 20 were expected");
         }
@@ -271,7 +271,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.NotNull(session);
 
             // Get the available Ring devices
-            var devices = await session.GetRingDevices();
+            Entities.Devices devices = await session.GetRingDevices();
 
             // Ensure there's at least one doorbot available
             if (devices.Doorbots.Count == 0 && devices.AuthorizedDoorbots.Count == 0)
@@ -281,10 +281,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Take the first doorbot to retrieve the historical items for
-            var doorbot = devices.Doorbots.Count > 0 ? devices.Doorbots[0] : devices.AuthorizedDoorbots[0];
+            Entities.Doorbot doorbot = devices.Doorbots.Count > 0 ? devices.Doorbots[0] : devices.AuthorizedDoorbots[0];
 
             // Get the historical items for the specific doorbot
-            var doorbotHistory = await session.GetDoorbotsHistory(doorbotId: doorbot.Id);
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory(doorbotId: doorbot.Id);
 
             Assert.False(doorbotHistory.Count == 0, "No doorbot history items returned");
         }
@@ -328,7 +328,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             int limit = 250;
 
-            var doorbotHistory = await session.GetDoorbotsHistory(limit);
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory(limit);
             Assert.True(doorbotHistory.Count > 0, "No doorbot history items returned");
             Assert.True(doorbotHistory.Count == limit, $"{doorbotHistory.Count} doorbot history items returned while {limit} were expected");
         }
@@ -346,10 +346,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var startDate = DateTime.Now.AddDays(-2);
-            var endDate = DateTime.Now.AddDays(-1);
+            DateTime startDate = DateTime.Now.AddDays(-2);
+            DateTime endDate = DateTime.Now.AddDays(-1);
 
-            var doorbotHistory = await session.GetDoorbotsHistory(startDate, endDate);
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory(startDate, endDate);
             Assert.True(doorbotHistory.Count > 0, "No doorbot history items returned");
             Assert.Equal(0, doorbotHistory.Count(h => !h.CreatedAtDateTime.HasValue || (h.CreatedAtDateTime.Value > endDate && h.CreatedAtDateTime.Value < startDate)));
         }
@@ -367,7 +367,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var doorbotHistory = await session.GetDoorbotsHistory();
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory();
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
@@ -391,7 +391,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var doorbotHistory = await session.GetDoorbotsHistory(limit: 1);
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory(limit: 1);
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
@@ -415,7 +415,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var doorbotHistory = await session.GetDoorbotsHistory(limit: 1);
+            List<Entities.DoorbotHistoryEvent> doorbotHistory = await session.GetDoorbotsHistory(limit: 1);
 
             Assert.True(doorbotHistory.Count > 0, "No doorbot history events were found");
 
@@ -435,7 +435,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var devices = await session.GetRingDevices();
+            Entities.Devices devices = await session.GetRingDevices();
             Assert.True(devices != null, "Unable to retrieve Ring devices");
             Assert.True((devices.AuthorizedDoorbots != null && devices.AuthorizedDoorbots.Count > 0) || (devices.Doorbots != null && devices.Doorbots.Count > 0), "Retrieved Ring devices do not contain any doorbots");
 
@@ -459,7 +459,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var devices = await session.GetRingDevices();
+            Entities.Devices devices = await session.GetRingDevices();
             Assert.True(devices != null, "Unable to retrieve Ring devices");
             Assert.True((devices.AuthorizedDoorbots != null && devices.AuthorizedDoorbots.Count > 0) || (devices.Doorbots != null && devices.Doorbots.Count > 0), "Retrieved Ring devices do not contain any doorbots");
 
@@ -479,11 +479,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var devices = await session.GetRingDevices();
+            Entities.Devices devices = await session.GetRingDevices();
             Assert.True(devices != null, "Unable to retrieve Ring devices");
             Assert.True((devices.AuthorizedDoorbots != null && devices.AuthorizedDoorbots.Count > 0) || (devices.Doorbots != null && devices.Doorbots.Count > 0), "Retrieved Ring devices do not contain any doorbots");
 
-            var doorbotSnapshotTimestamps = await session.GetDoorbotSnapshotTimestamp((devices.AuthorizedDoorbots?.Count > 0 ? devices.AuthorizedDoorbots : devices.Doorbots)[0]);
+            Entities.DoorbotTimestamps doorbotSnapshotTimestamps = await session.GetDoorbotSnapshotTimestamp((devices.AuthorizedDoorbots?.Count > 0 ? devices.AuthorizedDoorbots : devices.Doorbots)[0]);
 
             Assert.True(doorbotSnapshotTimestamps.Timestamp.Count > 0, "No timestamps were returned for the doorbot");
             Assert.True(doorbotSnapshotTimestamps.Timestamp[0].Timestamp.HasValue, "Unable to define the date and time for the last snapshot of the doorbot");
@@ -501,13 +501,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             // Test that StickupCam with flexible LedStatus deserializes correctly
             string jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
-            var cam1 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithStringLedStatus);
+            Entities.StickupCam? cam1 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithStringLedStatus);
             Assert.NotNull(cam1);
             Assert.Equal("on", cam1.LedStatus);
 
             // Test with number LedStatus (the reason for FlexibleStringConverter)
             string jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
-            var cam2 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithNumberLedStatus);
+            Entities.StickupCam? cam2 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithNumberLedStatus);
             Assert.NotNull(cam2);
             Assert.Equal("1", cam2.LedStatus);
         }
@@ -525,7 +525,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.NotNull(session);
 
-            var locations = await session.GetLocations();
+            List<Entities.Location>? locations = await session.GetLocations();
 
             Assert.NotNull(locations);
             Assert.True(locations is not null, "Should return a list of Location objects");
@@ -538,13 +538,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void LocationIdDeserializationTest()
         {
             string chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
-            var chime = System.Text.Json.JsonSerializer.Deserialize<Entities.Chime>(chimeJson);
+            Entities.Chime? chime = System.Text.Json.JsonSerializer.Deserialize<Entities.Chime>(chimeJson);
 
             Assert.NotNull(chime);
             Assert.Equal(new System.Guid("550e8400-e29b-41d4-a716-446655440000"), chime.LocationId);
 
             string doorbotJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440001", "description": "test"}""";
-            var doorbot = System.Text.Json.JsonSerializer.Deserialize<Entities.Doorbot>(doorbotJson);
+            Entities.Doorbot? doorbot = System.Text.Json.JsonSerializer.Deserialize<Entities.Doorbot>(doorbotJson);
 
             Assert.NotNull(doorbot);
             Assert.Equal(new System.Guid("550e8400-e29b-41d4-a716-446655440001"), doorbot.LocationId);

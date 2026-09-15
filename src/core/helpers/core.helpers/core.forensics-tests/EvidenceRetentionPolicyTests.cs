@@ -1,14 +1,5 @@
 namespace VideoForensics.Forensics.Tests
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using VideoForensics.Forensics.Implementations;
-    using VideoForensics.Forensics.Interfaces;
-    using VideoForensics.Forensics.Models;
-    using Xunit;
-
     public class EvidenceRetentionPolicyTests
     {
         private IEvidenceRetentionPolicy CreatePolicy()
@@ -22,17 +13,17 @@ namespace VideoForensics.Forensics.Tests
         public async Task SetRetentionPeriodAsync_WithValidParameters_CompletesSuccessfully()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-001";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-001";
             var retentionPeriod = TimeSpan.FromDays(30);
-            var reason = "DV case - re-prosecution potential";
-            var authorizedBy = "detective-jones";
+            string reason = "DV case - re-prosecution potential";
+            string authorizedBy = "detective-jones";
 
             // Act
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, reason, authorizedBy);
 
             // Assert
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
             Assert.NotNull(status);
             Assert.Equal(evidenceId, status.EvidenceId);
             Assert.Equal(retentionPeriod, status.RetentionPeriod);
@@ -44,19 +35,19 @@ namespace VideoForensics.Forensics.Tests
         public async Task SetRetentionPeriodAsync_WithExtendedPeriod_StoresCorrectEndDate()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-002";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-002";
             var retentionPeriod = TimeSpan.FromDays(365);
-            var now = DateTime.UtcNow;
-            var reason = "Murder investigation - ongoing appeals";
-            var authorizedBy = "prosecutor-smith";
+            DateTime now = DateTime.UtcNow;
+            string reason = "Murder investigation - ongoing appeals";
+            string authorizedBy = "prosecutor-smith";
 
             // Act
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, reason, authorizedBy);
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
-            var expectedEndDate = now.Add(retentionPeriod);
+            DateTime expectedEndDate = now.Add(retentionPeriod);
             Assert.True(status.RetentionEndDate > now);
             Assert.True(status.RetentionEndDate <= expectedEndDate.AddSeconds(1));
             Assert.Equal(RetentionStatus.Active, status.Status);
@@ -70,14 +61,14 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetRetentionStatusAsync_AfterSettingRetention_ReturnsActiveStatus()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-003";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-003";
             var retentionPeriod = TimeSpan.FromDays(90);
 
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "Test case", "admin");
 
             // Act
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.NotNull(status);
@@ -89,16 +80,16 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetRetentionStatusAsync_PreservesMetadata()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-004";
-            var caseNumber = "2024-DV-001";
-            var legalReference = "Cal. Penal Code §1054.1";
-            var reason = "Domestic violence case with appeal";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-004";
+            string caseNumber = "2024-DV-001";
+            string legalReference = "Cal. Penal Code §1054.1";
+            string reason = "Domestic violence case with appeal";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(180), reason, "officer-brown");
 
             // Act
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
             status.CaseNumber = caseNumber;
             status.LegalReference = legalReference;
 
@@ -115,14 +106,14 @@ namespace VideoForensics.Forensics.Tests
         public async Task CanDestroyEvidenceAsync_WithNotYetExpiredEvidence_ReturnsFalse()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-005";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-005";
             var retentionPeriod = TimeSpan.FromDays(30);
 
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "Recent case", "admin");
 
             // Act
-            var canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
+            bool canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
 
             // Assert
             Assert.False(canDestroy, "Evidence should not be destroyable before retention period expires");
@@ -132,8 +123,8 @@ namespace VideoForensics.Forensics.Tests
         public async Task CanDestroyEvidenceAsync_WithExactlyExpiredEvidence_ReturnsFalse()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-006";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-006";
             var retentionPeriod = TimeSpan.FromSeconds(1); // Expire in 1 second
 
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "Short retention", "admin");
@@ -142,7 +133,7 @@ namespace VideoForensics.Forensics.Tests
             await Task.Delay(1100);
 
             // Act
-            var canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
+            bool canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
 
             // Assert
             // At the exact moment of expiration, should still not be destroyable (boundary test)
@@ -154,8 +145,8 @@ namespace VideoForensics.Forensics.Tests
         public async Task CanDestroyEvidenceAsync_WithExpiredAndApprovedEvidence_ReturnsTrue()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-007";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-007";
             var retentionPeriod = TimeSpan.FromSeconds(1);
 
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "Short retention", "admin");
@@ -166,7 +157,7 @@ namespace VideoForensics.Forensics.Tests
             await policy.ApproveDestructionAsync(evidenceId, "supervisor-jones", "Shred");
 
             // Act
-            var canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
+            bool canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
 
             // Assert
             Assert.True(canDestroy, "Evidence should be destroyable after expiration and approval");
@@ -176,19 +167,19 @@ namespace VideoForensics.Forensics.Tests
         public async Task CanDestroyEvidenceAsync_WithOnHoldStatus_ReturnsFalse()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-008";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-008";
             var retentionPeriod = TimeSpan.FromSeconds(1);
 
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "Short retention", "admin");
             await Task.Delay(1100);
 
             // Get status and set to OnHold (simulating legal hold override)
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
             status.Status = RetentionStatus.OnHold;
 
             // Act
-            var canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
+            bool canDestroy = await policy.CanDestroyEvidenceAsync(evidenceId);
 
             // Assert
             Assert.False(canDestroy, "Evidence on legal hold should not be destroyable regardless of retention expiry");
@@ -202,16 +193,16 @@ namespace VideoForensics.Forensics.Tests
         public async Task RequestDestructionApprovalAsync_WithValidRequest_ChangesStatusToPending()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-009";
-            var requestedBy = "evidence-clerk";
-            var reason = "Retention period expired, no ongoing case";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-009";
+            string requestedBy = "evidence-clerk";
+            string reason = "Retention period expired, no ongoing case";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
 
             // Act
             await policy.RequestDestructionApprovalAsync(evidenceId, requestedBy, reason);
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.Equal(RetentionStatus.PendingApprovalForDestruction, status.Status);
@@ -225,17 +216,17 @@ namespace VideoForensics.Forensics.Tests
         public async Task ApproveDestructionAsync_WithValidApproval_ChangesStatusToApproved()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-010";
-            var approvedBy = "supervisor-williams";
-            var method = "Incineration";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-010";
+            string approvedBy = "supervisor-williams";
+            string method = "Incineration";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk", "Test approval");
 
             // Act
             await policy.ApproveDestructionAsync(evidenceId, approvedBy, method);
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.Equal(RetentionStatus.ApprovedForDestruction, status.Status);
@@ -251,11 +242,11 @@ namespace VideoForensics.Forensics.Tests
         public async Task DestroyEvidenceAsync_WithValidDestructionDetails_MarksEvidenceAsDestroyed()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-011";
-            var destructionMethod = "Shred";
-            var verificationHash = "sha256:abc123def456789";
-            var now = DateTime.UtcNow;
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-011";
+            string destructionMethod = "Shred";
+            string verificationHash = "sha256:abc123def456789";
+            DateTime now = DateTime.UtcNow;
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk", "Destroy");
@@ -263,7 +254,7 @@ namespace VideoForensics.Forensics.Tests
 
             // Act
             await policy.DestroyEvidenceAsync(evidenceId, destructionMethod, verificationHash);
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.Equal(RetentionStatus.Destroyed, status.Status);
@@ -275,9 +266,9 @@ namespace VideoForensics.Forensics.Tests
         public async Task DestroyEvidenceAsync_RecordsDestructionTimestamp()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-012";
-            var before = DateTime.UtcNow;
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-012";
+            DateTime before = DateTime.UtcNow;
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk", "Destroy");
@@ -285,11 +276,11 @@ namespace VideoForensics.Forensics.Tests
 
             // Act
             await policy.DestroyEvidenceAsync(evidenceId, "Incinerate", "hash:xyz");
-            var after = DateTime.UtcNow;
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            DateTime after = DateTime.UtcNow;
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
-            Assert.NotNull(status.DestructedAt);
+            _ = Assert.NotNull(status.DestructedAt);
             Assert.True(status.DestructedAt >= before && status.DestructedAt <= after);
         }
 
@@ -301,22 +292,22 @@ namespace VideoForensics.Forensics.Tests
         public async Task ExtendRetentionAsync_WithValidExtension_IncreasesRetentionEndDate()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-013";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-013";
             var initialPeriod = TimeSpan.FromDays(30);
             var additionalPeriod = TimeSpan.FromDays(60);
 
             await policy.SetRetentionPeriodAsync(evidenceId, initialPeriod, "Initial retention", "admin");
-            var statusBefore = await policy.GetRetentionStatusAsync(evidenceId);
-            var originalEndDate = statusBefore.RetentionEndDate;
+            EvidenceRetentionInfo statusBefore = await policy.GetRetentionStatusAsync(evidenceId);
+            DateTime originalEndDate = statusBefore.RetentionEndDate;
 
             // Act
             await policy.ExtendRetentionAsync(evidenceId, additionalPeriod, "New charges filed", "prosecutor");
-            var statusAfter = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo statusAfter = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.True(statusAfter.RetentionEndDate > originalEndDate);
-            var expectedNewEndDate = originalEndDate.Add(additionalPeriod);
+            DateTime expectedNewEndDate = originalEndDate.Add(additionalPeriod);
             Assert.True(statusAfter.RetentionEndDate >= expectedNewEndDate.AddSeconds(-1));
         }
 
@@ -324,16 +315,16 @@ namespace VideoForensics.Forensics.Tests
         public async Task ExtendRetentionAsync_WithOnHold_PreservesOnHoldStatus()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-014";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-014";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Initial", "admin");
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
             status.Status = RetentionStatus.OnHold;
 
             // Act
             await policy.ExtendRetentionAsync(evidenceId, TimeSpan.FromDays(90), "Ongoing investigation", "detective");
-            var statusAfter = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo statusAfter = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
             Assert.Equal(RetentionStatus.OnHold, statusAfter.Status);
@@ -343,20 +334,20 @@ namespace VideoForensics.Forensics.Tests
         public async Task ExtendRetentionAsync_UpdatesLastExtendedTimestamp()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-015";
-            var before = DateTime.UtcNow;
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-015";
+            DateTime before = DateTime.UtcNow;
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Initial", "admin");
 
             // Act
             await Task.Delay(100); // Small delay to ensure timestamp difference
             await policy.ExtendRetentionAsync(evidenceId, TimeSpan.FromDays(60), "Extended", "admin");
-            var after = DateTime.UtcNow;
-            var status = await policy.GetRetentionStatusAsync(evidenceId);
+            DateTime after = DateTime.UtcNow;
+            EvidenceRetentionInfo status = await policy.GetRetentionStatusAsync(evidenceId);
 
             // Assert
-            Assert.NotNull(status.LastExtendedAt);
+            _ = Assert.NotNull(status.LastExtendedAt);
             Assert.True(status.LastExtendedAt >= before && status.LastExtendedAt <= after);
         }
 
@@ -368,13 +359,13 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetDestructionAuditAsync_ReturnsAuditTrailForEvidence()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-016";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-016";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
 
             // Act
-            var audit = await policy.GetDestructionAuditAsync(evidenceId);
+            DestructionAuditTrail audit = await policy.GetDestructionAuditAsync(evidenceId);
 
             // Assert
             Assert.NotNull(audit);
@@ -386,8 +377,8 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetDestructionAuditAsync_RecordsApprovalSteps()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-017";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-017";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk", "Request destruction");
@@ -395,7 +386,7 @@ namespace VideoForensics.Forensics.Tests
             await policy.DestroyEvidenceAsync(evidenceId, "Incinerate", "hash:123");
 
             // Act
-            var audit = await policy.GetDestructionAuditAsync(evidenceId);
+            DestructionAuditTrail audit = await policy.GetDestructionAuditAsync(evidenceId);
 
             // Assert
             Assert.NotNull(audit.ApprovalSteps);
@@ -407,10 +398,10 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetDestructionAuditAsync_RecordsDestructionDetails()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-018";
-            var verificationHash = "sha256:def789abc123";
-            var destructionMethod = "Shred";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-018";
+            string verificationHash = "sha256:def789abc123";
+            string destructionMethod = "Shred";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk", "Destroy");
@@ -418,10 +409,10 @@ namespace VideoForensics.Forensics.Tests
             await policy.DestroyEvidenceAsync(evidenceId, destructionMethod, verificationHash);
 
             // Act
-            var audit = await policy.GetDestructionAuditAsync(evidenceId);
+            DestructionAuditTrail audit = await policy.GetDestructionAuditAsync(evidenceId);
 
             // Assert
-            Assert.NotNull(audit.DestroyedAt);
+            _ = Assert.NotNull(audit.DestroyedAt);
             Assert.Equal(destructionMethod, audit.DestructionMethod);
             Assert.Equal(verificationHash, audit.VerificationHash);
         }
@@ -434,9 +425,9 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetPendingDestructionAsync_ReturnsPendingEvidenceItems()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId1 = "evidence-019";
-            var evidenceId2 = "evidence-020";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId1 = "evidence-019";
+            string evidenceId2 = "evidence-020";
 
             await policy.SetRetentionPeriodAsync(evidenceId1, TimeSpan.FromDays(30), "Test 1", "admin");
             await policy.RequestDestructionApprovalAsync(evidenceId1, "clerk", "Pending");
@@ -445,7 +436,7 @@ namespace VideoForensics.Forensics.Tests
             await policy.RequestDestructionApprovalAsync(evidenceId2, "clerk", "Pending");
 
             // Act
-            var pending = await policy.GetPendingDestructionAsync();
+            IEnumerable<EvidenceRetentionInfo> pending = await policy.GetPendingDestructionAsync();
 
             // Assert
             Assert.NotNull(pending);
@@ -458,10 +449,10 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetPendingDestructionAsync_ExcludesApprovedAndDestroyedItems()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var pendingId = "evidence-021";
-            var approvedId = "evidence-022";
-            var destroyedId = "evidence-023";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string pendingId = "evidence-021";
+            string approvedId = "evidence-022";
+            string destroyedId = "evidence-023";
 
             // Create pending item
             await policy.SetRetentionPeriodAsync(pendingId, TimeSpan.FromDays(30), "Test", "admin");
@@ -479,7 +470,7 @@ namespace VideoForensics.Forensics.Tests
             await policy.DestroyEvidenceAsync(destroyedId, "Shred", "hash:123");
 
             // Act
-            var pending = await policy.GetPendingDestructionAsync();
+            IEnumerable<EvidenceRetentionInfo> pending = await policy.GetPendingDestructionAsync();
             var pendingList = pending.ToList();
 
             // Assert
@@ -492,13 +483,13 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetPendingDestructionAsync_ReturnsEmptyWhenNoPending()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-024";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-024";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Test", "admin");
 
             // Act
-            var pending = await policy.GetPendingDestructionAsync();
+            IEnumerable<EvidenceRetentionInfo> pending = await policy.GetPendingDestructionAsync();
 
             // Assert
             Assert.NotNull(pending);
@@ -513,50 +504,50 @@ namespace VideoForensics.Forensics.Tests
         public async Task CompleteDestructionWorkflow_WithAllSteps_ReachesDestroyedStatus()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-025";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-025";
             var retentionPeriod = TimeSpan.FromDays(30);
 
             // Act & Assert - Step 1: Set retention
             await policy.SetRetentionPeriodAsync(evidenceId, retentionPeriod, "DV case", "detective-smith");
-            var status1 = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status1 = await policy.GetRetentionStatusAsync(evidenceId);
             Assert.Equal(RetentionStatus.Active, status1.Status);
 
             // Step 2: Request destruction (after retention expires)
             await Task.Delay(100); // Simulate time passing
             await policy.RequestDestructionApprovalAsync(evidenceId, "clerk-jones", "Retention expired");
-            var status2 = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status2 = await policy.GetRetentionStatusAsync(evidenceId);
             Assert.Equal(RetentionStatus.PendingApprovalForDestruction, status2.Status);
 
             // Step 3: Approve destruction
             await policy.ApproveDestructionAsync(evidenceId, "supervisor-williams", "Incinerate");
-            var status3 = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status3 = await policy.GetRetentionStatusAsync(evidenceId);
             Assert.Equal(RetentionStatus.ApprovedForDestruction, status3.Status);
 
             // Step 4: Execute destruction
             await policy.DestroyEvidenceAsync(evidenceId, "Incinerate", "sha256:abc123def456");
-            var status4 = await policy.GetRetentionStatusAsync(evidenceId);
+            EvidenceRetentionInfo status4 = await policy.GetRetentionStatusAsync(evidenceId);
             Assert.Equal(RetentionStatus.Destroyed, status4.Status);
-            Assert.NotNull(status4.DestructedAt);
+            _ = Assert.NotNull(status4.DestructedAt);
         }
 
         [Fact]
         public async Task MultipleExtensions_AccumulateRetentionTime()
         {
             // Arrange
-            var policy = CreatePolicy();
-            var evidenceId = "evidence-026";
+            IEvidenceRetentionPolicy policy = CreatePolicy();
+            string evidenceId = "evidence-026";
 
             await policy.SetRetentionPeriodAsync(evidenceId, TimeSpan.FromDays(30), "Initial", "admin");
-            var statusAfterInitial = await policy.GetRetentionStatusAsync(evidenceId);
-            var endDateAfterInitial = statusAfterInitial.RetentionEndDate;
+            EvidenceRetentionInfo statusAfterInitial = await policy.GetRetentionStatusAsync(evidenceId);
+            DateTime endDateAfterInitial = statusAfterInitial.RetentionEndDate;
 
             // Act - Extend multiple times
             await policy.ExtendRetentionAsync(evidenceId, TimeSpan.FromDays(30), "Appeal filed", "attorney");
-            var endDateAfterExt1 = (await policy.GetRetentionStatusAsync(evidenceId)).RetentionEndDate;
+            DateTime endDateAfterExt1 = (await policy.GetRetentionStatusAsync(evidenceId)).RetentionEndDate;
 
             await policy.ExtendRetentionAsync(evidenceId, TimeSpan.FromDays(60), "New charges", "prosecutor");
-            var endDateAfterExt2 = (await policy.GetRetentionStatusAsync(evidenceId)).RetentionEndDate;
+            DateTime endDateAfterExt2 = (await policy.GetRetentionStatusAsync(evidenceId)).RetentionEndDate;
 
             // Assert
             Assert.True(endDateAfterExt1 > endDateAfterInitial);

@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using VideoForensics.Client.Core.Services;
-using VideoForensics.Client.Common;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -25,11 +27,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_EmptyRepository_ReturnsDefaults()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.True(config.EnableForensicAnalysisReports);
@@ -42,27 +44,27 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_WithStoredBooleanSettings_LoadsCorrectly()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableForensicAnalysisReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableSignalAnomalyReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableForensicAnalysisReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableSignalAnomalyReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.False(config.EnableForensicAnalysisReports);
@@ -72,19 +74,19 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_WithStoredIntegerSettings_LoadsCorrectly()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("RetentionDaysDefault", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("365");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("MaxConcurrentDownloads", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("5");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("RetentionDaysDefault", "MaxConcurrentDownloads"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.Equal(365, config.RetentionDaysDefault);
@@ -94,19 +96,19 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_WithStoredStringSettings_LoadsCorrectly()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("DownloadLocation", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("C:\\Downloads\\Videos");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("ReportOutputFormat", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("xml");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("DownloadLocation", "ReportOutputFormat"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.Equal("C:\\Downloads\\Videos", config.DownloadLocation);
@@ -116,19 +118,19 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_WithStoredEnumSettings_LoadsCorrectly()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("RedactionLevel", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Heavy");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("KeyStorageProvider", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Tpm");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("RedactionLevel", "KeyStorageProvider"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.Equal(RedactionLevel.Heavy, config.RedactionLevel);
@@ -140,15 +142,15 @@ namespace VideoForensics.Client.Core.Tests
         {
             var accountId = Guid.NewGuid();
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("ActiveProviderAccountId", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accountId.ToString());
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("ActiveProviderAccountId"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.Equal(accountId, config.ActiveProviderAccountId);
@@ -157,11 +159,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_LoadDatabaseFailure_UsesDefaults()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Database connection failed"));
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             // Should have defaults, not throw
@@ -337,7 +339,7 @@ namespace VideoForensics.Client.Core.Tests
         public async Task SaveConfigurationAsync_SavesWithCancellationToken()
         {
             var config = new ForensicsConfiguration();
-            var ct = CancellationToken.None;
+            CancellationToken ct = CancellationToken.None;
 
             await _service.SaveConfigurationAsync(config, ct);
 
@@ -349,19 +351,19 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_LoadsAllHealthAndSyncSettings()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableHealthSync", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableMdnsAdvertisement", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("EnableHealthSync", "EnableMdnsAdvertisement"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.False(config.EnableHealthSync);
@@ -371,31 +373,31 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task LoadConfigurationAsync_LoadsAllReportSettings()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableForensicAnalysisReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableChainOfCustodyReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableEvidenceValidationReports", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnableAccessControlMonitoring", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("EnablePiiRedaction", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("EnableForensicAnalysisReports", "EnableChainOfCustodyReports", "EnableEvidenceValidationReports", "EnableAccessControlMonitoring", "EnablePiiRedaction"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.False(config.EnableForensicAnalysisReports);
@@ -448,22 +450,22 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void Constructor_WithNullSettingRepository_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new ForensicsConfigurationService(_loggerMock.Object, null!));
         }
 
         [Fact]
         public async Task LoadConfigurationAsync_WithEmptyStringValues_ReturnsDefaults()
         {
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("DownloadStartDate", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("");
 
-            _settingRepositoryMock
+            _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("DownloadStartDate"), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var config = await _service.LoadConfigurationAsync("test-path");
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
             Assert.Equal("", config.DownloadStartDate);

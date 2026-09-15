@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 using Spectre.Console;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
@@ -100,14 +99,14 @@ namespace VideoForensics
             });
 
             // Build the provider and resolve MenuManager
-            var serviceProvider = services.BuildServiceProvider();
+            ServiceProvider serviceProvider = services.BuildServiceProvider();
 
-            var initLogger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            ILogger<Program> initLogger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
             // Surface raw Ring API traffic (never auth bodies/tokens - see ApiRawLogger) to the
             // file log, so device-discovery/API issues can be diagnosed from what Ring actually
             // returned instead of guessing.
-            var apiLogger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("RingApi");
+            ILogger apiLogger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("RingApi");
             VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
                 apiLogger.LogInformation("{Method} {Url} -> {StatusCode}: {Body}", call.Method, call.Url, call.StatusCode, call.Body);
             VideoForensics.Providers.Ring.ApiRawLogger.OnEvent += evt =>
@@ -126,7 +125,7 @@ namespace VideoForensics
                 return;
             }
 
-            var menuManager = serviceProvider.GetRequiredService<MenuManager>();
+            MenuManager menuManager = serviceProvider.GetRequiredService<MenuManager>();
 
             // Show UI
             await menuManager.ShowMainMenuAsync();

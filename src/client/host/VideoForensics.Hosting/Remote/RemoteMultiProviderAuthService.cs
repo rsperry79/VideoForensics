@@ -21,9 +21,12 @@ namespace VideoForensics.Hosting.Remote
         public async Task<IReadOnlyList<string>> GetAvailableProvidersAsync(CancellationToken cancellationToken = default)
         {
             List<string>? providers = await _httpClient.GetFromJsonAsync<List<string>>("/api/v1/auth/providers", cancellationToken);
-            return providers ?? new List<string>();
+            return providers ?? [];
         }
 
-        public IProviderAuthService GetService(string providerName) => new RemoteProviderAuthService(_httpClient, providerName);
+        public IProviderAuthService GetService(string providerName)
+        {
+            return new RemoteProviderAuthService(_httpClient, providerName);
+        }
     }
 }

@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests

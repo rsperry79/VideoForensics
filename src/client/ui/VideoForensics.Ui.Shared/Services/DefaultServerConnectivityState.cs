@@ -7,21 +7,19 @@ namespace VideoForensics.Ui.Shared.Services
     /// </summary>
     public class DefaultServerConnectivityState : IServerConnectivityState
     {
-        private string _state = "ok";
-
         /// <inheritdoc/>
-        public string State => _state;
+        public string State { get; private set; } = "ok";
 
         /// <inheritdoc/>
         public void MarkAsUnreachable()
         {
-            _state = "unreachable";
+            State = "unreachable";
         }
 
         /// <inheritdoc/>
         public void MarkAsConnected()
         {
-            _state = "ok";
+            State = "ok";
         }
     }
 }

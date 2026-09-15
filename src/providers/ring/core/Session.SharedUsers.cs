@@ -59,7 +59,7 @@ namespace VideoForensics.Providers.Ring
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/invitations");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            var parsed = JsonSerializer.Deserialize<InvitationsResponse>(response);
+            InvitationsResponse? parsed = JsonSerializer.Deserialize<InvitationsResponse>(response);
             return parsed?.Invitations ?? [];
         }
     }

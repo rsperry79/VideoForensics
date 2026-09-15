@@ -26,7 +26,7 @@ namespace VideoForensics.WebApp.Api
                 INetworkTierResolver tierResolver,
                 CancellationToken ct) =>
             {
-                var session = deviceCodePairing.CreateSession();
+                DeviceCodePairingSession session = deviceCodePairing.CreateSession();
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.DeviceCodeIssued, null, null,
                     tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
@@ -56,8 +56,8 @@ namespace VideoForensics.WebApp.Api
                 // Gate: must be SuperAdmin + Local (same as pairing/initiate for non-bootstrap case)
                 string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
                 string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-                bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role == OperatorRole.SuperAdmin;
-                bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local;
+                bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role == OperatorRole.SuperAdmin;
+                bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
 
                 if (!isSuperAdmin || !isLocal)
                 {
@@ -65,7 +65,7 @@ namespace VideoForensics.WebApp.Api
                 }
 
                 // Look up the session by user code
-                var session = deviceCodePairing.GetByUserCode(userCode);
+                DeviceCodePairingSession? session = deviceCodePairing.GetByUserCode(userCode);
                 if (session == null || session.Status != DeviceCodePairingStatus.Pending)
                 {
                     return Results.NotFound(new { error = "Pairing code expired or invalid." });
@@ -79,7 +79,7 @@ namespace VideoForensics.WebApp.Api
                 string apiKeyHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawApiKey)));
 
                 // Create the operator
-                var op = await operators.AddAsync(new Operator
+                Operator op = await operators.AddAsync(new Operator
                 {
                     Id = Guid.NewGuid(),
                     DisplayName = $"{request.DeviceName} (device-code)",
@@ -88,7 +88,7 @@ namespace VideoForensics.WebApp.Api
                 }, ct);
 
                 // Create the paired device
-                var pairedDevice = await pairedDevices.AddAsync(new PairedDevice
+                PairedDevice pairedDevice = await pairedDevices.AddAsync(new PairedDevice
                 {
                     Id = Guid.NewGuid(),
                     OperatorId = op.Id,
@@ -99,7 +99,7 @@ namespace VideoForensics.WebApp.Api
                 }, ct);
 
                 // Approve the session and attach the raw key (single-use, consumed on next poll)
-                deviceCodePairing.TryApprove(userCode, rawApiKey);
+                _ = deviceCodePairing.TryApprove(userCode, rawApiKey);
 
                 // Audit log the approval
                 await auditLog.LogAsync(SecurityAuditEventTypes.DeviceCodeApproved, op.Id, pairedDevice.Id,
@@ -119,7 +119,7 @@ namespace VideoForensics.WebApp.Api
                 string deviceCode,
                 IDeviceCodePairingService deviceCodePairing) =>
             {
-                var session = deviceCodePairing.GetByDeviceCode(deviceCode);
+                DeviceCodePairingSession? session = deviceCodePairing.GetByDeviceCode(deviceCode);
                 if (session == null)
                 {
                     return Results.NotFound(new { status = "expired" });

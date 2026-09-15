@@ -50,7 +50,7 @@ namespace VideoForensics.Data.Database.Tests
             DownloadEvent evt = TestDataBuilder.BuildDownloadEvent(deviceId, "evt_002");
 
             await _repository.AddAsync(evt, CancellationToken.None);
-            var exists = await _repository.ExistsForProviderEventIdAsync(deviceId, "evt_002", CancellationToken.None);
+            bool exists = await _repository.ExistsForProviderEventIdAsync(deviceId, "evt_002", CancellationToken.None);
 
             Assert.True(exists);
         }
@@ -59,7 +59,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DownloadEventRepository_ExistsForProviderEventId_ReturnsFalseForNonexistent()
         {
             var deviceId = Guid.NewGuid();
-            var exists = await _repository.ExistsForProviderEventIdAsync(deviceId, "nonexistent", CancellationToken.None);
+            bool exists = await _repository.ExistsForProviderEventIdAsync(deviceId, "nonexistent", CancellationToken.None);
 
             Assert.False(exists);
         }

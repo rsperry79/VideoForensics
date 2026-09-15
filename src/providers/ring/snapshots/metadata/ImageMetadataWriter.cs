@@ -66,12 +66,12 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                var imageFormat = _validator.DetectFormat(snapshotFilePath);
+                string? imageFormat = _validator.DetectFormat(snapshotFilePath);
                 metadata.ImageFormat = imageFormat;
 
                 ExtractImageProperties(snapshotFilePath, metadata);
 
-                var wasWritten = WriteExifData(snapshotFilePath, metadata);
+                bool wasWritten = WriteExifData(snapshotFilePath, metadata);
 
                 List<string>? tags = BuildPhotoPrismTags(metadata);
 
@@ -107,17 +107,14 @@ namespace VideoForensics.Providers.Ring
 
             DateTime startTime = DateTime.UtcNow;
 
-            if (!_fileSystem.File.Exists(snapshotFilePath))
-            {
-                return CreateResult(
+            return !_fileSystem.File.Exists(snapshotFilePath)
+                ? CreateResult(
                     startTime,
                     status: MetadataStatus.Failed,
                     wasWritten: false,
                     isValid: false,
-                    errorMessage: $"Image file not found: {snapshotFilePath}");
-            }
-
-            return !_validator.Validate(snapshotFilePath)
+                    errorMessage: $"Image file not found: {snapshotFilePath}")
+                : !_validator.Validate(snapshotFilePath)
                 ? CreateResult(
                     startTime,
                     status: MetadataStatus.Corrupt,
@@ -141,7 +138,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     if (directory is ExifSubIfdDirectory exifDirectory)
                     {
-                        if (exifDirectory.TryGetInt32(ExifDirectoryBase.TagOrientation, out var orientation))
+                        if (exifDirectory.TryGetInt32(ExifDirectoryBase.TagOrientation, out int orientation))
                         {
                             metadata.ExifOrientation = orientation;
                         }
@@ -163,7 +160,7 @@ namespace VideoForensics.Providers.Ring
         {
             try
             {
-                var format = metadata.ImageFormat?.ToUpperInvariant();
+                string? format = metadata.ImageFormat?.ToUpperInvariant();
 
                 if (format is not "JPEG" and not "PNG" and not "WEBP")
                 {
@@ -215,22 +212,7 @@ namespace VideoForensics.Providers.Ring
                     return 95;
                 }
 
-                if (fileSize > 2_000_000)
-                {
-                    return 85;
-                }
-
-                if (fileSize > 1_000_000)
-                {
-                    return 75;
-                }
-
-                if (fileSize > 500_000)
-                {
-                    return 65;
-                }
-
-                return fileSize > 100_000 ? 50 : 30;
+                return fileSize > 2_000_000 ? 85 : fileSize > 1_000_000 ? 75 : fileSize > 500_000 ? 65 : fileSize > 100_000 ? 50 : 30;
             }
             catch
             {
@@ -268,7 +250,7 @@ namespace VideoForensics.Providers.Ring
             string? errorMessage = null,
             List<string>? photoprismTags = null)
         {
-            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            double duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
             return new MetadataWriteResult
             {

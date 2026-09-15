@@ -23,7 +23,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapEventEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/events").RequireAuthorization();
+            RouteGroupBuilder group = app.MapGroup("/api/v1/events").RequireAuthorization();
 
             // Event read operations
             _ = group.MapGet("/", async (
@@ -35,7 +35,7 @@ namespace VideoForensics.WebApp.Api
                 // If both pageNumber and pageSize are provided, use paginated read
                 if (pageNumber.HasValue && pageSize.HasValue)
                 {
-                    var paginatedResult = await events.ListPaginatedAsync(pageNumber.Value, pageSize.Value, ct);
+                    PaginatedResult<Event> paginatedResult = await events.ListPaginatedAsync(pageNumber.Value, pageSize.Value, ct);
                     var paginatedDto = new PaginatedResultDto<EventDto>(
                         Items: paginatedResult.Items.Select(x => x.ToDto()).ToList(),
                         TotalCount: paginatedResult.TotalCount,
@@ -54,7 +54,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/{id:guid}", async (Guid id, IEventRepository events, CancellationToken ct) =>
             {
-                var @event = await events.GetAsync(id, ct);
+                Event? @event = await events.GetAsync(id, ct);
                 return @event == null ? Results.NotFound() : Results.Ok(@event.ToDto());
             })
                 .RequireRateLimiting("media")
@@ -70,7 +70,7 @@ namespace VideoForensics.WebApp.Api
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
                 DateTime to = toUtc ?? DateTime.UtcNow;
-                var eventList = await events.ListByDeviceAndDateRangeAsync(deviceId, from, to, ct);
+                IReadOnlyList<Event> eventList = await events.ListByDeviceAndDateRangeAsync(deviceId, from, to, ct);
                 return Results.Ok(eventList.Select(x => x.ToDto()));
             })
                 .RequireRateLimiting("media")
@@ -86,7 +86,7 @@ namespace VideoForensics.WebApp.Api
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
                 DateTime to = toUtc ?? DateTime.UtcNow;
-                var eventList = await events.ListByLocationAndDateRangeAsync(locationId, from, to, ct);
+                IReadOnlyList<Event> eventList = await events.ListByLocationAndDateRangeAsync(locationId, from, to, ct);
                 return Results.Ok(eventList.Select(x => x.ToDto()));
             })
                 .RequireRateLimiting("media")
@@ -104,11 +104,11 @@ namespace VideoForensics.WebApp.Api
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
                 DateTime to = toUtc ?? DateTime.UtcNow;
-                var eventList = deviceId.HasValue
+                IReadOnlyList<Event> eventList = deviceId.HasValue
                     ? await events.ListByDeviceEventTypeAndDateRangeAsync(deviceId.Value, eventType, from, to, ct)
                     : locationId.HasValue
                         ? await events.ListByLocationEventTypeAndDateRangeAsync(locationId.Value, eventType, from, to, ct)
-                        : new List<Event>();
+                        : [];
                 return Results.Ok(eventList.Select(x => x.ToDto()));
             })
                 .RequireRateLimiting("media")
@@ -124,7 +124,7 @@ namespace VideoForensics.WebApp.Api
             {
                 DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-30);
                 DateTime to = toUtc ?? DateTime.UtcNow;
-                var summary = await events.GetEventTypeSummaryAsync(locationId, from, to, ct);
+                Dictionary<string, int> summary = await events.GetEventTypeSummaryAsync(locationId, from, to, ct);
                 return Results.Ok(summary);
             })
                 .RequireRateLimiting("media")
@@ -136,7 +136,7 @@ namespace VideoForensics.WebApp.Api
                 IEventRepository events,
                 CancellationToken ct) =>
             {
-                var eventList = await events.ListUnansweredOrFlaggedAsync(deviceId, ct);
+                IReadOnlyList<Event> eventList = await events.ListUnansweredOrFlaggedAsync(deviceId, ct);
                 return Results.Ok(eventList.Select(x => x.ToDto()));
             })
                 .RequireRateLimiting("media")
@@ -149,8 +149,8 @@ namespace VideoForensics.WebApp.Api
                 IEventRepository events,
                 CancellationToken ct) =>
             {
-                var entity = dto.ToDomain();
-                var result = await events.UpsertAsync(entity, ct);
+                Event entity = dto.ToDomain();
+                Event result = await events.UpsertAsync(entity, ct);
                 return Results.Ok(result.ToDto());
             })
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
@@ -172,7 +172,7 @@ namespace VideoForensics.WebApp.Api
                 .WithDescription("Permanently deletes an event.");
 
             // Legal Hold operations
-            var legalHoldGroup = app.MapGroup("/api/v1/legal-holds").RequireAuthorization();
+            RouteGroupBuilder legalHoldGroup = app.MapGroup("/api/v1/legal-holds").RequireAuthorization();
 
             _ = legalHoldGroup.MapGet("/", async (
                 string? mediaItemIds,
@@ -191,7 +191,7 @@ namespace VideoForensics.WebApp.Api
                     .Select(id => id!.Value)
                     .ToList();
 
-                var holds = await legalHolds.GetActiveByMediaItemIdsAsync(ids, ct);
+                IReadOnlyList<LegalHold> holds = await legalHolds.GetActiveByMediaItemIdsAsync(ids, ct);
                 return Results.Ok(holds.Select(x => x.ToDto()));
             })
                 .RequireRateLimiting("media")
@@ -204,8 +204,8 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                var createdBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value ?? "system";
-                var hold = await legalHolds.PlaceAsync(request.MediaItemId, request.Reason, createdBy, ct);
+                string createdBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value ?? "system";
+                LegalHold hold = await legalHolds.PlaceAsync(request.MediaItemId, request.Reason, createdBy, ct);
                 return Results.Created($"/api/v1/legal-holds/{hold.Id}", hold.ToDto());
             })
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
@@ -220,7 +220,7 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                var releasedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value ?? "system";
+                string releasedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value ?? "system";
                 await legalHolds.ReleaseAsync(request.LegalHoldId, releasedBy, request.ReleaseReason, ct);
                 return Results.NoContent();
             })

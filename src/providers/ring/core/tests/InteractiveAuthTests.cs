@@ -1,6 +1,5 @@
-using System.Net;
-using System.Threading;
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using System.Reflection;
+
 using VideoForensics.Providers.Ring.Exceptions;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
@@ -19,7 +18,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void InteractiveAuth_IsStatic()
         {
             // Verify that InteractiveAuth is a utility class (all static members)
-            var authType = typeof(InteractiveAuth);
+            Type authType = typeof(InteractiveAuth);
             Assert.True(authType.IsAbstract && authType.IsSealed, "InteractiveAuth should be a static class");
         }
 
@@ -27,7 +26,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void InteractiveAuth_HasAuthenticateAsyncMethod()
         {
             // Verify the method exists with correct signature
-            var method = typeof(InteractiveAuth).GetMethod(
+            MethodInfo? method = typeof(InteractiveAuth).GetMethod(
                 "AuthenticateAsync",
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 
@@ -83,11 +82,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Arrange
             string username = "test@example.com";
             string password = "password";
-            Func<Task<string>> getTwoFactorCode = async () =>
+            static async Task<string> getTwoFactorCode()
             {
                 await Task.Delay(0);
                 return "123456";
-            };
+            }
 
             // Act & Assert - async callback should be accepted
             try
@@ -106,7 +105,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Arrange
             string username = "test@example.com";
             string password = "password";
-            Func<Task<string>> getTwoFactorCode = () => Task.FromResult("123456");
+            static Task<string> getTwoFactorCode()
+            {
+                return Task.FromResult("123456");
+            }
 
             // Act & Assert - sync-to-async callback should be accepted
             try
@@ -129,10 +131,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Act
             try
             {
-                var result = await InteractiveAuth.AuthenticateAsync(username, password, null);
+                Session result = await InteractiveAuth.AuthenticateAsync(username, password, null);
 
                 // Assert - if successful, result should be a Session
-                Assert.IsType<Session>(result);
+                _ = Assert.IsType<Session>(result);
             }
             catch (AuthenticationFailedException)
             {
@@ -148,7 +150,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string password = "invalid-pass";
 
             // Act & Assert - any authentication exception should propagate
-            await Assert.ThrowsAsync<AuthenticationFailedException>(
+            _ = await Assert.ThrowsAsync<AuthenticationFailedException>(
                 () => InteractiveAuth.AuthenticateAsync(username, password, null));
         }
 
@@ -160,11 +162,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string password = "password";
 
             // Act - verify this returns a Task
-            var task = InteractiveAuth.AuthenticateAsync(username, password, null);
+            Task<Session> task = InteractiveAuth.AuthenticateAsync(username, password, null);
 
             // Assert - result should be awaitable Task<Session>
             Assert.NotNull(task);
-            Assert.True(task is System.Threading.Tasks.Task<Session>);
+            Assert.True(task is not null);
 
             // Cleanup - await to clear any exceptions
             try

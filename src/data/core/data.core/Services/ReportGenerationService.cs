@@ -163,7 +163,7 @@ namespace VideoForensics.Data.Core.Services
                     {
                         DeviceId = device.Id,
                         DeviceName = device.Name,
-                        Anomalies = new List<SignalAnomalyReport.SignalAnomaly>()
+                        Anomalies = []
                     };
                     anomaliesList.Add(findings);
 
@@ -262,7 +262,7 @@ namespace VideoForensics.Data.Core.Services
 
                 report.AuditTrail = filteredActions;
 
-                var chainIsValid = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
+                bool chainIsValid = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
                 report.ChainIntegrityVerified = chainIsValid;
                 report.ChainVerificationStatus = chainIsValid ? "Valid hash chain" : "Chain integrity check failed";
 
@@ -283,24 +283,24 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-                var reportTypeName = reportDto.GetType().Name;
-                var fileName = $"{reportTypeName}_{timestamp}.{format.ToLowerInvariant()}";
+                string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                string reportTypeName = reportDto.GetType().Name;
+                string fileName = $"{reportTypeName}_{timestamp}.{format.ToLowerInvariant()}";
 
                 // Determine output directory (using a default reports directory)
-                var reportsDir = Path.Combine(
+                string reportsDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
                     "Reports");
                 _ = Directory.CreateDirectory(reportsDir);
 
-                var filePath = Path.Combine(reportsDir, fileName);
+                string filePath = Path.Combine(reportsDir, fileName);
 
                 switch (format.ToLowerInvariant())
                 {
                     case "json":
                         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                        var jsonContent = JsonSerializer.Serialize(reportDto, jsonOptions);
+                        string jsonContent = JsonSerializer.Serialize(reportDto, jsonOptions);
                         await File.WriteAllTextAsync(filePath, jsonContent, ct);
                         break;
 
@@ -315,7 +315,7 @@ namespace VideoForensics.Data.Core.Services
 
                     case "csv":
                         // Basic CSV output: serialize as JSON and note the limitation
-                        var csvAsJson = JsonSerializer.Serialize(reportDto, new JsonSerializerOptions { WriteIndented = true });
+                        string csvAsJson = JsonSerializer.Serialize(reportDto, new JsonSerializerOptions { WriteIndented = true });
                         await File.WriteAllTextAsync(filePath, $"# CSV output not yet fully implemented; see JSON for full data\n{csvAsJson}", ct);
                         break;
 

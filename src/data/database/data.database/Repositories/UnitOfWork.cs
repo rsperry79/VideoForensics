@@ -408,7 +408,7 @@ namespace VideoForensics.Data.Database.Repositories
                 return null;
             }
 
-            var decryptedValue = await _encryptionProvider.DecryptAsync(credential.EncryptedValue, ct);
+            string decryptedValue = await _encryptionProvider.DecryptAsync(credential.EncryptedValue, ct);
             return (credential.CredentialType, decryptedValue);
         }
 
@@ -419,7 +419,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task SetAsync(Guid providerAccountId, string credentialType, string plainValue, CancellationToken ct)
         {
-            var encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
+            string encryptedValue = await _encryptionProvider.EncryptAsync(plainValue, ct);
             Credential? credential = _db.Credentials.FirstOrDefault(c => c.ProviderAccountId == providerAccountId && c.CredentialType == credentialType);
             if (credential == null)
             {
@@ -482,11 +482,11 @@ namespace VideoForensics.Data.Database.Repositories
                 .ThenByDescending(ale => ale.Id)
                 .FirstOrDefault();
 
-            var previousEntryHash = lastEntry?.EntryHash;
+            string? previousEntryHash = lastEntry?.EntryHash;
             DateTime timestampUtc = DateTime.UtcNow;
 
-            var canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
-            var entryHash = ComputeSha256Hash(canonicalString);
+            string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
+            string entryHash = ComputeSha256Hash(canonicalString);
 
             var entry = new ActionLogEntry
             {
@@ -534,7 +534,7 @@ namespace VideoForensics.Data.Database.Repositories
                     return Task.FromResult(false);
                 }
 
-                var canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
+                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
                 if (entry.EntryHash != ComputeSha256Hash(canonicalString))
                 {
                     return Task.FromResult(false);
@@ -548,9 +548,9 @@ namespace VideoForensics.Data.Database.Repositories
 
         private static string ComputeSha256Hash(string input)
         {
-            var inputBytes = Encoding.UTF8.GetBytes(input);
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
             using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(inputBytes);
+            byte[] hashBytes = sha256.ComputeHash(inputBytes);
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
     }
@@ -1020,6 +1020,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = _db.MediaItemDetections.Add(detection);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1029,6 +1030,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.DetectedPersons.AddRange(persons);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1038,6 +1040,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.DetectionTypeOccurrences.AddRange(occurrences);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1047,6 +1050,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = _db.EventDetections.Add(detection);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1056,6 +1060,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.EventDetectionZones.AddRange(zones);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1065,6 +1070,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.EventSecurityAlerts.AddRange(alerts);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1074,6 +1080,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.EventDetectedPersons.AddRange(persons);
             }
+
             return Task.CompletedTask;
         }
 
@@ -1083,6 +1090,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _db.EventDetectionTypeOccurrences.AddRange(occurrences);
             }
+
             return Task.CompletedTask;
         }
     }

@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,21 +10,21 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(@"
+            _ = migrationBuilder.Sql(@"
     INSERT INTO DeviceHealths (Id, DeviceId, BatteryPercentage, BatteryVoltageValue, WifiSignalRssi, WifiName, IsExternalPowerConnected, OtaStatus, IsOnline, LastHeartbeatUtc, CapturedAtUtc, FirmwareVersion)
     SELECT Id, DeviceId, BatteryPercentage, NULL, Rssi, WifiName, NULL, NULL, Connected, NULL, CapturedAtUtc, FirmwareVersion
     FROM DeviceHealthSnapshots
     WHERE DeviceId IS NOT NULL;
 ");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceHealthSnapshots");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceHealthSnapshots",
                 columns: table => new
                 {
@@ -41,15 +40,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceHealthSnapshots", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceHealthSnapshots", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceHealthSnapshots_DeviceId_CapturedAtUtc",
                 table: "DeviceHealthSnapshots",
                 columns: new[] { "DeviceId", "CapturedAtUtc" });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceHealthSnapshots_DownloadEventId",
                 table: "DeviceHealthSnapshots",
                 column: "DownloadEventId");

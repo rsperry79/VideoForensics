@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
@@ -118,7 +119,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange: Create 5 events with distinct timestamps
             DateTime now = DateTime.UtcNow;
-            Event[] events = new Event[5];
+            var events = new Event[5];
             for (int i = 0; i < 5; i++)
             {
                 events[i] = TestDataBuilder.BuildEvent();
@@ -130,7 +131,7 @@ namespace VideoForensics.Data.Database.Tests
             // Ordered by OccurredAtUtc descending: events[4], events[3], events[2], events[1], events[0]
             // Page 1 (offset 0, take 2): events[4], events[3]
             // Page 2 (offset 2, take 2): events[2], events[1]
-            var result = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 2, CancellationToken.None);
+            PaginatedResult<Event> result = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 2, CancellationToken.None);
 
             // Assert: Verify page has correct items
             Assert.NotNull(result);
@@ -155,8 +156,8 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act: Get first page with page size 3
-            var page1 = await _repository.ListPaginatedAsync(pageNumber: 1, pageSize: 3, CancellationToken.None);
-            var page2 = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 3, CancellationToken.None);
+            PaginatedResult<Event> page1 = await _repository.ListPaginatedAsync(pageNumber: 1, pageSize: 3, CancellationToken.None);
+            PaginatedResult<Event> page2 = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 3, CancellationToken.None);
 
             // Assert: TotalCount should be 10 on both pages
             Assert.Equal(10, page1.TotalCount);

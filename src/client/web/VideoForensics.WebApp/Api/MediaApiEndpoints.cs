@@ -21,7 +21,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapMediaApiEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1");
+            RouteGroupBuilder group = app.MapGroup("/api/v1");
 
             _ = group.MapGet("/devices", async (IDeviceRepository devices, CancellationToken ct) =>
                 Results.Ok((await devices.ListAsync(ct)).Select(x => x.ToDto()))).RequireRateLimiting("media");
@@ -62,7 +62,7 @@ namespace VideoForensics.WebApp.Api
                 }
 
                 Stream stream = await storage.OpenReadStreamAsync(item.FilePath, ct);
-                var contentType = item.MediaFormat switch
+                string contentType = item.MediaFormat switch
                 {
                     "video/mp4" or "mp4" => "video/mp4",
                     "image/jpeg" or "jpg" or "jpeg" => "image/jpeg",

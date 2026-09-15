@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
+
 using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Data.Common.Entities;
@@ -34,9 +34,9 @@ namespace VideoForensics.Ui.Shared.Layout
         {
             get
             {
-                var visible = VisibleGroups;
-                var ctx = BuildContext();
-                var match = visible.FirstOrDefault(g => g.Items.Any(i => i.IsVisible(ctx) && PathMatches(i.Path)));
+                IReadOnlyList<NavGroup> visible = VisibleGroups;
+                NavContext ctx = BuildContext();
+                NavGroup? match = visible.FirstOrDefault(g => g.Items.Any(i => i.IsVisible(ctx) && PathMatches(i.Path)));
                 return match ?? visible.FirstOrDefault() ?? NavGroups.All[0];
             }
         }
@@ -45,7 +45,7 @@ namespace VideoForensics.Ui.Shared.Layout
         {
             get
             {
-                var ctx = BuildContext();
+                NavContext ctx = BuildContext();
                 return ActiveGroup.Items.Where(i => i.IsVisible(ctx)).ToList();
             }
         }
@@ -74,6 +74,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 {
                     _leftNavWidth = LayoutPrefs.LeftNavWidth;
                 }
+
                 if (LayoutPrefs.RightPanelWidth > 0)
                 {
                     _rightPanelWidth = LayoutPrefs.RightPanelWidth;
@@ -124,27 +125,27 @@ namespace VideoForensics.Ui.Shared.Layout
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             _currentPath = ToAppRelative(e.Location);
-            InvokeAsync(StateHasChanged);
+            _ = InvokeAsync(StateHasChanged);
         }
 
         private static string ToAppRelative(string uri)
         {
-            var path = new Uri(uri).AbsolutePath;
+            string path = new Uri(uri).AbsolutePath;
             return string.IsNullOrEmpty(path) ? "/" : path;
         }
 
         private bool PathMatches(string path)
         {
-            if (path == "/")
-            {
-                return _currentPath == "/";
-            }
-
-            return _currentPath.Equals(path, StringComparison.OrdinalIgnoreCase)
+            return path == "/"
+                ? _currentPath == "/"
+                : _currentPath.Equals(path, StringComparison.OrdinalIgnoreCase)
                 || _currentPath.StartsWith(path + "/", StringComparison.OrdinalIgnoreCase);
         }
 
-        private NavContext BuildContext() => new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported);
+        private NavContext BuildContext()
+        {
+            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported);
+        }
 
         private async Task ToggleLeftNavAsync()
         {
@@ -183,6 +184,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 {
                     // Best-effort cleanup.
                 }
+
                 _rightPanelHandleAttached = false;
             }
         }

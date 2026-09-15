@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             // Act
             provider.SetClient(client);
-            var retrieved = provider.GetClient();
+            UniviewClient? retrieved = provider.GetClient();
 
             // Assert
             Assert.NotNull(retrieved);
@@ -31,7 +31,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var provider = new UniviewSessionProvider();
 
             // Act
-            var retrieved = provider.GetClient();
+            UniviewClient? retrieved = provider.GetClient();
 
             // Assert
             Assert.Null(retrieved);
@@ -47,7 +47,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             // Act
             provider.ClearClient();
-            var retrieved = provider.GetClient();
+            UniviewClient? retrieved = provider.GetClient();
 
             // Assert
             Assert.Null(retrieved);
@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             // Act
             provider.SetClient(accountId, client);
-            var retrieved = provider.GetClient(accountId);
+            UniviewClient? retrieved = provider.GetClient(accountId);
 
             // Assert
             Assert.NotNull(retrieved);
@@ -78,7 +78,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var unknownId = Guid.NewGuid();
 
             // Act
-            var retrieved = provider.GetClient(unknownId);
+            UniviewClient? retrieved = provider.GetClient(unknownId);
 
             // Assert
             Assert.Null(retrieved);
@@ -95,7 +95,7 @@ namespace VideoForensics.Providers.Uniview.Tests
 
             // Act
             provider.ClearClient(accountId);
-            var retrieved = provider.GetClient(accountId);
+            UniviewClient? retrieved = provider.GetClient(accountId);
 
             // Assert
             Assert.Null(retrieved);
@@ -134,7 +134,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             provider.SetClient(clientDefault);     // Sets default (parameterless)
 
             // Assert - parameterless get should return the default
-            var parameterlessRetrieved = provider.GetClient();
+            UniviewClient? parameterlessRetrieved = provider.GetClient();
             Assert.Same(clientDefault, parameterlessRetrieved);
 
             // GUID-specific retrieval still works
@@ -170,8 +170,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var provider = new UniviewSessionProvider();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => provider.SetClient(Guid.NewGuid(), null!));
-            Assert.Throws<ArgumentNullException>(() => provider.SetClient(null!));
+            _ = Assert.Throws<ArgumentNullException>(() => provider.SetClient(Guid.NewGuid(), null!));
+            _ = Assert.Throws<ArgumentNullException>(() => provider.SetClient(null!));
         }
 
         [Fact]
@@ -191,20 +191,21 @@ namespace VideoForensics.Providers.Uniview.Tests
         {
             // Arrange
             var provider = new UniviewSessionProvider();
-            var defaultKey = Guid.Empty; // The well-known default key
+            Guid defaultKey = Guid.Empty; // The well-known default key
             var client1 = new UniviewClient("192.168.1.1", "admin", "password");
-            var client2 = new UniviewClient("192.168.1.2", "admin", "password");
+
+            _ = new UniviewClient("192.168.1.2", "admin", "password");
 
             // Act - set via parameterless (should use Guid.Empty internally)
             provider.SetClient(client1);
 
             // Then set via the default key explicitly
-            var explicit1 = provider.GetClient(defaultKey);
+            UniviewClient? explicit1 = provider.GetClient(defaultKey);
             Assert.Same(client1, explicit1);
 
             // Now clear via GUID.Empty should clear the parameterless too
             provider.ClearClient(defaultKey);
-            var afterClear = provider.GetClient();
+            UniviewClient? afterClear = provider.GetClient();
             Assert.Null(afterClear);
 
             // And GUID.Empty retrieval returns null too

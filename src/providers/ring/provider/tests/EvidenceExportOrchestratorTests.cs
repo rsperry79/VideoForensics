@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -63,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     [],
                     tempDir,
                     null,
@@ -166,7 +167,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { failedItemId, validItemId },
                     tempDir,
                     null,
@@ -251,7 +252,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId },
                     tempDir,
                     "Case-2026-001",
@@ -339,7 +340,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId },
                     tempDir,
                     "Case-2026-001",
@@ -449,7 +450,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId1, mediaItemId2 },
                     tempDir,
                     "Case-2026-001",
@@ -552,7 +553,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockExportRecordService.Object);
 
                 // Act
-                var result = await orchestrator.ExportEvidenceAsync(
+                ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { validItemId, invalidItemId },
                     tempDir,
                     "Case-2026-001",
