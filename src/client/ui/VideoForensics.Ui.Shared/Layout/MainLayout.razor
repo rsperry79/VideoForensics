@@ -11,6 +11,7 @@
 @inject LayoutPreferencesState LayoutPrefs
 @inject IStringLocalizer<SharedResources> L
 @inject IServerConnectivityState ConnectivityState
+@inject IJSRuntime JS
 
 <div class="app-layout">
     @if (ConnectivityState.IsUnreachable)
@@ -37,53 +38,45 @@
     </div>
 
     <div class="app-body">
-        <SfSplitter @ref="_splitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">
-            @if (!LayoutPrefs.LeftNavCollapsed)
-            {
-                <SplitterPanes>
-                    <SplitterPane Size="@($"{_leftNavWidth}px")" Min="48px" Max="400px" CssClass="splitter-left-nav">
-                        <div class="left-nav-items">
-                            @foreach (var item in ActiveGroupItems)
-                            {
-                                <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
-                                          CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
-                            }
-                        </div>
-                    </SplitterPane>
-                    <SplitterPane Size="*" CssClass="splitter-page-body">
+        @* Left-nav collapse is driven imperatively via CollapseAsync/ExpandAsync (see
+           ToggleLeftNavAsync) rather than by conditionally swapping SplitterPane markup, so the
+           pane's shape never changes across renders - Syncfusion's Splitter mutates the DOM via JS
+           interop outside Blazor's normal diffing, and swapping pane markup was found (by hand) to
+           corrupt the whole page's layout/height on some renders. Only 2 panes here deliberately:
+           the right panel is NOT a third SplitterPane. Syncfusion's Splitter always forces its last
+           pane to be the flexible/auto one regardless of any Size given to it, so a fixed-width
+           resizable pane cannot sit to the right of the flexible content pane in one flat Splitter;
+           nesting a second SfSplitter to work around that was also tried and found (by hand) to
+           corrupt the outer layout whenever the outer pane collapses/expands. The right panel is
+           therefore a plain, hand-rolled resizable div (see wwwroot/js/panel-resize.js) rather than
+           a Syncfusion component - do not "simplify" this back to a 3-pane or nested Splitter
+           without re-testing left-nav collapse AND right-panel drag-resize by hand. *@
+        <SfSplitter @ref="_outerSplitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">
+            <SplitterPanes>
+                <SplitterPane Size="@($"{_leftNavWidth}px")" Min="48px" Max="400px" Resizable="false" CssClass="splitter-left-nav">
+                    <div class="left-nav-items">
+                        @foreach (var item in ActiveGroupItems)
+                        {
+                            <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
+                                      CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
+                        }
+                    </div>
+                </SplitterPane>
+                <SplitterPane CssClass="splitter-content-wrapper">
+                    <div class="content-wrapper">
                         <div class="page-body">
                             @Body
                         </div>
-                    </SplitterPane>
-                    @if (!LayoutPrefs.RightPanelCollapsed)
-                    {
-                        <SplitterPane Size="@($"{_rightPanelWidth}px")" Min="250px" Max="500px" CssClass="splitter-right-panel">
-                            <RightPanelHost />
-                        </SplitterPane>
-                    }
-                </SplitterPanes>
-            }
-            else
-            {
-                <SplitterPanes>
-                    <SplitterPane Size="48px" Min="48px" Max="48px" CssClass="splitter-left-nav-collapsed">
-                        <div class="left-nav-toggle-collapsed" title="Toggle navigation">
-                            <SfButton Content="☰" CssClass="e-flat" OnClick="@ToggleLeftNavAsync" />
-                        </div>
-                    </SplitterPane>
-                    <SplitterPane Size="*" CssClass="splitter-page-body">
-                        <div class="page-body">
-                            @Body
-                        </div>
-                    </SplitterPane>
-                    @if (!LayoutPrefs.RightPanelCollapsed)
-                    {
-                        <SplitterPane Size="@($"{_rightPanelWidth}px")" Min="250px" Max="500px" CssClass="splitter-right-panel">
-                            <RightPanelHost />
-                        </SplitterPane>
-                    }
-                </SplitterPanes>
-            }
+                        @if (!LayoutPrefs.RightPanelCollapsed)
+                        {
+                            <div id="@_rightPanelHandleId" class="right-panel-handle" title="Drag to resize"></div>
+                            <div id="@_rightPanelId" class="right-panel-fixed" style="@RightPanelStyle">
+                                <RightPanelHost />
+                            </div>
+                        }
+                    </div>
+                </SplitterPane>
+            </SplitterPanes>
         </SfSplitter>
     </div>
 </div>

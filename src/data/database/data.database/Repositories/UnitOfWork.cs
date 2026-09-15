@@ -659,6 +659,28 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(summary);
         }
 
+        public Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct)
+        {
+            int totalCount = _db.Events.AsNoTracking().Count();
+
+            var items = _db.Events.AsNoTracking()
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .ThenBy(e => e.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var result = new PaginatedResult<Event>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
+            return Task.FromResult(result);
+        }
+
         public Task<Event> CreateAsync(Event @event, CancellationToken ct)
         {
             _ = _db.Events.Add(@event);

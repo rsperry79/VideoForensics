@@ -26,11 +26,31 @@ namespace VideoForensics.WebApp.Api
             var group = app.MapGroup("/api/v1/events").RequireAuthorization();
 
             // Event read operations
-            _ = group.MapGet("/", async (IEventRepository events, CancellationToken ct) =>
-                Results.Ok((await events.ListAsync(ct)).Select(x => x.ToDto())))
+            _ = group.MapGet("/", async (
+                int? pageNumber,
+                int? pageSize,
+                IEventRepository events,
+                CancellationToken ct) =>
+            {
+                // If both pageNumber and pageSize are provided, use paginated read
+                if (pageNumber.HasValue && pageSize.HasValue)
+                {
+                    var paginatedResult = await events.ListPaginatedAsync(pageNumber.Value, pageSize.Value, ct);
+                    var paginatedDto = new PaginatedResultDto<EventDto>(
+                        Items: paginatedResult.Items.Select(x => x.ToDto()).ToList(),
+                        TotalCount: paginatedResult.TotalCount,
+                        PageNumber: paginatedResult.PageNumber,
+                        PageSize: paginatedResult.PageSize
+                    );
+                    return Results.Ok(paginatedDto);
+                }
+
+                // Otherwise, return all events (backward compatibility with ListAsync)
+                return Results.Ok((await events.ListAsync(ct)).Select(x => x.ToDto()));
+            })
                 .RequireRateLimiting("media")
                 .WithSummary("List all events")
-                .WithDescription("Retrieves all events from all devices.");
+                .WithDescription("Retrieves all events from all devices. Supports optional pagination via pageNumber and pageSize query parameters (both required for pagination).");
 
             _ = group.MapGet("/{id:guid}", async (Guid id, IEventRepository events, CancellationToken ct) =>
             {

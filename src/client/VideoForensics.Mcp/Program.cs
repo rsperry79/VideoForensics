@@ -1,152 +1,171 @@
-/// <summary>
-/// VideoForensics MCP Server entry point. Initializes 4-phase forensic analysis pipeline.
-///
-/// EXTERNAL DOCUMENTATION:
-/// - E2E testing guide: see _docs_external/E2E_TESTING_GUIDE.md
-/// - Claude Desktop setup: see _docs_external/README_CLAUDE_DESKTOP.md
-/// - Main README: see README.md in this directory
-/// </summary>
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Hosting;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Server;
+
+using VideoForensics.Hosting.ServerDiscovery;
+using VideoForensics.Mcp.ServerDiscovery;
 
 namespace VideoForensics.Mcp
 {
+    /// <summary>
+    /// VideoForensics MCP bridge entry point. This process has no business logic or data access of
+    /// its own — per CLAUDE.md's client/server split rules (which name VideoForensics.Mcp explicitly
+    /// as a "client host" that may not reference providers-common/providers-core/any concrete
+    /// provider/data.*, or bootstrap AddVideoForensicsDataLayer()/AddVideoForensicsServerCore()), it
+    /// is a pure stdio&lt;-&gt;HTTP proxy: every MCP request received over stdio from Claude Desktop is
+    /// forwarded to the server's own MCP tool implementations at VideoForensics.WebApp's /mcp endpoint
+    /// (see VideoForensics.WebApp.Mcp.Tools.*), and the response is relayed back unchanged.
+    ///
+    /// EXTERNAL DOCUMENTATION:
+    /// - E2E testing guide: see _docs_external/E2E_TESTING_GUIDE.md
+    /// - Claude Desktop setup: see _docs_external/README_CLAUDE_DESKTOP.md
+    /// - Main README: see README.md in this directory
+    /// </summary>
     internal class Program
     {
         private static async Task Main(string[] args)
         {
-            string configDir = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics");
-            _ = Directory.CreateDirectory(configDir);
-
-            // Build host with full DI setup
             var builder = Host.CreateApplicationBuilder(args);
             _ = builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-            // Shared data layer + server-tier provider/orchestrator registrations (session provider,
-            // active provider's four services, download/evidence orchestrators, JammingToolsOrchestrator) -
-            // see VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. MCP remains a
-            // server-tier host (it talks to the active provider directly), unaffected by the client/server split
-            // that only applies to the planned MAUI app.
-            // The active provider is read from IConfiguration's "ActiveProvider" setting (from appsettings.json
-            // or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
-            _ = builder.Services.AddVideoForensicsDataLayer();
-            _ = builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
+            // Resolve the server address the same way MAUI does (mDNS first, cached Internet URL as
+            // fallback) - never a client-persisted local address, per CLAUDE.md. A placeholder is used
+            // if resolution fails so the stdio process still starts (Claude Desktop sees a running, if
+            // unreachable, MCP server) rather than crashing outright.
+            var settingsStore = new FileServerLocationSettingsStore();
+            var resolver = new ServerLocationResolver(settingsStore, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServerLocationResolver>.Instance);
+            Uri serverUri;
+            try
+            {
+                serverUri = await resolver.ResolveServerAddressAsync(CancellationToken.None);
+            }
+            catch (ServerNotReachableException)
+            {
+                serverUri = new Uri("https://localhost:5162");
+            }
 
-            // Forensics query repositories (Phases 1-4) - MCP-specific, not shared with other hosts
-            _ = builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
-            _ = builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
-            _ = builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
-            _ = builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
+            // The paired-device bearer token that authorizes this bridge against the server's /mcp
+            // endpoint (VideoForensics.WebApp/Program.cs: app.MapMcp("/mcp").RequireAuthorization()).
+            // Obtained via device-code pairing and stored locally; no config-based placeholder.
+            var apiKeyStore = new FileApiKeyStore();
+            string? apiKey = apiKeyStore.GetApiKey();
 
-            // MCP Tool classes (Phases 1-4)
-            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.TimelineTools>();
-            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.IntegrityTools>();
-            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.CorrelationTools>();
-            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.AuditTrailTools>();
-            _ = builder.Services.AddScoped<VideoForensics.Mcp.Tools.JammingTools>();
+            var loggerFactory = LoggerFactory.Create(lb => lb.SetMinimumLevel(LogLevel.Information));
 
-            // MCP server: stdio transport, attribute-discovered tools/resources
+            if (apiKey is null)
+            {
+                apiKey = await PairViaDeviceCodeAsync(serverUri, loggerFactory.CreateLogger("DeviceCodePairing"), CancellationToken.None);
+                apiKeyStore.SetApiKey(apiKey);
+            }
+
+            var httpClient = new HttpClient { BaseAddress = serverUri };
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            // Create the downstream McpClient that will proxy requests to the server's /mcp endpoint.
+            var httpClientTransportOptions = new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(serverUri, "/mcp")
+            };
+            var httpClientTransport = new HttpClientTransport(httpClientTransportOptions, httpClient, loggerFactory);
+            var downstream = await McpClient.CreateAsync(httpClientTransport, null, loggerFactory, CancellationToken.None);
+
             _ = builder.Services
                 .AddMcpServer()
                 .WithStdioServerTransport()
-                .WithToolsFromAssembly()
-                .WithResourcesFromAssembly();
+                .WithListToolsHandler(async (request, ct) => await downstream.ListToolsAsync(request.Params, ct))
+                .WithCallToolHandler(async (request, ct) => await downstream.CallToolAsync(request.Params, ct))
+                .WithListResourcesHandler(async (request, ct) => await downstream.ListResourcesAsync(request.Params, ct))
+                .WithReadResourceHandler(async (request, ct) => await downstream.ReadResourceAsync(request.Params, ct))
+                .WithListPromptsHandler(async (request, ct) => await downstream.ListPromptsAsync(request.Params, ct))
+                .WithGetPromptHandler(async (request, ct) => await downstream.GetPromptAsync(request.Params, ct));
 
             using var host = builder.Build();
-            var initLogger = host.Services.GetRequiredService<ILogger<Program>>();
+            var logger = host.Services.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("VideoForensics MCP bridge ready, proxying to {ServerUri}", serverUri);
 
-            try
-            {
-                initLogger.LogInformation("Host built successfully. Deferring database initialization...");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"FATAL: Failed to get logger: {ex}");
-                return;
-            }
+            await host.RunAsync();
+        }
 
-            // LAZY: DB init + Events backfill + persisted-config load, in that order, without
-            // blocking MCP startup - see VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync.
-            var initTask = Task.Run(async () =>
+        /// <summary>
+        /// Perform device-code pairing to obtain an API key for authenticating against the server's /mcp endpoint.
+        /// Prints a human-readable verification URI and polls until approved, expired, or deadline exceeded.
+        /// </summary>
+        /// <remarks>
+        /// If pairing fails (expires before approval or deadline exceeded), this method throws an
+        /// InvalidOperationException and the caller lets it propagate, crashing the MCP process.
+        /// Claude Desktop's process-restart/backoff behavior is the right way to surface a failed
+        /// pairing attempt to the human.
+        /// </remarks>
+        private static async Task<string> PairViaDeviceCodeAsync(Uri serverUri, ILogger logger, CancellationToken ct)
+        {
+            using var httpClient = new HttpClient();
+
+            // Step 1: Request a device code
+            var deviceCodeEndpoint = new Uri(serverUri, "/api/v1/pairing/device-code");
+            using var deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(""), ct);
+            deviceCodeResponse.EnsureSuccessStatusCode();
+
+            var deviceCodeContent = await deviceCodeResponse.Content.ReadAsStringAsync(ct);
+            using var deviceCodeDoc = JsonDocument.Parse(deviceCodeContent);
+            var deviceCodeRoot = deviceCodeDoc.RootElement;
+
+            string deviceCode = deviceCodeRoot.GetProperty("deviceCode").GetString()
+                ?? throw new InvalidOperationException("Device code response missing 'deviceCode'");
+            string userCode = deviceCodeRoot.GetProperty("userCode").GetString()
+                ?? throw new InvalidOperationException("Device code response missing 'userCode'");
+            string verificationUri = deviceCodeRoot.GetProperty("verificationUri").GetString()
+                ?? throw new InvalidOperationException("Device code response missing 'verificationUri'");
+            int expiresInSeconds = deviceCodeRoot.GetProperty("expiresInSeconds").GetInt32();
+            int intervalSeconds = deviceCodeRoot.GetProperty("intervalSeconds").GetInt32();
+
+            // Combine server URI with the relative verification URI to form an absolute URL
+            var absoluteVerificationUri = new Uri(serverUri, verificationUri.TrimStart('/'));
+            var verificationUrl = $"{absoluteVerificationUri}?code={userCode}";
+
+            // Log the verification instruction
+            logger.LogInformation("To authorize this MCP bridge, open {VerificationUrl} in a browser and approve it (code expires in {ExpiresInSeconds}s).",
+                verificationUrl, expiresInSeconds);
+
+            // Step 2: Poll for approval
+            var pollEndpoint = new Uri(serverUri, $"/api/v1/pairing/device-code/{deviceCode}/poll");
+            var deadline = DateTime.UtcNow.AddSeconds(expiresInSeconds);
+
+            while (DateTime.UtcNow < deadline)
             {
-                try
+                await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
+
+                using var pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(""), ct);
+                var pollContent = await pollResponse.Content.ReadAsStringAsync(ct);
+
+                using var pollDoc = JsonDocument.Parse(pollContent);
+                var pollRoot = pollDoc.RootElement;
+
+                string status = pollRoot.GetProperty("status").GetString()
+                    ?? throw new InvalidOperationException("Poll response missing 'status'");
+
+                if (status == "approved")
                 {
-                    await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(host.Services, initLogger, CancellationToken.None);
-                    initLogger.LogInformation("Deferred initialization (DB, Events backfill, config) completed.");
+                    string apiKey = pollRoot.GetProperty("apiKey").GetString()
+                        ?? throw new InvalidOperationException("Approved response missing 'apiKey'");
+                    logger.LogInformation("Device-code pairing approved; obtained API key.");
+                    return apiKey;
                 }
-                catch (Exception ex)
+
+                if (status == "expired")
                 {
-                    initLogger.LogCritical(ex, "Deferred initialization failed.");
+                    throw new InvalidOperationException("Device-code pairing expired before it was approved.");
                 }
-            });
 
-            initLogger.LogInformation("Database initialization started in background. MCP server can respond to requests immediately.");
-
-            initLogger.LogInformation("VideoForensics MCP Server ready.");
-            initLogger.LogInformation("All 4 forensics query phases initialized with optimization:");
-            initLogger.LogInformation("  ✓ Phase 1: Timeline & Patterns (8 methods + summary + pagination)");
-            initLogger.LogInformation("  ✓ Phase 2: Evidence Integrity (10 methods + summary + pagination)");
-            initLogger.LogInformation("  ✓ Phase 3: Correlation Queries (7 methods + summary + pagination)");
-            initLogger.LogInformation("  ✓ Phase 4: Access & Export Audit (9 methods + summary + pagination)");
-            initLogger.LogInformation("");
-            initLogger.LogInformation("OPTIMIZATIONS ENABLED:");
-            initLogger.LogInformation("  • Summary + Detail-on-Demand: Fast decisions via lightweight summaries");
-            initLogger.LogInformation("  • Pagination: Offset-based (PaginatedResult) and cursor-based (CursorPaginatedResult)");
-            initLogger.LogInformation("  • Parallel Queries: All 4 phases can be called simultaneously without blocking");
-            initLogger.LogInformation("  • Streaming Ready: Cursor-paginated results support incremental data flow");
-            initLogger.LogInformation("");
-            initLogger.LogInformation("PARALLEL QUERY PATTERN:");
-            initLogger.LogInformation("  await Task.WhenAll(");
-            initLogger.LogInformation("    timelineRepo.GetTimelineSummaryAsync(...),");
-            initLogger.LogInformation("    integrityRepo.GetIntegritySummaryAsync(...),");
-            initLogger.LogInformation("    correlationRepo.GetCorrelationSummaryAsync(...),");
-            initLogger.LogInformation("    auditRepo.GetAuditTrailSummaryAsync(...)");
-            initLogger.LogInformation("  )");
-
-            // Note: Database optimization via PRAGMA optimize; is handled by DatabaseInitializer during migrations.
-            // Diagnostics-based maintenance has been deferred to avoid blocking MCP initialization.
-
-            try
-            {
-                initLogger.LogInformation("Initializing MCP server with attribute-based tool/resource discovery...");
-                // MCP server uses attribute-based discovery for tools and resources
-                // All classes marked with [McpServerToolType] or [McpServerResourceType] are auto-registered
-                // The framework handles stdio transport and lifecycle automatically
-                initLogger.LogInformation("MCP Server configured and ready");
-            }
-            catch (Exception ex)
-            {
-                initLogger.LogError(ex, "FATAL: MCP server configuration failed");
-                Console.Error.WriteLine($"MCP CONFIG ERROR: {ex}");
-                throw;
+                // status == "pending", keep polling
             }
 
-            initLogger.LogInformation("All tool classes (Timeline, Integrity, Correlation, Audit, Jamming) configured with [McpServerToolType]");
-            initLogger.LogInformation("Resource: jamming-analysis-instructions configured with [McpServerResourceType]");
-            initLogger.LogInformation("");
-            initLogger.LogInformation("MCP server runs on stdio transport when invoked by Claude Desktop via claude_desktop_config.json");
-            initLogger.LogInformation("Configured tools use dependency injection to access repositories and loggers");
-            initLogger.LogInformation("=== MCP SERVER READY FOR CONNECTIONS ===");
-
-            try
-            {
-                // Runs all hosted services, including the MCP stdio transport, until shutdown
-                await host.RunAsync();
-            }
-            catch (Exception ex)
-            {
-                initLogger.LogError(ex, "FATAL: Unexpected error in main loop");
-                Console.Error.WriteLine($"FATAL MAIN LOOP ERROR: {ex}");
-                throw;
-            }
+            throw new InvalidOperationException("Device-code pairing expired before it was approved.");
         }
     }
 }

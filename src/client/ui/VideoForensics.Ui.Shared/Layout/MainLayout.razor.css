@@ -46,34 +46,25 @@
 }
 
 /* Splitter pane styling */
-.splitter-left-nav,
-.splitter-left-nav-collapsed {
-    border-right: 1px solid var(--rz-border-color, #e0e0e0);
-}
-
 .splitter-left-nav {
+    border-right: 1px solid var(--rz-border-color, #e0e0e0);
     padding: 0.5rem;
     overflow-y: auto;
 }
 
-.splitter-left-nav-collapsed {
-    padding: 0.5rem 0.25rem;
+.splitter-content-wrapper {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    overflow: hidden;
 }
 
-.left-nav-toggle-collapsed {
+/* Plain flex row: page-body | resize handle | right-panel-fixed. Not a Syncfusion Splitter -
+   see the comment above this markup in MainLayout.razor for why. */
+.content-wrapper {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.splitter-page-body {
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
 }
 
@@ -84,10 +75,24 @@
     overflow-y: auto;
 }
 
-.splitter-right-panel {
+.right-panel-handle {
+    flex: 0 0 6px;
+    width: 6px;
+    cursor: col-resize;
+    background-color: transparent;
+}
+
+.right-panel-handle:hover {
+    background-color: var(--rz-border-color, #e0e0e0);
+}
+
+.right-panel-fixed {
     border-left: 1px solid var(--rz-border-color, #e0e0e0);
     padding: 1rem;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
 }
 
 .left-nav-items {
@@ -108,11 +113,7 @@
     gap: 0.5rem;
 }
 
-/* Syncfusion Splitter theme adjustments */
-:global(.e-splitter-layout) {
-    background-color: var(--vf-bg-color);
-}
-
-:global(.e-splitter-layout .e-splitter-bar) {
-    background-color: var(--vf-border-color);
-}
+/* Syncfusion Splitter theme + row-reverse overrides live in wwwroot/app.css, not here - Blazor CSS
+   isolation has no ":global(...)" escape (that's a CSS-modules/webpack convention); it just treats
+   an unrecognized selector as literal text and still appends this file's scope attribute after it,
+   so a rule written that way silently never matches the Syncfusion-JS-rendered splitter markup. */

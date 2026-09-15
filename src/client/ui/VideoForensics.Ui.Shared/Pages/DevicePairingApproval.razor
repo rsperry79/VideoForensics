@@ -1,0 +1,171 @@
+@page "/pair/device"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using System.Web
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<DevicePairingApproval> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToApprove"]
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-2">
+        <span>@L["Instructions"]</span>
+
+        <div>
+            <label>@L["UserCodeLabel"]</label>
+            <SfTextBox @bind-Value="_userCode" Placeholder="@L["UserCodePlaceholder"]" />
+        </div>
+
+        <div>
+            <label>@L["DeviceNameLabel"]</label>
+            <SfTextBox @bind-Value="_deviceName" Placeholder="@L["DeviceNamePlaceholder"]" />
+        </div>
+
+        <div>
+            <label>@L["RoleLabel"]</label>
+            <SfDropDownList @bind-Value="_selectedRole" DataSource="@_availableRoles" TValue="OperatorRole" TItem="RoleOption">
+                <DropDownListFieldSettings Text="DisplayName" Value="Value"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+
+        <SfButton Content="@(_isApproving ? L["ApprovingButton"] : L["ApproveButton"])" OnClick="ApproveAsync" CssClass="e-primary" Disabled="@(_isApproving || string.IsNullOrWhiteSpace(_userCode) || string.IsNullOrWhiteSpace(_deviceName))" />
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        @if (_successMessage is not null)
+        {
+            <div class="alert alert-success">@_successMessage</div>
+        }
+    </div>
+}
+
+@code {
+    private sealed record RoleOption(string DisplayName, OperatorRole Value);
+
+    private string _userCode = string.Empty;
+    private string _deviceName = "MCP Bridge";
+    private OperatorRole _selectedRole = OperatorRole.ReadOnly;
+    private bool _isApproving;
+    private string? _error;
+    private string? _successMessage;
+
+    private List<RoleOption> _availableRoles = new()
+    {
+        new RoleOption("Read Only", OperatorRole.ReadOnly),
+        new RoleOption("Review", OperatorRole.Review),
+        new RoleOption("Admin", OperatorRole.Admin),
+        new RoleOption("SuperAdmin", OperatorRole.SuperAdmin)
+    };
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+        var code = query["code"];
+        if (!string.IsNullOrEmpty(code))
+        {
+            _userCode = code;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_userCode) || string.IsNullOrWhiteSpace(_deviceName))
+        {
+            return;
+        }
+
+        if (SessionState.SessionToken is null)
+        {
+            _error = L["SignInFirstError"];
+            return;
+        }
+
+        _isApproving = true;
+        _error = null;
+        _successMessage = null;
+        try
+        {
+            var client = CreateClient();
+            var request = new { DeviceName = _deviceName.Trim(), Role = _selectedRole };
+            var response = await client.PostAsJsonAsync($"api/v1/pairing/device-code/{_userCode.Trim()}/approve", request);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                _error = L["NotAuthorizedMessage"];
+                return;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _error = L["CodeExpiredMessage"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = await SafeReadErrorAsync(response);
+                _error = errorMsg ?? L["ApprovalError", response.StatusCode];
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(JsonOptions);
+            var role = body.GetProperty("role").GetString();
+            _successMessage = L["SuccessMessage", role];
+        }
+        catch (Exception ex)
+        {
+            _error = L["ApprovalFailed", ex.Message];
+        }
+        finally
+        {
+            _isApproving = false;
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+        return client;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}
