@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Api.Contracts;
+using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 
@@ -10,7 +11,7 @@ namespace VideoForensics.Client.Core.Tools
     /// Orchestrates Ring self-test runs, managing their lifecycle and state. Ensures only one
     /// run executes at a time (EndpointRegistry's ambient state is not thread-safe for concurrent runs).
     /// </summary>
-    public class RingSelfTestOrchestrator
+    public class RingSelfTestOrchestrator : IRingSelfTestOrchestrator
     {
         private readonly ILogger<RingSelfTestOrchestrator> _logger;
         private readonly ISessionProvider _sessionProvider;

@@ -155,7 +155,7 @@ namespace VideoForensics.Client.Core.Utilities
                 return "Unknown";
             }
 
-            char[] invalidChars = Path.GetInvalidPathChars();
+            char[] invalidChars = Path.GetInvalidFileNameChars();
             string sanitized = new(segment
                 .Where(c => !invalidChars.Contains(c) && c != ':' && c != '|' && c != '?')
                 .ToArray());
