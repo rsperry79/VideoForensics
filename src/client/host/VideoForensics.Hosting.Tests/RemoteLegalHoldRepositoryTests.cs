@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
+
 using Xunit;
 
 namespace VideoForensics.Hosting.Tests;
@@ -60,10 +62,10 @@ public class RemoteLegalHoldRepositoryTests
     public async Task PlaceAsync_WithValidMediaItemAndReason_CallsCorrectEndpointAndReturnsMappedLegalHold()
     {
         var mediaItemId = Guid.NewGuid();
-        var reason = "pending investigation";
-        var createdBy = "officer-smith";
-        var responseDto = TestData.CreateDto(mediaItemId: mediaItemId);
-        var jsonContent = JsonSerializer.Serialize(responseDto);
+        string reason = "pending investigation";
+        string createdBy = "officer-smith";
+        LegalHoldDto responseDto = TestData.CreateDto(mediaItemId: mediaItemId);
+        string jsonContent = JsonSerializer.Serialize(responseDto);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -79,7 +81,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        var result = await repo.PlaceAsync(mediaItemId, reason, createdBy, CancellationToken.None);
+        LegalHold result = await repo.PlaceAsync(mediaItemId, reason, createdBy, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(mediaItemId, result.MediaItemId);
@@ -102,14 +104,14 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => repo.PlaceAsync(mediaItemId, "reason", "officer", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.PlaceAsync(mediaItemId, "reason", "officer", CancellationToken.None));
     }
 
     [Fact]
     public async Task PlaceAsync_WithNullResponse_Throws()
     {
         var mediaItemId = Guid.NewGuid();
-        var jsonContent = JsonSerializer.Serialize((LegalHoldDto?)null);
+        string jsonContent = JsonSerializer.Serialize((LegalHoldDto?)null);
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -123,15 +125,15 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => repo.PlaceAsync(mediaItemId, "reason", "officer", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() => repo.PlaceAsync(mediaItemId, "reason", "officer", CancellationToken.None));
     }
 
     [Fact]
     public async Task ReleaseAsync_WithValidLegalHoldId_CallsCorrectEndpoint()
     {
         var legalHoldId = Guid.NewGuid();
-        var releaseReason = "investigation concluded";
-        var releasedBy = "officer-jones";
+        string releaseReason = "investigation concluded";
+        string releasedBy = "officer-jones";
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -163,7 +165,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => repo.ReleaseAsync(legalHoldId, "officer", "reason", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.ReleaseAsync(legalHoldId, "officer", "reason", CancellationToken.None));
     }
 
     [Fact]
@@ -171,14 +173,14 @@ public class RemoteLegalHoldRepositoryTests
     {
         var mediaItemId1 = Guid.NewGuid();
         var mediaItemId2 = Guid.NewGuid();
-        var mediaItemIds = new[] { mediaItemId1, mediaItemId2 };
+        Guid[] mediaItemIds = new[] { mediaItemId1, mediaItemId2 };
 
-        var dtos = new[]
+        LegalHoldDto[] dtos = new[]
         {
             TestData.CreateDto(mediaItemId: mediaItemId1),
             TestData.CreateDto(mediaItemId: mediaItemId2)
         };
-        var jsonContent = JsonSerializer.Serialize(dtos);
+        string jsonContent = JsonSerializer.Serialize(dtos);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -194,7 +196,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        var result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<LegalHold> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -208,8 +210,8 @@ public class RemoteLegalHoldRepositoryTests
     [Fact]
     public async Task GetActiveByMediaItemIdsAsync_WithEmptyResponse_ReturnsEmptyList()
     {
-        var mediaItemIds = new[] { Guid.NewGuid() };
-        var jsonContent = JsonSerializer.Serialize(new List<LegalHoldDto>());
+        Guid[] mediaItemIds = new[] { Guid.NewGuid() };
+        string jsonContent = JsonSerializer.Serialize(new List<LegalHoldDto>());
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -223,7 +225,7 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        var result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<LegalHold> result = await repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);
@@ -232,7 +234,7 @@ public class RemoteLegalHoldRepositoryTests
     [Fact]
     public async Task GetActiveByMediaItemIdsAsync_WithServerError_Throws()
     {
-        var mediaItemIds = new[] { Guid.NewGuid() };
+        Guid[] mediaItemIds = new[] { Guid.NewGuid() };
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -242,6 +244,6 @@ public class RemoteLegalHoldRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteLegalHoldRepository(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None));
     }
 }

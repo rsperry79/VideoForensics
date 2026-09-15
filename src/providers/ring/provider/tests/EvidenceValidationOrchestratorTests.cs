@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
@@ -194,7 +193,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerDeviceId = "ring-device-123";
+            string providerDeviceId = "ring-device-123";
             DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
             DateTime toUtc = DateTime.UtcNow;
 
@@ -245,7 +244,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerDeviceId = "ring-device-123";
+            string providerDeviceId = "ring-device-123";
             DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
             DateTime toUtc = DateTime.UtcNow;
             var fixedTime = new DateTime(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
@@ -305,7 +304,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerDeviceId = "ring-device-123";
+            string providerDeviceId = "ring-device-123";
             DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
             DateTime toUtc = DateTime.UtcNow;
 
@@ -354,7 +353,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            var providerDeviceId = "ring-device-123";
+            string providerDeviceId = "ring-device-123";
             DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
             DateTime toUtc = DateTime.UtcNow;
             DateTime eventTime = DateTime.UtcNow.AddHours(-2);

@@ -160,7 +160,7 @@ namespace VideoForensics.Providers.Ring
             // Check each schema property
             foreach (JsonPropertyInfo schemaProp in schemaProperties)
             {
-                var jsonPropName = schemaProp.JsonName;
+                string jsonPropName = schemaProp.JsonName;
                 _ = usedSchemaProps.Add(jsonPropName);
 
                 if (jsonObj.TryGetProperty(jsonPropName, out JsonElement jsonProp))
@@ -172,7 +172,7 @@ namespace VideoForensics.Providers.Ring
 
             // Check for extra fields in JSON not in schema
             IEnumerable<string> extraJsonProps = jsonProps.Except(usedSchemaProps);
-            foreach (var extra in extraJsonProps)
+            foreach (string extra in extraJsonProps)
             {
                 issues.Add(new SchemaIssue
                 {
@@ -221,7 +221,7 @@ namespace VideoForensics.Providers.Ring
             foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 JsonPropertyNameAttribute? jsonAttr = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
-                var jsonName = jsonAttr?.Name ?? prop.Name;
+                string jsonName = jsonAttr?.Name ?? prop.Name;
                 props.Add(new JsonPropertyInfo { JsonName = jsonName, PropertyType = prop.PropertyType });
             }
 

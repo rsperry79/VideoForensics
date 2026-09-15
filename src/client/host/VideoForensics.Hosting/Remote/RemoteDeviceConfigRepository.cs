@@ -30,6 +30,7 @@ namespace VideoForensics.Hosting.Remote
             {
                 return null;
             }
+
             DeviceConfigSnapshotDto? dto = await response.Content.ReadFromJsonAsync<DeviceConfigSnapshotDto>(JsonOptions, ct);
             return dto?.ToDomain();
         }
@@ -39,12 +40,12 @@ namespace VideoForensics.Hosting.Remote
         {
             var request = new
             {
-                DeviceId = snapshot.DeviceId,
-                MotionDetectionEnabled = snapshot.MotionDetectionEnabled,
-                MotionSensitivity = snapshot.MotionSensitivity,
-                RecordingMode = snapshot.RecordingMode,
-                CustomSettingsJson = snapshot.CustomSettingsJson,
-                CapturedAtUtc = snapshot.CapturedAtUtc,
+                snapshot.DeviceId,
+                snapshot.MotionDetectionEnabled,
+                snapshot.MotionSensitivity,
+                snapshot.RecordingMode,
+                snapshot.CustomSettingsJson,
+                snapshot.CapturedAtUtc,
                 Source = snapshot.Source.ToString()
             };
 
@@ -62,6 +63,7 @@ namespace VideoForensics.Hosting.Remote
             {
                 return null;
             }
+
             DeviceConfigSnapshotDto? dto = await response.Content.ReadFromJsonAsync<DeviceConfigSnapshotDto>(JsonOptions, ct);
             return dto?.ToDomain();
         }

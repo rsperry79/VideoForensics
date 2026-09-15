@@ -22,14 +22,14 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapSelfTestEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/selftest").RequireAuthorization();
+            RouteGroupBuilder group = app.MapGroup("/api/v1/selftest").RequireAuthorization();
 
             // List all available self-test endpoints.
             _ = group.MapGet("/", async (
                 IRingSelfTestService selfTestService,
                 CancellationToken ct) =>
             {
-                var endpoints = await selfTestService.ListEndpointsAsync(ct);
+                IReadOnlyList<SelfTestEndpointDto> endpoints = await selfTestService.ListEndpointsAsync(ct);
                 return Results.Ok(endpoints);
             })
             .WithSummary("List self-test endpoints")
@@ -48,11 +48,11 @@ namespace VideoForensics.WebApp.Api
                 // the same asymmetric narrowing pattern.
                 if (request.Destructive)
                 {
-                    var roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
-                    var tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+                    string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
+                    string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
 
-                    bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role >= OperatorRole.SuperAdmin;
-                    bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local;
+                    bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= OperatorRole.SuperAdmin;
+                    bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
 
                     if (!isSuperAdmin || !isLocal)
                     {
@@ -62,7 +62,7 @@ namespace VideoForensics.WebApp.Api
                     }
                 }
 
-                var result = await selfTestService.StartRunAsync(request, ct);
+                SelfTestRunResponseDto result = await selfTestService.StartRunAsync(request, ct);
                 return result.Accepted
                     ? Results.Accepted(null, result)
                     : Results.Conflict(result);
@@ -76,7 +76,7 @@ namespace VideoForensics.WebApp.Api
                 IRingSelfTestService selfTestService,
                 CancellationToken ct) =>
             {
-                var status = await selfTestService.GetStatusAsync(ct);
+                SelfTestStatusDto status = await selfTestService.GetStatusAsync(ct);
                 return Results.Ok(status);
             })
             .WithSummary("Get self-test run status")
@@ -87,7 +87,7 @@ namespace VideoForensics.WebApp.Api
                 IRingSelfTestService selfTestService,
                 CancellationToken ct) =>
             {
-                var result = await selfTestService.GetResultAsync(ct);
+                SelfTestResultDto? result = await selfTestService.GetResultAsync(ct);
                 return result == null
                     ? Results.NoContent()
                     : Results.Ok(result);

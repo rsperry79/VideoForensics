@@ -9,8 +9,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var session1 = service.CreateSession();
-            var session2 = service.CreateSession();
+            DeviceCodePairingSession session1 = service.CreateSession();
+            DeviceCodePairingSession session2 = service.CreateSession();
 
             Assert.NotEqual(session1.DeviceCode, session2.DeviceCode);
             Assert.NotEqual(session1.UserCode, session2.UserCode);
@@ -21,7 +21,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
 
             Assert.Equal(DeviceCodePairingStatus.Pending, session.Status);
         }
@@ -30,9 +30,9 @@ namespace VideoForensics.Hosting.Tests
         public void GetByUserCode_WithValidCode_ReturnsSession()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
 
-            var retrieved = service.GetByUserCode(session.UserCode);
+            DeviceCodePairingSession? retrieved = service.GetByUserCode(session.UserCode);
 
             Assert.NotNull(retrieved);
             Assert.Equal(session.UserCode, retrieved!.UserCode);
@@ -44,7 +44,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var retrieved = service.GetByUserCode("UNKNOWNCODE");
+            DeviceCodePairingSession? retrieved = service.GetByUserCode("UNKNOWNCODE");
 
             Assert.Null(retrieved);
         }
@@ -53,9 +53,9 @@ namespace VideoForensics.Hosting.Tests
         public void GetByDeviceCode_WithValidCode_ReturnsSession()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
 
-            var retrieved = service.GetByDeviceCode(session.DeviceCode);
+            DeviceCodePairingSession? retrieved = service.GetByDeviceCode(session.DeviceCode);
 
             Assert.NotNull(retrieved);
             Assert.Equal(session.DeviceCode, retrieved!.DeviceCode);
@@ -67,7 +67,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var retrieved = service.GetByDeviceCode("unknown-device-code");
+            DeviceCodePairingSession? retrieved = service.GetByDeviceCode("unknown-device-code");
 
             Assert.Null(retrieved);
         }
@@ -76,11 +76,11 @@ namespace VideoForensics.Hosting.Tests
         public void TryApprove_WithValidPendingSession_ReturnsTrueAndSetsApprovedStatus()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
             const string apiKey = "test-api-key-123";
 
-            var result = service.TryApprove(session.UserCode, apiKey);
-            var retrievedAfter = service.GetByUserCode(session.UserCode);
+            bool result = service.TryApprove(session.UserCode, apiKey);
+            DeviceCodePairingSession? retrievedAfter = service.GetByUserCode(session.UserCode);
 
             Assert.True(result);
             Assert.NotNull(retrievedAfter);
@@ -93,7 +93,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var result = service.TryApprove("UNKNOWNCODE", "some-api-key");
+            bool result = service.TryApprove("UNKNOWNCODE", "some-api-key");
 
             Assert.False(result);
         }
@@ -102,20 +102,20 @@ namespace VideoForensics.Hosting.Tests
         public void TryApprove_WhenAlreadyApproved_ReturnsFalse()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
             const string firstKey = "first-api-key";
             const string secondKey = "second-api-key";
 
             // First approval should succeed
-            var firstResult = service.TryApprove(session.UserCode, firstKey);
+            bool firstResult = service.TryApprove(session.UserCode, firstKey);
             Assert.True(firstResult);
 
             // Second approval with different key should fail
-            var secondResult = service.TryApprove(session.UserCode, secondKey);
+            bool secondResult = service.TryApprove(session.UserCode, secondKey);
             Assert.False(secondResult);
 
             // ApiKey should still be the first one
-            var retrieved = service.GetByUserCode(session.UserCode);
+            DeviceCodePairingSession? retrieved = service.GetByUserCode(session.UserCode);
             Assert.Equal(firstKey, retrieved!.ApiKey);
         }
 
@@ -123,18 +123,18 @@ namespace VideoForensics.Hosting.Tests
         public void TryConsumeApiKey_AfterApproval_ReturnsKeyExactlyOnce()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
             const string apiKey = "test-api-key-456";
 
-            service.TryApprove(session.UserCode, apiKey);
+            _ = service.TryApprove(session.UserCode, apiKey);
 
             // First consume should return the key
-            var firstConsume = service.TryConsumeApiKey(session.DeviceCode);
+            string? firstConsume = service.TryConsumeApiKey(session.DeviceCode);
             Assert.NotNull(firstConsume);
             Assert.Equal(apiKey, firstConsume);
 
             // Second consume should return null (key was cleared)
-            var secondConsume = service.TryConsumeApiKey(session.DeviceCode);
+            string? secondConsume = service.TryConsumeApiKey(session.DeviceCode);
             Assert.Null(secondConsume);
         }
 
@@ -142,9 +142,9 @@ namespace VideoForensics.Hosting.Tests
         public void TryConsumeApiKey_WhenStillPending_ReturnsNull()
         {
             var service = new DeviceCodePairingService();
-            var session = service.CreateSession();
+            DeviceCodePairingSession session = service.CreateSession();
 
-            var result = service.TryConsumeApiKey(session.DeviceCode);
+            string? result = service.TryConsumeApiKey(session.DeviceCode);
 
             Assert.Null(result);
         }
@@ -154,7 +154,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new DeviceCodePairingService();
 
-            var result = service.TryConsumeApiKey("unknown-device-code");
+            string? result = service.TryConsumeApiKey("unknown-device-code");
 
             Assert.Null(result);
         }

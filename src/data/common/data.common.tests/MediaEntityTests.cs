@@ -17,15 +17,15 @@ public class MediaEntityTests
         string filePath = "/path/to/video.mp4";
         string mediaFormat = "video/mp4";
         long fileSizeBytes = 1024000L;
-        var recordedAtUtc = DateTime.UtcNow.AddHours(-2);
-        var downloadedAtUtc = DateTime.UtcNow;
+        DateTime recordedAtUtc = DateTime.UtcNow.AddHours(-2);
+        DateTime downloadedAtUtc = DateTime.UtcNow;
         string sha256Hash = "abc123def456";
         string videoCodec = "h264";
         string audioCodec = "aac";
         string resolution = "1920x1080";
         decimal frameRate = 30.0m;
         bool integrityVerified = true;
-        var lastVerifiedAtUtc = DateTime.UtcNow;
+        DateTime lastVerifiedAtUtc = DateTime.UtcNow;
         bool isPurged = false;
 
         // Act
@@ -112,7 +112,7 @@ public class MediaEntityTests
     public void MediaItem_WhenPurged_ContainsPurgeMetadata()
     {
         // Arrange
-        var purgedAtUtc = DateTime.UtcNow;
+        DateTime purgedAtUtc = DateTime.UtcNow;
         string purgeReason = "Retention policy expired";
 
         // Act
@@ -155,10 +155,10 @@ public class MediaEntityTests
         string eventType = "motion";
         bool answered = true;
         bool favorite = false;
-        var eventOccurredAtUtc = DateTime.UtcNow.AddHours(-1);
+        DateTime eventOccurredAtUtc = DateTime.UtcNow.AddHours(-1);
         string recordingStatus = "ready";
-        var downloadStartedUtc = DateTime.UtcNow.AddMinutes(-30);
-        var downloadCompletedUtc = DateTime.UtcNow;
+        DateTime downloadStartedUtc = DateTime.UtcNow.AddMinutes(-30);
+        DateTime downloadCompletedUtc = DateTime.UtcNow;
         bool success = true;
         int attemptCount = 1;
         string appVersion = "1.0.0";
@@ -240,7 +240,7 @@ public class MediaEntityTests
         int wifiSignalRssi = -45;
         string wifiName = "HomeNetwork";
         string firmwareVersion = "2.8.32";
-        var capturedAtUtc = DateTime.UtcNow;
+        DateTime capturedAtUtc = DateTime.UtcNow;
 
         // Act
         var snapshot = new DeviceHealth

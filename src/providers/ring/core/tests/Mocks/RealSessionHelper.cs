@@ -32,19 +32,19 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         private static IServiceProvider BuildServiceProvider()
         {
             var services = new ServiceCollection();
-            services.AddLogging();
+            _ = services.AddLogging();
 
             // Same fixed key-ring location and DAPI protection (Windows-only) as every other host -
             // must match, or a refresh token saved by one host can't be decrypted by another.
             string dataProtectionKeyPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
             _ = Directory.CreateDirectory(dataProtectionKeyPath);
-            var dataProtectionBuilder = services.AddDataProtection()
+            IDataProtectionBuilder dataProtectionBuilder = services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
                 .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
             if (OperatingSystem.IsWindows())
             {
-                dataProtectionBuilder.ProtectKeysWithDpapi();
+                _ = dataProtectionBuilder.ProtectKeysWithDpapi();
             }
 
             _ = services.AddVideoForensicsDataLayer();
@@ -63,8 +63,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         {
             IServiceProvider sp = ServiceProviderLazy.Value;
             using IServiceScope scope = sp.CreateScope();
-            var authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
-            var sessionProvider = sp.GetRequiredService<ISessionProvider>();
+            IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+            ISessionProvider sessionProvider = sp.GetRequiredService<ISessionProvider>();
 
             bool restored;
             try
@@ -78,13 +78,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                     $"They may be stale or invalid.\n{SetupPointer}\nUnderlying error: {ex.Message}", ex);
             }
 
-            if (!restored)
-            {
-                throw new InvalidOperationException(
-                    $"Ring API credentials not found in database.\n{SetupPointer}");
-            }
-
-            return sessionProvider.GetSession()
+            return !restored
+                ? throw new InvalidOperationException(
+                    $"Ring API credentials not found in database.\n{SetupPointer}")
+                : sessionProvider.GetSession()
                 ?? throw new InvalidOperationException(
                     $"Credentials restored but no session was established.\n{SetupPointer}");
         }
@@ -110,7 +107,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             {
                 IServiceProvider sp = ServiceProviderLazy.Value;
                 using IServiceScope scope = sp.CreateScope();
-                var authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+                IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
                 return authService.RestoreFromSavedCredentialsAsync().GetAwaiter().GetResult();
             }
             catch
@@ -148,8 +145,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             {
                 IServiceProvider sp = ServiceProviderLazy.Value;
                 using IServiceScope scope = sp.CreateScope();
-                var authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
-                var sessionProvider = sp.GetRequiredService<ISessionProvider>();
+                IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+                ISessionProvider sessionProvider = sp.GetRequiredService<ISessionProvider>();
                 bool restored = authService.RestoreFromSavedCredentialsAsync().GetAwaiter().GetResult();
                 return restored ? sessionProvider.GetSession()?.OAuthToken?.RefreshToken : null;
             }

@@ -44,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
                 PersonDetected = true
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result);
             Assert.Equal(MetadataStatus.Valid, result.Status);
@@ -104,7 +104,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
 
-            var result = _writer.WriteMetadata(nonExistentPath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(nonExistentPath, metadata);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
             Assert.False(result.IsValid);
@@ -121,7 +121,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var metadata = new SnapshotMetadata { DeviceName = "Test" };
-                var result = _writer.WriteMetadata(invalidPath, metadata);
+                MetadataWriteResult result = _writer.WriteMetadata(invalidPath, metadata);
 
                 Assert.Equal(MetadataStatus.Failed, result.Status);
                 Assert.False(result.IsValid);
@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { PersonDetected = true };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(result.DurationMs >= 0);
             Assert.True(result.ProcessedAt <= DateTime.UtcNow);
@@ -161,7 +161,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = new SnapshotMetadata { DeviceName = "Test Camera" };
 
-            var result = await _writer.WriteMetadataAsync(_testFilePath, metadata);
+            MetadataWriteResult result = await _writer.WriteMetadataAsync(_testFilePath, metadata);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
 
-            var result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
+            MetadataWriteResult result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
         }
@@ -188,7 +188,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
-            var result = _writer.ValidateImage(_testFilePath);
+            MetadataWriteResult result = _writer.ValidateImage(_testFilePath);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -201,7 +201,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         {
             string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
 
-            var result = _writer.ValidateImage(nonExistentPath);
+            MetadataWriteResult result = _writer.ValidateImage(nonExistentPath);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
             Assert.False(result.IsValid);
@@ -215,7 +215,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             try
             {
-                var result = _writer.ValidateImage(invalidPath);
+                MetadataWriteResult result = _writer.ValidateImage(invalidPath);
 
                 Assert.Equal(MetadataStatus.Corrupt, result.Status);
                 Assert.False(result.IsValid);
@@ -252,7 +252,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             byte[] jpegHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
-            var result = await _writer.ValidateImageAsync(_testFilePath);
+            MetadataWriteResult result = await _writer.ValidateImageAsync(_testFilePath);
 
             Assert.Equal(MetadataStatus.Valid, result.Status);
             Assert.True(result.IsValid);
@@ -263,7 +263,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         {
             string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.jpg");
 
-            var result = await _writer.ValidateImageAsync(nonExistentPath);
+            MetadataWriteResult result = await _writer.ValidateImageAsync(nonExistentPath);
 
             Assert.Equal(MetadataStatus.Failed, result.Status);
         }
@@ -284,7 +284,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
                 EventType = "person"
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result.PhotoPrismTags);
             Assert.True(result.PhotoPrismTags.Contains("person"));
@@ -302,7 +302,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
                 EventType = "motion"
             };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.NotNull(result.PhotoPrismTags);
             Assert.True(result.PhotoPrismTags.Contains("motion"));
@@ -316,7 +316,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 
             var metadata = new SnapshotMetadata { DeviceName = "Inactive Camera" };
 
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             bool hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
             Assert.True(hasRelevantTags);
@@ -335,7 +335,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var metadata = new SnapshotMetadata { DeviceName = "Test" };
-                var result = _writer.WriteMetadata(jpegPath, metadata);
+                MetadataWriteResult result = _writer.WriteMetadata(jpegPath, metadata);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
@@ -356,7 +356,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var metadata = new SnapshotMetadata { DeviceName = "Test" };
-                var result = _writer.WriteMetadata(pngPath, metadata);
+                MetadataWriteResult result = _writer.WriteMetadata(pngPath, metadata);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
@@ -377,7 +377,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             try
             {
                 var metadata = new SnapshotMetadata { DeviceName = "Test" };
-                var result = _writer.WriteMetadata(webpPath, metadata);
+                MetadataWriteResult result = _writer.WriteMetadata(webpPath, metadata);
                 Assert.Equal(MetadataStatus.Valid, result.Status);
             }
             finally
@@ -400,7 +400,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             Assert.True(result.DurationMs < 1000, "Operation should complete in less than 1 second");
         }
@@ -412,9 +412,9 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
             _fileSystem.File.WriteAllBytes(_testFilePath, jpegHeader);
 
             var metadata = new SnapshotMetadata { DeviceName = "Test" };
-            var beforeTime = DateTime.UtcNow;
-            var result = _writer.WriteMetadata(_testFilePath, metadata);
-            var afterTime = DateTime.UtcNow;
+            DateTime beforeTime = DateTime.UtcNow;
+            MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
+            DateTime afterTime = DateTime.UtcNow;
 
             Assert.True(result.ProcessedAt >= beforeTime, "ProcessedAt should be after operation start");
             Assert.True(result.ProcessedAt <= afterTime.AddSeconds(1), "ProcessedAt should be close to operation end");

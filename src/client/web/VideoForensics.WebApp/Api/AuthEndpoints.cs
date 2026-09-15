@@ -25,7 +25,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapAuthEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/auth");
+            RouteGroupBuilder group = app.MapGroup("/api/v1/auth");
 
             _ = group.MapPost("/login", LoginAsync)
                 .RequireRateLimiting("auth")
@@ -98,7 +98,7 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             // Retrieve stored credentials for this attempt
-            var attempt = attemptCache.GetAndRemoveAttempt(request.AuthAttemptId);
+            (string? ProviderName, string? Username, string? Password)? attempt = attemptCache.GetAndRemoveAttempt(request.AuthAttemptId);
             if (attempt == null)
             {
                 return Results.BadRequest(new AuthResultDto(
@@ -117,13 +117,16 @@ namespace VideoForensics.WebApp.Api
             try
             {
                 // Create a callback that returns the user's 2FA code
-                Func<Task<string>> codeProvider = () => Task.FromResult(request.Code);
+                Task<string> codeProvider()
+                {
+                    return Task.FromResult(request.Code);
+                }
 
                 // Attempt authentication with 2FA code
                 AuthResult result = await resolvedAuthService.AuthenticateWithTwoFactorAsync(
                     username,
                     password,
-                    codeProvider,
+codeProvider,
                     ct);
 
                 return Results.Ok(MapAuthResult(result));

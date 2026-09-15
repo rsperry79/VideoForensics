@@ -18,12 +18,9 @@ namespace VideoForensics.Client.Core.Utilities
         /// <returns>The parsed DateTime if successful; null if the string is null, empty, or unparseable.</returns>
         public static DateTime? TryParseDate(string? dateString)
         {
-            if (string.IsNullOrWhiteSpace(dateString))
-            {
-                return null;
-            }
-
-            return DateTime.TryParseExact(dateString, SupportedDateFormats,
+            return string.IsNullOrWhiteSpace(dateString)
+                ? null
+                : DateTime.TryParseExact(dateString, SupportedDateFormats,
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result)
                 ? result
                 : null;

@@ -47,7 +47,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json
         public void Deserialize_WithValidJson_ReturnsObject()
         {
             string json = """{"Name":"test","Value":42}""";
-            var result = _serializer.Deserialize<TestObject>(json);
+            TestObject? result = _serializer.Deserialize<TestObject>(json);
 
             Assert.NotNull(result);
             Assert.Equal("test", result.Name);
@@ -59,7 +59,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json
         public void Deserialize_WithInvalidJson_ReturnsNull()
         {
             string json = "{ invalid json";
-            var result = _serializer.Deserialize<TestObject>(json);
+            TestObject? result = _serializer.Deserialize<TestObject>(json);
 
             Assert.Null(result);
         }
@@ -69,7 +69,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json
         {
             string json = """{"Name":"test","Value":42}""";
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            var result = _serializer.Deserialize<TestObject>(bytes);
+            TestObject? result = _serializer.Deserialize<TestObject>(bytes);
 
             Assert.NotNull(result);
             Assert.Equal("test", result.Name);
@@ -81,7 +81,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Json
         {
             var original = new TestObject("roundtrip", 99, "optional_value");
             string json = _serializer.Serialize(original);
-            var deserialized = _serializer.Deserialize<TestObject>(json);
+            TestObject? deserialized = _serializer.Deserialize<TestObject>(json);
 
             Assert.NotNull(deserialized);
             Assert.Equal(original.Name, deserialized.Name);

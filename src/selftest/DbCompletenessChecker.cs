@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
             if (devices?.Doorbots != null)
             {
-                foreach (var d in devices.Doorbots)
+                foreach (Doorbot d in devices.Doorbots)
                 {
                     AddDevice("Doorbot", d.Id.ToString(), d.Description);
                 }
@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
             if (devices?.StickupCams != null)
             {
-                foreach (var d in devices.StickupCams.Where(d => d.Id.HasValue))
+                foreach (StickupCam? d in devices.StickupCams.Where(d => d.Id.HasValue))
                 {
                     AddDevice("StickupCam", d.Id!.Value.ToString(), d.Description);
                 }
@@ -103,7 +103,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             if (devices?.AuthorizedDoorbots != null)
             {
                 var alreadySeen = new HashSet<string>(report.Devices.Select(x => x.ProviderId), StringComparer.Ordinal);
-                foreach (var d in devices.AuthorizedDoorbots.Where(d => !alreadySeen.Contains(d.Id.ToString())))
+                foreach (Doorbot? d in devices.AuthorizedDoorbots.Where(d => !alreadySeen.Contains(d.Id.ToString())))
                 {
                     AddDevice("AuthorizedDoorbot", d.Id.ToString(), d.Description);
                 }
@@ -113,7 +113,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             // RingDeviceDiscoveryService.GetDevicesAsync) so they show up here like any other device.
             if (devices?.Chimes != null)
             {
-                foreach (var c in devices.Chimes)
+                foreach (Chime c in devices.Chimes)
                 {
                     AddDevice("Chime", c.Id.ToString(), c.Description);
                 }
@@ -121,7 +121,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
             if (locations != null)
             {
-                foreach (var l in locations.Where(l => l.Id.HasValue))
+                foreach (Location? l in locations.Where(l => l.Id.HasValue))
                 {
                     string providerId = l.Id!.Value.ToString();
                     report.Locations.Add(new DbCompletenessRecord

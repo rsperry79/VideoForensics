@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 
 using Moq;
 
+using System.Security.Claims;
 using System.Text.Encodings.Web;
 
 using VideoForensics.Data.Common.Contracts;
@@ -32,8 +32,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var options = new Mock<IOptionsMonitor<AuthenticationSchemeOptions>>();
             _ = options.Setup(o => o.Get(It.IsAny<string>())).Returns(new AuthenticationSchemeOptions());
-            var loggerFactory = LoggerFactory.Create(b => { });
-            var encoder = UrlEncoder.Default;
+            ILoggerFactory loggerFactory = LoggerFactory.Create(b => { });
+            UrlEncoder encoder = UrlEncoder.Default;
             return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, tierResolver.Object);
         }
 
@@ -60,11 +60,11 @@ namespace VideoForensics.WebApp.Tests
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
             var context = new DefaultHttpContext();
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);
@@ -85,7 +85,7 @@ namespace VideoForensics.WebApp.Tests
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
-            tokenService.Setup(t => t.Validate("valid-token")).Returns(principal);
+            _ = tokenService.Setup(t => t.Validate("valid-token")).Returns(principal);
 
             var device = new PairedDevice
             {
@@ -95,19 +95,19 @@ namespace VideoForensics.WebApp.Tests
                 Role = OperatorRole.Admin,
                 PairedAtUtc = DateTime.UtcNow
             };
-            repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
-            tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("valid-token");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("valid-token");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.True(result.Succeeded);
             Assert.NotNull(result.Ticket);
-            var principal_ = result.Ticket.Principal;
+            ClaimsPrincipal principal_ = result.Ticket.Principal;
             Assert.Contains(principal_.Claims, c => c.Type == VideoForensicsClaimTypes.OperatorId && c.Value == operatorId.ToString());
             Assert.Contains(principal_.Claims, c => c.Type == VideoForensicsClaimTypes.PairedDeviceId && c.Value == pairedDeviceId.ToString());
             Assert.Contains(principal_.Claims, c => c.Type == VideoForensicsClaimTypes.Role && c.Value == OperatorRole.Admin.ToString());
@@ -126,7 +126,7 @@ namespace VideoForensics.WebApp.Tests
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
-            tokenService.Setup(t => t.Validate("revoked-token")).Returns(principal);
+            _ = tokenService.Setup(t => t.Validate("revoked-token")).Returns(principal);
 
             var device = new PairedDevice
             {
@@ -137,13 +137,13 @@ namespace VideoForensics.WebApp.Tests
                 PairedAtUtc = DateTime.UtcNow,
                 RevokedAtUtc = DateTime.UtcNow.AddMinutes(-5)
             };
-            repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("revoked-token");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("revoked-token");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);
@@ -163,14 +163,14 @@ namespace VideoForensics.WebApp.Tests
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
-            tokenService.Setup(t => t.Validate("unknown-token")).Returns(principal);
-            repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
+            _ = tokenService.Setup(t => t.Validate("unknown-token")).Returns(principal);
+            _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("unknown-token");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("unknown-token");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);
@@ -187,7 +187,7 @@ namespace VideoForensics.WebApp.Tests
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
-            tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
+            _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
 
             var device = new PairedDevice
             {
@@ -197,19 +197,19 @@ namespace VideoForensics.WebApp.Tests
                 Role = OperatorRole.Review,
                 PairedAtUtc = DateTime.UtcNow
             };
-            repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
-            tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
+            _ = repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("some-api-key");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("some-api-key");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.True(result.Succeeded);
             Assert.NotNull(result.Ticket);
-            var principal = result.Ticket.Principal;
+            ClaimsPrincipal principal = result.Ticket.Principal;
             Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.OperatorId && c.Value == operatorId.ToString());
             Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.PairedDeviceId && c.Value == pairedDeviceId.ToString());
             Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.Role && c.Value == OperatorRole.Review.ToString());
@@ -224,14 +224,14 @@ namespace VideoForensics.WebApp.Tests
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
-            tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
-            repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
+            _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
+            _ = repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("invalid-api-key");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("invalid-api-key");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);
@@ -249,7 +249,7 @@ namespace VideoForensics.WebApp.Tests
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
-            tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
+            _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
 
             var device = new PairedDevice
             {
@@ -260,13 +260,13 @@ namespace VideoForensics.WebApp.Tests
                 PairedAtUtc = DateTime.UtcNow,
                 RevokedAtUtc = DateTime.UtcNow.AddHours(-1)
             };
-            repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAuthorizationHeader("revoked-api-key");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader("revoked-api-key");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);
@@ -286,7 +286,7 @@ namespace VideoForensics.WebApp.Tests
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.SuperAdmin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
-            tokenService.Setup(t => t.Validate("signalr-token")).Returns(principal);
+            _ = tokenService.Setup(t => t.Validate("signalr-token")).Returns(principal);
 
             var device = new PairedDevice
             {
@@ -296,19 +296,19 @@ namespace VideoForensics.WebApp.Tests
                 Role = OperatorRole.SuperAdmin,
                 PairedAtUtc = DateTime.UtcNow
             };
-            repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
-            tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAccessTokenQuery("signalr-token", "/hubs/notifications");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAccessTokenQuery("signalr-token", "/hubs/notifications");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.True(result.Succeeded);
             Assert.NotNull(result.Ticket);
-            var principal_ = result.Ticket.Principal;
+            ClaimsPrincipal principal_ = result.Ticket.Principal;
             Assert.Contains(principal_.Claims, c => c.Type == VideoForensicsClaimTypes.Role && c.Value == OperatorRole.SuperAdmin.ToString());
             tokenService.Verify(t => t.Validate("signalr-token"), Times.Once);
         }
@@ -321,14 +321,14 @@ namespace VideoForensics.WebApp.Tests
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
 
-            tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
-            repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
+            _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
+            _ = repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
 
-            var handler = CreateHandler(tokenService, repo, tierResolver);
-            var context = CreateHttpContextWithAccessTokenQuery("query-token", "/api/devices");
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            HttpContext context = CreateHttpContextWithAccessTokenQuery("query-token", "/api/devices");
 
             // Act
-            var result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
 
             // Assert
             Assert.False(result.Succeeded);

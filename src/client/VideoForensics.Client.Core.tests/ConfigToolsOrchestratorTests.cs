@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using VideoForensics.Client.Common;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -31,10 +33,10 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetRetentionDaysAsync(config, 0);
+            (bool Success, string Message) = await _orchestrator.SetRetentionDaysAsync(config, 0);
 
-            Assert.False(result.Success);
-            Assert.Contains("greater than 0", result.Message);
+            Assert.False(Success);
+            Assert.Contains("greater than 0", Message);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -45,9 +47,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetRetentionDaysAsync(config, 30, CancellationToken.None);
+            (bool Success, string Message) = await _orchestrator.SetRetentionDaysAsync(config, 30, CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal(30, config.RetentionDaysDefault);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(config, CancellationToken.None),
@@ -59,10 +61,10 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetMaxConcurrentDownloadsAsync(config, 0);
+            (bool Success, string Message) = await _orchestrator.SetMaxConcurrentDownloadsAsync(config, 0);
 
-            Assert.False(result.Success);
-            Assert.Contains("at least 1", result.Message);
+            Assert.False(Success);
+            Assert.Contains("at least 1", Message);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -73,9 +75,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetMaxConcurrentDownloadsAsync(config, 5, CancellationToken.None);
+            (bool Success, string Message) = await _orchestrator.SetMaxConcurrentDownloadsAsync(config, 5, CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal(5, config.MaxConcurrentDownloads);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(config, CancellationToken.None),
@@ -86,13 +88,13 @@ namespace VideoForensics.Client.Core.Tests
         public async Task SetDownloadLocationAsync_CreatesDirectoryAndSaves()
         {
             var config = new ForensicsConfiguration();
-            var tempDir = Path.Combine(Path.GetTempPath(), $"videoforensics-test-{Guid.NewGuid()}");
+            string tempDir = Path.Combine(Path.GetTempPath(), $"videoforensics-test-{Guid.NewGuid()}");
 
             try
             {
-                var result = await _orchestrator.SetDownloadLocationAsync(config, tempDir, CancellationToken.None);
+                (bool Success, string Message) = await _orchestrator.SetDownloadLocationAsync(config, tempDir, CancellationToken.None);
 
-                Assert.True(result.Success);
+                Assert.True(Success);
                 Assert.Equal(tempDir, config.DownloadLocation);
                 Assert.True(Directory.Exists(tempDir));
                 _configServiceMock.Verify(
@@ -102,7 +104,9 @@ namespace VideoForensics.Client.Core.Tests
             finally
             {
                 if (Directory.Exists(tempDir))
+                {
                     Directory.Delete(tempDir);
+                }
             }
         }
 
@@ -110,12 +114,12 @@ namespace VideoForensics.Client.Core.Tests
         public async Task SetReportEnabledAsync_AcceptsValidReportTypes()
         {
             var config = new ForensicsConfiguration { EnableForensicAnalysisReports = false };
-            var reportTypes = new[] { "ForensicAnalysis", "SignalAnomaly", "ChainOfCustody", "EvidenceValidation", "AccessControl" };
+            string[] reportTypes = new[] { "ForensicAnalysis", "SignalAnomaly", "ChainOfCustody", "EvidenceValidation", "AccessControl" };
 
-            foreach (var reportType in reportTypes)
+            foreach (string? reportType in reportTypes)
             {
-                var result = await _orchestrator.SetReportEnabledAsync(config, reportType, true, CancellationToken.None);
-                Assert.True(result.Success, $"Report type {reportType} should be valid");
+                (bool Success, _) = await _orchestrator.SetReportEnabledAsync(config, reportType, true, CancellationToken.None);
+                Assert.True(Success, $"Report type {reportType} should be valid");
             }
         }
 
@@ -124,10 +128,10 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetReportEnabledAsync(config, "InvalidReport", true);
+            (bool Success, string Message) = await _orchestrator.SetReportEnabledAsync(config, "InvalidReport", true);
 
-            Assert.False(result.Success);
-            Assert.Contains("Unknown report type", result.Message);
+            Assert.False(Success);
+            Assert.Contains("Unknown report type", Message);
         }
 
         [Fact]
@@ -135,9 +139,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration { RedactionLevel = RedactionLevel.None };
 
-            var result = await _orchestrator.SetRedactionLevelAsync(config, RedactionLevel.Heavy, CancellationToken.None);
+            (bool Success, string Message) = await _orchestrator.SetRedactionLevelAsync(config, RedactionLevel.Heavy, CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal(RedactionLevel.Heavy, config.RedactionLevel);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(config, CancellationToken.None),
@@ -149,9 +153,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration { KeyStorageProvider = KeyStorageProvider.Auto };
 
-            var result = await _orchestrator.SetKeyStorageProviderAsync(config, KeyStorageProvider.Tpm, CancellationToken.None);
+            (bool Success, string Message) = await _orchestrator.SetKeyStorageProviderAsync(config, KeyStorageProvider.Tpm, CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal(KeyStorageProvider.Tpm, config.KeyStorageProvider);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(config, CancellationToken.None),
@@ -163,9 +167,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetLoggingLevelAsync(config, "Debug", CancellationToken.None);
+            (bool Success, string Message) = await _orchestrator.SetLoggingLevelAsync(config, "Debug", CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal("Debug", config.LogLevel);
             _configServiceMock.Verify(
                 s => s.SaveConfigurationAsync(config, CancellationToken.None),
@@ -180,9 +184,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetReportFormatAsync(config, format, CancellationToken.None);
+            (bool Success, _) = await _orchestrator.SetReportFormatAsync(config, format, CancellationToken.None);
 
-            Assert.True(result.Success);
+            Assert.True(Success);
             Assert.Equal(format, config.ReportOutputFormat);
         }
 
@@ -191,10 +195,10 @@ namespace VideoForensics.Client.Core.Tests
         {
             var config = new ForensicsConfiguration();
 
-            var result = await _orchestrator.SetReportFormatAsync(config, "invalid");
+            (bool Success, string Message) = await _orchestrator.SetReportFormatAsync(config, "invalid");
 
-            Assert.False(result.Success);
-            Assert.Contains("json, xml, or csv", result.Message);
+            Assert.False(Success);
+            Assert.Contains("json, xml, or csv", Message);
         }
 
         [Fact]
@@ -203,32 +207,37 @@ namespace VideoForensics.Client.Core.Tests
             // Uses the downloadDirOverride/dbPathOverride parameters to point at throwaway temp
             // paths - FactoryResetAsync's defaults are the REAL production download folder and the
             // REAL live application database, and must never be exercised by a test.
-            var downloadDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-{Guid.NewGuid():N}");
-            var dbDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-Db-{Guid.NewGuid():N}");
-            var dbPath = Path.Combine(dbDir, "videoforensics.db");
+            string downloadDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-{Guid.NewGuid():N}");
+            string dbDir = Path.Combine(Path.GetTempPath(), $"VideoForensics-FactoryResetTest-Db-{Guid.NewGuid():N}");
+            string dbPath = Path.Combine(dbDir, "videoforensics.db");
 
             try
             {
                 // Create test directories and files
-                Directory.CreateDirectory(downloadDir);
-                Directory.CreateDirectory(dbDir);
+                _ = Directory.CreateDirectory(downloadDir);
+                _ = Directory.CreateDirectory(dbDir);
                 File.WriteAllText(dbPath, "test");
 
                 Assert.True(Directory.Exists(downloadDir));
                 Assert.True(File.Exists(dbPath));
 
-                var result = await _orchestrator.FactoryResetAsync(downloadDirOverride: downloadDir, dbPathOverride: dbPath);
+                (bool Success, string Message) = await _orchestrator.FactoryResetAsync(downloadDirOverride: downloadDir, dbPathOverride: dbPath);
 
-                Assert.True(result.Success);
+                Assert.True(Success);
                 Assert.False(Directory.Exists(downloadDir));
                 Assert.False(File.Exists(dbPath));
             }
             finally
             {
                 if (Directory.Exists(downloadDir))
+                {
                     Directory.Delete(downloadDir, recursive: true);
+                }
+
                 if (Directory.Exists(dbDir))
+                {
                     Directory.Delete(dbDir, recursive: true);
+                }
             }
         }
     }

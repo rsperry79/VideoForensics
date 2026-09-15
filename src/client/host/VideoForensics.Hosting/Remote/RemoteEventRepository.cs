@@ -39,6 +39,7 @@ namespace VideoForensics.Hosting.Remote
             {
                 return null;
             }
+
             _ = response.EnsureSuccessStatusCode();
             EventDto? dto = await response.Content.ReadFromJsonAsync<EventDto>(JsonOptions, ct);
             return dto?.ToDomain();
@@ -125,7 +126,7 @@ namespace VideoForensics.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
             Dictionary<string, int>? summary = await response.Content.ReadFromJsonAsync<Dictionary<string, int>>(JsonOptions, ct);
-            return summary ?? new Dictionary<string, int>();
+            return summary ?? [];
         }
 
         /// <inheritdoc />
@@ -152,7 +153,7 @@ namespace VideoForensics.Hosting.Remote
             string url = $"/api/v1/events?pageNumber={pageNumber}&pageSize={pageSize}";
             HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
             _ = response.EnsureSuccessStatusCode();
-            var paginatedDto = await response.Content.ReadFromJsonAsync<PaginatedResultDto<EventDto>>(JsonOptions, ct);
+            PaginatedResultDto<EventDto>? paginatedDto = await response.Content.ReadFromJsonAsync<PaginatedResultDto<EventDto>>(JsonOptions, ct);
 
             return new PaginatedResult<Event>
             {

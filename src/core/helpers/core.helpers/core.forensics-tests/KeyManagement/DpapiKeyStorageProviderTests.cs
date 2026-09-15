@@ -1,11 +1,10 @@
+using System.Text;
+
+using VideoForensics.Forensics.Exceptions;
+using VideoForensics.Forensics.KeyManagement;
+
 namespace VideoForensics.Forensics.Tests.KeyManagement
 {
-    using System;
-    using System.Text;
-    using VideoForensics.Forensics.Exceptions;
-    using VideoForensics.Forensics.KeyManagement;
-    using Xunit;
-
     public class DpapiKeyStorageProviderTests
     {
         private readonly DpapiKeyStorageProvider _provider = new();
@@ -28,7 +27,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GenerateKeyPairAsync_Always_ThrowsForensicAnalysisException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.GenerateKeyPairAsync("test-key"));
         }
 
@@ -36,7 +35,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetPublicKeyAsync_Always_ThrowsForensicAnalysisException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.GetPublicKeyAsync("test-key"));
         }
 
@@ -47,7 +46,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             byte[] data = Encoding.UTF8.GetBytes("Test data");
 
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.SignDataAsync("test-key", data));
         }
 
@@ -59,7 +58,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             string signature = "test-signature";
 
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.VerifySignatureAsync("test-key", data, signature));
         }
 
@@ -67,7 +66,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task DeleteKeyAsync_Always_ThrowsForensicAnalysisException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.DeleteKeyAsync("test-key", "officer-001"));
         }
 
@@ -75,7 +74,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task ListKeysAsync_Always_ReturnsEmptyList()
         {
             // Act
-            var keys = await _provider.ListKeysAsync();
+            IEnumerable<string> keys = await _provider.ListKeysAsync();
 
             // Assert
             Assert.Empty(keys);
@@ -88,7 +87,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             string keyId = "test-key";
 
             // Act
-            var metadata = await _provider.GetKeyMetadataAsync(keyId);
+            KeyMetadata metadata = await _provider.GetKeyMetadataAsync(keyId);
 
             // Assert
             Assert.NotNull(metadata);
@@ -100,7 +99,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task ExceptionMessages_AreInformative()
         {
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
+            ForensicAnalysisException exception = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
                 await _provider.GenerateKeyPairAsync("test-key"));
 
             Assert.Contains("DPAPI", exception.Message);

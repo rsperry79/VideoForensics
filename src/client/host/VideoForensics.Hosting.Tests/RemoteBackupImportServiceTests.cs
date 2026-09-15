@@ -1,8 +1,10 @@
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -12,7 +14,7 @@ namespace VideoForensics.Hosting.Tests
 
         public RemoteBackupImportServiceTests()
         {
-            Directory.CreateDirectory(_tempDirectory);
+            _ = Directory.CreateDirectory(_tempDirectory);
         }
 
         ~RemoteBackupImportServiceTests()
@@ -34,9 +36,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithValidZipFile_SendsMultipartRequest()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup.zip");
-            var mediaRootPath = "/media/root";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup.zip");
+            string mediaRootPath = "/media/root";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -63,7 +65,7 @@ namespace VideoForensics.Hosting.Tests
                     ErrorMessage: null
                 );
 
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -76,7 +78,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act
-            var result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
+            BackupImportResult result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -87,7 +89,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(100, result.Events.Inserted);
             Assert.Equal(50, result.DownloadEvents.Inserted);
             Assert.Equal(75, result.MediaItems.Inserted);
-            Assert.Single(result.Details);
+            _ = Assert.Single(result.Details);
             Assert.Equal("Import complete", result.Details[0]);
 
             Assert.NotNull(capturedRequest);
@@ -97,8 +99,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithMissingZipFile_ThrowsFileNotFoundException()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "nonexistent-backup.zip");
-            var mediaRootPath = "/media/root";
+            string zipFilePath = Path.Combine(_tempDirectory, "nonexistent-backup.zip");
+            string mediaRootPath = "/media/root";
 
             var handler = new FakeHttpMessageHandler(async _ =>
             {
@@ -109,7 +111,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<FileNotFoundException>(
+            FileNotFoundException ex = await Assert.ThrowsAsync<FileNotFoundException>(
                 () => service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None));
             Assert.Contains(zipFilePath, ex.Message);
         }
@@ -118,9 +120,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithHttpError_ThrowsHttpRequestException()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-error.zip");
-            var mediaRootPath = "/media/root";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-error.zip");
+            string mediaRootPath = "/media/root";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -136,7 +138,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None));
         }
 
@@ -144,9 +146,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithNullJsonResponse_ThrowsInvalidOperationException()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-null.zip");
-            var mediaRootPath = "/media/root";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-null.zip");
+            string mediaRootPath = "/media/root";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -162,7 +164,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None));
             Assert.Contains("null import result", ex.Message);
         }
@@ -171,9 +173,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithFailedImportResult_ReturnsFailureResult()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-failed.zip");
-            var mediaRootPath = "/media/root";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-failed.zip");
+            string mediaRootPath = "/media/root";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -191,7 +193,7 @@ namespace VideoForensics.Hosting.Tests
 
             var handler = new FakeHttpMessageHandler(async request =>
             {
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -202,13 +204,13 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act
-            var result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
+            BackupImportResult result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.False(result.Success);
             Assert.Equal("Archive is corrupted", result.ErrorMessage);
-            Assert.Single(result.Details);
+            _ = Assert.Single(result.Details);
             Assert.Equal("Import failed due to corrupted archive", result.Details[0]);
         }
 
@@ -216,9 +218,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_IncludesMediaRootPathInRequest()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-media.zip");
-            var mediaRootPath = "/custom/media/path";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-media.zip");
+            string mediaRootPath = "/custom/media/path";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -227,7 +229,7 @@ namespace VideoForensics.Hosting.Tests
                 Assert.NotNull(request.Content);
 
                 // Copy the multipart content for inspection
-                var contentStr = await request.Content!.ReadAsStringAsync();
+                string contentStr = await request.Content!.ReadAsStringAsync();
                 Assert.Contains(mediaRootPath, contentStr);
 
                 var expectedDto = new BackupImportResultDto(
@@ -242,7 +244,7 @@ namespace VideoForensics.Hosting.Tests
                     ErrorMessage: null
                 );
 
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -253,7 +255,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act
-            var result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
+            BackupImportResult result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -264,11 +266,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithLargeZipFile_TransfersSuccessfully()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-large.zip");
-            var mediaRootPath = "/media/root";
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-large.zip");
+            string mediaRootPath = "/media/root";
 
             // Create a larger file (1 MB)
-            var largeZipContent = new byte[1024 * 1024];
+            byte[] largeZipContent = new byte[1024 * 1024];
             for (int i = 0; i < largeZipContent.Length; i++)
             {
                 largeZipContent[i] = (byte)(i % 256);
@@ -295,7 +297,7 @@ namespace VideoForensics.Hosting.Tests
                     ErrorMessage: null
                 );
 
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -306,12 +308,12 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupImportService(httpClient);
 
             // Act
-            var result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
+            BackupImportResult result = await service.ImportBackupAsync(zipFilePath, mediaRootPath, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
-            Assert.Single(result.Details);
+            _ = Assert.Single(result.Details);
             Assert.Equal("Large file imported", result.Details[0]);
         }
 
@@ -319,9 +321,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ImportBackupAsync_WithCancellationToken_PropagatesCancellation()
         {
             // Arrange
-            var zipFilePath = Path.Combine(_tempDirectory, "test-backup-cancel.zip");
-            var mediaRootPath = "/media/root";
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string zipFilePath = Path.Combine(_tempDirectory, "test-backup-cancel.zip");
+            string mediaRootPath = "/media/root";
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             File.WriteAllBytes(zipFilePath, zipContent);
 
@@ -349,18 +351,16 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteBackupImportService(httpClient);
 
-            using (var cts = new CancellationTokenSource())
-            {
-                // Act
-                var task = service.ImportBackupAsync(zipFilePath, mediaRootPath, cts.Token);
+            using var cts = new CancellationTokenSource();
+            // Act
+            Task<BackupImportResult> task = service.ImportBackupAsync(zipFilePath, mediaRootPath, cts.Token);
 
-                // Note: We can't easily test cancellation without a slow handler, but we can
-                // verify that the token is accepted by the method signature
-                var result = await task;
+            // Note: We can't easily test cancellation without a slow handler, but we can
+            // verify that the token is accepted by the method signature
+            BackupImportResult result = await task;
 
-                // Assert
-                Assert.NotNull(result);
-            }
+            // Assert
+            Assert.NotNull(result);
         }
 
         /// <summary>
@@ -383,12 +383,7 @@ namespace VideoForensics.Hosting.Tests
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                if (_asyncHandler != null)
-                {
-                    return await _asyncHandler(request);
-                }
-
-                return _handler(request);
+                return _asyncHandler != null ? await _asyncHandler(request) : _handler(request);
             }
         }
     }

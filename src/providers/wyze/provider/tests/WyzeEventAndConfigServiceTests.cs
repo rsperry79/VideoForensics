@@ -62,7 +62,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             );
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device123", config);
+            bool result = await service.UpdateDeviceConfigAsync("device123", config);
 
             // Assert
             Assert.False(result);
@@ -129,7 +129,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             );
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device456", config);
+            bool result = await service.UpdateDeviceConfigAsync("device456", config);
 
             // Assert
             Assert.False(result);

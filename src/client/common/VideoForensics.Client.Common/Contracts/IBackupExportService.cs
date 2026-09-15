@@ -7,7 +7,7 @@ namespace VideoForensics.Client.Common.Contracts
         public int Backfilled { get; set; }
         public int MissingMedia { get; set; }
         public int MissingSidecarUnrecoverable { get; set; }
-        public List<string> Details { get; set; } = new();
+        public List<string> Details { get; set; } = [];
     }
 
     /// <summary>Result of exporting the database to a JSON+zip backup archive.</summary>

@@ -82,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             transport.OnMessageSent = sent =>
             {
                 JsonElement root = JsonDocument.Parse(sent).RootElement;
-                var msgType = root.GetProperty("msg").GetProperty("msg").GetString();
+                string? msgType = root.GetProperty("msg").GetProperty("msg").GetString();
                 if (msgType == "DeviceInfoDocGetList")
                 {
                     transport.Enqueue(@"{ ""channel"": ""message"", ""msg"": ""DeviceInfoDocGetList"", ""body"": [ { ""zid"": ""panel-1"", ""deviceType"": ""security-panel"" } ] }");

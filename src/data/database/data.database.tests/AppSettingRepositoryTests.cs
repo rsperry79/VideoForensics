@@ -1,3 +1,4 @@
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -64,7 +65,7 @@ namespace VideoForensics.Data.Database.Tests
             await repository.SetAsync("Key2", "Value2", CancellationToken.None);
             await repository.SetAsync("Key3", "Value3", CancellationToken.None);
 
-            var settings = await repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<AppSetting> settings = await repository.ListAsync(CancellationToken.None);
             Assert.Equal(3, settings.Count);
             Assert.Contains(settings, s => s.Key == "Key1" && s.Value == "Value1");
             Assert.Contains(settings, s => s.Key == "Key2" && s.Value == "Value2");
@@ -104,7 +105,7 @@ namespace VideoForensics.Data.Database.Tests
             await repository.SetAsync("Key2", "Value2", CancellationToken.None);
             await repository.ClearAllAsync(CancellationToken.None);
 
-            var settings = await repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<AppSetting> settings = await repository.ListAsync(CancellationToken.None);
             Assert.Empty(settings);
         }
 
@@ -113,12 +114,12 @@ namespace VideoForensics.Data.Database.Tests
         {
             await ClearSettingsAsync();
             var repository = new AppSettingRepository(_fixture.Factory);
-            var beforeTime = DateTime.UtcNow;
+            DateTime beforeTime = DateTime.UtcNow;
 
             await repository.SetAsync("TestKey", "TestValue", CancellationToken.None);
 
-            var settings = await repository.ListAsync(CancellationToken.None);
-            var setting = Assert.Single(settings);
+            IReadOnlyList<AppSetting> settings = await repository.ListAsync(CancellationToken.None);
+            AppSetting setting = Assert.Single(settings);
             Assert.True(setting.UpdatedAtUtc >= beforeTime);
             Assert.True(setting.UpdatedAtUtc <= DateTime.UtcNow.AddSeconds(1));
         }
@@ -130,14 +131,14 @@ namespace VideoForensics.Data.Database.Tests
             var repository = new AppSettingRepository(_fixture.Factory);
 
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
-            var settings1 = await repository.ListAsync(CancellationToken.None);
-            var updatedAt1 = settings1.First().UpdatedAtUtc;
+            IReadOnlyList<AppSetting> settings1 = await repository.ListAsync(CancellationToken.None);
+            DateTime updatedAt1 = settings1.First().UpdatedAtUtc;
 
             await Task.Delay(100); // Ensure time passes
 
             await repository.SetAsync("TestKey", "Value2", CancellationToken.None);
-            var settings2 = await repository.ListAsync(CancellationToken.None);
-            var updatedAt2 = settings2.First().UpdatedAtUtc;
+            IReadOnlyList<AppSetting> settings2 = await repository.ListAsync(CancellationToken.None);
+            DateTime updatedAt2 = settings2.First().UpdatedAtUtc;
 
             Assert.True(updatedAt2 > updatedAt1);
         }
@@ -149,14 +150,14 @@ namespace VideoForensics.Data.Database.Tests
             var repository = new AppSettingRepository(_fixture.Factory);
 
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
-            var settings1 = await repository.ListAsync(CancellationToken.None);
-            var updatedAt1 = settings1.First().UpdatedAtUtc;
+            IReadOnlyList<AppSetting> settings1 = await repository.ListAsync(CancellationToken.None);
+            DateTime updatedAt1 = settings1.First().UpdatedAtUtc;
 
             await Task.Delay(50);
 
             // Re-setting the same value should be a no-op - no write, no UpdatedAtUtc change.
             await repository.SetAsync("TestKey", "Value1", CancellationToken.None);
-            var settings2 = await repository.ListAsync(CancellationToken.None);
+            IReadOnlyList<AppSetting> settings2 = await repository.ListAsync(CancellationToken.None);
 
             _ = Assert.Single(settings2);
             Assert.Equal(updatedAt1, settings2.First().UpdatedAtUtc);

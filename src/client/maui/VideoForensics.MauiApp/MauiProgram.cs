@@ -8,15 +8,13 @@ using Microsoft.Extensions.Logging;
 
 using Syncfusion.Blazor;
 
-using System.Diagnostics;
-using System.Net.Http;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
+using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.MauiApp
 {
@@ -37,13 +35,13 @@ namespace VideoForensics.MauiApp
                 .GetResult();
 #endif
 
-            var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
+            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
             if (File.Exists(syncfusionLicenseKeyPath))
             {
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
             }
 
-            var builder = Microsoft.Maui.Hosting.MauiApp.CreateBuilder();
+            MauiAppBuilder builder = Microsoft.Maui.Hosting.MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
@@ -58,9 +56,9 @@ namespace VideoForensics.MauiApp
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
             // lands under %ProgramData%/VideoForensics/logs, matching the console app's pattern
             // (src/client/VideoForensics/Program.cs).
-            var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
             Directory.CreateDirectory(configDir);
-            var logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
+            string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);
             builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
 
@@ -82,9 +80,9 @@ namespace VideoForensics.MauiApp
             // is safe.
             builder.Services.AddSingleton<IHostEnvironment>(new FixedHostEnvironment(configDir));
 
-            var dataProtectionKeyPath = Path.Combine(configDir, "keys");
+            string dataProtectionKeyPath = Path.Combine(configDir, "keys");
             Directory.CreateDirectory(dataProtectionKeyPath);
-            var mauiDataProtectionBuilder = builder.Services.AddDataProtection()
+            IDataProtectionBuilder mauiDataProtectionBuilder = builder.Services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
                 .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
             // DPAPI encrypts the key-ring file at rest but is Windows-only; this app also targets
@@ -107,8 +105,8 @@ namespace VideoForensics.MauiApp
             builder.Services.AddSingleton<IServerLocationSettingsStore, MauiServerLocationSettingsStore>();
             builder.Services.AddSingleton<IServerLocationResolver>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<ServerLocationResolver>>();
-                var settingsStore = sp.GetRequiredService<IServerLocationSettingsStore>();
+                ILogger<ServerLocationResolver> logger = sp.GetRequiredService<ILogger<ServerLocationResolver>>();
+                IServerLocationSettingsStore settingsStore = sp.GetRequiredService<IServerLocationSettingsStore>();
                 return new ServerLocationResolver(settingsStore, logger);
             });
 
@@ -201,7 +199,7 @@ namespace VideoForensics.MauiApp
             builder.Logging.AddDebug();
 #endif
 
-            var app = builder.Build();
+            Microsoft.Maui.Hosting.MauiApp app = builder.Build();
 
             // Start the live hub connection for real-time download progress and urgent security events.
             // Fire-and-forget: the hub starts asynchronously in the background and errors are logged
@@ -210,7 +208,7 @@ namespace VideoForensics.MauiApp
             {
                 try
                 {
-                    var hubConnection = app.Services.GetRequiredService<ILiveHubConnection>();
+                    ILiveHubConnection hubConnection = app.Services.GetRequiredService<ILiveHubConnection>();
 
                     // Subscribe to urgent security events and show them as toasts before starting the hub,
                     // so no events are missed. The event handler fires async work (Toast.Show) via fire-and-forget.
@@ -236,7 +234,7 @@ namespace VideoForensics.MauiApp
                 {
                     try
                     {
-                        var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("MauiApp");
+                        ILogger logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("MauiApp");
                         logger.LogError(ex, "Failed to start live hub connection");
                     }
                     catch
@@ -250,7 +248,7 @@ namespace VideoForensics.MauiApp
             // The IServerLocationInformationService and IServerConnectivityState singletons have already
             // been registered above, so we can resolve and update them here.
             var locationInfoService = app.Services.GetRequiredService<VideoForensics.Ui.Shared.Services.IServerLocationInformationService>() as VideoForensics.MauiApp.Services.MauiServerLocationInformationService;
-            var connectivityState = app.Services.GetRequiredService<VideoForensics.Ui.Shared.Services.IServerConnectivityState>();
+            IServerConnectivityState connectivityState = app.Services.GetRequiredService<VideoForensics.Ui.Shared.Services.IServerConnectivityState>();
 
             if (locationInfoService is not null)
             {
@@ -291,94 +289,92 @@ namespace VideoForensics.MauiApp
 
             try
             {
-                using (var client = new System.Net.Http.HttpClient())
-                {
-                    client.Timeout = TimeSpan.FromMilliseconds(probeTimeoutMs);
+                using var client = new System.Net.Http.HttpClient();
+                client.Timeout = TimeSpan.FromMilliseconds(probeTimeoutMs);
 
-                    // Probe health endpoint to see if server is already running
+                // Probe health endpoint to see if server is already running
+                try
+                {
+                    HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Server is already running
+                        return;
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Server is not running, proceed to launch it
+                }
+                catch (OperationCanceledException)
+                {
+                    // Probe timed out, server may not be running
+                }
+
+                // Server is not responding; launch VideoForensics.WebApp
+                string solutionRoot = FindSolutionRoot();
+                if (string.IsNullOrEmpty(solutionRoot))
+                {
+                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to launch WebApp");
+                    return;
+                }
+
+                string webAppProjectPath = Path.Combine(
+                    solutionRoot,
+                    "src", "client", "web", "VideoForensics.WebApp", "VideoForensics.WebApp.csproj");
+
+                if (!File.Exists(webAppProjectPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"DEBUG: WebApp project not found at {webAppProjectPath}");
+                    return;
+                }
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"run --project \"{webAppProjectPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false
+                };
+
+                try
+                {
+                    _ = System.Diagnostics.Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DEBUG: Failed to start WebApp process: {ex.Message}");
+                    return;
+                }
+
+                // Poll health endpoint until server is ready or timeout expires
+                DateTime pollStart = DateTime.UtcNow;
+                while ((DateTime.UtcNow - pollStart).TotalMilliseconds < maxPollDurationMs)
+                {
+                    await Task.Delay(pollIntervalMs);
+
                     try
                     {
-                        var response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
+                        HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
                         if (response.IsSuccessStatusCode)
                         {
-                            // Server is already running
+                            // Server is ready
                             return;
                         }
                     }
                     catch (HttpRequestException)
                     {
-                        // Server is not running, proceed to launch it
+                        // Still not ready, continue polling
                     }
                     catch (OperationCanceledException)
                     {
-                        // Probe timed out, server may not be running
+                        // Poll timed out, continue trying
                     }
-
-                    // Server is not responding; launch VideoForensics.WebApp
-                    string solutionRoot = FindSolutionRoot();
-                    if (string.IsNullOrEmpty(solutionRoot))
-                    {
-                        System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to launch WebApp");
-                        return;
-                    }
-
-                    string webAppProjectPath = Path.Combine(
-                        solutionRoot,
-                        "src", "client", "web", "VideoForensics.WebApp", "VideoForensics.WebApp.csproj");
-
-                    if (!File.Exists(webAppProjectPath))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DEBUG: WebApp project not found at {webAppProjectPath}");
-                        return;
-                    }
-
-                    var psi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "dotnet",
-                        Arguments = $"run --project \"{webAppProjectPath}\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = false,
-                        RedirectStandardOutput = false,
-                        RedirectStandardError = false
-                    };
-
-                    try
-                    {
-                        System.Diagnostics.Process.Start(psi);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DEBUG: Failed to start WebApp process: {ex.Message}");
-                        return;
-                    }
-
-                    // Poll health endpoint until server is ready or timeout expires
-                    var pollStart = DateTime.UtcNow;
-                    while ((DateTime.UtcNow - pollStart).TotalMilliseconds < maxPollDurationMs)
-                    {
-                        await Task.Delay(pollIntervalMs);
-
-                        try
-                        {
-                            var response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
-                            if (response.IsSuccessStatusCode)
-                            {
-                                // Server is ready
-                                return;
-                            }
-                        }
-                        catch (HttpRequestException)
-                        {
-                            // Still not ready, continue polling
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Poll timed out, continue trying
-                        }
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("DEBUG: WebApp did not become ready within timeout");
                 }
+
+                System.Diagnostics.Debug.WriteLine("DEBUG: WebApp did not become ready within timeout");
             }
             catch (Exception ex)
             {
@@ -396,7 +392,7 @@ namespace VideoForensics.MauiApp
 
             while (currentDir != null)
             {
-                var solutionFile = Path.Combine(currentDir.FullName, "VideoForensics.sln");
+                string solutionFile = Path.Combine(currentDir.FullName, "VideoForensics.sln");
                 if (File.Exists(solutionFile))
                 {
                     return currentDir.FullName;

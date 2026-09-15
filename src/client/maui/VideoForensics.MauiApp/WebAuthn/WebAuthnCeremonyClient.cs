@@ -27,10 +27,10 @@ namespace VideoForensics.MauiApp.WebAuthn
         /// </summary>
         public static string MakeCredential(IntPtr windowHandle, JsonElement optionsJson, string origin)
         {
-            var rp = optionsJson.GetProperty("rp");
-            var user = optionsJson.GetProperty("user");
-            var challengeB64Url = optionsJson.GetProperty("challenge").GetString()!;
-            var userIdB64Url = user.GetProperty("id").GetString()!;
+            JsonElement rp = optionsJson.GetProperty("rp");
+            JsonElement user = optionsJson.GetProperty("user");
+            string challengeB64Url = optionsJson.GetProperty("challenge").GetString()!;
+            string userIdB64Url = user.GetProperty("id").GetString()!;
 
             var pinnedHandles = new List<GCHandle>();
             try
@@ -42,8 +42,8 @@ namespace VideoForensics.MauiApp.WebAuthn
                     pwszName = rp.GetProperty("name").GetString()!
                 };
 
-                var userIdBytes = Base64UrlDecode(userIdB64Url);
-                var userIdHandle = PinBytes(userIdBytes, pinnedHandles);
+                byte[] userIdBytes = Base64UrlDecode(userIdB64Url);
+                nint userIdHandle = PinBytes(userIdBytes, pinnedHandles);
                 WEBAUTHN_USER_ENTITY_INFORMATION userInfo = new()
                 {
                     dwVersion = 1,
@@ -56,21 +56,21 @@ namespace VideoForensics.MauiApp.WebAuthn
                 // ES256 (-7) and RS256 (-257) only - the two universally-supported algorithms, kept
                 // deliberately minimal for the same "smaller surface, fewer mistakes" reasoning as
                 // WebAuthnNative's struct choices.
-                var coseParams = new[]
+                WEBAUTHN_COSE_CREDENTIAL_PARAMETER[] coseParams = new[]
                 {
                     new WEBAUTHN_COSE_CREDENTIAL_PARAMETER { dwVersion = 1, pwszCredentialType = "public-key", lAlg = -7 },
                     new WEBAUTHN_COSE_CREDENTIAL_PARAMETER { dwVersion = 1, pwszCredentialType = "public-key", lAlg = -257 }
                 };
-                var coseParamsPtr = MarshalArray(coseParams, pinnedHandles);
+                nint coseParamsPtr = MarshalArray(coseParams, pinnedHandles);
                 WEBAUTHN_COSE_CREDENTIAL_PARAMETERS pubKeyCredParams = new()
                 {
                     cCredentialParameters = coseParams.Length,
                     pCredentialParameters = coseParamsPtr
                 };
 
-                var clientDataJson = BuildClientDataJson("webauthn.create", challengeB64Url, origin);
-                var clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
-                var clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
+                string clientDataJson = BuildClientDataJson("webauthn.create", challengeB64Url, origin);
+                byte[] clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
+                nint clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
                 WEBAUTHN_CLIENT_DATA clientData = new()
                 {
                     dwVersion = 1,
@@ -93,9 +93,9 @@ namespace VideoForensics.MauiApp.WebAuthn
                     dwFlags = 0
                 };
 
-                var hr = WebAuthNAuthenticatorMakeCredential(
+                int hr = WebAuthNAuthenticatorMakeCredential(
                     windowHandle, ref rpInfo, ref userInfo, ref pubKeyCredParams, ref clientData, ref options,
-                    out var attestationPtr);
+                    out nint attestationPtr);
 
                 if (hr != 0 || attestationPtr == IntPtr.Zero)
                 {
@@ -104,9 +104,9 @@ namespace VideoForensics.MauiApp.WebAuthn
 
                 try
                 {
-                    var attestation = Marshal.PtrToStructure<WEBAUTHN_CREDENTIAL_ATTESTATION>(attestationPtr);
-                    var credentialId = CopyBytes(attestation.pbCredentialId, attestation.cbCredentialId);
-                    var attestationObject = CopyBytes(attestation.pbAttestationObject, attestation.cbAttestationObject);
+                    WEBAUTHN_CREDENTIAL_ATTESTATION attestation = Marshal.PtrToStructure<WEBAUTHN_CREDENTIAL_ATTESTATION>(attestationPtr);
+                    byte[] credentialId = CopyBytes(attestation.pbCredentialId, attestation.cbCredentialId);
+                    byte[] attestationObject = CopyBytes(attestation.pbAttestationObject, attestation.cbAttestationObject);
 
                     return JsonSerializer.Serialize(new
                     {
@@ -128,7 +128,7 @@ namespace VideoForensics.MauiApp.WebAuthn
             }
             finally
             {
-                foreach (var handle in pinnedHandles)
+                foreach (GCHandle handle in pinnedHandles)
                 {
                     if (handle.IsAllocated)
                     {
@@ -146,14 +146,14 @@ namespace VideoForensics.MauiApp.WebAuthn
         /// </summary>
         public static string GetAssertion(IntPtr windowHandle, JsonElement optionsJson, string rpId, string origin)
         {
-            var challengeB64Url = optionsJson.GetProperty("challenge").GetString()!;
+            string challengeB64Url = optionsJson.GetProperty("challenge").GetString()!;
 
             var pinnedHandles = new List<GCHandle>();
             try
             {
-                var clientDataJson = BuildClientDataJson("webauthn.get", challengeB64Url, origin);
-                var clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
-                var clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
+                string clientDataJson = BuildClientDataJson("webauthn.get", challengeB64Url, origin);
+                byte[] clientDataBytes = Encoding.UTF8.GetBytes(clientDataJson);
+                nint clientDataHandle = PinBytes(clientDataBytes, pinnedHandles);
                 WEBAUTHN_CLIENT_DATA clientData = new()
                 {
                     dwVersion = 1,
@@ -163,13 +163,13 @@ namespace VideoForensics.MauiApp.WebAuthn
                 };
 
                 WEBAUTHN_CREDENTIALS allowList = default;
-                if (optionsJson.TryGetProperty("allowCredentials", out var allowCredsJson) && allowCredsJson.GetArrayLength() > 0)
+                if (optionsJson.TryGetProperty("allowCredentials", out JsonElement allowCredsJson) && allowCredsJson.GetArrayLength() > 0)
                 {
-                    var creds = allowCredsJson.EnumerateArray()
+                    WEBAUTHN_CREDENTIAL[] creds = allowCredsJson.EnumerateArray()
                         .Select(c =>
                         {
-                            var idBytes = Base64UrlDecode(c.GetProperty("id").GetString()!);
-                            var idHandle = PinBytes(idBytes, pinnedHandles);
+                            byte[] idBytes = Base64UrlDecode(c.GetProperty("id").GetString()!);
+                            nint idHandle = PinBytes(idBytes, pinnedHandles);
                             return new WEBAUTHN_CREDENTIAL
                             {
                                 dwVersion = 1,
@@ -179,7 +179,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                             };
                         })
                         .ToArray();
-                    var credsPtr = MarshalArray(creds, pinnedHandles);
+                    nint credsPtr = MarshalArray(creds, pinnedHandles);
                     allowList = new WEBAUTHN_CREDENTIALS { cCredentials = creds.Length, pCredentials = credsPtr };
                 }
 
@@ -195,7 +195,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                     dwFlags = 0
                 };
 
-                var hr = WebAuthNAuthenticatorGetAssertion(windowHandle, rpId, ref clientData, ref options, out var assertionPtr);
+                int hr = WebAuthNAuthenticatorGetAssertion(windowHandle, rpId, ref clientData, ref options, out nint assertionPtr);
 
                 if (hr != 0 || assertionPtr == IntPtr.Zero)
                 {
@@ -204,11 +204,11 @@ namespace VideoForensics.MauiApp.WebAuthn
 
                 try
                 {
-                    var assertion = Marshal.PtrToStructure<WEBAUTHN_ASSERTION>(assertionPtr);
-                    var authenticatorData = CopyBytes(assertion.pbAuthenticatorData, assertion.cbAuthenticatorData);
-                    var signature = CopyBytes(assertion.pbSignature, assertion.cbSignature);
-                    var userHandle = assertion.cbUserId > 0 ? CopyBytes(assertion.pbUserId, assertion.cbUserId) : Array.Empty<byte>();
-                    var credentialId = CopyBytes(assertion.Credential.pbId, assertion.Credential.cbId);
+                    WEBAUTHN_ASSERTION assertion = Marshal.PtrToStructure<WEBAUTHN_ASSERTION>(assertionPtr);
+                    byte[] authenticatorData = CopyBytes(assertion.pbAuthenticatorData, assertion.cbAuthenticatorData);
+                    byte[] signature = CopyBytes(assertion.pbSignature, assertion.cbSignature);
+                    byte[] userHandle = assertion.cbUserId > 0 ? CopyBytes(assertion.pbUserId, assertion.cbUserId) : Array.Empty<byte>();
+                    byte[] credentialId = CopyBytes(assertion.Credential.pbId, assertion.Credential.cbId);
 
                     return JsonSerializer.Serialize(new
                     {
@@ -232,7 +232,7 @@ namespace VideoForensics.MauiApp.WebAuthn
             }
             finally
             {
-                foreach (var handle in pinnedHandles)
+                foreach (GCHandle handle in pinnedHandles)
                 {
                     if (handle.IsAllocated)
                     {
@@ -254,7 +254,7 @@ namespace VideoForensics.MauiApp.WebAuthn
                 return Array.Empty<byte>();
             }
 
-            var bytes = new byte[length];
+            byte[] bytes = new byte[length];
             Marshal.Copy(ptr, bytes, 0, length);
             return bytes;
         }
@@ -277,7 +277,7 @@ namespace VideoForensics.MauiApp.WebAuthn
         {
             try
             {
-                var ptr = WebAuthNGetErrorName(hr);
+                nint ptr = WebAuthNGetErrorName(hr);
                 return ptr == IntPtr.Zero ? "unknown" : Marshal.PtrToStringUni(ptr) ?? "unknown";
             }
             catch
@@ -288,11 +288,15 @@ namespace VideoForensics.MauiApp.WebAuthn
 
         private static byte[] Base64UrlDecode(string input)
         {
-            var s = input.Replace('-', '+').Replace('_', '/');
+            string s = input.Replace('-', '+').Replace('_', '/');
             switch (s.Length % 4)
             {
-                case 2: s += "=="; break;
-                case 3: s += "="; break;
+                case 2:
+                    s += "==";
+                    break;
+                case 3:
+                    s += "=";
+                    break;
             }
 
             return Convert.FromBase64String(s);

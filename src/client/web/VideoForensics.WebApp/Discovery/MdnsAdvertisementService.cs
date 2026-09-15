@@ -3,7 +3,6 @@ using Makaretu.Dns;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.WebApp.Discovery

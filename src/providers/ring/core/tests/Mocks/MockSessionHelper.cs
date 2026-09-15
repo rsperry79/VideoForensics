@@ -1,5 +1,3 @@
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
-
 namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
 {
     /// <summary>

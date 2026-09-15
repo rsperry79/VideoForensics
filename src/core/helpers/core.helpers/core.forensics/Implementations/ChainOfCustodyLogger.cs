@@ -20,9 +20,14 @@ namespace VideoForensics.Forensics.Implementations
         public Task LogEvidenceReceptionAsync(string evidenceId, string handler)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(handler))
+            {
                 throw new ArgumentException("Handler cannot be null or empty.", nameof(handler));
+            }
 
             if (!_custodyChains.ContainsKey(evidenceId))
             {
@@ -43,11 +48,19 @@ namespace VideoForensics.Forensics.Implementations
         public Task LogCustodyTransferAsync(string evidenceId, string fromHandler, string toHandler)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(fromHandler))
+            {
                 throw new ArgumentException("From handler cannot be null or empty.", nameof(fromHandler));
+            }
+
             if (string.IsNullOrWhiteSpace(toHandler))
+            {
                 throw new ArgumentException("To handler cannot be null or empty.", nameof(toHandler));
+            }
 
             if (!_custodyChains.ContainsKey(evidenceId))
             {
@@ -68,11 +81,19 @@ namespace VideoForensics.Forensics.Implementations
         public Task LogEvidenceAccessAsync(string evidenceId, string action, string handler)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(action))
+            {
                 throw new ArgumentException("Action cannot be null or empty.", nameof(action));
+            }
+
             if (string.IsNullOrWhiteSpace(handler))
+            {
                 throw new ArgumentException("Handler cannot be null or empty.", nameof(handler));
+            }
 
             if (!_custodyChains.ContainsKey(evidenceId))
             {
@@ -92,10 +113,9 @@ namespace VideoForensics.Forensics.Implementations
 
         public Task<IEnumerable<ChainOfCustodyEntry>> GetChainOfCustodyAsync(string evidenceId)
         {
-            if (string.IsNullOrWhiteSpace(evidenceId))
-                throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
-
-            return !_custodyChains.ContainsKey(evidenceId)
+            return string.IsNullOrWhiteSpace(evidenceId)
+                ? throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId))
+                : !_custodyChains.ContainsKey(evidenceId)
                 ? Task.FromResult(Enumerable.Empty<ChainOfCustodyEntry>())
                 : Task.FromResult(_custodyChains[evidenceId].OrderBy(e => e.Timestamp).AsEnumerable());
         }
@@ -103,7 +123,9 @@ namespace VideoForensics.Forensics.Implementations
         public Task<bool> VerifyCustodyIntegrityAsync(string evidenceId)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
 
             if (!_custodyChains.ContainsKey(evidenceId) || _custodyChains[evidenceId].Count == 0)
             {
@@ -125,11 +147,13 @@ namespace VideoForensics.Forensics.Implementations
         public async Task<ChainOfCustodyReport> GetCustodyReportAsync(string evidenceId)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
 
             IEnumerable<ChainOfCustodyEntry> custody = await GetChainOfCustodyAsync(evidenceId);
             var custodyList = custody.ToList();
-            var isVerified = await VerifyCustodyIntegrityAsync(evidenceId);
+            bool isVerified = await VerifyCustodyIntegrityAsync(evidenceId);
 
             return new ChainOfCustodyReport
             {

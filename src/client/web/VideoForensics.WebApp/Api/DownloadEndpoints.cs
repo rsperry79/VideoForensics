@@ -1,6 +1,6 @@
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -22,7 +22,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapDownloadEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/downloads").RequireAuthorization();
+            RouteGroupBuilder group = app.MapGroup("/api/v1/downloads").RequireAuthorization();
 
             // Trigger a video download as a background task.
             _ = group.MapPost("/videos", async (
@@ -36,7 +36,7 @@ namespace VideoForensics.WebApp.Api
                 {
                     try
                     {
-                        await downloadService.DownloadVideosAsync(request.OutputPath, request.StartDate, request.EndDate, request.Force);
+                        _ = await downloadService.DownloadVideosAsync(request.OutputPath, request.StartDate, request.EndDate, request.Force);
                     }
                     catch
                     {
@@ -63,7 +63,7 @@ namespace VideoForensics.WebApp.Api
                 {
                     try
                     {
-                        await downloadService.DownloadSnapshotsAsync(request.OutputPath, request.StartDate, request.EndDate);
+                        _ = await downloadService.DownloadSnapshotsAsync(request.OutputPath, request.StartDate, request.EndDate);
                     }
                     catch
                     {
@@ -120,7 +120,7 @@ namespace VideoForensics.WebApp.Api
             // Get live progress of the current download batch (files completed/total, bytes, current file).
             _ = group.MapGet("/progress", (IVideoDownloadService downloadService) =>
             {
-                var progress = downloadService.GetProgress();
+                DownloadStatus progress = downloadService.GetProgress();
                 var dto = new DownloadStatusDto(
                     IsDownloading: progress.IsDownloading,
                     FilesCompleted: progress.FilesCompleted,
@@ -142,7 +142,7 @@ namespace VideoForensics.WebApp.Api
             // Get per-device matched-item counts discovered during the most recent pre-scan or download.
             _ = group.MapGet("/pre-scan-counts", (IVideoDownloadService downloadService) =>
             {
-                var counts = downloadService.GetPreScanCounts();
+                IReadOnlyDictionary<string, int> counts = downloadService.GetPreScanCounts();
                 return Results.Ok(new PreScanCountsDto(counts));
             })
             .RequireRateLimiting("media")

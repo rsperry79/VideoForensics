@@ -31,7 +31,7 @@ namespace VideoForensics.Hosting
 
         public string? TryTake(string nonce)
         {
-            return _entries.TryRemove(nonce, out var entry) && entry.ExpiresAtUtc > DateTime.UtcNow ? entry.OptionsJson : null;
+            return _entries.TryRemove(nonce, out (string OptionsJson, DateTime ExpiresAtUtc) entry) && entry.ExpiresAtUtc > DateTime.UtcNow ? entry.OptionsJson : null;
         }
     }
 }

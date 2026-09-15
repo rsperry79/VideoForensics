@@ -280,7 +280,7 @@ namespace VideoForensics.Data.Database.Tests
                 _ = await _eventRepository.UpsertAsync(evt, CancellationToken.None);
             }
 
-            var score = await _repository.ComputeEventIntegrityScoreAsync(location.Id, CancellationToken.None);
+            int score = await _repository.ComputeEventIntegrityScoreAsync(location.Id, CancellationToken.None);
 
             Assert.True(score is >= 0 and <= 100);
         }

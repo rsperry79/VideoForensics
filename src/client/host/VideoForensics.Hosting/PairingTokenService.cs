@@ -41,12 +41,12 @@ namespace VideoForensics.Hosting
 
         public PairingTokenInfo? Peek(string token)
         {
-            return _tokens.TryGetValue(token, out var info) && info.ExpiresAtUtc > DateTime.UtcNow ? info : null;
+            return _tokens.TryGetValue(token, out PairingTokenInfo? info) && info.ExpiresAtUtc > DateTime.UtcNow ? info : null;
         }
 
         public bool TryConsume(string token, out OperatorRole role)
         {
-            if (_tokens.TryRemove(token, out var info) && info.ExpiresAtUtc > DateTime.UtcNow)
+            if (_tokens.TryRemove(token, out PairingTokenInfo? info) && info.ExpiresAtUtc > DateTime.UtcNow)
             {
                 role = info.Role;
                 return true;
@@ -58,8 +58,8 @@ namespace VideoForensics.Hosting
 
         private void PruneExpired()
         {
-            var now = DateTime.UtcNow;
-            foreach (var kvp in _tokens)
+            DateTime now = DateTime.UtcNow;
+            foreach (KeyValuePair<string, PairingTokenInfo> kvp in _tokens)
             {
                 if (kvp.Value.ExpiresAtUtc <= now)
                 {

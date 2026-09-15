@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Xunit;
-using VideoForensics.Forensics.Implementations;
-using VideoForensics.Forensics.Models;
-
 namespace VideoForensics.Forensics.Tests
 {
     public class EvidenceValidatorTests
@@ -27,7 +21,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -39,12 +33,12 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateCompletenessAsync_WithNullEvidence_ReturnsInvalid()
         {
             // Act
-            var result = await _validator.ValidateCompletenessAsync(null);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(null);
 
             // Assert
             Assert.NotNull(result);
             Assert.False(result.IsValid);
-            Assert.Single(result.Errors);
+            _ = Assert.Single(result.Errors);
             Assert.Contains("null", result.Errors[0].ToLowerInvariant());
         }
 
@@ -62,7 +56,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -83,7 +77,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -104,7 +98,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -125,7 +119,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -142,11 +136,11 @@ namespace VideoForensics.Forensics.Tests
                 EventTimestamp = DateTime.UtcNow,
                 EventType = "motion",
                 ExtractionHandler = "examiner",
-                ExtractedData = new Dictionary<string, object>()
+                ExtractedData = []
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -164,11 +158,11 @@ namespace VideoForensics.Forensics.Tests
                 EventType = "motion",
                 ExtractionHandler = "examiner",
                 ExtractedData = new Dictionary<string, object> { { "data", 1 } },
-                Checksums = new Dictionary<string, string>()
+                Checksums = []
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -185,11 +179,11 @@ namespace VideoForensics.Forensics.Tests
                 EventTimestamp = null,
                 EventType = null,
                 ExtractionHandler = null,
-                ExtractedData = new Dictionary<string, object>()
+                ExtractedData = []
             };
 
             // Act
-            var result = await _validator.ValidateCompletenessAsync(evidence);
+            ValidationResult result = await _validator.ValidateCompletenessAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -213,7 +207,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -236,7 +230,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -256,7 +250,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -266,11 +260,11 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateIntegrityAsync_WithNullEvidence_ReturnsInvalid()
         {
             // Act
-            var result = await _validator.ValidateIntegrityAsync(null);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(null);
 
             // Assert
             Assert.False(result.IsValid);
-            Assert.Single(result.Errors);
+            _ = Assert.Single(result.Errors);
         }
 
         [Fact]
@@ -279,11 +273,11 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var evidence = new EvidenceMetadata
             {
-                Checksums = new Dictionary<string, string>()
+                Checksums = []
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -300,7 +294,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -320,7 +314,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -341,7 +335,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -363,7 +357,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateIntegrityAsync(evidence);
+            ValidationResult result = await _validator.ValidateIntegrityAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -385,7 +379,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.NotNull(result);
@@ -404,7 +398,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -414,11 +408,11 @@ namespace VideoForensics.Forensics.Tests
         public async Task ValidateComplianceAsync_WithNullEvidence_ReturnsInvalid()
         {
             // Act
-            var result = await _validator.ValidateComplianceAsync(null);
+            ValidationResult result = await _validator.ValidateComplianceAsync(null);
 
             // Assert
             Assert.False(result.IsValid);
-            Assert.Single(result.Errors);
+            _ = Assert.Single(result.Errors);
         }
 
         [Fact]
@@ -432,7 +426,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -450,7 +444,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -468,7 +462,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -486,7 +480,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -504,7 +498,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.False(result.IsValid);
@@ -522,7 +516,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -541,7 +535,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var result = await _validator.ValidateComplianceAsync(evidence);
+            ValidationResult result = await _validator.ValidateComplianceAsync(evidence);
 
             // Assert
             Assert.True(result.IsValid);
@@ -569,7 +563,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.NotNull(report);
@@ -599,7 +593,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.False(report.IsValidOverall);
@@ -620,11 +614,11 @@ namespace VideoForensics.Forensics.Tests
                 ExtractionHandler = "certified-examiner",
                 ExtractionTimestamp = DateTime.UtcNow,
                 ExtractedData = new Dictionary<string, object> { { "data", 1 } },
-                Checksums = new Dictionary<string, string>() // Empty checksums
+                Checksums = [] // Empty checksums
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.False(report.IsValidOverall);
@@ -649,7 +643,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.False(report.IsValidOverall);
@@ -669,12 +663,12 @@ namespace VideoForensics.Forensics.Tests
                 EventType = "motion",
                 ExtractionHandler = "unknown", // Compliance error
                 ExtractionTimestamp = DateTime.UtcNow,
-                ExtractedData = new Dictionary<string, object>(),
-                Checksums = new Dictionary<string, string>() // Integrity error
+                ExtractedData = [],
+                Checksums = [] // Integrity error
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.False(report.IsValidOverall);
@@ -701,7 +695,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.True(report.IsValidOverall);
@@ -712,7 +706,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task GetValidationReportAsync_WithNullEvidence_ReturnsReportWithErrors()
         {
             // Act
-            var report = await _validator.GetValidationReportAsync(null);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(null);
 
             // Assert
             Assert.False(report.IsValidOverall);
@@ -736,7 +730,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var report = await _validator.GetValidationReportAsync(evidence);
+            EvidenceValidationReport report = await _validator.GetValidationReportAsync(evidence);
 
             // Assert
             Assert.NotNull(report.ReportId);

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 using MimeKit;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
@@ -42,7 +41,7 @@ namespace VideoForensics.Hosting
 
         public async Task SendAsync(NotificationEvent notificationEvent, CancellationToken ct)
         {
-            var message = BuildMessage(
+            MimeMessage message = BuildMessage(
                 _config.NotificationRecipientEmail,
                 $"[VideoForensics] {notificationEvent.EventType}",
                 BuildBody(notificationEvent));
@@ -52,7 +51,7 @@ namespace VideoForensics.Hosting
         /// <summary>Used by the "Send Test Email" button on the Notifications settings screen - a real send through the configured SMTP settings, not a dry run, since that's the only way to actually confirm the settings work.</summary>
         public async Task SendTestEmailAsync(CancellationToken ct)
         {
-            var message = BuildMessage(
+            MimeMessage message = BuildMessage(
                 _config.NotificationRecipientEmail,
                 "[VideoForensics] Test notification",
                 "This is a test email from VideoForensics' notification settings. If you received this, email notifications are configured correctly.");
@@ -72,7 +71,7 @@ namespace VideoForensics.Hosting
         private async Task SendMessageAsync(MimeMessage message, CancellationToken ct)
         {
             using var client = new SmtpClient();
-            var socketOptions = _config.SmtpUseTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto;
+            SecureSocketOptions socketOptions = _config.SmtpUseTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto;
             await client.ConnectAsync(_config.SmtpHost, _config.SmtpPort, socketOptions, ct);
 
             if (!string.IsNullOrEmpty(_config.SmtpUsername))

@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
@@ -46,7 +45,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadataRepository_GetByLocationId_FindsMetadata()
         {
-            Guid locationId = Guid.NewGuid();
+            var locationId = Guid.NewGuid();
             LocationMetadata metadata = BuildLocationMetadata(locationId: locationId);
 
             await _repository.AddAsync(metadata, CancellationToken.None);
@@ -74,7 +73,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadataRepository_GetAsync_ReturnsNullForMissing()
         {
-            Guid nonexistentId = Guid.NewGuid();
+            var nonexistentId = Guid.NewGuid();
 
             LocationMetadata? retrieved = await _repository.GetAsync(nonexistentId, CancellationToken.None);
 
@@ -84,7 +83,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadataRepository_GetByLocationIdAsync_ReturnsNullForMissing()
         {
-            Guid nonexistentLocationId = Guid.NewGuid();
+            var nonexistentLocationId = Guid.NewGuid();
 
             LocationMetadata? retrieved = await _repository.GetByLocationIdAsync(nonexistentLocationId, CancellationToken.None);
 
@@ -134,7 +133,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadataRepository_DeleteAsync_WithNonexistentId_DoesNotThrow()
         {
-            Guid nonexistentId = Guid.NewGuid();
+            var nonexistentId = Guid.NewGuid();
 
             // Should not throw
             await _repository.DeleteAsync(nonexistentId, CancellationToken.None);
@@ -238,7 +237,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task LocationMetadataRepository_MultipleMetadataPerLocation_LatestOverwrites()
         {
-            Guid locationId = Guid.NewGuid();
+            var locationId = Guid.NewGuid();
             string apiHash1 = "hash_v1";
             string apiHash2 = "hash_v2";
 
@@ -294,7 +293,7 @@ namespace VideoForensics.Data.Database.Tests
             LocationMetadata? retrieved = await _repository.GetAsync(metadata.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
             Assert.Equal(SyncStatus.Synced, retrieved.SyncStatus);
-            Assert.NotNull(retrieved.LastSyncedUtc);
+            _ = Assert.NotNull(retrieved.LastSyncedUtc);
         }
 
         private static LocationMetadata BuildLocationMetadata(

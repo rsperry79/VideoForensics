@@ -1,10 +1,11 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -28,7 +29,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            var result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, CancellationToken.None);
+            EvidenceReviewReport result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/evidence-review", capturedUri?.Split('?')[0]);
             Assert.NotNull(result);
@@ -52,7 +53,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildEvidenceReviewAsync(deviceId, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.BuildEvidenceReviewAsync(deviceId, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.Contains($"deviceId={deviceId:D}", capturedUri);
         }
@@ -76,7 +77,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
+            _ = await service.BuildEvidenceReviewAsync(null, fromUtc, toUtc, CancellationToken.None);
 
             Assert.Contains("fromUtc", capturedUri);
             Assert.Contains("toUtc", capturedUri);
@@ -87,17 +88,19 @@ namespace VideoForensics.Hosting.Tests
         {
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
-                await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow, DateTime.UtcNow, CancellationToken.None);
+                _ = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow, DateTime.UtcNow, CancellationToken.None);
             });
         }
 
@@ -118,7 +121,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow, DateTime.UtcNow, new CancellationTokenSource().Token);
+            _ = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow, DateTime.UtcNow, new CancellationTokenSource().Token);
 
             Assert.True(cancellationObserved);
         }
@@ -140,7 +143,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildForensicAnalysisReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.BuildForensicAnalysisReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/forensic-analysis", capturedUri?.Split('?')[0]);
         }
@@ -162,7 +165,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildSignalAnomalyReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.BuildSignalAnomalyReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/signal-anomaly", capturedUri?.Split('?')[0]);
         }
@@ -184,7 +187,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildAccessControlReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.BuildAccessControlReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/access-control", capturedUri?.Split('?')[0]);
         }
@@ -206,7 +209,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await service.BuildChainOfCustodyReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.BuildChainOfCustodyReportAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/reports/chain-of-custody", capturedUri?.Split('?')[0]);
         }
@@ -286,7 +289,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteReportGenerationService(httpClient);
 
-            await Assert.ThrowsAsync<HttpRequestException>(async () =>
+            _ = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
                 await service.WriteReportAsync(new { }, "json", CancellationToken.None);
             });

@@ -107,15 +107,15 @@ namespace VideoForensics.Forensics.Implementations
 
             for (int i = 0; i < sortedByTime.Count - 1; i++)
             {
-                var current = sortedByTime[i];
-                var next = sortedByTime[i + 1];
+                EvidenceMetadata current = sortedByTime[i];
+                EvidenceMetadata next = sortedByTime[i + 1];
 
                 if (current.EventTimestamp.HasValue && next.EventTimestamp.HasValue)
                 {
-                    var timeGap = next.EventTimestamp.Value - current.EventTimestamp.Value;
+                    TimeSpan timeGap = next.EventTimestamp.Value - current.EventTimestamp.Value;
 
                     // Detect rapid succession (< 5 seconds)
-                    if (timeGap.TotalSeconds > 0 && timeGap.TotalSeconds < 5)
+                    if (timeGap.TotalSeconds is > 0 and < 5)
                     {
                         var anomaly = new ForensicAnalysisResult
                         {
@@ -139,7 +139,7 @@ namespace VideoForensics.Forensics.Implementations
                 .Where(g => g.Count() > 2)
                 .ToList();
 
-            foreach (var group in eventTypeGroups)
+            foreach (IGrouping<string, EvidenceMetadata>? group in eventTypeGroups)
             {
                 var anomaly = new ForensicAnalysisResult
                 {
@@ -187,9 +187,9 @@ namespace VideoForensics.Forensics.Implementations
             }
             else
             {
-                var criticalCount = resultList.Count(r => r.Severity == AnalysisSeverity.Critical);
-                var warningCount = resultList.Count(r => r.Severity == AnalysisSeverity.Warning);
-                var infoCount = resultList.Count(r => r.Severity == AnalysisSeverity.Info);
+                int criticalCount = resultList.Count(r => r.Severity == AnalysisSeverity.Critical);
+                int warningCount = resultList.Count(r => r.Severity == AnalysisSeverity.Warning);
+                int infoCount = resultList.Count(r => r.Severity == AnalysisSeverity.Info);
 
                 report.Summary = $"Identified {resultList.Count} findings: " +
                     $"{criticalCount} critical, {warningCount} warnings, {infoCount} informational";

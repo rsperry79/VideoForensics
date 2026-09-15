@@ -98,7 +98,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
             var metadata = new VideoMetadata { DeviceName = "Test" };
 
             MetadataWriteResult result = _writer.WriteMetadata(nonExistentPath, metadata);
@@ -112,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void WriteMetadata_WithInvalidFileExtension_ReturnsFailed()
         {
-            var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
+            string invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.txt");
             File.WriteAllBytes(invalidPath, new byte[] { 0x00 });
 
             try
@@ -165,7 +165,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public async Task WriteMetadataAsync_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
             var metadata = new VideoMetadata { DeviceName = "Test" };
 
             MetadataWriteResult result = await _writer.WriteMetadataAsync(nonExistentPath, metadata);
@@ -193,7 +193,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void ValidateVideo_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
             MetadataWriteResult result = _writer.ValidateVideo(nonExistentPath);
 
@@ -204,7 +204,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void ValidateVideo_WithInvalidFileFormat_ReturnsCorrupt()
         {
-            var invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
+            string invalidPath = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
             File.WriteAllBytes(invalidPath, new byte[] { 0xFF, 0xD8, 0xFF }); // JPEG header, not MP4
 
             try
@@ -255,7 +255,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public async Task ValidateVideoAsync_WithNonExistentFile_ReturnsFailed()
         {
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
+            string nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid()}.mp4");
 
             MetadataWriteResult result = await _writer.ValidateVideoAsync(nonExistentPath);
 
@@ -310,7 +310,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             MetadataWriteResult result = _writer.WriteMetadata(_testFilePath, metadata);
 
             // Tags can be null or empty
-            var hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
+            bool hasRelevantTags = result.PhotoPrismTags == null || result.PhotoPrismTags.Count == 0;
             Assert.True(hasRelevantTags);
         }
 
@@ -321,7 +321,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void ValidateVideo_SupportsMp4()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
+            string path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mp4");
             File.WriteAllBytes(path, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             try
@@ -341,7 +341,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void ValidateVideo_SupportsMov()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mov");
+            string path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mov");
             File.WriteAllBytes(path, new byte[] { 0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70 });
 
             try
@@ -361,7 +361,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
         [Fact]
         public void ValidateVideo_SupportsMkv()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mkv");
+            string path = Path.Combine(Path.GetTempPath(), $"test-{Guid.NewGuid()}.mkv");
             File.WriteAllBytes(path, new byte[] { 0x1A, 0x45, 0xDF, 0xA3 }); // MKV header
 
             try

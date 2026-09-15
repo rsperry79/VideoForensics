@@ -299,12 +299,9 @@ namespace VideoForensics.Providers.Ring
 
         private string? DetermineDeviceModel(string? deviceKind, string? deviceType)
         {
-            if (!string.IsNullOrWhiteSpace(deviceType))
-            {
-                return deviceType;
-            }
-
-            return string.IsNullOrWhiteSpace(deviceKind)
+            return !string.IsNullOrWhiteSpace(deviceType)
+                ? deviceType
+                : string.IsNullOrWhiteSpace(deviceKind)
                 ? null
                 : deviceKind.ToLowerInvariant() switch
                 {

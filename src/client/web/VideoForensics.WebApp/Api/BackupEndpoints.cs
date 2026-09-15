@@ -44,7 +44,7 @@ namespace VideoForensics.WebApp.Api
                     request.OutputDirectory,
                     ct);
 
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 string description = "Database backup export";
                 await auditLog.LogAsync(
                     SecurityAuditEventTypes.BackupExported,
@@ -85,7 +85,7 @@ namespace VideoForensics.WebApp.Api
                 string tempBackupPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".zip");
                 try
                 {
-                    using (var fileStream = System.IO.File.Create(tempBackupPath))
+                    using (FileStream fileStream = System.IO.File.Create(tempBackupPath))
                     {
                         await backupFile.CopyToAsync(fileStream, ct);
                     }
@@ -95,7 +95,7 @@ namespace VideoForensics.WebApp.Api
                         mediaRootPath,
                         ct);
 
-                    var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                    string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                     string description = "Database backup import";
                     await auditLog.LogAsync(
                         SecurityAuditEventTypes.BackupImported,

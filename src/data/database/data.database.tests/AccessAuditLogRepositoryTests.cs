@@ -35,13 +35,13 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var evidenceId = Guid.NewGuid();
-            var userId = "user@example.com";
-            var action = "Download";
-            var ipAddress = "192.168.1.1";
-            var purpose = "Evidence analysis for case #12345";
+            string userId = "user@example.com";
+            string action = "Download";
+            string ipAddress = "192.168.1.1";
+            string purpose = "Evidence analysis for case #12345";
 
             // Act
-            var entry = await _repository.RecordAccessAsync(evidenceId, userId, action, ipAddress, purpose, CancellationToken.None);
+            AccessAuditLogEntity entry = await _repository.RecordAccessAsync(evidenceId, userId, action, ipAddress, purpose, CancellationToken.None);
 
             // Assert
             Assert.NotNull(entry);
@@ -58,11 +58,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var evidenceId = Guid.NewGuid();
-            var entry = await _repository.RecordAccessAsync(
+            AccessAuditLogEntity entry = await _repository.RecordAccessAsync(
                 evidenceId, "user@example.com", "View", "192.168.1.1", "Investigation", CancellationToken.None);
 
             // Act
-            var retrieved = await _repository.GetAsync(entry.Id, CancellationToken.None);
+            AccessAuditLogEntity? retrieved = await _repository.GetAsync(entry.Id, CancellationToken.None);
 
             // Assert
             Assert.NotNull(retrieved);
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Tests
             _ = await _repository.RecordAccessAsync(evidenceId, "user2@example.com", "Download", "192.168.1.2", "Export", CancellationToken.None);
 
             // Act
-            var entries = await _repository.GetForEvidenceAsync(evidenceId, CancellationToken.None);
+            IReadOnlyList<AccessAuditLogEntity> entries = await _repository.GetForEvidenceAsync(evidenceId, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, entries.Count);
@@ -90,14 +90,14 @@ namespace VideoForensics.Data.Database.Tests
         public async Task AccessAuditLogRepository_GetByUserAsync_ReturnsAllUserAccess()
         {
             // Arrange
-            var userId = "auditor@example.com";
+            string userId = "auditor@example.com";
             var evidence1 = Guid.NewGuid();
             var evidence2 = Guid.NewGuid();
             _ = await _repository.RecordAccessAsync(evidence1, userId, "View", "192.168.1.1", "Check1", CancellationToken.None);
             _ = await _repository.RecordAccessAsync(evidence2, userId, "Download", "192.168.1.1", "Check2", CancellationToken.None);
 
             // Act
-            var entries = await _repository.GetByUserAsync(userId, CancellationToken.None);
+            IReadOnlyList<AccessAuditLogEntity> entries = await _repository.GetByUserAsync(userId, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, entries.Count);
@@ -109,12 +109,12 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var evidenceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             _ = await _repository.RecordAccessAsync(evidenceId, "user@example.com", "View", "192.168.1.1", "Test", CancellationToken.None);
 
             // Act
-            var entriesInRange = await _repository.GetByDateRangeAsync(now.AddMinutes(-1), now.AddMinutes(1), CancellationToken.None);
-            var entriesOutOfRange = await _repository.GetByDateRangeAsync(now.AddHours(1), now.AddHours(2), CancellationToken.None);
+            IReadOnlyList<AccessAuditLogEntity> entriesInRange = await _repository.GetByDateRangeAsync(now.AddMinutes(-1), now.AddMinutes(1), CancellationToken.None);
+            IReadOnlyList<AccessAuditLogEntity> entriesOutOfRange = await _repository.GetByDateRangeAsync(now.AddHours(1), now.AddHours(2), CancellationToken.None);
 
             // Assert
             Assert.NotEmpty(entriesInRange);

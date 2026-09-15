@@ -15,8 +15,8 @@ public class CredentialEntityTests
         string credentialType = "Password";
         string encryptedValue = "encrypted_base64_value";
         string encryptionProvider = "DPAPI";
-        var createdUtc = DateTime.UtcNow;
-        var rotatedUtc = DateTime.UtcNow.AddDays(-7);
+        DateTime createdUtc = DateTime.UtcNow;
+        DateTime rotatedUtc = DateTime.UtcNow.AddDays(-7);
 
         // Act
         var credential = new Credential

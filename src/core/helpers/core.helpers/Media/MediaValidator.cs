@@ -17,12 +17,7 @@ namespace VideoForensics.Providers.Common.Helpers.Media
         /// <returns>True if file exists and size matches (if provided); otherwise false</returns>
         public bool ValidateMediaExists(string filePath, long? expectedSize)
         {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
-            {
-                return false;
-            }
-
-            return expectedSize.HasValue ? new FileInfo(filePath).Length == expectedSize.Value : new FileInfo(filePath).Length > 0;
+            return !string.IsNullOrEmpty(filePath) && File.Exists(filePath) && (expectedSize.HasValue ? new FileInfo(filePath).Length == expectedSize.Value : new FileInfo(filePath).Length > 0);
         }
     }
 }

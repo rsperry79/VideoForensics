@@ -90,7 +90,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                             return (null, locErr);
                         }
 
-                        if (!Guid.TryParse(locValue, out var locGuid))
+                        if (!Guid.TryParse(locValue, out Guid locGuid))
                         {
                             return (null, $"--location-id value '{locValue}' is not a valid GUID");
                         }

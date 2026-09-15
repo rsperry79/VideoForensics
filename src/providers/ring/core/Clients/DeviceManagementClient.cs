@@ -47,7 +47,7 @@ public class DeviceManagementClient : IDeviceManagementClient
         Doorbot? device = devices.FirstOrDefault(d =>
             d.Description?.Equals(deviceName, StringComparison.OrdinalIgnoreCase) ?? false);
 
-        return device == null ? throw new KeyNotFoundException($"Device '{deviceName}' not found") : device;
+        return device ?? throw new KeyNotFoundException($"Device '{deviceName}' not found");
     }
 
     public async Task<Doorbot> GetDeviceByIdAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -60,7 +60,7 @@ public class DeviceManagementClient : IDeviceManagementClient
         List<Doorbot> devices = await _discoveryService.GetRingDevices(null, cancellationToken);
         Doorbot? device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
-        return device == null ? throw new KeyNotFoundException($"Device '{deviceId}' not found") : device;
+        return device ?? throw new KeyNotFoundException($"Device '{deviceId}' not found");
     }
 
     public async Task<bool> ControlDeviceAsync(string deviceId, DeviceAction action, CancellationToken cancellationToken = default)

@@ -90,7 +90,7 @@ namespace VideoForensics.Providers.Ring
 
             foreach (long timestampMs in timestamps.Distinct().OrderBy(ts => ts))
             {
-                var frame = ExtractFrameAtTimestamp(videoFilePath, timestampMs, outputDirectory);
+                ExtractedFrame? frame = ExtractFrameAtTimestamp(videoFilePath, timestampMs, outputDirectory);
                 if (frame != null)
                 {
                     frames.Add(frame);
@@ -176,7 +176,7 @@ namespace VideoForensics.Providers.Ring
                     };
                 }
 
-                var fileInfo = _fileSystem.FileInfo.New(frameFilePath);
+                IFileInfo fileInfo = _fileSystem.FileInfo.New(frameFilePath);
 
                 return new ExtractedFrame
                 {
@@ -206,7 +206,7 @@ namespace VideoForensics.Providers.Ring
 
         private void TagExtractedFrames(List<ExtractedFrame> frames, VideoMetadata metadata)
         {
-            foreach (var frame in frames)
+            foreach (ExtractedFrame frame in frames)
             {
                 // Tag with detection info from metadata
                 frame.DetectionType = metadata.DetectionType;

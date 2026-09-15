@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
-            var deviceName = device?.Name ?? "Unknown";
+            string deviceName = device?.Name ?? "Unknown";
 
             List<Event> events = await db.Events
                 .Where(e => e.DeviceId == deviceId &&
@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Database.Repositories
             var gaps = new List<TimelineGap>();
             for (int i = 0; i < events.Count - 1; i++)
             {
-                var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                double gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
                 if (gapDuration > minGapMinutes)
                 {
                     gaps.Add(new TimelineGap
@@ -88,13 +88,13 @@ namespace VideoForensics.Data.Database.Repositories
                 var events = deviceEvents.OrderBy(e => e.OccurredAtUtc).ToList();
                 for (int i = 0; i < events.Count - 1; i++)
                 {
-                    var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                    double gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
                     if (gapDuration > minGapMinutes)
                     {
                         allGaps.Add(new TimelineGap
                         {
                             DeviceId = deviceEvents.Key,
-                            DeviceName = deviceMap.TryGetValue(deviceEvents.Key, out var name) ? name : "Unknown",
+                            DeviceName = deviceMap.TryGetValue(deviceEvents.Key, out string? name) ? name : "Unknown",
                             StartUtc = events[i].OccurredAtUtc,
                             EndUtc = events[i + 1].OccurredAtUtc,
                             DurationMinutes = (int)gapDuration,
@@ -167,7 +167,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(x => x.Event)
                 .ToListAsync(ct);
 
-            var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
+            decimal totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
             ILookup<Guid, Event> eventsByDevice = allEvents.ToLookup(e => e.DeviceId);
             ILookup<Guid, TimelineGap> gapsByDevice = gaps.ToLookup(g => g.DeviceId);
 
@@ -177,8 +177,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 var deviceEvents = eventsByDevice[device.Id].ToList();
                 var deviceGaps = gapsByDevice[device.Id].ToList();
-                var deviceGappedMinutes = (decimal)deviceGaps.Sum(g => g.DurationMinutes);
-                var deviceCoverage = totalDurationMinutes > 0
+                decimal deviceGappedMinutes = deviceGaps.Sum(g => g.DurationMinutes);
+                decimal deviceCoverage = totalDurationMinutes > 0
                     ? (totalDurationMinutes - deviceGappedMinutes) / totalDurationMinutes * 100m
                     : 100m;
 
@@ -332,14 +332,14 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(h => new HourlyActivityCount { Hour = h.Key, Count = h.Value })
                 .ToList();
 
-            var totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
+            decimal totalDurationMinutes = (decimal)(toUtc - fromUtc).TotalMinutes;
             ILookup<Guid, TimelineGap> gapsByDevice = gaps.ToLookup(g => g.DeviceId);
 
             var deviceSummaries = devices.Select(device =>
             {
                 var deviceGaps = gapsByDevice[device.Id].ToList();
-                var deviceGappedMinutes = (decimal)deviceGaps.Sum(g => g.DurationMinutes);
-                var deviceCoverage = totalDurationMinutes > 0
+                decimal deviceGappedMinutes = deviceGaps.Sum(g => g.DurationMinutes);
+                decimal deviceCoverage = totalDurationMinutes > 0
                     ? (totalDurationMinutes - deviceGappedMinutes) / totalDurationMinutes * 100m
                     : 100m;
 
@@ -362,7 +362,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             // Worst-status-among-devices rollup for the coarse triage string only - not an
             // average, so one healthy camera can never hide another's critical status.
-            var overallStatus = deviceSummaries.Any(d => d.Status == "Critical") ? "Critical"
+            string overallStatus = deviceSummaries.Any(d => d.Status == "Critical") ? "Critical"
                 : deviceSummaries.Any(d => d.Status == "Anomalies") ? "Anomalies"
                 : "Healthy";
 
@@ -392,7 +392,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyList<TimelineGap> allGaps = await GetRecordingGapsAsync(deviceId, fromUtc, toUtc, minGapMinutes, ct);
             var orderedGaps = allGaps.OrderBy(g => g.StartUtc).ToList();
 
-            var totalCount = orderedGaps.Count;
+            int totalCount = orderedGaps.Count;
             var paginatedGaps = orderedGaps
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -414,7 +414,7 @@ namespace VideoForensics.Data.Database.Repositories
             var orderedGaps = allGaps.OrderBy(g => g.StartUtc).ToList();
 
             int startIndex = 0;
-            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out int cursorIndex))
             {
                 startIndex = cursorIndex;
             }
@@ -424,7 +424,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Take(pageSize)
                 .ToList();
 
-            var nextCursor = (startIndex + items.Count < orderedGaps.Count)
+            string? nextCursor = (startIndex + items.Count < orderedGaps.Count)
                 ? (startIndex + items.Count).ToString()
                 : null;
 

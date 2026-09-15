@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
 
 using Syncfusion.Blazor;
 
@@ -28,7 +27,7 @@ using VideoForensics.WebApp.Hubs;
 // §5.2's "Local-only by default").
 NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
 
-var syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
+string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
 if (File.Exists(syncfusionLicenseKeyPath))
 {
     Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
@@ -41,7 +40,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // not running under the SCM, so no conditional is needed).
 builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics");
 
-var listenPort = ResolveConfiguredPort(builder.Configuration);
+int listenPort = ResolveConfiguredPort(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
     if (configuredNetworkTier == NetworkTier.Local)
@@ -63,9 +62,9 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // Register file-based logging + Windows Event Log (service visibility) + Linux syslog. Log file
 // lands under %ProgramData%/VideoForensics/logs, matching the console/MAUI apps' pattern.
-var loggingConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+string loggingConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
 Directory.CreateDirectory(loggingConfigDir);
-var logFilePath = Path.Combine(loggingConfigDir, "logs", $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
+string logFilePath = Path.Combine(loggingConfigDir, "logs", $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
@@ -113,7 +112,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 string dataProtectionKeyPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
 Directory.CreateDirectory(dataProtectionKeyPath);
-var dataProtectionBuilder = builder.Services.AddDataProtection()
+IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
     .SetApplicationName("VideoForensics")
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
 // DPAPI encrypts the key-ring file at rest but is Windows-only (this app is platform-agnostic -
@@ -122,7 +121,7 @@ var dataProtectionBuilder = builder.Services.AddDataProtection()
 // only by filesystem permissions on the ProgramData-equivalent directory above.
 if (OperatingSystem.IsWindows())
 {
-    dataProtectionBuilder.ProtectKeysWithDpapi();
+    _ = dataProtectionBuilder.ProtectKeysWithDpapi();
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -160,7 +159,7 @@ builder.Services.AddRateLimiter(options =>
             return RateLimitPartition.GetNoLimiter(resolver.ResolveClientIp(httpContext));
         }
 
-        var key = resolver.ResolveClientIp(httpContext);
+        string key = resolver.ResolveClientIp(httpContext);
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 5,
@@ -173,7 +172,7 @@ builder.Services.AddRateLimiter(options =>
     _ = options.AddPolicy("media", httpContext =>
     {
         INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        var key = resolver.ResolveClientIp(httpContext);
+        string key = resolver.ResolveClientIp(httpContext);
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 120,
@@ -188,7 +187,7 @@ builder.Services.AddRateLimiter(options =>
     _ = options.AddPolicy("mcp", httpContext =>
     {
         INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        var key = resolver.ResolveClientIp(httpContext);
+        string key = resolver.ResolveClientIp(httpContext);
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 1000,
@@ -363,7 +362,7 @@ static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
 {
     try
     {
-        var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "videoforensics.db");
+        string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "videoforensics.db");
         if (!File.Exists(dbPath))
         {
             return NetworkTier.Local;
@@ -373,7 +372,7 @@ static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
         connection.Open();
         using SqliteCommand command = connection.CreateCommand();
         command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'ConfiguredNetworkTier' LIMIT 1";
-        var value = command.ExecuteScalar() as string;
+        string? value = command.ExecuteScalar() as string;
         return Enum.TryParse<NetworkTier>(value, out NetworkTier tier) ? tier : NetworkTier.Local;
     }
     catch
@@ -386,8 +385,8 @@ static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
 
 static int ResolveConfiguredPort(IConfiguration configuration)
 {
-    var urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
-    var first = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+    string? urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
+    string? first = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
     if (first is not null && Uri.TryCreate(first, UriKind.Absolute, out Uri? uri))
     {
         return uri.Port;

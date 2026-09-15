@@ -1,3 +1,5 @@
+using Microsoft.Win32;
+
 using System.Runtime.InteropServices;
 
 namespace VideoForensics.Client.Core.Utilities
@@ -93,7 +95,7 @@ namespace VideoForensics.Client.Core.Utilities
             try
             {
                 // Check User Shell Folders registry (Windows Explorer known folders mapped to OneDrive)
-                using var shellFoldersKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders");
+                using RegistryKey? shellFoldersKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders");
                 if (shellFoldersKey != null)
                 {
                     // Try OneDrive first, then OneDriveCommercial
@@ -107,12 +109,12 @@ namespace VideoForensics.Client.Core.Utilities
                 }
 
                 // Check OneDrive Accounts registry for configured OneDrive paths
-                using var accountsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts");
+                using RegistryKey? accountsKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts");
                 if (accountsKey != null)
                 {
                     foreach (string accountName in accountsKey.GetSubKeyNames())
                     {
-                        using var accountKey = accountsKey.OpenSubKey(accountName);
+                        using RegistryKey? accountKey = accountsKey.OpenSubKey(accountName);
                         if (accountKey?.GetValue("UserFolder") is string userFolder && Directory.Exists(userFolder))
                         {
                             return userFolder;
@@ -121,7 +123,7 @@ namespace VideoForensics.Client.Core.Utilities
                 }
 
                 // Also check Shell Folders (non-user-specific)
-                using var shellKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders");
+                using RegistryKey? shellKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders");
                 if (shellKey != null)
                 {
                     if (shellKey.GetValue("OneDrive") is string oneDriveShell && Directory.Exists(oneDriveShell))

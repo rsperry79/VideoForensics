@@ -28,7 +28,6 @@ namespace VideoForensics.Ui.Shared.Services
         private readonly ICultureSwitcher _cultureSwitcher;
 
         private bool _initialized;
-        private bool _prefersDark;
         private DotNetObjectReference<ThemePreferenceService>? _selfRef;
 
         public ThemePreferenceService(
@@ -46,12 +45,15 @@ namespace VideoForensics.Ui.Shared.Services
         public ThemeMode Mode { get; private set; } = ThemeMode.System;
         public string? CultureName { get; private set; }
 
-        public bool EffectiveIsDark => Mode switch
+        public bool EffectiveIsDark
         {
-            ThemeMode.Light => false,
-            ThemeMode.Dark => true,
-            _ => _prefersDark
-        };
+            get => Mode switch
+            {
+                ThemeMode.Light => false,
+                ThemeMode.Dark => true,
+                _ => field
+            }; private set;
+        }
 
         public event Action? OnChange;
 
@@ -66,7 +68,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             try
             {
-                _prefersDark = await _js.InvokeAsync<bool>("vfTheme.getPrefersDark");
+                EffectiveIsDark = await _js.InvokeAsync<bool>("vfTheme.getPrefersDark");
                 _selfRef = DotNetObjectReference.Create(this);
                 await _js.InvokeVoidAsync("vfTheme.watchPrefersDark", _selfRef);
             }
@@ -114,7 +116,7 @@ namespace VideoForensics.Ui.Shared.Services
         [JSInvokable]
         public void OnSystemThemeChanged(bool isDark)
         {
-            _prefersDark = isDark;
+            EffectiveIsDark = isDark;
             if (Mode == ThemeMode.System)
             {
                 OnChange?.Invoke();

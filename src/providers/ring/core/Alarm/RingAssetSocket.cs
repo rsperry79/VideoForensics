@@ -120,7 +120,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         {
             lock (_waitersLock)
             {
-                for (var i = _waiters.Count - 1; i >= 0; i--)
+                for (int i = _waiters.Count - 1; i >= 0; i--)
                 {
                     if (_waiters[i].Predicate(root))
                     {
@@ -153,7 +153,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         /// </summary>
         internal async Task<JsonElement> SendCommandAsync(string msgType, string dst, object body, TimeSpan? timeout = null)
         {
-            var seq = Interlocked.Increment(ref _seq);
+            long seq = Interlocked.Increment(ref _seq);
 
             var envelope = new
             {
@@ -165,7 +165,7 @@ namespace VideoForensics.Providers.Ring.Alarm
                 el => el.TryGetProperty("msg", out JsonElement m) && m.ValueKind == JsonValueKind.String && m.GetString() == msgType,
                 timeout ?? TimeSpan.FromSeconds(10));
 
-            var serialized = JsonSerializer.Serialize(envelope);
+            string serialized = JsonSerializer.Serialize(envelope);
             ApiRawLogger.Raise("WS-SEND", _webSocketUrl, 0, serialized);
             await _transport.SendAsync(serialized, _cts.Token);
             return await waitTask;
@@ -179,7 +179,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         {
             var devices = new List<AlarmDevice>();
 
-            foreach (var assetId in _assetIds)
+            foreach (string assetId in _assetIds)
             {
                 JsonElement response = await SendCommandAsync("DeviceInfoDocGetList", assetId, null);
                 if (!response.TryGetProperty("body", out JsonElement bodyEl) || bodyEl.ValueKind != JsonValueKind.Array)
@@ -211,7 +211,7 @@ namespace VideoForensics.Providers.Ring.Alarm
         {
             List<AlarmDevice> devices = await GetDevices();
             AlarmDevice? panel = devices.FirstOrDefault(d => d.DeviceType == "security-panel");
-            return panel == null ? throw new InvalidOperationException("No security panel device found at this location.") : panel;
+            return panel ?? throw new InvalidOperationException("No security panel device found at this location.");
         }
 
         /// <summary>

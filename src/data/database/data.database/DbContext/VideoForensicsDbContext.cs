@@ -82,7 +82,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device configuration snapshots.</summary>
         public DbSet<DeviceConfigSnapshot> DeviceConfigSnapshots { get; set; }
 
-
         /// <summary>Gets or sets the provider reconciliation records.</summary>
         public DbSet<ProviderReconciliationRecord> ProviderReconciliationRecords { get; set; }
 
@@ -127,8 +126,6 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the export audit records.</summary>
         public DbSet<ExportAuditRecordEntity> ExportAuditRecords { get; set; }
-
-
 
         /// <summary>Gets or sets the Operators (plan §5.11).</summary>
         public DbSet<Operator> Operators { get; set; }

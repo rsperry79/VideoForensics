@@ -86,7 +86,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ActionLogRepository_VerifyChainIntegrity_EmptyDatabaseReturnsTrue()
         {
-            var isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+            bool isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
 
             Assert.True(isValid);
         }
@@ -94,7 +94,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ActionLogRepository_VerifyChainIntegrity_EmptyChainReturnsTrue()
         {
-            var isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+            bool isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
 
             Assert.True(isValid);
         }
@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ActionLogRepository_AppendAsync_WithDetails_PreservesJson()
         {
-            var details = "{\"action\":\"download\",\"itemCount\":5}";
+            string details = "{\"action\":\"download\",\"itemCount\":5}";
             ActionLogEntry entry = await _repository.AppendAsync(
                 "Downloader",
                 ActorType.Human,

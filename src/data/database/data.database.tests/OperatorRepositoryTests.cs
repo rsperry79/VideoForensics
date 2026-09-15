@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
@@ -38,7 +37,7 @@ namespace VideoForensics.Data.Database.Tests
                 Active = true
             };
 
-            await _repository.AddAsync(@operator, CancellationToken.None);
+            _ = await _repository.AddAsync(@operator, CancellationToken.None);
             Operator? retrieved = await _repository.GetAsync(@operator.Id, CancellationToken.None);
 
             Assert.NotNull(retrieved);
@@ -83,9 +82,9 @@ namespace VideoForensics.Data.Database.Tests
                 Active = false
             };
 
-            await _repository.AddAsync(op1, CancellationToken.None);
-            await _repository.AddAsync(op2, CancellationToken.None);
-            await _repository.AddAsync(op3, CancellationToken.None);
+            _ = await _repository.AddAsync(op1, CancellationToken.None);
+            _ = await _repository.AddAsync(op2, CancellationToken.None);
+            _ = await _repository.AddAsync(op3, CancellationToken.None);
 
             IReadOnlyList<Operator> list = await _repository.ListAsync(CancellationToken.None);
 
@@ -123,7 +122,7 @@ namespace VideoForensics.Data.Database.Tests
                 Active = true
             };
 
-            await _repository.AddAsync(@operator, CancellationToken.None);
+            _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
             bool isEmpty = await _repository.IsEmptyAsync(CancellationToken.None);
 
@@ -141,7 +140,7 @@ namespace VideoForensics.Data.Database.Tests
                 Active = true
             };
 
-            await _repository.AddAsync(@operator, CancellationToken.None);
+            _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
             await _repository.DeactivateAsync(@operator.Id, CancellationToken.None);
 
@@ -173,7 +172,7 @@ namespace VideoForensics.Data.Database.Tests
                 Active = true
             };
 
-            var result = await _repository.AddAsync(@operator, CancellationToken.None);
+            Operator result = await _repository.AddAsync(@operator, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(@operator.Id, result.Id);
@@ -191,7 +190,7 @@ namespace VideoForensics.Data.Database.Tests
                 Active = true
             };
 
-            await _repository.AddAsync(@operator, CancellationToken.None);
+            _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
             await _repository.DeactivateAsync(@operator.Id, CancellationToken.None);
             await _repository.DeactivateAsync(@operator.Id, CancellationToken.None);

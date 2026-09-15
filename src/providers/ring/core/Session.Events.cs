@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Ring
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/events");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
+            LocationEventsResponse? parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
             return parsed?.Events ?? [];
         }
 
@@ -42,7 +42,7 @@ namespace VideoForensics.Providers.Ring
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/devices/{doorbotId}/events");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            var parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
+            LocationEventsResponse? parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
             return parsed?.Events ?? [];
         }
     }

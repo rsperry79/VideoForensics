@@ -1,12 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using VideoForensics.Api.Contracts;
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
@@ -44,8 +41,9 @@ namespace VideoForensics.Hosting
         /// multi-provider auth factories, and keyed per-provider services). Centralizes the
         /// construction logic so there's exactly one place per service that builds it.
         /// </summary>
-        private static IProviderAuthService BuildRingAuthService(IServiceProvider provider) =>
-            new RingAuthService(
+        private static IProviderAuthService BuildRingAuthService(IServiceProvider provider)
+        {
+            return new RingAuthService(
                 provider.GetRequiredService<ILogger<RingAuthService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<ICredentialStore>(),
@@ -54,105 +52,129 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<IProviderAccountRepository>(),
                 provider.GetRequiredService<IUserRepository>()
             );
+        }
 
         /// <summary>
         /// Builds a Ring device discovery service for use by multiple registration paths.
         /// </summary>
-        private static IDeviceDiscoveryService BuildRingDeviceDiscoveryService(IServiceProvider provider) =>
-            new RingDeviceDiscoveryService(
+        private static IDeviceDiscoveryService BuildRingDeviceDiscoveryService(IServiceProvider provider)
+        {
+            return new RingDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                 provider.GetRequiredService<ISessionProvider>()
             );
+        }
 
         /// <summary>
         /// Builds a Ring media download service for use by multiple registration paths.
         /// </summary>
-        private static IMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider) =>
-            new RingMediaDownloadService(
+        private static IMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider)
+        {
+            return new RingMediaDownloadService(
                 provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<IVideoForensicsDataClient>()
             );
+        }
 
         /// <summary>
         /// Builds a Ring event and config service for use by multiple registration paths.
         /// </summary>
-        private static IEventAndConfigService BuildRingEventAndConfigService(IServiceProvider provider) =>
-            new RingEventAndConfigService(
+        private static IEventAndConfigService BuildRingEventAndConfigService(IServiceProvider provider)
+        {
+            return new RingEventAndConfigService(
                 provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
                 provider.GetRequiredService<ISessionProvider>()
             );
+        }
 
         /// <summary>
         /// Builds a Uniview authentication service for use by multiple registration paths.
         /// </summary>
-        private static IProviderAuthService BuildUniviewAuthService(IServiceProvider provider) =>
-            new UniviewAuthService(
+        private static IProviderAuthService BuildUniviewAuthService(IServiceProvider provider)
+        {
+            return new UniviewAuthService(
                 provider.GetRequiredService<ILogger<UniviewAuthService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>(),
                 provider.GetRequiredService<IForensicsConfiguration>(),
                 provider.GetRequiredService<ICredentialRepository>()
             );
+        }
 
         /// <summary>
         /// Builds a Uniview device discovery service for use by multiple registration paths.
         /// </summary>
-        private static IDeviceDiscoveryService BuildUniviewDeviceDiscoveryService(IServiceProvider provider) =>
-            new UniviewDeviceDiscoveryService(
+        private static IDeviceDiscoveryService BuildUniviewDeviceDiscoveryService(IServiceProvider provider)
+        {
+            return new UniviewDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<UniviewDeviceDiscoveryService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>(),
                 provider.GetRequiredService<IForensicsConfiguration>()
             );
+        }
 
         /// <summary>
         /// Builds a Uniview media download service for use by multiple registration paths.
         /// </summary>
-        private static IMediaDownloadService BuildUniviewMediaDownloadService(IServiceProvider provider) =>
-            new UniviewMediaDownloadService(
+        private static IMediaDownloadService BuildUniviewMediaDownloadService(IServiceProvider provider)
+        {
+            return new UniviewMediaDownloadService(
                 provider.GetRequiredService<ILogger<UniviewMediaDownloadService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>()
             );
+        }
 
         /// <summary>
         /// Builds a Uniview event and config service for use by multiple registration paths.
         /// </summary>
-        private static IEventAndConfigService BuildUniviewEventAndConfigService(IServiceProvider provider) =>
-            new UniviewEventAndConfigService(
+        private static IEventAndConfigService BuildUniviewEventAndConfigService(IServiceProvider provider)
+        {
+            return new UniviewEventAndConfigService(
                 provider.GetRequiredService<ILogger<UniviewEventAndConfigService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>()
             );
+        }
 
         /// <summary>
         /// Builds a Wyze authentication service for use by multiple registration paths.
         /// </summary>
-        private static IProviderAuthService BuildWyzeAuthService(IServiceProvider provider) =>
-            new WyzeAuthService(
+        private static IProviderAuthService BuildWyzeAuthService(IServiceProvider provider)
+        {
+            return new WyzeAuthService(
                 provider.GetRequiredService<ILogger<WyzeAuthService>>()
             );
+        }
 
         /// <summary>
         /// Builds a Wyze device discovery service for use by multiple registration paths.
         /// </summary>
-        private static IDeviceDiscoveryService BuildWyzeDeviceDiscoveryService(IServiceProvider provider) =>
-            new WyzeDeviceDiscoveryService(
+        private static IDeviceDiscoveryService BuildWyzeDeviceDiscoveryService(IServiceProvider provider)
+        {
+            return new WyzeDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<WyzeDeviceDiscoveryService>>()
             );
+        }
 
         /// <summary>
         /// Builds a Wyze media download service for use by multiple registration paths.
         /// </summary>
-        private static IMediaDownloadService BuildWyzeMediaDownloadService(IServiceProvider provider) =>
-            new WyzeMediaDownloadService(
+        private static IMediaDownloadService BuildWyzeMediaDownloadService(IServiceProvider provider)
+        {
+            return new WyzeMediaDownloadService(
                 provider.GetRequiredService<ILogger<WyzeMediaDownloadService>>()
             );
+        }
 
         /// <summary>
         /// Builds a Wyze event and config service for use by multiple registration paths.
         /// </summary>
-        private static IEventAndConfigService BuildWyzeEventAndConfigService(IServiceProvider provider) =>
-            new WyzeEventAndConfigService(
+        private static IEventAndConfigService BuildWyzeEventAndConfigService(IServiceProvider provider)
+        {
+            return new WyzeEventAndConfigService(
                 provider.GetRequiredService<ILogger<WyzeEventAndConfigService>>()
             );
+        }
+
         /// <summary>
         /// Registers the data access layer only (SQLite, EF Core repositories, Data.Core facade) -
         /// no provider/Ring services. Used by every host that needs a local database: the server-tier
@@ -408,7 +430,7 @@ namespace VideoForensics.Hosting
         public static IServiceCollection AddVideoForensicsMultiProviderServices(
             this IServiceCollection services, IEnumerable<string> enabledProviders)
         {
-            foreach (var providerName in enabledProviders ?? Enumerable.Empty<string>())
+            foreach (string providerName in enabledProviders ?? Enumerable.Empty<string>())
             {
                 if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))
                 {
@@ -526,13 +548,13 @@ namespace VideoForensics.Hosting
 
             const string backfillFlagKey = "EventsBackfillFromDownloadEventsCompleted";
             IAppSettingRepository appSettingRepo = sp.GetRequiredService<IAppSettingRepository>();
-            var alreadyDone = await appSettingRepo.GetAsync(backfillFlagKey, ct);
+            string? alreadyDone = await appSettingRepo.GetAsync(backfillFlagKey, ct);
             if (alreadyDone != "true")
             {
                 IDownloadEventRepository downloadEventRepo = sp.GetRequiredService<IDownloadEventRepository>();
                 IMediaItemRepository mediaItemRepo = sp.GetRequiredService<IMediaItemRepository>();
                 IEventRepository eventRepo = sp.GetRequiredService<IEventRepository>();
-                var count = await EventBackfillService.BackfillFromDownloadEventsAsync(
+                int count = await EventBackfillService.BackfillFromDownloadEventsAsync(
                     downloadEventRepo, mediaItemRepo, eventRepo, logger, ct);
                 await appSettingRepo.SetAsync(backfillFlagKey, "true", ct);
                 logger.LogInformation("Events backfill completed: {Count} record(s).", count);

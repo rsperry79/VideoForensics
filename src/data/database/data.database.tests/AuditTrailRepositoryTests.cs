@@ -190,8 +190,8 @@ namespace VideoForensics.Data.Database.Tests
         public async Task LogAccessAsync_RecordsAccess()
         {
             var evidenceId = Guid.NewGuid();
-            var userId = "test_user";
-            var action = "View";
+            string userId = "test_user";
+            string action = "View";
             DateTime now = DateTime.UtcNow;
 
             await _repository.LogAccessAsync(evidenceId, userId, action, now, CancellationToken.None);

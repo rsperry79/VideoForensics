@@ -24,28 +24,10 @@ namespace VideoForensics.MauiApp.Services
         public bool? IsLocalAddress { get; set; }
 
         /// <inheritdoc/>
-        public string LocationDescription
-        {
-            get
-            {
-                if (CurrentServerAddress is null)
-                {
-                    return "No server address is currently active";
-                }
-
-                if (IsLocalAddress == true)
-                {
-                    return "Connected via local network (mDNS discovery)";
-                }
-                else if (IsLocalAddress == false)
-                {
-                    return "Connected via cached Internet address";
-                }
-                else
-                {
-                    return "Server address is active";
-                }
-            }
-        }
+        public string LocationDescription => CurrentServerAddress is null
+                    ? "No server address is currently active"
+                    : IsLocalAddress == true
+                    ? "Connected via local network (mDNS discovery)"
+                    : IsLocalAddress == false ? "Connected via cached Internet address" : "Server address is active";
     }
 }

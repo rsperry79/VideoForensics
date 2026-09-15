@@ -1,4 +1,6 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Ring.Entities;
+
 using DetectedPerson = VideoForensics.Data.Common.Entities.DetectedPerson;
 
 namespace VideoForensics.Providers.Ring.Services
@@ -57,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract detection zones
             if (cv.DetectionDetails?.Zones != null)
             {
-                foreach (var zone in cv.DetectionDetails.Zones)
+                foreach (CvZone zone in cv.DetectionDetails.Zones)
                 {
                     if (zone != null && !string.IsNullOrEmpty(zone.Id))
                     {
@@ -76,7 +78,7 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract security alerts
             if (cv.SecurityAlerts != null && cv.SecurityAlerts.Alerts != null)
             {
-                foreach (var alertText in cv.SecurityAlerts.Alerts)
+                foreach (string alertText in cv.SecurityAlerts.Alerts)
                 {
                     if (!string.IsNullOrEmpty(alertText))
                     {
@@ -94,7 +96,7 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract detected persons
             if (cv.Profiles != null)
             {
-                foreach (var profile in cv.Profiles)
+                foreach (CvProfile profile in cv.Profiles)
                 {
                     if (profile != null && !string.IsNullOrEmpty(profile.Id))
                     {
@@ -114,13 +116,13 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract detection type occurrences from verified timestamps
             if (cv.DetectionTypes != null)
             {
-                foreach (var detectionType in cv.DetectionTypes)
+                foreach (CvDetectionType detectionType in cv.DetectionTypes)
                 {
                     if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
                     {
-                        foreach (var epochMs in detectionType.VerifiedTimestamps)
+                        foreach (long epochMs in detectionType.VerifiedTimestamps)
                         {
-                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
+                            DateTime detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
                             occurrences.Add(new EventDetectionTypeOccurrence
                             {
                                 Id = Guid.NewGuid(),
@@ -183,7 +185,7 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract detected persons
             if (cv.Profiles != null)
             {
-                foreach (var profile in cv.Profiles)
+                foreach (CvProfile profile in cv.Profiles)
                 {
                     if (profile != null && !string.IsNullOrEmpty(profile.Id))
                     {
@@ -203,13 +205,13 @@ namespace VideoForensics.Providers.Ring.Services
             // Extract detection type occurrences from verified timestamps
             if (cv.DetectionTypes != null)
             {
-                foreach (var detectionType in cv.DetectionTypes)
+                foreach (CvDetectionType detectionType in cv.DetectionTypes)
                 {
                     if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
                     {
-                        foreach (var epochMs in detectionType.VerifiedTimestamps)
+                        foreach (long epochMs in detectionType.VerifiedTimestamps)
                         {
-                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
+                            DateTime detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
                             occurrences.Add(new DetectionTypeOccurrence
                             {
                                 Id = Guid.NewGuid(),

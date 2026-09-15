@@ -1,4 +1,5 @@
 using Makaretu.Dns;
+
 using Microsoft.Extensions.Logging;
 
 namespace VideoForensics.Hosting.ServerDiscovery
@@ -68,7 +69,7 @@ namespace VideoForensics.Hosting.ServerDiscovery
                 var tcs = new TaskCompletionSource<Uri?>();
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeoutCts.CancelAfter(DiscoveryTimeout);
-                using var registration = timeoutCts.Token.Register(() => tcs.TrySetResult(null));
+                using CancellationTokenRegistration registration = timeoutCts.Token.Register(() => tcs.TrySetResult(null));
 
                 discovery.ServiceInstanceDiscovered += (sender, e) =>
                 {
@@ -76,14 +77,14 @@ namespace VideoForensics.Hosting.ServerDiscovery
                     {
                         // e.Message contains the full DNS response - look for SRV (port + target host)
                         // and A/AAAA records (the target host's IP) among its answers/additional records.
-                        var srv = e.Message.AdditionalRecords.OfType<SRVRecord>().FirstOrDefault()
+                        SRVRecord? srv = e.Message.AdditionalRecords.OfType<SRVRecord>().FirstOrDefault()
                             ?? e.Message.Answers.OfType<SRVRecord>().FirstOrDefault();
                         if (srv is null)
                         {
                             return;
                         }
 
-                        var aRecord = e.Message.AdditionalRecords.OfType<ARecord>()
+                        ARecord? aRecord = e.Message.AdditionalRecords.OfType<ARecord>()
                             .FirstOrDefault(a => a.Name == srv.Target);
                         if (aRecord is null)
                         {
@@ -91,7 +92,7 @@ namespace VideoForensics.Hosting.ServerDiscovery
                         }
 
                         var uri = new Uri($"http://{aRecord.Address}:{srv.Port}");
-                        tcs.TrySetResult(uri);
+                        _ = tcs.TrySetResult(uri);
                     }
                     catch
                     {

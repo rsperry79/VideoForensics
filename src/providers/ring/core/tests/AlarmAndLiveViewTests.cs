@@ -2,8 +2,8 @@ using System.Net.Http;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
-using VideoForensics.Providers.Ring.Streaming;
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using VideoForensics.Providers.Ring.Streaming;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
@@ -66,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             transport.OnMessageSent = sent =>
             {
                 JsonElement root = JsonDocument.Parse(sent).RootElement;
-                var msgType = root.GetProperty("msg").GetProperty("msg").GetString();
+                string? msgType = root.GetProperty("msg").GetProperty("msg").GetString();
 
                 if (msgType == "DeviceInfoDocGetList")
                 {
@@ -111,7 +111,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             transport.OnMessageSent = sent =>
             {
                 JsonElement root = JsonDocument.Parse(sent).RootElement;
-                var msgType = root.GetProperty("msg").GetProperty("msg").GetString();
+                string? msgType = root.GetProperty("msg").GetProperty("msg").GetString();
 
                 if (msgType == "DeviceInfoDocGetList")
                 {

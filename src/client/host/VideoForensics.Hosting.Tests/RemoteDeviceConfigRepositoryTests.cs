@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
+
 using Xunit;
 
 namespace VideoForensics.Hosting.Tests;
@@ -60,8 +62,8 @@ public class RemoteDeviceConfigRepositoryTests
     public async Task GetAsync_WithValidId_CallsCorrectEndpointAndReturnsMappedSnapshot()
     {
         var snapshotId = Guid.NewGuid();
-        var dto = TestData.CreateDto(id: snapshotId);
-        var jsonContent = JsonSerializer.Serialize(dto);
+        DeviceConfigSnapshotDto dto = TestData.CreateDto(id: snapshotId);
+        string jsonContent = JsonSerializer.Serialize(dto);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -76,9 +78,9 @@ public class RemoteDeviceConfigRepositoryTests
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
-        var ct = CancellationToken.None;
+        CancellationToken ct = CancellationToken.None;
 
-        var result = await repo.GetAsync(snapshotId, ct);
+        DeviceConfigSnapshot? result = await repo.GetAsync(snapshotId, ct);
 
         Assert.NotNull(result);
         Assert.Equal(snapshotId, result!.Id);
@@ -102,7 +104,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.GetAsync(snapshotId, CancellationToken.None);
+        DeviceConfigSnapshot? result = await repo.GetAsync(snapshotId, CancellationToken.None);
 
         Assert.Null(result);
     }
@@ -111,9 +113,9 @@ public class RemoteDeviceConfigRepositoryTests
     public async Task AppendSnapshotAsync_WithValidSnapshot_CallsPostEndpointAndReturnsMappedResult()
     {
         var deviceId = Guid.NewGuid();
-        var snapshot = TestData.CreateDomain(deviceId: deviceId);
-        var responseDto = TestData.CreateDto(deviceId: deviceId);
-        var jsonContent = JsonSerializer.Serialize(responseDto);
+        DeviceConfigSnapshot snapshot = TestData.CreateDomain(deviceId: deviceId);
+        DeviceConfigSnapshotDto responseDto = TestData.CreateDto(deviceId: deviceId);
+        string jsonContent = JsonSerializer.Serialize(responseDto);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -129,7 +131,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.AppendSnapshotAsync(snapshot, CancellationToken.None);
+        DeviceConfigSnapshot result = await repo.AppendSnapshotAsync(snapshot, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(deviceId, result.DeviceId);
@@ -142,7 +144,7 @@ public class RemoteDeviceConfigRepositoryTests
     [Fact]
     public async Task AppendSnapshotAsync_WithServerError_Throws()
     {
-        var snapshot = TestData.CreateDomain();
+        DeviceConfigSnapshot snapshot = TestData.CreateDomain();
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -152,15 +154,15 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => repo.AppendSnapshotAsync(snapshot, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.AppendSnapshotAsync(snapshot, CancellationToken.None));
     }
 
     [Fact]
     public async Task GetLatestAsync_WithValidDeviceId_CallsCorrectEndpointAndReturnsMappedSnapshot()
     {
         var deviceId = Guid.NewGuid();
-        var dto = TestData.CreateDto(deviceId: deviceId);
-        var jsonContent = JsonSerializer.Serialize(dto);
+        DeviceConfigSnapshotDto dto = TestData.CreateDto(deviceId: deviceId);
+        string jsonContent = JsonSerializer.Serialize(dto);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -176,7 +178,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.GetLatestAsync(deviceId, CancellationToken.None);
+        DeviceConfigSnapshot? result = await repo.GetLatestAsync(deviceId, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(deviceId, result!.DeviceId);
@@ -198,7 +200,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.GetLatestAsync(deviceId, CancellationToken.None);
+        DeviceConfigSnapshot? result = await repo.GetLatestAsync(deviceId, CancellationToken.None);
 
         Assert.Null(result);
     }
@@ -207,12 +209,12 @@ public class RemoteDeviceConfigRepositoryTests
     public async Task GetHistoryAsync_WithValidDeviceId_CallsCorrectEndpointAndReturnsMappedList()
     {
         var deviceId = Guid.NewGuid();
-        var dtos = new[]
+        DeviceConfigSnapshotDto[] dtos = new[]
         {
             TestData.CreateDto(deviceId: deviceId),
             TestData.CreateDto(deviceId: deviceId)
         };
-        var jsonContent = JsonSerializer.Serialize(dtos);
+        string jsonContent = JsonSerializer.Serialize(dtos);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -228,7 +230,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.GetHistoryAsync(deviceId, CancellationToken.None);
+        IReadOnlyList<DeviceConfigSnapshot> result = await repo.GetHistoryAsync(deviceId, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -242,7 +244,7 @@ public class RemoteDeviceConfigRepositoryTests
     public async Task GetHistoryAsync_WithEmptyResponse_ReturnsEmptyList()
     {
         var deviceId = Guid.NewGuid();
-        var jsonContent = JsonSerializer.Serialize(new List<DeviceConfigSnapshotDto>());
+        string jsonContent = JsonSerializer.Serialize(new List<DeviceConfigSnapshotDto>());
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -256,7 +258,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.GetHistoryAsync(deviceId, CancellationToken.None);
+        IReadOnlyList<DeviceConfigSnapshot> result = await repo.GetHistoryAsync(deviceId, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);
@@ -265,12 +267,12 @@ public class RemoteDeviceConfigRepositoryTests
     [Fact]
     public async Task ListAsync_WithValidRequest_CallsCorrectEndpointAndReturnsMappedList()
     {
-        var dtos = new[]
+        DeviceConfigSnapshotDto[] dtos = new[]
         {
             TestData.CreateDto(),
             TestData.CreateDto()
         };
-        var jsonContent = JsonSerializer.Serialize(dtos);
+        string jsonContent = JsonSerializer.Serialize(dtos);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -286,7 +288,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.ListAsync(CancellationToken.None);
+        IReadOnlyList<DeviceConfigSnapshot> result = await repo.ListAsync(CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -298,7 +300,7 @@ public class RemoteDeviceConfigRepositoryTests
     [Fact]
     public async Task ListAsync_WithEmptyResponse_ReturnsEmptyList()
     {
-        var jsonContent = JsonSerializer.Serialize(new List<DeviceConfigSnapshotDto>());
+        string jsonContent = JsonSerializer.Serialize(new List<DeviceConfigSnapshotDto>());
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -312,7 +314,7 @@ public class RemoteDeviceConfigRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteDeviceConfigRepository(httpClient);
 
-        var result = await repo.ListAsync(CancellationToken.None);
+        IReadOnlyList<DeviceConfigSnapshot> result = await repo.ListAsync(CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);

@@ -1,10 +1,11 @@
 using System.Net;
 using System.Text.Json;
-using Moq;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -26,7 +27,8 @@ namespace VideoForensics.Hosting.Tests
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 Task<HttpResponseMessage> handlerTask = _handler(request);
-                Task completed = await Task.WhenAny(handlerTask, Task.Delay(Timeout.Infinite, cancellationToken));
+
+                _ = await Task.WhenAny(handlerTask, Task.Delay(Timeout.Infinite, cancellationToken));
                 cancellationToken.ThrowIfCancellationRequested();
                 return await handlerTask;
             }
@@ -46,7 +48,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -63,8 +65,8 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteEventAndConfigService(httpClient);
-            var startDate = DateTime.UtcNow.AddDays(-7);
-            var endDate = DateTime.UtcNow;
+            DateTime startDate = DateTime.UtcNow.AddDays(-7);
+            DateTime endDate = DateTime.UtcNow;
 
             // Act
             _ = await service.GetEventsAsync("device123", startDate, endDate);
@@ -79,7 +81,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             string capturedRoute = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -91,8 +93,8 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteEventAndConfigService(httpClient);
-            var startDate = DateTime.UtcNow.AddDays(-7);
-            var endDate = DateTime.UtcNow;
+            DateTime startDate = DateTime.UtcNow.AddDays(-7);
+            DateTime endDate = DateTime.UtcNow;
 
             // Act
             _ = await service.GetEventsAsync("device123", startDate, endDate, "motion");
@@ -107,28 +109,28 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act & Assert
-            var task = service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, cancellationToken: cts.Token);
+            Task<IReadOnlyList<DeviceEvent>> task = service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, cancellationToken: cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
         public async Task GetEventsAsync_DeserializesAndMapsDtos()
         {
             // Arrange
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
             var eventDtos = new List<DeviceEventDto>
             {
                 new("event1", "device123", "motion", startTime, "https://example.com/snap.jpg", new Dictionary<string, string> { { "key", "value" } }),
                 new("event2", "device123", "person", startTime.AddMinutes(1), null, null)
             };
 
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -141,7 +143,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act
-            var result = await service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            IReadOnlyList<DeviceEvent> result = await service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -158,7 +160,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetEventsAsync_EmptyListResponse_ReturnsEmptyList()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -171,7 +173,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act
-            var result = await service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            IReadOnlyList<DeviceEvent> result = await service.GetEventsAsync("device123", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
 
             // Assert
             Assert.Empty(result);
@@ -183,7 +185,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -210,7 +212,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDeviceConfigAsync_OnNotFound_ReturnsNull()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             });
@@ -218,7 +220,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act
-            var result = await service.GetDeviceConfigAsync("device123");
+            DeviceConfig? result = await service.GetDeviceConfigAsync("device123");
 
             // Assert
             Assert.Null(result);
@@ -231,7 +233,7 @@ namespace VideoForensics.Hosting.Tests
             var customSettings = new Dictionary<string, object> { { "setting1", "value1" } };
             var dto = new DeviceConfigDto("device123", true, 75, "always", customSettings);
 
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -244,7 +246,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act
-            var result = await service.GetDeviceConfigAsync("device123");
+            DeviceConfig? result = await service.GetDeviceConfigAsync("device123");
 
             // Assert
             Assert.NotNull(result);
@@ -262,14 +264,14 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteEventAndConfigService(httpClient);
 
             // Act & Assert
-            var task = service.GetDeviceConfigAsync("device123", cts.Token);
+            Task<DeviceConfig?> task = service.GetDeviceConfigAsync("device123", cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
@@ -278,7 +280,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -300,7 +302,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateDeviceConfigAsync_OnSuccess_ReturnsTrue()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
             });
@@ -309,7 +311,7 @@ namespace VideoForensics.Hosting.Tests
             var config = new DeviceConfig("device123", true, 50, "motion", null);
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device123", config);
+            bool result = await service.UpdateDeviceConfigAsync("device123", config);
 
             // Assert
             Assert.True(result);
@@ -319,7 +321,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateDeviceConfigAsync_OnFailure_ReturnsFalse()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest));
             });
@@ -328,7 +330,7 @@ namespace VideoForensics.Hosting.Tests
             var config = new DeviceConfig("device123", true, 50, "motion", null);
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device123", config);
+            bool result = await service.UpdateDeviceConfigAsync("device123", config);
 
             // Assert
             Assert.False(result);
@@ -339,9 +341,9 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             DeviceConfigDto? capturedDto = null;
-            var httpClient = CreateHttpClient(async request =>
+            HttpClient httpClient = CreateHttpClient(async request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                string content = await request.Content!.ReadAsStringAsync();
                 capturedDto = JsonSerializer.Deserialize<DeviceConfigDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
@@ -366,15 +368,15 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteEventAndConfigService(httpClient);
             var config = new DeviceConfig("device123", true, 50, "motion", null);
 
             // Act & Assert
-            var task = service.UpdateDeviceConfigAsync("device123", config, cts.Token);
+            Task<bool> task = service.UpdateDeviceConfigAsync("device123", config, cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
     }
 }

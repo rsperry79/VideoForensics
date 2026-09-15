@@ -1,12 +1,11 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using ModelContextProtocol.Client;
-using ModelContextProtocol.Server;
+
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.Mcp.ServerDiscovery;
@@ -31,7 +30,7 @@ namespace VideoForensics.Mcp
     {
         private static async Task Main(string[] args)
         {
-            var builder = Host.CreateApplicationBuilder(args);
+            HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
             _ = builder.Logging.SetMinimumLevel(LogLevel.Information);
 
             // Resolve the server address the same way MAUI does (mDNS first, cached Internet URL as
@@ -56,7 +55,7 @@ namespace VideoForensics.Mcp
             var apiKeyStore = new FileApiKeyStore();
             string? apiKey = apiKeyStore.GetApiKey();
 
-            var loggerFactory = LoggerFactory.Create(lb => lb.SetMinimumLevel(LogLevel.Information));
+            ILoggerFactory loggerFactory = LoggerFactory.Create(lb => lb.SetMinimumLevel(LogLevel.Information));
 
             if (apiKey is null)
             {
@@ -73,7 +72,7 @@ namespace VideoForensics.Mcp
                 Endpoint = new Uri(serverUri, "/mcp")
             };
             var httpClientTransport = new HttpClientTransport(httpClientTransportOptions, httpClient, loggerFactory);
-            var downstream = await McpClient.CreateAsync(httpClientTransport, null, loggerFactory, CancellationToken.None);
+            McpClient downstream = await McpClient.CreateAsync(httpClientTransport, null, loggerFactory, CancellationToken.None);
 
             _ = builder.Services
                 .AddMcpServer()
@@ -85,8 +84,8 @@ namespace VideoForensics.Mcp
                 .WithListPromptsHandler(async (request, ct) => await downstream.ListPromptsAsync(request.Params, ct))
                 .WithGetPromptHandler(async (request, ct) => await downstream.GetPromptAsync(request.Params, ct));
 
-            using var host = builder.Build();
-            var logger = host.Services.GetRequiredService<ILogger<Program>>();
+            using IHost host = builder.Build();
+            ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("VideoForensics MCP bridge ready, proxying to {ServerUri}", serverUri);
 
             await host.RunAsync();
@@ -108,12 +107,12 @@ namespace VideoForensics.Mcp
 
             // Step 1: Request a device code
             var deviceCodeEndpoint = new Uri(serverUri, "/api/v1/pairing/device-code");
-            using var deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(""), ct);
-            deviceCodeResponse.EnsureSuccessStatusCode();
+            using HttpResponseMessage deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(""), ct);
+            _ = deviceCodeResponse.EnsureSuccessStatusCode();
 
-            var deviceCodeContent = await deviceCodeResponse.Content.ReadAsStringAsync(ct);
+            string deviceCodeContent = await deviceCodeResponse.Content.ReadAsStringAsync(ct);
             using var deviceCodeDoc = JsonDocument.Parse(deviceCodeContent);
-            var deviceCodeRoot = deviceCodeDoc.RootElement;
+            JsonElement deviceCodeRoot = deviceCodeDoc.RootElement;
 
             string deviceCode = deviceCodeRoot.GetProperty("deviceCode").GetString()
                 ?? throw new InvalidOperationException("Device code response missing 'deviceCode'");
@@ -126,7 +125,7 @@ namespace VideoForensics.Mcp
 
             // Combine server URI with the relative verification URI to form an absolute URL
             var absoluteVerificationUri = new Uri(serverUri, verificationUri.TrimStart('/'));
-            var verificationUrl = $"{absoluteVerificationUri}?code={userCode}";
+            string verificationUrl = $"{absoluteVerificationUri}?code={userCode}";
 
             // Log the verification instruction
             logger.LogInformation("To authorize this MCP bridge, open {VerificationUrl} in a browser and approve it (code expires in {ExpiresInSeconds}s).",
@@ -134,17 +133,17 @@ namespace VideoForensics.Mcp
 
             // Step 2: Poll for approval
             var pollEndpoint = new Uri(serverUri, $"/api/v1/pairing/device-code/{deviceCode}/poll");
-            var deadline = DateTime.UtcNow.AddSeconds(expiresInSeconds);
+            DateTime deadline = DateTime.UtcNow.AddSeconds(expiresInSeconds);
 
             while (DateTime.UtcNow < deadline)
             {
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
 
-                using var pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(""), ct);
-                var pollContent = await pollResponse.Content.ReadAsStringAsync(ct);
+                using HttpResponseMessage pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(""), ct);
+                string pollContent = await pollResponse.Content.ReadAsStringAsync(ct);
 
                 using var pollDoc = JsonDocument.Parse(pollContent);
-                var pollRoot = pollDoc.RootElement;
+                JsonElement pollRoot = pollDoc.RootElement;
 
                 string status = pollRoot.GetProperty("status").GetString()
                     ?? throw new InvalidOperationException("Poll response missing 'status'");

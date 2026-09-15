@@ -1,4 +1,3 @@
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -77,8 +76,8 @@ namespace VideoForensics.WebApp.Api
                 {
                     eventType = kvp.Key,
                     defaultUrgent = kvp.Value,
-                    overrideUrgent = current.TryGetValue(kvp.Key, out var o) ? (bool?)o : null,
-                    effectiveUrgent = current.TryGetValue(kvp.Key, out var o2) ? o2 : kvp.Value
+                    overrideUrgent = current.TryGetValue(kvp.Key, out bool o) ? (bool?)o : null,
+                    effectiveUrgent = current.TryGetValue(kvp.Key, out bool o2) ? o2 : kvp.Value
                 });
                 return Results.Ok(rows);
             });

@@ -6,7 +6,6 @@ using QRCoder;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -42,8 +41,8 @@ namespace VideoForensics.WebApp.Api
                 {
                     string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
                     string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-                    bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role == OperatorRole.SuperAdmin;
-                    bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local;
+                    bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role == OperatorRole.SuperAdmin;
+                    bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
 
                     if (!isSuperAdmin || !isLocal)
                     {
@@ -51,8 +50,8 @@ namespace VideoForensics.WebApp.Api
                     }
                 }
 
-                var requestedRole = isBootstrap ? OperatorRole.SuperAdmin : OperatorRole.ReadOnly;
-                var info = pairingTokens.CreateToken(requestedRole);
+                OperatorRole requestedRole = isBootstrap ? OperatorRole.SuperAdmin : OperatorRole.ReadOnly;
+                PairingTokenInfo info = pairingTokens.CreateToken(requestedRole);
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingInitiated, null, null,
                     tierResolver.ResolveClientIp(context), $"role={requestedRole}, bootstrap={isBootstrap}", isUrgent: false, ct);
@@ -63,7 +62,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = app.MapGet("/api/v1/pairing/{token}", (string token, IPairingTokenService pairingTokens) =>
             {
-                var info = pairingTokens.Peek(token);
+                PairingTokenInfo? info = pairingTokens.Peek(token);
                 return info == null
                     ? Results.NotFound(new { valid = false })
                     : Results.Ok(new { valid = true, expiresAtUtc = info.ExpiresAtUtc });
@@ -76,7 +75,7 @@ namespace VideoForensics.WebApp.Api
             // boundary.
             _ = app.MapGet("/api/v1/pairing/{token}/qrcode.png", (string token, HttpContext context, IPairingTokenService pairingTokens) =>
             {
-                var info = pairingTokens.Peek(token);
+                PairingTokenInfo? info = pairingTokens.Peek(token);
                 if (info == null)
                 {
                     return Results.NotFound();
@@ -85,7 +84,7 @@ namespace VideoForensics.WebApp.Api
                 string pairingUrl = $"{context.Request.Scheme}://{context.Request.Host}/pair?token={token}&v=1";
 
                 using var generator = new QRCodeGenerator();
-                using var data = generator.CreateQrCode(pairingUrl, QRCodeGenerator.ECCLevel.Q);
+                using QRCodeData data = generator.CreateQrCode(pairingUrl, QRCodeGenerator.ECCLevel.Q);
                 var pngQrCode = new PngByteQRCode(data);
                 byte[] bytes = pngQrCode.GetGraphic(10);
 
@@ -99,7 +98,7 @@ namespace VideoForensics.WebApp.Api
                 IWebAuthnCeremonyCache ceremonyCache,
                 IFido2 fido2) =>
             {
-                var info = pairingTokens.Peek(token);
+                PairingTokenInfo? info = pairingTokens.Peek(token);
                 if (info == null)
                 {
                     return Results.NotFound(new { error = "Pairing token expired or invalid." });
@@ -113,7 +112,7 @@ namespace VideoForensics.WebApp.Api
                     Id = operatorId.ToByteArray()
                 };
 
-                var options = fido2.RequestNewCredential(new RequestNewCredentialParams
+                CredentialCreateOptions options = fido2.RequestNewCredential(new RequestNewCredentialParams
                 {
                     User = fido2User,
                     ExcludeCredentials = [],
@@ -160,7 +159,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.BadRequest(new { error = "Registration ceremony expired or already completed." });
                 }
 
-                var pending = JsonSerializer.Deserialize<PendingRegistration>(cached)!;
+                PendingRegistration pending = JsonSerializer.Deserialize<PendingRegistration>(cached)!;
                 if (pending.Token != token || !pairingTokens.TryConsume(token, out _))
                 {
                     return Results.BadRequest(new { error = "Pairing token mismatch or already used." });
@@ -196,7 +195,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.BadRequest(new { error = $"Passkey registration failed verification: {ex.Message}" });
                 }
 
-                var op = await operators.AddAsync(new Operator
+                Operator op = await operators.AddAsync(new Operator
                 {
                     Id = pending.OperatorId,
                     DisplayName = pending.OperatorDisplayName,
@@ -204,7 +203,7 @@ namespace VideoForensics.WebApp.Api
                     Active = true
                 }, ct);
 
-                var pairedDevice = await pairedDevices.AddAsync(new PairedDevice
+                PairedDevice pairedDevice = await pairedDevices.AddAsync(new PairedDevice
                 {
                     Id = Guid.NewGuid(),
                     OperatorId = op.Id,
@@ -237,7 +236,7 @@ namespace VideoForensics.WebApp.Api
                 IFido2 fido2,
                 CancellationToken ct) =>
             {
-                var allDevices = await pairedDevices.ListAsync(ct);
+                IReadOnlyList<PairedDevice> allDevices = await pairedDevices.ListAsync(ct);
                 var allowedCredentials = allDevices
                     .Where(d => d.IsActive && d.WebAuthnCredentialId != null)
                     .Select(d => new PublicKeyCredentialDescriptor(
@@ -246,7 +245,7 @@ namespace VideoForensics.WebApp.Api
                         null))
                     .ToList();
 
-                var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
+                AssertionOptions options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
                 {
                     AllowedCredentials = allowedCredentials,
                     // Required, not Preferred/Discouraged - used for both sign-in and step-up
@@ -291,7 +290,7 @@ namespace VideoForensics.WebApp.Api
                 }
 
                 string credentialIdB64 = Convert.ToBase64String(assertionResponse.RawId);
-                var device = await pairedDevices.GetByWebAuthnCredentialIdAsync(credentialIdB64, ct);
+                PairedDevice? device = await pairedDevices.GetByWebAuthnCredentialIdAsync(credentialIdB64, ct);
                 if (device == null || device.WebAuthnPublicKey == null)
                 {
                     await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
@@ -318,7 +317,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.Unauthorized();
                 }
 
-                var tier = tierResolver.ResolveTier(context);
+                NetworkTier tier = tierResolver.ResolveTier(context);
                 await pairedDevices.RecordSuccessfulAuthAsync(device.Id, result.SignCount, tierResolver.ResolveClientIp(context), tier, ct);
 
                 string token = sessionTokens.Issue(device.OperatorId, device.Id, device.Role);
@@ -348,7 +347,7 @@ namespace VideoForensics.WebApp.Api
                 CancellationToken ct) =>
             {
                 string? currentDeviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
-                if (!Guid.TryParse(currentDeviceIdClaim, out var currentDeviceId))
+                if (!Guid.TryParse(currentDeviceIdClaim, out Guid currentDeviceId))
                 {
                     return Results.Unauthorized();
                 }
@@ -360,7 +359,7 @@ namespace VideoForensics.WebApp.Api
                 }
 
                 var options = AssertionOptions.FromJson(cachedOptionsJson);
-                var device = await pairedDevices.GetAsync(currentDeviceId, ct);
+                PairedDevice? device = await pairedDevices.GetAsync(currentDeviceId, ct);
                 if (device == null || !device.IsActive || device.WebAuthnPublicKey == null)
                 {
                     return Results.Unauthorized();
@@ -388,7 +387,7 @@ namespace VideoForensics.WebApp.Api
 
                 try
                 {
-                    var result = await fido2.MakeAssertionAsync(new MakeAssertionParams
+                    VerifyAssertionResult result = await fido2.MakeAssertionAsync(new MakeAssertionParams
                     {
                         AssertionResponse = assertionResponse,
                         OriginalOptions = options,

@@ -1,7 +1,5 @@
 using System;
 
-using VideoForensics.Providers.Ring;
-
 namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>

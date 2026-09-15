@@ -4,7 +4,6 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -78,7 +77,7 @@ namespace VideoForensics.Providers.Ring.Services
                         Guid resolvedAccountId = await GetOrCreateProviderAccountAsync(username, cancellationToken);
                         if (resolvedAccountId != Guid.Empty)
                         {
-                            var dbPersistenceSucceeded = true;
+                            bool dbPersistenceSucceeded = true;
 
                             // Dual-write: save refresh token to database
                             if (session.OAuthToken.RefreshToken != null)
@@ -302,13 +301,13 @@ namespace VideoForensics.Providers.Ring.Services
                     // If no specific account provided, try to find credentials from any Ring account
                     try
                     {
-                        var ringAccounts = await _providerAccountRepository.ListActiveAsync(cancellationToken);
+                        IReadOnlyList<ProviderAccount> ringAccounts = await _providerAccountRepository.ListActiveAsync(cancellationToken);
                         var ringAccountsForProvider = ringAccounts.Where(pa => pa.ProviderName == "Ring").ToList();
 
                         if (ringAccountsForProvider.Count > 0)
                         {
                             // Try each account until we find one with saved credentials
-                            foreach (var account in ringAccountsForProvider.OrderByDescending(a => a.LastSuccessfulAuthUtc))
+                            foreach (ProviderAccount? account in ringAccountsForProvider.OrderByDescending(a => a.LastSuccessfulAuthUtc))
                             {
                                 try
                                 {

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -79,14 +79,14 @@ namespace VideoForensics.Forensics.Implementations
 
             try
             {
-                var signature = GetReportSignature(report);
+                string? signature = GetReportSignature(report);
                 if (string.IsNullOrEmpty(signature))
                 {
                     return false;
                 }
 
-                var reportData = SerializeReportForVerification(report);
-                var isValid = await _keyStorageProvider.VerifySignatureAsync(
+                byte[] reportData = SerializeReportForVerification(report);
+                bool isValid = await _keyStorageProvider.VerifySignatureAsync(
                     certificateThumbprint,
                     reportData,
                     signature);
@@ -109,9 +109,9 @@ namespace VideoForensics.Forensics.Implementations
             ArgumentNullException.ThrowIfNullOrWhiteSpace(signingOfficer);
 
             var signedReports = new List<T>();
-            foreach (var report in reports)
+            foreach (T report in reports)
             {
-                var signedReport = await SignReportAsync(report, keyId, signingOfficer);
+                T signedReport = await SignReportAsync(report, keyId, signingOfficer);
                 signedReports.Add(signedReport);
             }
 
@@ -120,9 +120,9 @@ namespace VideoForensics.Forensics.Implementations
 
         private async Task<T> SignReportAsync<T>(T report, string keyId, string signingOfficer) where T : class
         {
-            var reportData = SerializeReportForSigning(report);
-            var signature = await _keyStorageProvider.SignDataAsync(keyId, reportData);
-            var metadata = await _keyStorageProvider.GetKeyMetadataAsync(keyId);
+            byte[] reportData = SerializeReportForSigning(report);
+            string signature = await _keyStorageProvider.SignDataAsync(keyId, reportData);
+            KeyMetadata metadata = await _keyStorageProvider.GetKeyMetadataAsync(keyId);
 
             SetReportSignature(report, signature, signingOfficer, metadata.CertificateThumbprint);
 
@@ -131,26 +131,26 @@ namespace VideoForensics.Forensics.Implementations
 
         private byte[] SerializeReportForSigning<T>(T report) where T : class
         {
-            var json = JsonSerializer.Serialize(report);
+            string json = JsonSerializer.Serialize(report);
             return Encoding.UTF8.GetBytes(json);
         }
 
         private byte[] SerializeReportForVerification<T>(T report) where T : class
         {
-            var json = JsonSerializer.Serialize(report);
+            string json = JsonSerializer.Serialize(report);
             return Encoding.UTF8.GetBytes(json);
         }
 
         private static string? GetReportSignature<T>(T report) where T : class
         {
-            var type = typeof(T);
-            var signatureProperty = type.GetProperty("DigitalSignature");
+            Type type = typeof(T);
+            PropertyInfo? signatureProperty = type.GetProperty("DigitalSignature");
             if (signatureProperty == null)
             {
                 return null;
             }
 
-            var value = signatureProperty.GetValue(report);
+            object? value = signatureProperty.GetValue(report);
             return value as string;
         }
 
@@ -160,7 +160,7 @@ namespace VideoForensics.Forensics.Implementations
             string signingOfficer,
             string certificateThumbprint) where T : class
         {
-            var type = typeof(T);
+            Type type = typeof(T);
 
             SetPropertyValue(type, report, "DigitalSignature", signature);
             SetPropertyValue(type, report, "SignedByOfficer", signingOfficer);
@@ -170,7 +170,7 @@ namespace VideoForensics.Forensics.Implementations
 
         private static void SetPropertyValue<T>(Type type, T report, string propertyName, object? value) where T : class
         {
-            var property = type.GetProperty(propertyName);
+            PropertyInfo? property = type.GetProperty(propertyName);
             if (property?.CanWrite == true)
             {
                 property.SetValue(report, value);

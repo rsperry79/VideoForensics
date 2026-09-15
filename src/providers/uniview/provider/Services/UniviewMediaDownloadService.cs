@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+
 using System.Collections.Concurrent;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Uniview.Services;
@@ -51,7 +53,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                 deviceId, startDate, endDate);
 
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             if (client is null)
             {
                 _logger.LogError("Not authenticated: Client is null");
@@ -61,7 +63,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
 
             // Parse device id to channel number (expect numeric or "channel:<num>" format)
-            if (!TryParseChannelNumber(deviceId, out var channel))
+            if (!TryParseChannelNumber(deviceId, out int channel))
             {
                 _logger.LogError("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
@@ -73,9 +75,9 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             // Split date range into month-sized chunks and query each
             var allSegments = new List<RecordSegment>();
-            var monthChunks = GetMonthChunks(startDate, endDate);
+            List<(DateTimeOffset Start, DateTimeOffset End)> monthChunks = GetMonthChunks(startDate, endDate);
 
-            foreach (var (monthStart, monthEnd) in monthChunks)
+            foreach ((DateTimeOffset monthStart, DateTimeOffset monthEnd) in monthChunks)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -84,7 +86,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
                 try
                 {
-                    var monthSegments = await client.ListSegmentsAsync(channel, monthStart, monthEnd, cancellationToken);
+                    IReadOnlyList<RecordSegment> monthSegments = await client.ListSegmentsAsync(channel, monthStart, monthEnd, cancellationToken);
                     allSegments.AddRange(monthSegments);
 
                     // Log warning if a single month's query looks like it hit the 2000-result cap
@@ -125,25 +127,25 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             _logger.LogInformation("Found {SegmentCount} segments across all months for channel {Channel}",
                 allSegments.Count, channel);
 
-            var filesDownloaded = 0;
-            var bytesDownloaded = 0L;
+            int filesDownloaded = 0;
+            long bytesDownloaded = 0L;
 
             // Download each segment sequentially
-            foreach (var segment in allSegments)
+            foreach (RecordSegment segment in allSegments)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }
 
-                var fileName = BuildSegmentFileName(outputPath, deviceId, segment);
+                string fileName = BuildSegmentFileName(outputPath, deviceId, segment);
 
                 try
                 {
                     // Skip if already exists
                     if (File.Exists(fileName) && new FileInfo(fileName).Length > 0)
                     {
-                        var existingSize = new FileInfo(fileName).Length;
+                        long existingSize = new FileInfo(fileName).Length;
                         lock (_statusLock)
                         {
                             filesDownloaded++;
@@ -155,6 +157,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                                 CurrentFile = fileName
                             };
                         }
+
                         _activityLog.Enqueue($"○ {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
                         continue;
                     }
@@ -167,7 +170,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                         continue;
                     }
 
-                    var fileSize = new FileInfo(fileName).Length;
+                    long fileSize = new FileInfo(fileName).Length;
                     if (fileSize == 0)
                     {
                         _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: empty file");
@@ -196,6 +199,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     {
                         _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
                     }
+
                     _activityLog.Enqueue($"✗ Capacity limit (code 60031): {ex.Message}");
 
                     lock (_statusLock)
@@ -245,6 +249,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
             }
+
             return new DownloadResult(
                 Success: false,
                 ErrorMessage: $"Download failed: {ex.Message}");
@@ -268,7 +273,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         {
             _logger.LogInformation("Requesting live snapshot for device {DeviceId}", deviceId);
 
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             if (client is null)
             {
                 _logger.LogError("Not authenticated: Client is null");
@@ -278,7 +283,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
 
             // Parse device id to channel number
-            if (!TryParseChannelNumber(deviceId, out var channel))
+            if (!TryParseChannelNumber(deviceId, out int channel))
             {
                 _logger.LogError("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
@@ -293,7 +298,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
             }
 
-            var fileName = Path.Combine(outputPath, $"snapshot_{deviceId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg");
+            string fileName = Path.Combine(outputPath, $"snapshot_{deviceId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg");
 
             try
             {
@@ -305,13 +310,14 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     {
                         _currentStatus = _currentStatus with { IsDownloading = false };
                     }
+
                     _activityLog.Enqueue("✗ Snapshot: ffmpeg failed to produce a file");
                     return new DownloadResult(
                         Success: false,
                         ErrorMessage: "Snapshot capture failed: ffmpeg produced no output");
                 }
 
-                var fileSize = new FileInfo(fileName).Length;
+                long fileSize = new FileInfo(fileName).Length;
                 if (fileSize == 0)
                 {
                     File.Delete(fileName);
@@ -319,6 +325,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     {
                         _currentStatus = _currentStatus with { IsDownloading = false };
                     }
+
                     _activityLog.Enqueue("✗ Snapshot: empty file");
                     return new DownloadResult(
                         Success: false,
@@ -336,7 +343,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     };
                 }
 
-                var msg = $"✓ {Path.GetFileName(fileName)} ({FormatBytes(fileSize)}) — " +
+                string msg = $"✓ {Path.GetFileName(fileName)} ({FormatBytes(fileSize)}) — " +
                           "Live snapshot only (Uniview device has no historical snapshot API)";
                 _activityLog.Enqueue(msg);
 
@@ -362,6 +369,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
                 }
+
                 _activityLog.Enqueue($"✗ Snapshot: {ex.GetType().Name}");
                 return new DownloadResult(
                     Success: false,
@@ -375,6 +383,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
             }
+
             return new DownloadResult(
                 Success: false,
                 ErrorMessage: $"Download failed: {ex.Message}");
@@ -408,10 +417,11 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     public IReadOnlyList<string> DrainActivityLog()
     {
         var items = new List<string>();
-        while (_activityLog.TryDequeue(out var item))
+        while (_activityLog.TryDequeue(out string? item))
         {
             items.Add(item);
         }
+
         return items;
     }
 
@@ -421,11 +431,11 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         var chunks = new List<(DateTimeOffset, DateTimeOffset)>();
 
         var current = new DateTime(startDate.Year, startDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var end = endDate.ToUniversalTime();
+        DateTime end = endDate.ToUniversalTime();
 
         while (current <= end)
         {
-            var monthEnd = current.AddMonths(1).AddTicks(-1);
+            DateTime monthEnd = current.AddMonths(1).AddTicks(-1);
             if (monthEnd > end)
             {
                 monthEnd = end;
@@ -448,24 +458,18 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
 
         // Support "channel:5", "5", "D5", etc.
-        if (deviceId.StartsWith("channel:", StringComparison.OrdinalIgnoreCase))
-        {
-            return int.TryParse(deviceId.Substring(8), out channel);
-        }
-
-        if (deviceId.StartsWith("D", StringComparison.OrdinalIgnoreCase))
-        {
-            return int.TryParse(deviceId.Substring(1), out channel);
-        }
-
-        return int.TryParse(deviceId, out channel);
+        return deviceId.StartsWith("channel:", StringComparison.OrdinalIgnoreCase)
+            ? int.TryParse(deviceId[8..], out channel)
+            : deviceId.StartsWith("D", StringComparison.OrdinalIgnoreCase)
+            ? int.TryParse(deviceId[1..], out channel)
+            : int.TryParse(deviceId, out channel);
     }
 
     /// <summary>Build a destination file path for a segment using device id and segment timestamp.</summary>
     private static string BuildSegmentFileName(string outputPath, string deviceId, RecordSegment segment)
     {
-        var timestamp = segment.Begin.ToString("yyyyMMddHHmmss");
-        var fileName = $"ch{segment.Channel}_{timestamp}.mp4";
+        string timestamp = segment.Begin.ToString("yyyyMMddHHmmss");
+        string fileName = $"ch{segment.Channel}_{timestamp}.mp4";
         return Path.Combine(outputPath, fileName);
     }
 
@@ -474,10 +478,6 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         const double kb = 1024;
         const double mb = kb * 1024;
-        if (bytes >= mb)
-        {
-            return $"{bytes / mb:F1} MB";
-        }
-        return bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
+        return bytes >= mb ? $"{bytes / mb:F1} MB" : bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
     }
 }

@@ -44,7 +44,7 @@ namespace VideoForensics.Providers.Ring
 
             var ticketUri = new Uri(RingAppApiBaseUrl, "clap/ticket/request/signalsocket");
             string response = await _httpUtility.SendRequest(ticketUri, System.Net.Http.HttpMethod.Post, null, AuthenticationToken, cancellationToken);
-            var ticketResponse = JsonSerializer.Deserialize<ClapSignalingTicketResponse>(response);
+            ClapSignalingTicketResponse? ticketResponse = JsonSerializer.Deserialize<ClapSignalingTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Ticket))
             {

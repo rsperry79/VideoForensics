@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using VideoForensics.Providers.Ring;
+
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Common.Tests;
@@ -32,7 +32,7 @@ public class DeviceAction_Construction_Tests
         };
 
         Assert.Equal("light_on", action.ActionType);
-        Assert.Single(action.Parameters);
+        _ = Assert.Single(action.Parameters);
         Assert.Equal(100, action.Parameters["brightness"]);
     }
 
@@ -44,7 +44,7 @@ public class DeviceAction_Construction_Tests
         Assert.Empty(action.Parameters);
         action.Parameters.Add("key", "value");
 
-        Assert.Single(action.Parameters);
+        _ = Assert.Single(action.Parameters);
     }
 }
 
@@ -68,7 +68,7 @@ public class DeviceStatusInfo_Construction_Tests
     [Fact]
     public void Construction_SetProperties_AssignsValues()
     {
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var status = new DeviceStatusInfo
         {
             DeviceId = "device-123",
@@ -118,8 +118,8 @@ public class DoorbotTimestamp_JsonDeserialization_Tests
     [Fact]
     public void Deserialization_WithValidJson_PopulatesProperties()
     {
-        var json = """{"doorbot_id": 12345, "timestamp": 1609459200000}""";
-        var timestamp = JsonSerializer.Deserialize<DoorbotTimestamp>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        string json = """{"doorbot_id": 12345, "timestamp": 1609459200000}""";
+        DoorbotTimestamp? timestamp = JsonSerializer.Deserialize<DoorbotTimestamp>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(timestamp);
         Assert.Equal(12345, timestamp.DoorbotId);
@@ -144,7 +144,7 @@ public class DoorbotTimestamp_JsonDeserialization_Tests
             TimestampEpoch = 1609459200000 // 2021-01-01 00:00:00 UTC
         };
 
-        Assert.NotNull(timestamp.Timestamp);
+        _ = Assert.NotNull(timestamp.Timestamp);
         Assert.True(timestamp.Timestamp.Value.ToUniversalTime().Year == 2021);
     }
 
@@ -165,7 +165,7 @@ public class DoorbotTimestamp_JsonDeserialization_Tests
         };
 
         // Should be converted to local time
-        Assert.NotNull(timestamp.Timestamp);
+        _ = Assert.NotNull(timestamp.Timestamp);
     }
 }
 
@@ -177,7 +177,7 @@ public class OAuthToken_JsonDeserialization_Tests
     [Fact]
     public void Deserialization_WithValidJson_PopulatesProperties()
     {
-        var json = """
+        string json = """
         {
             "access_token": "test-access-token",
             "token_type": "bearer",
@@ -188,7 +188,7 @@ public class OAuthToken_JsonDeserialization_Tests
         }
         """;
 
-        var token = JsonSerializer.Deserialize<OAutToken>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        OAutToken? token = JsonSerializer.Deserialize<OAutToken>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(token);
         Assert.Equal("test-access-token", token.AccessToken);
@@ -203,9 +203,9 @@ public class OAuthToken_JsonDeserialization_Tests
     public void ExpiresInSeconds_WhenSet_CalculatesExpiresAt()
     {
         var token = new OAutToken();
-        var beforeSet = DateTime.Now;
+        DateTime beforeSet = DateTime.Now;
         token.ExpiresInSeconds = 3600;
-        var afterSet = DateTime.Now;
+        DateTime afterSet = DateTime.Now;
 
         Assert.NotEqual(default, token.ExpiresAt);
         Assert.True(token.ExpiresAt > beforeSet.AddSeconds(3600 - 1));
@@ -269,7 +269,7 @@ public class SessionFeatures_JsonDeserialization_Tests
     [Fact]
     public void Deserialization_WithExplicitProperties_PopulatesTypedProperties()
     {
-        var json = """
+        string json = """
         {
             "remote_logging_format_storing": true,
             "subscriptions_enabled": false,
@@ -278,7 +278,7 @@ public class SessionFeatures_JsonDeserialization_Tests
         }
         """;
 
-        var features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        SessionFeatures? features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(features);
         Assert.True(features.RemoteLoggingFormatStoring);
@@ -290,7 +290,7 @@ public class SessionFeatures_JsonDeserialization_Tests
     [Fact]
     public void Deserialization_WithUnknownProperties_CapturesInAdditionalFeatures()
     {
-        var json = """
+        string json = """
         {
             "remote_logging_format_storing": true,
             "unknown_feature_flag_1": true,
@@ -298,7 +298,7 @@ public class SessionFeatures_JsonDeserialization_Tests
         }
         """;
 
-        var features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        SessionFeatures? features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(features);
         Assert.True(features.RemoteLoggingFormatStoring);
@@ -332,24 +332,24 @@ public class SessionFeatures_JsonDeserialization_Tests
         Assert.Empty(features.AdditionalFeatures);
         features.AdditionalFeatures["custom"] = "value";
 
-        Assert.Single(features.AdditionalFeatures);
+        _ = Assert.Single(features.AdditionalFeatures);
     }
 
     [Fact]
     public void MixedProperties_TypedAndUnknown_BothPopulated()
     {
-        var json = """
+        string json = """
         {
             "subscriptions_enabled": true,
             "custom_unknown_flag": 42
         }
         """;
 
-        var features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        SessionFeatures? features = JsonSerializer.Deserialize<SessionFeatures>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(features);
         Assert.True(features.SubscriptionsEnabled);
-        Assert.Single(features.AdditionalFeatures);
+        _ = Assert.Single(features.AdditionalFeatures);
         Assert.Equal(42, ((JsonElement)features.AdditionalFeatures["custom_unknown_flag"]).GetInt32());
     }
 }

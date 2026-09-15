@@ -1,9 +1,9 @@
+using Microsoft.Win32;
+
 using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-
-using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Providers.Ring.Implementations
 {
@@ -43,7 +43,7 @@ namespace VideoForensics.Providers.Ring.Implementations
                 aes.Padding = PaddingMode.PKCS7;
                 aes.GenerateIV();
 
-                using var encryptor = aes.CreateEncryptor(key, aes.IV);
+                using ICryptoTransform encryptor = aes.CreateEncryptor(key, aes.IV);
                 using var ms = new MemoryStream();
                 // Write IV first (needed for decryption)
                 ms.Write(aes.IV, 0, aes.IV.Length);
@@ -84,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Implementations
                 Buffer.BlockCopy(buffer, 0, iv, 0, IvSize);
                 aes.IV = iv;
 
-                using var decryptor = aes.CreateDecryptor(key, aes.IV);
+                using ICryptoTransform decryptor = aes.CreateDecryptor(key, aes.IV);
                 using var ms = new MemoryStream(buffer, IvSize, buffer.Length - IvSize);
                 using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
                 using var sr = new StreamReader(cs, Encoding.UTF8);
@@ -141,7 +141,7 @@ namespace VideoForensics.Providers.Ring.Implementations
                 string directory = Path.GetDirectoryName(saltPath);
                 if (!Directory.Exists(directory))
                 {
-                    Directory.CreateDirectory(directory);
+                    _ = Directory.CreateDirectory(directory);
                 }
 
                 File.WriteAllBytes(saltPath, randomSalt);
@@ -184,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Implementations
             try
             {
                 // On Windows, try to get the unique machine GUID
-                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                using RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
                     @"SOFTWARE\Microsoft\Cryptography");
                 object value = key?.GetValue("MachineGuid");
                 return value?.ToString() ?? Environment.MachineName;

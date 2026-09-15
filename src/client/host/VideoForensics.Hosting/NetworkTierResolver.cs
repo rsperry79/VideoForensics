@@ -104,14 +104,14 @@ namespace VideoForensics.Hosting
                 return false;
             }
 
-            var addressBytes = mapped.GetAddressBytes();
-            var addressInt = (uint)((addressBytes[0] << 24) | (addressBytes[1] << 16) | (addressBytes[2] << 8) | addressBytes[3]);
+            byte[] addressBytes = mapped.GetAddressBytes();
+            uint addressInt = (uint)((addressBytes[0] << 24) | (addressBytes[1] << 16) | (addressBytes[2] << 8) | addressBytes[3]);
 
             foreach ((IPAddress? network, int prefixLength) in CloudflareIpv4Ranges)
             {
-                var networkBytes = network.GetAddressBytes();
-                var networkInt = (uint)((networkBytes[0] << 24) | (networkBytes[1] << 16) | (networkBytes[2] << 8) | networkBytes[3]);
-                var mask = prefixLength == 0 ? 0u : uint.MaxValue << (32 - prefixLength);
+                byte[] networkBytes = network.GetAddressBytes();
+                uint networkInt = (uint)((networkBytes[0] << 24) | (networkBytes[1] << 16) | (networkBytes[2] << 8) | networkBytes[3]);
+                uint mask = prefixLength == 0 ? 0u : uint.MaxValue << (32 - prefixLength);
                 if ((addressInt & mask) == (networkInt & mask))
                 {
                     return true;

@@ -1,11 +1,10 @@
-using System;
-using System.Runtime.Versioning;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Serilog;
-using Serilog.Extensions.Logging;
+
+using System;
+using System.Runtime.Versioning;
 
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Core.Logging.Providers;
@@ -36,7 +35,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             bool enableEventLog = false,
             bool enableSyslog = false)
         {
-            logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
+            _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
 
             if (enableEventLog && OperatingSystem.IsWindows())
             {
@@ -48,14 +47,16 @@ namespace VideoForensics.Core.Logging.DependencyInjection
                 Serilog.Core.Logger syslogLogger = new LoggerConfiguration()
                     .WriteTo.LocalSyslog(appName: "VideoForensics")
                     .CreateLogger();
-                logging.AddSerilog(syslogLogger, dispose: true);
+                _ = logging.AddSerilog(syslogLogger, dispose: true);
             }
 
             return logging;
         }
 
         [SupportedOSPlatform("windows")]
-        private static void AddWindowsEventLog(ILoggingBuilder logging) =>
-            logging.AddEventLog(settings => settings.SourceName = "VideoForensics");
+        private static void AddWindowsEventLog(ILoggingBuilder logging)
+        {
+            _ = logging.AddEventLog(settings => settings.SourceName = "VideoForensics");
+        }
     }
 }

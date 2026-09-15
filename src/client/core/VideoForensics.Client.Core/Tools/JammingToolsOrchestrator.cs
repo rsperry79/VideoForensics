@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Core.Tools
                 _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
                 JammingStatsSummary? stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
 
-                var message = stats?.IncidentCount > 0
+                string message = stats?.IncidentCount > 0
                     ? $"Jamming detection summary: {stats.IncidentCount} incident(s), {stats.TotalJammedDurationMinutes:F1} minutes total duration, avg degradation {stats.AverageDegradationDb:F1} dB"
                     : "No jamming incidents recorded for this device";
 
@@ -169,7 +169,7 @@ namespace VideoForensics.Client.Core.Tools
                 _logger.LogInformation("Starting jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
                     deviceId, fromUtc, toUtc);
 
-                var detectedCount = await DetectAndPersistIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+                int detectedCount = await DetectAndPersistIncidentsAsync(deviceId, fromUtc, toUtc, ct);
 
                 _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
 
@@ -227,7 +227,7 @@ namespace VideoForensics.Client.Core.Tools
                 return 0;
             }
 
-            var baselineRssi = Median(readings.Select(r => (double)r.WifiSignalRssi!.Value));
+            double baselineRssi = Median(readings.Select(r => (double)r.WifiSignalRssi!.Value));
 
             IReadOnlyList<JammingIncidentRecord> existingIncidents = await _jammingRepository.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
             var alreadyDetectedStarts = existingIncidents
@@ -235,12 +235,12 @@ namespace VideoForensics.Client.Core.Tools
                 .Select(i => i.StartUtc)
                 .ToHashSet();
 
-            var detected = 0;
-            var runStart = -1;
+            int detected = 0;
+            int runStart = -1;
 
-            for (var i = 0; i <= readings.Count; i++)
+            for (int i = 0; i <= readings.Count; i++)
             {
-                var isDegraded = i < readings.Count && (baselineRssi - readings[i].WifiSignalRssi!.Value) >= DegradationThresholdDb;
+                bool isDegraded = i < readings.Count && (baselineRssi - readings[i].WifiSignalRssi!.Value) >= DegradationThresholdDb;
 
                 if (isDegraded && runStart == -1)
                 {
@@ -248,7 +248,7 @@ namespace VideoForensics.Client.Core.Tools
                 }
                 else if (!isDegraded && runStart != -1)
                 {
-                    var runLength = i - runStart;
+                    int runLength = i - runStart;
                     if (runLength >= MinConsecutiveReadingsForIncident)
                     {
                         List<DeviceHealth> runReadings = readings.GetRange(runStart, runLength);
@@ -256,7 +256,7 @@ namespace VideoForensics.Client.Core.Tools
 
                         if (!alreadyDetectedStarts.Contains(incidentStart))
                         {
-                            var avgDegradation = baselineRssi - runReadings.Average(r => r.WifiSignalRssi!.Value);
+                            double avgDegradation = baselineRssi - runReadings.Average(r => r.WifiSignalRssi!.Value);
 
                             _ = await _jammingRepository.UpsertIncidentAsync(new JammingIncidentRecord
                             {
@@ -289,23 +289,17 @@ namespace VideoForensics.Client.Core.Tools
         /// <summary>Classifies confidence from run length (sustained-ness) and average degradation magnitude, per the JammingAnalysisResource playbook.</summary>
         private static JammingConfidenceLevel ClassifyConfidence(int runLength, double avgDegradationDb)
         {
-            if (runLength >= 5 && avgDegradationDb >= 20)
-            {
-                return JammingConfidenceLevel.Definite;
-            }
-
-            if (runLength >= 3 && avgDegradationDb >= 15)
-            {
-                return JammingConfidenceLevel.High;
-            }
-
-            return runLength >= 2 && avgDegradationDb >= 10 ? JammingConfidenceLevel.Medium : JammingConfidenceLevel.Low;
+            return runLength >= 5 && avgDegradationDb >= 20
+                ? JammingConfidenceLevel.Definite
+                : runLength >= 3 && avgDegradationDb >= 15
+                ? JammingConfidenceLevel.High
+                : runLength >= 2 && avgDegradationDb >= 10 ? JammingConfidenceLevel.Medium : JammingConfidenceLevel.Low;
         }
 
         private static double Median(IEnumerable<double> values)
         {
             var sorted = values.OrderBy(v => v).ToList();
-            var mid = sorted.Count / 2;
+            int mid = sorted.Count / 2;
             return sorted.Count % 2 == 0
                 ? (sorted[mid - 1] + sorted[mid]) / 2.0
                 : sorted[mid];
@@ -338,9 +332,9 @@ namespace VideoForensics.Client.Core.Tools
                 return "No jamming incidents detected";
             }
 
-            var high = Summary.HighConfidenceCount;
-            var medium = Summary.MediumConfidenceCount;
-            var low = Summary.LowConfidenceCount;
+            int high = Summary.HighConfidenceCount;
+            int medium = Summary.MediumConfidenceCount;
+            int low = Summary.LowConfidenceCount;
 
             return $"{Summary.IncidentCount} incident(s): High={high}, Medium={medium}, Low={low} | " +
                    $"{Summary.TotalJammedDurationMinutes:F0}min duration | " +

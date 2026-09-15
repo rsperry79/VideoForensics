@@ -57,10 +57,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListAsync_CallsGetDevicesEndpoint_AndReturnsDevices()
         {
-            var device1 = CreateDeviceDto();
-            var device2 = CreateDeviceDto();
+            DeviceDto device1 = CreateDeviceDto();
+            DeviceDto device2 = CreateDeviceDto();
             var dtoList = new List<DeviceDto> { device1, device2 };
-            var json = JsonSerializer.Serialize(dtoList, JsonOptions);
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
             {
@@ -71,10 +71,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -88,7 +88,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListAsync_WithCancellationToken_PassesToHttpClient()
         {
             var cts = new CancellationTokenSource();
-            var json = JsonSerializer.Serialize(new List<DeviceDto>(), JsonOptions);
+            string json = JsonSerializer.Serialize(new List<DeviceDto>(), JsonOptions);
             CancellationToken? capturedToken = null;
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -101,19 +101,19 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.ListAsync(cts.Token);
+            IReadOnlyList<Device> result = await repo.ListAsync(cts.Token);
 
-            Assert.NotNull(capturedToken);
+            _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
         }
 
         [Fact]
         public async Task ListAsync_EmptyResponse_ReturnsEmptyList()
         {
-            var json = JsonSerializer.Serialize(new List<DeviceDto>(), JsonOptions);
+            string json = JsonSerializer.Serialize(new List<DeviceDto>(), JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -124,10 +124,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -136,10 +136,10 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_CallsListAsyncAndFilters_ByDeviceId()
         {
             var deviceId = Guid.NewGuid();
-            var device1 = CreateDeviceDto(id: deviceId);
-            var device2 = CreateDeviceDto();
+            DeviceDto device1 = CreateDeviceDto(id: deviceId);
+            DeviceDto device2 = CreateDeviceDto();
             var dtoList = new List<DeviceDto> { device1, device2 };
-            var json = JsonSerializer.Serialize(dtoList, JsonOptions);
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -150,10 +150,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.GetAsync(deviceId, CancellationToken.None);
+            Device? result = await repo.GetAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(deviceId, result.Id);
@@ -164,9 +164,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_DeviceNotFound_ReturnsNull()
         {
             var nonExistentId = Guid.NewGuid();
-            var device1 = CreateDeviceDto();
+            DeviceDto device1 = CreateDeviceDto();
             var dtoList = new List<DeviceDto> { device1 };
-            var json = JsonSerializer.Serialize(dtoList, JsonOptions);
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -177,10 +177,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.GetAsync(nonExistentId, CancellationToken.None);
+            Device? result = await repo.GetAsync(nonExistentId, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -194,10 +194,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.GetByLocationIdAsync(Guid.NewGuid(), CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -212,10 +212,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.GetByProviderDeviceIdAsync(Guid.NewGuid(), "provider-123", CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -230,10 +230,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.GetByApiHashAsync("hash123", CancellationToken.None));
 
             Assert.Contains("Remote API doesn't yet support", ex.Message);
@@ -248,12 +248,12 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
             var device = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), Name = "Test", ProviderDeviceId = "test-device", Type = "camera" };
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.AddAsync(device, CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -268,12 +268,12 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
             var device = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), Name = "Test", ProviderDeviceId = "test-device", Type = "camera" };
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.UpdateAsync(device, CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -288,10 +288,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.UpdateLastSuccessfulPullAsync(Guid.NewGuid(), DateTime.UtcNow, CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -306,10 +306,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -334,7 +334,7 @@ namespace VideoForensics.Hosting.Tests
                 ApiResponseHash: "hash-123"
             );
 
-            var json = JsonSerializer.Serialize(new List<DeviceDto> { deviceDto }, JsonOptions);
+            string json = JsonSerializer.Serialize(new List<DeviceDto> { deviceDto }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -345,12 +345,12 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteDeviceRepository(httpClient);
 
-            var result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<Device> result = await repo.ListAsync(CancellationToken.None);
 
-            var device = result[0];
+            Device device = result[0];
             Assert.Equal(deviceDto.Id, device.Id);
             Assert.Equal(deviceDto.LocationId, device.LocationId);
             Assert.Equal(deviceDto.ProviderDeviceId, device.ProviderDeviceId);

@@ -34,6 +34,6 @@ namespace VideoForensics.Data.Core.Contracts
         public int NewEventsInserted { get; set; }
         public int MetadataUpdated { get; set; }
         public int Failed { get; set; }
-        public List<string> ErrorDetails { get; set; } = new();
+        public List<string> ErrorDetails { get; set; } = [];
     }
 }

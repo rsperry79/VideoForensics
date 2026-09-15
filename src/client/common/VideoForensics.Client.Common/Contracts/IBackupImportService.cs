@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Common.Contracts
         public BackupImportStageResult Events { get; set; } = new();
         public BackupImportStageResult DownloadEvents { get; set; } = new();
         public BackupImportStageResult MediaItems { get; set; } = new();
-        public List<string> Details { get; set; } = new();
+        public List<string> Details { get; set; } = [];
         public string? ErrorMessage { get; set; }
     }
 

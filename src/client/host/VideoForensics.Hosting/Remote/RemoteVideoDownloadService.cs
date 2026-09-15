@@ -23,8 +23,8 @@ namespace VideoForensics.Hosting.Remote
         private readonly HttpClient _httpClient;
         private readonly ILiveHubConnection _hubConnection;
         private DownloadProgressPayload? _lastPayload;
-        private readonly object _lockObj = new object();
-        private List<string> _activityLog = new();
+        private readonly object _lockObj = new();
+        private List<string> _activityLog = [];
 
         public RemoteVideoDownloadService(HttpClient httpClient, ILiveHubConnection hubConnection)
         {
@@ -52,7 +52,7 @@ namespace VideoForensics.Hosting.Remote
             var request = new DownloadVideosRequestDto(outputPath, startDate, endDate, force);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/downloads/videos", request);
             _ = response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<DownloadOperationResponseDto>();
+            DownloadOperationResponseDto? result = await response.Content.ReadFromJsonAsync<DownloadOperationResponseDto>();
             return result?.Success ?? false;
         }
 
@@ -62,7 +62,7 @@ namespace VideoForensics.Hosting.Remote
             var request = new DownloadSnapshotsRequestDto(outputPath, startDate, endDate);
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/downloads/snapshots", request);
             _ = response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<DownloadOperationResponseDto>();
+            DownloadOperationResponseDto? result = await response.Content.ReadFromJsonAsync<DownloadOperationResponseDto>();
             return result?.Success ?? false;
         }
 
@@ -88,11 +88,9 @@ namespace VideoForensics.Hosting.Remote
         {
             lock (_lockObj)
             {
-                if (_lastPayload?.Progress.IsDownloading == true && _lastPayload.CurrentDeviceTotal > 0)
-                {
-                    return $"Downloading media for device {_lastPayload.CurrentDeviceIndex} of {_lastPayload.CurrentDeviceTotal}";
-                }
-                return _lastPayload?.Progress.IsDownloading == true ? "Downloading media..." : "Idle";
+                return _lastPayload?.Progress.IsDownloading == true && _lastPayload.CurrentDeviceTotal > 0
+                    ? $"Downloading media for device {_lastPayload.CurrentDeviceIndex} of {_lastPayload.CurrentDeviceTotal}"
+                    : _lastPayload?.Progress.IsDownloading == true ? "Downloading media..." : "Idle";
             }
         }
 
@@ -101,9 +99,9 @@ namespace VideoForensics.Hosting.Remote
         {
             lock (_lockObj)
             {
-                if (_lastPayload?.Progress == null)
-                    return 0;
-                return Math.Max(0, _lastPayload.Progress.TotalFilesMatched - _lastPayload.Progress.TotalFilesCompleted);
+                return _lastPayload?.Progress == null
+                    ? 0
+                    : Math.Max(0, _lastPayload.Progress.TotalFilesMatched - _lastPayload.Progress.TotalFilesCompleted);
             }
         }
 
@@ -121,7 +119,10 @@ namespace VideoForensics.Hosting.Remote
             lock (_lockObj)
             {
                 if (_lastPayload == null)
+                {
                     return (0, 0, "");
+                }
+
                 return (_lastPayload.CurrentDeviceIndex, _lastPayload.CurrentDeviceTotal, _lastPayload.CurrentDeviceName ?? "");
             }
         }
@@ -140,8 +141,8 @@ namespace VideoForensics.Hosting.Remote
         {
             lock (_lockObj)
             {
-                var result = _activityLog;
-                _activityLog = new List<string>();
+                List<string> result = _activityLog;
+                _activityLog = [];
                 return result;
             }
         }

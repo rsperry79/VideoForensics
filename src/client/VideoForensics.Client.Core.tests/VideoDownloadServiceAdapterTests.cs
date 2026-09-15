@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using VideoForensics.Client.Core.Services;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -29,9 +32,9 @@ namespace VideoForensics.Client.Core.Tests
             _dataClientMock = new Mock<IVideoForensicsDataClient>();
             _configMock = new Mock<IForensicsConfiguration>();
 
-            _videoProviderMock.Setup(p => p.ProviderName).Returns("Ring");
-            _configMock.Setup(c => c.MaxConcurrentDownloads).Returns(10);
-            _configMock.Setup(c => c.ActiveProviderAccountId).Returns(Guid.NewGuid());
+            _ = _videoProviderMock.Setup(p => p.ProviderName).Returns("Ring");
+            _ = _configMock.Setup(c => c.MaxConcurrentDownloads).Returns(10);
+            _ = _configMock.Setup(c => c.ActiveProviderAccountId).Returns(Guid.NewGuid());
 
             _adapter = new VideoDownloadServiceAdapter(
                 _loggerMock.Object,
@@ -47,11 +50,11 @@ namespace VideoForensics.Client.Core.Tests
         public async Task AuthenticateAsync_SuccessfulAuth_ReturnsTrue()
         {
             var authResult = new AuthResult(Success: true);
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.AuthenticateAsync("user@example.com", "password", It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(authResult));
 
-            var result = await _adapter.AuthenticateAsync("user@example.com", "password");
+            bool result = await _adapter.AuthenticateAsync("user@example.com", "password");
 
             Assert.True(result);
         }
@@ -60,11 +63,11 @@ namespace VideoForensics.Client.Core.Tests
         public async Task AuthenticateAsync_FailedAuth_ReturnsFalse()
         {
             var authResult = new AuthResult(Success: false);
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(authResult));
 
-            var result = await _adapter.AuthenticateAsync("user@example.com", "wrongpassword");
+            bool result = await _adapter.AuthenticateAsync("user@example.com", "wrongpassword");
 
             Assert.False(result);
         }
@@ -87,7 +90,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetDownloadStatus_ReturnsReady()
         {
-            var status = _adapter.GetDownloadStatus();
+            string status = _adapter.GetDownloadStatus();
 
             Assert.Equal("Ready", status);
         }
@@ -95,7 +98,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetCurrentDevice_InitialState_ReturnsZeros()
         {
-            var (index, total, name) = _adapter.GetCurrentDevice();
+            (int index, int total, string? name) = _adapter.GetCurrentDevice();
 
             Assert.Equal(0, index);
             Assert.Equal(0, total);
@@ -105,7 +108,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetRemainingCount_InitialState_ReturnsZero()
         {
-            var count = _adapter.GetRemainingCount();
+            int count = _adapter.GetRemainingCount();
 
             Assert.Equal(0, count);
         }
@@ -113,7 +116,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetRemainingReason_InitialState_ReturnsNull()
         {
-            var reason = _adapter.GetRemainingReason();
+            string? reason = _adapter.GetRemainingReason();
 
             Assert.Null(reason);
         }
@@ -121,7 +124,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetLastError_InitialState_ReturnsNull()
         {
-            var error = _adapter.GetLastError();
+            string? error = _adapter.GetLastError();
 
             Assert.Null(error);
         }
@@ -129,12 +132,12 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetRateLimitBanUntilUtc_DelegatestoDownloadService()
         {
-            var banTime = DateTime.UtcNow.AddMinutes(5);
-            _downloadServiceMock
+            DateTime banTime = DateTime.UtcNow.AddMinutes(5);
+            _ = _downloadServiceMock
                 .Setup(s => s.GetRateLimitBanUntilUtc())
                 .Returns(banTime);
 
-            var result = _adapter.GetRateLimitBanUntilUtc();
+            DateTime? result = _adapter.GetRateLimitBanUntilUtc();
 
             Assert.Equal(banTime, result);
         }
@@ -152,7 +155,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void GetPreScanCounts_InitialState_ReturnsEmptyDictionary()
         {
-            var counts = _adapter.GetPreScanCounts();
+            IReadOnlyDictionary<string, int> counts = _adapter.GetPreScanCounts();
 
             Assert.NotNull(counts);
             Assert.Empty(counts);
@@ -162,11 +165,11 @@ namespace VideoForensics.Client.Core.Tests
         public void DrainActivityLog_DelegatestoDownloadService()
         {
             var logs = new List<string> { "Downloaded file 1", "Downloaded file 2" };
-            _downloadServiceMock
+            _ = _downloadServiceMock
                 .Setup(s => s.DrainActivityLog())
                 .Returns(logs);
 
-            var result = _adapter.DrainActivityLog();
+            IReadOnlyList<string> result = _adapter.DrainActivityLog();
 
             Assert.Equal(2, result.Count);
             _downloadServiceMock.Verify(s => s.DrainActivityLog(), Times.Once);
@@ -175,14 +178,14 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task DownloadVideosAsync_NotAuthenticated_ReturnsFalseAndSetsError()
         {
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            var result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
 
             Assert.False(result);
-            var error = _adapter.GetLastError();
+            string? error = _adapter.GetLastError();
             Assert.NotNull(error);
             Assert.Contains("Not authenticated", error);
         }
@@ -190,18 +193,18 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task DownloadVideosAsync_NoDevices_ReturnsFalseAndSetsError()
         {
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(true));
 
-            _deviceServiceMock
+            _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)new List<Location>()));
+                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
 
-            var result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
 
             Assert.False(result);
-            var error = _adapter.GetLastError();
+            string? error = _adapter.GetLastError();
             Assert.NotNull(error);
             Assert.Contains("No devices found", error);
         }
@@ -209,13 +212,13 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task PreScanAsync_NoDevices_CompletesWithoutError()
         {
-            _deviceServiceMock
+            _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)new List<Location>()));
+                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
 
             await _adapter.PreScanAsync("C:\\Downloads", DateTime.Today, DateTime.Today.AddDays(1));
 
-            var counts = _adapter.GetPreScanCounts();
+            IReadOnlyDictionary<string, int> counts = _adapter.GetPreScanCounts();
             Assert.Empty(counts);
         }
 
@@ -234,11 +237,11 @@ namespace VideoForensics.Client.Core.Tests
                 ActiveConnections: 0,
                 CurrentSpeedMbps: 0.0);
 
-            _downloadServiceMock
+            _ = _downloadServiceMock
                 .Setup(s => s.GetStatus())
                 .Returns(status);
 
-            var result = _adapter.GetProgress();
+            DownloadStatus result = _adapter.GetProgress();
 
             Assert.NotNull(result);
             Assert.Equal(0, result.FilesCompleted);
@@ -259,11 +262,11 @@ namespace VideoForensics.Client.Core.Tests
                 ActiveConnections: 1,
                 CurrentSpeedMbps: 0.0);
 
-            _downloadServiceMock
+            _ = _downloadServiceMock
                 .Setup(s => s.GetStatus())
                 .Returns(status);
 
-            var result = _adapter.GetProgress();
+            DownloadStatus result = _adapter.GetProgress();
 
             Assert.NotNull(result);
             Assert.True(result.IsDownloading);
@@ -273,14 +276,14 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task DownloadSnapshotsAsync_NotAuthenticated_ReturnsFalseAndSetsError()
         {
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            var result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
 
             Assert.False(result);
-            var error = _adapter.GetLastError();
+            string? error = _adapter.GetLastError();
             Assert.NotNull(error);
             Assert.Contains("Not authenticated", error);
         }
@@ -288,18 +291,18 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task DownloadSnapshotsAsync_NoLocations_ReturnsFalseAndSetsError()
         {
-            _authServiceMock
+            _ = _authServiceMock
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(true));
 
-            _deviceServiceMock
+            _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)new List<Location>()));
+                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
 
-            var result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
 
             Assert.False(result);
-            var error = _adapter.GetLastError();
+            string? error = _adapter.GetLastError();
             Assert.NotNull(error);
             Assert.Contains("No locations found", error);
         }

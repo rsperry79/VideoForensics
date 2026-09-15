@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -51,21 +52,25 @@ public sealed class UniviewClient : IDisposable
     {
         const string path = "/LAPI/V1.0/System/Security/Login";
 
-        using var challengeResponse = await _http.PutAsync(path, null, ct);
-        var challengeBody = await challengeResponse.Content.ReadAsStringAsync(ct);
-        var wwwAuth = challengeResponse.Headers.WwwAuthenticate.ToString();
+        using HttpResponseMessage challengeResponse = await _http.PutAsync(path, null, ct);
+        string challengeBody = await challengeResponse.Content.ReadAsStringAsync(ct);
+        string wwwAuth = challengeResponse.Headers.WwwAuthenticate.ToString();
         if (string.IsNullOrEmpty(wwwAuth))
+        {
             throw new InvalidOperationException($"No WWW-Authenticate challenge from {path}. Body: {challengeBody}");
+        }
 
         _nonce = ExtractDigestField(wwwAuth, "nonce")
             ?? throw new InvalidOperationException($"Could not parse nonce from challenge: {wwwAuth}");
 
-        using var req = BuildDigestRequest(HttpMethod.Put, path);
-        using var resp = await _http.SendAsync(req, ct);
-        var json = await ReadJsonAsync(resp, ct);
-        var statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
+        using HttpRequestMessage req = BuildDigestRequest(HttpMethod.Put, path);
+        using HttpResponseMessage resp = await _http.SendAsync(req, ct);
+        JsonNode? json = await ReadJsonAsync(resp, ct);
+        int? statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
         if (statusCode != 0)
+        {
             throw new InvalidOperationException($"Login failed: {json}");
+        }
 
         UserLoginHandle = long.Parse(_nonce);
     }
@@ -73,7 +78,7 @@ public sealed class UniviewClient : IDisposable
     public async Task KeepAliveAsync(CancellationToken ct = default)
     {
         const string path = "/LAPI/V1.0/System/Security/KeepAlive";
-        await SendAuthenticatedAsync(HttpMethod.Put, path, body: null, ct);
+        _ = await SendAuthenticatedAsync(HttpMethod.Put, path, body: null, ct);
     }
 
     /// <summary>
@@ -94,12 +99,12 @@ public sealed class UniviewClient : IDisposable
             ["u32UserLoginHandle"] = UserLoginHandle,
         };
 
-        var json = await CallCgiAsync(payload, ct);
+        JsonNode? json = await CallCgiAsync(payload, ct);
         var channels = new List<ChannelInfo>();
 
         // Try common key names for the channel list array
         JsonArray? channelArray = null;
-        foreach (var key in new[] { "astChlList", "ChannelList", "channels", "chlList" })
+        foreach (string? key in new[] { "astChlList", "ChannelList", "channels", "chlList" })
         {
             if (json?[key] is JsonArray arr)
             {
@@ -109,15 +114,17 @@ public sealed class UniviewClient : IDisposable
         }
 
         if (channelArray == null)
+        {
             return channels.AsReadOnly();
+        }
 
-        foreach (var entry in channelArray)
+        foreach (JsonNode? entry in channelArray)
         {
             try
             {
                 // Try common field names for channel index
                 int? index = null;
-                foreach (var indexKey in new[] { "u16ChlNo", "ChlNo", "channel", "index", "Index" })
+                foreach (string? indexKey in new[] { "u16ChlNo", "ChlNo", "channel", "index", "Index" })
                 {
                     if (entry?[indexKey]?.GetValue<int?>() is int idx)
                     {
@@ -125,12 +132,15 @@ public sealed class UniviewClient : IDisposable
                         break;
                     }
                 }
+
                 if (index == null)
+                {
                     continue;
+                }
 
                 // Try common field names for channel name
                 string name = "Unknown";
-                foreach (var nameKey in new[] { "szChlName", "ChlName", "name", "Name" })
+                foreach (string? nameKey in new[] { "szChlName", "ChlName", "name", "Name" })
                 {
                     if (entry?[nameKey]?.GetValue<string>() is string n && !string.IsNullOrEmpty(n))
                     {
@@ -141,7 +151,7 @@ public sealed class UniviewClient : IDisposable
 
                 // Try common field names for online status (assume 0=offline, non-0=online)
                 bool isOnline = false;
-                foreach (var statusKey in new[] { "u8OnlineStatus", "OnlineStatus", "status", "Status", "online" })
+                foreach (string? statusKey in new[] { "u8OnlineStatus", "OnlineStatus", "status", "Status", "online" })
                 {
                     if (entry?[statusKey]?.GetValue<int?>() is int status)
                     {
@@ -168,24 +178,29 @@ public sealed class UniviewClient : IDisposable
     /// </summary>
     public async Task<bool> ChannelHasRecordingsAsync(int channel, int year, int month, CancellationToken ct = default)
     {
-        var days = await GetDailyDistributionAsync(channel, year, month, ct);
+        int[] days = await GetDailyDistributionAsync(channel, year, month, ct);
         return Array.Exists(days, d => d != 0);
     }
 
     /// <summary>Per-day recording presence (1/0) for one channel/month.</summary>
     public async Task<int[]> GetDailyDistributionAsync(int channel, int year, int month, CancellationToken ct = default)
     {
-        var path = $"/LAPI/V1.0/Channels/{channel}/Media/Video/Streams/0/Records/DailyDistribution?Year={year}&Month={month}";
-        using var resp = await SendAuthenticatedAsync(HttpMethod.Get, path, body: null, ct);
-        var json = await ReadJsonAsync(resp, ct);
-        var statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
+        string path = $"/LAPI/V1.0/Channels/{channel}/Media/Video/Streams/0/Records/DailyDistribution?Year={year}&Month={month}";
+        using HttpResponseMessage resp = await SendAuthenticatedAsync(HttpMethod.Get, path, body: null, ct);
+        JsonNode? json = await ReadJsonAsync(resp, ct);
+        int? statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
         if (statusCode != 0)
+        {
             throw new InvalidOperationException($"DailyDistribution failed for channel {channel}: {json}");
+        }
 
-        var dailyStatus = json!["Response"]!["Data"]!["DailyStatus"]!.AsArray();
-        var result = new int[dailyStatus.Count];
-        for (var i = 0; i < dailyStatus.Count; i++)
+        JsonArray dailyStatus = json!["Response"]!["Data"]!["DailyStatus"]!.AsArray();
+        int[] result = new int[dailyStatus.Count];
+        for (int i = 0; i < dailyStatus.Count; i++)
+        {
             result[i] = dailyStatus[i]!.GetValue<int>();
+        }
+
         return result;
     }
 
@@ -196,7 +211,7 @@ public sealed class UniviewClient : IDisposable
     public async Task<IReadOnlyList<RecordSegment>> ListSegmentsAsync(
         int channel, DateTimeOffset begin, DateTimeOffset end, CancellationToken ct = default)
     {
-        var resourceCode = ResourceCode(channel);
+        string resourceCode = ResourceCode(channel);
         var payload = new JsonObject
         {
             ["cmd"] = 78,
@@ -212,11 +227,11 @@ public sealed class UniviewClient : IDisposable
             ["u32UserLoginHandle"] = UserLoginHandle,
         };
 
-        var json = await CallCgiAsync(payload, ct);
-        var recordList = json?["recordList"]?.AsArray() ?? new JsonArray();
+        JsonNode? json = await CallCgiAsync(payload, ct);
+        JsonArray recordList = json?["recordList"]?.AsArray() ?? [];
 
         var segments = new List<RecordSegment>(recordList.Count);
-        foreach (var entry in recordList)
+        foreach (JsonNode? entry in recordList)
         {
             segments.Add(new RecordSegment(
                 Channel: channel,
@@ -224,6 +239,7 @@ public sealed class UniviewClient : IDisposable
                 End: DateTimeOffset.FromUnixTimeSeconds(entry["u32End"]!.GetValue<long>()),
                 RecordType: entry["u32RecordType"]!.GetValue<int>()));
         }
+
         return segments;
     }
 
@@ -234,12 +250,10 @@ public sealed class UniviewClient : IDisposable
     /// </summary>
     public async Task<JsonNode?> GetLapiAsync(string path, CancellationToken ct = default)
     {
-        using var resp = await SendAuthenticatedAsync(HttpMethod.Get, path, body: null, ct);
-        var json = await ReadJsonAsync(resp, ct);
-        var statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
-        if (statusCode != 0)
-            throw new InvalidOperationException($"LAPI GET {path} failed: {json}");
-        return json!["Response"]!["Data"];
+        using HttpResponseMessage resp = await SendAuthenticatedAsync(HttpMethod.Get, path, body: null, ct);
+        JsonNode? json = await ReadJsonAsync(resp, ct);
+        int? statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
+        return statusCode != 0 ? throw new InvalidOperationException($"LAPI GET {path} failed: {json}") : json!["Response"]!["Data"];
     }
 
     /// <summary>
@@ -254,18 +268,20 @@ public sealed class UniviewClient : IDisposable
     /// </summary>
     public async Task SetLapiAsync(string path, JsonObject data, CancellationToken ct = default)
     {
-        var body = data.ToJsonString() + "\r\n";
-        using var resp = await SendAuthenticatedAsync(HttpMethod.Put, path, body, ct);
-        var json = await ReadJsonAsync(resp, ct);
-        var statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
+        string body = data.ToJsonString() + "\r\n";
+        using HttpResponseMessage resp = await SendAuthenticatedAsync(HttpMethod.Put, path, body, ct);
+        JsonNode? json = await ReadJsonAsync(resp, ct);
+        int? statusCode = json?["Response"]?["StatusCode"]?.GetValue<int>();
         if (statusCode != 0)
+        {
             throw new InvalidOperationException($"LAPI PUT {path} failed: {json}");
+        }
     }
 
     /// <summary>Whether the given channel's camera supports PTZ - check before calling PtzCtrlAsync (most fixed cameras will report false and reject any PTZ command with StatusCode 60006).</summary>
     public async Task<bool> SupportsPtzAsync(int channel, CancellationToken ct = default)
     {
-        var caps = await GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/PTZ/Capabilities", ct);
+        JsonNode? caps = await GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/PTZ/Capabilities", ct);
         return caps?["IsSupportPTZ"]?.GetValue<int>() != 0;
     }
 
@@ -290,12 +306,12 @@ public sealed class UniviewClient : IDisposable
         // Mirrors the web UI's ctrlPtz(): pure pan (Left/Right) zeroes
         // Para2, pure tilt (Up/Down) zeroes Para1, everything else
         // (diagonals, zoom, focus, iris, light, ...) uses speed for both.
-        var isPan = command is PtzCommand.PanLeft or PtzCommand.PanRight
+        bool isPan = command is PtzCommand.PanLeft or PtzCommand.PanRight
             or PtzCommand.PanLeftStop or PtzCommand.PanRightStop;
-        var isTilt = command is PtzCommand.TiltUp or PtzCommand.TiltDown
+        bool isTilt = command is PtzCommand.TiltUp or PtzCommand.TiltDown
             or PtzCommand.TiltUpStop or PtzCommand.TiltDownStop;
-        var para1 = isTilt ? 0 : speed;
-        var para2 = isPan ? 0 : speed;
+        int para1 = isTilt ? 0 : speed;
+        int para2 = isPan ? 0 : speed;
 
         var payload = new JsonObject
         {
@@ -307,40 +323,60 @@ public sealed class UniviewClient : IDisposable
     }
 
     /// <summary>Per-channel video encode settings (resolution/bitrate/fps/codec, main+sub streams).</summary>
-    public Task<JsonNode?> GetChannelVideoAsync(int channel, CancellationToken ct = default) =>
-        GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/Video", ct);
+    public Task<JsonNode?> GetChannelVideoAsync(int channel, CancellationToken ct = default)
+    {
+        return GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/Video", ct);
+    }
 
     /// <summary>Set per-channel video encode settings - pass the full object back from GetChannelVideoAsync with your edits applied.</summary>
-    public Task SetChannelVideoAsync(int channel, JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/Video", data, ct);
+    public Task SetChannelVideoAsync(int channel, JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/Video", data, ct);
+    }
 
     /// <summary>Per-channel on-screen-display text overlays (camera name, date/time, custom text).</summary>
-    public Task<JsonNode?> GetChannelOsdAsync(int channel, CancellationToken ct = default) =>
-        GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/OSDs", ct);
+    public Task<JsonNode?> GetChannelOsdAsync(int channel, CancellationToken ct = default)
+    {
+        return GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/OSDs", ct);
+    }
 
-    public Task SetChannelOsdAsync(int channel, JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/OSDs", data, ct);
+    public Task SetChannelOsdAsync(int channel, JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Media/OSDs", data, ct);
+    }
 
     /// <summary>Per-channel motion detection: enable, grid/sensitivity, week schedule, linkage actions.</summary>
-    public Task<JsonNode?> GetMotionDetectionAsync(int channel, CancellationToken ct = default) =>
-        GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Alarm/MotionDetection", ct);
+    public Task<JsonNode?> GetMotionDetectionAsync(int channel, CancellationToken ct = default)
+    {
+        return GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Alarm/MotionDetection", ct);
+    }
 
-    public Task SetMotionDetectionAsync(int channel, JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Alarm/MotionDetection", data, ct);
+    public Task SetMotionDetectionAsync(int channel, JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Alarm/MotionDetection", data, ct);
+    }
 
     /// <summary>Per-channel recording schedule: enabled, pre/post-record seconds, per-weekday time sections.</summary>
-    public Task<JsonNode?> GetRecordScheduleAsync(int channel, CancellationToken ct = default) =>
-        GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Storage/Private/Schedule/Record/", ct);
+    public Task<JsonNode?> GetRecordScheduleAsync(int channel, CancellationToken ct = default)
+    {
+        return GetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Storage/Private/Schedule/Record/", ct);
+    }
 
-    public Task SetRecordScheduleAsync(int channel, JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Storage/Private/Schedule/Record/", data, ct);
+    public Task SetRecordScheduleAsync(int channel, JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync($"/LAPI/V1.0/Channels/{channel}/Storage/Private/Schedule/Record/", data, ct);
+    }
 
     /// <summary>Device time zone/date-format/NTP settings.</summary>
-    public Task<JsonNode?> GetTimeNtpAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/System/TimeNTP", ct);
+    public Task<JsonNode?> GetTimeNtpAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/System/TimeNTP", ct);
+    }
 
-    public Task SetTimeNtpAsync(JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync("/LAPI/V1.0/System/TimeNTP", data, ct);
+    public Task SetTimeNtpAsync(JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync("/LAPI/V1.0/System/TimeNTP", data, ct);
+    }
 
     /// <summary>
     /// Returns the delta to add to the device's raw recording-index timestamps
@@ -359,51 +395,71 @@ public sealed class UniviewClient : IDisposable
     public async Task<TimeSpan> GetClockOffsetAsync(CancellationToken ct = default)
     {
         if (_cachedClockOffset is { } cached && DateTime.UtcNow - _clockOffsetCachedAtUtc < ClockOffsetCacheDuration)
+        {
             return cached;
+        }
 
-        var requestedAt = DateTimeOffset.UtcNow;
-        var data = await GetTimeNtpAsync(ct);
-        var deviceTimeSeconds = data?["DeviceTime"]?.GetValue<long>()
+        DateTimeOffset requestedAt = DateTimeOffset.UtcNow;
+        JsonNode? data = await GetTimeNtpAsync(ct);
+        long deviceTimeSeconds = data?["DeviceTime"]?.GetValue<long>()
             ?? throw new InvalidOperationException($"TimeNTP response missing DeviceTime: {data}");
         var deviceTime = DateTimeOffset.FromUnixTimeSeconds(deviceTimeSeconds);
 
-        var offset = requestedAt - deviceTime;
+        TimeSpan offset = requestedAt - deviceTime;
         _cachedClockOffset = offset;
         _clockOffsetCachedAtUtc = DateTime.UtcNow;
         return offset;
     }
 
     /// <summary>Daylight saving time rule (begin/end month-week-day-hour, bias in minutes).</summary>
-    public Task<JsonNode?> GetDstAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/System/Time/DST", ct);
+    public Task<JsonNode?> GetDstAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/System/Time/DST", ct);
+    }
 
-    public Task SetDstAsync(JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync("/LAPI/V1.0/System/Time/DST", data, ct);
+    public Task SetDstAsync(JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync("/LAPI/V1.0/System/Time/DST", data, ct);
+    }
 
     /// <summary>SSH (labeled "SSH" in the UI, endpoint is still named for the older Telnet feature it replaced) enable/disable.</summary>
-    public Task<JsonNode?> GetSshAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/Network/SSH", ct);
+    public Task<JsonNode?> GetSshAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/Network/SSH", ct);
+    }
 
-    public Task SetSshAsync(bool enabled, CancellationToken ct = default) =>
-        SetLapiAsync("/LAPI/V1.0/Network/SSH", new JsonObject { ["Enabled"] = enabled ? 1 : 0 }, ct);
+    public Task SetSshAsync(bool enabled, CancellationToken ct = default)
+    {
+        return SetLapiAsync("/LAPI/V1.0/Network/SSH", new JsonObject { ["Enabled"] = enabled ? 1 : 0 }, ct);
+    }
 
     /// <summary>HTTP/HTTPS/RTSP (and their redirect) listen ports.</summary>
-    public Task<JsonNode?> GetNetworkPortsAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/Network/Ports", ct);
+    public Task<JsonNode?> GetNetworkPortsAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/Network/Ports", ct);
+    }
 
-    public Task SetNetworkPortsAsync(JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync("/LAPI/V1.0/Network/Ports", data, ct);
+    public Task SetNetworkPortsAsync(JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync("/LAPI/V1.0/Network/Ports", data, ct);
+    }
 
     /// <summary>DDNS provider list/config (DynDNS, No-IP, Uniview's own star4live).</summary>
-    public Task<JsonNode?> GetDdnsAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/Network/DDNS", ct);
+    public Task<JsonNode?> GetDdnsAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/Network/DDNS", ct);
+    }
 
-    public Task SetDdnsAsync(JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync("/LAPI/V1.0/Network/DDNS", data, ct);
+    public Task SetDdnsAsync(JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync("/LAPI/V1.0/Network/DDNS", data, ct);
+    }
 
     /// <summary>Device identity/model/firmware/serial - see also DeviceInfo's cousin, the legacy cmd 26 in GetChannelStatusAsync.</summary>
-    public Task<JsonNode?> GetDeviceInfoAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/System/DeviceInfo", ct);
+    public Task<JsonNode?> GetDeviceInfoAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/System/DeviceInfo", ct);
+    }
 
     /// <summary>
     /// The NVR's own host network (NIC) config - IP/DHCP/subnet/gateway/DNS/MTU.
@@ -480,8 +536,10 @@ public sealed class UniviewClient : IDisposable
     }
 
     /// <summary>Exception/alert types this device supports (IP conflict, disk full, etc.) - the "Alert Type" dropdown values on the Setup &gt; Alert page.</summary>
-    public Task<JsonNode?> GetAlarmExceptionCapabilitiesAsync(CancellationToken ct = default) =>
-        GetLapiAsync("/LAPI/V1.0/Alarm/Exceptions/Capabilities", ct);
+    public Task<JsonNode?> GetAlarmExceptionCapabilitiesAsync(CancellationToken ct = default)
+    {
+        return GetLapiAsync("/LAPI/V1.0/Alarm/Exceptions/Capabilities", ct);
+    }
 
     /// <summary>
     /// Linkage actions (buzzer/email/push/alarm-output) configured for one exception type.
@@ -490,11 +548,15 @@ public sealed class UniviewClient : IDisposable
     /// Conflict on this device) - calling without a valid type returns
     /// StatusCode 60006 (Invalid Arguments).
     /// </summary>
-    public Task<JsonNode?> GetAlarmExceptionLinkageActionsAsync(int exceptionType, CancellationToken ct = default) =>
-        GetLapiAsync($"/LAPI/V1.0/Alarm/Exceptions/LinkageActions?ExceptionType={exceptionType}", ct);
+    public Task<JsonNode?> GetAlarmExceptionLinkageActionsAsync(int exceptionType, CancellationToken ct = default)
+    {
+        return GetLapiAsync($"/LAPI/V1.0/Alarm/Exceptions/LinkageActions?ExceptionType={exceptionType}", ct);
+    }
 
-    public Task SetAlarmExceptionLinkageActionsAsync(int exceptionType, JsonObject data, CancellationToken ct = default) =>
-        SetLapiAsync($"/LAPI/V1.0/Alarm/Exceptions/LinkageActions?ExceptionType={exceptionType}", data, ct);
+    public Task SetAlarmExceptionLinkageActionsAsync(int exceptionType, JsonObject data, CancellationToken ct = default)
+    {
+        return SetLapiAsync($"/LAPI/V1.0/Alarm/Exceptions/LinkageActions?ExceptionType={exceptionType}", data, ct);
+    }
 
     /// <summary>
     /// Captures a single JPEG frame from the channel's live feed via
@@ -511,9 +573,9 @@ public sealed class UniviewClient : IDisposable
     /// </summary>
     public Task CaptureLiveSnapshotAsync(int channel, string destinationJpegPath, CancellationToken ct = default)
     {
-        var rtspUrl = $"rtsp://{Uri.EscapeDataString(_username)}:{Uri.EscapeDataString(_password)}@{_host}:554/unicast/c{channel}/s0/live";
-        return RunFfmpegAsync(new List<string>
-        {
+        string rtspUrl = $"rtsp://{Uri.EscapeDataString(_username)}:{Uri.EscapeDataString(_password)}@{_host}:554/unicast/c{channel}/s0/live";
+        return RunFfmpegAsync(
+        [
             "-y",
             "-rtsp_transport", "tcp",
             // Bounds the RTSP connect/read attempt (microseconds) - channels
@@ -528,7 +590,7 @@ public sealed class UniviewClient : IDisposable
             "-i", rtspUrl,
             "-frames:v", "1",
             destinationJpegPath,
-        }, "live snapshot", ct);
+        ], "live snapshot", ct);
     }
 
     /// <summary>
@@ -544,6 +606,7 @@ public sealed class UniviewClient : IDisposable
             args.Add("-ss");
             args.Add(offset.ToString(@"hh\:mm\:ss\.fff"));
         }
+
         args.Add("-i");
         args.Add(videoPath);
         args.Add("-frames:v");
@@ -567,7 +630,7 @@ public sealed class UniviewClient : IDisposable
         // server-side hiccup, not a protocol error (retrying with a fresh
         // cmd 82 call reliably succeeds). See docs/NVR_API.md section 6.
         const int maxAttempts = 3;
-        for (var attempt = 1; ; attempt++)
+        for (int attempt = 1; ; attempt++)
         {
             try
             {
@@ -587,10 +650,10 @@ public sealed class UniviewClient : IDisposable
 
     private async Task DownloadSegmentAttemptAsync(RecordSegment segment, string destinationPath, CancellationToken ct)
     {
-        var resourceCode = ResourceCode(segment.Channel);
+        string resourceCode = ResourceCode(segment.Channel);
         using var rsa = RSA.Create(1024);
-        var rsaParams = rsa.ExportParameters(false);
-        var localIp = GetLocalAddressFor(_host);
+        RSAParameters rsaParams = rsa.ExportParameters(false);
+        string localIp = GetLocalAddressFor(_host);
 
         var startPayload = new JsonObject
         {
@@ -611,35 +674,44 @@ public sealed class UniviewClient : IDisposable
             ["u32UserLoginHandle"] = UserLoginHandle,
         };
 
-        var startResponse = await CallCgiAsync(startPayload, ct)
+        JsonNode startResponse = await CallCgiAsync(startPayload, ct)
             ?? throw new InvalidOperationException("cmd 82 (start download) returned no response.");
-        var startCode = startResponse["code"]?.GetValue<int>();
+        int? startCode = startResponse["code"]?.GetValue<int>();
         if (startCode == 60031)
+        {
             throw new DownloadCapacityException(
                 "cmd 82 rejected with code 60031 - the device has hit its concurrent download " +
                 "task limit, most likely from earlier sessions that were killed abruptly and never " +
                 "sent cmd 84 to release their slot. Wait a while for stale sessions to expire " +
                 "server-side, or reboot the NVR to clear it immediately. See docs/NVR_API.md section 6.");
-        if (startCode != 0)
-            throw new InvalidOperationException($"cmd 82 (start download) failed: {startResponse}");
+        }
 
-        var sessionId = startResponse["szSessionID"]!.GetValue<string>();
-        var dataHost = startResponse["stIPAddress"]!.GetValue<string>();
-        var dataPort = startResponse["u16Port"]!.GetValue<int>();
-        var taskNo = startResponse["u32Task_No"]!.GetValue<uint>();
+        if (startCode != 0)
+        {
+            throw new InvalidOperationException($"cmd 82 (start download) failed: {startResponse}");
+        }
+
+        string sessionId = startResponse["szSessionID"]!.GetValue<string>();
+        string dataHost = startResponse["stIPAddress"]!.GetValue<string>();
+        int dataPort = startResponse["u16Port"]!.GetValue<int>();
+        uint taskNo = startResponse["u32Task_No"]!.GetValue<uint>();
 
         // Observed on the wire: cmd 83 fires once immediately after cmd 82,
         // before any media flows — it appears to be a required "start
         // playing" signal, not just a periodic heartbeat.
-        await SendPlayStatusAsync(taskNo, segment.Begin, ct);
+        _ = await SendPlayStatusAsync(taskNo, segment.Begin, ct);
 
         using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var heartbeatTask = RunHeartbeatAsync(taskNo, segment.Begin, heartbeatCts.Token);
+        Task heartbeatTask = RunHeartbeatAsync(taskNo, segment.Begin, heartbeatCts.Token);
 
-        var closeSent = false;
+        bool closeSent = false;
         async Task SendCloseOnceAsync()
         {
-            if (closeSent) return;
+            if (closeSent)
+            {
+                return;
+            }
+
             closeSent = true;
             var closePayload = new JsonObject
             {
@@ -648,14 +720,14 @@ public sealed class UniviewClient : IDisposable
                 ["szUserName"] = _username,
                 ["u32UserLoginHandle"] = UserLoginHandle,
             };
-            await CallCgiAsync(closePayload, ct);
+            _ = await CallCgiAsync(closePayload, ct);
         }
 
-        var elementaryStreamPath = destinationPath + ".h265";
-        var audioStreamPath = destinationPath + ".g711";
+        string elementaryStreamPath = destinationPath + ".h265";
+        string audioStreamPath = destinationPath + ".g711";
         try
         {
-            var targetDuration = segment.End - segment.Begin;
+            TimeSpan targetDuration = segment.End - segment.Begin;
             var idleTimeout = TimeSpan.FromSeconds(20); // data arrives in a fast burst, not real-time
             // cmd 84 fires from inside ReceiveAsync, while the TCP data
             // connection is still open - see the ordering note there.
@@ -664,7 +736,9 @@ public sealed class UniviewClient : IDisposable
         finally
         {
             heartbeatCts.Cancel();
-            try { await heartbeatTask; } catch (OperationCanceledException) { }
+            try
+            { await heartbeatTask; }
+            catch (OperationCanceledException) { }
 
             // Fallback in case ReceiveAsync threw before reaching its own
             // onStopping call (e.g. a network error) - SendCloseOnceAsync
@@ -673,16 +747,18 @@ public sealed class UniviewClient : IDisposable
         }
 
         if (new FileInfo(elementaryStreamPath).Length == 0)
+        {
             throw new InvalidOperationException(
                 "Received no video data for this segment - the server accepted the download " +
                 "session but never sent any RTP packets. Empirically this happens when the same " +
                 "resourceCode+time-range combination has been downloaded very recently; retrying " +
                 "with a different segment (or waiting) usually succeeds. See docs/NVR_API.md section 6.");
+        }
 
-        var clockOffset = await GetClockOffsetAsync(ct);
-        var correctedBegin = segment.Begin + clockOffset;
+        TimeSpan clockOffset = await GetClockOffsetAsync(ct);
+        DateTimeOffset correctedBegin = segment.Begin + clockOffset;
 
-        var hasAudio = new FileInfo(audioStreamPath).Length > 0;
+        bool hasAudio = new FileInfo(audioStreamPath).Length > 0;
         await MuxToMp4Async(elementaryStreamPath, hasAudio ? audioStreamPath : null, destinationPath, correctedBegin, ct);
         File.Delete(elementaryStreamPath);
         File.Delete(audioStreamPath);
@@ -705,7 +781,7 @@ public sealed class UniviewClient : IDisposable
             while (!ct.IsCancellationRequested)
             {
                 await Task.Delay(TimeSpan.FromSeconds(15), ct);
-                await SendPlayStatusAsync(taskNo, playTime, ct);
+                _ = await SendPlayStatusAsync(taskNo, playTime, ct);
             }
         }
         catch (OperationCanceledException) { }
@@ -799,12 +875,14 @@ public sealed class UniviewClient : IDisposable
         psi.ArgumentList.Add("+faststart");
         psi.ArgumentList.Add(destinationPath);
 
-        using var process = System.Diagnostics.Process.Start(psi)
+        using Process process = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start ffmpeg.");
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);
         if (process.ExitCode != 0)
+        {
             throw new InvalidOperationException($"ffmpeg remux failed (exit {process.ExitCode}): {await stderrTask}");
+        }
     }
 
     private async Task RunFfmpegAsync(List<string> args, string label, CancellationToken ct)
@@ -815,15 +893,19 @@ public sealed class UniviewClient : IDisposable
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        foreach (var arg in args)
+        foreach (string arg in args)
+        {
             psi.ArgumentList.Add(arg);
+        }
 
-        using var process = System.Diagnostics.Process.Start(psi)
+        using Process process = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start ffmpeg.");
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);
         if (process.ExitCode != 0)
+        {
             throw new InvalidOperationException($"ffmpeg {label} failed (exit {process.ExitCode}): {await stderrTask}");
+        }
     }
 
     private static string GetLocalAddressFor(string remoteHost)
@@ -835,25 +917,25 @@ public sealed class UniviewClient : IDisposable
 
     private async Task<JsonNode?> CallCgiAsync(JsonObject payload, CancellationToken ct)
     {
-        var body = "json=" + payload.ToJsonString();
-        using var resp = await SendAuthenticatedAsync(HttpMethod.Post, "/cgi-bin/main-cgi", body, ct);
+        string body = "json=" + payload.ToJsonString();
+        using HttpResponseMessage resp = await SendAuthenticatedAsync(HttpMethod.Post, "/cgi-bin/main-cgi", body, ct);
         return await ReadJsonAsync(resp, ct);
     }
 
     private async Task<HttpResponseMessage> SendAuthenticatedAsync(
         HttpMethod method, string pathAndQuery, string? body, CancellationToken ct)
     {
-        var response = await SendOnceAsync(method, pathAndQuery, body, ct);
+        HttpResponseMessage response = await SendOnceAsync(method, pathAndQuery, body, ct);
 
         // A stale nonce comes back as HTTP 200 with Response.StatusCode==401
         // in the JSON body, plus a fresh WWW-Authenticate header. Refresh and retry once.
         if (response.Headers.WwwAuthenticate.Count > 0)
         {
-            var probe = await ReadJsonAsync(response, ct, leaveOpen: true);
-            var statusCode = probe?["Response"]?["StatusCode"]?.GetValue<int>();
+            JsonNode? probe = await ReadJsonAsync(response, ct, leaveOpen: true);
+            int? statusCode = probe?["Response"]?["StatusCode"]?.GetValue<int>();
             if (statusCode == 401)
             {
-                var wwwAuth = response.Headers.WwwAuthenticate.ToString();
+                string wwwAuth = response.Headers.WwwAuthenticate.ToString();
                 _nonce = ExtractDigestField(wwwAuth, "nonce")
                     ?? throw new InvalidOperationException($"Could not parse renewed nonce: {wwwAuth}");
                 response.Dispose();
@@ -866,36 +948,41 @@ public sealed class UniviewClient : IDisposable
 
     private async Task<HttpResponseMessage> SendOnceAsync(HttpMethod method, string pathAndQuery, string? body, CancellationToken ct)
     {
-        using var req = BuildDigestRequest(method, pathAndQuery, body);
+        using HttpRequestMessage req = BuildDigestRequest(method, pathAndQuery, body);
         return await _http.SendAsync(req, ct);
     }
 
     private HttpRequestMessage BuildDigestRequest(HttpMethod method, string pathAndQuery, string? body = null)
     {
         if (_nonce is null)
+        {
             throw new InvalidOperationException("Not logged in yet.");
+        }
 
-        var path = pathAndQuery.Split('?')[0];
-        var cnonce = Random.Shared.Next(0, int.MaxValue).ToString();
+        string path = pathAndQuery.Split('?')[0];
+        string cnonce = Random.Shared.Next(0, int.MaxValue).ToString();
 
-        var ha1 = Md5Hex($"{_username}:{Realm}:{_password}");
-        var ha2 = Md5Hex($"{method.Method}:{path}");
-        var response = Md5Hex($"{ha1}:{_nonce}:{Nc}:{cnonce}:{Qop}:{ha2}");
+        string ha1 = Md5Hex($"{_username}:{Realm}:{_password}");
+        string ha2 = Md5Hex($"{method.Method}:{path}");
+        string response = Md5Hex($"{ha1}:{_nonce}:{Nc}:{cnonce}:{Qop}:{ha2}");
 
-        var authHeader = $"Digest username=\"{_username}\",realm=\"{Realm}\",qop={Qop}, " +
+        string authHeader = $"Digest username=\"{_username}\",realm=\"{Realm}\",qop={Qop}, " +
                           $"nonce=\"{_nonce}\",algorithm=MD5,cnonce=\"{cnonce}\",nc={Nc}," +
                           $"uri=\"{path}\",response=\"{response}\"";
 
         var req = new HttpRequestMessage(method, pathAndQuery);
-        req.Headers.TryAddWithoutValidation("Authorization", authHeader);
+        _ = req.Headers.TryAddWithoutValidation("Authorization", authHeader);
         if (body is not null)
+        {
             req.Content = new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded");
+        }
+
         return req;
     }
 
     private static async Task<JsonNode?> ReadJsonAsync(HttpResponseMessage resp, CancellationToken ct, bool leaveOpen = false)
     {
-        var text = await resp.Content.ReadAsStringAsync(ct);
+        string text = await resp.Content.ReadAsStringAsync(ct);
         try
         {
             return JsonNode.Parse(text);
@@ -907,26 +994,34 @@ public sealed class UniviewClient : IDisposable
         finally
         {
             if (!leaveOpen)
+            {
                 resp.Dispose();
+            }
         }
     }
 
     private static string? ExtractDigestField(string header, string field)
     {
-        var match = Regex.Match(header, $"{field}=\"?([^\",]+)\"?");
+        Match match = Regex.Match(header, $"{field}=\"?([^\",]+)\"?");
         return match.Success ? match.Groups[1].Value : null;
     }
 
     /// <summary>16-digit channel resource code — see docs/NVR_API.md section 4.</summary>
-    public static string ResourceCode(int channel) => $"1100{channel * 100:D4}0100{channel:D4}";
+    public static string ResourceCode(int channel)
+    {
+        return $"1100{channel * 100:D4}0100{channel:D4}";
+    }
 
     private static string Md5Hex(string input)
     {
-        var bytes = System.Security.Cryptography.MD5.HashData(Encoding.UTF8.GetBytes(input));
+        byte[] bytes = System.Security.Cryptography.MD5.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexStringLower(bytes);
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        _http.Dispose();
+    }
 }
 
 public sealed record RecordSegment(int Channel, DateTimeOffset Begin, DateTimeOffset End, int RecordType)

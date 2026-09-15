@@ -1,5 +1,5 @@
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Api.Contracts
 {

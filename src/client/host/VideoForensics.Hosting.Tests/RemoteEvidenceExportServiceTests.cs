@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -15,7 +17,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportEvidenceAsync_WithValidMediaItems_CallsCorrectEndpoint()
         {
             // Arrange
-            var requestCaptured = false;
+            bool requestCaptured = false;
             string? capturedMethod = null;
             string? capturedUri = null;
 
@@ -41,11 +43,11 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceExportService(httpClient);
 
-            var mediaIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+            Guid[] mediaIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
             var cts = new CancellationTokenSource();
 
             // Act
-            var result = await service.ExportEvidenceAsync(
+            ExportResult result = await service.ExportEvidenceAsync(
                 mediaIds,
                 "/output",
                 "CASE-001",
@@ -69,8 +71,10 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
@@ -78,9 +82,9 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEvidenceExportService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
-                await service.ExportEvidenceAsync(
+                _ = await service.ExportEvidenceAsync(
                     new[] { Guid.NewGuid() },
                     "/output",
                     null,
@@ -103,9 +107,9 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEvidenceExportService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(async () =>
+            _ = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
-                await service.ExportEvidenceAsync(
+                _ = await service.ExportEvidenceAsync(
                     new[] { Guid.NewGuid() },
                     "/output",
                     null,
@@ -137,7 +141,7 @@ namespace VideoForensics.Hosting.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await service.ExportEvidenceAsync(
+            _ = await service.ExportEvidenceAsync(
                 new[] { Guid.NewGuid() },
                 "/output",
                 null,
@@ -172,7 +176,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteEvidenceExportService(httpClient);
 
             // Act
-            var result = await service.ExportEvidenceAsync(
+            ExportResult result = await service.ExportEvidenceAsync(
                 new[] { Guid.NewGuid() },
                 "/output",
                 null,
@@ -185,7 +189,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Null(result.ArchivePath);
             Assert.Null(result.ArchiveSha256Hash);
             Assert.Equal(1, result.ItemsIncluded);
-            Assert.Single(result.ItemsExcludedForFailedIntegrity);
+            _ = Assert.Single(result.ItemsExcludedForFailedIntegrity);
             Assert.Equal("Export failed: disk full", result.ErrorMessage);
         }
 

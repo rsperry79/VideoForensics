@@ -22,12 +22,7 @@ namespace VideoForensics.WebApp.Services
         /// <summary>Consumes (removes) the token if present and not expired, returning its file path.</summary>
         public string? TryConsume(Guid token)
         {
-            if (!_tokens.TryRemove(token, out var entry))
-            {
-                return null;
-            }
-
-            return entry.ExpiresAtUtc >= DateTime.UtcNow ? entry.FilePath : null;
+            return !_tokens.TryRemove(token, out (string FilePath, DateTime ExpiresAtUtc) entry) ? null : entry.ExpiresAtUtc >= DateTime.UtcNow ? entry.FilePath : null;
         }
     }
 }

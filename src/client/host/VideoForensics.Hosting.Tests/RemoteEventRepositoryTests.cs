@@ -56,8 +56,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_CallsGetEventEndpoint_AndReturnsEvent()
         {
             var eventId = Guid.NewGuid();
-            var eventDto = CreateEventDto(eventId: eventId);
-            var json = JsonSerializer.Serialize(eventDto, JsonOptions);
+            EventDto eventDto = CreateEventDto(eventId: eventId);
+            string json = JsonSerializer.Serialize(eventDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -68,10 +68,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.GetAsync(eventId, CancellationToken.None);
+            Event? result = await repo.GetAsync(eventId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
@@ -91,10 +91,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.GetAsync(eventId, CancellationToken.None);
+            Event? result = await repo.GetAsync(eventId, CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -103,8 +103,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_WithCancellationToken_PassesToHttpClient()
         {
             var cts = new CancellationTokenSource();
-            var eventDto = CreateEventDto();
-            var json = JsonSerializer.Serialize(eventDto, JsonOptions);
+            EventDto eventDto = CreateEventDto();
+            string json = JsonSerializer.Serialize(eventDto, JsonOptions);
             CancellationToken? capturedToken = null;
 
             FakeHttpMessageHandler handler = new(async _ =>
@@ -117,12 +117,12 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.GetAsync(Guid.NewGuid(), cts.Token);
+            Event? result = await repo.GetAsync(Guid.NewGuid(), cts.Token);
 
-            Assert.NotNull(capturedToken);
+            _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
         }
 
@@ -144,8 +144,8 @@ namespace VideoForensics.Hosting.Tests
                 EventIntegrityHash = null
             };
 
-            var responseDto = CreateEventDto(eventId: eventToUpsert.Id, deviceId: eventToUpsert.DeviceId);
-            var json = JsonSerializer.Serialize(responseDto, JsonOptions);
+            EventDto responseDto = CreateEventDto(eventId: eventToUpsert.Id, deviceId: eventToUpsert.DeviceId);
+            string json = JsonSerializer.Serialize(responseDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
             {
@@ -157,10 +157,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.UpsertAsync(eventToUpsert, CancellationToken.None);
+            Event result = await repo.UpsertAsync(eventToUpsert, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
@@ -175,9 +175,9 @@ namespace VideoForensics.Hosting.Tests
             var deviceId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var event1 = CreateEventDto(deviceId: deviceId);
-            var event2 = CreateEventDto(deviceId: deviceId);
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
+            EventDto event1 = CreateEventDto(deviceId: deviceId);
+            EventDto event2 = CreateEventDto(deviceId: deviceId);
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -188,14 +188,14 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Contains($"/api/v1/events/by-device/{deviceId}", uri);
             Assert.Contains("fromUtc=", uri);
@@ -209,9 +209,9 @@ namespace VideoForensics.Hosting.Tests
             var locationId = Guid.NewGuid();
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var event1 = CreateEventDto();
-            var event2 = CreateEventDto();
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
+            EventDto event1 = CreateEventDto();
+            EventDto event2 = CreateEventDto();
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -222,14 +222,14 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListByLocationAndDateRangeAsync(locationId, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListByLocationAndDateRangeAsync(locationId, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Contains($"/api/v1/events/by-location/{locationId}", uri);
             Assert.Contains("fromUtc=", uri);
@@ -241,11 +241,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListByDeviceEventTypeAndDateRangeAsync_CallsCorrectEndpoint_AndReturnsEvents()
         {
             var deviceId = Guid.NewGuid();
-            var eventType = "motion";
+            string eventType = "motion";
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var event1 = CreateEventDto(deviceId: deviceId);
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
+            EventDto event1 = CreateEventDto(deviceId: deviceId);
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -256,29 +256,29 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListByDeviceEventTypeAndDateRangeAsync(deviceId, eventType, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListByDeviceEventTypeAndDateRangeAsync(deviceId, eventType, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Contains($"/api/v1/events/by-type/{eventType}", uri);
             Assert.Contains($"deviceId={deviceId}", uri);
-            Assert.Single(result);
+            _ = Assert.Single(result);
         }
 
         [Fact]
         public async Task ListByLocationEventTypeAndDateRangeAsync_CallsCorrectEndpoint_AndReturnsEvents()
         {
             var locationId = Guid.NewGuid();
-            var eventType = "person";
+            string eventType = "person";
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-            var event1 = CreateEventDto();
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
+            EventDto event1 = CreateEventDto();
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -289,18 +289,18 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListByLocationEventTypeAndDateRangeAsync(locationId, eventType, fromUtc, toUtc, CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListByLocationEventTypeAndDateRangeAsync(locationId, eventType, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Contains($"/api/v1/events/by-type/{eventType}", uri);
             Assert.Contains($"locationId={locationId}", uri);
-            Assert.Single(result);
+            _ = Assert.Single(result);
         }
 
         [Fact]
@@ -310,7 +310,7 @@ namespace VideoForensics.Hosting.Tests
             var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             var summary = new Dictionary<string, int> { { "motion", 5 }, { "person", 3 } };
-            var json = JsonSerializer.Serialize(summary, JsonOptions);
+            string json = JsonSerializer.Serialize(summary, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -321,14 +321,14 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.GetEventTypeSummaryAsync(locationId, fromUtc, toUtc, CancellationToken.None);
+            Dictionary<string, int> result = await repo.GetEventTypeSummaryAsync(locationId, fromUtc, toUtc, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Contains($"/api/v1/events/summary/{locationId}", uri);
             Assert.Equal(5, result["motion"]);
@@ -339,8 +339,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListUnansweredOrFlaggedAsync_CallsCorrectEndpoint_ReturnsEvents()
         {
             var deviceId = Guid.NewGuid();
-            var event1 = CreateEventDto(deviceId: deviceId);
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
+            EventDto event1 = CreateEventDto(deviceId: deviceId);
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -351,25 +351,25 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListUnansweredOrFlaggedAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListUnansweredOrFlaggedAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Equal($"/api/v1/events/unanswered/{deviceId}", uri);
-            Assert.Single(result);
+            _ = Assert.Single(result);
         }
 
         [Fact]
         public async Task ListAsync_CallsCorrectEndpoint_ReturnsAllEvents()
         {
-            var event1 = CreateEventDto();
-            var event2 = CreateEventDto();
-            var json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
+            EventDto event1 = CreateEventDto();
+            EventDto event2 = CreateEventDto();
+            string json = JsonSerializer.Serialize(new List<EventDto> { event1, event2 }, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -380,14 +380,14 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.ListAsync(CancellationToken.None);
+            IReadOnlyList<Event> result = await repo.ListAsync(CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Equal("/api/v1/events/", uri);
             Assert.Equal(2, result.Count);
@@ -404,14 +404,14 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
             await repo.DeleteAsync(eventId, CancellationToken.None);
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Delete, handler.CapturedRequest.Method);
-            var uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
             Assert.NotNull(uri);
             Assert.Equal($"/api/v1/events/{eventId}", uri);
         }
@@ -425,10 +425,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.GetByProviderEventIdAsync(Guid.NewGuid(), "provider-event-123", CancellationToken.None));
 
             Assert.Contains("Not supported on a remote", ex.Message);
@@ -443,10 +443,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.GetByApiSourceHashAsync("hash-123", CancellationToken.None));
 
             Assert.Contains("Remote API doesn't yet support", ex.Message);
@@ -461,12 +461,12 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
             var eventEntity = new Event { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "event-1", EventType = "motion" };
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.CreateAsync(eventEntity, CancellationToken.None));
 
             Assert.Contains("MAUI has no write path", ex.Message);
@@ -481,12 +481,12 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
             var eventEntity = new Event { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), ProviderEventId = "event-1", EventType = "motion" };
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.UpdateAsync(eventEntity, CancellationToken.None));
 
             Assert.Contains("MAUI has no write path", ex.Message);
@@ -501,10 +501,10 @@ namespace VideoForensics.Hosting.Tests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => repo.UpdateDownloadFailureAsync(Guid.NewGuid(), DateTime.UtcNow, CancellationToken.None));
 
             Assert.Contains("MAUI has no write path", ex.Message);
@@ -527,7 +527,7 @@ namespace VideoForensics.Hosting.Tests
                 EventIntegrityHash: "int-hash-789"
             );
 
-            var json = JsonSerializer.Serialize(eventDto, JsonOptions);
+            string json = JsonSerializer.Serialize(eventDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -538,10 +538,10 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            var httpClient = CreateHttpClientWithHandler(handler);
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteEventRepository(httpClient);
 
-            var result = await repo.GetAsync(eventDto.Id, CancellationToken.None);
+            Event? result = await repo.GetAsync(eventDto.Id, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(eventDto.Id, result.Id);

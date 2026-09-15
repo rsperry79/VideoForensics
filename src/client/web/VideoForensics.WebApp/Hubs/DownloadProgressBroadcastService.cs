@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 

@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-using VideoForensics.Providers.Ring.Models;
-
 namespace VideoForensics.Providers.Ring.Models
 {
     /// <summary>

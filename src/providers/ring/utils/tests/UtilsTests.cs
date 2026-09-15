@@ -1,9 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
-using Xunit;
-using VideoForensics.Providers.Ring;
+
 using VideoForensics.Providers.Ring.Entities;
+
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Utils.Tests
 {
@@ -40,7 +39,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointTarget_NoneConstantIsAllNull()
         {
-            var none = EndpointTarget.None;
+            EndpointTarget none = EndpointTarget.None;
             Assert.Null(none.LocationId);
             Assert.Null(none.DoorbotId);
             Assert.Null(none.ChimeId);
@@ -186,14 +185,14 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindReturnsNullForUnknownKey()
         {
-            var result = EndpointRegistry.Find("nonexistent-endpoint-key");
+            EndpointDescriptor? result = EndpointRegistry.Find("nonexistent-endpoint-key");
             Assert.Null(result);
         }
 
         [Fact]
         public void EndpointRegistry_FindReturnsCaseInsensitive()
         {
-            var result = EndpointRegistry.Find("DEVICES");
+            EndpointDescriptor? result = EndpointRegistry.Find("DEVICES");
             Assert.NotNull(result);
             Assert.Equal("devices", result.Key);
         }
@@ -201,7 +200,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesDevicesEndpoint()
         {
-            var result = EndpointRegistry.Find("devices");
+            EndpointDescriptor? result = EndpointRegistry.Find("devices");
             Assert.NotNull(result);
             Assert.Equal("devices", result.Key);
             Assert.Equal("List devices", result.DisplayName);
@@ -211,7 +210,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesLocationScopedEndpoint()
         {
-            var result = EndpointRegistry.Find("location-mode");
+            EndpointDescriptor? result = EndpointRegistry.Find("location-mode");
             Assert.NotNull(result);
             Assert.Equal("location-mode", result.Key);
             Assert.Equal(EndpointScope.PerLocation, result.Scope);
@@ -220,7 +219,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesDoorbotScopedEndpoint()
         {
-            var result = EndpointRegistry.Find("doorbot-health");
+            EndpointDescriptor? result = EndpointRegistry.Find("doorbot-health");
             Assert.NotNull(result);
             Assert.Equal("doorbot-health", result.Key);
             Assert.Equal(EndpointScope.PerDoorbot, result.Scope);
@@ -229,7 +228,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesChimeScopedEndpoint()
         {
-            var result = EndpointRegistry.Find("chime-health");
+            EndpointDescriptor? result = EndpointRegistry.Find("chime-health");
             Assert.NotNull(result);
             Assert.Equal("chime-health", result.Key);
             Assert.Equal(EndpointScope.PerChime, result.Scope);
@@ -238,7 +237,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesDestructiveEndpoint()
         {
-            var result = EndpointRegistry.Find("set-light");
+            EndpointDescriptor? result = EndpointRegistry.Find("set-light");
             Assert.NotNull(result);
             Assert.True(result.Destructive);
             Assert.True(result.Physical);
@@ -247,7 +246,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_AllEndpointsHaveKeys()
         {
-            foreach (var endpoint in EndpointRegistry.All)
+            foreach (EndpointDescriptor endpoint in EndpointRegistry.All)
             {
                 Assert.NotNull(endpoint.Key);
                 Assert.NotEmpty(endpoint.Key);
@@ -257,7 +256,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_AllEndpointsHaveDisplayNames()
         {
-            foreach (var endpoint in EndpointRegistry.All)
+            foreach (EndpointDescriptor endpoint in EndpointRegistry.All)
             {
                 Assert.NotNull(endpoint.DisplayName);
                 Assert.NotEmpty(endpoint.DisplayName);
@@ -267,7 +266,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_AllEndpointsHaveInvokeDelegates()
         {
-            foreach (var endpoint in EndpointRegistry.All)
+            foreach (EndpointDescriptor endpoint in EndpointRegistry.All)
             {
                 Assert.NotNull(endpoint.Invoke);
             }
@@ -276,7 +275,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_DestructiveEndpointsHaveRestorePlanOrReason()
         {
-            foreach (var endpoint in EndpointRegistry.All)
+            foreach (EndpointDescriptor endpoint in EndpointRegistry.All)
             {
                 if (endpoint.Destructive)
                 {
@@ -342,34 +341,34 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_AcceptsValidStringProperty()
         {
-            var json = JsonDocument.Parse(@"{""name"": ""test""}").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(DeviceHealthResponse));
+            JsonElement json = JsonDocument.Parse(@"{""name"": ""test""}").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(DeviceHealthResponse));
             Assert.NotNull(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_ReturnsEmptyListForNullElement()
         {
-            var json = JsonDocument.Parse("null").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(DeviceHealthResponse));
+            JsonElement json = JsonDocument.Parse("null").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(DeviceHealthResponse));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_ReturnsEmptyListForNullType()
         {
-            var json = JsonDocument.Parse(@"{""test"": 1}").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, null!);
+            JsonElement json = JsonDocument.Parse(@"{""test"": 1}").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, null!);
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_DetectsStringTypeMismatch()
         {
-            var json = JsonDocument.Parse(@"{""count"": 123}").RootElement;
-            var stringProperty = json.GetProperty("count");
+            JsonElement json = JsonDocument.Parse(@"{""count"": 123}").RootElement;
+            JsonElement stringProperty = json.GetProperty("count");
 
-            var issues = _validator.ValidateAgainstSchema(stringProperty, typeof(string));
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(stringProperty, typeof(string));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.IssueType == "TypeMismatch");
         }
@@ -377,26 +376,26 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_DetectsBooleanTypeMismatch()
         {
-            var json = JsonDocument.Parse(@"123").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(bool));
+            JsonElement json = JsonDocument.Parse(@"123").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(bool));
             Assert.NotEmpty(issues);
-            Assert.Single(issues);
+            _ = Assert.Single(issues);
             Assert.Equal("TypeMismatch", issues[0].IssueType);
         }
 
         [Fact]
         public void JsonSchemaValidator_AcceptsNumericTypes()
         {
-            var json = JsonDocument.Parse("42").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse("42").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_DetectsNonNumericStringForNumber()
         {
-            var json = JsonDocument.Parse(@"""not-a-number""").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse(@"""not-a-number""").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.IssueType == "TypeMismatch" && i.Severity == "Error");
         }
@@ -404,8 +403,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_WarnsOnNumericStringForNumber()
         {
-            var json = JsonDocument.Parse(@"""123""").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse(@"""123""").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.IssueType == "TypeMismatch" && i.Severity == "Warning");
         }
@@ -413,16 +412,16 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_AcceptsBooleanTrue()
         {
-            var json = JsonDocument.Parse("true").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(bool));
+            JsonElement json = JsonDocument.Parse("true").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(bool));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_AcceptsBooleanFalse()
         {
-            var json = JsonDocument.Parse("false").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(bool));
+            JsonElement json = JsonDocument.Parse("false").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(bool));
             Assert.Empty(issues);
         }
 
@@ -431,8 +430,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         {
             // The validator returns early for null responses - this is by design
             // Null responses can't be validated further
-            var json = JsonDocument.Parse("null").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse("null").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.Empty(issues);
         }
     }
@@ -493,7 +492,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_ParsesSimpleDoorbotSettings()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {
@@ -504,10 +503,10 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(123, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
             Assert.Equal(5, snapshot.Volume);
             Assert.False(snapshot.NightModeEnabled);
             Assert.True(snapshot.MotionDetectionEnabled);
@@ -516,7 +515,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_ParsesChimeSettings()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 456,
                     ""settings"": {
@@ -529,10 +528,10 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(456, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(456, out DoorbotSettingsSnapshot? snapshot));
             Assert.Equal(1, snapshot.ChimeType);
             Assert.True(snapshot.ChimeEnabled);
             Assert.Equal(60, snapshot.ChimeDuration);
@@ -541,7 +540,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_ParsesAuthorizadDoorbots()
         {
-            var json = @"{
+            string json = @"{
                 ""authorized_doorbots"": [{
                     ""id"": 789,
                     ""settings"": {
@@ -550,17 +549,17 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(789, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(789, out DoorbotSettingsSnapshot? snapshot));
             Assert.Equal(8, snapshot.Volume);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesStickupCams()
         {
-            var json = @"{
+            string json = @"{
                 ""stickup_cams"": [{
                     ""id"": 999,
                     ""settings"": {
@@ -569,28 +568,28 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(999, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(999, out DoorbotSettingsSnapshot? snapshot));
             Assert.True(snapshot.NightModeEnabled);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesMultipleDevices()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [
                     { ""id"": 1, ""settings"": { ""doorbell_volume"": 3 } },
                     { ""id"": 2, ""settings"": { ""doorbell_volume"": 5 } }
                 ]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
             Assert.Equal(2, result.Count);
-            Assert.True(result.TryGetValue(1, out var snap1));
-            Assert.True(result.TryGetValue(2, out var snap2));
+            Assert.True(result.TryGetValue(1, out DoorbotSettingsSnapshot? snap1));
+            Assert.True(result.TryGetValue(2, out DoorbotSettingsSnapshot? snap2));
             Assert.Equal(3, snap1.Volume);
             Assert.Equal(5, snap2.Volume);
         }
@@ -598,57 +597,57 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_HandlesEmptyJson()
         {
-            var json = "{}";
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            string json = "{}";
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_HandlesEmptyDoorbotArray()
         {
-            var json = @"{ ""doorbots"": [] }";
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            string json = @"{ ""doorbots"": [] }";
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_SkipsDeviceWithoutId()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""settings"": { ""doorbell_volume"": 5 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_SkipsDeviceWithoutSettings()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_HandlesMalformedJsonGracefully()
         {
-            var json = "{ broken json";
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            string json = "{ broken json";
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_HandlesBooleanAsNumber()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {
@@ -658,10 +657,10 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(123, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
             Assert.True(snapshot.NightModeEnabled);
             Assert.False(snapshot.MotionDetectionEnabled);
         }
@@ -669,17 +668,17 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_IgnoresDuplicateDeviceIds()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [
                     { ""id"": 123, ""settings"": { ""doorbell_volume"": 3 } },
                     { ""id"": 123, ""settings"": { ""doorbell_volume"": 5 } }
                 ]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
-            Assert.Single(result);
-            Assert.True(result.TryGetValue(123, out var snapshot));
+            _ = Assert.Single(result);
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
             // First one wins
             Assert.Equal(3, snapshot.Volume);
         }
@@ -687,13 +686,13 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_MergesMultipleArrayTypes()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{ ""id"": 1, ""settings"": { ""doorbell_volume"": 3 } }],
                 ""authorized_doorbots"": [{ ""id"": 2, ""settings"": { ""doorbell_volume"": 5 } }],
                 ""stickup_cams"": [{ ""id"": 3, ""settings"": { ""night_mode_on"": true } }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
 
             Assert.Equal(3, result.Count);
             Assert.True(result.TryGetValue(1, out _));
@@ -819,7 +818,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             var httpCall = new HttpCallRecord { Method = "GET", Url = "https://api.ring.com/test" };
             record.HttpCalls.Add(httpCall);
 
-            Assert.Single(record.HttpCalls);
+            _ = Assert.Single(record.HttpCalls);
             Assert.Equal("GET", record.HttpCalls[0].Method);
         }
 
@@ -836,7 +835,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             var issue = new SchemaIssueRecord { Path = "$.test", IssueType = "TypeMismatch" };
             record.SchemaIssues.Add(issue);
 
-            Assert.Single(record.SchemaIssues);
+            _ = Assert.Single(record.SchemaIssues);
             Assert.Equal("$.test", record.SchemaIssues[0].Path);
         }
 
@@ -848,12 +847,11 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 Endpoint = "set-light",
                 DisplayName = "Toggle light",
                 SessionMethod = "Session.SetLight()",
-                Destructive = true
+                Destructive = true,
+                OriginalValue = "off",
+                RestoreAttempted = true,
+                RestoreSuccess = true
             };
-
-            record.OriginalValue = "off";
-            record.RestoreAttempted = true;
-            record.RestoreSuccess = true;
 
             Assert.Equal("off", record.OriginalValue);
             Assert.True(record.RestoreAttempted);
@@ -868,10 +866,9 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 Endpoint = "set-light",
                 DisplayName = "Toggle light",
                 SessionMethod = "Session.SetLight()",
-                Destructive = true
+                Destructive = true,
+                RestoreSkippedReason = "Unable to capture original value"
             };
-
-            record.RestoreSkippedReason = "Unable to capture original value";
 
             Assert.Equal("Unable to capture original value", record.RestoreSkippedReason);
             Assert.False(record.RestoreAttempted);
@@ -910,7 +907,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void IndexDocument_CanBeConstructed()
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var doc = new IndexDocument
             {
                 ToolVersion = "1.0",
@@ -951,7 +948,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             doc.Summary.TotalCalls = 1;
             doc.Summary.Succeeded = 1;
 
-            Assert.Single(doc.Calls);
+            _ = Assert.Single(doc.Calls);
             Assert.Equal(1, doc.Summary.TotalCalls);
             Assert.Equal(1, doc.Summary.Succeeded);
         }
@@ -1017,7 +1014,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_HandlesComplexNestedObjects()
         {
-            var json = JsonDocument.Parse(@"{
+            JsonElement json = JsonDocument.Parse(@"{
                 ""level1"": {
                     ""level2"": {
                         ""count"": 42
@@ -1025,27 +1022,27 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }
             }").RootElement;
 
-            var issues = _validator.ValidateAgainstSchema(json, typeof(object));
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(object));
             Assert.NotNull(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesArrayOfObjects()
         {
-            var json = JsonDocument.Parse(@"[
+            JsonElement json = JsonDocument.Parse(@"[
                 { ""id"": 1, ""name"": ""test1"" },
                 { ""id"": 2, ""name"": ""test2"" }
             ]").RootElement;
 
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<object>));
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<object>));
             Assert.NotNull(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_DetectsLongTypeMismatch()
         {
-            var json = JsonDocument.Parse(@"""not-a-number""").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(long));
+            JsonElement json = JsonDocument.Parse(@"""not-a-number""").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(long));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.IssueType == "TypeMismatch");
         }
@@ -1053,64 +1050,64 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_AcceptsLargeNumbers()
         {
-            var json = JsonDocument.Parse("9223372036854775807").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(long));
+            JsonElement json = JsonDocument.Parse("9223372036854775807").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(long));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_AcceptsDoubleValues()
         {
-            var json = JsonDocument.Parse("3.14159265").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(double));
+            JsonElement json = JsonDocument.Parse("3.14159265").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(double));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_AcceptsDecimalValues()
         {
-            var json = JsonDocument.Parse("100.50").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(decimal));
+            JsonElement json = JsonDocument.Parse("100.50").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(decimal));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesNullableInt()
         {
-            var json = JsonDocument.Parse("null").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int?));
+            JsonElement json = JsonDocument.Parse("null").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int?));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_WarnsOnNullableIntWithValidNumber()
         {
-            var json = JsonDocument.Parse("42").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int?));
+            JsonElement json = JsonDocument.Parse("42").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int?));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesEmptyArray()
         {
-            var json = JsonDocument.Parse("[]").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
+            JsonElement json = JsonDocument.Parse("[]").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesSingleElementArray()
         {
-            var json = JsonDocument.Parse("[42]").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
+            JsonElement json = JsonDocument.Parse("[42]").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_DetectsFirstArrayElementMismatch()
         {
-            var json = JsonDocument.Parse("[\"wrong\", 2, 3]").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
+            JsonElement json = JsonDocument.Parse("[\"wrong\", 2, 3]").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.Path.Contains("[0]"));
         }
@@ -1118,8 +1115,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_DetectsMiddleArrayElementMismatch()
         {
-            var json = JsonDocument.Parse("[1, \"wrong\", 3]").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
+            JsonElement json = JsonDocument.Parse("[1, \"wrong\", 3]").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.Path.Contains("[1]"));
         }
@@ -1127,8 +1124,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_DetectsLastArrayElementMismatch()
         {
-            var json = JsonDocument.Parse("[1, 2, \"wrong\"]").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
+            JsonElement json = JsonDocument.Parse("[1, 2, \"wrong\"]").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(List<int>));
             Assert.NotEmpty(issues);
             Assert.Contains(issues, i => i.Path.Contains("[2]"));
         }
@@ -1136,49 +1133,49 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void JsonSchemaValidator_ReportsCorrectPathForNestedFields()
         {
-            var json = JsonDocument.Parse(@"{
+            JsonElement json = JsonDocument.Parse(@"{
                 ""outer"": {
                     ""inner"": 123
                 }
             }").RootElement;
 
-            var issues = _validator.ValidateAgainstSchema(json, typeof(object));
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(object));
             Assert.NotNull(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesZeroValue()
         {
-            var json = JsonDocument.Parse("0").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse("0").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesNegativeNumbers()
         {
-            var json = JsonDocument.Parse("-42").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(int));
+            JsonElement json = JsonDocument.Parse("-42").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(int));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_HandlesScientificNotation()
         {
-            var json = JsonDocument.Parse("1.23e-4").RootElement;
-            var issues = _validator.ValidateAgainstSchema(json, typeof(double));
+            JsonElement json = JsonDocument.Parse("1.23e-4").RootElement;
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(double));
             Assert.Empty(issues);
         }
 
         [Fact]
         public void JsonSchemaValidator_ReportsMissingInSchemaForExtraField()
         {
-            var json = JsonDocument.Parse(@"{
+            JsonElement json = JsonDocument.Parse(@"{
                 ""Name"": ""Test"",
                 ""UnexpectedField"": 123
             }").RootElement;
 
-            var issues = _validator.ValidateAgainstSchema(json, typeof(object));
+            List<JsonSchemaValidator.SchemaIssue> issues = _validator.ValidateAgainstSchema(json, typeof(object));
             // Should detect the extra field
             Assert.NotNull(issues);
         }
@@ -1189,7 +1186,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindIsStatic()
         {
-            var endpoint = EndpointRegistry.Find("locations");
+            EndpointDescriptor? endpoint = EndpointRegistry.Find("locations");
             Assert.NotNull(endpoint);
             Assert.Equal("locations", endpoint.Key);
         }
@@ -1218,7 +1215,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindLocatesProfileEndpoint()
         {
-            var endpoint = EndpointRegistry.Find("profile");
+            EndpointDescriptor? endpoint = EndpointRegistry.Find("profile");
             Assert.NotNull(endpoint);
             Assert.Equal(EndpointScope.None, endpoint.Scope);
         }
@@ -1239,8 +1236,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_FindIsCaseSensitive()
         {
-            var lower = EndpointRegistry.Find("devices");
-            var upper = EndpointRegistry.Find("DEVICES");
+            EndpointDescriptor? lower = EndpointRegistry.Find("devices");
+            EndpointDescriptor? upper = EndpointRegistry.Find("DEVICES");
             Assert.NotNull(lower);
             Assert.NotNull(upper);
             Assert.Equal(lower.Key, upper.Key);
@@ -1257,7 +1254,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointRegistry_AmbientParametersCanBeSet()
         {
-            var originalLimit = EndpointRegistry.CurrentHistoryLimit;
+            int originalLimit = EndpointRegistry.CurrentHistoryLimit;
             try
             {
                 EndpointRegistry.CurrentHistoryLimit = 10;
@@ -1275,37 +1272,37 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_ParsesZeroVolume()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": { ""doorbell_volume"": 0 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Equal(0, result[123].Volume);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesMaxVolume()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": { ""doorbell_volume"": 11 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Equal(11, result[123].Volume);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_IgnoresNullChimeSettings()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {
@@ -1315,36 +1312,36 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Null(result[123].ChimeType);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_IgnoresInvalidIdType()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": ""invalid"",
                     ""settings"": { ""doorbell_volume"": 5 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Empty(result);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_IgnoresFloatId()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123.456,
                     ""settings"": { ""doorbell_volume"": 5 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             // Should skip because it expects a 64-bit integer
             Assert.Empty(result);
         }
@@ -1352,37 +1349,37 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_ParsesNegativeVolume()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": { ""doorbell_volume"": -1 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Equal(-1, result[123].Volume);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesLongId()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 9223372036854775807,
                     ""settings"": { ""doorbell_volume"": 5 }
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.True(result.ContainsKey(9223372036854775807));
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesLargeBoolValue()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {
@@ -1391,15 +1388,15 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.True(result[123].NightModeEnabled);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesChimeDurationZero()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {
@@ -1410,15 +1407,15 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Equal(0, result[123].ChimeDuration);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_PartiallyMalformedJsonStillParsesGoodEntries()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [
                     {
                         ""id"": 100,
@@ -1429,7 +1426,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             }";
 
             // The parser should catch the exception and return what it found
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             // Depending on implementation, it might parse the first doorbot
             Assert.NotNull(result);
         }
@@ -1437,27 +1434,27 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void DeviceSettingsSnapshot_LargeJsonDocument()
         {
-            var doorbots = string.Join(",", Enumerable.Range(1, 100).Select(i =>
+            string doorbots = string.Join(",", Enumerable.Range(1, 100).Select(i =>
                 @$"{{ ""id"": {i}, ""settings"": {{ ""doorbell_volume"": {i % 12} }} }}"
             ));
-            var json = @$"{{ ""doorbots"": [{doorbots}] }}";
+            string json = @$"{{ ""doorbots"": [{doorbots}] }}";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
             Assert.Equal(100, result.Count);
         }
 
         [Fact]
         public void DeviceSettingsSnapshot_ParsesEmptySettingsObject()
         {
-            var json = @"{
+            string json = @"{
                 ""doorbots"": [{
                     ""id"": 123,
                     ""settings"": {}
                 }]
             }";
 
-            var result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
-            Assert.Single(result);
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+            _ = Assert.Single(result);
             Assert.Null(result[123].Volume);
             Assert.Null(result[123].ChimeType);
         }
@@ -1468,10 +1465,10 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_AllMappedEndpointsHaveTypes()
         {
-            var mappedEndpoints = new[] { "doorbot-health", "chime-health", "video-search", "location-events", "profile", "ringtones" };
-            foreach (var endpoint in mappedEndpoints)
+            string[] mappedEndpoints = new[] { "doorbot-health", "chime-health", "video-search", "location-events", "profile", "ringtones" };
+            foreach (string? endpoint in mappedEndpoints)
             {
-                var found = EndpointSchemaMap.TryGetExpectedType(endpoint, out var type);
+                bool found = EndpointSchemaMap.TryGetExpectedType(endpoint, out Type? type);
                 Assert.True(found, $"Endpoint {endpoint} should be mapped");
                 Assert.NotNull(type);
             }
@@ -1480,7 +1477,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_LocationEventsReturnsCorrectType()
         {
-            var found = EndpointSchemaMap.TryGetExpectedType("location-events", out var type);
+            bool found = EndpointSchemaMap.TryGetExpectedType("location-events", out Type? type);
             Assert.True(found);
             Assert.NotNull(type);
         }
@@ -1488,7 +1485,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_ProfileReturnsCorrectType()
         {
-            var found = EndpointSchemaMap.TryGetExpectedType("profile", out var type);
+            bool found = EndpointSchemaMap.TryGetExpectedType("profile", out Type? type);
             Assert.True(found);
             Assert.NotNull(type);
         }
@@ -1496,7 +1493,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_RingtonesReturnsCorrectType()
         {
-            var found = EndpointSchemaMap.TryGetExpectedType("ringtones", out var type);
+            bool found = EndpointSchemaMap.TryGetExpectedType("ringtones", out Type? type);
             Assert.True(found);
             Assert.NotNull(type);
         }
@@ -1504,10 +1501,10 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_UnmappedReadOnlyEndpointsReturnFalse()
         {
-            var unmapped = new[] { "devices", "locations", "doorbot-history", "set-light", "shared-users" };
-            foreach (var endpoint in unmapped)
+            string[] unmapped = new[] { "devices", "locations", "doorbot-history", "set-light", "shared-users" };
+            foreach (string? endpoint in unmapped)
             {
-                var found = EndpointSchemaMap.TryGetExpectedType(endpoint, out _);
+                bool found = EndpointSchemaMap.TryGetExpectedType(endpoint, out _);
                 Assert.False(found, $"Endpoint {endpoint} should not be mapped (returns raw JSON)");
             }
         }
@@ -1515,7 +1512,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [Fact]
         public void EndpointSchemaMap_OutputParameterIsNullForUnmapped()
         {
-            var found = EndpointSchemaMap.TryGetExpectedType("unknown", out var type);
+            bool found = EndpointSchemaMap.TryGetExpectedType("unknown", out Type? type);
             Assert.False(found);
             Assert.Null(type);
         }

@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
+
 using Xunit;
 namespace VideoForensics.Hosting.Tests
 {
@@ -13,7 +15,11 @@ namespace VideoForensics.Hosting.Tests
         {
             public HttpRequestMessage CapturedRequest { get; private set; }
             private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _factory;
-            public FakeHttpMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> factory) => _factory = factory;
+            public FakeHttpMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> factory)
+            {
+                _factory = factory;
+            }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) { CapturedRequest = request; return await _factory(request); }
         }
         [Fact]
@@ -22,11 +28,11 @@ namespace VideoForensics.Hosting.Tests
             var location1 = new LocationDto("loc-1", "Home", "123 Main St", new Dictionary<string, string> { { "region", "us-east-1" } });
             var location2 = new LocationDto("loc-2", "Office", "456 Oak Ave", null);
             var dtoList = new List<LocationDto> { location1, location2 };
-            var json = JsonSerializer.Serialize(dtoList, JsonOptions);
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteDeviceDiscoveryService(httpClient);
-            var result = await service.GetLocationsAsync(CancellationToken.None);
+            IReadOnlyList<Location> result = await service.GetLocationsAsync(CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.Equal(2, result.Count);
@@ -34,28 +40,28 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetDevicesAsync_WithLocationId_CallsDevicesEndpoint()
         {
-            var locationId = "loc-123";
+            string locationId = "loc-123";
             var device1 = new DiscoveryDeviceDto("dev-1", "Front Camera", "camera", locationId, true, new Dictionary<string, string> { { "model", "ring-cam" } });
             var dtoList = new List<DiscoveryDeviceDto> { device1 };
-            var json = JsonSerializer.Serialize(dtoList, JsonOptions);
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteDeviceDiscoveryService(httpClient);
-            var result = await service.GetDevicesAsync(locationId, CancellationToken.None);
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId, CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
-            Assert.Single(result);
+            _ = Assert.Single(result);
         }
         [Fact]
         public async Task GetDeviceAsync_WithValidDeviceId_ReturnsDevice()
         {
-            var deviceId = "dev-789";
+            string deviceId = "dev-789";
             var dto = new DiscoveryDeviceDto(deviceId, "Doorbell", "doorbell", "loc-front", true, new Dictionary<string, string> { { "battery", "100%" } });
-            var json = JsonSerializer.Serialize(dto, JsonOptions);
+            string json = JsonSerializer.Serialize(dto, JsonOptions);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteDeviceDiscoveryService(httpClient);
-            var result = await service.GetDeviceAsync(deviceId, CancellationToken.None);
+            Device? result = await service.GetDeviceAsync(deviceId, CancellationToken.None);
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.NotNull(result);
@@ -67,7 +73,7 @@ namespace VideoForensics.Hosting.Tests
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.NotFound); });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteDeviceDiscoveryService(httpClient);
-            var result = await service.GetDeviceAsync("non-existent", CancellationToken.None);
+            Device? result = await service.GetDeviceAsync("non-existent", CancellationToken.None);
             Assert.Null(result);
         }
     }

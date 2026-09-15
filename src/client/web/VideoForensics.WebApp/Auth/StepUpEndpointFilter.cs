@@ -14,7 +14,7 @@ namespace VideoForensics.WebApp.Auth
         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
             HttpContext httpContext = context.HttpContext;
-            var deviceIdClaim = httpContext.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+            string? deviceIdClaim = httpContext.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
             if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
             {
                 return Results.Unauthorized();

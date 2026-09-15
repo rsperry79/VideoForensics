@@ -44,7 +44,7 @@ namespace VideoForensics.Mcp.ServerDiscovery
         {
             try
             {
-                Directory.CreateDirectory(StorageDirectory);
+                _ = Directory.CreateDirectory(StorageDirectory);
                 File.WriteAllText(ApiKeyFilePath, apiKey);
             }
             catch

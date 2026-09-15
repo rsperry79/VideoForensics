@@ -1,4 +1,5 @@
 using VideoForensics.Client.Core.Utilities;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -8,61 +9,61 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_ValidDate_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-03-15");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-03-15");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 15), result.Value);
         }
 
         [Fact]
         public void TryParseDate_ValidShortDate_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("3-15-24");
+            DateTime? result = DateTimeUtilities.TryParseDate("3-15-24");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 15), result.Value);
         }
 
         [Fact]
         public void TryParseDate_ValidSlashFormat_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("03/15/2024");
+            DateTime? result = DateTimeUtilities.TryParseDate("03/15/2024");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 15), result.Value);
         }
 
         [Fact]
         public void TryParseDate_ValidSlashFormatTwoDigitYear_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("3/15/24");
+            DateTime? result = DateTimeUtilities.TryParseDate("3/15/24");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 15), result.Value);
         }
 
         [Fact]
         public void TryParseDate_ValidSlashFormatFourDigitYear_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("2024/03/15");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024/03/15");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 15), result.Value);
         }
 
         [Fact]
         public void TryParseDate_SingleDigitMonth_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("3-5-24");
+            DateTime? result = DateTimeUtilities.TryParseDate("3-5-24");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 3, 5), result.Value);
         }
 
         [Fact]
         public void TryParseDate_InvalidDate_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("not-a-date");
+            DateTime? result = DateTimeUtilities.TryParseDate("not-a-date");
 
             Assert.Null(result);
         }
@@ -70,7 +71,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_InvalidMonth_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-13-01");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-13-01");
 
             Assert.Null(result);
         }
@@ -78,7 +79,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_InvalidDay_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-02-30");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-02-30");
 
             Assert.Null(result);
         }
@@ -86,7 +87,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_EmptyString_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate(string.Empty);
+            DateTime? result = DateTimeUtilities.TryParseDate(string.Empty);
 
             Assert.Null(result);
         }
@@ -94,7 +95,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_NullString_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate(null);
+            DateTime? result = DateTimeUtilities.TryParseDate(null);
 
             Assert.Null(result);
         }
@@ -102,7 +103,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_WhitespaceString_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("   ");
+            DateTime? result = DateTimeUtilities.TryParseDate("   ");
 
             Assert.Null(result);
         }
@@ -110,7 +111,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_LeadingWhitespace_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("  2024-03-15");
+            DateTime? result = DateTimeUtilities.TryParseDate("  2024-03-15");
 
             Assert.Null(result);
         }
@@ -118,7 +119,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_TrailingWhitespace_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-03-15  ");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-03-15  ");
 
             Assert.Null(result);
         }
@@ -126,16 +127,16 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_LeapYearDate_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-02-29");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-02-29");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 2, 29), result.Value);
         }
 
         [Fact]
         public void TryParseDate_NonLeapYearFeb29_ReturnsNull()
         {
-            var result = DateTimeUtilities.TryParseDate("2023-02-29");
+            DateTime? result = DateTimeUtilities.TryParseDate("2023-02-29");
 
             Assert.Null(result);
         }
@@ -143,18 +144,18 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void TryParseDate_MinDateTime_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("0001-01-01");
+            DateTime? result = DateTimeUtilities.TryParseDate("0001-01-01");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(1, 1, 1), result.Value);
         }
 
         [Fact]
         public void TryParseDate_YearWithLeadingZeros_ReturnsDateTime()
         {
-            var result = DateTimeUtilities.TryParseDate("2024-01-01");
+            DateTime? result = DateTimeUtilities.TryParseDate("2024-01-01");
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(new DateTime(2024, 1, 1), result.Value);
         }
 
@@ -162,7 +163,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_ValidDate_ReturnsDateTime()
         {
             var fallback = new DateTime(2000, 1, 1);
-            var result = DateTimeUtilities.ParseDateOrDefault("2024-03-15", fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault("2024-03-15", fallback);
 
             Assert.Equal(new DateTime(2024, 3, 15), result);
         }
@@ -171,7 +172,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_InvalidDate_ReturnsFallback()
         {
             var fallback = new DateTime(2000, 1, 1);
-            var result = DateTimeUtilities.ParseDateOrDefault("not-a-date", fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault("not-a-date", fallback);
 
             Assert.Equal(fallback, result);
         }
@@ -180,7 +181,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_NullString_ReturnsFallback()
         {
             var fallback = new DateTime(2000, 1, 1);
-            var result = DateTimeUtilities.ParseDateOrDefault(null, fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault(null, fallback);
 
             Assert.Equal(fallback, result);
         }
@@ -189,7 +190,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_EmptyString_ReturnsFallback()
         {
             var fallback = new DateTime(2000, 1, 1);
-            var result = DateTimeUtilities.ParseDateOrDefault(string.Empty, fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault(string.Empty, fallback);
 
             Assert.Equal(fallback, result);
         }
@@ -198,7 +199,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_WhitespaceString_ReturnsFallback()
         {
             var fallback = new DateTime(2000, 1, 1);
-            var result = DateTimeUtilities.ParseDateOrDefault("   ", fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault("   ", fallback);
 
             Assert.Equal(fallback, result);
         }
@@ -207,7 +208,7 @@ namespace VideoForensics.Client.Core.Tests
         public void ParseDateOrDefault_RespectsFallbackValue()
         {
             var fallback = new DateTime(1999, 12, 31);
-            var result = DateTimeUtilities.ParseDateOrDefault("invalid", fallback);
+            DateTime result = DateTimeUtilities.ParseDateOrDefault("invalid", fallback);
 
             Assert.Equal(fallback, result);
         }
@@ -217,9 +218,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             var fallback = new DateTime(2000, 1, 1);
 
-            var result1 = DateTimeUtilities.ParseDateOrDefault("bad", fallback);
-            var result2 = DateTimeUtilities.ParseDateOrDefault("", fallback);
-            var result3 = DateTimeUtilities.ParseDateOrDefault(null, fallback);
+            DateTime result1 = DateTimeUtilities.ParseDateOrDefault("bad", fallback);
+            DateTime result2 = DateTimeUtilities.ParseDateOrDefault("", fallback);
+            DateTime result3 = DateTimeUtilities.ParseDateOrDefault(null, fallback);
 
             Assert.Equal(fallback, result1);
             Assert.Equal(fallback, result2);
@@ -231,7 +232,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 3, 15);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-03-15", result);
         }
@@ -241,7 +242,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 3, 15);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-03-15", result);
             Assert.Contains("-03-", result);
@@ -252,7 +253,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 3, 5);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-03-05", result);
             Assert.EndsWith("-05", result);
@@ -263,7 +264,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(1, 1, 1);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("0001-01-01", result);
         }
@@ -273,7 +274,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(9999, 12, 31);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("9999-12-31", result);
         }
@@ -283,7 +284,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 2, 29);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-02-29", result);
         }
@@ -293,7 +294,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 1, 1);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-01-01", result);
         }
@@ -303,7 +304,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var date = new DateTime(2024, 12, 31);
 
-            var result = DateTimeUtilities.FormatDate(date);
+            string result = DateTimeUtilities.FormatDate(date);
 
             Assert.Equal("2024-12-31", result);
         }
@@ -314,8 +315,8 @@ namespace VideoForensics.Client.Core.Tests
             var date1 = new DateTime(2024, 3, 15);
             var date2 = new DateTime(2024, 3, 15);
 
-            var result1 = DateTimeUtilities.FormatDate(date1);
-            var result2 = DateTimeUtilities.FormatDate(date2);
+            string result1 = DateTimeUtilities.FormatDate(date1);
+            string result2 = DateTimeUtilities.FormatDate(date2);
 
             Assert.Equal(result1, result2);
         }
@@ -323,9 +324,9 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void RoundTripConversion_ParseAndFormat()
         {
-            var originalString = "2024-03-15";
-            var parsed = DateTimeUtilities.TryParseDate(originalString);
-            var formatted = DateTimeUtilities.FormatDate(parsed!.Value);
+            string originalString = "2024-03-15";
+            DateTime? parsed = DateTimeUtilities.TryParseDate(originalString);
+            string formatted = DateTimeUtilities.FormatDate(parsed!.Value);
 
             Assert.Equal(originalString, formatted);
         }
@@ -333,13 +334,13 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void MultipleFormats_AllParsedCorrectly()
         {
-            var formats = new[] { "2024-03-15", "3-15-24", "3/15/24", "03/15/2024", "2024/03/15" };
+            string[] formats = new[] { "2024-03-15", "3-15-24", "3/15/24", "03/15/2024", "2024/03/15" };
             var expectedDate = new DateTime(2024, 3, 15);
 
-            foreach (var format in formats)
+            foreach (string? format in formats)
             {
-                var result = DateTimeUtilities.TryParseDate(format);
-                Assert.NotNull(result);
+                DateTime? result = DateTimeUtilities.TryParseDate(format);
+                _ = Assert.NotNull(result);
                 Assert.Equal(expectedDate, result.Value);
             }
         }
@@ -349,8 +350,8 @@ namespace VideoForensics.Client.Core.Tests
         {
             var fallback = new DateTime(2000, 1, 1);
 
-            var validResult = DateTimeUtilities.ParseDateOrDefault("2024-03-15", fallback);
-            var invalidResult = DateTimeUtilities.ParseDateOrDefault("not-a-date", fallback);
+            DateTime validResult = DateTimeUtilities.ParseDateOrDefault("2024-03-15", fallback);
+            DateTime invalidResult = DateTimeUtilities.ParseDateOrDefault("not-a-date", fallback);
 
             Assert.NotEqual(validResult, invalidResult);
             Assert.Equal(fallback, invalidResult);
@@ -360,10 +361,10 @@ namespace VideoForensics.Client.Core.Tests
         public void FormatDate_CanRoundTripWithTryParseDate()
         {
             var originalDate = new DateTime(2024, 3, 15, 10, 30, 45);
-            var formatted = DateTimeUtilities.FormatDate(originalDate);
-            var reparsed = DateTimeUtilities.TryParseDate(formatted);
+            string formatted = DateTimeUtilities.FormatDate(originalDate);
+            DateTime? reparsed = DateTimeUtilities.TryParseDate(formatted);
 
-            Assert.NotNull(reparsed);
+            _ = Assert.NotNull(reparsed);
             // Note: Time component is lost in the format/parse round-trip
             Assert.Equal(originalDate.Year, reparsed.Value.Year);
             Assert.Equal(originalDate.Month, reparsed.Value.Month);

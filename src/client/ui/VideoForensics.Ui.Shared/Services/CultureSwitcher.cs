@@ -20,7 +20,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                CultureInfo culture = CultureInfo.GetCultureInfo(cultureName);
+                var culture = CultureInfo.GetCultureInfo(cultureName);
                 CultureInfo.CurrentCulture = culture;
                 CultureInfo.CurrentUICulture = culture;
             }

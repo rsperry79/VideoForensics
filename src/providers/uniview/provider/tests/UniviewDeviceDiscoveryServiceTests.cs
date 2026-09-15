@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -22,7 +25,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
             var mockConfig = new Mock<IForensicsConfiguration>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -30,7 +33,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockConfig.Object);
 
             // Act
-            var locations = await service.GetLocationsAsync(CancellationToken.None);
+            IReadOnlyList<Location> locations = await service.GetLocationsAsync(CancellationToken.None);
 
             // Assert - IMPORTANT: returns empty list, not exception
             Assert.Empty(locations);
@@ -44,7 +47,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
             var mockConfig = new Mock<IForensicsConfiguration>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -52,7 +55,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockConfig.Object);
 
             // Act
-            var devices = await service.GetDevicesAsync("192.168.1.1", CancellationToken.None);
+            IReadOnlyList<Device> devices = await service.GetDevicesAsync("192.168.1.1", CancellationToken.None);
 
             // Assert - IMPORTANT: returns empty list, not exception
             Assert.Empty(devices);
@@ -66,7 +69,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
             var mockConfig = new Mock<IForensicsConfiguration>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -74,7 +77,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockConfig.Object);
 
             // Act
-            var device = await service.GetDeviceAsync("1", CancellationToken.None);
+            Device? device = await service.GetDeviceAsync("1", CancellationToken.None);
 
             // Assert
             Assert.Null(device);
@@ -89,8 +92,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
-            mockConfig.Setup(c => c.UniviewNvrHost).Returns((string?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockConfig.Setup(c => c.UniviewNvrHost).Returns((string?)null);
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -100,7 +103,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act
-                var locations = await service.GetLocationsAsync(CancellationToken.None);
+                IReadOnlyList<Location> locations = await service.GetLocationsAsync(CancellationToken.None);
 
                 // Assert
                 Assert.Empty(locations);
@@ -120,8 +123,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
-            mockConfig.Setup(c => c.UniviewNvrHost).Returns((string?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockConfig.Setup(c => c.UniviewNvrHost).Returns((string?)null);
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -131,7 +134,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act
-                var devices = await service.GetDevicesAsync("192.168.1.1", CancellationToken.None);
+                IReadOnlyList<Device> devices = await service.GetDevicesAsync("192.168.1.1", CancellationToken.None);
 
                 // Assert
                 Assert.Empty(devices);
@@ -151,8 +154,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
-            mockConfig.Setup(c => c.UniviewNvrHost).Returns("192.168.1.1");
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockConfig.Setup(c => c.UniviewNvrHost).Returns("192.168.1.1");
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -162,7 +165,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act - request devices for a different location ID
-                var devices = await service.GetDevicesAsync("192.168.1.99", CancellationToken.None);
+                IReadOnlyList<Device> devices = await service.GetDevicesAsync("192.168.1.99", CancellationToken.None);
 
                 // Assert - should return empty, not call client
                 Assert.Empty(devices);
@@ -182,8 +185,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
-            mockConfig.Setup(c => c.UniviewNvrHost).Returns("192.168.1.1");
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockConfig.Setup(c => c.UniviewNvrHost).Returns("192.168.1.1");
 
             var service = new UniviewDeviceDiscoveryService(
                 mockLogger.Object,
@@ -193,7 +196,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act - request device with non-numeric ID
-                var device = await service.GetDeviceAsync("invalid", CancellationToken.None);
+                Device? device = await service.GetDeviceAsync("invalid", CancellationToken.None);
 
                 // Assert
                 Assert.Null(device);
@@ -212,7 +215,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewDeviceDiscoveryService(
                     null!,
                     mockSessionProvider.Object,
@@ -227,7 +230,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockConfig = new Mock<IForensicsConfiguration>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewDeviceDiscoveryService(
                     mockLogger.Object,
                     null!,
@@ -242,7 +245,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewDeviceDiscoveryService(
                     mockLogger.Object,
                     mockSessionProvider.Object,

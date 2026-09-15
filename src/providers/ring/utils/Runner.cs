@@ -57,8 +57,8 @@ namespace VideoForensics.Providers.Ring
 
             List<EndpointDescriptor> selected = ResolveSelection(options.RequestedKeys, options.Destructive, options.NoPhysical);
 
-            var needsDevices = selected.Any(e => e.Key == "devices") || selected.Any(e => e.Scope is EndpointScope.PerDoorbot or EndpointScope.PerChime);
-            var needsLocations = selected.Any(e => e.Key == "locations") || selected.Any(e => e.Scope == EndpointScope.PerLocation);
+            bool needsDevices = selected.Any(e => e.Key == "devices") || selected.Any(e => e.Scope is EndpointScope.PerDoorbot or EndpointScope.PerChime);
+            bool needsLocations = selected.Any(e => e.Key == "locations") || selected.Any(e => e.Scope == EndpointScope.PerLocation);
 
             Devices? devices = null;
             List<Location>? locations = null;
@@ -74,7 +74,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     try
                     {
-                        var rawJson = await File.ReadAllTextAsync(Path.Combine(_outputDir, record.ResultFile));
+                        string rawJson = await File.ReadAllTextAsync(Path.Combine(_outputDir, record.ResultFile));
                         EndpointRegistry.OriginalDoorbotSettings = DeviceSettingsSnapshot.ParseFromDevicesJson(rawJson);
                     }
                     catch
@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring
                             Narrate($"Skipping {descriptor.Key}: no doorbots discovered (and no --doorbot-id given).");
                         }
 
-                        foreach (var dbId in doorbotIds)
+                        foreach (long dbId in doorbotIds)
                         {
                             var target = new EndpointTarget(null, dbId);
                             var targetRecord = new TargetRecord { DoorbotId = dbId, DoorbotName = doorbotNames.GetValueOrDefault(dbId) };
@@ -184,7 +184,7 @@ namespace VideoForensics.Providers.Ring
                             Narrate($"Skipping {descriptor.Key}: no chimes discovered (and no --chime-id given).");
                         }
 
-                        foreach (var chId in chimeIds)
+                        foreach (long chId in chimeIds)
                         {
                             var target = new EndpointTarget(null, null, chId);
                             var targetRecord = new TargetRecord { ChimeId = chId, ChimeName = chimeNames.GetValueOrDefault(chId) };
@@ -205,7 +205,7 @@ namespace VideoForensics.Providers.Ring
 
         private static List<EndpointDescriptor> ResolveSelection(IReadOnlyList<string> requestedKeys, bool destructive, bool noPhysical)
         {
-            var wantsAll = requestedKeys.Any(k => string.Equals(k, "all", StringComparison.OrdinalIgnoreCase));
+            bool wantsAll = requestedKeys.Any(k => string.Equals(k, "all", StringComparison.OrdinalIgnoreCase));
 
             List<EndpointDescriptor> result;
             if (wantsAll)
@@ -215,7 +215,7 @@ namespace VideoForensics.Providers.Ring
             else
             {
                 result = [];
-                foreach (var key in requestedKeys)
+                foreach (string key in requestedKeys)
                 {
                     EndpointDescriptor? descriptor = EndpointRegistry.Find(key);
                     if (descriptor == null)
@@ -265,7 +265,7 @@ namespace VideoForensics.Providers.Ring
 
             var sw = Stopwatch.StartNew();
             object? invokeResult = null;
-            var testCallCount = 0;
+            int testCallCount = 0;
             try
             {
                 Task task = descriptor.Invoke(_session, target);
@@ -352,12 +352,12 @@ namespace VideoForensics.Providers.Ring
             record.DurationMs = sw.Elapsed.TotalMilliseconds;
 
             string? primaryResultFile = null;
-            for (var i = 0; i < raw.Count; i++)
+            for (int i = 0; i < raw.Count; i++)
             {
                 RawApiCall call = raw[i];
-                var phase = i < testCallCount ? "test" : "restore";
-                var fileName = BuildFileName(descriptor.Key, targetRecord, raw.Count > 1, phase);
-                var filePath = Path.Combine(_outputDir, fileName);
+                string phase = i < testCallCount ? "test" : "restore";
+                string fileName = BuildFileName(descriptor.Key, targetRecord, raw.Count > 1, phase);
+                string filePath = Path.Combine(_outputDir, fileName);
                 await File.WriteAllTextAsync(filePath, call.Body ?? string.Empty);
 
                 record.HttpCalls.Add(new HttpCallRecord
@@ -380,36 +380,27 @@ namespace VideoForensics.Providers.Ring
 
         private static string DescribeTarget(TargetRecord? t)
         {
-            if (t == null)
-            {
-                return "";
-            }
-
-            if (t.LocationId != null)
-            {
-                return $"(location {t.LocationName ?? t.LocationId})";
-            }
-
-            if (t.DoorbotId != null)
-            {
-                return $"(doorbot {t.DoorbotName ?? t.DoorbotId.ToString()})";
-            }
-
-            return t.ChimeId != null ? $"(chime {t.ChimeName ?? t.ChimeId.ToString()})" : "";
+            return t == null
+                ? ""
+                : t.LocationId != null
+                ? $"(location {t.LocationName ?? t.LocationId})"
+                : t.DoorbotId != null
+                ? $"(doorbot {t.DoorbotName ?? t.DoorbotId.ToString()})"
+                : t.ChimeId != null ? $"(chime {t.ChimeName ?? t.ChimeId.ToString()})" : "";
         }
 
         private string BuildFileName(string endpointKey, TargetRecord? target, bool multipleCalls, string phase)
         {
-            var targetPart = target switch
+            string targetPart = target switch
             {
                 { LocationId: not null } => "_" + target.LocationId![..Math.Min(8, target.LocationId.Length)],
                 { DoorbotId: not null } => "_" + target.DoorbotId,
                 { ChimeId: not null } => "_" + target.ChimeId,
                 _ => ""
             };
-            var phaseSuffix = phase == "restore" ? "_restore" : "";
-            var seq = multipleCalls ? $"_{++_fileSequence}" : "";
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfffZ");
+            string phaseSuffix = phase == "restore" ? "_restore" : "";
+            string seq = multipleCalls ? $"_{++_fileSequence}" : "";
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfffZ");
             return $"{endpointKey}{targetPart}{phaseSuffix}_{timestamp}{seq}.json";
         }
 

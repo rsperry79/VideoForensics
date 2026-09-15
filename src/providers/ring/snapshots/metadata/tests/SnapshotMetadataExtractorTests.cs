@@ -393,7 +393,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
         [Fact]
         public void ExtractMetadata_ExtractsRingEventId()
         {
-            var eventId = 12345L;
+            long eventId = 12345L;
             SnapshotEventBuilder builder = new SnapshotEventBuilder()
                 .WithId(eventId)
                 .WithDefaultDoorbot();

@@ -35,12 +35,12 @@ namespace VideoForensics.Data.Database.Repositories
                 .GroupBy(m => m.DownloadEventId!.Value)
                 .ToDictionary(g => g.Key, g => g.First().Sha256Hash);
 
-            var backfilled = 0;
+            int backfilled = 0;
             foreach (DownloadEvent downloadEvent in downloadEvents)
             {
                 ct.ThrowIfCancellationRequested();
 
-                _ = hashByDownloadEventId.TryGetValue(downloadEvent.Id, out var hash);
+                _ = hashByDownloadEventId.TryGetValue(downloadEvent.Id, out string? hash);
 
                 _ = await eventRepository.UpsertAsync(new Event
                 {

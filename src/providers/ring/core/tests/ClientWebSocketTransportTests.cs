@@ -1,5 +1,5 @@
-using System.Net.WebSockets;
 using System.Threading;
+
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 using VideoForensics.Providers.Ring.Sockets;
 
@@ -41,7 +41,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             await transport.SendAsync(testMessage, cts.Token);
 
             // Assert
-            Assert.Single(transport.SentMessages);
+            _ = Assert.Single(transport.SentMessages);
             Assert.Equal(testMessage, transport.SentMessages[0]);
         }
 
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // It either throws OperationCanceledException or returns null
             try
             {
-                var task = transport.ReceiveAsync(cts.Token);
+                Task<string?> task = transport.ReceiveAsync(cts.Token);
                 cts.Cancel();
                 string result = await task;
                 Assert.Null(result); // If it completes, result should be null
@@ -116,7 +116,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             IWebSocketTransport transport = new FakeWebSocketTransport();
 
             // Assert
-            Assert.IsAssignableFrom<IWebSocketTransport>(transport);
+            _ = Assert.IsAssignableFrom<IWebSocketTransport>(transport);
         }
 
         [Fact]
@@ -126,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var transport = new FakeWebSocketTransport();
 
             // Assert
-            Assert.IsAssignableFrom<IDisposable>(transport);
+            _ = Assert.IsAssignableFrom<IDisposable>(transport);
         }
 
         [Fact]
@@ -163,7 +163,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
             // Act
-            foreach (var msg in messages)
+            foreach (string msg in messages)
             {
                 await transport.SendAsync(msg, cts.Token);
             }
@@ -184,13 +184,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string[] messagesToReceive = ["response1", "response2", "response3"];
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-            foreach (var msg in messagesToReceive)
+            foreach (string msg in messagesToReceive)
             {
                 transport.Enqueue(msg);
             }
 
             // Act & Assert
-            foreach (var expectedMsg in messagesToReceive)
+            foreach (string expectedMsg in messagesToReceive)
             {
                 string received = await transport.ReceiveAsync(cts.Token);
                 Assert.Equal(expectedMsg, received);
@@ -260,7 +260,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(callbackCalled);
             Assert.Equal(serverResponse, response);
             Assert.Equal(uri, transport.ConnectedUri);
-            Assert.Single(transport.SentMessages);
+            _ = Assert.Single(transport.SentMessages);
             Assert.Equal(clientMessage, transport.SentMessages[0]);
 
             // Cleanup

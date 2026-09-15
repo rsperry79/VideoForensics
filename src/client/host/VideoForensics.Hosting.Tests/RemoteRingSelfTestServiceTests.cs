@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -23,7 +25,8 @@ namespace VideoForensics.Hosting.Tests
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 Task<HttpResponseMessage> handlerTask = _handler(request);
-                Task completed = await Task.WhenAny(handlerTask, Task.Delay(Timeout.Infinite, cancellationToken));
+
+                _ = await Task.WhenAny(handlerTask, Task.Delay(Timeout.Infinite, cancellationToken));
                 cancellationToken.ThrowIfCancellationRequested();
                 return await handlerTask;
             }
@@ -49,7 +52,7 @@ namespace VideoForensics.Hosting.Tests
                 new("endpoint2", "Test 2", "Tests another", "Session", "POST", "/api/test2", "PerDoorbot", true, false)
             };
 
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -81,7 +84,7 @@ namespace VideoForensics.Hosting.Tests
                 new("endpoint2", "Test 2", "Desc 2", "Session", "POST", "/api/test2", "PerDoorbot", true, true)
             };
 
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -94,7 +97,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var result = await service.ListEndpointsAsync();
+            IReadOnlyList<SelfTestEndpointDto> result = await service.ListEndpointsAsync();
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -111,7 +114,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListEndpointsAsync_EmptyResponse_ReturnsEmptyList()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -124,7 +127,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var result = await service.ListEndpointsAsync();
+            IReadOnlyList<SelfTestEndpointDto> result = await service.ListEndpointsAsync();
 
             // Assert
             Assert.Empty(result);
@@ -136,21 +139,21 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act & Assert
-            var task = service.ListEndpointsAsync(cts.Token);
+            Task<IReadOnlyList<SelfTestEndpointDto>> task = service.ListEndpointsAsync(cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
         public async Task StartRunAsync_OnAccepted_ReturnsAcceptedTrue()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.Accepted)
                 {
@@ -161,10 +164,10 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act
-            var result = await service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await service.StartRunAsync(request);
 
             // Assert
             Assert.True(result.Accepted);
@@ -177,7 +180,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -190,7 +193,7 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act
             _ = await service.StartRunAsync(request);
@@ -204,7 +207,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartRunAsync_OnConflict_ReturnsRejectionWithError()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.Conflict)
                 {
@@ -217,10 +220,10 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act
-            var result = await service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await service.StartRunAsync(request);
 
             // Assert
             Assert.False(result.Accepted);
@@ -231,16 +234,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartRunAsync_OnConflictWithoutBody_ReturnsDefaultMessage()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Conflict));
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act
-            var result = await service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await service.StartRunAsync(request);
 
             // Assert
             Assert.False(result.Accepted);
@@ -252,16 +255,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartRunAsync_OnForbidden_ReturnsPermissionError()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden));
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" }, Destructive: true);
+            var request = new SelfTestRunRequestDto(["endpoint1"], Destructive: true);
 
             // Act
-            var result = await service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await service.StartRunAsync(request);
 
             // Assert
             Assert.False(result.Accepted);
@@ -274,16 +277,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartRunAsync_OnHttpException_ReturnsErrorResponse()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 throw new HttpRequestException("Network error");
             });
 
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act
-            var result = await service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await service.StartRunAsync(request);
 
             // Assert
             Assert.False(result.Accepted);
@@ -297,15 +300,15 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteRingSelfTestService(httpClient);
-            var request = new SelfTestRunRequestDto(new List<string> { "endpoint1" });
+            var request = new SelfTestRunRequestDto(["endpoint1"]);
 
             // Act & Assert
-            var task = service.StartRunAsync(request, cts.Token);
+            Task<SelfTestRunResponseDto> task = service.StartRunAsync(request, cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
@@ -314,7 +317,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -342,9 +345,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetStatusAsync_DeserializesStatus()
         {
             // Arrange
-            var startTime = DateTime.UtcNow;
-            var completedTime = startTime.AddMinutes(5);
-            var httpClient = CreateHttpClient(_ =>
+            DateTime startTime = DateTime.UtcNow;
+            DateTime completedTime = startTime.AddMinutes(5);
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var status = new SelfTestStatusDto(
                     SelfTestRunStatus.Completed,
@@ -362,7 +365,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var result = await service.GetStatusAsync();
+            SelfTestStatusDto result = await service.GetStatusAsync();
 
             // Assert
             Assert.Equal(SelfTestRunStatus.Completed, result.Status);
@@ -374,7 +377,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetStatusAsync_WithRunningStatus_ReturnsRunning()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -389,7 +392,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var result = await service.GetStatusAsync();
+            SelfTestStatusDto result = await service.GetStatusAsync();
 
             // Assert
             Assert.Equal(SelfTestRunStatus.Running, result.Status);
@@ -401,21 +404,21 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act & Assert
-            var task = service.GetStatusAsync(cts.Token);
+            Task<SelfTestStatusDto> task = service.GetStatusAsync(cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
         public async Task GetResultAsync_OnNoContent_ReturnsNull()
         {
             // Arrange
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
             });
@@ -423,7 +426,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var result = await service.GetResultAsync();
+            SelfTestResultDto? result = await service.GetResultAsync();
 
             // Assert
             Assert.Null(result);
@@ -435,7 +438,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string capturedRoute = "";
             string capturedMethod = "";
-            var httpClient = CreateHttpClient(request =>
+            HttpClient httpClient = CreateHttpClient(request =>
             {
                 capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
@@ -456,16 +459,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetResultAsync_OnSuccess_ReturnsResults()
         {
             // Arrange
-            var generatedAt = DateTime.UtcNow;
+            DateTime generatedAt = DateTime.UtcNow;
             var calls = new List<SelfTestCallDto>
             {
                 new("endpoint1", "Test 1", "Session", false, false, "device1",
-                    generatedAt.AddMinutes(-1), 100, true, null, false, null, null, "Not destructive", new List<string>())
+                    generatedAt.AddMinutes(-1), 100, true, null, false, null, null, "Not destructive", [])
             };
             var summary = new SelfTestSummaryDto(10, 9, 1);
             var result = new SelfTestResultDto("1.0.0", generatedAt, "Database", summary, calls);
 
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -478,7 +481,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var retrieved = await service.GetResultAsync();
+            SelfTestResultDto? retrieved = await service.GetResultAsync();
 
             // Assert
             Assert.NotNull(retrieved);
@@ -487,7 +490,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(10, retrieved.Summary.TotalCalls);
             Assert.Equal(9, retrieved.Summary.Succeeded);
             Assert.Equal(1, retrieved.Summary.Failed);
-            Assert.Single(retrieved.Calls);
+            _ = Assert.Single(retrieved.Calls);
             Assert.Equal("endpoint1", retrieved.Calls[0].Endpoint);
         }
 
@@ -497,37 +500,37 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var cts = new CancellationTokenSource();
             var tcs = new TaskCompletionSource<HttpResponseMessage>();
-            var httpClient = CreateHttpClient(_ => tcs.Task);
+            HttpClient httpClient = CreateHttpClient(_ => tcs.Task);
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act & Assert
-            var task = service.GetResultAsync(cts.Token);
+            Task<SelfTestResultDto?> task = service.GetResultAsync(cts.Token);
             cts.Cancel();
 
-            await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+            _ = await Assert.ThrowsAsync<TaskCanceledException>(() => task);
         }
 
         [Fact]
         public async Task GetResultAsync_On200WithResult_DeserializesCompleteResult()
         {
             // Arrange
-            var startTime = DateTime.UtcNow.AddMinutes(-10);
+            DateTime startTime = DateTime.UtcNow.AddMinutes(-10);
             var call1 = new SelfTestCallDto(
                 "endpoint1", "Endpoint 1", "Session", false, false,
                 "device1", startTime, 150, true, null, false, null, null, "Not destructive",
-                new List<string>()
+                []
             );
             var call2 = new SelfTestCallDto(
                 "endpoint2", "Endpoint 2", "Session", true, true,
                 "device1", startTime.AddSeconds(200), 200, false, "Device offline",
                 true, false, "Failed to restore", null,
-                new List<string> { "Invalid response schema" }
+                ["Invalid response schema"]
             );
 
             var summary = new SelfTestSummaryDto(2, 1, 1);
-            var result = new SelfTestResultDto("1.0.0", startTime.AddSeconds(500), "Database", summary, new List<SelfTestCallDto> { call1, call2 });
+            var result = new SelfTestResultDto("1.0.0", startTime.AddSeconds(500), "Database", summary, [call1, call2]);
 
-            var httpClient = CreateHttpClient(_ =>
+            HttpClient httpClient = CreateHttpClient(_ =>
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -540,7 +543,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteRingSelfTestService(httpClient);
 
             // Act
-            var retrieved = await service.GetResultAsync();
+            SelfTestResultDto? retrieved = await service.GetResultAsync();
 
             // Assert
             Assert.NotNull(retrieved);

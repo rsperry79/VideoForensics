@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -91,8 +90,8 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var userCount = await ctx.Users.CountAsync(u => u.Id == userId);
-            var accountCount = await ctx.ProviderAccounts.CountAsync(pa => pa.Id == accountId);
+            int userCount = await ctx.Users.CountAsync(u => u.Id == userId);
+            int accountCount = await ctx.ProviderAccounts.CountAsync(pa => pa.Id == accountId);
 
             Assert.Equal(0, userCount);
             Assert.Equal(0, accountCount);
@@ -101,9 +100,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWork_ExecuteAsync_ReturnsWorkResult()
         {
-            var expectedResult = "test_result";
+            string expectedResult = "test_result";
 
-            var result = await _unitOfWork.ExecuteAsync(async context =>
+            string result = await _unitOfWork.ExecuteAsync(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 await context.Users.AddAsync(user, CancellationToken.None);
@@ -136,7 +135,7 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.Users.CountAsync();
+            int count = await ctx.Users.CountAsync();
             Assert.Equal(2, count);
         }
 
@@ -229,8 +228,8 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var userExists = await ctx.Users.AnyAsync(u => u.Id == userId);
-            var accountExists = await ctx.ProviderAccounts.AnyAsync(pa => pa.Id == accountId);
+            bool userExists = await ctx.Users.AnyAsync(u => u.Id == userId);
+            bool accountExists = await ctx.ProviderAccounts.AnyAsync(pa => pa.Id == accountId);
 
             Assert.False(userExists);
             Assert.False(accountExists);
@@ -241,9 +240,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
-            var providerLocationId = "location-123";
-            var locationName = "Front Door";
-            var address = "123 Main St";
+            string providerLocationId = "location-123";
+            string locationName = "Front Door";
+            string address = "123 Main St";
 
             // Create user and account first
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
@@ -263,9 +262,9 @@ namespace VideoForensics.Data.Database.Tests
             Location? location1 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                #pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
+#pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
                 IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-                #pragma warning restore CS0618
+#pragma warning restore CS0618
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
@@ -292,9 +291,9 @@ namespace VideoForensics.Data.Database.Tests
             Location? location2 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-                #pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
+#pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
                 IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-                #pragma warning restore CS0618
+#pragma warning restore CS0618
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
@@ -324,7 +323,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Verify only one location exists in database
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var locationCount = await ctx.Locations.CountAsync(l => l.ProviderLocationId == providerLocationId);
+            int locationCount = await ctx.Locations.CountAsync(l => l.ProviderLocationId == providerLocationId);
             Assert.Equal(1, locationCount);
         }
 
@@ -334,11 +333,11 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
-            var providerDeviceId = "device-456";
-            var initialName = "Front Camera";
-            var updatedName = "Front Camera Updated";
-            var initialType = "camera";
-            var updatedType = "doorbell";
+            string providerDeviceId = "device-456";
+            string initialName = "Front Camera";
+            string updatedName = "Front Camera Updated";
+            string initialType = "camera";
+            string updatedType = "doorbell";
 
             // Create user, account, and location first
             _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
@@ -435,7 +434,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.False(retrievedDevice.IsOnline);
 
             // Verify only one device exists in database
-            var deviceCount = await ctx.Devices.CountAsync(d => d.ProviderDeviceId == providerDeviceId);
+            int deviceCount = await ctx.Devices.CountAsync(d => d.ProviderDeviceId == providerDeviceId);
             Assert.Equal(1, deviceCount);
         }
 
@@ -452,17 +451,11 @@ namespace VideoForensics.Data.Database.Tests
 
             public object? GetService(Type serviceType)
             {
-                if (serviceType == typeof(ICredentialEncryptionProvider))
-                {
-                    return _fixture.EncryptionProvider;
-                }
-
-                if (serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>))
-                {
-                    return _loggerFactory.CreateLogger<ICredentialRepository>();
-                }
-
-                return serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
+                return serviceType == typeof(ICredentialEncryptionProvider)
+                    ? _fixture.EncryptionProvider
+                    : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>)
+                    ? _loggerFactory.CreateLogger<ICredentialRepository>()
+                    : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
             }
         }
     }
@@ -511,7 +504,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task UnitOfWorkUserRepository_GetAsync_ReturnsUser()
         {
             var userId = Guid.NewGuid();
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -531,8 +524,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkUserRepository_GetByProviderKeyAsync_ReturnsUser()
         {
-            var providerKey = $"provider_key_{Guid.NewGuid()}";
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            string providerKey = $"provider_key_{Guid.NewGuid()}";
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser(providerKey);
                 await context.Users.AddAsync(user, CancellationToken.None);
@@ -554,7 +547,7 @@ namespace VideoForensics.Data.Database.Tests
             var user1Id = Guid.NewGuid();
             var user2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user1 = TestDataBuilder.BuildUser();
                 user1.Id = user1Id;
@@ -579,9 +572,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task UnitOfWorkUserRepository_UpdateAsync_ModifiesUser()
         {
             var userId = Guid.NewGuid();
-            var newDisplayName = "Updated Name";
+            string newDisplayName = "Updated Name";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -589,7 +582,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User? user = await context.Users.GetAsync(userId, CancellationToken.None);
                 if (user != null)
@@ -597,6 +590,7 @@ namespace VideoForensics.Data.Database.Tests
                     user.DisplayName = newDisplayName;
                     await context.Users.UpdateAsync(user, CancellationToken.None);
                 }
+
                 return null;
             }, CancellationToken.None);
 
@@ -611,7 +605,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var userId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -619,7 +613,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Users.DeleteAsync(userId, CancellationToken.None);
                 return null;
@@ -658,7 +652,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -666,7 +660,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
                 account.Id = accountId;
@@ -687,7 +681,7 @@ namespace VideoForensics.Data.Database.Tests
             var accountId1 = Guid.NewGuid();
             var accountId2 = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -718,7 +712,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -745,7 +739,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var userId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -776,7 +770,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -789,7 +783,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ProviderAccount? account = await context.ProviderAccounts.GetAsync(accountId, CancellationToken.None);
                 if (account != null)
@@ -797,6 +791,7 @@ namespace VideoForensics.Data.Database.Tests
                     account.IsActive = false;
                     await context.ProviderAccounts.UpdateAsync(account, CancellationToken.None);
                 }
+
                 return null;
             }, CancellationToken.None);
 
@@ -831,10 +826,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkLocationRepository_GetByProviderLocationIdAsync_ReturnsLocation()
         {
-            var providerLocationId = $"loc_{Guid.NewGuid()}";
+            string providerLocationId = $"loc_{Guid.NewGuid()}";
             var locationId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation(providerLocationId);
                 location.Id = locationId;
@@ -855,10 +850,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkLocationRepository_GetByApiHashAsync_ReturnsLocation()
         {
-            var apiHash = $"hash_{Guid.NewGuid()}";
+            string apiHash = $"hash_{Guid.NewGuid()}";
             var locationId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -883,7 +878,7 @@ namespace VideoForensics.Data.Database.Tests
             var loc1Id = Guid.NewGuid();
             var loc2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location loc1 = TestDataBuilder.BuildLocation();
                 loc1.Id = loc1Id;
@@ -908,9 +903,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task UnitOfWorkLocationRepository_UpdateAsync_ModifiesLocation()
         {
             var locationId = Guid.NewGuid();
-            var newName = "Updated Location Name";
+            string newName = "Updated Location Name";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -918,7 +913,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location? location = await context.Locations.GetAsync(locationId, CancellationToken.None);
                 if (location != null)
@@ -926,6 +921,7 @@ namespace VideoForensics.Data.Database.Tests
                     location.Name = newName;
                     await context.Locations.UpdateAsync(location, CancellationToken.None);
                 }
+
                 return null;
             }, CancellationToken.None);
 
@@ -940,7 +936,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -948,7 +944,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Locations.DeleteAsync(locationId, CancellationToken.None);
                 return null;
@@ -986,9 +982,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var providerDeviceId = $"dev_{Guid.NewGuid()}";
+            string providerDeviceId = $"dev_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1017,7 +1013,7 @@ namespace VideoForensics.Data.Database.Tests
             var device1Id = Guid.NewGuid();
             var device2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1047,9 +1043,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var apiHash = $"hash_{Guid.NewGuid()}";
+            string apiHash = $"hash_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1077,9 +1073,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var pulledTime = DateTime.UtcNow;
+            DateTime pulledTime = DateTime.UtcNow;
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1091,7 +1087,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Devices.UpdateLastSuccessfulPullAsync(deviceId, pulledTime, CancellationToken.None);
                 return null;
@@ -1111,7 +1107,7 @@ namespace VideoForensics.Data.Database.Tests
             var dev1Id = Guid.NewGuid();
             var dev2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location loc1 = TestDataBuilder.BuildLocation();
                 loc1.Id = loc1Id;
@@ -1169,7 +1165,7 @@ namespace VideoForensics.Data.Database.Tests
             var media1Id = Guid.NewGuid();
             var media2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1204,9 +1200,9 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
             var mediaId = Guid.NewGuid();
-            var hash = $"hash_{Guid.NewGuid()}";
+            string hash = $"hash_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1238,9 +1234,9 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
             var mediaId = Guid.NewGuid();
-            var apiHash = $"apihash_{Guid.NewGuid()}";
+            string apiHash = $"apihash_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1275,7 +1271,7 @@ namespace VideoForensics.Data.Database.Tests
             var downloadEventId = Guid.NewGuid();
             var media1Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1306,9 +1302,9 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
             var mediaId = Guid.NewGuid();
-            var newFileName = "updated_video.mp4";
+            string newFileName = "updated_video.mp4";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1324,7 +1320,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 MediaItem? media = await context.MediaItems.GetAsync(mediaId, CancellationToken.None);
                 if (media != null)
@@ -1332,6 +1328,7 @@ namespace VideoForensics.Data.Database.Tests
                     media.FileName = newFileName;
                     await context.MediaItems.UpdateAsync(media, CancellationToken.None);
                 }
+
                 return null;
             }, CancellationToken.None);
 
@@ -1371,7 +1368,7 @@ namespace VideoForensics.Data.Database.Tests
             var event1Id = Guid.NewGuid();
             var event2Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1406,9 +1403,9 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
             var eventId = Guid.NewGuid();
-            var providerEventId = $"evt_{Guid.NewGuid()}";
+            string providerEventId = $"evt_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1439,9 +1436,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var providerEventId = $"evt_{Guid.NewGuid()}";
+            string providerEventId = $"evt_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1469,9 +1466,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1495,7 +1492,7 @@ namespace VideoForensics.Data.Database.Tests
                 return await context.DownloadEvents.GetLatestSuccessfulEventTimeAsync(deviceId, CancellationToken.None);
             }, CancellationToken.None);
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.True((now.AddHours(-1) - result.Value).TotalMinutes < 1);
         }
     }
@@ -1526,9 +1523,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
-            var plainValue = "my_secret_token";
+            string plainValue = "my_secret_token";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -1540,7 +1537,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
                 return null;
@@ -1557,9 +1554,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
-            var plainValue = "my_secret_token";
+            string plainValue = "my_secret_token";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -1571,18 +1568,18 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.SetAsync(accountId, "AccessToken", plainValue, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            var result = await _unitOfWork.ExecuteAsync(async context =>
+            (string CredentialType, string DecryptedValue)? result = await _unitOfWork.ExecuteAsync(async context =>
             {
                 return await context.Credentials.GetAsync(accountId, "AccessToken", CancellationToken.None);
             }, CancellationToken.None);
 
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(plainValue, result.Value.DecryptedValue);
         }
 
@@ -1592,7 +1589,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -1604,7 +1601,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
                 await context.Credentials.SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
@@ -1627,7 +1624,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -1639,13 +1636,13 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.DeleteAsync(accountId, "AccessToken", CancellationToken.None);
                 return null;
@@ -1662,7 +1659,7 @@ namespace VideoForensics.Data.Database.Tests
             var userId = Guid.NewGuid();
             var accountId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 User user = TestDataBuilder.BuildUser();
                 user.Id = userId;
@@ -1674,14 +1671,14 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.SetAsync(accountId, "AccessToken", "token_value", CancellationToken.None);
                 await context.Credentials.SetAsync(accountId, "RefreshToken", "refresh_value", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Credentials.DeleteByProviderAccountIdAsync(accountId, CancellationToken.None);
                 return null;
@@ -1721,7 +1718,7 @@ namespace VideoForensics.Data.Database.Tests
             var deviceId = Guid.NewGuid();
             var eventId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1751,9 +1748,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var providerEventId = $"evt_{Guid.NewGuid()}";
+            string providerEventId = $"evt_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1782,9 +1779,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var providerEventId = $"evt_{Guid.NewGuid()}";
+            string providerEventId = $"evt_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1796,7 +1793,7 @@ namespace VideoForensics.Data.Database.Tests
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
                 evt.EventType = "Motion";
-                await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1818,9 +1815,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var providerEventId = $"evt_{Guid.NewGuid()}";
+            string providerEventId = $"evt_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1831,7 +1828,7 @@ namespace VideoForensics.Data.Database.Tests
                 await context.Devices.AddAsync(device, CancellationToken.None);
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId, providerEventId);
-                await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1849,9 +1846,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var apiHash = $"apihash_{Guid.NewGuid()}";
+            string apiHash = $"apihash_{Guid.NewGuid()}";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1863,7 +1860,7 @@ namespace VideoForensics.Data.Database.Tests
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId);
                 evt.ApiSourceHash = apiHash;
-                await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -1882,9 +1879,9 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
             var eventId = Guid.NewGuid();
-            var failureTime = DateTime.UtcNow;
+            DateTime failureTime = DateTime.UtcNow;
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1896,11 +1893,11 @@ namespace VideoForensics.Data.Database.Tests
 
                 Event evt = TestDataBuilder.BuildEvent(deviceId);
                 evt.Id = eventId;
-                await context.Events.CreateAsync(evt, CancellationToken.None);
+                _ = await context.Events.CreateAsync(evt, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.Events.UpdateDownloadFailureAsync(eventId, failureTime, CancellationToken.None);
                 return null;
@@ -1941,7 +1938,7 @@ namespace VideoForensics.Data.Database.Tests
             var deviceId = Guid.NewGuid();
             var snapshotId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1953,7 +1950,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
                 DeviceConfigSnapshot snapshot = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snapshot.Id = snapshotId;
@@ -1972,7 +1969,7 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -1985,15 +1982,15 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             DateTime now = DateTime.UtcNow;
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snap1.CapturedAtUtc = now.AddHours(-2);
-                await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
 
                 DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
                 snap2.CapturedAtUtc = now;
-                await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
+                _ = await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2012,7 +2009,7 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2024,13 +2021,13 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-                await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
 
                 DeviceConfigSnapshot snap2 = TestDataBuilder.BuildDeviceConfigSnapshot(deviceId);
-                await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
+                _ = await context.DeviceConfig.AppendSnapshotAsync(snap2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2048,7 +2045,7 @@ namespace VideoForensics.Data.Database.Tests
             var loc1Id = Guid.NewGuid();
             var dev1Id = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = loc1Id;
@@ -2060,10 +2057,10 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 DeviceConfigSnapshot snap1 = TestDataBuilder.BuildDeviceConfigSnapshot(dev1Id);
-                await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
+                _ = await context.DeviceConfig.AppendSnapshotAsync(snap1, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2104,7 +2101,7 @@ namespace VideoForensics.Data.Database.Tests
             var deviceId = Guid.NewGuid();
             var recordId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2116,7 +2113,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
                 ProviderReconciliationRecord record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
                 record.Id = recordId;
@@ -2135,7 +2132,7 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2147,12 +2144,12 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ProviderReconciliationRecord record1 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
                 ProviderReconciliationRecord record2 = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
-                await context.ProviderReconciliation.AppendAsync(record1, CancellationToken.None);
-                await context.ProviderReconciliation.AppendAsync(record2, CancellationToken.None);
+                _ = await context.ProviderReconciliation.AppendAsync(record1, CancellationToken.None);
+                _ = await context.ProviderReconciliation.AppendAsync(record2, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2170,7 +2167,7 @@ namespace VideoForensics.Data.Database.Tests
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2182,10 +2179,10 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ProviderReconciliationRecord record = TestDataBuilder.BuildProviderReconciliationRecord(deviceId);
-                await context.ProviderReconciliation.AppendAsync(record, CancellationToken.None);
+                _ = await context.ProviderReconciliation.AppendAsync(record, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2228,7 +2225,7 @@ namespace VideoForensics.Data.Database.Tests
             var recordId = Guid.NewGuid();
             var itemId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2244,7 +2241,7 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync(async context =>
+            _ = await _unitOfWork.ExecuteAsync(async context =>
             {
                 ExportRecord record = TestDataBuilder.BuildExportRecord();
                 record.Id = recordId;
@@ -2252,7 +2249,7 @@ namespace VideoForensics.Data.Database.Tests
                 ExportRecordItem item = TestDataBuilder.BuildExportRecordItem(recordId, mediaId);
                 item.Id = itemId;
 
-                return await context.ExportRecords.AppendAsync(record, new List<ExportRecordItem> { item }, CancellationToken.None);
+                return await context.ExportRecords.AppendAsync(record, [item], CancellationToken.None);
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
@@ -2272,7 +2269,7 @@ namespace VideoForensics.Data.Database.Tests
             var mediaId = Guid.NewGuid();
             var recordId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 Location location = TestDataBuilder.BuildLocation();
                 location.Id = locationId;
@@ -2288,13 +2285,13 @@ namespace VideoForensics.Data.Database.Tests
                 return null;
             }, CancellationToken.None);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ExportRecord record = TestDataBuilder.BuildExportRecord();
                 record.Id = recordId;
 
                 ExportRecordItem item = TestDataBuilder.BuildExportRecordItem(recordId, mediaId);
-                await context.ExportRecords.AppendAsync(record, new List<ExportRecordItem> { item }, CancellationToken.None);
+                _ = await context.ExportRecords.AppendAsync(record, [item], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2310,10 +2307,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkExportRecordRepository_ListAsync_ReturnsAllRecords()
         {
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 ExportRecord record = TestDataBuilder.BuildExportRecord();
-                await context.ExportRecords.AppendAsync(record, new List<ExportRecordItem>(), CancellationToken.None);
+                _ = await context.ExportRecords.AppendAsync(record, [], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
@@ -2351,7 +2348,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task UnitOfWorkAccessAuditLogRepository_RecordAccessAsync_StoresEntry()
         {
             var evidenceId = Guid.NewGuid();
-            var userId = $"user_{Guid.NewGuid()}";
+            string userId = $"user_{Guid.NewGuid()}";
 
             AccessAuditLogEntity recorded = await _unitOfWork.ExecuteAsync(async context =>
             {
@@ -2372,11 +2369,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evidenceId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     evidenceId, "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     evidenceId, "user2", "Download", "192.168.1.2", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2394,13 +2391,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkAccessAuditLogRepository_GetByUserAsync_ReturnsUserEntries()
         {
-            var userId = "testuser";
+            string userId = "testuser";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     Guid.NewGuid(), userId, "View", "192.168.1.1", "Investigation", CancellationToken.None);
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     Guid.NewGuid(), userId, "Download", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2421,9 +2418,9 @@ namespace VideoForensics.Data.Database.Tests
             DateTime fromUtc = now.AddHours(-1);
             DateTime toUtc = now.AddHours(1);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     Guid.NewGuid(), "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2440,9 +2437,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkAccessAuditLogRepository_ListAsync_ReturnsPaginatedResults()
         {
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.AccessAuditLogs.RecordAccessAsync(
+                _ = await context.AccessAuditLogs.RecordAccessAsync(
                     Guid.NewGuid(), "user1", "View", "192.168.1.1", "Investigation", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2501,11 +2498,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             var locationId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     locationId, "user1", 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     locationId, "user2", 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2522,13 +2519,13 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkExportAuditRecordRepository_GetByUserAsync_ReturnsUserRecords()
         {
-            var exportedBy = "TestUser";
+            string exportedBy = "TestUser";
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), exportedBy, 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), exportedBy, 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2549,9 +2546,9 @@ namespace VideoForensics.Data.Database.Tests
             DateTime fromUtc = now.AddHours(-1);
             DateTime toUtc = now.AddHours(1);
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), "TestUser", 10, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2568,11 +2565,11 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkExportAuditRecordRepository_GetStatisticsAsync_CalculatesStats()
         {
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), "user1", 10, "AES256Archive", "CaseFile", CancellationToken.None);
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), "user2", 5, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2590,9 +2587,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWorkExportAuditRecordRepository_ListAsync_ReturnsPaginatedResults()
         {
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.ExportAuditRecords.RecordExportAsync(
+                _ = await context.ExportAuditRecords.RecordExportAsync(
                     Guid.NewGuid(), "TestUser", 10, "AES256Archive", "CaseFile", CancellationToken.None);
                 return null;
             }, CancellationToken.None);
@@ -2619,17 +2616,11 @@ namespace VideoForensics.Data.Database.Tests
 
         public object? GetService(Type serviceType)
         {
-            if (serviceType == typeof(ICredentialEncryptionProvider))
-            {
-                return _fixture.EncryptionProvider;
-            }
-
-            if (serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>))
-            {
-                return _loggerFactory.CreateLogger<ICredentialRepository>();
-            }
-
-            return serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
+            return serviceType == typeof(ICredentialEncryptionProvider)
+                ? _fixture.EncryptionProvider
+                : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>)
+                ? _loggerFactory.CreateLogger<ICredentialRepository>()
+                : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
         }
     }
 }

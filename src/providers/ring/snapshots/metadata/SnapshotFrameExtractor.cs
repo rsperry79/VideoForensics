@@ -49,9 +49,9 @@ namespace VideoForensics.Providers.Ring
             }
 
             _ = DateTime.UtcNow;
-            var timeFormatted = FormatTimestamp(metadata.EventDateTime);
-            var fileName = $"snapshot_{timeFormatted.Replace(":", "-").Replace(".", "_")}.jpg";
-            var filePath = _fileSystem.Path.Combine(outputDirectory, fileName);
+            string timeFormatted = FormatTimestamp(metadata.EventDateTime);
+            string fileName = $"snapshot_{timeFormatted.Replace(":", "-").Replace(".", "_")}.jpg";
+            string filePath = _fileSystem.Path.Combine(outputDirectory, fileName);
 
             try
             {
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring
                         };
                     }
 
-                    var content = response.Content.ReadAsByteArrayAsync().Result;
+                    byte[] content = response.Content.ReadAsByteArrayAsync().Result;
 
                     // Write snapshot file
                     _fileSystem.File.WriteAllBytes(filePath, content);
@@ -157,8 +157,8 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                var summaryFileName = $"summary_{snapshot.TimeFormatted.Replace(":", "-").Replace(".", "_")}.txt";
-                var summaryPath = _fileSystem.Path.Combine(outputDirectory, summaryFileName);
+                string summaryFileName = $"summary_{snapshot.TimeFormatted.Replace(":", "-").Replace(".", "_")}.txt";
+                string summaryPath = _fileSystem.Path.Combine(outputDirectory, summaryFileName);
 
                 var summary = new StringBuilder();
                 _ = summary.AppendLine("=== RING EVENT EVIDENCE SUMMARY ===");
@@ -233,7 +233,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     _ = summary.AppendLine("SECURITY ALERTS:");
                     _ = summary.AppendLine($"  Severity: {snapshot.AlertSeverity}");
-                    foreach (var alert in snapshot.SecurityAlerts)
+                    foreach (string alert in snapshot.SecurityAlerts)
                     {
                         _ = summary.AppendLine($"  - {alert}");
                     }
@@ -290,10 +290,10 @@ namespace VideoForensics.Providers.Ring
                     return null;
                 }
 
-                var bytes = new byte[12];
+                byte[] bytes = new byte[12];
                 using (FileSystemStream stream = _fileSystem.File.OpenRead(filePath))
                 {
-                    var bytesRead = stream.Read(bytes, 0, bytes.Length);
+                    int bytesRead = stream.Read(bytes, 0, bytes.Length);
                     if (bytesRead < 3)
                     {
                         return null;

@@ -12,12 +12,12 @@ public class AuditEntityTests
         // Arrange
         var id = Guid.NewGuid();
         string actor = "username";
-        var actorType = ActorType.Human;
+        ActorType actorType = ActorType.Human;
         string action = "MediaDownloaded";
         string entityType = "MediaItem";
         var entityId = Guid.NewGuid();
         string detailsJson = "{\"fileSize\": 1024000}";
-        var timestampUtc = DateTime.UtcNow;
+        DateTime timestampUtc = DateTime.UtcNow;
         string previousEntryHash = "prev_hash_value";
         string entryHash = "hash_value";
 
@@ -126,7 +126,7 @@ public class AuditEntityTests
         var id = Guid.NewGuid();
         var mediaItemId = Guid.NewGuid();
         string sha256Hash = "abcdef123456";
-        var verifiedAtUtc = DateTime.UtcNow;
+        DateTime verifiedAtUtc = DateTime.UtcNow;
         bool passed = true;
         string verifiedBy = "operator";
 
@@ -180,8 +180,8 @@ public class AuditEntityTests
     {
         // Arrange
         var mediaItemId = Guid.NewGuid();
-        var firstVerification = DateTime.UtcNow.AddDays(-1);
-        var secondVerification = DateTime.UtcNow;
+        DateTime firstVerification = DateTime.UtcNow.AddDays(-1);
+        DateTime secondVerification = DateTime.UtcNow;
 
         // Act
         var record1 = new IntegrityRecord
@@ -212,6 +212,4 @@ public class AuditEntityTests
         Assert.True(record1.VerifiedAtUtc < record2.VerifiedAtUtc);
         Assert.Equal(record1.Sha256Hash, record2.Sha256Hash);
     }
-
-
 }

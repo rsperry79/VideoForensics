@@ -53,10 +53,10 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var nonce = optionsBody.GetProperty("nonce").GetString()!;
-            var optionsJson = optionsBody.GetProperty("options").GetRawText();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
 
-            var attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
+            string attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
             JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
@@ -85,10 +85,10 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var nonce = optionsBody.GetProperty("nonce").GetString()!;
-            var optionsJson = optionsBody.GetProperty("options").GetRawText();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
 
-            var assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
             JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
@@ -118,10 +118,10 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var nonce = optionsBody.GetProperty("nonce").GetString()!;
-            var optionsJson = optionsBody.GetProperty("options").GetRawText();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
 
-            var assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
             JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
@@ -152,7 +152,7 @@ namespace VideoForensics.Ui.Shared.Services
             try
             {
                 Dictionary<string, string>? doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                if (doc is not null && doc.TryGetValue("error", out var msg))
+                if (doc is not null && doc.TryGetValue("error", out string? msg))
                 {
                     return msg;
                 }

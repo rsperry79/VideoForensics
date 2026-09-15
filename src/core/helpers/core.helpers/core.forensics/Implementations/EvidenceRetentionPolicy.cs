@@ -22,13 +22,21 @@ namespace VideoForensics.Forensics.Implementations
         public Task SetRetentionPeriodAsync(string evidenceId, TimeSpan retentionPeriod, string reason, string authorizedBy)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
-            if (string.IsNullOrWhiteSpace(reason))
-                throw new ArgumentException("Reason cannot be null or empty.", nameof(reason));
-            if (string.IsNullOrWhiteSpace(authorizedBy))
-                throw new ArgumentException("Authorized by cannot be null or empty.", nameof(authorizedBy));
+            }
 
-            var now = DateTime.UtcNow;
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Reason cannot be null or empty.", nameof(reason));
+            }
+
+            if (string.IsNullOrWhiteSpace(authorizedBy))
+            {
+                throw new ArgumentException("Authorized by cannot be null or empty.", nameof(authorizedBy));
+            }
+
+            DateTime now = DateTime.UtcNow;
             var info = new EvidenceRetentionInfo
             {
                 EvidenceId = evidenceId,
@@ -57,32 +65,38 @@ namespace VideoForensics.Forensics.Implementations
 
         public Task<EvidenceRetentionInfo> GetRetentionStatusAsync(string evidenceId)
         {
-            if (string.IsNullOrWhiteSpace(evidenceId))
-                throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
-
-            if (!_retentionInfo.ContainsKey(evidenceId))
-                return Task.FromResult<EvidenceRetentionInfo>(null);
-
-            return Task.FromResult(_retentionInfo[evidenceId]);
+            return string.IsNullOrWhiteSpace(evidenceId)
+                ? throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId))
+                : !_retentionInfo.ContainsKey(evidenceId)
+                ? Task.FromResult<EvidenceRetentionInfo>(null)
+                : Task.FromResult(_retentionInfo[evidenceId]);
         }
 
         public Task<bool> CanDestroyEvidenceAsync(string evidenceId)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
 
             if (!_retentionInfo.ContainsKey(evidenceId))
+            {
                 return Task.FromResult(false);
+            }
 
-            var info = _retentionInfo[evidenceId];
+            EvidenceRetentionInfo info = _retentionInfo[evidenceId];
 
             // Cannot destroy if on legal hold
             if (info.Status == RetentionStatus.OnHold)
+            {
                 return Task.FromResult(false);
+            }
 
             // Can only destroy if status is ApprovedForDestruction
             if (info.Status != RetentionStatus.ApprovedForDestruction)
+            {
                 return Task.FromResult(false);
+            }
 
             // Check if retention period has expired
             bool expired = DateTime.UtcNow >= info.RetentionEndDate;
@@ -92,16 +106,26 @@ namespace VideoForensics.Forensics.Implementations
         public Task RequestDestructionApprovalAsync(string evidenceId, string requestedBy, string reason)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(requestedBy))
+            {
                 throw new ArgumentException("Requested by cannot be null or empty.", nameof(requestedBy));
+            }
+
             if (string.IsNullOrWhiteSpace(reason))
+            {
                 throw new ArgumentException("Reason cannot be null or empty.", nameof(reason));
+            }
 
             if (!_retentionInfo.ContainsKey(evidenceId))
+            {
                 throw new KeyNotFoundException($"Evidence {evidenceId} not found.");
+            }
 
-            var info = _retentionInfo[evidenceId];
+            EvidenceRetentionInfo info = _retentionInfo[evidenceId];
             info.Status = RetentionStatus.PendingApprovalForDestruction;
 
             // Record in audit trail
@@ -122,16 +146,26 @@ namespace VideoForensics.Forensics.Implementations
         public Task ApproveDestructionAsync(string evidenceId, string approvedBy, string method)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(approvedBy))
+            {
                 throw new ArgumentException("Approved by cannot be null or empty.", nameof(approvedBy));
+            }
+
             if (string.IsNullOrWhiteSpace(method))
+            {
                 throw new ArgumentException("Method cannot be null or empty.", nameof(method));
+            }
 
             if (!_retentionInfo.ContainsKey(evidenceId))
+            {
                 throw new KeyNotFoundException($"Evidence {evidenceId} not found.");
+            }
 
-            var info = _retentionInfo[evidenceId];
+            EvidenceRetentionInfo info = _retentionInfo[evidenceId];
             info.Status = RetentionStatus.ApprovedForDestruction;
             info.DestructionAuthorizedBy = approvedBy;
             info.DestructionMethod = method;
@@ -154,17 +188,27 @@ namespace VideoForensics.Forensics.Implementations
         public Task DestroyEvidenceAsync(string evidenceId, string destructionMethod, string verificationHash)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(destructionMethod))
+            {
                 throw new ArgumentException("Destruction method cannot be null or empty.", nameof(destructionMethod));
+            }
+
             if (string.IsNullOrWhiteSpace(verificationHash))
+            {
                 throw new ArgumentException("Verification hash cannot be null or empty.", nameof(verificationHash));
+            }
 
             if (!_retentionInfo.ContainsKey(evidenceId))
+            {
                 throw new KeyNotFoundException($"Evidence {evidenceId} not found.");
+            }
 
-            var now = DateTime.UtcNow;
-            var info = _retentionInfo[evidenceId];
+            DateTime now = DateTime.UtcNow;
+            EvidenceRetentionInfo info = _retentionInfo[evidenceId];
             info.Status = RetentionStatus.Destroyed;
             info.DestructedAt = now;
             info.DestructionMethod = destructionMethod;
@@ -173,7 +217,7 @@ namespace VideoForensics.Forensics.Implementations
             // Record in audit trail
             if (_auditTrails.ContainsKey(evidenceId))
             {
-                var audit = _auditTrails[evidenceId];
+                DestructionAuditTrail audit = _auditTrails[evidenceId];
                 audit.DestroyedAt = now;
                 audit.DestructionMethod = destructionMethod;
                 audit.VerificationHash = verificationHash;
@@ -185,17 +229,27 @@ namespace VideoForensics.Forensics.Implementations
         public Task ExtendRetentionAsync(string evidenceId, TimeSpan additionalPeriod, string reason, string authorizedBy)
         {
             if (string.IsNullOrWhiteSpace(evidenceId))
+            {
                 throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
+            }
+
             if (string.IsNullOrWhiteSpace(reason))
+            {
                 throw new ArgumentException("Reason cannot be null or empty.", nameof(reason));
+            }
+
             if (string.IsNullOrWhiteSpace(authorizedBy))
+            {
                 throw new ArgumentException("Authorized by cannot be null or empty.", nameof(authorizedBy));
+            }
 
             if (!_retentionInfo.ContainsKey(evidenceId))
+            {
                 throw new KeyNotFoundException($"Evidence {evidenceId} not found.");
+            }
 
-            var info = _retentionInfo[evidenceId];
-            var currentStatus = info.Status;
+            EvidenceRetentionInfo info = _retentionInfo[evidenceId];
+            RetentionStatus currentStatus = info.Status;
 
             // Extend the retention period
             info.RetentionEndDate = info.RetentionEndDate.Add(additionalPeriod);
@@ -203,10 +257,10 @@ namespace VideoForensics.Forensics.Implementations
             info.LastExtendedAt = DateTime.UtcNow;
 
             // Preserve OnHold status; if not on hold, revert to Active if applicable
-            if (currentStatus != RetentionStatus.OnHold &&
-                currentStatus != RetentionStatus.ApprovedForDestruction &&
-                currentStatus != RetentionStatus.Destroyed &&
-                currentStatus != RetentionStatus.PendingApprovalForDestruction)
+            if (currentStatus is not RetentionStatus.OnHold and
+                not RetentionStatus.ApprovedForDestruction and
+                not RetentionStatus.Destroyed and
+                not RetentionStatus.PendingApprovalForDestruction)
             {
                 info.Status = RetentionStatus.Active;
             }
@@ -216,20 +270,16 @@ namespace VideoForensics.Forensics.Implementations
 
         public Task<DestructionAuditTrail> GetDestructionAuditAsync(string evidenceId)
         {
-            if (string.IsNullOrWhiteSpace(evidenceId))
-                throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId));
-
-            if (!_auditTrails.ContainsKey(evidenceId))
-            {
-                return Task.FromResult(new DestructionAuditTrail
+            return string.IsNullOrWhiteSpace(evidenceId)
+                ? throw new ArgumentException("Evidence ID cannot be null or empty.", nameof(evidenceId))
+                : !_auditTrails.ContainsKey(evidenceId)
+                ? Task.FromResult(new DestructionAuditTrail
                 {
                     EvidenceId = evidenceId,
                     CreatedAt = DateTime.UtcNow,
                     ApprovalSteps = []
-                });
-            }
-
-            return Task.FromResult(_auditTrails[evidenceId]);
+                })
+                : Task.FromResult(_auditTrails[evidenceId]);
         }
 
         public Task<IEnumerable<EvidenceRetentionInfo>> GetPendingDestructionAsync()

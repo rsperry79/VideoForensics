@@ -1,10 +1,6 @@
 #nullable enable
 
 using System;
-using System.IO;
-
-using VideoForensics.Providers.Common.Helpers.Contracts;
-using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -23,17 +19,11 @@ namespace VideoForensics.Providers.Ring
     {
         public static ResolvedCredentials? Resolve(string? refreshToken, string? userName, string? password)
         {
-            if (!string.IsNullOrWhiteSpace(refreshToken))
-            {
-                return new ResolvedCredentials(userName, null, refreshToken, "cli-argument");
-            }
-
-            if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
-            {
-                return new ResolvedCredentials(userName, password, null, "cli-argument");
-            }
-
-            return null;
+            return !string.IsNullOrWhiteSpace(refreshToken)
+                ? new ResolvedCredentials(userName, null, refreshToken, "cli-argument")
+                : !string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password)
+                ? new ResolvedCredentials(userName, password, null, "cli-argument")
+                : null;
         }
 
         /// <summary>

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 using ModelContextProtocol.Server;
 
 using VideoForensics.Data.Common.Contracts;

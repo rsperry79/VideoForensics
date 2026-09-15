@@ -21,9 +21,9 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             {
                 Content = new ByteArrayContent(expected)
             });
-            var downloader = CreateDownloader(handler);
+            VideoDownloader downloader = CreateDownloader(handler);
 
-            using var stream = await downloader.OpenStreamAsync("https://example.com/recording.mp4");
+            using Stream stream = await downloader.OpenStreamAsync("https://example.com/recording.mp4");
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
 
@@ -37,7 +37,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             {
                 Content = new ByteArrayContent(new byte[0])
             });
-            var downloader = CreateDownloader(handler);
+            VideoDownloader downloader = CreateDownloader(handler);
 
             _ = await downloader.OpenStreamAsync("https://example.com/recording.mp4");
 
@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
             {
                 Content = new ByteArrayContent(expected)
             });
-            var downloader = CreateDownloader(handler);
+            VideoDownloader downloader = CreateDownloader(handler);
             string path = Path.Combine(Path.GetTempPath(), $"video-downloader-test-{Guid.NewGuid()}.bin");
 
             try
@@ -75,7 +75,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         public async Task OpenStreamAsync_InvalidUrl_ThrowsArgumentException()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-            var downloader = CreateDownloader(handler);
+            VideoDownloader downloader = CreateDownloader(handler);
 
             try
             {
@@ -92,7 +92,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
         public async Task OpenStreamAsync_EmptyUrl_ThrowsArgumentException()
         {
             var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-            var downloader = CreateDownloader(handler);
+            VideoDownloader downloader = CreateDownloader(handler);
 
             try
             {
@@ -117,7 +117,7 @@ namespace VideoForensics.Providers.Ring.Video.Tests
                 .ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes("mocked")));
 
             IVideoDownloader downloader = mock.Object;
-            using var stream = await downloader.OpenStreamAsync("irrelevant-url");
+            using Stream stream = await downloader.OpenStreamAsync("irrelevant-url");
             using var reader = new StreamReader(stream);
 
             Assert.Equal("mocked", await reader.ReadToEndAsync());

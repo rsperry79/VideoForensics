@@ -129,7 +129,7 @@ namespace VideoForensics.Providers.Ring.Streaming
                 return;
             }
 
-            var mlineIndex = bodyEl.TryGetProperty("mlineindex", out JsonElement mEl) && mEl.ValueKind == JsonValueKind.Number
+            int mlineIndex = bodyEl.TryGetProperty("mlineindex", out JsonElement mEl) && mEl.ValueKind == JsonValueKind.Number
                 ? mEl.GetInt32()
                 : 0;
 
@@ -179,7 +179,7 @@ namespace VideoForensics.Providers.Ring.Streaming
 
         private async Task SendAndLogAsync(object message)
         {
-            var serialized = JsonSerializer.Serialize(message);
+            string serialized = JsonSerializer.Serialize(message);
             ApiRawLogger.Raise("WS-SEND", _url, 0, serialized);
             await _transport.SendAsync(serialized, _cts.Token);
         }

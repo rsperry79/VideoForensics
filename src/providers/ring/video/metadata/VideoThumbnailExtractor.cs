@@ -51,9 +51,9 @@ namespace VideoForensics.Providers.Ring
             _ = DateTime.UtcNow;
 
             // Generate thumbnail filename based on video filename
-            var videoFileName = _fileSystem.Path.GetFileNameWithoutExtension(videoFilePath);
-            var thumbnailFileName = $"{videoFileName}_thumbnail.jpg";
-            var thumbnailPath = _fileSystem.Path.Combine(outputDirectory, thumbnailFileName);
+            string videoFileName = _fileSystem.Path.GetFileNameWithoutExtension(videoFilePath);
+            string thumbnailFileName = $"{videoFileName}_thumbnail.jpg";
+            string thumbnailPath = _fileSystem.Path.Combine(outputDirectory, thumbnailFileName);
 
             try
             {
@@ -74,7 +74,7 @@ namespace VideoForensics.Providers.Ring
                         };
                     }
 
-                    var content = response.Content.ReadAsByteArrayAsync().Result;
+                    byte[] content = response.Content.ReadAsByteArrayAsync().Result;
 
                     // Write thumbnail file
                     _fileSystem.File.WriteAllBytes(thumbnailPath, content);
@@ -136,10 +136,10 @@ namespace VideoForensics.Providers.Ring
                     return null;
                 }
 
-                var bytes = new byte[12];
+                byte[] bytes = new byte[12];
                 using (FileSystemStream stream = _fileSystem.File.OpenRead(filePath))
                 {
-                    var bytesRead = stream.Read(bytes, 0, bytes.Length);
+                    int bytesRead = stream.Read(bytes, 0, bytes.Length);
                     if (bytesRead < 3)
                     {
                         return null;

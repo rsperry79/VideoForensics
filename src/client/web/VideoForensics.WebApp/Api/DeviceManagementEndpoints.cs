@@ -40,7 +40,7 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await devices.RevokeAsync(id, request.Reason, ct);
                 connectionTracker.ForceDisconnect(id);
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingRevoked,
@@ -60,7 +60,7 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await operators.DeactivateAsync(id, ct);
                 IReadOnlyList<Guid> revokedDeviceIds = await devices.RevokeAllForOperatorAsync(id, request.Reason, ct);
                 foreach (Guid revokedDeviceId in revokedDeviceIds)

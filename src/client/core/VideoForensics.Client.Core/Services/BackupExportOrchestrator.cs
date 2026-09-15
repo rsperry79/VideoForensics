@@ -75,7 +75,7 @@ namespace VideoForensics.Client.Core.Services
                         continue;
                     }
 
-                    var sidecarPath = Path.ChangeExtension(mediaItem.FilePath, ".json");
+                    string sidecarPath = Path.ChangeExtension(mediaItem.FilePath, ".json");
                     Guid? sidecarEventId = TryReadSidecarEventId(sidecarPath);
                     if (sidecarEventId == evt.Id)
                     {
@@ -116,18 +116,18 @@ namespace VideoForensics.Client.Core.Services
                 IReadOnlyList<DownloadEvent> downloadEvents = await _downloadEventRepository.ListAsync(ct);
                 IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.ListAsync(ct);
 
-                var downloadLocationRoot = _forensicsConfiguration.DownloadLocation ?? string.Empty;
-                List<ExportedMediaItem> exportedMediaItems = mediaItems
+                string downloadLocationRoot = _forensicsConfiguration.DownloadLocation ?? string.Empty;
+                var exportedMediaItems = mediaItems
                     .Select(m => ExportedMediaItem.FromMediaItem(m, downloadLocationRoot))
                     .ToList();
 
                 var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                var accountsJson = JsonSerializer.Serialize(accounts, jsonOptions);
-                var locationsJson = JsonSerializer.Serialize(locations, jsonOptions);
-                var devicesJson = JsonSerializer.Serialize(devices, jsonOptions);
-                var eventsJson = JsonSerializer.Serialize(events, jsonOptions);
-                var downloadEventsJson = JsonSerializer.Serialize(downloadEvents, jsonOptions);
-                var mediaItemsJson = JsonSerializer.Serialize(exportedMediaItems, jsonOptions);
+                string accountsJson = JsonSerializer.Serialize(accounts, jsonOptions);
+                string locationsJson = JsonSerializer.Serialize(locations, jsonOptions);
+                string devicesJson = JsonSerializer.Serialize(devices, jsonOptions);
+                string eventsJson = JsonSerializer.Serialize(events, jsonOptions);
+                string downloadEventsJson = JsonSerializer.Serialize(downloadEvents, jsonOptions);
+                string mediaItemsJson = JsonSerializer.Serialize(exportedMediaItems, jsonOptions);
 
                 var manifest = new
                 {
@@ -144,10 +144,10 @@ namespace VideoForensics.Client.Core.Services
                         MediaItems = mediaItems.Count
                     }
                 };
-                var manifestJson = JsonSerializer.Serialize(manifest, jsonOptions);
+                string manifestJson = JsonSerializer.Serialize(manifest, jsonOptions);
 
-                var archiveFileName = $"VideoForensics_Backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-                var archivePath = Path.Combine(outputDirectory, archiveFileName);
+                string archiveFileName = $"VideoForensics_Backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
+                string archivePath = Path.Combine(outputDirectory, archiveFileName);
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
@@ -207,7 +207,7 @@ namespace VideoForensics.Client.Core.Services
 
         private static async Task BackfillSidecarAsync(string sidecarPath, Guid eventId, CancellationToken ct)
         {
-            Dictionary<string, object?> data = new();
+            Dictionary<string, object?> data = [];
             if (File.Exists(sidecarPath))
             {
                 try
@@ -226,7 +226,7 @@ namespace VideoForensics.Client.Core.Services
 
             data["EventDbId"] = eventId;
             data["BackfilledAtUtc"] = DateTime.UtcNow;
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(sidecarPath, json, ct);
         }
 
@@ -246,7 +246,7 @@ namespace VideoForensics.Client.Core.Services
         {
             using var hashAlgorithm = SHA256.Create();
             using FileStream fileStream = File.OpenRead(filePath);
-            var hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
+            byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
     }

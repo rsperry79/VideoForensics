@@ -1,10 +1,7 @@
+using VideoForensics.Forensics.KeyManagement;
+
 namespace VideoForensics.Forensics.Tests.KeyManagement
 {
-    using System;
-    using System.Text;
-    using VideoForensics.Forensics.KeyManagement;
-    using Xunit;
-
     /// <summary>
     /// Base class for testing IKeyStorageProvider implementations.
     /// Concrete test classes should inherit from this and implement CreateProvider().
@@ -18,7 +15,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public void ProviderName_IsNotEmpty()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
 
             // Act & Assert
             Assert.NotEmpty(provider.ProviderName);
@@ -28,23 +25,23 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public void IsAvailable_HasDefinedValue()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
 
             // Act
             bool isAvailable = provider.IsAvailable;
 
             // Assert - Should not throw, value should be boolean
-            Assert.IsType<bool>(isAvailable);
+            _ = Assert.IsType<bool>(isAvailable);
         }
 
         [Fact]
         public async Task ListKeysAsync_DoesNotReturnNull()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
 
             // Act
-            var keys = await provider.ListKeysAsync();
+            IEnumerable<string> keys = await provider.ListKeysAsync();
 
             // Assert
             Assert.NotNull(keys);
@@ -54,10 +51,10 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetKeyMetadataAsync_DoesNotReturnNull()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
 
             // Act
-            var metadata = await provider.GetKeyMetadataAsync("any-key-id");
+            KeyMetadata metadata = await provider.GetKeyMetadataAsync("any-key-id");
 
             // Assert
             Assert.NotNull(metadata);
@@ -67,11 +64,11 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetKeyMetadataAsync_ReturnsMetadataWithKeyId()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
             string expectedKeyId = "test-key-id";
 
             // Act
-            var metadata = await provider.GetKeyMetadataAsync(expectedKeyId);
+            KeyMetadata metadata = await provider.GetKeyMetadataAsync(expectedKeyId);
 
             // Assert
             Assert.Equal(expectedKeyId, metadata.KeyId);
@@ -81,10 +78,10 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         public async Task GetKeyMetadataAsync_ReturnsMetadataWithProviderName()
         {
             // Arrange
-            var provider = CreateProvider();
+            IKeyStorageProvider provider = CreateProvider();
 
             // Act
-            var metadata = await provider.GetKeyMetadataAsync("test-key");
+            KeyMetadata metadata = await provider.GetKeyMetadataAsync("test-key");
 
             // Assert
             Assert.Equal(provider.ProviderName, metadata.StorageProvider);
@@ -119,7 +116,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
 
         public FileBasedKeyStorageProviderContractTests()
         {
-            Directory.CreateDirectory(_tempDirectory);
+            _ = Directory.CreateDirectory(_tempDirectory);
         }
 
         protected override IKeyStorageProvider CreateProvider()
