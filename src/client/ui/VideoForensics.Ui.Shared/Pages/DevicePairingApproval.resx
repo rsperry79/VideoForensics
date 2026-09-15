@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Approve Device Pairing</value>
+  </data>
+  <data name="SignInToApprove" xml:space="preserve">
+    <value>to approve device pairings</value>
+  </data>
+  <data name="Instructions" xml:space="preserve">
+    <value>Enter the user code provided by the device, specify a name and role for the device, then approve the pairing.</value>
+  </data>
+  <data name="UserCodeLabel" xml:space="preserve">
+    <value>User Code</value>
+  </data>
+  <data name="UserCodePlaceholder" xml:space="preserve">
+    <value>e.g. WXYZ-1234</value>
+  </data>
+  <data name="DeviceNameLabel" xml:space="preserve">
+    <value>Device Name</value>
+  </data>
+  <data name="DeviceNamePlaceholder" xml:space="preserve">
+    <value>e.g. MCP Bridge</value>
+  </data>
+  <data name="RoleLabel" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="ApproveButton" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="ApprovingButton" xml:space="preserve">
+    <value>Approving...</value>
+  </data>
+  <data name="SuccessMessage" xml:space="preserve">
+    <value>Approved. The device will pick up its credential automatically as {0}.</value>
+  </data>
+  <data name="NotAuthorizedMessage" xml:space="preserve">
+    <value>Only a SuperAdmin with Local network access can approve device pairings.</value>
+  </data>
+  <data name="CodeExpiredMessage" xml:space="preserve">
+    <value>Pairing code expired or invalid. Ask for a new one.</value>
+  </data>
+  <data name="ApprovalError" xml:space="preserve">
+    <value>Approval failed (status {0})</value>
+  </data>
+  <data name="ApprovalFailed" xml:space="preserve">
+    <value>Approval failed: {0}</value>
+  </data>
+  <data name="SignInFirstError" xml:space="preserve">
+    <value>Please sign in first.</value>
+  </data>
+</root>

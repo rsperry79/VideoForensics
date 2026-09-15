@@ -441,7 +441,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                         // Extract structured CV metadata
                                         var mediaItemDetectionId = Guid.NewGuid();
-                                        var (detection, persons, occurrences) = ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
+                                        var (detection, persons, occurrences) = RingCvMetadataExtractor.ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
 
                                         _ = await _dataClient.RecordDownloadEventAsync(
                                             downloadEvent,
@@ -567,11 +567,11 @@ namespace VideoForensics.Providers.Ring.Services
                                         DeviceId = deviceGuid,
                                         AttemptNumber = previousAttemptCount + 1,
                                         OccurredAtUtc = DateTime.UtcNow,
-                                        HttpStatusCode = GetHttpStatusCode(ex),
-                                        ResponseBody = GetResponseBody(ex),
+                                        HttpStatusCode = RingProviderApiErrorClassifier.GetHttpStatusCode(ex),
+                                        ResponseBody = RingProviderApiErrorClassifier.GetResponseBody(ex),
                                         ExceptionType = ex.GetType().Name,
                                         ErrorMessage = ex.Message,
-                                        ErrorCategory = ClassifyProviderApiError(ex, existingRecord)
+                                        ErrorCategory = RingProviderApiErrorClassifier.ClassifyProviderApiError(ex, existingRecord)
                                     };
                                     await _dataClient.RecordProviderApiErrorAsync(apiErrorLog, CancellationToken.None);
                                 }
@@ -883,11 +883,11 @@ namespace VideoForensics.Providers.Ring.Services
                             DeviceId = resolvedDeviceGuid.Value,
                             AttemptNumber = 1,
                             OccurredAtUtc = DateTime.UtcNow,
-                            HttpStatusCode = GetHttpStatusCode(ex),
-                            ResponseBody = GetResponseBody(ex),
+                            HttpStatusCode = RingProviderApiErrorClassifier.GetHttpStatusCode(ex),
+                            ResponseBody = RingProviderApiErrorClassifier.GetResponseBody(ex),
                             ExceptionType = ex.GetType().Name,
                             ErrorMessage = ex.Message,
-                            ErrorCategory = ClassifyProviderApiError(ex, existingRecord: null)
+                            ErrorCategory = RingProviderApiErrorClassifier.ClassifyProviderApiError(ex, existingRecord: null)
                         };
                         await _dataClient.RecordProviderApiErrorAsync(apiErrorLog, CancellationToken.None);
                     }
@@ -904,221 +904,6 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        /// <summary>
-        /// Extracts structured CV metadata from a Ring event for EventDetection entities.
-        /// </summary>
-        private (EventDetection detection, List<EventDetectionZone> zones, List<EventSecurityAlert> alerts, List<EventDetectedPerson> persons, List<EventDetectionTypeOccurrence> occurrences) ExtractEventMetadata(Entities.DoorbotHistoryEvent @event, Guid eventId)
-        {
-            var zones = new List<EventDetectionZone>();
-            var alerts = new List<EventSecurityAlert>();
-            var persons = new List<EventDetectedPerson>();
-            var occurrences = new List<EventDetectionTypeOccurrence>();
-
-            Entities.CvProperties? cv = @event.CvProperties;
-            if (cv == null)
-            {
-                // No CV data, return minimal detection record
-                var emptyDetection = new EventDetection
-                {
-                    Id = Guid.NewGuid(),
-                    EventId = eventId
-                };
-                return (emptyDetection, zones, alerts, persons, occurrences);
-            }
-
-            var detectionId = Guid.NewGuid();
-
-            // Create EventDetection from CV properties
-            var detection = new EventDetection
-            {
-                Id = detectionId,
-                EventId = eventId,
-                PersonDetected = cv.PersonDetected,
-                StreamBroken = cv.StreamBroken,
-                DetectionType = cv.DetectionType,
-                FullDescription = cv.FullDescription,
-                ShortDescription = cv.ShortDescription,
-                Similarity = cv.Similarity.HasValue ? (decimal)cv.Similarity.Value : null,
-                Anomaly = cv.Anomaly.HasValue ? (decimal)cv.Anomaly.Value : null,
-                ModelVersion = cv.DetectionDetails?.ModelVersion
-            };
-
-            // Add detection details confidence if available
-            if (cv.DetectionDetails?.Confidence.HasValue == true)
-            {
-                detection.Confidence = (decimal)cv.DetectionDetails.Confidence.Value;
-            }
-
-            // Extract detection zones
-            if (cv.DetectionDetails?.Zones != null)
-            {
-                foreach (var zone in cv.DetectionDetails.Zones)
-                {
-                    if (zone != null && !string.IsNullOrEmpty(zone.Id))
-                    {
-                        zones.Add(new EventDetectionZone
-                        {
-                            Id = Guid.NewGuid(),
-                            EventDetectionId = detectionId,
-                            ZoneId = zone.Id,
-                            ZoneName = zone.Name,
-                            Confidence = zone.Confidence.HasValue ? (decimal)zone.Confidence.Value : null
-                        });
-                    }
-                }
-            }
-
-            // Extract security alerts
-            if (cv.SecurityAlerts != null && cv.SecurityAlerts.Alerts != null)
-            {
-                foreach (var alertText in cv.SecurityAlerts.Alerts)
-                {
-                    if (!string.IsNullOrEmpty(alertText))
-                    {
-                        alerts.Add(new EventSecurityAlert
-                        {
-                            Id = Guid.NewGuid(),
-                            EventId = eventId,
-                            Severity = cv.SecurityAlerts.Severity,
-                            AlertText = alertText
-                        });
-                    }
-                }
-            }
-
-            // Extract detected persons
-            if (cv.Profiles != null)
-            {
-                foreach (var profile in cv.Profiles)
-                {
-                    if (profile != null && !string.IsNullOrEmpty(profile.Id))
-                    {
-                        persons.Add(new EventDetectedPerson
-                        {
-                            Id = Guid.NewGuid(),
-                            EventId = eventId,
-                            ProfileId = profile.Id,
-                            ProfileName = profile.Name,
-                            Confidence = profile.Confidence.HasValue ? (decimal)profile.Confidence.Value : null,
-                            ThumbnailUrl = profile.ThumbnailUrl
-                        });
-                    }
-                }
-            }
-
-            // Extract detection type occurrences from verified timestamps
-            if (cv.DetectionTypes != null)
-            {
-                foreach (var detectionType in cv.DetectionTypes)
-                {
-                    if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
-                    {
-                        foreach (var epochMs in detectionType.VerifiedTimestamps)
-                        {
-                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
-                            occurrences.Add(new EventDetectionTypeOccurrence
-                            {
-                                Id = Guid.NewGuid(),
-                                EventDetectionId = detectionId,
-                                DetectionType = detectionType.DetectionType,
-                                DetectedAtUtc = detectedAtUtc
-                            });
-                        }
-                    }
-                }
-            }
-
-            return (detection, zones, alerts, persons, occurrences);
-        }
-
-        /// <summary>
-        /// Extracts structured CV metadata from a Ring event and creates related database entities.
-        /// Detection zones and security alerts are captured separately by ExtractEventMetadata (as
-        /// EventDetectionZone/EventSecurityAlert, keyed to the Event rather than the MediaItemDetection) -
-        /// not duplicated here.
-        /// </summary>
-        private (MediaItemDetection detection, List<DetectedPerson> persons, List<DetectionTypeOccurrence> occurrences) ExtractMetadata(Entities.DoorbotHistoryEvent @event, Guid mediaItemId, Guid mediaItemDetectionId)
-        {
-            var persons = new List<DetectedPerson>();
-            var occurrences = new List<DetectionTypeOccurrence>();
-
-            Entities.CvProperties? cv = @event.CvProperties;
-            if (cv == null)
-            {
-                // No CV data, return minimal detection record
-                var emptyDetection = new MediaItemDetection
-                {
-                    Id = mediaItemDetectionId,
-                    MediaItemId = mediaItemId
-                };
-                return (emptyDetection, persons, occurrences);
-            }
-
-            // Create MediaItemDetection from CV properties
-            var detection = new MediaItemDetection
-            {
-                Id = mediaItemDetectionId,
-                MediaItemId = mediaItemId,
-                PersonDetected = cv.PersonDetected,
-                StreamBroken = cv.StreamBroken,
-                DetectionType = cv.DetectionType,
-                FullDescription = cv.FullDescription,
-                ShortDescription = cv.ShortDescription,
-                Similarity = cv.Similarity.HasValue ? (decimal)cv.Similarity.Value : null,
-                Anomaly = cv.Anomaly.HasValue ? (decimal)cv.Anomaly.Value : null,
-                ModelVersion = cv.DetectionDetails?.ModelVersion
-            };
-
-            // Add detection details confidence if available
-            if (cv.DetectionDetails?.Confidence.HasValue == true)
-            {
-                detection.Confidence = (decimal)cv.DetectionDetails.Confidence.Value;
-            }
-
-            // Extract detected persons
-            if (cv.Profiles != null)
-            {
-                foreach (var profile in cv.Profiles)
-                {
-                    if (profile != null && !string.IsNullOrEmpty(profile.Id))
-                    {
-                        persons.Add(new DetectedPerson
-                        {
-                            Id = Guid.NewGuid(),
-                            MediaItemId = mediaItemId,
-                            ProfileId = profile.Id,
-                            ProfileName = profile.Name,
-                            Confidence = profile.Confidence.HasValue ? (decimal)profile.Confidence.Value : null,
-                            ThumbnailUrl = profile.ThumbnailUrl
-                        });
-                    }
-                }
-            }
-
-            // Extract detection type occurrences from verified timestamps
-            if (cv.DetectionTypes != null)
-            {
-                foreach (var detectionType in cv.DetectionTypes)
-                {
-                    if (detectionType != null && !string.IsNullOrEmpty(detectionType.DetectionType) && detectionType.VerifiedTimestamps != null)
-                    {
-                        foreach (var epochMs in detectionType.VerifiedTimestamps)
-                        {
-                            var detectedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(epochMs);
-                            occurrences.Add(new DetectionTypeOccurrence
-                            {
-                                Id = Guid.NewGuid(),
-                                MediaItemDetectionId = mediaItemDetectionId,
-                                DetectionType = detectionType.DetectionType,
-                                DetectedAtUtc = detectedAtUtc
-                            });
-                        }
-                    }
-                }
-            }
-
-            return (detection, persons, occurrences);
-        }
 
         /// <summary>
         /// Upserts an Events-table record for a provider event, independent of download outcome.
@@ -1173,7 +958,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (apiResponse is Entities.DoorbotHistoryEvent doorbotEvent)
                 {
-                    (detection, zones, alerts, persons, occurrences) = ExtractEventMetadata(doorbotEvent, evt.Id);
+                    (detection, zones, alerts, persons, occurrences) = RingCvMetadataExtractor.ExtractEventMetadata(doorbotEvent, evt.Id);
                 }
 
                 Event upserted = await _dataClient.UpsertEventAsync(evt, ct, detection, zones, alerts, persons, occurrences);
@@ -1272,11 +1057,6 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             return sb.ToString();
-        }
-
-        private static string BuildNamespacedOutputPath(string outputPath, string providerName, string accountDisplayName)
-        {
-            return Path.Combine(outputPath, providerName, accountDisplayName);
         }
 
         private bool WriteMetadataFile(string mediaFilePath, string deviceId, Entities.DoorbotHistoryEvent @event, long fileSizeBytes, string mediaFormat, Guid eventDbId)
@@ -1687,52 +1467,6 @@ namespace VideoForensics.Providers.Ring.Services
                    message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("denied by Ring", StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Classifies a download failure for the ProviderApiErrorLog table. The interesting case is
-        /// DeviceUnknownException (Ring 404): if this event previously downloaded successfully
-        /// (existingRecord.Success == true), Ring no longer having it means the recording was deleted
-        /// after the fact - a materially different situation from an event that was never available.
-        /// </summary>
-        internal static string ClassifyProviderApiError(Exception ex, DownloadEvent? existingRecord)
-        {
-            return ex switch
-            {
-                VideoForensics.Providers.Ring.Exceptions.ThrottledException => "RateLimited",
-                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException =>
-                    existingRecord?.Success == true ? "RecordingDeletedAfterDownload" : "RecordingNotFound",
-                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException => "DownloadFailed",
-                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException => "UnexpectedStatus",
-                OperationCanceledException => "Cancelled",
-                _ => "Other"
-            };
-        }
-
-        /// <summary>Extracts the HTTP status code from whichever of the four Ring exception types carries one, or null.</summary>
-        private static int? GetHttpStatusCode(Exception ex)
-        {
-            return ex switch
-            {
-                VideoForensics.Providers.Ring.Exceptions.ThrottledException te => te.StatusCode.HasValue ? (int)te.StatusCode.Value : null,
-                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException due => due.StatusCode.HasValue ? (int)due.StatusCode.Value : null,
-                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException dfe => dfe.StatusCode.HasValue ? (int)dfe.StatusCode.Value : null,
-                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException uoe => (int)uoe.ReturnedStatusCode,
-                _ => null
-            };
-        }
-
-        /// <summary>Extracts the (already-truncated) raw response body from whichever of the four Ring exception types carries one, or null.</summary>
-        private static string? GetResponseBody(Exception ex)
-        {
-            return ex switch
-            {
-                VideoForensics.Providers.Ring.Exceptions.ThrottledException te => te.ResponseBody,
-                VideoForensics.Providers.Ring.Exceptions.DeviceUnknownException due => due.ResponseBody,
-                VideoForensics.Providers.Ring.Exceptions.DownloadFailedException dfe => dfe.ResponseBody,
-                VideoForensics.Providers.Ring.Exceptions.UnexpectedOutcomeException uoe => uoe.ResponseBody,
-                _ => null
-            };
         }
 
         private bool ValidateJsonSidecar(string jsonPath, string metadataType)

@@ -20,7 +20,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 AppVersion = "1.0"
             };
 
-            var category = RingMediaDownloadService.ClassifyProviderApiError(
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(
                 new DeviceUnknownException(new Uri("https://api.ring.com/clients_api/dings/123/recording")),
                 existingRecord);
 
@@ -30,7 +30,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ClassifyProviderApiError_DeviceUnknownException_WithNoPriorRecord_ReturnsRecordingNotFound()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(
                 new DeviceUnknownException(new Uri("https://api.ring.com/clients_api/dings/123/recording")),
                 existingRecord: null);
 
@@ -49,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 AppVersion = "1.0"
             };
 
-            var category = RingMediaDownloadService.ClassifyProviderApiError(
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(
                 new DeviceUnknownException(new Uri("https://api.ring.com/clients_api/dings/123/recording")),
                 existingRecord);
 
@@ -59,21 +59,21 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ClassifyProviderApiError_ThrottledException_ReturnsRateLimited()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(new ThrottledException(), existingRecord: null);
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(new ThrottledException(), existingRecord: null);
             Assert.Equal("RateLimited", category);
         }
 
         [Fact]
         public void ClassifyProviderApiError_DownloadFailedException_ReturnsDownloadFailed()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(new DownloadFailedException("https://example.com/video.mp4"), existingRecord: null);
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(new DownloadFailedException("https://example.com/video.mp4"), existingRecord: null);
             Assert.Equal("DownloadFailed", category);
         }
 
         [Fact]
         public void ClassifyProviderApiError_UnexpectedOutcomeException_ReturnsUnexpectedStatus()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(
                 new UnexpectedOutcomeException(System.Net.HttpStatusCode.InternalServerError),
                 existingRecord: null);
 
@@ -83,14 +83,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ClassifyProviderApiError_OperationCanceledException_ReturnsCancelled()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(new OperationCanceledException(), existingRecord: null);
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(new OperationCanceledException(), existingRecord: null);
             Assert.Equal("Cancelled", category);
         }
 
         [Fact]
         public void ClassifyProviderApiError_GenericException_ReturnsOther()
         {
-            var category = RingMediaDownloadService.ClassifyProviderApiError(new InvalidOperationException("boom"), existingRecord: null);
+            var category = RingProviderApiErrorClassifier.ClassifyProviderApiError(new InvalidOperationException("boom"), existingRecord: null);
             Assert.Equal("Other", category);
         }
     }

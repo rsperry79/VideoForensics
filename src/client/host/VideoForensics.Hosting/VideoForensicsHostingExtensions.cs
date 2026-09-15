@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
+using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
@@ -36,6 +39,120 @@ namespace VideoForensics.Hosting
     /// </summary>
     public static class VideoForensicsHostingExtensions
     {
+        /// <summary>
+        /// Builds a Ring authentication service for use by multiple registration paths (unkeyed,
+        /// multi-provider auth factories, and keyed per-provider services). Centralizes the
+        /// construction logic so there's exactly one place per service that builds it.
+        /// </summary>
+        private static IProviderAuthService BuildRingAuthService(IServiceProvider provider) =>
+            new RingAuthService(
+                provider.GetRequiredService<ILogger<RingAuthService>>(),
+                provider.GetRequiredService<ISessionProvider>(),
+                provider.GetRequiredService<ICredentialStore>(),
+                provider.GetRequiredService<ICredentialRepository>(),
+                provider.GetRequiredService<IRingAccountRepository>(),
+                provider.GetRequiredService<IProviderAccountRepository>(),
+                provider.GetRequiredService<IUserRepository>()
+            );
+
+        /// <summary>
+        /// Builds a Ring device discovery service for use by multiple registration paths.
+        /// </summary>
+        private static IDeviceDiscoveryService BuildRingDeviceDiscoveryService(IServiceProvider provider) =>
+            new RingDeviceDiscoveryService(
+                provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
+                provider.GetRequiredService<ISessionProvider>()
+            );
+
+        /// <summary>
+        /// Builds a Ring media download service for use by multiple registration paths.
+        /// </summary>
+        private static IMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider) =>
+            new RingMediaDownloadService(
+                provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
+                provider.GetRequiredService<ISessionProvider>(),
+                provider.GetRequiredService<IVideoForensicsDataClient>()
+            );
+
+        /// <summary>
+        /// Builds a Ring event and config service for use by multiple registration paths.
+        /// </summary>
+        private static IEventAndConfigService BuildRingEventAndConfigService(IServiceProvider provider) =>
+            new RingEventAndConfigService(
+                provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
+                provider.GetRequiredService<ISessionProvider>()
+            );
+
+        /// <summary>
+        /// Builds a Uniview authentication service for use by multiple registration paths.
+        /// </summary>
+        private static IProviderAuthService BuildUniviewAuthService(IServiceProvider provider) =>
+            new UniviewAuthService(
+                provider.GetRequiredService<ILogger<UniviewAuthService>>(),
+                provider.GetRequiredService<IUniviewSessionProvider>(),
+                provider.GetRequiredService<IForensicsConfiguration>(),
+                provider.GetRequiredService<ICredentialRepository>()
+            );
+
+        /// <summary>
+        /// Builds a Uniview device discovery service for use by multiple registration paths.
+        /// </summary>
+        private static IDeviceDiscoveryService BuildUniviewDeviceDiscoveryService(IServiceProvider provider) =>
+            new UniviewDeviceDiscoveryService(
+                provider.GetRequiredService<ILogger<UniviewDeviceDiscoveryService>>(),
+                provider.GetRequiredService<IUniviewSessionProvider>(),
+                provider.GetRequiredService<IForensicsConfiguration>()
+            );
+
+        /// <summary>
+        /// Builds a Uniview media download service for use by multiple registration paths.
+        /// </summary>
+        private static IMediaDownloadService BuildUniviewMediaDownloadService(IServiceProvider provider) =>
+            new UniviewMediaDownloadService(
+                provider.GetRequiredService<ILogger<UniviewMediaDownloadService>>(),
+                provider.GetRequiredService<IUniviewSessionProvider>()
+            );
+
+        /// <summary>
+        /// Builds a Uniview event and config service for use by multiple registration paths.
+        /// </summary>
+        private static IEventAndConfigService BuildUniviewEventAndConfigService(IServiceProvider provider) =>
+            new UniviewEventAndConfigService(
+                provider.GetRequiredService<ILogger<UniviewEventAndConfigService>>(),
+                provider.GetRequiredService<IUniviewSessionProvider>()
+            );
+
+        /// <summary>
+        /// Builds a Wyze authentication service for use by multiple registration paths.
+        /// </summary>
+        private static IProviderAuthService BuildWyzeAuthService(IServiceProvider provider) =>
+            new WyzeAuthService(
+                provider.GetRequiredService<ILogger<WyzeAuthService>>()
+            );
+
+        /// <summary>
+        /// Builds a Wyze device discovery service for use by multiple registration paths.
+        /// </summary>
+        private static IDeviceDiscoveryService BuildWyzeDeviceDiscoveryService(IServiceProvider provider) =>
+            new WyzeDeviceDiscoveryService(
+                provider.GetRequiredService<ILogger<WyzeDeviceDiscoveryService>>()
+            );
+
+        /// <summary>
+        /// Builds a Wyze media download service for use by multiple registration paths.
+        /// </summary>
+        private static IMediaDownloadService BuildWyzeMediaDownloadService(IServiceProvider provider) =>
+            new WyzeMediaDownloadService(
+                provider.GetRequiredService<ILogger<WyzeMediaDownloadService>>()
+            );
+
+        /// <summary>
+        /// Builds a Wyze event and config service for use by multiple registration paths.
+        /// </summary>
+        private static IEventAndConfigService BuildWyzeEventAndConfigService(IServiceProvider provider) =>
+            new WyzeEventAndConfigService(
+                provider.GetRequiredService<ILogger<WyzeEventAndConfigService>>()
+            );
         /// <summary>
         /// Registers the data access layer only (SQLite, EF Core repositories, Data.Core facade) -
         /// no provider/Ring services. Used by every host that needs a local database: the server-tier
@@ -96,36 +213,10 @@ namespace VideoForensics.Hosting
             // identical to Singleton.
             if (string.Equals(activeProviderName, "Ring", StringComparison.OrdinalIgnoreCase))
             {
-                _ = services.AddScoped<IProviderAuthService>(provider =>
-                    new RingAuthService(
-                        provider.GetRequiredService<ILogger<RingAuthService>>(),
-                        provider.GetRequiredService<ISessionProvider>(),
-                        provider.GetRequiredService<ICredentialStore>(),
-                        provider.GetRequiredService<ICredentialRepository>(),
-                        provider.GetRequiredService<IRingAccountRepository>(),
-                        provider.GetRequiredService<IProviderAccountRepository>(),
-                        provider.GetRequiredService<IUserRepository>()
-                    )
-                );
-                _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
-                    new RingDeviceDiscoveryService(
-                        provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                        provider.GetRequiredService<ISessionProvider>()
-                    )
-                );
-                _ = services.AddScoped<IMediaDownloadService>(provider =>
-                    new RingMediaDownloadService(
-                        provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
-                        provider.GetRequiredService<ISessionProvider>(),
-                        provider.GetRequiredService<IVideoForensicsDataClient>()
-                    )
-                );
-                _ = services.AddScoped<IEventAndConfigService>(provider =>
-                    new RingEventAndConfigService(
-                        provider.GetRequiredService<ILogger<RingEventAndConfigService>>(),
-                        provider.GetRequiredService<ISessionProvider>()
-                    )
-                );
+                _ = services.AddScoped<IProviderAuthService>(BuildRingAuthService);
+                _ = services.AddScoped<IDeviceDiscoveryService>(BuildRingDeviceDiscoveryService);
+                _ = services.AddScoped<IMediaDownloadService>(BuildRingMediaDownloadService);
+                _ = services.AddScoped<IEventAndConfigService>(BuildRingEventAndConfigService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
                     new RingVideoProvider(
                         provider.GetRequiredService<ILogger<RingVideoProvider>>(),
@@ -137,39 +228,18 @@ namespace VideoForensics.Hosting
                 );
 
                 // Ring self-test orchestrator and service: run state must survive across scoped requests,
-                // so registered as Singleton (same reasoning as ISessionProvider).
-                _ = services.AddSingleton<RingSelfTestOrchestrator>();
+                // so registered as Singleton (same reasoning as ISessionProvider). Registered against
+                // its interface, not the concrete type, since LocalRingSelfTestService depends on
+                // IRingSelfTestOrchestrator.
+                _ = services.AddSingleton<IRingSelfTestOrchestrator, RingSelfTestOrchestrator>();
                 _ = services.AddScoped<IRingSelfTestService, LocalRingSelfTestService>();
             }
             else if (string.Equals(activeProviderName, "Uniview", StringComparison.OrdinalIgnoreCase))
             {
-                _ = services.AddScoped<IProviderAuthService>(provider =>
-                    new UniviewAuthService(
-                        provider.GetRequiredService<ILogger<UniviewAuthService>>(),
-                        provider.GetRequiredService<IUniviewSessionProvider>(),
-                        provider.GetRequiredService<IForensicsConfiguration>(),
-                        provider.GetRequiredService<ICredentialRepository>()
-                    )
-                );
-                _ = services.AddScoped<IDeviceDiscoveryService>(provider =>
-                    new UniviewDeviceDiscoveryService(
-                        provider.GetRequiredService<ILogger<UniviewDeviceDiscoveryService>>(),
-                        provider.GetRequiredService<IUniviewSessionProvider>(),
-                        provider.GetRequiredService<IForensicsConfiguration>()
-                    )
-                );
-                _ = services.AddScoped<IMediaDownloadService>(provider =>
-                    new UniviewMediaDownloadService(
-                        provider.GetRequiredService<ILogger<UniviewMediaDownloadService>>(),
-                        provider.GetRequiredService<IUniviewSessionProvider>()
-                    )
-                );
-                _ = services.AddScoped<IEventAndConfigService>(provider =>
-                    new UniviewEventAndConfigService(
-                        provider.GetRequiredService<ILogger<UniviewEventAndConfigService>>(),
-                        provider.GetRequiredService<IUniviewSessionProvider>()
-                    )
-                );
+                _ = services.AddScoped<IProviderAuthService>(BuildUniviewAuthService);
+                _ = services.AddScoped<IDeviceDiscoveryService>(BuildUniviewDeviceDiscoveryService);
+                _ = services.AddScoped<IMediaDownloadService>(BuildUniviewMediaDownloadService);
+                _ = services.AddScoped<IEventAndConfigService>(BuildUniviewEventAndConfigService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
                     new UniviewVideoProvider(
                         provider.GetRequiredService<ILogger>(),
@@ -189,21 +259,9 @@ namespace VideoForensics.Hosting
             // any registered provider by name, not just whichever one this server booted with.
             var multiProviderAuthFactories = new Dictionary<string, Func<IServiceProvider, IProviderAuthService>>(StringComparer.OrdinalIgnoreCase)
             {
-                ["Ring"] = provider => new RingAuthService(
-                    provider.GetRequiredService<ILogger<RingAuthService>>(),
-                    provider.GetRequiredService<ISessionProvider>(),
-                    provider.GetRequiredService<ICredentialStore>(),
-                    provider.GetRequiredService<ICredentialRepository>(),
-                    provider.GetRequiredService<IRingAccountRepository>(),
-                    provider.GetRequiredService<IProviderAccountRepository>(),
-                    provider.GetRequiredService<IUserRepository>()),
-                ["Uniview"] = provider => new UniviewAuthService(
-                    provider.GetRequiredService<ILogger<UniviewAuthService>>(),
-                    provider.GetRequiredService<IUniviewSessionProvider>(),
-                    provider.GetRequiredService<IForensicsConfiguration>(),
-                    provider.GetRequiredService<ICredentialRepository>()),
-                ["Wyze"] = provider => new WyzeAuthService(
-                    provider.GetRequiredService<ILogger<WyzeAuthService>>()),
+                ["Ring"] = BuildRingAuthService,
+                ["Uniview"] = BuildUniviewAuthService,
+                ["Wyze"] = BuildWyzeAuthService,
             };
             _ = services.AddScoped<IMultiProviderAuthService>(provider => new MultiProviderAuthService(provider, multiProviderAuthFactories));
 
@@ -314,7 +372,9 @@ namespace VideoForensics.Hosting
             // Pairing/RBAC/security-audit backbone (plan §5, M6). IPairingTokenService is
             // per-process in-memory state (short-lived tokens), so it must be Singleton.
             // ISessionTokenService only needs the already-registered IDataProtectionProvider.
+            // IDeviceCodePairingService is also per-process in-memory state (10-min sessions).
             _ = services.AddSingleton<IPairingTokenService, PairingTokenService>();
+            _ = services.AddSingleton<IDeviceCodePairingService, DeviceCodePairingService>();
             _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
@@ -332,6 +392,51 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
             _ = services.AddScoped<EmailNotificationProvider>();
             _ = services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+
+            return services;
+        }
+
+        /// <summary>
+        /// Registers keyed provider services for each enabled provider, allowing background/scheduled-task
+        /// code to resolve services by provider name via [FromKeyedServices(providerName)] or
+        /// IServiceProvider.GetRequiredKeyedService{T}(providerName). This is a sibling to
+        /// AddVideoForensicsServerCore (which stays as-is for MAUI/UI interactive workflows); the
+        /// unkeyed single-active-provider registration remains the canonical per-scope default.
+        /// </summary>
+        /// <param name="services">The service collection to register into.</param>
+        /// <param name="enabledProviders">List of provider names to register (e.g., ["Ring", "Wyze"]); case-insensitive matching.</param>
+        public static IServiceCollection AddVideoForensicsMultiProviderServices(
+            this IServiceCollection services, IEnumerable<string> enabledProviders)
+        {
+            foreach (var providerName in enabledProviders ?? Enumerable.Empty<string>())
+            {
+                if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildRingAuthService(provider));
+                    _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildRingDeviceDiscoveryService(provider));
+                    _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildRingMediaDownloadService(provider));
+                    _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildRingEventAndConfigService(provider));
+                    _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(providerName);
+                }
+                else if (string.Equals(providerName, "Uniview", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildUniviewAuthService(provider));
+                    _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildUniviewDeviceDiscoveryService(provider));
+                    _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildUniviewMediaDownloadService(provider));
+                    _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildUniviewEventAndConfigService(provider));
+                }
+                else if (string.Equals(providerName, "Wyze", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildWyzeAuthService(provider));
+                    _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildWyzeDeviceDiscoveryService(provider));
+                    _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildWyzeMediaDownloadService(provider));
+                    _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildWyzeEventAndConfigService(provider));
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unknown provider '{providerName}' in AddVideoForensicsMultiProviderServices - expected 'Ring', 'Uniview', or 'Wyze'.");
+                }
+            }
 
             return services;
         }

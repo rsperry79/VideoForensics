@@ -35,8 +35,20 @@ namespace VideoForensics.Providers.Ring
 
         public async Task DownloadToFileAsync(string url, string saveAsPath)
         {
-            byte[] bytes = await DownloadBytesAsync(url);
-            await File.WriteAllBytesAsync(saveAsPath, bytes);
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                throw new ArgumentException("A valid absolute URL is required to download a recording", nameof(url));
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+            request.Headers.Range = new RangeHeaderValue(0, null);
+
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            _ = response.EnsureSuccessStatusCode();
+
+            await using var fileStream = File.Create(saveAsPath);
+            await response.Content.CopyToAsync(fileStream);
         }
 
         private async Task<byte[]> DownloadBytesAsync(string url)

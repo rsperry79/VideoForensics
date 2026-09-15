@@ -114,6 +114,58 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task EventRepository_ListPaginatedAsync_ReturnsCorrectPage()
+        {
+            // Arrange: Create 5 events with distinct timestamps
+            DateTime now = DateTime.UtcNow;
+            Event[] events = new Event[5];
+            for (int i = 0; i < 5; i++)
+            {
+                events[i] = TestDataBuilder.BuildEvent();
+                events[i].OccurredAtUtc = now.AddHours(i);
+                _ = await _repository.UpsertAsync(events[i], CancellationToken.None);
+            }
+
+            // Act: Get page 2 with page size 2
+            // Ordered by OccurredAtUtc descending: events[4], events[3], events[2], events[1], events[0]
+            // Page 1 (offset 0, take 2): events[4], events[3]
+            // Page 2 (offset 2, take 2): events[2], events[1]
+            var result = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 2, CancellationToken.None);
+
+            // Assert: Verify page has correct items
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Items.Count);
+            Assert.Equal(5, result.TotalCount);
+            Assert.Equal(2, result.PageNumber);
+            Assert.Equal(2, result.PageSize);
+            // Page 2 should contain events[2] and events[1]
+            Assert.Contains(events[2].Id, result.Items.Select(x => x.Id));
+            Assert.Contains(events[1].Id, result.Items.Select(x => x.Id));
+        }
+
+        [Fact]
+        public async Task EventRepository_ListPaginatedAsync_ReturnsTotalCount()
+        {
+            // Arrange: Create 10 events
+            for (int i = 0; i < 10; i++)
+            {
+                Event @event = TestDataBuilder.BuildEvent();
+                @event.OccurredAtUtc = DateTime.UtcNow.AddHours(i);
+                _ = await _repository.UpsertAsync(@event, CancellationToken.None);
+            }
+
+            // Act: Get first page with page size 3
+            var page1 = await _repository.ListPaginatedAsync(pageNumber: 1, pageSize: 3, CancellationToken.None);
+            var page2 = await _repository.ListPaginatedAsync(pageNumber: 2, pageSize: 3, CancellationToken.None);
+
+            // Assert: TotalCount should be 10 on both pages
+            Assert.Equal(10, page1.TotalCount);
+            Assert.Equal(10, page2.TotalCount);
+            Assert.Equal(3, page1.Items.Count);
+            Assert.Equal(3, page2.Items.Count);
+        }
+
+        [Fact]
         public async Task EventRepository_DeleteAsync_RemovesEvent()
         {
             Event @event = TestDataBuilder.BuildEvent();

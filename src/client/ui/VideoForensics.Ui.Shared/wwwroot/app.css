@@ -43,3 +43,15 @@ nav a {
 nav a:hover {
     text-decoration: underline;
 }
+
+/* Syncfusion Splitter theme adjustments (MainLayout's left-nav/content splitter) - must live here,
+   not in a .razor.css file: Blazor CSS isolation has no ":global(...)" escape, so a rule meant to
+   target Syncfusion's JS-rendered splitter markup (which never carries this component's scope
+   attribute) has to be written in a genuinely unscoped stylesheet like this one. */
+.e-splitter-layout {
+    background-color: var(--vf-bg-color);
+}
+
+.e-splitter-layout .e-splitter-bar {
+    background-color: var(--vf-border-color);
+}

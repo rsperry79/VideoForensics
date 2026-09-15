@@ -147,6 +147,23 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct)
+        {
+            string url = $"/api/v1/events?pageNumber={pageNumber}&pageSize={pageSize}";
+            HttpResponseMessage response = await _httpClient.GetAsync(url, ct);
+            _ = response.EnsureSuccessStatusCode();
+            var paginatedDto = await response.Content.ReadFromJsonAsync<PaginatedResultDto<EventDto>>(JsonOptions, ct);
+
+            return new PaginatedResult<Event>
+            {
+                Items = (paginatedDto?.Items ?? []).Select(x => x.ToDomain()).ToList(),
+                TotalCount = paginatedDto?.TotalCount ?? 0,
+                PageNumber = paginatedDto?.PageNumber ?? pageNumber,
+                PageSize = paginatedDto?.PageSize ?? pageSize
+            };
+        }
+
+        /// <inheritdoc />
         public async Task DeleteAsync(Guid eventId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.DeleteAsync($"/api/v1/events/{eventId}", ct);

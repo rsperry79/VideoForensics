@@ -9,15 +9,23 @@ namespace VideoForensics.Providers.Ring.Implementations
 {
     /// <summary>
     /// Cross-platform AES encryption implementation for encrypting credentials.
-    /// Uses AES-256-CBC with PBKDF2 key derivation from a combination of
-    /// machine identifier and user profile information.
+    /// Uses AES-256-CBC with PBKDF2 key derivation from machine identifier, user profile,
+    /// and a per-installation random salt.
+    ///
+    /// On Windows, credentials are encrypted via DPAPI (platform-native). On non-Windows
+    /// platforms (Linux, macOS), this class uses PBKDF2-HMAC-SHA256 with a randomly-generated
+    /// per-installation salt persisted to disk. This salt design removes the weakness of
+    /// "key derivable from public info alone" (machine ID, username), but does not provide
+    /// the full security of OS-native secret storage (macOS Keychain, Linux libsecret).
+    /// That full protection remains an explicit design limitation: the codebase has no existing
+    /// dependency or precedent for such integrations, and adding them is out of scope.
     /// </summary>
     public class AesEncryption : ICredentialEncryption
     {
         private const int KeySize = 32; // AES-256
         private const int IvSize = 16;  // AES block size
         private const int SaltSize = 16;
-        private const int Iterations = 10000; // PBKDF2 iterations
+        private const int Iterations = 600000; // PBKDF2 iterations (OWASP baseline for HMAC-SHA256; raises brute-force cost)
 
         public string Encrypt(string plaintext)
         {
@@ -95,12 +103,56 @@ namespace VideoForensics.Providers.Ring.Implementations
             string userId = Environment.UserName ?? "unknown";
             string combinedInput = $"{machineId}:{userId}";
 
+            byte[] salt = GetOrCreateSalt();
+
             return Rfc2898DeriveBytes.Pbkdf2(
                 Encoding.UTF8.GetBytes(combinedInput),
-                Encoding.UTF8.GetBytes("RingVideos"),
+                salt,
                 Iterations,
                 HashAlgorithmName.SHA256,
                 KeySize);
+        }
+
+        private byte[] GetOrCreateSalt()
+        {
+            string saltPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics",
+                "ring-credential-salt.bin");
+
+            // If the salt file exists, read and return it
+            if (File.Exists(saltPath))
+            {
+                try
+                {
+                    return File.ReadAllBytes(saltPath);
+                }
+                catch
+                {
+                    // If read fails, fall through to generation
+                }
+            }
+
+            // Generate a new random salt and persist it
+            byte[] randomSalt = RandomNumberGenerator.GetBytes(SaltSize);
+
+            try
+            {
+                string directory = Path.GetDirectoryName(saltPath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllBytes(saltPath, randomSalt);
+            }
+            catch
+            {
+                // If write fails, continue with the generated salt (not persisted)
+                // This allows the class to remain functional even if the file cannot be written
+            }
+
+            return randomSalt;
         }
 
         private string GetMachineIdentifier()
