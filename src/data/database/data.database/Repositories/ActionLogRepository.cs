@@ -61,12 +61,12 @@ namespace VideoForensics.Data.Database.Repositories
                     .ThenByDescending(ale => ale.Id)
                     .FirstOrDefaultAsync(ct);
 
-                var previousEntryHash = lastEntry?.EntryHash;
+                string? previousEntryHash = lastEntry?.EntryHash;
                 DateTime timestampUtc = DateTime.UtcNow;
 
                 // Compute the new entry's hash
-                var canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
-                var entryHash = ComputeSha256Hash(canonicalString);
+                string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
+                string entryHash = ComputeSha256Hash(canonicalString);
 
                 // Create and insert the new entry
                 var entry = new ActionLogEntry
@@ -144,8 +144,8 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 // Recompute the entry's hash to verify it's correct
-                var canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
-                var computedHash = ComputeSha256Hash(canonicalString);
+                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
+                string computedHash = ComputeSha256Hash(canonicalString);
 
                 if (entry.EntryHash != computedHash)
                 {
@@ -163,9 +163,9 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Computes a SHA-256 hash of the canonical string.</summary>
         private static string ComputeSha256Hash(string input)
         {
-            var inputBytes = Encoding.UTF8.GetBytes(input);
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
             using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(inputBytes);
+            byte[] hashBytes = sha256.ComputeHash(inputBytes);
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
     }

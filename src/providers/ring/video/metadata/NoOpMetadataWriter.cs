@@ -87,17 +87,14 @@ namespace VideoForensics.Providers.Ring
 
             DateTime startTime = DateTime.UtcNow;
 
-            if (!_fileSystem.File.Exists(videoFilePath))
-            {
-                return CreateResult(
+            return !_fileSystem.File.Exists(videoFilePath)
+                ? CreateResult(
                     startTime,
                     status: MetadataStatus.Failed,
                     wasWritten: false,
                     isValid: false,
-                    errorMessage: $"Video file not found: {videoFilePath}");
-            }
-
-            return !IsValidVideoFile(videoFilePath)
+                    errorMessage: $"Video file not found: {videoFilePath}")
+                : !IsValidVideoFile(videoFilePath)
                 ? CreateResult(
                     startTime,
                     status: MetadataStatus.Corrupt,
@@ -118,8 +115,8 @@ namespace VideoForensics.Providers.Ring
                 return false;
             }
 
-            var extension = _fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
-            var validExtensions = new[] { ".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v" };
+            string extension = _fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
+            string[] validExtensions = new[] { ".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v" };
 
             if (Array.IndexOf(validExtensions, extension) < 0)
             {
@@ -130,8 +127,8 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 using FileSystemStream file = _fileSystem.FileStream.New(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
-                var headerBytes = new byte[4];
-                var bytesRead = file.Read(headerBytes, 0, 4);
+                byte[] headerBytes = new byte[4];
+                int bytesRead = file.Read(headerBytes, 0, 4);
 
                 // Detect obvious non-video formats even if file is small
                 // JPEG: 0xFFD8FF
@@ -195,7 +192,7 @@ namespace VideoForensics.Providers.Ring
             string? errorMessage = null,
             List<string>? photoprismTags = null)
         {
-            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            double duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
             return new MetadataWriteResult
             {

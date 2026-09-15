@@ -13,19 +13,13 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
 
         public string GetApplicationDataDirectory()
         {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsWindows()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics");
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                return GetXdgDataHome();
-            }
-
-            return OperatingSystem.IsMacOS()
+                    "VideoForensics")
+                : OperatingSystem.IsLinux()
+                ? GetXdgDataHome()
+                : OperatingSystem.IsMacOS()
                 ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Application Support", AppName)
@@ -34,19 +28,13 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
 
         public string GetLogsDirectory()
         {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsWindows()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics", "Logs");
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                return GetXdgStateHome();
-            }
-
-            return OperatingSystem.IsMacOS()
+                    "VideoForensics", "Logs")
+                : OperatingSystem.IsLinux()
+                ? GetXdgStateHome()
+                : OperatingSystem.IsMacOS()
                 ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Logs", AppName)
@@ -55,19 +43,13 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
 
         public string GetConfigDirectory()
         {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
+            return OperatingSystem.IsWindows()
+                ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics");
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                return GetXdgConfigHome();
-            }
-
-            return OperatingSystem.IsMacOS()
+                    "VideoForensics")
+                : OperatingSystem.IsLinux()
+                ? GetXdgConfigHome()
+                : OperatingSystem.IsMacOS()
                 ? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Preferences", AppName)

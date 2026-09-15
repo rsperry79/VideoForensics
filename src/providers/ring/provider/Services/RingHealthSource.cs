@@ -67,7 +67,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             foreach (T? device in source)
             {
-                var providerDeviceId = idSelector(device);
+                string? providerDeviceId = idSelector(device);
                 DeviceHealth? health = healthSelector(device);
                 if (providerDeviceId == null || health == null)
                 {

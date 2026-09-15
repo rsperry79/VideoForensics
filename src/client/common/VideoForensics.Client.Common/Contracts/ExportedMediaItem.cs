@@ -26,46 +26,52 @@ namespace VideoForensics.Client.Common.Contracts
         public string? MetadataJson { get; set; }
         public string? ApiSourceHash { get; set; }
 
-        public MediaItem ToMediaItem(string mediaRootPath) => new MediaItem
+        public MediaItem ToMediaItem(string mediaRootPath)
         {
-            Id = Id,
-            DeviceId = DeviceId,
-            DownloadEventId = DownloadEventId,
-            FileName = FileName,
-            FilePath = Path.Combine(mediaRootPath, RelativeMediaPath),
-            MediaFormat = MediaFormat,
-            FileSizeBytes = FileSizeBytes,
-            RecordedAtUtc = RecordedAtUtc,
-            DownloadedAtUtc = DownloadedAtUtc,
-            Sha256Hash = Sha256Hash,
-            VideoCodec = VideoCodec,
-            AudioCodec = AudioCodec,
-            Resolution = Resolution,
-            FrameRate = FrameRate,
-            MetadataJson = MetadataJson,
-            ApiSourceHash = ApiSourceHash
-        };
+            return new MediaItem
+            {
+                Id = Id,
+                DeviceId = DeviceId,
+                DownloadEventId = DownloadEventId,
+                FileName = FileName,
+                FilePath = Path.Combine(mediaRootPath, RelativeMediaPath),
+                MediaFormat = MediaFormat,
+                FileSizeBytes = FileSizeBytes,
+                RecordedAtUtc = RecordedAtUtc,
+                DownloadedAtUtc = DownloadedAtUtc,
+                Sha256Hash = Sha256Hash,
+                VideoCodec = VideoCodec,
+                AudioCodec = AudioCodec,
+                Resolution = Resolution,
+                FrameRate = FrameRate,
+                MetadataJson = MetadataJson,
+                ApiSourceHash = ApiSourceHash
+            };
+        }
 
-        public static ExportedMediaItem FromMediaItem(MediaItem item, string downloadLocationRoot) => new ExportedMediaItem
+        public static ExportedMediaItem FromMediaItem(MediaItem item, string downloadLocationRoot)
         {
-            Id = item.Id,
-            DeviceId = item.DeviceId,
-            DownloadEventId = item.DownloadEventId,
-            FileName = item.FileName,
-            RelativeMediaPath = string.IsNullOrEmpty(downloadLocationRoot)
+            return new ExportedMediaItem
+            {
+                Id = item.Id,
+                DeviceId = item.DeviceId,
+                DownloadEventId = item.DownloadEventId,
+                FileName = item.FileName,
+                RelativeMediaPath = string.IsNullOrEmpty(downloadLocationRoot)
                 ? item.FilePath
                 : Path.GetRelativePath(downloadLocationRoot, item.FilePath),
-            MediaFormat = item.MediaFormat,
-            FileSizeBytes = item.FileSizeBytes,
-            RecordedAtUtc = item.RecordedAtUtc,
-            DownloadedAtUtc = item.DownloadedAtUtc,
-            Sha256Hash = item.Sha256Hash,
-            VideoCodec = item.VideoCodec,
-            AudioCodec = item.AudioCodec,
-            Resolution = item.Resolution,
-            FrameRate = item.FrameRate,
-            MetadataJson = item.MetadataJson,
-            ApiSourceHash = item.ApiSourceHash
-        };
+                MediaFormat = item.MediaFormat,
+                FileSizeBytes = item.FileSizeBytes,
+                RecordedAtUtc = item.RecordedAtUtc,
+                DownloadedAtUtc = item.DownloadedAtUtc,
+                Sha256Hash = item.Sha256Hash,
+                VideoCodec = item.VideoCodec,
+                AudioCodec = item.AudioCodec,
+                Resolution = item.Resolution,
+                FrameRate = item.FrameRate,
+                MetadataJson = item.MetadataJson,
+                ApiSourceHash = item.ApiSourceHash
+            };
+        }
     }
 }

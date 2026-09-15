@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
+
 using Xunit;
 
 namespace VideoForensics.Hosting.Tests;
@@ -59,14 +61,14 @@ public class RemoteIntegrityRecordRepositoryTests
     {
         var mediaItemId1 = Guid.NewGuid();
         var mediaItemId2 = Guid.NewGuid();
-        var mediaItemIds = new[] { mediaItemId1, mediaItemId2 };
+        Guid[] mediaItemIds = new[] { mediaItemId1, mediaItemId2 };
 
-        var dtos = new[]
+        IntegrityRecordDto[] dtos = new[]
         {
             TestData.CreateDto(mediaItemId: mediaItemId1),
             TestData.CreateDto(mediaItemId: mediaItemId2)
         };
-        var jsonContent = JsonSerializer.Serialize(dtos);
+        string jsonContent = JsonSerializer.Serialize(dtos);
         HttpRequestMessage? capturedRequest = null;
 
         var handler = new MockHttpMessageHandler(async request =>
@@ -82,7 +84,7 @@ public class RemoteIntegrityRecordRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteIntegrityRecordRepository(httpClient);
 
-        var result = await repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<IntegrityRecord> result = await repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -96,8 +98,8 @@ public class RemoteIntegrityRecordRepositoryTests
     [Fact]
     public async Task GetLatestByMediaItemIdsAsync_WithEmptyResponse_ReturnsEmptyList()
     {
-        var mediaItemIds = new[] { Guid.NewGuid() };
-        var jsonContent = JsonSerializer.Serialize(new List<IntegrityRecordDto>());
+        Guid[] mediaItemIds = new[] { Guid.NewGuid() };
+        string jsonContent = JsonSerializer.Serialize(new List<IntegrityRecordDto>());
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -111,7 +113,7 @@ public class RemoteIntegrityRecordRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteIntegrityRecordRepository(httpClient);
 
-        var result = await repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
+        IReadOnlyList<IntegrityRecord> result = await repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);
@@ -120,7 +122,7 @@ public class RemoteIntegrityRecordRepositoryTests
     [Fact]
     public async Task GetLatestByMediaItemIdsAsync_WithServerError_Throws()
     {
-        var mediaItemIds = new[] { Guid.NewGuid() };
+        Guid[] mediaItemIds = new[] { Guid.NewGuid() };
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -130,13 +132,13 @@ public class RemoteIntegrityRecordRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteIntegrityRecordRepository(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetLatestByMediaItemIdsAsync(mediaItemIds, CancellationToken.None));
     }
 
     [Fact]
     public async Task AddAsync_WithValidRecord_ThrowsNotSupportedException()
     {
-        var record = TestData.CreateDomain();
+        IntegrityRecord record = TestData.CreateDomain();
 
         var handler = new MockHttpMessageHandler(async request =>
         {
@@ -146,7 +148,7 @@ public class RemoteIntegrityRecordRepositoryTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
         var repo = new RemoteIntegrityRecordRepository(httpClient);
 
-        var ex = await Assert.ThrowsAsync<NotSupportedException>(() => repo.AddAsync(record, CancellationToken.None));
+        NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(() => repo.AddAsync(record, CancellationToken.None));
         Assert.Contains("append-only", ex.Message);
         Assert.Contains("server-owned", ex.Message);
     }

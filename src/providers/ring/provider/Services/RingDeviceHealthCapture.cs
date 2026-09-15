@@ -1,8 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using System.Threading;
-using System.Threading.Tasks;
-
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 

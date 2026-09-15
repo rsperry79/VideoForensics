@@ -314,7 +314,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
             VideoMetadata result = _extractor.ExtractMetadata(ringEvent);
 
             Assert.NotNull(result.Keywords);
-            var deviceKeyword = result.Keywords.FirstOrDefault(k => k.Contains("door"));
+            string? deviceKeyword = result.Keywords.FirstOrDefault(k => k.Contains("door"));
             Assert.NotNull(deviceKeyword);
             Assert.False(deviceKeyword!.Contains("_"), "Device keyword should not contain underscores");
         }
@@ -439,7 +439,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 
             VideoMetadata result = _extractor.ExtractMetadata(ringEvent);
 
-            var validEventTypes = new[] { "motion", "person", "ring", "doorbell" };
+            string[] validEventTypes = new[] { "motion", "person", "ring", "doorbell" };
             Assert.True(validEventTypes.Contains(result.EventType));
         }
 

@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
@@ -165,9 +164,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceCapabilitiesRepository_AddAsync_PreservesAllProperties()
         {
             var deviceId = Guid.NewGuid();
-            var syncedAt = DateTime.UtcNow;
+            DateTime syncedAt = DateTime.UtcNow;
 
-            DeviceCapabilities capabilities = new DeviceCapabilities
+            var capabilities = new DeviceCapabilities
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
@@ -211,7 +210,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            DeviceCapabilities capabilities = new DeviceCapabilities
+            var capabilities = new DeviceCapabilities
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
@@ -299,11 +298,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
             DeviceCapabilities capabilities = TestDataBuilder.BuildDeviceCapabilities(deviceId);
-            var originalTime = DateTime.UtcNow.AddHours(-1);
+            DateTime originalTime = DateTime.UtcNow.AddHours(-1);
             capabilities.LastSyncedUtc = originalTime;
             await _repository.AddAsync(capabilities, CancellationToken.None);
 
-            var newTime = DateTime.UtcNow;
+            DateTime newTime = DateTime.UtcNow;
             capabilities.LastSyncedUtc = newTime;
             await _repository.UpdateAsync(capabilities, CancellationToken.None);
 

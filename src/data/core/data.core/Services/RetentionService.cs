@@ -48,7 +48,7 @@ namespace VideoForensics.Data.Core.Services
 
                 if (heldMediaItemIds.Count > 0)
                 {
-                    var skippedCount = itemsToPurge.Count(i => heldMediaItemIds.Contains(i.Id));
+                    int skippedCount = itemsToPurge.Count(i => heldMediaItemIds.Contains(i.Id));
                     _logger.LogInformation("Skipping {SkippedCount} item(s) under active legal hold during retention purge", skippedCount);
                     itemsToPurge = itemsToPurge.Where(i => !heldMediaItemIds.Contains(i.Id)).ToList();
                 }

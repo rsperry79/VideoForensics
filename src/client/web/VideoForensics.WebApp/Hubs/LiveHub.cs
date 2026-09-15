@@ -52,7 +52,7 @@ namespace VideoForensics.WebApp.Hubs
 
         private Guid? GetPairedDeviceId()
         {
-            var claim = Context.User?.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+            string? claim = Context.User?.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
             return Guid.TryParse(claim, out Guid id) ? id : null;
         }
     }

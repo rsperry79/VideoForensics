@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -21,20 +22,20 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_HelloPacket_HasCorrectStructure()
         {
             // Arrange - Reconstruct the expected hello packet structure
-            var sessionId = "test1234567890";
+            string sessionId = "test1234567890";
 
             // Act - Build expected hello packet manually
-            var payload = new byte[24];
+            byte[] payload = new byte[24];
             payload[0] = 0xFF;
             payload[1] = 0xFD;
             payload[2] = 0x00;
             payload[3] = 0x24;
             payload[4] = 0x00;
             payload[5] = 0x01;
-            var idBytes = System.Text.Encoding.ASCII.GetBytes(sessionId);
+            byte[] idBytes = System.Text.Encoding.ASCII.GetBytes(sessionId);
             Array.Copy(idBytes, 0, payload, 6, Math.Min(idBytes.Length, 16));
 
-            var packet = new byte[4 + payload.Length];
+            byte[] packet = new byte[4 + payload.Length];
             packet[0] = (byte)'$';
             packet[1] = 0x00;
             BinaryPrimitives.WriteUInt16BigEndian(packet.AsSpan(2), (ushort)payload.Length);
@@ -56,17 +57,17 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_HelloPacket_PadsSessionIdWithZeros()
         {
             // Arrange
-            var shortSessionId = "abc";
+            string shortSessionId = "abc";
 
             // Act - Build hello packet with short session ID
-            var payload = new byte[24];
+            byte[] payload = new byte[24];
             payload[0] = 0xFF;
             payload[1] = 0xFD;
             payload[2] = 0x00;
             payload[3] = 0x24;
             payload[4] = 0x00;
             payload[5] = 0x01;
-            var idBytes = System.Text.Encoding.ASCII.GetBytes(shortSessionId);
+            byte[] idBytes = System.Text.Encoding.ASCII.GetBytes(shortSessionId);
             Array.Copy(idBytes, 0, payload, 6, Math.Min(idBytes.Length, 16));
 
             // Assert - Verify padding
@@ -84,22 +85,22 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_HelloPacket_TruncatesLongSessionId()
         {
             // Arrange
-            var longSessionId = "this_is_a_very_long_session_id_that_exceeds_16_bytes";
+            string longSessionId = "this_is_a_very_long_session_id_that_exceeds_16_bytes";
 
             // Act - Build hello packet with long session ID
-            var payload = new byte[24];
+            byte[] payload = new byte[24];
             payload[0] = 0xFF;
             payload[1] = 0xFD;
             payload[2] = 0x00;
             payload[3] = 0x24;
             payload[4] = 0x00;
             payload[5] = 0x01;
-            var idBytes = System.Text.Encoding.ASCII.GetBytes(longSessionId);
+            byte[] idBytes = System.Text.Encoding.ASCII.GetBytes(longSessionId);
             Array.Copy(idBytes, 0, payload, 6, Math.Min(idBytes.Length, 16));
 
             // Assert - Verify only first 16 bytes copied
             Assert.Equal(16, Math.Min(idBytes.Length, 16));
-            var extractedId = System.Text.Encoding.ASCII.GetString(payload, 6, 16).TrimEnd('\0');
+            string extractedId = System.Text.Encoding.ASCII.GetString(payload, 6, 16).TrimEnd('\0');
             Assert.Equal("this_is_a_very_l", extractedId);
         }
 
@@ -120,7 +121,7 @@ namespace VideoForensics.Providers.Uniview.Tests
         {
             // Arrange
             ushort expectedLength = 1234;
-            var header = new byte[4];
+            byte[] header = new byte[4];
             header[0] = (byte)'$';
             header[1] = 0;
 
@@ -128,7 +129,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(2), expectedLength);
 
             // Assert - Decode
-            var decodedLength = BinaryPrimitives.ReadUInt16BigEndian(header.AsSpan(2));
+            ushort decodedLength = BinaryPrimitives.ReadUInt16BigEndian(header.AsSpan(2));
             Assert.Equal(expectedLength, decodedLength);
         }
 
@@ -151,9 +152,9 @@ namespace VideoForensics.Providers.Uniview.Tests
             const uint VideoClockRate = 90000;
 
             // Act
-            var delta = unchecked(newTimestamp - lastTimestamp);
-            var accumulatedTicks = delta;
-            var elapsedSeconds = accumulatedTicks / (double)VideoClockRate;
+            uint delta = unchecked(newTimestamp - lastTimestamp);
+            uint accumulatedTicks = delta;
+            double elapsedSeconds = accumulatedTicks / (double)VideoClockRate;
 
             // Assert
             Assert.Equal(90u, delta);
@@ -174,18 +175,20 @@ namespace VideoForensics.Providers.Uniview.Tests
             for (int i = 1; i <= 25; i++)
             {
                 uint newTimestamp = (uint)(TicksPerFrame * i);
-                var delta = unchecked(newTimestamp - lastTimestamp);
+                uint delta = unchecked(newTimestamp - lastTimestamp);
                 const uint MaxReasonableDelta = VideoClockRate * 10;
 
                 if (delta <= MaxReasonableDelta)
+                {
                     accumulatedTicks += delta;
+                }
 
                 lastTimestamp = newTimestamp;
             }
 
             // Assert
-            var elapsedSeconds = accumulatedTicks / (double)VideoClockRate;
-            Assert.True(elapsedSeconds > 0.9 && elapsedSeconds < 1.1, $"Expected ~1 second, got {elapsedSeconds}");
+            double elapsedSeconds = accumulatedTicks / (double)VideoClockRate;
+            Assert.True(elapsedSeconds is > 0.9 and < 1.1, $"Expected ~1 second, got {elapsedSeconds}");
         }
 
         [Fact]
@@ -199,8 +202,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             const uint MaxReasonableDelta = VideoClockRate * 10;
 
             // Act
-            var delta = unchecked(newTimestamp - lastTimestamp);
-            var shouldAccumulate = delta <= MaxReasonableDelta;
+            uint delta = unchecked(newTimestamp - lastTimestamp);
+            bool shouldAccumulate = delta <= MaxReasonableDelta;
 
             // Assert - Should NOT accumulate due to large delta
             Assert.False(shouldAccumulate);
@@ -215,8 +218,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             byte videoPacketByte1 = 0x6C; // Payload type 108 (dynamic)
 
             // Act
-            var audioPayloadType = audioPacketByte1 & 0x7F;
-            var videoPayloadType = videoPacketByte1 & 0x7F;
+            int audioPayloadType = audioPacketByte1 & 0x7F;
+            int videoPayloadType = videoPacketByte1 & 0x7F;
 
             // Assert
             Assert.Equal(AudioPayloadType, audioPayloadType);
@@ -227,7 +230,7 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_RtpPacket_ExtractsTimestamp()
         {
             // Arrange - Build a minimal RTP packet
-            var packet = new byte[12 + 4]; // RTP header + timestamp field
+            byte[] packet = new byte[12 + 4]; // RTP header + timestamp field
             packet[0] = 0x80; // V=2, P=0, X=0, CC=0
             packet[1] = 0x6C; // M=0, PT=108
             // Sequence (bytes 2-3): leave as 0
@@ -238,7 +241,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             BinaryPrimitives.WriteUInt32BigEndian(packet.AsSpan(8, 4), 0x12345678);
 
             // Act
-            var extractedTimestamp = BinaryPrimitives.ReadUInt32BigEndian(packet.AsSpan(4, 4));
+            uint extractedTimestamp = BinaryPrimitives.ReadUInt32BigEndian(packet.AsSpan(4, 4));
 
             // Assert
             Assert.Equal(timestamp, extractedTimestamp);
@@ -286,9 +289,9 @@ namespace VideoForensics.Providers.Uniview.Tests
         public async Task RtpDownloadSession_CreateOutputFiles_Succeeds()
         {
             // Arrange
-            var basePath = Path.Combine(Path.GetTempPath(), "rtp_test_" + Guid.NewGuid());
-            var videoPath = basePath + ".h265";
-            var audioPath = basePath + ".g711";
+            string basePath = Path.Combine(Path.GetTempPath(), "rtp_test_" + Guid.NewGuid());
+            string videoPath = basePath + ".h265";
+            string audioPath = basePath + ".g711";
 
             // Act
             await File.WriteAllBytesAsync(videoPath, new byte[] { 0x00, 0x00, 0x00, 0x01 });
@@ -307,8 +310,8 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_RtpPacketValidation_MinimumSize()
         {
             // Arrange
-            var validPacket = new byte[12]; // Minimum RTP header
-            var tooShort = new byte[11];
+            byte[] validPacket = new byte[12]; // Minimum RTP header
+            byte[] tooShort = new byte[11];
 
             // Act & Assert
             Assert.True(validPacket.Length >= 12);
@@ -324,9 +327,9 @@ namespace VideoForensics.Providers.Uniview.Tests
             byte invalidVersionByte2 = 0xC0; // V=3
 
             // Act
-            var validVersion = validVersionByte >> 6;
-            var invalidVersion1 = invalidVersionByte1 >> 6;
-            var invalidVersion2 = invalidVersionByte2 >> 6;
+            int validVersion = validVersionByte >> 6;
+            int invalidVersion1 = invalidVersionByte1 >> 6;
+            int invalidVersion2 = invalidVersionByte2 >> 6;
 
             // Assert
             Assert.Equal(2, validVersion);
@@ -343,9 +346,9 @@ namespace VideoForensics.Providers.Uniview.Tests
             byte withCSRC15 = 0x8F; // CC=15
 
             // Act
-            var count0 = noCSRC & 0x0F;
-            var count2 = withCSRC2 & 0x0F;
-            var count15 = withCSRC15 & 0x0F;
+            int count0 = noCSRC & 0x0F;
+            int count2 = withCSRC2 & 0x0F;
+            int count15 = withCSRC15 & 0x0F;
 
             // Assert
             Assert.Equal(0, count0);
@@ -361,8 +364,8 @@ namespace VideoForensics.Providers.Uniview.Tests
             byte withExtension = 0x90; // X=1
 
             // Act
-            var hasExtension0 = (noExtension & 0x10) != 0;
-            var hasExtension1 = (withExtension & 0x10) != 0;
+            bool hasExtension0 = (noExtension & 0x10) != 0;
+            bool hasExtension1 = (withExtension & 0x10) != 0;
 
             // Assert
             Assert.False(hasExtension0);
@@ -373,13 +376,14 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_RtpHeaderOffset_Calculation()
         {
             // Arrange - No CSRC, no extension
-            var b0 = (byte)0x80;
-            var csrcCount = b0 & 0x0F;
-            var hasExtension = (b0 & 0x10) != 0;
+            byte b0 = 0x80;
+            int csrcCount = b0 & 0x0F;
+
+            _ = (b0 & 0x10) != 0;
 
             // Act
-            var baseOffset = 12 + csrcCount * 4;
-            var finalOffset = baseOffset;
+            int baseOffset = 12 + (csrcCount * 4);
+            int finalOffset = baseOffset;
 
             // Assert
             Assert.Equal(12, finalOffset);
@@ -389,17 +393,17 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void RtpDownloadSession_RtpHeaderOffset_WithExtension()
         {
             // Arrange - With extension
-            var b0 = (byte)0x90; // Has extension
-            var csrcCount = b0 & 0x0F;
-            var hasExtension = (b0 & 0x10) != 0;
-            var extLenWords = 1;
+            byte b0 = 0x90; // Has extension
+            int csrcCount = b0 & 0x0F;
+            bool hasExtension = (b0 & 0x10) != 0;
+            int extLenWords = 1;
 
             // Act
-            var baseOffset = 12 + csrcCount * 4;
-            var offsetAfterExtension = baseOffset;
+            int baseOffset = 12 + (csrcCount * 4);
+            int offsetAfterExtension = baseOffset;
             if (hasExtension)
             {
-                offsetAfterExtension += 4 + extLenWords * 4;
+                offsetAfterExtension += 4 + (extLenWords * 4);
             }
 
             // Assert
@@ -414,7 +418,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             int bytesRead = 0; // Simulates connection closed
 
             // Act
-            var isClosed = bytesRead == 0;
+            bool isClosed = bytesRead == 0;
 
             // Assert
             Assert.True(isClosed);
@@ -428,7 +432,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             int actualBytesRead = 500;
 
             // Act
-            var isTruncated = actualBytesRead < expectedBytes;
+            bool isTruncated = actualBytesRead < expectedBytes;
 
             // Assert
             Assert.True(isTruncated);

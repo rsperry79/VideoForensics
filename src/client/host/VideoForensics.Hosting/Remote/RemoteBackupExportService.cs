@@ -36,7 +36,7 @@ namespace VideoForensics.Hosting.Remote
         public async Task<BackupExportResult> ExportBackupAsync(string outputDirectory, CancellationToken ct)
         {
             var request = new ExportBackupRequest(outputDirectory);
-            var jsonContent = JsonSerializer.Serialize(request);
+            string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/backup/export")
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -58,10 +58,10 @@ namespace VideoForensics.Hosting.Remote
                 }
 
                 string outputPath = Path.Combine(outputDirectory, fileName);
-                Directory.CreateDirectory(outputDirectory);
+                _ = Directory.CreateDirectory(outputDirectory);
 
                 using (Stream contentStream = await response.Content.ReadAsStreamAsync(ct))
-                using (var fileStream = System.IO.File.Create(outputPath))
+                using (FileStream fileStream = System.IO.File.Create(outputPath))
                 {
                     await contentStream.CopyToAsync(fileStream, ct);
                 }

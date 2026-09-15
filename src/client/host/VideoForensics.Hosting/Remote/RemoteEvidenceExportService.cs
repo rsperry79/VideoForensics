@@ -32,7 +32,7 @@ namespace VideoForensics.Hosting.Remote
             CancellationToken ct)
         {
             var request = new ExportEvidenceRequest(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase);
-            var jsonContent = JsonSerializer.Serialize(request);
+            string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/export")
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")

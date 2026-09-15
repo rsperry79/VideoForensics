@@ -58,8 +58,8 @@ public class DeviceLocationEntityTests
         string type = "Doorbell";
         bool isOnline = true;
         string metadataJson = "{\"model\": \"Ring Doorbell 3\"}";
-        var lastSuccessfulPullAtUtc = DateTime.UtcNow.AddHours(-2);
-        var lastPullAttemptAtUtc = DateTime.UtcNow.AddHours(-1);
+        DateTime lastSuccessfulPullAtUtc = DateTime.UtcNow.AddHours(-2);
+        DateTime lastPullAttemptAtUtc = DateTime.UtcNow.AddHours(-1);
         string timeZoneId = "America/New_York";
 
         // Act
@@ -120,7 +120,7 @@ public class DeviceLocationEntityTests
     public void Device_WithPartialTimestamps_RoundsTrip()
     {
         // Arrange
-        var lastSuccessfulPullAtUtc = DateTime.UtcNow.AddDays(-1);
+        DateTime lastSuccessfulPullAtUtc = DateTime.UtcNow.AddDays(-1);
 
         // Act
         var device = new Device

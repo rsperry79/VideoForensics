@@ -185,7 +185,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var totalCount = await context.ActionLogEntries
+                int totalCount = await context.ActionLogEntries
                     .Where(ale => ale.EntityId == evidenceId && ale.EntityType == "Evidence")
                     .CountAsync(ct);
 
@@ -240,9 +240,9 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     try
                     {
-                        var decodedBytes = Convert.FromBase64String(cursor);
-                        var decodedString = System.Text.Encoding.UTF8.GetString(decodedBytes);
-                        if (int.TryParse(decodedString, out var cursorIndex))
+                        byte[] decodedBytes = Convert.FromBase64String(cursor);
+                        string decodedString = System.Text.Encoding.UTF8.GetString(decodedBytes);
+                        if (int.TryParse(decodedString, out int cursorIndex))
                         {
                             startIndex = cursorIndex;
                         }
@@ -300,7 +300,7 @@ namespace VideoForensics.Data.Database.Repositories
                 string? nextCursor = null;
                 if (startIndex + paginatedExports.Count < allExports.Count)
                 {
-                    var nextIndex = startIndex + paginatedExports.Count;
+                    int nextIndex = startIndex + paginatedExports.Count;
                     nextCursor = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(nextIndex.ToString()));
                 }
 
@@ -341,7 +341,7 @@ namespace VideoForensics.Data.Database.Repositories
                     .Select(e => e.Id)
                     .ToListAsync(ct);
 
-                var totalEventsTracked = eventIds.Count;
+                int totalEventsTracked = eventIds.Count;
 
                 // Get access records
                 List<ActionLogEntry> accessEntries = await context.ActionLogEntries
@@ -349,7 +349,7 @@ namespace VideoForensics.Data.Database.Repositories
                     .OrderBy(ale => ale.TimestampUtc)
                     .ToListAsync(ct);
 
-                var accessRecordsCount = accessEntries.Count;
+                int accessRecordsCount = accessEntries.Count;
                 var allAccesses = accessEntries.Select(e => new AccessAuditLog
                 {
                     Id = e.Id,
@@ -440,7 +440,7 @@ namespace VideoForensics.Data.Database.Repositories
                     var flagReasons = new List<string>();
 
                     // Check for off-hours access (22:00 - 06:00)
-                    var hour = entry.TimestampUtc.Hour;
+                    int hour = entry.TimestampUtc.Hour;
                     if (hour is >= 22 or < 6)
                     {
                         suspicionScore += 30;
@@ -449,7 +449,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                     // Check for excessive access (>100/day)
                     var dailyKey = new { entry.TimestampUtc.Date, User = entry.Actor };
-                    if (dailyAccessCounts.TryGetValue(dailyKey, out var count) && count > 100)
+                    if (dailyAccessCounts.TryGetValue(dailyKey, out int count) && count > 100)
                     {
                         suspicionScore += 40;
                         flagReasons.Add("ExcessiveAccess");

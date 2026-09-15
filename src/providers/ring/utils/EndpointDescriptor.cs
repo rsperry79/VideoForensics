@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-
 namespace VideoForensics.Providers.Ring
 {
     /// <summary>
@@ -72,8 +71,8 @@ namespace VideoForensics.Providers.Ring
         public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = [];
         public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = [];
 
-        public static readonly IReadOnlyList<EndpointDescriptor> All = new List<EndpointDescriptor>
-        {
+        public static readonly IReadOnlyList<EndpointDescriptor> All =
+        [
             new()
             {
                 Key = "devices",
@@ -413,9 +412,9 @@ namespace VideoForensics.Providers.Ring
                 Invoke = (session, target) => session.SetMotionDetection(target.DoorbotId!.Value, false),
                 PrepareRestore = target =>
                 {
-                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.MotionDetectionEnabled.HasValue;
-                    var original = !captured || snap!.MotionDetectionEnabled!.Value;
-                    var description = captured
+                    bool captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.MotionDetectionEnabled.HasValue;
+                    bool original = !captured || snap!.MotionDetectionEnabled!.Value;
+                    string description = captured
                         ? $"motion_detection_enabled={original}"
                         : "unknown (not present in the devices listing for this doorbot) - restoring to enabled as a safe default";
                     return new RestorePlan(description, captured, session => session.SetMotionDetection(target.DoorbotId!.Value, original));
@@ -467,9 +466,9 @@ namespace VideoForensics.Providers.Ring
                 Invoke = (session, target) => session.SetNightMode(target.DoorbotId!.Value, true),
                 PrepareRestore = target =>
                 {
-                    var captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
-                    var original = captured && snap!.NightModeEnabled!.Value;
-                    var description = captured
+                    bool captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
+                    bool original = captured && snap!.NightModeEnabled!.Value;
+                    string description = captured
                         ? $"night_mode={original}"
                         : "unknown (not present in the devices listing for this doorbot) - restoring to disabled as a safe default";
                     return new RestorePlan(description, captured, session => session.SetNightMode(target.DoorbotId!.Value, original));
@@ -500,7 +499,7 @@ namespace VideoForensics.Providers.Ring
 
                     await session.SetLocationMode(target.LocationId!.Value, LocationModeValue!);
                 },
-                PrepareRestore = target => OriginalLocationModeByLocation.TryGetValue(target.LocationId!.Value, out var mode) && !string.IsNullOrWhiteSpace(mode)
+                PrepareRestore = target => OriginalLocationModeByLocation.TryGetValue(target.LocationId!.Value, out string? mode) && !string.IsNullOrWhiteSpace(mode)
                     ? new RestorePlan($"mode={mode}", WasCaptured: true, Restore: session => session.SetLocationMode(target.LocationId!.Value, mode))
                     : null
             },
@@ -699,7 +698,7 @@ namespace VideoForensics.Providers.Ring
                 NoRestoreReason = "not applicable: Ring Intercom auto re-locks after its own timeout; this client exposes no immediate re-lock command to call.",
                 Invoke = (session, target) => session.Unlock(target.DoorbotId!.Value)
             },
-        };
+        ];
 
         // Ambient parameters threaded in by Program from CLI options before Runner.RunAsync runs -
         // the Invoke delegate signature only carries a Session and a location/doorbot/chime target,

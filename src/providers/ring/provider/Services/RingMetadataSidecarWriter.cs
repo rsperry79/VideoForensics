@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using VideoForensics.Data.Common;
-
 namespace VideoForensics.Providers.Ring.Services
 {
     /// <summary>
@@ -82,8 +80,8 @@ namespace VideoForensics.Providers.Ring.Services
                     )
                 );
 
-                var metadataPath = Path.ChangeExtension(mediaFilePath, ".json");
-                var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+                string metadataPath = Path.ChangeExtension(mediaFilePath, ".json");
+                string json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
                 File.WriteAllText(metadataPath, json);
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
@@ -114,8 +112,8 @@ namespace VideoForensics.Providers.Ring.Services
                     MediaFormat: "jpg"
                 );
 
-                var metadataPath = Path.ChangeExtension(mediaFilePath, ".json");
-                var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
+                string metadataPath = Path.ChangeExtension(mediaFilePath, ".json");
+                string json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(metadataPath, json);
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
@@ -154,7 +152,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // JSON is valid
-                var content = File.ReadAllText(jsonPath);
+                string content = File.ReadAllText(jsonPath);
                 using var doc = JsonDocument.Parse(content);
                 // If we can parse it and get the root element, it's valid JSON
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
@@ -192,7 +190,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 Span<byte> header = stackalloc byte[3];
-                var read = stream.Read(header);
+                int read = stream.Read(header);
                 // JPEG files start with the SOI marker: FF D8 FF
                 return read == 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
             }

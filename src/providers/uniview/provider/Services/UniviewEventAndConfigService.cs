@@ -1,5 +1,7 @@
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
+
+using System.Text.Json.Nodes;
+
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Uniview.Services;
@@ -33,7 +35,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         string? eventType = null,
         CancellationToken cancellationToken = default)
     {
-        var client = _sessionProvider.GetClient();
+        UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
             _logger.LogError("Not authenticated: Session is null");
@@ -41,8 +43,10 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
 
         // Parse deviceId to channel number (assuming format like "1", "2", etc.)
-        if (!int.TryParse(deviceId, out var channel))
+        if (!int.TryParse(deviceId, out int channel))
+        {
             throw new ArgumentException($"Invalid deviceId format: {deviceId}", nameof(deviceId));
+        }
 
         // If eventType is specified and not motion-related, return empty list since motion
         // is the only event type this device exposes
@@ -52,7 +56,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             return [];
         }
 
-        var clockOffset = await client.GetClockOffsetAsync(cancellationToken);
+        TimeSpan clockOffset = await client.GetClockOffsetAsync(cancellationToken);
         var events = new List<DeviceEvent>();
 
         // Query segment listings month by month to avoid the per-query result cap
@@ -61,26 +65,30 @@ public class UniviewEventAndConfigService : IEventAndConfigService
              current < new DateTimeOffset(endDate);
              current = current.AddMonths(1))
         {
-            var monthStart = current;
-            var monthEnd = current.AddMonths(1);
+            DateTimeOffset monthStart = current;
+            DateTimeOffset monthEnd = current.AddMonths(1);
 
             // Clamp the month-end to the requested endDate
             if (monthEnd > new DateTimeOffset(endDate))
+            {
                 monthEnd = new DateTimeOffset(endDate);
+            }
 
             try
             {
-                var segments = await client.ListSegmentsAsync(channel, monthStart, monthEnd, cancellationToken);
+                IReadOnlyList<RecordSegment> segments = await client.ListSegmentsAsync(channel, monthStart, monthEnd, cancellationToken);
 
-                foreach (var segment in segments)
+                foreach (RecordSegment segment in segments)
                 {
                     // Only include motion-detection segments (RecordType == 1)
                     if (!segment.IsMotionDetection)
+                    {
                         continue;
+                    }
 
-                    var eventId = $"{deviceId}-{segment.Begin.ToUnixTimeSeconds()}";
-                    var correctedBegin = segment.Begin + clockOffset;
-                    var correctedEnd = segment.End + clockOffset;
+                    string eventId = $"{deviceId}-{segment.Begin.ToUnixTimeSeconds()}";
+                    DateTimeOffset correctedBegin = segment.Begin + clockOffset;
+                    DateTimeOffset correctedEnd = segment.End + clockOffset;
                     var metadata = new Dictionary<string, string>
                     {
                         ["EndTime"] = correctedEnd.UtcDateTime.ToString("O"),
@@ -110,7 +118,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
 
     public async Task<DeviceConfig?> GetDeviceConfigAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        var client = _sessionProvider.GetClient();
+        UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
             _logger.LogError("Not authenticated: Session is null");
@@ -118,18 +126,20 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
 
         // Parse deviceId to channel number
-        if (!int.TryParse(deviceId, out var channel))
+        if (!int.TryParse(deviceId, out int channel))
+        {
             throw new ArgumentException($"Invalid deviceId format: {deviceId}", nameof(deviceId));
+        }
 
         try
         {
             // Fetch motion detection and recording schedule configs
-            var motionDetectionJson = await client.GetMotionDetectionAsync(channel, cancellationToken);
-            var recordScheduleJson = await client.GetRecordScheduleAsync(channel, cancellationToken);
+            JsonNode? motionDetectionJson = await client.GetMotionDetectionAsync(channel, cancellationToken);
+            JsonNode? recordScheduleJson = await client.GetRecordScheduleAsync(channel, cancellationToken);
 
             // Extract motion detection settings (defensively, field names are unverified against live device)
-            var motionDetectionEnabled = false;
-            var motionSensitivity = 0;
+            bool motionDetectionEnabled = false;
+            int motionSensitivity = 0;
 
             if (motionDetectionJson is JsonObject motionObj)
             {
@@ -163,7 +173,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             }
 
             // Extract recording mode (best-effort, unverified against live device)
-            var recordingMode = "unknown";
+            string recordingMode = "unknown";
             if (recordScheduleJson is JsonObject schedObj)
             {
                 try
@@ -192,6 +202,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             {
                 customSettings["motionDetectionRaw"] = motionDetectionJson.ToJsonString();
             }
+
             if (recordScheduleJson is not null)
             {
                 customSettings["recordScheduleRaw"] = recordScheduleJson.ToJsonString();
@@ -215,7 +226,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
 
     public async Task<bool> UpdateDeviceConfigAsync(string deviceId, DeviceConfig config, CancellationToken cancellationToken = default)
     {
-        var client = _sessionProvider.GetClient();
+        UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
             _logger.LogError("Not authenticated: Session is null");
@@ -223,8 +234,10 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
 
         // Parse deviceId to channel number
-        if (!int.TryParse(deviceId, out var channel))
+        if (!int.TryParse(deviceId, out int channel))
+        {
             throw new ArgumentException($"Invalid deviceId format: {deviceId}", nameof(deviceId));
+        }
 
         try
         {
@@ -233,14 +246,14 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             // otherwise construct from the typed config fields.
             JsonObject motionDetectionData;
 
-            if (config.CustomSettings?.TryGetValue("motionDetectionRaw", out var rawMotionObj) == true &&
+            if (config.CustomSettings?.TryGetValue("motionDetectionRaw", out object? rawMotionObj) == true &&
                 rawMotionObj is string rawMotionString)
             {
                 try
                 {
                     // Parse the raw JSON and merge in the typed field updates
                     motionDetectionData = JsonNode.Parse(rawMotionString) as JsonObject
-                        ?? new JsonObject();
+                        ?? [];
 
                     // Update the typed fields within the existing structure
                     if (motionDetectionData["Rule"] is JsonObject ruleObj)

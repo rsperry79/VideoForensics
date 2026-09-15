@@ -12,7 +12,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapConfigEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/config");
+            RouteGroupBuilder group = app.MapGroup("/api/v1/config");
 
             _ = group.MapGet("/", (IForensicsConfiguration config) =>
                 Results.Ok(config.ToDto()))

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
@@ -35,13 +36,13 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var locationId = Guid.NewGuid();
-            var exportedBy = "analyst@example.com";
-            var eventsExported = 150;
-            var exportFormat = "AES256Zip";
-            var purpose = "Case evidence packaging for prosecution";
+            string exportedBy = "analyst@example.com";
+            int eventsExported = 150;
+            string exportFormat = "AES256Zip";
+            string purpose = "Case evidence packaging for prosecution";
 
             // Act
-            var record = await _repository.RecordExportAsync(
+            ExportAuditRecordEntity record = await _repository.RecordExportAsync(
                 locationId, exportedBy, eventsExported, exportFormat, purpose, CancellationToken.None);
 
             // Assert
@@ -59,11 +60,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             var locationId = Guid.NewGuid();
-            var record = await _repository.RecordExportAsync(
+            ExportAuditRecordEntity record = await _repository.RecordExportAsync(
                 locationId, "analyst@example.com", 100, "PDF", "Report generation", CancellationToken.None);
 
             // Act
-            var retrieved = await _repository.GetAsync(record.Id, CancellationToken.None);
+            ExportAuditRecordEntity? retrieved = await _repository.GetAsync(record.Id, CancellationToken.None);
 
             // Assert
             Assert.NotNull(retrieved);
@@ -80,7 +81,7 @@ namespace VideoForensics.Data.Database.Tests
             _ = await _repository.RecordExportAsync(locationId, "user2@example.com", 75, "PDF", "Export2", CancellationToken.None);
 
             // Act
-            var exports = await _repository.GetForLocationAsync(locationId, CancellationToken.None);
+            IReadOnlyList<ExportAuditRecordEntity> exports = await _repository.GetForLocationAsync(locationId, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, exports.Count);
@@ -91,14 +92,14 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ExportAuditRecordRepository_GetByUserAsync_ReturnsUserExports()
         {
             // Arrange
-            var userId = "analyst@example.com";
+            string userId = "analyst@example.com";
             var location1 = Guid.NewGuid();
             var location2 = Guid.NewGuid();
             _ = await _repository.RecordExportAsync(location1, userId, 100, "AES256Zip", "Export1", CancellationToken.None);
             _ = await _repository.RecordExportAsync(location2, userId, 200, "PDF", "Export2", CancellationToken.None);
 
             // Act
-            var exports = await _repository.GetByUserAsync(userId, CancellationToken.None);
+            IReadOnlyList<ExportAuditRecordEntity> exports = await _repository.GetByUserAsync(userId, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, exports.Count);
@@ -116,7 +117,7 @@ namespace VideoForensics.Data.Database.Tests
             _ = await _repository.RecordExportAsync(location1, "user1@example.com", 75, "AES256Zip", "Export3", CancellationToken.None);
 
             // Act
-            var stats = await _repository.GetStatisticsAsync(CancellationToken.None);
+            ExportStatistics stats = await _repository.GetStatisticsAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(3, stats.TotalExports);

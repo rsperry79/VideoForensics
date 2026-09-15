@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
 {
@@ -38,7 +39,7 @@ namespace VideoForensics.Hosting
 
         public async Task<IReadOnlyDictionary<string, bool>> GetAllOverridesAsync(CancellationToken ct)
         {
-            var all = await _settings.ListAsync(ct);
+            IReadOnlyList<AppSetting> all = await _settings.ListAsync(ct);
             return all
                 .Where(s => s.Key.StartsWith(KeyPrefix, StringComparison.Ordinal))
                 .ToDictionary(s => s.Key[KeyPrefix.Length..], s => bool.Parse(s.Value));

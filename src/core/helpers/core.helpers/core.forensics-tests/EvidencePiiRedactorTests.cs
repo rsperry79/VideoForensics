@@ -1,7 +1,3 @@
-using VideoForensics.Forensics.Implementations;
-using VideoForensics.Forensics.Interfaces;
-using VideoForensics.Forensics.Models;
-
 namespace VideoForensics.Forensics.Tests
 {
     public class EvidencePiiRedactorTests
@@ -23,7 +19,7 @@ namespace VideoForensics.Forensics.Tests
             var options = new RedactionOptions();
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.NotNull(redacted);
@@ -48,7 +44,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.SignedByOfficer);
@@ -63,8 +59,8 @@ namespace VideoForensics.Forensics.Tests
                 ReportId = "report-003",
                 EvidenceId = "evidence-003",
                 SignedByOfficer = "Officer Bob Johnson",
-                CustodyHistory = new List<ChainOfCustodyEntry>
-                {
+                CustodyHistory =
+                [
                     new ChainOfCustodyEntry
                     {
                         Handler = "Detective Smith",
@@ -75,7 +71,7 @@ namespace VideoForensics.Forensics.Tests
                         Handler = "Analyst Jones",
                         Notes = "Processed samples"
                     }
-                }
+                ]
             };
             var options = new RedactionOptions
             {
@@ -84,7 +80,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.All(redacted.CustodyHistory, entry => Assert.Equal("[REDACTED]", entry.Handler));
@@ -108,7 +104,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.Equal("[REMOVED]", redacted.SignedByOfficer);
@@ -118,7 +114,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task RedactChainOfCustodyAsync_WithTimestampRedaction_ClearsTimestamps()
         {
             // Arrange
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var report = new ChainOfCustodyReport
             {
                 ReportId = "report-005",
@@ -133,7 +129,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.Equal(DateTime.MinValue, redacted.GeneratedAt);
@@ -162,7 +158,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactValidationReportAsync(report, options);
+            EvidenceValidationReport redacted = await _redactor.RedactValidationReportAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.ValidatedBy);
@@ -180,8 +176,8 @@ namespace VideoForensics.Forensics.Tests
                 ValidatedBy = "Jane Validator",
                 SignedByOfficer = "Officer Mary Williams",
                 CertificationStatement = "Certified by examiner",
-                AllErrors = new List<string> { "Error 1", "Error 2" },
-                AllWarnings = new List<string> { "Warning 1" }
+                AllErrors = ["Error 1", "Error 2"],
+                AllWarnings = ["Warning 1"]
             };
             var options = new RedactionOptions
             {
@@ -193,7 +189,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactValidationReportAsync(report, options);
+            EvidenceValidationReport redacted = await _redactor.RedactValidationReportAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.ValidatedBy);
@@ -223,7 +219,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactAnalysisReportAsync(report, options);
+            ForensicAnalysisReport redacted = await _redactor.RedactAnalysisReportAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.Summary);
@@ -246,7 +242,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactAnalysisReportAsync(report, options);
+            ForensicAnalysisReport redacted = await _redactor.RedactAnalysisReportAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.SignedByOfficer);
@@ -261,14 +257,14 @@ namespace VideoForensics.Forensics.Tests
                 ReportId = "report-010",
                 AnalyzedEvidenceId = "evidence-010",
                 Summary = "Analysis",
-                Findings = new List<ForensicAnalysisResult>
-                {
+                Findings =
+                [
                     new ForensicAnalysisResult
                     {
                         Finding = "Victim was present",
                         Recommendation = "Contact victim immediately"
                     }
-                }
+                ]
             };
             var options = new RedactionOptions
             {
@@ -276,10 +272,10 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactAnalysisReportAsync(report, options);
+            ForensicAnalysisReport redacted = await _redactor.RedactAnalysisReportAsync(report, options);
 
             // Assert
-            Assert.Single(redacted.Findings);
+            _ = Assert.Single(redacted.Findings);
             Assert.Equal("[REDACTED]", redacted.Findings[0].Finding);
             Assert.Equal("[REDACTED]", redacted.Findings[0].Recommendation);
         }
@@ -296,10 +292,10 @@ namespace VideoForensics.Forensics.Tests
             {
                 ReportId = "report-011",
                 TotalEventsAnalyzed = 75,
-                CameraProfiles = new List<CameraSignalProfile>
-                {
+                CameraProfiles =
+                [
                     new CameraSignalProfile { CameraId = "ABC123XYZ" }
-                }
+                ]
             };
             var options = new RedactionOptions
             {
@@ -307,10 +303,10 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
+            SignalAnomalyReport redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
 
             // Assert
-            Assert.Single(redacted.CameraProfiles);
+            _ = Assert.Single(redacted.CameraProfiles);
             Assert.Equal("[REDACTED]", redacted.CameraProfiles[0].CameraId);
         }
 
@@ -318,7 +314,7 @@ namespace VideoForensics.Forensics.Tests
         public async Task RedactSignalAnomalyReportAsync_WithTimestampRedaction_ClearsGeneratedAt()
         {
             // Arrange
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             var report = new SignalAnomalyReport
             {
                 ReportId = "report-012",
@@ -331,7 +327,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
+            SignalAnomalyReport redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
 
             // Assert
             Assert.Equal(DateTime.MinValue, redacted.GeneratedAt);
@@ -354,7 +350,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
+            SignalAnomalyReport redacted = await _redactor.RedactSignalAnomalyReportAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.RiskAssessment);
@@ -378,7 +374,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
+            ChainOfCustodyReport anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
 
             // Assert
             Assert.Equal("[REDACTED]", anonymized.SignedByOfficer);
@@ -398,7 +394,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
+            EvidenceValidationReport anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
 
             // Assert
             Assert.Equal("[REDACTED]", anonymized.ValidatedBy);
@@ -418,7 +414,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
+            ForensicAnalysisReport anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
 
             // Assert
             Assert.Equal("[REDACTED]", anonymized.Summary);
@@ -438,7 +434,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
+            SignalAnomalyReport anonymized = await _redactor.GenerateAnonymizedReportAsync(report);
 
             // Assert
             Assert.Equal("[REDACTED]", anonymized.RiskAssessment);
@@ -457,7 +453,7 @@ namespace VideoForensics.Forensics.Tests
             var options = new RedactionOptions();
 
             // Act
-            var redacted = await _redactor.RedactReportsAsync(reports, options);
+            IEnumerable<ChainOfCustodyReport> redacted = await _redactor.RedactReportsAsync(reports, options);
 
             // Assert
             Assert.Empty(redacted);
@@ -469,14 +465,12 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var reports = new List<ChainOfCustodyReport>
             {
-                new ChainOfCustodyReport
-                {
+                new() {
                     ReportId = "report-018",
                     EvidenceId = "evidence-018",
                     SignedByOfficer = "Officer Daniel Taylor"
                 },
-                new ChainOfCustodyReport
-                {
+                new() {
                     ReportId = "report-019",
                     EvidenceId = "evidence-019",
                     SignedByOfficer = "Officer Karen White"
@@ -501,20 +495,17 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var reports = new List<EvidenceValidationReport>
             {
-                new EvidenceValidationReport
-                {
+                new() {
                     ReportId = "report-020",
                     EvidenceId = "evidence-020",
                     ValidatedBy = "Tech Smith"
                 },
-                new EvidenceValidationReport
-                {
+                new() {
                     ReportId = "report-021",
                     EvidenceId = "evidence-021",
                     ValidatedBy = "Tech Jones"
                 },
-                new EvidenceValidationReport
-                {
+                new() {
                     ReportId = "report-022",
                     EvidenceId = "evidence-022",
                     ValidatedBy = "Tech Anderson"
@@ -539,14 +530,12 @@ namespace VideoForensics.Forensics.Tests
             // Arrange
             var reports = new List<ForensicAnalysisReport>
             {
-                new ForensicAnalysisReport
-                {
+                new() {
                     ReportId = "report-023",
                     AnalyzedEvidenceId = "evidence-023",
                     Summary = "Analysis 1"
                 },
-                new ForensicAnalysisReport
-                {
+                new() {
                     ReportId = "report-024",
                     AnalyzedEvidenceId = "evidence-024",
                     Summary = "Analysis 2"
@@ -586,7 +575,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
+            ChainOfCustodyReport redacted = await _redactor.RedactChainOfCustodyAsync(report, options);
 
             // Assert
             Assert.Equal("[REDACTED]", redacted.SignedByOfficer);
@@ -611,7 +600,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactValidationReportAsync(report, options);
+            EvidenceValidationReport redacted = await _redactor.RedactValidationReportAsync(report, options);
 
             // Assert
             Assert.Equal("***CLASSIFIED***", redacted.ValidatedBy);
@@ -634,7 +623,7 @@ namespace VideoForensics.Forensics.Tests
             };
 
             // Act
-            var redacted = await _redactor.RedactAnalysisReportAsync(report, options);
+            ForensicAnalysisReport redacted = await _redactor.RedactAnalysisReportAsync(report, options);
 
             // Assert
             Assert.Equal("***CLASSIFIED***", redacted.Summary);

@@ -4,9 +4,7 @@ using Spectre.Console;
 
 using System.Text.Json;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Client.Core.Utilities;
@@ -88,7 +86,7 @@ namespace VideoForensics
         private async Task<string> FormatAccountLabelAsync(ProviderAccount account, CancellationToken ct)
         {
             User? user = await _userRepository.GetAsync(account.UserId, ct);
-            var identity = user?.Email ?? user?.DisplayName;
+            string? identity = user?.Email ?? user?.DisplayName;
             return string.IsNullOrEmpty(identity) ? account.ProviderName : identity;
         }
 
@@ -103,7 +101,7 @@ namespace VideoForensics
             while (true)
             {
                 AnsiConsole.MarkupLine("[yellow]Main Menu:[/]");
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select an option")
                         .HighlightStyle("green")
@@ -163,7 +161,7 @@ namespace VideoForensics
             while (true)
             {
                 AnsiConsole.MarkupLine("[bold cyan]Review & Export Evidence[/]");
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select an option")
                         .HighlightStyle("green")
@@ -211,13 +209,13 @@ namespace VideoForensics
             Console.WriteLine("═══════════════════════════════════════════════════════════");
 
             Console.Write("Enter case reference (optional): ");
-            var caseReference = Console.ReadLine();
+            string? caseReference = Console.ReadLine();
 
             Console.Write("Enter recipient description (optional): ");
-            var recipientDescription = Console.ReadLine();
+            string? recipientDescription = Console.ReadLine();
 
             Console.Write("Enter passphrase for AES-256 encryption (optional): ");
-            var passphrase = Console.ReadLine();
+            string? passphrase = Console.ReadLine();
 
             IReadOnlyList<Data.Common.Entities.Device> exportDevices = await _deviceRepository.ListAsync(ct);
             Guid? deviceId = PromptSelectDeviceOrAll("Select device to export (or All Devices)", exportDevices);
@@ -272,7 +270,7 @@ namespace VideoForensics
 
             Console.WriteLine($"Exporting {mediaItemIds.Count} item(s)...");
 
-            var outputDir = Path.Combine(
+            string outputDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "VideoForensics",
                 "Exports");
@@ -314,7 +312,7 @@ namespace VideoForensics
             Console.WriteLine("VALIDATE EVIDENCE");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
 
-            var choice = AnsiConsole.Prompt(
+            string choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Select an option")
                     .HighlightStyle("green")
@@ -433,7 +431,7 @@ namespace VideoForensics
 
             while (true)
             {
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select download option")
                         .HighlightStyle("green")
@@ -462,7 +460,7 @@ namespace VideoForensics
             while (true)
             {
                 AnsiConsole.MarkupLine("[bold cyan]Analyze Evidence[/]");
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select analysis type")
                         .HighlightStyle("green")
@@ -571,7 +569,7 @@ namespace VideoForensics
                 Console.WriteLine("═══════════════════════════════════════════════════════════");
                 AnsiConsole.MarkupLine("[yellow]Runs a live query against the provider API and saves the raw result as JSON.[/]");
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select a query to run")
                         .HighlightStyle("green")
@@ -621,7 +619,7 @@ namespace VideoForensics
 
         private async Task QueryAccountStatusAsync(CancellationToken ct)
         {
-            var isAuthenticated = await _authService.IsAuthenticatedAsync(ct);
+            bool isAuthenticated = await _authService.IsAuthenticatedAsync(ct);
             var result = new
             {
                 AuthStatus = _authService.GetAuthStatus(),
@@ -746,18 +744,18 @@ namespace VideoForensics
         /// <summary>Serializes a query result to JSON and writes it under the query export location.</summary>
         private async Task WriteQueryResultAsync(string queryLabel, object result, CancellationToken ct)
         {
-            var exportDirectory = await GetQueryExportLocation(ct);
+            string? exportDirectory = await GetQueryExportLocation(ct);
             if (exportDirectory == null)
             {
                 AnsiConsole.MarkupLine("[yellow]Query result not saved (no export location available).[/]");
                 return;
             }
 
-            var sanitizedLabel = new string(queryLabel.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
-            var fileName = $"{sanitizedLabel}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
-            var filePath = Path.Combine(exportDirectory, fileName);
+            string sanitizedLabel = new(queryLabel.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
+            string fileName = $"{sanitizedLabel}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+            string filePath = Path.Combine(exportDirectory, fileName);
 
-            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json, ct);
 
             _logger.LogInformation("Query result saved: {FilePath}", filePath);
@@ -785,7 +783,7 @@ namespace VideoForensics
             }
 
             // Use OneDrive-aware default (Documents/VideoForensics)
-            var defaultPath = PathUtilities.GetDefaultQueryExportLocation();
+            string defaultPath = PathUtilities.GetDefaultQueryExportLocation();
             AnsiConsole.MarkupLine("[cyan]Suggested export location:[/] {0}", defaultPath);
 
             if (AnsiConsole.Confirm("Use this location?", true))
@@ -804,14 +802,14 @@ namespace VideoForensics
                 }
             }
 
-            var newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for query results:[/]");
+            string newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for query results:[/]");
             if (string.IsNullOrEmpty(newPath))
             {
                 return null;
             }
 
             newPath = newPath.Trim();
-            var validationError = ValidateDownloadPath(newPath);
+            string? validationError = ValidateDownloadPath(newPath);
             if (validationError != null)
             {
                 AnsiConsole.MarkupLine("[red]✗ Invalid path: {0}[/]", validationError);
@@ -882,7 +880,7 @@ namespace VideoForensics
             AnsiConsole.MarkupLine("");
 
             AnsiConsole.MarkupLine("[bold]Step 1 of 3: Collect Evidence[/]");
-            var collectChoice = AnsiConsole.Prompt(
+            string collectChoice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("What would you like to download?")
                     .HighlightStyle("green")
@@ -966,11 +964,11 @@ namespace VideoForensics
 
         private async Task<bool> AuthenticateWithTwoFactorAsync(CancellationToken cancellationToken = default)
         {
-            for (var attempt = 1; attempt <= MaxAuthenticationAttempts; attempt++)
+            for (int attempt = 1; attempt <= MaxAuthenticationAttempts; attempt++)
             {
                 AnsiConsole.MarkupLine("[bold cyan]Ring Account Authentication[/]");
-                var username = AnsiConsole.Ask<string>("[yellow]Enter email address:[/]");
-                var password = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]Enter password:[/]").Secret());
+                string username = AnsiConsole.Ask<string>("[yellow]Enter email address:[/]");
+                string password = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]Enter password:[/]").Secret());
 
                 if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 {
@@ -982,7 +980,7 @@ namespace VideoForensics
                 static async Task<string> twoFactorCodeProvider()
                 {
                     AnsiConsole.MarkupLine("[yellow]Two-factor authentication required[/]");
-                    var code = AnsiConsole.Prompt(
+                    string code = AnsiConsole.Prompt(
                         new TextPrompt<string>("[yellow]Enter the 2FA code (SMS or authenticator app):[/]").Secret()
                     );
                     return code;
@@ -1034,8 +1032,8 @@ namespace VideoForensics
             }
 
             TimeSpan remaining = bannedUntilUtc.Value - DateTime.UtcNow;
-            var localRetryTime = bannedUntilUtc.Value.ToLocalTime().ToString("t");
-            var choice = AnsiConsole.Prompt(
+            string localRetryTime = bannedUntilUtc.Value.ToLocalTime().ToString("t");
+            string choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title($"[yellow]Ring has rate-limited this account. Ban expires around {localRetryTime} local time (about {Math.Max(0, remaining.TotalMinutes):F0} more minute(s)).[/]")
                     .HighlightStyle("green")
@@ -1096,7 +1094,7 @@ namespace VideoForensics
                 return;
             }
 
-            var outputPath = await GetDownloadLocation(cancellationToken);
+            string? outputPath = await GetDownloadLocation(cancellationToken);
             if (string.IsNullOrEmpty(outputPath))
             {
                 return;
@@ -1110,7 +1108,7 @@ namespace VideoForensics
             }
 
             // Check if any device has prior download history by querying the device repository
-            var hasAnyPriorDownloads = false;
+            bool hasAnyPriorDownloads = false;
             IReadOnlyList<Data.Common.Entities.Device> allDevices = await _deviceRepository.ListAsync(cancellationToken);
             if (allDevices != null)
             {
@@ -1126,7 +1124,7 @@ namespace VideoForensics
             // back to whatever date was first ever entered, permanently re-scanning the full
             // history instead of narrowing to what's actually new.
             DateTime defaultStartDate = DateTime.Today.AddDays(-181);
-            var watermarkResolved = false;
+            bool watermarkResolved = false;
             if (_forensicsConfig.ActiveProviderAccountId.HasValue)
             {
                 try
@@ -1151,7 +1149,7 @@ namespace VideoForensics
             }
 
             DateTime startDate = AskDateWithEditableDefault("[yellow]Start date to pull from (yyyy-MM-dd or M-d-yy):[/]", defaultStartDate);
-            var startDateString = startDate.ToString("yyyy-MM-dd");
+            string startDateString = startDate.ToString("yyyy-MM-dd");
             if (startDateString != _forensicsConfig.DownloadStartDate)
             {
                 _logger.LogInformation("Updating DownloadStartDate from {Old} to {New}", _forensicsConfig.DownloadStartDate, startDateString);
@@ -1167,7 +1165,7 @@ namespace VideoForensics
 
             // If no prior downloads, force a full re-scan to fetch all data. If there are prior downloads,
             // ask whether to fetch incrementally (since last pull) or force a full re-scan.
-            var force = false;
+            bool force = false;
             if (!hasAnyPriorDownloads)
             {
                 force = true;
@@ -1212,9 +1210,9 @@ namespace VideoForensics
                 while (!preScanTask.IsCompleted)
                 {
                     IReadOnlyDictionary<string, int> counts = _downloadService.GetPreScanCounts();
-                    for (var i = 0; i < devices.Count; i++)
+                    for (int i = 0; i < devices.Count; i++)
                     {
-                        if (counts.TryGetValue(devices[i].Id, out var count))
+                        if (counts.TryGetValue(devices[i].Id, out int count))
                         {
                             _ = table.UpdateCell(i, 2, new Markup(count.ToString()));
                         }
@@ -1234,9 +1232,9 @@ namespace VideoForensics
                 }
 
                 IReadOnlyDictionary<string, int> finalCounts = _downloadService.GetPreScanCounts();
-                for (var i = 0; i < devices.Count; i++)
+                for (int i = 0; i < devices.Count; i++)
                 {
-                    _ = table.UpdateCell(i, 2, new Markup(finalCounts.TryGetValue(devices[i].Id, out var count) ? count.ToString() : "[dim]?[/]"));
+                    _ = table.UpdateCell(i, 2, new Markup(finalCounts.TryGetValue(devices[i].Id, out int count) ? count.ToString() : "[dim]?[/]"));
                 }
 
                 ctx.Refresh();
@@ -1260,7 +1258,7 @@ namespace VideoForensics
 
             while (true)
             {
-                var result = await RunDownloadWithProgressAsync(
+                bool result = await RunDownloadWithProgressAsync(
                     () => _downloadService.DownloadVideosAsync(outputPath, adjustedStartDate, adjustedEndDate, force),
                     "videos",
                     cancellationToken);
@@ -1268,7 +1266,7 @@ namespace VideoForensics
                 // Files land in {outputPath}/{Location}/{Device}/*.mp4 (see PathUtilities.BuildSavePath),
                 // not directly under outputPath - without AllDirectories this always came back 0 and
                 // reported "No videos found" even after a fully successful download.
-                var downloadedCount = Directory.Exists(outputPath)
+                int downloadedCount = Directory.Exists(outputPath)
                     ? Directory.GetFiles(outputPath, "*.mp4", SearchOption.AllDirectories).Length
                     : 0;
 
@@ -1309,13 +1307,13 @@ namespace VideoForensics
 
                     AnsiConsole.MarkupLine("[green]✓ Saved to: {0}[/]", outputPath);
 
-                    var remaining = _downloadService.GetRemainingCount();
+                    int remaining = _downloadService.GetRemainingCount();
                     if (remaining > 0)
                     {
-                        var reason = _downloadService.GetRemainingReason();
-                        var reasonSuffix = reason != null ? $" ({EscapeMarkup(reason)})" : " (reason unknown)";
+                        string? reason = _downloadService.GetRemainingReason();
+                        string reasonSuffix = reason != null ? $" ({EscapeMarkup(reason)})" : " (reason unknown)";
                         AnsiConsole.MarkupLine("");
-                        var choice = AnsiConsole.Prompt(
+                        string choice = AnsiConsole.Prompt(
                             new SelectionPrompt<string>()
                                 .Title($"[yellow]{remaining} more video(s) matched but weren't downloaded{reasonSuffix}. Continue downloading the rest?[/]")
                                 .HighlightStyle("green")
@@ -1330,8 +1328,8 @@ namespace VideoForensics
                 }
                 else
                 {
-                    var error = _downloadService.GetLastError();
-                    var safeError = EscapeMarkup(error);
+                    string? error = _downloadService.GetLastError();
+                    string safeError = EscapeMarkup(error);
                     AnsiConsole.MarkupLine("[red]✗ Download failed{0}[/]",
                         !string.IsNullOrEmpty(safeError) ? $": {safeError}" : "");
                 }
@@ -1355,7 +1353,7 @@ namespace VideoForensics
                 return;
             }
 
-            var outputPath = await GetDownloadLocation(cancellationToken);
+            string? outputPath = await GetDownloadLocation(cancellationToken);
             if (string.IsNullOrEmpty(outputPath))
             {
                 return;
@@ -1404,14 +1402,14 @@ namespace VideoForensics
                 adapter.SetDeviceLocationMapping(deviceIdToLocationMapping);
             }
 
-            var result = await RunDownloadWithProgressAsync(
+            bool result = await RunDownloadWithProgressAsync(
                 () => _downloadService.DownloadSnapshotsAsync(outputPath, startDate, endDate),
                 "snapshots",
                 cancellationToken);
 
             // Files land in {outputPath}/{Location}/{Device}/*.jpg (see PathUtilities.BuildSavePath),
             // not directly under outputPath - without AllDirectories this always came back 0.
-            var downloadedCount = Directory.Exists(outputPath)
+            int downloadedCount = Directory.Exists(outputPath)
                 ? Directory.GetFiles(outputPath, "*.jpg", SearchOption.AllDirectories).Length
                 : 0;
 
@@ -1451,8 +1449,8 @@ namespace VideoForensics
             }
             else
             {
-                var error = _downloadService.GetLastError();
-                var safeError = EscapeMarkup(error);
+                string? error = _downloadService.GetLastError();
+                string safeError = EscapeMarkup(error);
                 AnsiConsole.MarkupLine("[red]✗ Download failed{0}[/]",
                     !string.IsNullOrEmpty(safeError) ? $": {safeError}" : "");
             }
@@ -1482,7 +1480,7 @@ namespace VideoForensics
             }
 
             // Use OneDrive-aware default location
-            var defaultPath = PathUtilities.GetDefaultDownloadLocation();
+            string defaultPath = PathUtilities.GetDefaultDownloadLocation();
             AnsiConsole.MarkupLine("[cyan]Suggested location:[/] {0}", defaultPath);
 
             if (AnsiConsole.Confirm("Use this location?", true))
@@ -1509,12 +1507,12 @@ namespace VideoForensics
             }
 
             // Ask for custom location if user declined default
-            var newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for downloads:[/]");
+            string newPath = AnsiConsole.Ask<string>("[yellow]Enter output directory for downloads:[/]");
 
             if (!string.IsNullOrEmpty(newPath))
             {
                 newPath = newPath.Trim();
-                var validationError = ValidateDownloadPath(newPath);
+                string? validationError = ValidateDownloadPath(newPath);
                 if (validationError != null)
                 {
                     AnsiConsole.MarkupLine("[red]✗ Invalid path: {0}[/]", validationError);
@@ -1547,7 +1545,7 @@ namespace VideoForensics
             while (true)
             {
                 AnsiConsole.MarkupLine("[bold cyan]⚙️  Configuration Menu[/]");
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure settings")
                         .HighlightStyle("green")
@@ -1608,7 +1606,7 @@ namespace VideoForensics
 
             while (true)
             {
-                var reportChoices = new[]
+                string[] reportChoices = new[]
                 {
                     EscapeMarkup($"Forensic Analysis Reports [{(_forensicsConfig.EnableForensicAnalysisReports ? "ON" : "OFF")}]"),
                     EscapeMarkup($"Signal Anomaly Reports [{(_forensicsConfig.EnableSignalAnomalyReports ? "ON" : "OFF")}]"),
@@ -1619,7 +1617,7 @@ namespace VideoForensics
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select a report type to toggle")
                         .HighlightStyle("green")
@@ -1644,7 +1642,7 @@ namespace VideoForensics
                         await ConfigureQueryExportLocation();
                         break;
                     case "Set Report Format":
-                        var format = AnsiConsole.Prompt(
+                        string format = AnsiConsole.Prompt(
                             new SelectionPrompt<string>()
                                 .Title("Select report format")
                                 .AddChoices("json", "xml", "csv"));
@@ -1662,14 +1660,14 @@ namespace VideoForensics
 
             while (true)
             {
-                var piiChoices = new[]
+                string[] piiChoices = new[]
                 {
                     EscapeMarkup($"Enable PII Redaction [{(_forensicsConfig.EnablePiiRedaction ? "ON" : "OFF")}]"),
                     EscapeMarkup($"Redaction Level: {_forensicsConfig.RedactionLevel}"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure PII redaction")
                         .HighlightStyle("green")
@@ -1703,13 +1701,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var storageChoices = new[]
+                string[] storageChoices = new[]
                 {
                     EscapeMarkup($"Storage Provider [{_forensicsConfig.KeyStorageProvider}]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure key storage")
                         .HighlightStyle("green")
@@ -1730,7 +1728,7 @@ namespace VideoForensics
 
                         _forensicsConfig.KeyStorageProvider = provider;
 
-                        var description = provider switch
+                        string description = provider switch
                         {
                             KeyStorageProvider.Auto => "Automatic selection (TPM → DPAPI → File-based)",
                             KeyStorageProvider.Tpm => "Hardware TPM 2.0 (most secure)",
@@ -1753,13 +1751,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var retentionChoices = new[]
+                string[] retentionChoices = new[]
                 {
                     EscapeMarkup($"Retention Period [{_forensicsConfig.RetentionDaysDefault} days]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure retention")
                         .HighlightStyle("green")
@@ -1768,7 +1766,7 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case var c when c.StartsWith("Retention Period"):
-                        var days = AnsiConsole.Ask<int>("[yellow]Enter retention period (days):[/]");
+                        int days = AnsiConsole.Ask<int>("[yellow]Enter retention period (days):[/]");
                         (bool success, string? message) = await _configToolsOrchestrator.SetRetentionDaysAsync(_forensicsConfig, days);
                         if (success)
                         {
@@ -1792,13 +1790,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var concurrencyChoices = new[]
+                string[] concurrencyChoices = new[]
                 {
                     EscapeMarkup($"Concurrent Downloads [{_forensicsConfig.MaxConcurrentDownloads}]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure concurrent downloads")
                         .HighlightStyle("green")
@@ -1807,7 +1805,7 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case var c when c.StartsWith("Concurrent Downloads"):
-                        var count = AnsiConsole.Ask<int>("[yellow]Enter max concurrent downloads (per device):[/]");
+                        int count = AnsiConsole.Ask<int>("[yellow]Enter max concurrent downloads (per device):[/]");
                         (bool success, string? message) = await _configToolsOrchestrator.SetMaxConcurrentDownloadsAsync(_forensicsConfig, count);
                         if (success)
                         {
@@ -1831,13 +1829,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var downloadChoices = new[]
+                string[] downloadChoices = new[]
                 {
                     EscapeMarkup($"Download Directory [{_forensicsConfig.DownloadLocation ?? "Not set"}]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure download location")
                         .HighlightStyle("green")
@@ -1855,7 +1853,7 @@ namespace VideoForensics
                             AnsiConsole.MarkupLine("[yellow]No location set[/]");
                         }
 
-                        var newPath = AnsiConsole.Ask<string>("[yellow]Enter new download directory (or press Enter to keep current):[/]", _forensicsConfig.DownloadLocation ?? "");
+                        string newPath = AnsiConsole.Ask<string>("[yellow]Enter new download directory (or press Enter to keep current):[/]", _forensicsConfig.DownloadLocation ?? "");
 
                         if (!string.IsNullOrEmpty(newPath))
                         {
@@ -1883,13 +1881,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var exportChoices = new[]
+                string[] exportChoices = new[]
                 {
                     EscapeMarkup($"Export Directory [{_forensicsConfig.QueryExportLocation ?? ("Not set - defaults to " + PathUtilities.GetDefaultQueryExportLocation())}]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure query export location")
                         .HighlightStyle("green")
@@ -1898,11 +1896,11 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case var c when c.StartsWith("Export Directory"):
-                        var newPath = AnsiConsole.Ask<string>("[yellow]Enter new export directory (or press Enter to keep current):[/]", _forensicsConfig.QueryExportLocation ?? "");
+                        string newPath = AnsiConsole.Ask<string>("[yellow]Enter new export directory (or press Enter to keep current):[/]", _forensicsConfig.QueryExportLocation ?? "");
 
                         if (!string.IsNullOrEmpty(newPath))
                         {
-                            var validationError = ValidateDownloadPath(newPath);
+                            string? validationError = ValidateDownloadPath(newPath);
                             if (validationError != null)
                             {
                                 AnsiConsole.MarkupLine("[red]✗ Invalid path: {0}[/]", validationError);
@@ -1934,13 +1932,13 @@ namespace VideoForensics
 
             while (true)
             {
-                var loggingChoices = new[]
+                string[] loggingChoices = new[]
                 {
                     EscapeMarkup($"Logging Level [{_forensicsConfig.LogLevel}]"),
                     "Back"
                 };
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Configure logging")
                         .HighlightStyle("green")
@@ -1949,7 +1947,7 @@ namespace VideoForensics
                 switch (choice)
                 {
                     case var c when c.StartsWith("Logging Level"):
-                        var level = AnsiConsole.Prompt(
+                        string level = AnsiConsole.Prompt(
                             new SelectionPrompt<string>()
                                 .Title("Select logging level")
                                 .HighlightStyle("green")
@@ -1978,14 +1976,14 @@ namespace VideoForensics
             AnsiConsole.MarkupLine("[red]  • Exit the application[/]");
             AnsiConsole.MarkupLine("");
 
-            var confirm1 = AnsiConsole.Confirm("[bold yellow]Are you absolutely sure? (yes/no)[/]");
+            bool confirm1 = AnsiConsole.Confirm("[bold yellow]Are you absolutely sure? (yes/no)[/]");
             if (!confirm1)
             {
                 AnsiConsole.MarkupLine("[yellow]Factory reset cancelled.[/]");
                 return;
             }
 
-            var confirm2 = AnsiConsole.Confirm("[bold red]This action CANNOT be undone. Type 'yes' to confirm:[/]");
+            bool confirm2 = AnsiConsole.Confirm("[bold red]This action CANNOT be undone. Type 'yes' to confirm:[/]");
             if (!confirm2)
             {
                 AnsiConsole.MarkupLine("[yellow]Factory reset cancelled.[/]");
@@ -2055,12 +2053,12 @@ namespace VideoForensics
                 }
 
                 // Convert to full path to normalize and validate
-                var fullPath = Path.GetFullPath(path);
+                string fullPath = Path.GetFullPath(path);
 
                 // Ensure path is not a system-critical directory
-                var systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                string systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                string windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
 
                 if (fullPath.StartsWith(systemRoot, StringComparison.OrdinalIgnoreCase) ||
                     fullPath.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase) ||
@@ -2099,7 +2097,7 @@ namespace VideoForensics
             }
 
             var choices = new List<string>(items.Count + 1);
-            for (var i = 0; i < items.Count; i++)
+            for (int i = 0; i < items.Count; i++)
             {
                 choices.Add($"{i + 1}. {EscapeMarkup(labelSelector(items[i]))}");
             }
@@ -2109,7 +2107,7 @@ namespace VideoForensics
                 choices.Add("Cancel");
             }
 
-            var choice = AnsiConsole.Prompt(
+            string choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title(title)
                     .HighlightStyle("green")
@@ -2130,14 +2128,14 @@ namespace VideoForensics
             var choices = new List<string> { "All Devices" };
             choices.AddRange(devices.Select(d => EscapeMarkup(d.Name)));
 
-            var choice = AnsiConsole.Prompt(
+            string choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title(title)
                     .HighlightStyle("green")
                     .PageSize(15)
                     .AddChoices(choices));
 
-            var index = choices.IndexOf(choice);
+            int index = choices.IndexOf(choice);
             return index == 0 ? null : devices[index - 1].Id;
         }
 
@@ -2177,7 +2175,7 @@ namespace VideoForensics
                             {
                                 if (!deviceDict.ContainsKey(device.Id))
                                 {
-                                    var resolvedLocationName = locationNamesById.TryGetValue(device.LocationId, out var name)
+                                    string resolvedLocationName = locationNamesById.TryGetValue(device.LocationId, out string? name)
                                         ? name
                                         : "Unknown Location";
                                     deviceDict[device.Id] = (device.Id, device.Name, resolvedLocationName);
@@ -2209,10 +2207,10 @@ namespace VideoForensics
         /// </summary>
         private async Task<bool> RunDownloadWithProgressAsync(Func<Task<bool>> startDownload, string mediaLabel, CancellationToken cancellationToken)
         {
-            var result = false;
+            bool result = false;
             DateTime globalStartTime = DateTime.Now;
             DateTime deviceStartTime = DateTime.Now;
-            var lastDeviceIndex = 0;
+            int lastDeviceIndex = 0;
 
             await AnsiConsole.Progress()
                 .AutoClear(true)
@@ -2251,7 +2249,7 @@ namespace VideoForensics
                             deviceTask.MaxValue = progress.FilesTotal;
                             deviceTask.Value = progress.FilesCompleted;
                             TimeSpan deviceElapsed = DateTime.Now - deviceStartTime;
-                            var deviceTimeStr = $"{deviceElapsed.Hours:D2}:{deviceElapsed.Minutes:D2}:{deviceElapsed.Seconds:D2}";
+                            string deviceTimeStr = $"{deviceElapsed.Hours:D2}:{deviceElapsed.Minutes:D2}:{deviceElapsed.Seconds:D2}";
                             deviceTask.Description = $"[cyan]Device {deviceIndex}/{deviceTotal}[/] {EscapeMarkup(deviceName)}: {progress.FilesCompleted}/{progress.FilesTotal} ({FormatBytes(progress.BytesDownloaded)}) {deviceTimeStr}";
                         }
                         else if (progress.IsDownloading)
@@ -2266,29 +2264,29 @@ namespace VideoForensics
                         // device's download starts (see VideoDownloadServiceAdapter.DownloadVideosAsync),
                         // so this reflects the true grand total from the start instead of only knowing
                         // about whichever device is currently in flight.
-                        var aggregateTotal = progress.TotalFilesMatched;
+                        int aggregateTotal = progress.TotalFilesMatched;
                         if (aggregateTotal > 0)
                         {
                             totalTask.IsIndeterminate = false;
                             totalTask.MaxValue = aggregateTotal;
                             totalTask.Value = progress.TotalFilesCompleted + progress.FilesCompleted;
-                            var aggregateCompleted = progress.TotalFilesCompleted + progress.FilesCompleted;
+                            int aggregateCompleted = progress.TotalFilesCompleted + progress.FilesCompleted;
                             TimeSpan globalElapsed = DateTime.Now - globalStartTime;
-                            var globalTimeStr = $"{globalElapsed.Hours:D2}:{globalElapsed.Minutes:D2}:{globalElapsed.Seconds:D2}";
+                            string globalTimeStr = $"{globalElapsed.Hours:D2}:{globalElapsed.Minutes:D2}:{globalElapsed.Seconds:D2}";
                             totalTask.Description = $"[cyan]Across All Devices[/]: {aggregateCompleted}/{aggregateTotal} ({FormatBytes(progress.TotalBytesDownloaded + progress.BytesDownloaded)}) {globalTimeStr}";
                         }
 
                         // Bar 3: Speed & Connections — percent reflects how saturated the configured
                         // concurrency is (active connections out of the configured max), not a fixed 100%.
-                        var maxConnections = Math.Max(1, _forensicsConfig.MaxConcurrentDownloads);
+                        int maxConnections = Math.Max(1, _forensicsConfig.MaxConcurrentDownloads);
                         speedTask.IsIndeterminate = false;
                         speedTask.MaxValue = maxConnections;
                         speedTask.Value = Math.Min(progress.ActiveConnections, maxConnections);
-                        var speedInfo = $"{progress.CurrentSpeedMbps:F1} Mbps";
-                        var connInfo = $"{progress.ActiveConnections}/{maxConnections} connection{(progress.ActiveConnections != 1 ? "s" : "")}";
+                        string speedInfo = $"{progress.CurrentSpeedMbps:F1} Mbps";
+                        string connInfo = $"{progress.ActiveConnections}/{maxConnections} connection{(progress.ActiveConnections != 1 ? "s" : "")}";
                         speedTask.Description = $"[cyan]Transfer Rate[/]: {speedInfo} — {connInfo}";
 
-                        foreach (var line in _downloadService.DrainActivityLog())
+                        foreach (string line in _downloadService.DrainActivityLog())
                         {
                             AnsiConsole.MarkupLine(line);
                         }
@@ -2298,7 +2296,7 @@ namespace VideoForensics
 
                     result = await downloadTask;
 
-                    foreach (var line in _downloadService.DrainActivityLog())
+                    foreach (string line in _downloadService.DrainActivityLog())
                     {
                         AnsiConsole.MarkupLine(line);
                     }
@@ -2315,12 +2313,7 @@ namespace VideoForensics
         {
             const double kb = 1024;
             const double mb = kb * 1024;
-            if (bytes >= mb)
-            {
-                return $"{bytes / mb:F1} MB";
-            }
-
-            return bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
+            return bytes >= mb ? $"{bytes / mb:F1} MB" : bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
         }
 
         private async Task ShowManageAccountsMenu(CancellationToken ct)
@@ -2345,16 +2338,16 @@ namespace VideoForensics
                     for (int i = 0; i < accounts.Count; i++)
                     {
                         ProviderAccount account = accounts[i];
-                        var label = await FormatAccountLabelAsync(account, ct);
-                        var isActive = account.Id == activeAccountId ? " [ACTIVE]" : "";
-                        var lastAuth = account.LastSuccessfulAuthUtc.HasValue
+                        string label = await FormatAccountLabelAsync(account, ct);
+                        string isActive = account.Id == activeAccountId ? " [ACTIVE]" : "";
+                        string lastAuth = account.LastSuccessfulAuthUtc.HasValue
                             ? account.LastSuccessfulAuthUtc.Value.ToString("yyyy-MM-dd HH:mm:ss")
                             : "Never";
                         Console.WriteLine($"  {i + 1}. {label} ({account.ProviderName}) - Linked: {account.LinkedUtc:yyyy-MM-dd HH:mm:ss}, Last Auth: {lastAuth}{isActive}");
                     }
                 }
 
-                var choice = AnsiConsole.Prompt(
+                string choice = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Select an option")
                         .HighlightStyle("green")
@@ -2412,7 +2405,7 @@ namespace VideoForensics
             ProviderAccount? selected = PromptSelect("Select active account", accounts, a => labels[a]);
             if (selected != null)
             {
-                var selectedLabel = labels[selected];
+                string selectedLabel = labels[selected];
                 _forensicsConfig.ActiveProviderAccountId = selected.Id;
                 await SaveConfiguration(ct);
 
@@ -2446,7 +2439,7 @@ namespace VideoForensics
             ProviderAccount? selected = PromptSelect("Select account to remove", accounts, a => removeLabels[a]);
             if (selected != null)
             {
-                var selectedLabel = removeLabels[selected];
+                string selectedLabel = removeLabels[selected];
                 if (AnsiConsole.Confirm($"Remove {selectedLabel} account?", false))
                 {
                     await _providerAccountRepository.DeleteAsync(selected.Id, ct);
@@ -2478,7 +2471,7 @@ namespace VideoForensics
 
             // Re-use existing 2FA auth flow from AuthenticateWithTwoFactorAsync
             Console.WriteLine("Initiating authentication flow...");
-            var result = await AuthenticateWithTwoFactorAsync(ct);
+            bool result = await AuthenticateWithTwoFactorAsync(ct);
 
             if (result)
             {
@@ -2507,14 +2500,14 @@ namespace VideoForensics
             Console.Out.Flush();
 
             var buffer = new System.Text.StringBuilder(defaultValue);
-            var cursor = 0;
-            var defaultConsumed = false;
+            int cursor = 0;
+            bool defaultConsumed = false;
 
             // Tracks where the terminal's cursor actually is (offset from the start of the field),
             // independent of the logical `cursor` value — the two only match right after Redraw()
             // repositions the terminal. Redraw() must rewind from this, not from the new logical
             // cursor, or it backspaces too far and eats into the label text.
-            var termCursor = 0;
+            int termCursor = 0;
 
             void Redraw()
             {
@@ -2531,7 +2524,7 @@ namespace VideoForensics
                 Console.Write(buffer.ToString());
 
                 // Position cursor at the correct spot within the buffer
-                var trailing = buffer.Length - cursor;
+                int trailing = buffer.Length - cursor;
                 if (trailing > 0)
                 {
                     Console.Write(new string('\b', trailing));
@@ -2624,8 +2617,8 @@ namespace VideoForensics
 
         private static int AskIntWithEditableDefault(string label, int defaultValue)
         {
-            var result = AskStringWithEditableDefault(label, defaultValue.ToString(), char.IsDigit);
-            return int.TryParse(result, out var value) ? value : defaultValue;
+            string result = AskStringWithEditableDefault(label, defaultValue.ToString(), char.IsDigit);
+            return int.TryParse(result, out int value) ? value : defaultValue;
         }
 
         /// <summary>
@@ -2647,7 +2640,7 @@ namespace VideoForensics
         {
             while (true)
             {
-                var input = AskStringWithEditableDefault(label, defaultValue.ToString("yyyy-MM-dd"), c => char.IsDigit(c) || c == '-');
+                string input = AskStringWithEditableDefault(label, defaultValue.ToString("yyyy-MM-dd"), c => char.IsDigit(c) || c == '-');
                 if (DateTime.TryParseExact(
                         input,
                         DateInputFormats,

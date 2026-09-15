@@ -1,6 +1,3 @@
-using System.Net;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -32,7 +29,7 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void UniviewClient_Constructor_WithCustomFfmpegPath_CreatesValidInstance()
         {
             // Arrange & Act
-            var customPath = "/usr/bin/ffmpeg";
+            string customPath = "/usr/bin/ffmpeg";
             var client = new UniviewClient(TestHost, TestUsername, TestPassword, customPath);
 
             // Assert
@@ -71,7 +68,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var client = new UniviewClient(TestHost, TestUsername, TestPassword);
 
             // Act
-            var handle = client.UserLoginHandle;
+            long handle = client.UserLoginHandle;
 
             // Assert
             Assert.Equal(0, handle);
@@ -97,7 +94,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var info = new UniviewClient.ChannelInfo(Index: 2, Name: "Test Camera", IsOnline: false);
 
             // Act
-            var (index, name, isOnline) = info;
+            (int index, string? name, bool isOnline) = info;
 
             // Assert
             Assert.Equal(2, index);
@@ -159,7 +156,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var segment = new RecordSegment(Channel: 4, Begin: begin, End: end, RecordType: 5);
 
             // Act
-            var (channel, segBegin, segEnd, recordType) = segment;
+            (int channel, DateTimeOffset segBegin, DateTimeOffset segEnd, int recordType) = segment;
 
             // Assert
             Assert.Equal(4, channel);
@@ -172,13 +169,13 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void UniviewClient_DownloadCapacityException_InheritsFromInvalidOperationException()
         {
             // Arrange
-            var message = "Device capacity exceeded";
+            string message = "Device capacity exceeded";
 
             // Act
             var exception = new DownloadCapacityException(message);
 
             // Assert
-            Assert.IsAssignableFrom<InvalidOperationException>(exception);
+            _ = Assert.IsAssignableFrom<InvalidOperationException>(exception);
             Assert.Equal(message, exception.Message);
         }
 
@@ -271,12 +268,12 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void UniviewClient_ResourceCode_HandlesVariousChannelNumbers(int channel)
         {
             // Act
-            var code = UniviewClient.ResourceCode(channel);
+            string code = UniviewClient.ResourceCode(channel);
 
             // Assert
             Assert.NotNull(code);
             Assert.True(code.Length >= 16, $"Resource code should be at least 16 chars, got {code.Length}");
-            Assert.True(code.All(c => char.IsDigit(c)));
+            Assert.True(code.All(char.IsDigit));
         }
 
         [Fact]
@@ -305,7 +302,7 @@ namespace VideoForensics.Providers.Uniview.Tests
         public void UniviewClient_ChannelInfo_WithLongName()
         {
             // Arrange
-            var longName = new string('A', 256);
+            string longName = new('A', 256);
 
             // Act
             var info = new UniviewClient.ChannelInfo(Index: 3, Name: longName, IsOnline: false);
@@ -356,7 +353,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var segment = new RecordSegment(Channel: 1, Begin: begin, End: end, RecordType: 1);
 
             // Act
-            var duration = segment.End - segment.Begin;
+            TimeSpan duration = segment.End - segment.Begin;
 
             // Assert
             Assert.Equal(TimeSpan.FromSeconds(1500), duration);
@@ -369,14 +366,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var exception = new DownloadCapacityException("Test message");
 
             // Act & Assert
-            Assert.IsAssignableFrom<InvalidOperationException>(exception);
+            _ = Assert.IsAssignableFrom<InvalidOperationException>(exception);
         }
 
         [Fact]
         public void UniviewClient_DownloadCapacityException_PreservesMessageContent()
         {
             // Arrange
-            var expectedMessage = "Device reached concurrent download limit (code 60031)";
+            string expectedMessage = "Device reached concurrent download limit (code 60031)";
 
             // Act
             var exception = new DownloadCapacityException(expectedMessage);

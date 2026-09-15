@@ -14,10 +14,10 @@ public class EventEntityTests
         var deviceId = Guid.NewGuid();
         string providerEventId = "ring_event_123";
         string eventType = "motion";
-        var occurredAtUtc = DateTime.UtcNow.AddHours(-1);
+        DateTime occurredAtUtc = DateTime.UtcNow.AddHours(-1);
         string snapshotUrl = "https://example.com/snapshot.jpg";
         string metadataJson = "{\"zone\": \"front_door\"}";
-        var discoveredAtUtc = DateTime.UtcNow;
+        DateTime discoveredAtUtc = DateTime.UtcNow;
 
         // Act
         var evt = new Event
@@ -109,8 +109,8 @@ public class EventEntityTests
         string motionSensitivity = "high";
         string recordingMode = "continuous";
         string customSettingsJson = "{\"nightVision\": true}";
-        var capturedAtUtc = DateTime.UtcNow;
-        var source = DeviceConfigSource.Fetched;
+        DateTime capturedAtUtc = DateTime.UtcNow;
+        DeviceConfigSource source = DeviceConfigSource.Fetched;
 
         // Act
         var snapshot = new DeviceConfigSnapshot
@@ -185,8 +185,8 @@ public class EventEntityTests
     {
         // Arrange
         var deviceId = Guid.NewGuid();
-        var fetchedTime = DateTime.UtcNow.AddDays(-1);
-        var appliedTime = DateTime.UtcNow;
+        DateTime fetchedTime = DateTime.UtcNow.AddDays(-1);
+        DateTime appliedTime = DateTime.UtcNow;
 
         // Act
         var fetchedSnapshot = new DeviceConfigSnapshot

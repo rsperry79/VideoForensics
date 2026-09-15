@@ -45,19 +45,19 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceHealthRepository_GetLatestAsync_ReturnsNewestRecord()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Add first health record
             DeviceHealth health1 = TestDataBuilder.BuildDeviceHealth(deviceId);
             health1.CapturedAtUtc = now.AddMinutes(-5);
             health1.BatteryPercentage = 70m;
-            await _repository.AddAsync(health1, CancellationToken.None);
+            _ = await _repository.AddAsync(health1, CancellationToken.None);
 
             // Add second (newer) health record
             DeviceHealth health2 = TestDataBuilder.BuildDeviceHealth(deviceId);
             health2.CapturedAtUtc = now;
             health2.BatteryPercentage = 85m;
-            await _repository.AddAsync(health2, CancellationToken.None);
+            _ = await _repository.AddAsync(health2, CancellationToken.None);
 
             DeviceHealth? latest = await _repository.GetLatestAsync(deviceId, CancellationToken.None);
 
@@ -80,23 +80,23 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceHealthRepository_GetHistoryAsync_ReturnsAllRecordsNewestFirst()
         {
             var deviceId = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Add records in non-chronological order
             DeviceHealth health1 = TestDataBuilder.BuildDeviceHealth(deviceId);
             health1.CapturedAtUtc = now.AddMinutes(-10);
             health1.BatteryPercentage = 60m;
-            await _repository.AddAsync(health1, CancellationToken.None);
+            _ = await _repository.AddAsync(health1, CancellationToken.None);
 
             DeviceHealth health2 = TestDataBuilder.BuildDeviceHealth(deviceId);
             health2.CapturedAtUtc = now;
             health2.BatteryPercentage = 85m;
-            await _repository.AddAsync(health2, CancellationToken.None);
+            _ = await _repository.AddAsync(health2, CancellationToken.None);
 
             DeviceHealth health3 = TestDataBuilder.BuildDeviceHealth(deviceId);
             health3.CapturedAtUtc = now.AddMinutes(-5);
             health3.BatteryPercentage = 75m;
-            await _repository.AddAsync(health3, CancellationToken.None);
+            _ = await _repository.AddAsync(health3, CancellationToken.None);
 
             IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(deviceId, CancellationToken.None);
 
@@ -127,13 +127,13 @@ namespace VideoForensics.Data.Database.Tests
             var deviceId2 = Guid.NewGuid();
 
             DeviceHealth health1 = TestDataBuilder.BuildDeviceHealth(deviceId1);
-            await _repository.AddAsync(health1, CancellationToken.None);
+            _ = await _repository.AddAsync(health1, CancellationToken.None);
 
             DeviceHealth health2 = TestDataBuilder.BuildDeviceHealth(deviceId2);
-            await _repository.AddAsync(health2, CancellationToken.None);
+            _ = await _repository.AddAsync(health2, CancellationToken.None);
 
             DeviceHealth health3 = TestDataBuilder.BuildDeviceHealth(deviceId1);
-            await _repository.AddAsync(health3, CancellationToken.None);
+            _ = await _repository.AddAsync(health3, CancellationToken.None);
 
             IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(deviceId1, CancellationToken.None);
 
@@ -145,9 +145,9 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceHealthRepository_AddAsync_PreservesAllProperties()
         {
             var deviceId = Guid.NewGuid();
-            var capturedAt = DateTime.UtcNow;
+            DateTime capturedAt = DateTime.UtcNow;
 
-            DeviceHealth health = new DeviceHealth
+            var health = new DeviceHealth
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
@@ -163,7 +163,7 @@ namespace VideoForensics.Data.Database.Tests
                 CapturedAtUtc = capturedAt
             };
 
-            await _repository.AddAsync(health, CancellationToken.None);
+            _ = await _repository.AddAsync(health, CancellationToken.None);
             DeviceHealth? retrieved = await _repository.GetLatestAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(retrieved);
@@ -183,7 +183,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId = Guid.NewGuid();
 
-            DeviceHealth health = new DeviceHealth
+            var health = new DeviceHealth
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
@@ -211,14 +211,14 @@ namespace VideoForensics.Data.Database.Tests
         {
             var deviceId1 = Guid.NewGuid();
             var deviceId2 = Guid.NewGuid();
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
 
             // Add multiple records for device 1
             for (int i = 0; i < 5; i++)
             {
                 DeviceHealth health = TestDataBuilder.BuildDeviceHealth(deviceId1);
                 health.CapturedAtUtc = now.AddMinutes(-i);
-                await _repository.AddAsync(health, CancellationToken.None);
+                _ = await _repository.AddAsync(health, CancellationToken.None);
             }
 
             // Add multiple records for device 2
@@ -226,7 +226,7 @@ namespace VideoForensics.Data.Database.Tests
             {
                 DeviceHealth health = TestDataBuilder.BuildDeviceHealth(deviceId2);
                 health.CapturedAtUtc = now.AddMinutes(-i);
-                await _repository.AddAsync(health, CancellationToken.None);
+                _ = await _repository.AddAsync(health, CancellationToken.None);
             }
 
             IReadOnlyList<DeviceHealth> history1 = await _repository.GetHistoryAsync(deviceId1, CancellationToken.None);

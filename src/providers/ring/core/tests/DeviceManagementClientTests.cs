@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Clients;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Interfaces;
@@ -24,21 +20,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             public Task<List<Doorbot>> GetRingDevices(Guid? locationId = null, CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetRingDevicesException != null)
-                {
-                    throw GetRingDevicesException;
-                }
-                return Task.FromResult(DevicesToReturn);
+                return GetRingDevicesException != null ? throw GetRingDevicesException : Task.FromResult(DevicesToReturn);
             }
 
             public Task<List<Location>> GetLocations(CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetLocationsException != null)
-                {
-                    throw GetLocationsException;
-                }
-                return Task.FromResult(LocationsToReturn);
+                return GetLocationsException != null ? throw GetLocationsException : Task.FromResult(LocationsToReturn);
             }
 
             public Task<Devices> GetDeviceById(string deviceId, CancellationToken cancellationToken = default)
@@ -73,22 +61,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 SetLightCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (SetLightException != null)
-                {
-                    throw SetLightException;
-                }
-                return Task.FromResult(true);
+                return SetLightException != null ? throw SetLightException : Task.FromResult(true);
             }
 
             public Task<bool> SetSiren(string doorbotId, bool on, int? durationSeconds = null, CancellationToken cancellationToken = default)
             {
                 SetSirenCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (SetSirenException != null)
-                {
-                    throw SetSirenException;
-                }
-                return Task.FromResult(true);
+                return SetSirenException != null ? throw SetSirenException : Task.FromResult(true);
             }
 
             public Task<bool> SetVolume(string doorbotId, int volume, CancellationToken cancellationToken = default)
@@ -100,22 +80,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 SetNightModeCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (SetNightModeException != null)
-                {
-                    throw SetNightModeException;
-                }
-                return Task.FromResult(true);
+                return SetNightModeException != null ? throw SetNightModeException : Task.FromResult(true);
             }
 
             public Task<bool> SetMotionDetection(string doorbotId, bool enabled, CancellationToken cancellationToken = default)
             {
                 SetMotionDetectionCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (SetMotionDetectionException != null)
-                {
-                    throw SetMotionDetectionException;
-                }
-                return Task.FromResult(true);
+                return SetMotionDetectionException != null ? throw SetMotionDetectionException : Task.FromResult(true);
             }
 
             public Task<System.Text.Json.JsonElement> GetDeviceSettings(string doorbotId, CancellationToken cancellationToken = default)
@@ -132,11 +104,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             public Task<DeviceHealth> GetDoorbotHealth(string doorbotId, CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetDoorbotHealthException != null)
-                {
-                    throw GetDoorbotHealthException;
-                }
-                return Task.FromResult(new DeviceHealth());
+                return GetDoorbotHealthException != null ? throw GetDoorbotHealthException : Task.FromResult(new DeviceHealth());
             }
 
             public Task<DeviceHealth> GetChimeHealth(string chimeId, CancellationToken cancellationToken = default)
@@ -170,11 +138,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 SetLocationModeCalled = true;
                 LastCancellationToken = cancellationToken;
-                if (SetLocationModeException != null)
-                {
-                    throw SetLocationModeException;
-                }
-                return Task.FromResult(true);
+                return SetLocationModeException != null ? throw SetLocationModeException : Task.FromResult(true);
             }
 
             public Task<List<SharedUser>> GetSharedUsers(Guid locationId, CancellationToken cancellationToken = default)
@@ -220,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationService = new MockLocationManagementService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new DeviceManagementClient(null, controlService, healthService, locationService));
         }
 
@@ -233,7 +197,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationService = new MockLocationManagementService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new DeviceManagementClient(discoveryService, null, healthService, locationService));
         }
 
@@ -246,7 +210,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationService = new MockLocationManagementService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new DeviceManagementClient(discoveryService, controlService, null, locationService));
         }
 
@@ -259,7 +223,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var healthService = new MockHealthMonitoringService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new DeviceManagementClient(discoveryService, controlService, healthService, null));
         }
         #endregion
@@ -278,7 +242,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetAllDevicesAsync();
+            List<Doorbot> result = await client.GetAllDevicesAsync();
 
             // Assert
             Assert.Equal(devices, result);
@@ -293,7 +257,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetAllDevicesAsync();
+            List<Doorbot> result = await client.GetAllDevicesAsync();
 
             // Assert
             Assert.Empty(result);
@@ -309,7 +273,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetAllDevicesAsync(cts.Token);
+            _ = await client.GetAllDevicesAsync(cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -330,7 +294,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetDeviceByNameAsync("Front Door");
+            Doorbot result = await client.GetDeviceByNameAsync("Front Door");
 
             // Assert
             Assert.NotNull(result);
@@ -346,7 +310,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByNameAsync(""));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByNameAsync(""));
         }
 
         [Fact]
@@ -358,7 +322,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByNameAsync(null));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByNameAsync(null));
         }
 
         [Fact]
@@ -374,7 +338,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceByNameAsync("Back Door"));
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceByNameAsync("Back Door"));
         }
 
         [Fact]
@@ -390,7 +354,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetDeviceByNameAsync("front door");
+            Doorbot result = await client.GetDeviceByNameAsync("front door");
 
             // Assert
             Assert.NotNull(result);
@@ -411,7 +375,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetDeviceByNameAsync("Front Door", cts.Token);
+            _ = await client.GetDeviceByNameAsync("Front Door", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -432,7 +396,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetDeviceByIdAsync("device123");
+            Doorbot result = await client.GetDeviceByIdAsync("device123");
 
             // Assert
             Assert.NotNull(result);
@@ -448,7 +412,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByIdAsync(""));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByIdAsync(""));
         }
 
         [Fact]
@@ -460,7 +424,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByIdAsync(null));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceByIdAsync(null));
         }
 
         [Fact]
@@ -476,7 +440,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceByIdAsync("nonexistent"));
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceByIdAsync("nonexistent"));
         }
 
         [Fact]
@@ -493,7 +457,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetDeviceByIdAsync("device123", cts.Token);
+            _ = await client.GetDeviceByIdAsync("device123", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -511,7 +475,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "light_on" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetLightCalled);
@@ -527,7 +491,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "light_off" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetLightCalled);
@@ -543,7 +507,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "siren_on", Parameters = new() { { "duration", 60 } } };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetSirenCalled);
@@ -559,7 +523,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "siren_off" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetSirenCalled);
@@ -575,7 +539,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "night_mode_on" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetNightModeCalled);
@@ -591,7 +555,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "night_mode_off" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetNightModeCalled);
@@ -607,7 +571,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "motion_detection_on" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetMotionDetectionCalled);
@@ -623,7 +587,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "motion_detection_off" };
 
             // Act
-            await client.ControlDeviceAsync("device123", action);
+            _ = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.True(controlService.SetMotionDetectionCalled);
@@ -637,7 +601,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.ControlDeviceAsync("", new DeviceAction { ActionType = "light_on" }));
         }
 
@@ -649,7 +613,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.ControlDeviceAsync(null, new DeviceAction { ActionType = "light_on" }));
         }
 
@@ -661,7 +625,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
                 client.ControlDeviceAsync("device123", null));
         }
 
@@ -674,7 +638,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "unsupported_action" };
 
             // Act
-            var result = await client.ControlDeviceAsync("device123", action);
+            bool result = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.False(result);
@@ -693,7 +657,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var action = new DeviceAction { ActionType = "light_on" };
 
             // Act
-            var result = await client.ControlDeviceAsync("device123", action);
+            bool result = await client.ControlDeviceAsync("device123", action);
 
             // Assert
             Assert.False(result);
@@ -710,7 +674,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.ControlDeviceAsync("device123", action, cts.Token);
+            _ = await client.ControlDeviceAsync("device123", action, cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, controlService.LastCancellationToken);
@@ -731,7 +695,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetDeviceStatusAsync("device123");
+            DeviceStatusInfo result = await client.GetDeviceStatusAsync("device123");
 
             // Assert
             Assert.NotNull(result);
@@ -748,7 +712,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceStatusAsync(""));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceStatusAsync(""));
         }
 
         [Fact]
@@ -759,7 +723,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceStatusAsync(null));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => client.GetDeviceStatusAsync(null));
         }
 
         [Fact]
@@ -771,7 +735,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceStatusAsync("nonexistent"));
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => client.GetDeviceStatusAsync("nonexistent"));
         }
 
         [Fact]
@@ -788,7 +752,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetDeviceStatusAsync("device123", cts.Token);
+            _ = await client.GetDeviceStatusAsync("device123", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -809,7 +773,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetAllLocationsAsync();
+            List<Location> result = await client.GetAllLocationsAsync();
 
             // Assert
             Assert.Equal(locations, result);
@@ -824,7 +788,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetAllLocationsAsync();
+            List<Location> result = await client.GetAllLocationsAsync();
 
             // Assert
             Assert.Empty(result);
@@ -840,7 +804,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetAllLocationsAsync(cts.Token);
+            _ = await client.GetAllLocationsAsync(cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -862,7 +826,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act
-            var result = await client.GetDevicesByLocationAsync(locationId);
+            List<Doorbot> result = await client.GetDevicesByLocationAsync(locationId);
 
             // Assert
             Assert.Equal(devices, result);
@@ -876,7 +840,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.GetDevicesByLocationAsync(Guid.Empty));
         }
 
@@ -891,7 +855,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetDevicesByLocationAsync(locationId, cts.Token);
+            _ = await client.GetDevicesByLocationAsync(locationId, cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, discoveryService.LastCancellationToken);
@@ -909,7 +873,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
 
             // Act
-            await client.SetLocationModeAsync(locationId, "Home");
+            _ = await client.SetLocationModeAsync(locationId, "Home");
 
             // Assert
             Assert.True(locationService.SetLocationModeCalled);
@@ -923,7 +887,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 new MockHealthMonitoringService(), new MockLocationManagementService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.SetLocationModeAsync(Guid.Empty, "Home"));
         }
 
@@ -936,7 +900,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.SetLocationModeAsync(locationId, ""));
         }
 
@@ -949,7 +913,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.SetLocationModeAsync(locationId, null));
         }
 
@@ -964,7 +928,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.SetLocationModeAsync(locationId, "Home", cts.Token);
+            _ = await client.SetLocationModeAsync(locationId, "Home", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, locationService.LastCancellationToken);
@@ -980,7 +944,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
 
             // Act
-            var result = await client.SetLocationModeAsync(locationId, "Home");
+            bool result = await client.SetLocationModeAsync(locationId, "Home");
 
             // Assert
             Assert.True(result);
@@ -999,7 +963,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() =>
+            Exception ex = await Assert.ThrowsAsync<Exception>(() =>
                 client.SetLocationModeAsync(locationId, "Home"));
             Assert.Equal("Mode change failed", ex.Message);
         }

@@ -118,7 +118,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await service.PurgeExpiredAsync(CancellationToken.None);
+            int result = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(1, result);
@@ -232,7 +232,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await service.PurgeExpiredAsync(CancellationToken.None);
+            int result = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(0, result);
@@ -274,7 +274,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await service.PurgeExpiredAsync(CancellationToken.None);
+            int result = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(0, result);
@@ -396,7 +396,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await service.PurgeExpiredAsync(CancellationToken.None);
+            int result = await service.PurgeExpiredAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(0, result);

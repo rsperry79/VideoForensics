@@ -63,10 +63,10 @@ namespace VideoForensics.Data.Core.Services
                     }
 
                     // Count discrepancies by type
-                    var discrepancyCount = records.Count;
-                    var missingCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.MissingFromProvider);
-                    var changedCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.MetadataChanged);
-                    var newCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.NewEventFoundOnProvider);
+                    int discrepancyCount = records.Count;
+                    int missingCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.MissingFromProvider);
+                    int changedCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.MetadataChanged);
+                    int newCount = records.Count(r => r.DiscrepancyType == DiscrepancyType.NewEventFoundOnProvider);
 
                     // Log a summary entry
                     var summary = new
@@ -138,12 +138,12 @@ namespace VideoForensics.Data.Core.Services
                         .Where(d => d.Type == DiscrepancyType.NewEventFoundOnProvider)
                         .ToList();
 
-                    foreach (var discrepancy in newEventDiscrepancies)
+                    foreach (ReconciliationDiscrepancy? discrepancy in newEventDiscrepancies)
                     {
                         try
                         {
                             // Fetch full event details from provider
-                            var providerEvents = await fetchEventsFunc(discrepancy.ProviderEventId, DateTime.MinValue, DateTime.MaxValue, ct);
+                            IReadOnlyList<Event> providerEvents = await fetchEventsFunc(discrepancy.ProviderEventId, DateTime.MinValue, DateTime.MaxValue, ct);
 
                             if (providerEvents.Count == 0)
                             {
@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Core.Services
                                 continue;
                             }
 
-                            var providerEvent = providerEvents[0];
+                            Event providerEvent = providerEvents[0];
 
                             // Create Event entity
                             var newEvent = new Event
@@ -184,7 +184,7 @@ namespace VideoForensics.Data.Core.Services
                                 "AutoFixNewEvent",
                                 nameof(Event),
                                 newEvent.Id,
-                                JsonSerializer.Serialize(new { ProviderEventId = discrepancy.ProviderEventId }),
+                                JsonSerializer.Serialize(new { discrepancy.ProviderEventId }),
                                 ct);
                         }
                         catch (Exception ex)
@@ -201,12 +201,12 @@ namespace VideoForensics.Data.Core.Services
                         .Where(d => d.Type == DiscrepancyType.MetadataChanged)
                         .ToList();
 
-                    foreach (var discrepancy in metadataDiscrepancies)
+                    foreach (ReconciliationDiscrepancy? discrepancy in metadataDiscrepancies)
                     {
                         try
                         {
                             // Fetch the stored event
-                            var storedEvent = await _eventRepository.GetByProviderEventIdAsync(deviceId, discrepancy.ProviderEventId, ct);
+                            Event? storedEvent = await _eventRepository.GetByProviderEventIdAsync(deviceId, discrepancy.ProviderEventId, ct);
 
                             if (storedEvent == null)
                             {
@@ -248,7 +248,7 @@ namespace VideoForensics.Data.Core.Services
                                 "AutoFixMetadata",
                                 nameof(Event),
                                 storedEvent.Id,
-                                JsonSerializer.Serialize(new { ProviderEventId = discrepancy.ProviderEventId, FieldName = fieldName, OldValue = discrepancy.StoredValue, NewValue = discrepancy.ProviderValue }),
+                                JsonSerializer.Serialize(new { discrepancy.ProviderEventId, FieldName = fieldName, OldValue = discrepancy.StoredValue, NewValue = discrepancy.ProviderValue }),
                                 ct);
                         }
                         catch (Exception ex)

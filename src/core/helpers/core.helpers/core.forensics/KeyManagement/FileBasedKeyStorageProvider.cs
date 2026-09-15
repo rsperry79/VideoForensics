@@ -154,7 +154,7 @@ namespace VideoForensics.Forensics.KeyManagement
         {
             return await Task.Run(() =>
             {
-                var metadata = RetrieveKeyMetadata(keyId);
+                KeyMetadata? metadata = RetrieveKeyMetadata(keyId);
                 return metadata ?? new KeyMetadata
                 {
                     KeyId = keyId,

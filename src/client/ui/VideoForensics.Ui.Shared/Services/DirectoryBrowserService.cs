@@ -8,7 +8,7 @@ namespace VideoForensics.Ui.Shared.Services
         public IReadOnlyList<DirectoryEntry> GetRoots()
         {
             var roots = new List<DirectoryEntry>();
-            foreach (var drive in DriveInfo.GetDrives())
+            foreach (DriveInfo drive in DriveInfo.GetDrives())
             {
                 if (!drive.IsReady)
                 {

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Client.Core

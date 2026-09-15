@@ -1,9 +1,10 @@
 using Moq;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
 namespace VideoForensics.Client.Core.Tests
@@ -22,7 +23,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ListEndpointsAsync_ReturnsEndpointRegistry()
         {
-            var result = await _service.ListEndpointsAsync();
+            IReadOnlyList<SelfTestEndpointDto> result = await _service.ListEndpointsAsync();
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -41,9 +42,9 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ListEndpointsAsync_WithCancellationToken_ReturnsEndpoints()
         {
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
-            var result = await _service.ListEndpointsAsync(cancellationToken);
+            IReadOnlyList<SelfTestEndpointDto> result = await _service.ListEndpointsAsync(cancellationToken);
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
@@ -52,9 +53,9 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ListEndpointsAsync_EndpointDataMappedCorrectly()
         {
-            var result = await _service.ListEndpointsAsync();
+            IReadOnlyList<SelfTestEndpointDto> result = await _service.ListEndpointsAsync();
 
-            var devicesEndpoint = result.FirstOrDefault(e => e.Key == "devices");
+            SelfTestEndpointDto? devicesEndpoint = result.FirstOrDefault(e => e.Key == "devices");
             Assert.NotNull(devicesEndpoint);
             Assert.Equal("List devices", devicesEndpoint.DisplayName);
             Assert.NotNull(devicesEndpoint.Description);
@@ -66,7 +67,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_AcceptsRun_ReturnsSuccessResponse()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
             var request = new SelfTestRunRequestDto(
@@ -86,7 +87,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            var result = await _service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await _service.StartRunAsync(request);
 
             Assert.NotNull(result);
             Assert.True(result.Accepted);
@@ -96,7 +97,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_RejectsSecondConcurrentRun_ReturnsErrorResponse()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(false);
 
             var request = new SelfTestRunRequestDto(
@@ -116,7 +117,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            var result = await _service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await _service.StartRunAsync(request);
 
             Assert.NotNull(result);
             Assert.False(result.Accepted);
@@ -127,7 +128,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_WithCancellationToken_ReturnsResponse()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
             var request = new SelfTestRunRequestDto(
@@ -147,7 +148,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            var result = await _service.StartRunAsync(request, CancellationToken.None);
+            SelfTestRunResponseDto result = await _service.StartRunAsync(request, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.True(result.Accepted);
@@ -156,7 +157,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_SetsHistoryLimit()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
             var request = new SelfTestRunRequestDto(
@@ -176,7 +177,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            await _service.StartRunAsync(request);
+            _ = await _service.StartRunAsync(request);
 
             Assert.Equal(500, EndpointRegistry.CurrentHistoryLimit);
         }
@@ -184,10 +185,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_SetsSirenDuration_WhenProvided()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
-            var originalValue = EndpointRegistry.SirenDurationSeconds;
+            int originalValue = EndpointRegistry.SirenDurationSeconds;
             var request = new SelfTestRunRequestDto(
                 Endpoints: new[] { "devices" },
                 Destructive: false,
@@ -205,7 +206,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            await _service.StartRunAsync(request);
+            _ = await _service.StartRunAsync(request);
 
             Assert.Equal(30, EndpointRegistry.SirenDurationSeconds);
         }
@@ -213,10 +214,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_SkipsSirenDuration_WhenNull()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
-            var originalValue = EndpointRegistry.SirenDurationSeconds;
+            int originalValue = EndpointRegistry.SirenDurationSeconds;
             var request = new SelfTestRunRequestDto(
                 Endpoints: new[] { "devices" },
                 Destructive: false,
@@ -234,7 +235,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            await _service.StartRunAsync(request);
+            _ = await _service.StartRunAsync(request);
 
             // Should still have original value (not set)
             Assert.Equal(originalValue, EndpointRegistry.SirenDurationSeconds);
@@ -243,7 +244,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_SkipsOptionalStrings_WhenNullOrWhitespace()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
             var request = new SelfTestRunRequestDto(
@@ -263,7 +264,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            var result = await _service.StartRunAsync(request);
+            SelfTestRunResponseDto result = await _service.StartRunAsync(request);
 
             Assert.True(result.Accepted);
         }
@@ -271,7 +272,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_PassesDestructiveFlag()
         {
-            _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+            _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                 .Returns(true);
 
             var request = new SelfTestRunRequestDto(
@@ -291,7 +292,7 @@ namespace VideoForensics.Client.Core.Tests
                 AssetUuid: null,
                 PushToken: null);
 
-            await _service.StartRunAsync(request);
+            _ = await _service.StartRunAsync(request);
 
             _orchestratorMock.Verify(
                 o => o.TryStartRun(
@@ -303,10 +304,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task StartRunAsync_CreatesOutputDirectory()
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), $"videoforensics-test-{Guid.NewGuid():N}");
+            string tempDir = Path.Combine(Path.GetTempPath(), $"videoforensics-test-{Guid.NewGuid():N}");
             try
             {
-                _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
+                _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))
                     .Callback<RunOptions, string>((_, outputDir) =>
                     {
                         // Verify that directory exists during the callback
@@ -331,7 +332,7 @@ namespace VideoForensics.Client.Core.Tests
                     AssetUuid: null,
                     PushToken: null);
 
-                var result = await _service.StartRunAsync(request);
+                SelfTestRunResponseDto result = await _service.StartRunAsync(request);
 
                 Assert.True(result.Accepted);
             }
@@ -347,11 +348,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetStatusAsync_ReturnsOrchestratorStatus()
         {
-            var startedAt = DateTime.UtcNow.AddSeconds(-30);
-            _orchestratorMock.Setup(o => o.GetStatus())
-                .Returns((SelfTestRunStatus.Running, startedAt, (DateTime?)null, (string?)null));
+            DateTime startedAt = DateTime.UtcNow.AddSeconds(-30);
+            _ = _orchestratorMock.Setup(o => o.GetStatus())
+                .Returns((SelfTestRunStatus.Running, startedAt, null, null));
 
-            var result = await _service.GetStatusAsync();
+            SelfTestStatusDto result = await _service.GetStatusAsync();
 
             Assert.NotNull(result);
             Assert.Equal(SelfTestRunStatus.Running, result.Status);
@@ -363,10 +364,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetStatusAsync_WithCancellationToken_ReturnsStatus()
         {
-            _orchestratorMock.Setup(o => o.GetStatus())
-                .Returns((SelfTestRunStatus.Idle, (DateTime?)null, (DateTime?)null, (string?)null));
+            _ = _orchestratorMock.Setup(o => o.GetStatus())
+                .Returns((SelfTestRunStatus.Idle, null, null, null));
 
-            var result = await _service.GetStatusAsync(CancellationToken.None);
+            SelfTestStatusDto result = await _service.GetStatusAsync(CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(SelfTestRunStatus.Idle, result.Status);
@@ -375,10 +376,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetStatusAsync_IdleState_ReturnsNoTimestamps()
         {
-            _orchestratorMock.Setup(o => o.GetStatus())
-                .Returns((SelfTestRunStatus.Idle, (DateTime?)null, (DateTime?)null, (string?)null));
+            _ = _orchestratorMock.Setup(o => o.GetStatus())
+                .Returns((SelfTestRunStatus.Idle, null, null, null));
 
-            var result = await _service.GetStatusAsync();
+            SelfTestStatusDto result = await _service.GetStatusAsync();
 
             Assert.Equal(SelfTestRunStatus.Idle, result.Status);
             Assert.Null(result.StartedAtUtc);
@@ -389,11 +390,11 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetStatusAsync_ErrorState_ReturnsError()
         {
-            var errorMsg = "Connection failed";
-            _orchestratorMock.Setup(o => o.GetStatus())
-                .Returns((SelfTestRunStatus.Failed, (DateTime?)null, (DateTime?)null, errorMsg));
+            string errorMsg = "Connection failed";
+            _ = _orchestratorMock.Setup(o => o.GetStatus())
+                .Returns((SelfTestRunStatus.Failed, null, null, errorMsg));
 
-            var result = await _service.GetStatusAsync();
+            SelfTestStatusDto result = await _service.GetStatusAsync();
 
             Assert.Equal(SelfTestRunStatus.Failed, result.Status);
             Assert.Equal(errorMsg, result.Error);
@@ -402,10 +403,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetResultAsync_NoResultYet_ReturnsNull()
         {
-            _orchestratorMock.Setup(o => o.GetResult())
+            _ = _orchestratorMock.Setup(o => o.GetResult())
                 .Returns((IndexDocument?)null);
 
-            var result = await _service.GetResultAsync();
+            SelfTestResultDto? result = await _service.GetResultAsync();
 
             Assert.Null(result);
         }
@@ -419,12 +420,12 @@ namespace VideoForensics.Client.Core.Tests
                 GeneratedAtUtc = DateTime.UtcNow,
                 CredentialSource = "OAuth",
                 Summary = new SummaryRecord { TotalCalls = 0, Succeeded = 0, Failed = 0 },
-                Calls = new List<CallRecord>()
+                Calls = []
             };
-            _orchestratorMock.Setup(o => o.GetResult())
+            _ = _orchestratorMock.Setup(o => o.GetResult())
                 .Returns(indexDoc);
 
-            var result = await _service.GetResultAsync(CancellationToken.None);
+            SelfTestResultDto? result = await _service.GetResultAsync(CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal("1.0.0", result.ToolVersion);
@@ -433,7 +434,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetResultAsync_MapsIndexDocumentToDto()
         {
-            var startTime = DateTime.UtcNow.AddMinutes(-5);
+            DateTime startTime = DateTime.UtcNow.AddMinutes(-5);
             var callRecord = new CallRecord
             {
                 Endpoint = "devices",
@@ -450,7 +451,7 @@ namespace VideoForensics.Client.Core.Tests
                 RestoreSuccess = false,
                 RestoreError = null,
                 RestoreSkippedReason = null,
-                SchemaIssues = new List<SchemaIssueRecord>()
+                SchemaIssues = []
             };
 
             var indexDoc = new IndexDocument
@@ -459,17 +460,17 @@ namespace VideoForensics.Client.Core.Tests
                 GeneratedAtUtc = DateTime.UtcNow,
                 CredentialSource = "OAuth",
                 Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
-                Calls = new List<CallRecord> { callRecord }
+                Calls = [callRecord]
             };
-            _orchestratorMock.Setup(o => o.GetResult())
+            _ = _orchestratorMock.Setup(o => o.GetResult())
                 .Returns(indexDoc);
 
-            var result = await _service.GetResultAsync();
+            SelfTestResultDto? result = await _service.GetResultAsync();
 
             Assert.NotNull(result);
             Assert.Equal("1.0.0", result.ToolVersion);
             Assert.Equal(1, result.Summary.TotalCalls);
-            Assert.Single(result.Calls);
+            _ = Assert.Single(result.Calls);
             Assert.Equal("devices", result.Calls[0].Endpoint);
             Assert.True(result.Calls[0].Success);
             Assert.Equal(1500, result.Calls[0].DurationMs); // Truncated to long
@@ -504,7 +505,7 @@ namespace VideoForensics.Client.Core.Tests
                 RestoreSuccess = true,
                 RestoreError = null,
                 RestoreSkippedReason = null,
-                SchemaIssues = new List<SchemaIssueRecord>()
+                SchemaIssues = []
             };
 
             var indexDoc = new IndexDocument
@@ -513,12 +514,12 @@ namespace VideoForensics.Client.Core.Tests
                 GeneratedAtUtc = DateTime.UtcNow,
                 CredentialSource = "OAuth",
                 Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
-                Calls = new List<CallRecord> { callRecord }
+                Calls = [callRecord]
             };
-            _orchestratorMock.Setup(o => o.GetResult())
+            _ = _orchestratorMock.Setup(o => o.GetResult())
                 .Returns(indexDoc);
 
-            var result = await _service.GetResultAsync();
+            SelfTestResultDto? result = await _service.GetResultAsync();
 
             Assert.NotNull(result);
             Assert.NotNull(result.Calls[0].Target);
@@ -553,7 +554,7 @@ namespace VideoForensics.Client.Core.Tests
                 RestoreSuccess = false,
                 RestoreError = null,
                 RestoreSkippedReason = null,
-                SchemaIssues = new List<SchemaIssueRecord> { schemaIssue }
+                SchemaIssues = [schemaIssue]
             };
 
             var indexDoc = new IndexDocument
@@ -562,15 +563,15 @@ namespace VideoForensics.Client.Core.Tests
                 GeneratedAtUtc = DateTime.UtcNow,
                 CredentialSource = "OAuth",
                 Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
-                Calls = new List<CallRecord> { callRecord }
+                Calls = [callRecord]
             };
-            _orchestratorMock.Setup(o => o.GetResult())
+            _ = _orchestratorMock.Setup(o => o.GetResult())
                 .Returns(indexDoc);
 
-            var result = await _service.GetResultAsync();
+            SelfTestResultDto? result = await _service.GetResultAsync();
 
             Assert.NotNull(result);
-            Assert.Single(result.Calls[0].SchemaIssues);
+            _ = Assert.Single(result.Calls[0].SchemaIssues);
             Assert.Contains("MissingField", result.Calls[0].SchemaIssues[0]);
             Assert.Contains("Warning", result.Calls[0].SchemaIssues[0]);
         }

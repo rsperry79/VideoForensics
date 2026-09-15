@@ -1,4 +1,6 @@
 #nullable disable
+using System.Reflection;
+
 using VideoForensics.Providers.Ring.Models;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
@@ -43,8 +45,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void RingCredentials_StoresUserNameAndPassword()
         {
             var auth = new RingCredentials();
-            var username = "test@example.com";
-            var password = "testPassword";
+            string username = "test@example.com";
+            string password = "testPassword";
 
             auth.UserName = username;
             auth.Password = password;
@@ -175,7 +177,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 VideoCount = 1000
             };
 
-            var daysDifference = (filter.EndDateTime - filter.StartDateTime).Value.Days;
+            int daysDifference = (filter.EndDateTime - filter.StartDateTime).Value.Days;
 
             Assert.Equal(89, daysDifference);
             Assert.Equal(1000, filter.VideoCount);
@@ -189,7 +191,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             var auth = new RingCredentials { RefreshToken = "cached-refresh-token" };
 
-            var error = RingVideoService.ResolveAuthError(auth);
+            string error = RingVideoService.ResolveAuthError(auth);
 
             Assert.Null(error);
         }
@@ -199,7 +201,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             var auth = new RingCredentials { UserName = "user@example.com", Password = "pw" };
 
-            var error = RingVideoService.ResolveAuthError(auth);
+            string error = RingVideoService.ResolveAuthError(auth);
 
             Assert.Null(error);
         }
@@ -209,7 +211,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             var auth = new RingCredentials();
 
-            var error = RingVideoService.ResolveAuthError(auth);
+            string error = RingVideoService.ResolveAuthError(auth);
 
             Assert.Equal("A Ring username is required", error);
         }
@@ -219,7 +221,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             var auth = new RingCredentials { UserName = "user@example.com" };
 
-            var error = RingVideoService.ResolveAuthError(auth);
+            string error = RingVideoService.ResolveAuthError(auth);
 
             Assert.Equal("A Ring password is required", error);
         }
@@ -231,7 +233,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // that check entirely - this is the bug this test guards against regressing.
             var auth = new RingCredentials { RefreshToken = "cached-refresh-token", UserName = "user@example.com" };
 
-            var error = RingVideoService.ResolveAuthError(auth);
+            string error = RingVideoService.ResolveAuthError(auth);
 
             Assert.Null(error);
         }
@@ -277,7 +279,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationById = locations.ToDictionary(l => l.Id ?? Guid.Empty, l => l.Name);
 
             var locationId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-            var name = locationById.TryGetValue(locationId, out var value) ? value : "Unknown";
+            string name = locationById.TryGetValue(locationId, out string value) ? value : "Unknown";
 
             Assert.Equal("Front Door", name);
         }
@@ -297,7 +299,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationById = locations.ToDictionary(l => l.Id ?? Guid.Empty, l => l.Name);
 
             var locationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
-            var name = locationById.TryGetValue(locationId, out var value) ? value : "Unknown Location";
+            string name = locationById.TryGetValue(locationId, out string value) ? value : "Unknown Location";
 
             Assert.Equal("Unknown Location", name);
         }
@@ -316,9 +318,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             };
 
             var locationIdToResolve = Guid.Parse("22222222-2222-2222-2222-222222222222");
-            var name = apiLocations.TryGetValue(locationIdToResolve, out var apiName)
+            string name = apiLocations.TryGetValue(locationIdToResolve, out string apiName)
                 ? apiName
-                : (fallbackLocationNames.TryGetValue(locationIdToResolve.ToString(), out var configName) ? configName : "Unknown");
+                : (fallbackLocationNames.TryGetValue(locationIdToResolve.ToString(), out string configName) ? configName : "Unknown");
 
             Assert.Equal("Back Patio (from config)", name);
         }
@@ -335,7 +337,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             };
 
             Guid id = location.Id ?? Guid.Empty;
-            var name = location.Name ?? "Unknown";
+            string name = location.Name ?? "Unknown";
 
             Assert.Equal(Guid.Empty, id);
             Assert.Equal("Unknown", name);
@@ -351,8 +353,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -377,8 +379,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -402,8 +404,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -428,8 +430,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -456,8 +458,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -466,7 +468,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.StartDateTime = startDate;
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Start Date", message);
@@ -485,8 +487,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -495,7 +497,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.EndDateTime = endDate;
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("End Date", message);
@@ -514,8 +516,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -523,7 +525,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.VideoCount = 500;
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Max downloads", message);
@@ -542,8 +544,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -551,7 +553,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.OnlyStarred = true;
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Only Starred", message);
@@ -570,8 +572,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -579,7 +581,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.OnlyPersonDetected = true;
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Only Person", message);
@@ -598,8 +600,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -607,7 +609,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.DetectionType = "person";
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Detection", message);
@@ -626,8 +628,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -635,7 +637,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.DownloadPath = "C:\\Videos";
 
                 // Act
-                var message = service.GetFilterMessage();
+                string message = service.GetFilterMessage();
 
                 // Assert
                 Assert.Contains("Download Path", message);
@@ -657,13 +659,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
                 var service = new RingVideoService(logger, reporter, credentialStore, tempDir);
-                var firstLine = "Test first line";
+                string firstLine = "Test first line";
 
                 // Act
                 service.PrintFilterMessage(firstLine);
@@ -689,8 +691,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -699,9 +701,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 service.Filter.OnlyStarred = true;
 
                 // Act
-                var saveMethod = service.GetType().GetMethod("SaveSettings",
+                MethodInfo? saveMethod = service.GetType().GetMethod("SaveSettings",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                saveMethod?.Invoke(service, new object?[] { null, null });
+                _ = (saveMethod?.Invoke(service, new object?[] { null, null }));
 
                 // Assert
                 Assert.True(File.Exists(service.SavedSettingsFile), "Settings file should exist");
@@ -722,17 +724,17 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var logger = new MockLogger();
             var reporter = new MockReporter();
             var credentialStore = new MockCredentialStore();
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
                 // Create a settings file
                 var service1 = new RingVideoService(logger, reporter, credentialStore, tempDir);
                 service1.Filter.VideoCount = 300;
-                var saveMethod = service1.GetType().GetMethod("SaveSettings",
+                MethodInfo? saveMethod = service1.GetType().GetMethod("SaveSettings",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                saveMethod?.Invoke(service1, new object?[] { null, null });
+                _ = (saveMethod?.Invoke(service1, new object?[] { null, null }));
 
                 // Load it in a new service instance
                 var service2 = new RingVideoService(logger, reporter, credentialStore, tempDir);
@@ -753,14 +755,23 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     // Mock implementations for testing
     internal class MockLogger : Microsoft.Extensions.Logging.ILogger<RingVideoService>
     {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel)
+        {
+            return true;
+        }
+
         public void Log<TState>(
             Microsoft.Extensions.Logging.LogLevel logLevel,
             Microsoft.Extensions.Logging.EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) { }
+            Func<TState, Exception?, string> formatter)
+        { }
     }
 
     internal class MockReporter : IDownloadReporter
@@ -775,8 +786,16 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Messages.Add(message);
         }
 
-        public void Warning(string message) => Messages.Add(message);
-        public void Error(string message) => Messages.Add(message);
+        public void Warning(string message)
+        {
+            Messages.Add(message);
+        }
+
+        public void Error(string message)
+        {
+            Messages.Add(message);
+        }
+
         public void Highlight(string message)
         {
             HighlightCalled = true;
@@ -784,7 +803,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         public void UpdateFooter(string status) { }
-        public object BeginItem(string label) => new MockItemScope();
+        public object BeginItem(string label)
+        {
+            return new MockItemScope();
+        }
+
         public void WriteItem(object item, string text) { }
         public void UpdateItem(object item, string status) { }
         public void CompleteItem(object item, string status) { }
@@ -817,11 +840,22 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
     internal class MockCredentialStore : ICredentialStore
     {
-        public RingCredentials Load(string path) => new();
-        public RingCredentials LoadFromJson(string json) => new();
+        public RingCredentials Load(string path)
+        {
+            return new();
+        }
+
+        public RingCredentials LoadFromJson(string json)
+        {
+            return new();
+        }
+
         public void Save(string path, RingCredentials credentials) { }
         public void SetCredentials(string path, string userName, string password = null, string refreshToken = null) { }
-        public bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password") => false;
+        public bool SanitizeClearTextPassword(string filePath, string authPath, string clearFieldName = "Password")
+        {
+            return false;
+        }
     }
 }
 

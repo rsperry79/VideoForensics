@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -20,9 +21,11 @@ namespace VideoForensics.Forensics.Implementations
             RedactionOptions options)
         {
             if (report == null)
+            {
                 throw new ArgumentNullException(nameof(report));
+            }
 
-            var redacted = DeepClone(report);
+            ChainOfCustodyReport redacted = DeepClone(report);
             ApplyRedaction(redacted, options);
 
             return Task.FromResult(redacted);
@@ -33,9 +36,11 @@ namespace VideoForensics.Forensics.Implementations
             RedactionOptions options)
         {
             if (report == null)
+            {
                 throw new ArgumentNullException(nameof(report));
+            }
 
-            var redacted = DeepClone(report);
+            EvidenceValidationReport redacted = DeepClone(report);
             ApplyRedaction(redacted, options);
 
             return Task.FromResult(redacted);
@@ -46,9 +51,11 @@ namespace VideoForensics.Forensics.Implementations
             RedactionOptions options)
         {
             if (report == null)
+            {
                 throw new ArgumentNullException(nameof(report));
+            }
 
-            var redacted = DeepClone(report);
+            ForensicAnalysisReport redacted = DeepClone(report);
             ApplyRedaction(redacted, options);
 
             return Task.FromResult(redacted);
@@ -59,9 +66,11 @@ namespace VideoForensics.Forensics.Implementations
             RedactionOptions options)
         {
             if (report == null)
+            {
                 throw new ArgumentNullException(nameof(report));
+            }
 
-            var redacted = DeepClone(report);
+            SignalAnomalyReport redacted = DeepClone(report);
             ApplyRedaction(redacted, options);
 
             return Task.FromResult(redacted);
@@ -70,10 +79,12 @@ namespace VideoForensics.Forensics.Implementations
         public Task<T> GenerateAnonymizedReportAsync<T>(T report) where T : class
         {
             if (report == null)
+            {
                 throw new ArgumentNullException(nameof(report));
+            }
 
             var options = new RedactionOptions { FullyAnonymize = true };
-            var redacted = DeepClone(report);
+            T redacted = DeepClone(report);
             ApplyRedaction(redacted, options);
 
             return Task.FromResult(redacted);
@@ -84,12 +95,14 @@ namespace VideoForensics.Forensics.Implementations
             RedactionOptions options) where T : class
         {
             if (reports == null)
+            {
                 return Enumerable.Empty<T>();
+            }
 
             var redactedReports = new List<T>();
-            foreach (var report in reports)
+            foreach (T report in reports)
             {
-                var redacted = DeepClone(report);
+                T redacted = DeepClone(report);
                 ApplyRedaction(redacted, options);
                 redactedReports.Add(redacted);
             }
@@ -100,7 +113,9 @@ namespace VideoForensics.Forensics.Implementations
         private void ApplyRedaction<T>(T report, RedactionOptions options) where T : class
         {
             if (report == null || options == null)
+            {
                 return;
+            }
 
             string replacement = options.ReplacementString ?? "[REDACTED]";
 
@@ -158,13 +173,17 @@ namespace VideoForensics.Forensics.Implementations
 
             if (options.RedactAccessLogs && report.CustodyHistory != null)
             {
-                foreach (var entry in report.CustodyHistory)
+                foreach (ChainOfCustodyEntry entry in report.CustodyHistory)
                 {
                     if (options.RedactHandlerNames)
+                    {
                         entry.Handler = RedactIfNotNull(entry.Handler, replacement);
+                    }
 
                     if (options.RedactTimestamps)
+                    {
                         entry.Timestamp = DateTime.MinValue;
+                    }
 
                     entry.Notes = RedactIfNotNull(entry.Notes, replacement);
                     entry.AccessReason = RedactIfNotNull(entry.AccessReason, replacement);
@@ -244,7 +263,7 @@ namespace VideoForensics.Forensics.Implementations
 
             if (report.Findings != null)
             {
-                foreach (var finding in report.Findings)
+                foreach (ForensicAnalysisResult finding in report.Findings)
                 {
                     if (options.RedactVictimName || options.RedactPhoneNumber ||
                         options.RedactAddress || options.RedactEmail)
@@ -254,7 +273,9 @@ namespace VideoForensics.Forensics.Implementations
                     }
 
                     if (options.RedactTimestamps)
+                    {
                         finding.AnalysisTimestamp = DateTime.MinValue;
+                    }
                 }
             }
 
@@ -287,19 +308,19 @@ namespace VideoForensics.Forensics.Implementations
             if (options.RedactDeviceSerialNumbers && report.PerCameraBaselineStatistics != null)
             {
                 var keysToRedact = new List<string>(report.PerCameraBaselineStatistics.Keys);
-                foreach (var key in keysToRedact)
+                foreach (string key in keysToRedact)
                 {
                     report.PerCameraBaselineStatistics[replacement] = report.PerCameraBaselineStatistics[key];
                     if (!key.Equals(replacement))
                     {
-                        report.PerCameraBaselineStatistics.Remove(key);
+                        _ = report.PerCameraBaselineStatistics.Remove(key);
                     }
                 }
             }
 
             if (options.RedactDeviceSerialNumbers && report.CameraProfiles != null)
             {
-                foreach (var profile in report.CameraProfiles)
+                foreach (CameraSignalProfile profile in report.CameraProfiles)
                 {
                     profile.CameraId = RedactIfNotNull(profile.CameraId, replacement);
                 }
@@ -312,17 +333,19 @@ namespace VideoForensics.Forensics.Implementations
         private void RedactCustomFields<T>(T report, List<string> fieldNames, string replacement) where T : class
         {
             if (fieldNames == null || fieldNames.Count == 0)
-                return;
-
-            var properties = typeof(T).GetProperties();
-            foreach (var fieldName in fieldNames)
             {
-                var prop = properties.FirstOrDefault(p =>
+                return;
+            }
+
+            PropertyInfo[] properties = typeof(T).GetProperties();
+            foreach (string fieldName in fieldNames)
+            {
+                PropertyInfo? prop = properties.FirstOrDefault(p =>
                     p.Name.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
 
                 if (prop != null && prop.CanWrite && prop.PropertyType == typeof(string))
                 {
-                    var currentValue = (string?)prop.GetValue(report);
+                    string? currentValue = (string?)prop.GetValue(report);
                     if (currentValue != null)
                     {
                         prop.SetValue(report, replacement);
@@ -334,14 +357,16 @@ namespace VideoForensics.Forensics.Implementations
         private void RedactStringProperties<T>(T report, string replacement) where T : class
         {
             if (report == null)
+            {
                 return;
+            }
 
-            var properties = typeof(T).GetProperties();
-            foreach (var prop in properties)
+            PropertyInfo[] properties = typeof(T).GetProperties();
+            foreach (PropertyInfo prop in properties)
             {
                 if (prop.CanWrite && prop.PropertyType == typeof(string))
                 {
-                    var currentValue = (string?)prop.GetValue(report);
+                    string? currentValue = (string?)prop.GetValue(report);
                     if (!string.IsNullOrEmpty(currentValue))
                     {
                         prop.SetValue(report, replacement);
@@ -353,7 +378,7 @@ namespace VideoForensics.Forensics.Implementations
                     var collection = (System.Collections.IEnumerable?)prop.GetValue(report);
                     if (collection != null && prop.CanWrite)
                     {
-                        foreach (var item in collection)
+                        foreach (object? item in collection)
                         {
                             RedactStringProperties(item, replacement);
                         }
@@ -365,12 +390,14 @@ namespace VideoForensics.Forensics.Implementations
         private void RedactMetadata(Dictionary<string, object>? metadata, string replacement)
         {
             if (metadata == null)
+            {
                 return;
+            }
 
             var keysToUpdate = new List<string>(metadata.Keys);
-            foreach (var key in keysToUpdate)
+            foreach (string key in keysToUpdate)
             {
-                var value = metadata[key];
+                object value = metadata[key];
                 if (value is string strValue && !string.IsNullOrEmpty(strValue))
                 {
                     metadata[key] = replacement;
@@ -386,12 +413,14 @@ namespace VideoForensics.Forensics.Implementations
         private T DeepClone<T>(T obj) where T : class
         {
             if (obj == null)
+            {
                 return null!;
+            }
 
             try
             {
                 // Use JSON serialization for deep cloning
-                var json = JsonSerializer.Serialize(obj);
+                string json = JsonSerializer.Serialize(obj);
                 return JsonSerializer.Deserialize<T>(json) ?? obj;
             }
             catch

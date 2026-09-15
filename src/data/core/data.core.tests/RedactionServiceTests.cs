@@ -127,10 +127,10 @@ namespace VideoForensics.Data.Core.Tests
                 PersonName = "Original Name"
             };
 
-            var originalEmail = original.Email;
-            var originalPhone = original.PhoneNumber;
-            var originalAddress = original.Address;
-            var originalName = original.PersonName;
+            string originalEmail = original.Email;
+            string originalPhone = original.PhoneNumber;
+            string originalAddress = original.Address;
+            string originalName = original.PersonName;
 
             // Act
             TestReportDto redacted = _service.RedactForExport(original, RedactionLevel.Heavy);

@@ -143,7 +143,7 @@ namespace VideoForensics.Providers.Ring.Tests
             );
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device123", config);
+            bool result = await service.UpdateDeviceConfigAsync("device123", config);
 
             // Assert
             Assert.True(result);
@@ -164,7 +164,7 @@ namespace VideoForensics.Providers.Ring.Tests
             );
 
             // Act
-            var result = await service.UpdateDeviceConfigAsync("device123", config);
+            bool result = await service.UpdateDeviceConfigAsync("device123", config);
 
             // Assert
             _ = Assert.IsType<bool>(result);

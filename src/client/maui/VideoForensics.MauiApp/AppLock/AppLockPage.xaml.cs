@@ -50,7 +50,7 @@ namespace VideoForensics.MauiApp.AppLock
                     return;
                 }
 
-                var success = await _authGate.AuthenticateAsync(_reason, CancellationToken.None);
+                bool success = await _authGate.AuthenticateAsync(_reason, CancellationToken.None);
                 if (success)
                 {
                     Unlocked?.Invoke(this, EventArgs.Empty);

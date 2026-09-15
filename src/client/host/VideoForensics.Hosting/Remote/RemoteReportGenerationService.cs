@@ -32,7 +32,7 @@ namespace VideoForensics.Hosting.Remote
             DateTime toUtc,
             CancellationToken ct)
         {
-            var queryString = BuildQueryString(deviceId, fromUtc, toUtc);
+            string queryString = BuildQueryString(deviceId, fromUtc, toUtc);
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/evidence-review{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             EvidenceReviewReportDto? dto = await response.Content.ReadFromJsonAsync<EvidenceReviewReportDto>(JsonOptions, ct);
@@ -46,7 +46,7 @@ namespace VideoForensics.Hosting.Remote
             DateTime toUtc,
             CancellationToken ct)
         {
-            var queryString = BuildQueryString(deviceId, fromUtc, toUtc);
+            string queryString = BuildQueryString(deviceId, fromUtc, toUtc);
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/forensic-analysis{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             ForensicAnalysisReportDto? dto = await response.Content.ReadFromJsonAsync<ForensicAnalysisReportDto>(JsonOptions, ct);
@@ -60,7 +60,7 @@ namespace VideoForensics.Hosting.Remote
             DateTime toUtc,
             CancellationToken ct)
         {
-            var queryString = BuildQueryString(deviceId, fromUtc, toUtc);
+            string queryString = BuildQueryString(deviceId, fromUtc, toUtc);
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/signal-anomaly{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             SignalAnomalyReportDto? dto = await response.Content.ReadFromJsonAsync<SignalAnomalyReportDto>(JsonOptions, ct);
@@ -74,7 +74,7 @@ namespace VideoForensics.Hosting.Remote
             DateTime toUtc,
             CancellationToken ct)
         {
-            var queryString = BuildQueryString(deviceId, fromUtc, toUtc);
+            string queryString = BuildQueryString(deviceId, fromUtc, toUtc);
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/access-control{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             AccessControlReportDto? dto = await response.Content.ReadFromJsonAsync<AccessControlReportDto>(JsonOptions, ct);
@@ -88,7 +88,7 @@ namespace VideoForensics.Hosting.Remote
             DateTime toUtc,
             CancellationToken ct)
         {
-            var queryString = BuildQueryString(deviceId, fromUtc, toUtc);
+            string queryString = BuildQueryString(deviceId, fromUtc, toUtc);
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/reports/chain-of-custody{queryString}", ct);
             _ = response.EnsureSuccessStatusCode();
             ChainOfCustodyReportDto? dto = await response.Content.ReadFromJsonAsync<ChainOfCustodyReportDto>(JsonOptions, ct);
@@ -114,6 +114,7 @@ namespace VideoForensics.Hosting.Remote
             {
                 parameters.Add($"deviceId={deviceId.Value:D}");
             }
+
             parameters.Add($"fromUtc={fromUtc:O}");
             parameters.Add($"toUtc={toUtc:O}");
             return "?" + string.Join("&", parameters);

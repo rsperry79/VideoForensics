@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 if (health != null)
                 {
-                    var issue = "Unknown";
+                    string issue = "Unknown";
                     if (health.BatteryPercentage < 10m)
                     {
                         issue = "LowBattery";
@@ -119,9 +119,9 @@ namespace VideoForensics.Data.Database.Repositories
                 deviceId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, minGapMinutes: 5, ct);
             IReadOnlyList<HealthRelatedGap> healthGaps = await IdentifyHealthRelatedGapsAsync(device?.LocationId ?? Guid.Empty, ct);
 
-            var totalMinutes = 30 * 24 * 60;
-            var gapMinutes = gaps.Sum(g => g.DurationMinutes);
-            var uptime = (totalMinutes - gapMinutes) / (decimal)totalMinutes * 100;
+            int totalMinutes = 30 * 24 * 60;
+            int gapMinutes = gaps.Sum(g => g.DurationMinutes);
+            decimal uptime = (totalMinutes - gapMinutes) / (decimal)totalMinutes * 100;
 
             return new DeviceReliabilityAnalysis
             {
@@ -215,12 +215,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         private static string DetermineHealthStatus(decimal? battery, int? rssi, bool? isOnline)
         {
-            if (isOnline == false)
-            {
-                return "Critical";
-            }
-
-            return battery < 10m || rssi < -80 ? "Degraded" : "Good";
+            return isOnline == false ? "Critical" : battery < 10m || rssi < -80 ? "Degraded" : "Good";
         }
 
         public async Task<CorrelationSummary> GetCorrelationSummaryAsync(Guid locationId, CancellationToken ct)
@@ -249,7 +244,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             // Worst-case-among-devices rollup for the coarse triage string only - not an average,
             // so one healthy camera can never hide another's offline/unhealthy status.
-            var status = offlineDevices.Count > 0 ? "Critical" : unhealthyDevices.Count > 0 ? "Anomalies" : "Healthy";
+            string status = offlineDevices.Count > 0 ? "Critical" : unhealthyDevices.Count > 0 ? "Anomalies" : "Healthy";
 
             var summary = new CorrelationSummary
             {
@@ -277,7 +272,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyList<HealthRelatedGap> allGaps = await IdentifyHealthRelatedGapsAsync(locationId, ct);
             var orderedGaps = allGaps.OrderByDescending(g => g.DurationMinutes).ToList();
 
-            var totalCount = orderedGaps.Count;
+            int totalCount = orderedGaps.Count;
             var paginatedGaps = orderedGaps
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -299,7 +294,7 @@ namespace VideoForensics.Data.Database.Repositories
             var orderedEvents = allEvents.OrderBy(e => e.OccurredAtUtc).ToList();
 
             int startIndex = 0;
-            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out int cursorIndex))
             {
                 startIndex = cursorIndex;
             }
@@ -309,7 +304,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Take(pageSize)
                 .ToList();
 
-            var nextCursor = (startIndex + items.Count < orderedEvents.Count)
+            string? nextCursor = (startIndex + items.Count < orderedEvents.Count)
                 ? (startIndex + items.Count).ToString()
                 : null;
 

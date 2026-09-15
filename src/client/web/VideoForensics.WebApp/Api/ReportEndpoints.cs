@@ -1,5 +1,6 @@
-﻿using VideoForensics.Api.Contracts;
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Data.Core.Models;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api
@@ -69,10 +70,10 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                var from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
-                var to = toUtc ?? DateTime.UtcNow;
+                DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+                DateTime to = toUtc ?? DateTime.UtcNow;
 
-                var report = await reportService.BuildEvidenceReviewAsync(deviceId, from, to, ct);
+                EvidenceReviewReport report = await reportService.BuildEvidenceReviewAsync(deviceId, from, to, ct);
                 return Results.Ok(report.ToDto());
             }
             catch (Exception ex)
@@ -90,10 +91,10 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                var from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
-                var to = toUtc ?? DateTime.UtcNow;
+                DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+                DateTime to = toUtc ?? DateTime.UtcNow;
 
-                var report = await reportService.BuildForensicAnalysisReportAsync(deviceId, from, to, ct);
+                ForensicAnalysisReport report = await reportService.BuildForensicAnalysisReportAsync(deviceId, from, to, ct);
                 return Results.Ok(report.ToDto());
             }
             catch (Exception ex)
@@ -111,10 +112,10 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                var from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
-                var to = toUtc ?? DateTime.UtcNow;
+                DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+                DateTime to = toUtc ?? DateTime.UtcNow;
 
-                var report = await reportService.BuildSignalAnomalyReportAsync(deviceId, from, to, ct);
+                SignalAnomalyReport report = await reportService.BuildSignalAnomalyReportAsync(deviceId, from, to, ct);
                 return Results.Ok(report.ToDto());
             }
             catch (Exception ex)
@@ -132,10 +133,10 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                var from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
-                var to = toUtc ?? DateTime.UtcNow;
+                DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+                DateTime to = toUtc ?? DateTime.UtcNow;
 
-                var report = await reportService.BuildAccessControlReportAsync(deviceId, from, to, ct);
+                AccessControlReport report = await reportService.BuildAccessControlReportAsync(deviceId, from, to, ct);
                 return Results.Ok(report.ToDto());
             }
             catch (Exception ex)
@@ -153,10 +154,10 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                var from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
-                var to = toUtc ?? DateTime.UtcNow;
+                DateTime from = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+                DateTime to = toUtc ?? DateTime.UtcNow;
 
-                var report = await reportService.BuildChainOfCustodyReportAsync(deviceId, from, to, ct);
+                ChainOfCustodyReport report = await reportService.BuildChainOfCustodyReportAsync(deviceId, from, to, ct);
                 return Results.Ok(report.ToDto());
             }
             catch (Exception ex)

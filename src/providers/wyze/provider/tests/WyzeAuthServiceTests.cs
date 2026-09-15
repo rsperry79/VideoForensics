@@ -39,7 +39,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             var service = new WyzeAuthService(logger);
 
             // Act
-            var result = await service.RefreshAuthAsync();
+            bool result = await service.RefreshAuthAsync();
 
             // Assert
             Assert.False(result);
@@ -53,7 +53,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             var service = new WyzeAuthService(logger);
 
             // Act
-            var result = await service.IsAuthenticatedAsync();
+            bool result = await service.IsAuthenticatedAsync();
 
             // Assert
             Assert.False(result);
@@ -67,7 +67,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             var service = new WyzeAuthService(logger);
 
             // Act
-            var status = service.GetAuthStatus();
+            string status = service.GetAuthStatus();
 
             // Assert
             Assert.NotNull(status);

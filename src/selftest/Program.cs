@@ -69,14 +69,14 @@ namespace VideoForensics.Providers.Ring.SelfTester
         private static IServiceProvider BuildServiceProvider(string? dbPath)
         {
             var services = new ServiceCollection();
-            services.AddLogging(b => b.AddProvider(new ConsoleWarningErrorLoggerProvider()));
+            _ = services.AddLogging(b => b.AddProvider(new ConsoleWarningErrorLoggerProvider()));
 
             // Same fixed key-ring location and DAPI protection as VideoForensics.WebApp/MauiApp -
             // must match exactly, or a refresh token saved by one host can't be decrypted by another.
             string dataProtectionKeyPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
             _ = Directory.CreateDirectory(dataProtectionKeyPath);
-            var dataProtectionBuilder = services.AddDataProtection()
+            IDataProtectionBuilder dataProtectionBuilder = services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
                 .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
             // DPAPI is Windows-only; this app is platform-agnostic (see PlatformDirectoryService/
@@ -85,7 +85,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             // permissions on the ProgramData-equivalent directory above.
             if (OperatingSystem.IsWindows())
             {
-                dataProtectionBuilder.ProtectKeysWithDpapi();
+                _ = dataProtectionBuilder.ProtectKeysWithDpapi();
             }
 
             _ = services.AddVideoForensicsDataLayer(dbPath);
@@ -102,7 +102,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
         private static async Task<int> Main(string[] args)
         {
-            var (options, parseError) = CliOptions.Parse(args);
+            (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)
             {
                 Console.Error.WriteLine($"Error: {parseError}");
@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             // encryption keys are shared with the rest of the app instead of living in a SelfTester-only silo.
             IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath);
 
-            var initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
+            ILogger<SelfTesterLogCategory> initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
             try
             {
                 await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(serviceProvider, initLogger, CancellationToken.None);
@@ -154,14 +154,14 @@ namespace VideoForensics.Providers.Ring.SelfTester
             }
 
             using IServiceScope authScope = serviceProvider.CreateScope();
-            var authService = authScope.ServiceProvider.GetRequiredService<IProviderAuthService>();
-            var sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
+            IProviderAuthService authService = authScope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+            ISessionProvider sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
 
             // "The currently active account" mirrors the UI's own account switcher: the single
             // IForensicsConfiguration.ActiveProviderAccountId setting persisted in AppSettings, loaded
             // by InitializeVideoForensicsDataAsync above. Falls back to RingAuthService's own
             // most-recently-authenticated-Ring-account heuristic when nothing has been selected yet.
-            var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+            IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
             Guid? activeAccountId = forensicsConfig.ActiveProviderAccountId;
 
             Session session;
@@ -174,7 +174,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 if (!restored)
                 {
                     // If no saved credentials, try explicit options
-                    var credentials = CredentialResolver.Resolve(options.RefreshToken, options.UserName, options.Password);
+                    ResolvedCredentials? credentials = CredentialResolver.Resolve(options.RefreshToken, options.UserName, options.Password);
                     if (credentials == null)
                     {
                         WriteNoCredentialsError();
@@ -313,12 +313,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
             if (!options.Quiet)
             {
-                foreach (var missing in report.Devices.Where(d => !d.FoundInDb))
+                foreach (DbCompletenessRecord? missing in report.Devices.Where(d => !d.FoundInDb))
                 {
                     Console.WriteLine($"   MISSING device: {missing.Kind} {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
                 }
 
-                foreach (var missing in report.Locations.Where(l => !l.FoundInDb))
+                foreach (DbCompletenessRecord? missing in report.Locations.Where(l => !l.FoundInDb))
                 {
                     Console.WriteLine($"   MISSING location: {missing.ProviderId} ({missing.Name ?? "(unnamed)"})");
                 }
@@ -345,7 +345,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             if (credentials.RefreshToken != null)
             {
                 // Use refresh token
-                var session = await Session.GetSessionByRefreshToken(credentials.RefreshToken);
+                Session session = await Session.GetSessionByRefreshToken(credentials.RefreshToken);
                 if (session?.OAuthToken != null)
                 {
                     return true;
@@ -355,13 +355,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
             if (credentials.UserName != null && credentials.Password != null)
             {
                 // Use username/password
-                var result = await authService.AuthenticateAsync(credentials.UserName, credentials.Password);
+                AuthResult result = await authService.AuthenticateAsync(credentials.UserName, credentials.Password);
                 return result.Success;
             }
 
             return false;
         }
-
 
         private const string ReadmePointer = "Run 'dotnet run -- --auth' first to set up authentication.";
 
@@ -416,14 +415,14 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 // (WebApp, the legacy console app) - see BuildServiceProvider.
                 IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath);
 
-                var initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
+                ILogger<SelfTesterLogCategory> initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
                 await VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync(serviceProvider, initLogger, CancellationToken.None);
 
                 using IServiceScope scope = serviceProvider.CreateScope();
-                var authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+                IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
 
                 // Authenticate and save to database
-                var result = await authService.AuthenticateWithTwoFactorAsync(
+                AuthResult result = await authService.AuthenticateWithTwoFactorAsync(
                     userName,
                     password,
                     async () =>
@@ -443,11 +442,11 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
                 // Make this the active account, exactly like AuthForm.razor does after a UI sign-in -
                 // so a normal (non-auth) SelfTester run picks it up via IForensicsConfiguration.ActiveProviderAccountId.
-                var forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
+                IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
                 if (result.ProviderAccountId.HasValue && forensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
                 {
                     forensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
-                    var configService = scope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>();
+                    IForensicsConfigurationService configService = scope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>();
                     await configService.SaveConfigurationAsync(forensicsConfig);
                 }
 
@@ -522,7 +521,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
             Console.WriteLine("[destructive] endpoints require --destructive. [physical] ones also trigger real hardware");
             Console.WriteLine("and are excluded by --no-physical even when --destructive is set.");
             Console.WriteLine();
-            foreach (var e in EndpointRegistry.All)
+            foreach (EndpointDescriptor e in EndpointRegistry.All)
             {
                 string tags = string.Concat(e.Destructive ? " [destructive]" : "", e.Physical ? " [physical]" : "");
                 Console.WriteLine($"  {e.Key,-22} {e.DisplayName}{tags}");

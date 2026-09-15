@@ -52,15 +52,12 @@ namespace VideoForensics.Hosting.Remote
                 }
 
                 // If 2FA is required, return a failed result explaining the caller must use AuthenticateWithTwoFactorAsync
-                if (dto.RequiresTwoFactor)
-                {
-                    return new AuthResult(
+                return dto.RequiresTwoFactor
+                    ? new AuthResult(
                         Success: false,
                         ErrorMessage: "Two-factor authentication is required. Use AuthenticateWithTwoFactorAsync with the two-factor code provider."
-                    );
-                }
-
-                return MapAuthResultDtoToDomain(dto);
+                    )
+                    : MapAuthResultDtoToDomain(dto);
             }
             catch (HttpRequestException ex)
             {
@@ -119,15 +116,12 @@ namespace VideoForensics.Hosting.Remote
                 _ = twoFactorResponse.EnsureSuccessStatusCode();
                 AuthResultDto? twoFactorDto = await twoFactorResponse.Content.ReadFromJsonAsync<AuthResultDto>(JsonOptions, cancellationToken);
 
-                if (twoFactorDto == null)
-                {
-                    return new AuthResult(
+                return twoFactorDto == null
+                    ? new AuthResult(
                         Success: false,
                         ErrorMessage: "Server returned null response after two-factor authentication"
-                    );
-                }
-
-                return MapAuthResultDtoToDomain(twoFactorDto);
+                    )
+                    : MapAuthResultDtoToDomain(twoFactorDto);
             }
             catch (HttpRequestException ex)
             {

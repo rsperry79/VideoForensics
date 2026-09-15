@@ -34,7 +34,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
                 ILegalHoldRepository legalHoldRepo = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.ILegalHoldRepository>();
                 IUnitOfWork unitOfWork = sp.GetRequiredService<VideoForensics.Data.Common.Contracts.IUnitOfWork>();
                 IActionLogger actionLogger = sp.GetRequiredService<IActionLogger>();
-                var days = retentionDays ?? 90;
+                int days = retentionDays ?? 90;
                 return new RetentionService(mediaItemRepo, legalHoldRepo, unitOfWork, actionLogger, logger, days);
             });
 

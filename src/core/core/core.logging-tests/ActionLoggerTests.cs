@@ -37,7 +37,7 @@ namespace VideoForensics.Core.Logging.Tests
             string details = "test details";
             string userName = Environment.UserName;
 
-            var expectedEntry = TestHelpers.CreateActionLogEntry(
+            ActionLogEntry expectedEntry = TestHelpers.CreateActionLogEntry(
                 actor: userName,
                 action: action,
                 entityType: entityType,
@@ -56,7 +56,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ReturnsAsync(expectedEntry);
 
             // Act
-            var result = await _actionLogger.LogAsync(action, entityType, entityId, details, CancellationToken.None);
+            ActionLogEntry result = await _actionLogger.LogAsync(action, entityType, entityId, details, CancellationToken.None);
 
             // Assert
             Assert.Equal(expectedEntry, result);
@@ -106,7 +106,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ReturnsAsync(expectedEntry);
 
             // Act
-            var result = await _actionLogger.LogAsync(action, entityType, entityId, null, CancellationToken.None);
+            ActionLogEntry result = await _actionLogger.LogAsync(action, entityType, entityId, null, CancellationToken.None);
 
             // Assert
             Assert.Null(result.DetailsJson);
@@ -127,7 +127,7 @@ namespace VideoForensics.Core.Logging.Tests
         {
             // Arrange
             string customActor = "mcp:tool-name";
-            var customActorType = ActorType.McpTool;
+            ActorType customActorType = ActorType.McpTool;
             string action = "AnalysisPerformed";
             string entityType = "MediaItem";
             var entityId = Guid.NewGuid();
@@ -158,7 +158,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ReturnsAsync(expectedEntry);
 
             // Act
-            var result = await _actionLogger.LogAsAsync(customActor, customActorType, action, entityType, entityId, details, CancellationToken.None);
+            ActionLogEntry result = await _actionLogger.LogAsAsync(customActor, customActorType, action, entityType, entityId, details, CancellationToken.None);
 
             // Assert
             Assert.Equal(customActor, result.Actor);
@@ -207,7 +207,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ReturnsAsync(expectedEntry);
 
             // Act
-            var result = await _actionLogger.LogAsAsync("system", ActorType.System, action, entityType, entityId, null, CancellationToken.None);
+            ActionLogEntry result = await _actionLogger.LogAsAsync("system", ActorType.System, action, entityType, entityId, null, CancellationToken.None);
 
             // Assert
             Assert.Equal(ActorType.System, result.ActorType);

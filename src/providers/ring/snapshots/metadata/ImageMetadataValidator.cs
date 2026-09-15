@@ -2,7 +2,6 @@ using System;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
 
-
 namespace VideoForensics.Providers.Ring
 {
     /// <summary>
@@ -50,7 +49,7 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                using var file = _fileSystem.FileStream.New(snapshotFilePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+                using FileSystemStream file = _fileSystem.FileStream.New(snapshotFilePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
                 byte[] headerBytes = new byte[12];
                 int bytesRead = file.Read(headerBytes, 0, 12);
 
@@ -101,7 +100,7 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                using var file = _fileSystem.FileStream.New(snapshotFilePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+                using FileSystemStream file = _fileSystem.FileStream.New(snapshotFilePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
                 byte[] headerBytes = new byte[12];
                 int bytesRead = file.Read(headerBytes, 0, 12);
 

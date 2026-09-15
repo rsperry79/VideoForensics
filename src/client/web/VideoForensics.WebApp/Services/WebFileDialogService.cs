@@ -28,8 +28,8 @@ namespace VideoForensics.WebApp.Services
 
         public async Task<bool> SaveExportedArchiveAsync(string sourceFilePath, string suggestedFileName, CancellationToken cancellationToken)
         {
-            var token = _tokenStore.CreateToken(sourceFilePath);
-            var url = $"api/export-download/{token}?fileName={Uri.EscapeDataString(suggestedFileName)}";
+            Guid token = _tokenStore.CreateToken(sourceFilePath);
+            string url = $"api/export-download/{token}?fileName={Uri.EscapeDataString(suggestedFileName)}";
             await _jsRuntime.InvokeVoidAsync("vfExportDownload.trigger", cancellationToken, url);
             return true;
         }

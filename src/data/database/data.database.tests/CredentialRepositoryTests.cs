@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task CredentialRepository_SetAndGet_RoundTripsPlaintext()
         {
             var accountId = Guid.NewGuid();
-            var plainPassword = "MySecurePassword123!";
+            string plainPassword = "MySecurePassword123!";
 
             await _repository.SetAsync(accountId, "Password", plainPassword, CancellationToken.None);
             (string CredentialType, string DecryptedValue)? retrieved = await _repository.GetAsync(accountId, "Password", CancellationToken.None);
@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task CredentialRepository_SetAsync_StoresEncryptedValue()
         {
             var accountId = Guid.NewGuid();
-            var plainToken = "refresh_token_abc123";
+            string plainToken = "refresh_token_abc123";
 
             await _repository.SetAsync(accountId, "RefreshToken", plainToken, CancellationToken.None);
 

@@ -42,7 +42,7 @@ namespace VideoForensics.Hosting
         {
             DateTime now = DateTime.UtcNow;
             var principal = new SessionPrincipal(operatorId, pairedDeviceId, role, now, now + SessionLifetime);
-            var json = JsonSerializer.Serialize(principal);
+            string json = JsonSerializer.Serialize(principal);
             return _protector.Protect(json);
         }
 
@@ -50,7 +50,7 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                var json = _protector.Unprotect(token);
+                string json = _protector.Unprotect(token);
                 SessionPrincipal? principal = JsonSerializer.Deserialize<SessionPrincipal>(json);
                 return principal == null || principal.ExpiresAtUtc < DateTime.UtcNow ? null : principal;
             }

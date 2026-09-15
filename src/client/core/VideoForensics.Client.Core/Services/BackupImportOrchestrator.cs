@@ -24,7 +24,7 @@ namespace VideoForensics.Client.Core.Services
 
         public async Task<BackupImportResult> ImportBackupAsync(string backupZipPath, string mediaRootPath, CancellationToken ct)
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), "VideoForensicsImport_" + Guid.NewGuid());
+            string tempDir = Path.Combine(Path.GetTempPath(), "VideoForensicsImport_" + Guid.NewGuid());
 
             try
             {
@@ -39,19 +39,19 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        var outPath = Path.Combine(tempDir, entry.Name);
+                        string outPath = Path.Combine(tempDir, entry.Name);
                         using System.IO.Stream zipStream = zipFile.GetInputStream(entry);
                         using FileStream outStream = File.Create(outPath);
                         await zipStream.CopyToAsync(outStream, ct);
                     }
                 }
 
-                var accounts = await ReadJsonAsync<List<ProviderAccount>>(Path.Combine(tempDir, "accounts.json"), ct) ?? new();
-                var locations = await ReadJsonAsync<List<Location>>(Path.Combine(tempDir, "locations.json"), ct) ?? new();
-                var devices = await ReadJsonAsync<List<Device>>(Path.Combine(tempDir, "devices.json"), ct) ?? new();
-                var events = await ReadJsonAsync<List<Event>>(Path.Combine(tempDir, "events.json"), ct) ?? new();
-                var downloadEvents = await ReadJsonAsync<List<DownloadEvent>>(Path.Combine(tempDir, "download_events.json"), ct) ?? new();
-                var mediaItems = await ReadJsonAsync<List<ExportedMediaItem>>(Path.Combine(tempDir, "media_items.json"), ct) ?? new();
+                List<ProviderAccount> accounts = await ReadJsonAsync<List<ProviderAccount>>(Path.Combine(tempDir, "accounts.json"), ct) ?? [];
+                List<Location> locations = await ReadJsonAsync<List<Location>>(Path.Combine(tempDir, "locations.json"), ct) ?? [];
+                List<Device> devices = await ReadJsonAsync<List<Device>>(Path.Combine(tempDir, "devices.json"), ct) ?? [];
+                List<Event> events = await ReadJsonAsync<List<Event>>(Path.Combine(tempDir, "events.json"), ct) ?? [];
+                List<DownloadEvent> downloadEvents = await ReadJsonAsync<List<DownloadEvent>>(Path.Combine(tempDir, "download_events.json"), ct) ?? [];
+                List<ExportedMediaItem> mediaItems = await ReadJsonAsync<List<ExportedMediaItem>>(Path.Combine(tempDir, "media_items.json"), ct) ?? [];
 
                 BackupImportResult result = await _unitOfWork.ExecuteAsync(async ctx =>
                 {
@@ -63,7 +63,7 @@ namespace VideoForensics.Client.Core.Services
                         if (await ctx.ProviderAccounts.GetAsync(account.Id, ct) != null)
                         {
                             importResult.ProviderAccounts.SkippedExisting++;
-                            importedAccountIds.Add(account.Id);
+                            _ = importedAccountIds.Add(account.Id);
                             continue;
                         }
 
@@ -76,7 +76,7 @@ namespace VideoForensics.Client.Core.Services
 
                         await ctx.ProviderAccounts.AddAsync(account, ct);
                         importResult.ProviderAccounts.Inserted++;
-                        importedAccountIds.Add(account.Id);
+                        _ = importedAccountIds.Add(account.Id);
                     }
 
                     var importedLocationIds = new HashSet<Guid>();
@@ -85,13 +85,13 @@ namespace VideoForensics.Client.Core.Services
                         if (await ctx.Locations.GetAsync(location.Id, ct) != null)
                         {
                             importResult.Locations.SkippedExisting++;
-                            importedLocationIds.Add(location.Id);
+                            _ = importedLocationIds.Add(location.Id);
                             continue;
                         }
 
                         await ctx.Locations.AddAsync(location, ct);
                         importResult.Locations.Inserted++;
-                        importedLocationIds.Add(location.Id);
+                        _ = importedLocationIds.Add(location.Id);
                     }
 
                     var importedDeviceIds = new HashSet<Guid>();
@@ -100,11 +100,11 @@ namespace VideoForensics.Client.Core.Services
                         if (await ctx.Devices.GetAsync(device.Id, ct) != null)
                         {
                             importResult.Devices.SkippedExisting++;
-                            importedDeviceIds.Add(device.Id);
+                            _ = importedDeviceIds.Add(device.Id);
                             continue;
                         }
 
-                        var locationOk = importedLocationIds.Contains(device.LocationId) ||
+                        bool locationOk = importedLocationIds.Contains(device.LocationId) ||
                             await ctx.Locations.GetAsync(device.LocationId, ct) != null;
                         if (!locationOk)
                         {
@@ -115,7 +115,7 @@ namespace VideoForensics.Client.Core.Services
 
                         await ctx.Devices.AddAsync(device, ct);
                         importResult.Devices.Inserted++;
-                        importedDeviceIds.Add(device.Id);
+                        _ = importedDeviceIds.Add(device.Id);
                     }
 
                     var importedEventIds = new HashSet<Guid>();
@@ -124,11 +124,11 @@ namespace VideoForensics.Client.Core.Services
                         if (await ctx.Events.GetAsync(evt.Id, ct) != null)
                         {
                             importResult.Events.SkippedExisting++;
-                            importedEventIds.Add(evt.Id);
+                            _ = importedEventIds.Add(evt.Id);
                             continue;
                         }
 
-                        var deviceOk = importedDeviceIds.Contains(evt.DeviceId) ||
+                        bool deviceOk = importedDeviceIds.Contains(evt.DeviceId) ||
                             await ctx.Devices.GetAsync(evt.DeviceId, ct) != null;
                         if (!deviceOk)
                         {
@@ -139,7 +139,7 @@ namespace VideoForensics.Client.Core.Services
 
                         _ = await ctx.Events.UpsertAsync(evt, ct);
                         importResult.Events.Inserted++;
-                        importedEventIds.Add(evt.Id);
+                        _ = importedEventIds.Add(evt.Id);
                     }
 
                     var importedDownloadEventIds = new HashSet<Guid>();
@@ -148,11 +148,11 @@ namespace VideoForensics.Client.Core.Services
                         if (await ctx.DownloadEvents.GetAsync(de.Id, ct) != null)
                         {
                             importResult.DownloadEvents.SkippedExisting++;
-                            importedDownloadEventIds.Add(de.Id);
+                            _ = importedDownloadEventIds.Add(de.Id);
                             continue;
                         }
 
-                        var deviceOk = importedDeviceIds.Contains(de.DeviceId) ||
+                        bool deviceOk = importedDeviceIds.Contains(de.DeviceId) ||
                             await ctx.Devices.GetAsync(de.DeviceId, ct) != null;
                         if (!deviceOk)
                         {
@@ -163,12 +163,12 @@ namespace VideoForensics.Client.Core.Services
 
                         await ctx.DownloadEvents.AddAsync(de, ct);
                         importResult.DownloadEvents.Inserted++;
-                        importedDownloadEventIds.Add(de.Id);
+                        _ = importedDownloadEventIds.Add(de.Id);
                     }
 
                     foreach (ExportedMediaItem exported in mediaItems)
                     {
-                        MediaItem mediaItem = exported.ToMediaItem(mediaRootPath);
+                        var mediaItem = exported.ToMediaItem(mediaRootPath);
 
                         if (await ctx.MediaItems.GetAsync(mediaItem.Id, ct) != null)
                         {
@@ -176,9 +176,9 @@ namespace VideoForensics.Client.Core.Services
                             continue;
                         }
 
-                        var deviceOk = importedDeviceIds.Contains(mediaItem.DeviceId) ||
+                        bool deviceOk = importedDeviceIds.Contains(mediaItem.DeviceId) ||
                             await ctx.Devices.GetAsync(mediaItem.DeviceId, ct) != null;
-                        var downloadEventOk = mediaItem.DownloadEventId == null ||
+                        bool downloadEventOk = mediaItem.DownloadEventId == null ||
                             importedDownloadEventIds.Contains(mediaItem.DownloadEventId.Value) ||
                             await ctx.DownloadEvents.GetAsync(mediaItem.DownloadEventId.Value, ct) != null;
 
@@ -191,8 +191,8 @@ namespace VideoForensics.Client.Core.Services
 
                         if (File.Exists(mediaItem.FilePath))
                         {
-                            var hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaItem.FilePath), ct);
-                            var actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaItem.FilePath), ct);
+                            string actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
                             mediaItem.IntegrityVerified = actualHash == mediaItem.Sha256Hash;
                             mediaItem.LastVerifiedAtUtc = DateTime.UtcNow;
                             if (!mediaItem.IntegrityVerified)
@@ -245,7 +245,7 @@ namespace VideoForensics.Client.Core.Services
                 return default;
             }
 
-            var json = await File.ReadAllTextAsync(path, ct);
+            string json = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<T>(json);
         }
     }

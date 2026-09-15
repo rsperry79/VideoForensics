@@ -104,10 +104,10 @@ namespace VideoForensics.Data.Database.Repositories
                             x.Event.OccurredAtUtc <= toUtc)
                 .ToListAsync(ct);
 
-            var downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
+            int downloaded = allEvents.Count(x => x.Event.DownloadedAtUtc.HasValue);
             IReadOnlyList<MissingDownloadRecord> missing = await GetMissingDownloadsAsync(locationId, fromUtc, toUtc, ct);
 
-            var completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
+            decimal completeness = allEvents.Count > 0 ? (decimal)downloaded / allEvents.Count * 100 : 100m;
 
             return new DownloadCompletenessReport
             {
@@ -178,9 +178,9 @@ namespace VideoForensics.Data.Database.Repositories
             DownloadCompletenessReport completeness = await VerifyDownloadCompletenessAsync(
                 locationId, DateTime.UtcNow.AddDays(-180), DateTime.UtcNow, ct);
 
-            var tamperingPenalty = Math.Min(50, tampering.Count * 5);
-            var completenessScore = (int)completeness.CompletenessPercentage;
-            var score = Math.Max(0, completenessScore - tamperingPenalty);
+            int tamperingPenalty = Math.Min(50, tampering.Count * 5);
+            int completenessScore = (int)completeness.CompletenessPercentage;
+            int score = Math.Max(0, completenessScore - tamperingPenalty);
 
             _logger.LogInformation(
                 "Integrity score for {LocationId}: {Score}% (Completeness={Completeness}%, Tampering Indicators={TamperingCount})",
@@ -201,13 +201,13 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(e => e.OccurredAtUtc)
                 .ToListAsync(ct);
 
-            var baselineRate = events.Count / ((toUtc - fromUtc).TotalHours + 1);
+            double baselineRate = events.Count / ((toUtc - fromUtc).TotalHours + 1);
             var gaps = new List<AnomalousGap>();
 
             for (int i = 0; i < events.Count - 1; i++)
             {
-                var gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
-                var expectedEvents = (decimal)(gapDuration / 60) * (decimal)baselineRate;
+                double gapDuration = (events[i + 1].OccurredAtUtc - events[i].OccurredAtUtc).TotalMinutes;
+                decimal expectedEvents = (decimal)(gapDuration / 60) * (decimal)baselineRate;
 
                 if (gapDuration > 30 && expectedEvents > 0)
                 {
@@ -247,7 +247,7 @@ namespace VideoForensics.Data.Database.Repositories
                                     h.CapturedAtUtc <= gap.EndUtc)
                         .FirstOrDefaultAsync(ct);
 
-                    var failureType = "Unknown";
+                    string failureType = "Unknown";
                     if (health?.IsOnline == false)
                     {
                         failureType = "DeviceOffline";
@@ -288,7 +288,7 @@ namespace VideoForensics.Data.Database.Repositories
                 IReadOnlyList<AnomalousGap> gaps = await DetectMissingEventsByPatternAsync(device.Id, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
                 foreach (AnomalousGap gap in gaps)
                 {
-                    var suspicion = gap.StartUtc.Hour switch
+                    string suspicion = gap.StartUtc.Hour switch
                     {
                         >= 22 or < 6 => "NightGap",
                         _ => gap.StartUtc.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "WeekendGap" : "LongGap"
@@ -313,7 +313,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IntegritySummary> GetIntegritySummaryAsync(Guid locationId, CancellationToken ct)
         {
-            var integrityScore = await ComputeEventIntegrityScoreAsync(locationId, ct);
+            int integrityScore = await ComputeEventIntegrityScoreAsync(locationId, ct);
             IReadOnlyList<TamperingIndicator> tampering = await GetTamperingIndicatorsAsync(locationId, ct);
             DownloadCompletenessReport completeness = await VerifyDownloadCompletenessAsync(
                 locationId, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct);
@@ -352,7 +352,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyList<TamperingIndicator> allIndicators = await GetTamperingIndicatorsAsync(locationId, ct);
             var orderedIndicators = allIndicators.OrderByDescending(i => i.TamperingScore).ToList();
 
-            var totalCount = orderedIndicators.Count;
+            int totalCount = orderedIndicators.Count;
             var paginatedIndicators = orderedIndicators
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -374,7 +374,7 @@ namespace VideoForensics.Data.Database.Repositories
             var orderedRecords = allRecords.OrderBy(r => r.OccurredAtUtc).ToList();
 
             int startIndex = 0;
-            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out var cursorIndex))
+            if (!string.IsNullOrEmpty(cursor) && int.TryParse(cursor, out int cursorIndex))
             {
                 startIndex = cursorIndex;
             }
@@ -384,7 +384,7 @@ namespace VideoForensics.Data.Database.Repositories
                 .Take(pageSize)
                 .ToList();
 
-            var nextCursor = (startIndex + items.Count < orderedRecords.Count)
+            string? nextCursor = (startIndex + items.Count < orderedRecords.Count)
                 ? (startIndex + items.Count).ToString()
                 : null;
 

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 
+using System.Text.Json.Nodes;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
@@ -36,14 +38,14 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
                 _logger.LogError("Not authenticated: Uniview client is null");
                 return new List<Location>().AsReadOnly();
             }
 
-            var nvrHost = _config.UniviewNvrHost;
+            string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
                 _logger.LogError("Uniview NVR host not configured");
@@ -54,10 +56,12 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             string locationName = "Uniview NVR";
             try
             {
-                var deviceInfo = await client.GetDeviceInfoAsync(cancellationToken);
-                var friendlyName = deviceInfo?["DeviceName"]?.GetValue<string>();
+                JsonNode? deviceInfo = await client.GetDeviceInfoAsync(cancellationToken);
+                string? friendlyName = deviceInfo?["DeviceName"]?.GetValue<string>();
                 if (!string.IsNullOrEmpty(friendlyName))
+                {
                     locationName = friendlyName;
+                }
             }
             catch (Exception ex)
             {
@@ -88,14 +92,14 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
                 _logger.LogError("Not authenticated: Uniview client is null");
                 return new List<Device>().AsReadOnly();
             }
 
-            var nvrHost = _config.UniviewNvrHost;
+            string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
                 _logger.LogError("Uniview NVR host not configured");
@@ -110,10 +114,10 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
                 return new List<Device>().AsReadOnly();
             }
 
-            var channels = await client.GetChannelListAsync(cancellationToken);
+            IReadOnlyList<UniviewClient.ChannelInfo> channels = await client.GetChannelListAsync(cancellationToken);
             var devices = new List<Device>();
 
-            foreach (var channel in channels)
+            foreach (UniviewClient.ChannelInfo channel in channels)
             {
                 var device = new Device(
                     Id: channel.Index.ToString(),
@@ -126,7 +130,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
 
             _logger.LogInformation("Found {DeviceCount} channels at Uniview NVR {NvrHost}", devices.Count, nvrHost);
-            foreach (var device in devices)
+            foreach (Device device in devices)
             {
                 _logger.LogInformation("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
                     device.Id, device.Name, device.IsOnline);
@@ -151,14 +155,14 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
         {
             _logger.LogInformation("Fetching device: {DeviceId}", deviceId);
 
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
                 _logger.LogError("Not authenticated: Uniview client is null");
                 return null;
             }
 
-            var nvrHost = _config.UniviewNvrHost;
+            string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
                 _logger.LogError("Uniview NVR host not configured");
@@ -166,20 +170,24 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
 
             // Parse deviceId as channel number
-            if (!int.TryParse(deviceId, out var channelNumber))
+            if (!int.TryParse(deviceId, out int channelNumber))
             {
                 _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
                 return null;
             }
 
             // Get all devices and find the matching one
-            var devices = await GetDevicesAsync(nvrHost, cancellationToken);
-            var device = devices.FirstOrDefault(d => d.Id == deviceId);
+            IReadOnlyList<Device> devices = await GetDevicesAsync(nvrHost, cancellationToken);
+            Device? device = devices.FirstOrDefault(d => d.Id == deviceId);
 
             if (device != null)
+            {
                 _logger.LogInformation("Found device: {DeviceId} - {DeviceName}", device.Id, device.Name);
+            }
             else
+            {
                 _logger.LogInformation("Device not found: {DeviceId}", deviceId);
+            }
 
             return device;
         }

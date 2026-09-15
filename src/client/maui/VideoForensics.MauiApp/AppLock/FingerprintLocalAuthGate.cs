@@ -27,7 +27,7 @@ namespace VideoForensics.MauiApp.AppLock
                 AllowAlternativeAuthentication = true
             };
 
-            var result = await CrossFingerprint.Current.AuthenticateAsync(config, ct);
+            FingerprintAuthenticationResult result = await CrossFingerprint.Current.AuthenticateAsync(config, ct);
             return result.Authenticated;
         }
     }

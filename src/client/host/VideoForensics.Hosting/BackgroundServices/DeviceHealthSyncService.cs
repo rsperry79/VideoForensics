@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -80,8 +79,8 @@ namespace VideoForensics.Hosting.BackgroundServices
         /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var sp = scope.ServiceProvider;
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            IServiceProvider sp = scope.ServiceProvider;
 
             var healthSources = sp.GetServices<IProviderHealthSource>().ToList();
             if (healthSources.Count == 0)
@@ -89,8 +88,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                 return;
             }
 
-            var deviceRepository = sp.GetRequiredService<IDeviceRepository>();
-            var dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
+            IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
+            IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
             try
@@ -112,10 +111,10 @@ namespace VideoForensics.Hosting.BackgroundServices
                 .GroupBy(d => d.ProviderDeviceId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            var budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
-            var auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
+            IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
+            ISecurityAuditLogger auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
 
-            foreach (var healthSource in healthSources)
+            foreach (IProviderHealthSource? healthSource in healthSources)
             {
                 string providerName = healthSource.GetType().Name;
 
@@ -130,13 +129,13 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                 try
                 {
-                    var readings = await healthSource.FetchHealthAsync(ct);
+                    IReadOnlyList<DeviceHealthReading> readings = await healthSource.FetchHealthAsync(ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     int persisted = 0;
 
-                    foreach (var reading in readings)
+                    foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out var device))
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
                         {
                             continue;
                         }

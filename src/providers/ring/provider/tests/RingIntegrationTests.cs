@@ -5,7 +5,6 @@ using Moq;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -104,7 +103,7 @@ namespace VideoForensics.Providers.Ring.Tests
             );
             _ = services.AddSingleton<IMediaDownloadService>(provider =>
             {
-                var mockDataClient = new Mock<IVideoForensicsDataClient>().Object;
+                IVideoForensicsDataClient mockDataClient = new Mock<IVideoForensicsDataClient>().Object;
                 return new RingMediaDownloadService(
                     provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                     provider.GetRequiredService<ISessionProvider>(),
@@ -130,11 +129,11 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange - Build DI container
-            var serviceProvider = BuildServiceProvider();
-            var logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-            var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            ILogger<RingIntegrationTests> logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+            IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
             string outputDir = Path.Combine(Path.GetTempPath(), "ring_test_videos");
             _ = Directory.CreateDirectory(outputDir);
@@ -150,7 +149,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.True(isAuthenticated, "Session is not authenticated after restoration");
 
                 // Act 3: Get locations
-                var locations = await deviceService.GetLocationsAsync();
+                IReadOnlyList<Location> locations = await deviceService.GetLocationsAsync();
                 if (locations.Count == 0)
                 {
                     throw new InvalidOperationException("No locations found on Ring account. Account may not have any locations configured, or API credentials may be incomplete.");
@@ -161,11 +160,11 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 // Act 4: Get devices from each location
                 var allDevices = new List<Device>();
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var devices = await deviceService.GetDevicesAsync(location.Id);
+                    IReadOnlyList<Device> devices = await deviceService.GetDevicesAsync(location.Id);
                     logger.LogInformation("Location {LocationName} ({LocationId}): {DeviceCount} device(s)", location.Name, location.Id, devices.Count);
-                    foreach (var device in devices)
+                    foreach (Device device in devices)
                     {
                         logger.LogInformation("  - Device: {DeviceName} ({DeviceId}), Type: {DeviceType}, Online: {IsOnline}", device.Name, device.Id, device.Type, device.IsOnline);
                     }
@@ -184,11 +183,11 @@ namespace VideoForensics.Providers.Ring.Tests
                 var onlineDevices = allDevices.Where(d => d.IsOnline).ToList();
                 if (onlineDevices.Any())
                 {
-                    var device = onlineDevices.First();
-                    var startDate = DateTime.Now.AddDays(-7);
-                    var endDate = DateTime.Now;
+                    Device device = onlineDevices.First();
+                    DateTime startDate = DateTime.Now.AddDays(-7);
+                    DateTime endDate = DateTime.Now;
 
-                    var result = await downloadService.DownloadVideosAsync(
+                    DownloadResult result = await downloadService.DownloadVideosAsync(
                         device.Id,
                         outputDir,
                         startDate,
@@ -226,11 +225,11 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange
-            var serviceProvider = BuildServiceProvider();
-            var logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-            var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            ILogger<RingIntegrationTests> logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+            IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
             string outputDir = Path.Combine(Path.GetTempPath(), "ring_video_by_type");
             _ = Directory.CreateDirectory(outputDir);
@@ -242,13 +241,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.True(restored);
 
                 // Get all devices
-                var locations = await deviceService.GetLocationsAsync();
+                IReadOnlyList<Location> locations = await deviceService.GetLocationsAsync();
                 Assert.NotEmpty(locations);
 
                 var allDevices = new List<Device>();
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var devices = await deviceService.GetDevicesAsync(location.Id);
+                    IReadOnlyList<Device> devices = await deviceService.GetDevicesAsync(location.Id);
                     allDevices.AddRange(devices);
                 }
 
@@ -264,20 +263,20 @@ namespace VideoForensics.Providers.Ring.Tests
                     devicesByType.Count,
                     string.Join(", ", devicesByType.Keys));
 
-                var startDate = DateTime.Now.AddDays(-7);
-                var endDate = DateTime.Now;
+                DateTime startDate = DateTime.Now.AddDays(-7);
+                DateTime endDate = DateTime.Now;
 
                 // Download from one device of each type
-                foreach (var (deviceType, devicesOfType) in devicesByType)
+                foreach ((string? deviceType, List<Device>? devicesOfType) in devicesByType)
                 {
-                    var device = devicesOfType.First();
+                    Device device = devicesOfType.First();
                     string typeOutputDir = Path.Combine(outputDir, deviceType);
                     _ = Directory.CreateDirectory(typeOutputDir);
 
                     logger.LogInformation("Downloading from {DeviceType}: {DeviceName} ({DeviceId})",
                         deviceType, device.Name, device.Id);
 
-                    var result = await downloadService.DownloadVideosAsync(
+                    DownloadResult result = await downloadService.DownloadVideosAsync(
                         device.Id,
                         typeOutputDir,
                         startDate,
@@ -318,11 +317,11 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange
-            var serviceProvider = BuildServiceProvider();
-            var logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-            var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            ILogger<RingIntegrationTests> logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+            IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
             string outputDir = Path.Combine(Path.GetTempPath(), "ring_metadata_validation");
             _ = Directory.CreateDirectory(outputDir);
@@ -334,13 +333,13 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.True(restored);
 
                 // Get devices
-                var locations = await deviceService.GetLocationsAsync();
+                IReadOnlyList<Location> locations = await deviceService.GetLocationsAsync();
                 Assert.NotEmpty(locations);
 
                 var allDevices = new List<Device>();
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var devices = await deviceService.GetDevicesAsync(location.Id);
+                    IReadOnlyList<Device> devices = await deviceService.GetDevicesAsync(location.Id);
                     allDevices.AddRange(devices);
                 }
 
@@ -352,12 +351,12 @@ namespace VideoForensics.Providers.Ring.Tests
                     return; // Skip if no online devices
                 }
 
-                var device = onlineDevices.First();
-                var startDate = DateTime.Now.AddDays(-7);
-                var endDate = DateTime.Now;
+                Device device = onlineDevices.First();
+                DateTime startDate = DateTime.Now.AddDays(-7);
+                DateTime endDate = DateTime.Now;
 
                 // Act - Download videos
-                var result = await downloadService.DownloadVideosAsync(
+                DownloadResult result = await downloadService.DownloadVideosAsync(
                     device.Id,
                     outputDir,
                     startDate,
@@ -446,8 +445,8 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange
-            var serviceProvider = BuildServiceProvider();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
 
             // Act
             bool restored = await authService.RestoreFromSavedCredentialsAsync();
@@ -467,20 +466,20 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange
-            var serviceProvider = BuildServiceProvider();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
 
             // Act
             _ = await authService.RestoreFromSavedCredentialsAsync();
-            var locations = await deviceService.GetLocationsAsync();
+            IReadOnlyList<Location> locations = await deviceService.GetLocationsAsync();
 
             // Assert
             Assert.NotEmpty(locations);
 
-            foreach (var location in locations)
+            foreach (Location location in locations)
             {
-                var devices = await deviceService.GetDevicesAsync(location.Id);
+                IReadOnlyList<Device> devices = await deviceService.GetDevicesAsync(location.Id);
                 Assert.NotNull(devices);
             }
         }
@@ -494,17 +493,17 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange
-            var serviceProvider = BuildServiceProvider();
-            var logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            ILogger<RingIntegrationTests> logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
 
             // Restore session
             bool restored = await authService.RestoreFromSavedCredentialsAsync();
             Assert.True(restored, "Failed to restore authentication");
 
             // Get the session from the provider
-            var sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
-            var session = sessionProvider.GetSession();
+            ISessionProvider sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
+            Session? session = sessionProvider.GetSession();
             Assert.NotNull(session);
 
             string outputDir = Path.Combine(Path.GetTempPath(), "ring_api_test");
@@ -523,7 +522,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     ChimeIdFilter: null
                 );
 
-                var indexDoc = await runner.RunAsync(runOptions, _credentialPath);
+                IndexDocument indexDoc = await runner.RunAsync(runOptions, _credentialPath);
 
                 // Assert
                 Assert.NotNull(indexDoc);
@@ -535,7 +534,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 // All calls should succeed
                 bool hasErrors = false;
-                foreach (var call in indexDoc.Calls)
+                foreach (CallRecord call in indexDoc.Calls)
                 {
                     int statusCode = call.HttpCalls.FirstOrDefault()?.StatusCode ?? 0;
                     string status = call.Success ? "OK" : "FAIL";
@@ -562,7 +561,7 @@ namespace VideoForensics.Providers.Ring.Tests
                         if (errorIssues.Any())
                         {
                             logger.LogError("    Schema violations for {Endpoint}:", call.DisplayName);
-                            foreach (var issue in errorIssues)
+                            foreach (SchemaIssueRecord? issue in errorIssues)
                             {
                                 logger.LogError("      {Path}: {IssueType} (expected: {Expected}, actual: {Actual})",
                                     issue.Path, issue.IssueType, issue.Expected, issue.Actual);
@@ -598,11 +597,11 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             // Arrange - Build DI container
-            var serviceProvider = BuildServiceProvider();
-            var logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
-            var authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-            var deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-            var downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
+            IServiceProvider serviceProvider = BuildServiceProvider();
+            ILogger<RingIntegrationTests> logger = serviceProvider.GetRequiredService<ILogger<RingIntegrationTests>>();
+            IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
+            IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
+            IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
 
             string outputDir = Path.Combine(Path.GetTempPath(), "ring_test_snapshots");
             _ = Directory.CreateDirectory(outputDir);
@@ -613,25 +612,25 @@ namespace VideoForensics.Providers.Ring.Tests
                 bool restored = await authService.RestoreFromSavedCredentialsAsync();
                 Assert.True(restored, "Failed to restore credentials");
 
-                var locations = await deviceService.GetLocationsAsync();
+                IReadOnlyList<Location> locations = await deviceService.GetLocationsAsync();
                 Assert.NotEmpty(locations);
 
-                var startDate = DateTime.Now.AddDays(-30);  // Look back 30 days for more data
-                var endDate = DateTime.Now;
+                DateTime startDate = DateTime.Now.AddDays(-30);  // Look back 30 days for more data
+                DateTime endDate = DateTime.Now;
 
                 int downloadedSnapshotCount = 0;
                 int deviceCount = 0;
                 var cameraTypesFound = new HashSet<string>();
 
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var devices = await deviceService.GetDevicesAsync(location.Id.ToString());
+                    IReadOnlyList<Device> devices = await deviceService.GetDevicesAsync(location.Id.ToString());
                     if (devices == null || devices.Count == 0)
                     {
                         continue;
                     }
 
-                    foreach (var device in devices)
+                    foreach (Device device in devices)
                     {
                         deviceCount++;
                         _ = cameraTypesFound.Add(device.Type);
@@ -639,7 +638,7 @@ namespace VideoForensics.Providers.Ring.Tests
                         string deviceOutputDir = Path.Combine(outputDir, $"{device.Name}_{device.Id}");
                         _ = Directory.CreateDirectory(deviceOutputDir);
 
-                        var result = await downloadService.DownloadSnapshotsAsync(
+                        DownloadResult result = await downloadService.DownloadSnapshotsAsync(
                             device.Id,
                             deviceOutputDir,
                             startDate,

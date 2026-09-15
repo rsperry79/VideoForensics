@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Core.Services
                     continue;
                 }
 
-                var value = prop.GetValue(obj);
+                object? value = prop.GetValue(obj);
                 if (value == null)
                 {
                     continue;
@@ -110,10 +110,10 @@ namespace VideoForensics.Data.Core.Services
                     continue;
                 }
 
-                var value = prop.GetValue(obj);
+                object? value = prop.GetValue(obj);
                 if (value is System.Collections.IEnumerable enumerable and not string)
                 {
-                    foreach (var item in enumerable)
+                    foreach (object? item in enumerable)
                     {
                         if (item is not string and not ValueType)
                         {
@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Core.Services
                     continue;
                 }
 
-                var value = prop.GetValue(obj);
+                object? value = prop.GetValue(obj);
                 if (value != null)
                 {
                     if (value is System.Collections.IEnumerable enumerable and not string)
@@ -162,12 +162,12 @@ namespace VideoForensics.Data.Core.Services
                         Type listType = typeof(List<>);
                         Type itemType = prop.PropertyType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
                         Type listGeneric = listType.MakeGenericType(itemType);
-                        var newList = Activator.CreateInstance(listGeneric);
+                        object? newList = Activator.CreateInstance(listGeneric);
                         MethodInfo? addMethod = listGeneric.GetMethod("Add");
 
-                        foreach (var item in enumerable)
+                        foreach (object? item in enumerable)
                         {
-                            var clonedItem = item is not string and not ValueType
+                            object clonedItem = item is not string and not ValueType
                                 ? DeepClone(item)
                                 : item;
                             _ = (addMethod?.Invoke(newList, new[] { clonedItem }));
@@ -178,7 +178,7 @@ namespace VideoForensics.Data.Core.Services
                     else if (value is not string and not ValueType)
                     {
                         // Clone nested objects
-                        var clonedValue = DeepClone(value);
+                        object clonedValue = DeepClone(value);
                         prop.SetValue(clone, clonedValue);
                     }
                     else
@@ -232,15 +232,15 @@ namespace VideoForensics.Data.Core.Services
                 return "[REDACTED_EMAIL]";
             }
 
-            var parts = email.Split('@');
+            string[] parts = email.Split('@');
             if (parts.Length != 2)
             {
                 return "[REDACTED_EMAIL]";
             }
 
-            var localPart = parts[0];
-            var domain = parts[1];
-            var maskedLocal = localPart.Length > 2
+            string localPart = parts[0];
+            string domain = parts[1];
+            string maskedLocal = localPart.Length > 2
                 ? $"{localPart[0]}***{localPart[^1]}"
                 : "***";
 
@@ -254,7 +254,7 @@ namespace VideoForensics.Data.Core.Services
                 return "[REDACTED_PHONE]";
             }
 
-            var digits = new string(phone.Where(char.IsDigit).ToArray());
+            string digits = new(phone.Where(char.IsDigit).ToArray());
             return digits.Length < 4 ? "[REDACTED_PHONE]" : $"***-***-{digits[^4..]}";
         }
     }

@@ -71,7 +71,7 @@ namespace VideoForensics.WebApp.Api
                     request.Passphrase,
                     ct);
 
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 string description = "Evidence export" + (request.CaseReference != null ? $" for case {request.CaseReference}" : "");
                 await auditLog.LogAsync(
                     SecurityAuditEventTypes.EvidenceExported,

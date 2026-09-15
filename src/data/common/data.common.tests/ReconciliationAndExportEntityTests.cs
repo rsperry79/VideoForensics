@@ -13,12 +13,12 @@ public class ReconciliationAndExportEntityTests
         var id = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         DateTime ranAtUtc = DateTime.UtcNow;
-        var providerEventId = "event-999";
+        string providerEventId = "event-999";
         DiscrepancyType discrepancyType = DiscrepancyType.MetadataChanged;
-        var fieldName = "EventType";
-        var storedValue = "motion";
-        var providerValue = "doorbell";
-        var notes = "Event type changed on provider side";
+        string fieldName = "EventType";
+        string storedValue = "motion";
+        string providerValue = "doorbell";
+        string notes = "Event type changed on provider side";
 
         // Act
         var record = new ProviderReconciliationRecord
@@ -96,10 +96,10 @@ public class ReconciliationAndExportEntityTests
     {
         // Arrange
         DiscrepancyType type = DiscrepancyType.MetadataChanged;
-        var providerEventId = "event-123";
-        var fieldName = "Timestamp";
-        var storedValue = "2024-01-15T10:00:00Z";
-        var providerValue = "2024-01-15T10:05:00Z";
+        string providerEventId = "event-123";
+        string fieldName = "Timestamp";
+        string storedValue = "2024-01-15T10:00:00Z";
+        string providerValue = "2024-01-15T10:05:00Z";
 
         // Act
         var discrepancy = new ReconciliationDiscrepancy
@@ -144,14 +144,14 @@ public class ReconciliationAndExportEntityTests
         // Arrange
         var id = Guid.NewGuid();
         DateTime exportedAtUtc = DateTime.UtcNow;
-        var exportedByUserName = "operator";
-        var caseReference = "CASE-2024-001";
-        var recipientDescription = "Law Enforcement Agency";
-        var archiveFileName = "evidence_export_2024-01-15.zip";
-        var archiveSha256Hash = "abcdef123456789";
-        var wasEncrypted = true;
-        var itemCount = 42;
-        var appVersion = "1.0.0";
+        string exportedByUserName = "operator";
+        string caseReference = "CASE-2024-001";
+        string recipientDescription = "Law Enforcement Agency";
+        string archiveFileName = "evidence_export_2024-01-15.zip";
+        string archiveSha256Hash = "abcdef123456789";
+        bool wasEncrypted = true;
+        int itemCount = 42;
+        string appVersion = "1.0.0";
 
         // Act
         var record = new ExportRecord
@@ -235,7 +235,7 @@ public class ReconciliationAndExportEntityTests
         var id = Guid.NewGuid();
         var exportRecordId = Guid.NewGuid();
         var mediaItemId = Guid.NewGuid();
-        var mediaItemSha256HashAtExport = "media_hash_at_export_time";
+        string mediaItemSha256HashAtExport = "media_hash_at_export_time";
 
         // Act
         var item = new ExportRecordItem
@@ -258,8 +258,8 @@ public class ReconciliationAndExportEntityTests
     {
         // Arrange
         var mediaItemId = Guid.NewGuid();
-        var hashAtExportTime = "hash_at_export";
-        var currentHash = "different_hash_after_modification";
+        string hashAtExportTime = "hash_at_export";
+        string currentHash = "different_hash_after_modification";
 
         // Act
         var item = new ExportRecordItem
@@ -282,8 +282,8 @@ public class ReconciliationAndExportEntityTests
         var exportRecordId = Guid.NewGuid();
         var mediaItemId1 = Guid.NewGuid();
         var mediaItemId2 = Guid.NewGuid();
-        var hash1 = "item1_hash_at_export";
-        var hash2 = "item2_hash_at_export";
+        string hash1 = "item1_hash_at_export";
+        string hash2 = "item2_hash_at_export";
 
         // Act
         var item1 = new ExportRecordItem

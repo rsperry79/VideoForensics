@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             {
                 store.Save(path, auth);
                 string raw = File.ReadAllText(path);
-                var loaded = store.Load(path);
+                RingCredentials loaded = store.Load(path);
 
                 Assert.False(raw.Contains("testPassword"));
                 Assert.False(raw.Contains("testRefresh"));
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             var store = new CredentialStore();
             string path = Path.Combine(Path.GetTempPath(), $"ringvideos-test-auth-missing-{Guid.NewGuid()}.json");
 
-            var loaded = store.Load(path);
+            RingCredentials loaded = store.Load(path);
 
             Assert.Null(loaded.UserName);
             Assert.Null(loaded.Password);
@@ -89,7 +89,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             try
             {
                 store.SetCredentials(path, "user@example.com", "pw", "refresh");
-                var loaded = store.Load(path);
+                RingCredentials loaded = store.Load(path);
 
                 Assert.Equal("user@example.com", loaded.UserName);
                 Assert.Equal("pw", loaded.Password);
@@ -147,7 +147,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             _ = mock.Setup(s => s.Load(It.IsAny<string>())).Returns(new RingCredentials { RefreshToken = "fake-token" });
 
             ICredentialStore store = mock.Object;
-            var result = store.Load("irrelevant-path");
+            RingCredentials result = store.Load("irrelevant-path");
 
             Assert.Equal("fake-token", result.RefreshToken);
             mock.Verify(s => s.Load("irrelevant-path"), Times.Once);

@@ -5,19 +5,28 @@ namespace VideoForensics.Ui.Shared.Layout
     /// <summary>A single left-nav item within a top-level tab group.</summary>
     public sealed record NavItem(string Text, string Path, Func<NavContext, bool>? Visible = null)
     {
-        public bool IsVisible(NavContext ctx) => Visible is null || Visible(ctx);
+        public bool IsVisible(NavContext ctx)
+        {
+            return Visible is null || Visible(ctx);
+        }
     }
 
     /// <summary>A top-level tab, and the left-nav items shown while it's active.</summary>
     public sealed record NavGroup(string Key, string Text, string Path, IReadOnlyList<NavItem> Items, Func<NavContext, bool>? Visible = null)
     {
-        public bool IsVisible(NavContext ctx) => Visible is null || Visible(ctx);
+        public bool IsVisible(NavContext ctx)
+        {
+            return Visible is null || Visible(ctx);
+        }
     }
 
     /// <summary>Role/session state needed to evaluate a NavItem/NavGroup's visibility predicate.</summary>
     public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported)
     {
-        public bool HasRole(OperatorRole minimum) => IsSignedIn && Role is not null && Role >= minimum;
+        public bool HasRole(OperatorRole minimum)
+        {
+            return IsSignedIn && Role is not null && Role >= minimum;
+        }
     }
 
     /// <summary>
@@ -27,51 +36,51 @@ namespace VideoForensics.Ui.Shared.Layout
     /// </summary>
     public static class NavGroups
     {
-        public static readonly IReadOnlyList<NavGroup> All = new List<NavGroup>
-        {
-            new("dashboard", "Dashboard", "/", new List<NavItem>
-            {
+        public static readonly IReadOnlyList<NavGroup> All =
+        [
+            new("dashboard", "Dashboard", "/",
+            [
                 new("Dashboard", "/"),
                 new("Full Workflow", "/workflow")
-            }),
+            ]),
 
-            new("collect", "Collect", "/collect/videos", new List<NavItem>
-            {
+            new("collect", "Collect", "/collect/videos",
+            [
                 new("Collect Videos", "/collect/videos"),
                 new("Collect Snapshots", "/collect/snapshots")
-            }),
+            ]),
 
-            new("analyze", "Analyze", "/analyze/reports", new List<NavItem>
-            {
+            new("analyze", "Analyze", "/analyze/reports",
+            [
                 new("Forensic Reports", "/analyze/reports"),
                 new("Signal Anomalies", "/analyze/signal-anomalies"),
                 new("Access Control", "/analyze/access-control"),
                 new("Chain of Custody", "/analyze/chain-of-custody"),
                 new("Validate Evidence", "/analyze/validate/integrity"),
                 new("Jamming Analysis", "/analyze/jamming")
-            }),
+            ]),
 
-            new("events", "Events", "/events", new List<NavItem>
-            {
+            new("events", "Events", "/events",
+            [
                 new("Events", "/events")
-            }),
+            ]),
 
-            new("devices", "Devices", "/devices/config", new List<NavItem>
-            {
+            new("devices", "Devices", "/devices/config",
+            [
                 new("Device Configuration", "/devices/config"),
                 new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Device Sign-In", "/device-signin", ctx => !ctx.IsSignedIn)
-            }),
+            ]),
 
-            new("tools", "Tools", "/query", new List<NavItem>
-            {
+            new("tools", "Tools", "/query",
+            [
                 new("Query API", "/query"),
                 new("Import / Export", "/tools/import-export"),
                 new("Ring Self-Test", "/tools/ring-selftest")
-            }),
+            ]),
 
-            new("settings", "Settings", "/settings", new List<NavItem>
-            {
+            new("settings", "Settings", "/settings",
+            [
                 new("General", "/settings"),
                 new("Accounts", "/accounts"),
                 new("Infrastructure", "/settings/infrastructure"),
@@ -81,7 +90,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported)
-            })
-        };
+            ])
+        ];
     }
 }

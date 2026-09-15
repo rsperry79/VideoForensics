@@ -30,8 +30,8 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public void AddVideoForensicsSqlite_CustomPath_UsesProvidedPath()
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            var dbPath = Path.Combine(tempDir, "test.db");
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dbPath = Path.Combine(tempDir, "test.db");
             var services = new ServiceCollection();
 
             try
@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
 
                 // Create a context and verify connection string references the expected path
                 using VideoForensicsDbContext context = factory!.CreateDbContext();
-                var connectionString = context.Database.GetDbConnection().ConnectionString;
+                string connectionString = context.Database.GetDbConnection().ConnectionString;
 
                 // Assert
                 Assert.Contains(dbPath, connectionString);
@@ -80,9 +80,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         public void AddVideoForensicsSqlite_ParentDirectoryMissing_CreatesDirectory()
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            var nestedDir = Path.Combine(tempDir, "nested", "path");
-            var dbPath = Path.Combine(nestedDir, "test.db");
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string nestedDir = Path.Combine(tempDir, "nested", "path");
+            string dbPath = Path.Combine(nestedDir, "test.db");
             var services = new ServiceCollection();
 
             try

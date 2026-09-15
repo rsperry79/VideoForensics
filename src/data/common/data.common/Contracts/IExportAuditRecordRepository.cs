@@ -52,7 +52,7 @@ namespace VideoForensics.Data.Common.Contracts
     {
         public int TotalExports { get; set; }
         public int TotalEventsExported { get; set; }
-        public Dictionary<string, int> ExportsByFormat { get; set; } = new();
+        public Dictionary<string, int> ExportsByFormat { get; set; } = [];
         public DateTime? FirstExportAtUtc { get; set; }
         public DateTime? LastExportAtUtc { get; set; }
         public int UniqueExporters { get; set; }

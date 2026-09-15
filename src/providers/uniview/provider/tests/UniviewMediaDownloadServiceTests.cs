@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Uniview.Tests
@@ -24,7 +27,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object);
 
             // Act
-            var status = service.GetStatus();
+            DownloadStatus status = service.GetStatus();
 
             // Assert
             Assert.False(status.IsDownloading);
@@ -45,7 +48,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object);
 
             // Act
-            var ban = service.GetRateLimitBanUntilUtc();
+            DateTime? ban = service.GetRateLimitBanUntilUtc();
 
             // Assert
             Assert.Null(ban);
@@ -69,7 +72,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             service.OverrideRateLimitBan();
 
             // Assert - should be null after override
-            var ban = service.GetRateLimitBanUntilUtc();
+            DateTime? ban = service.GetRateLimitBanUntilUtc();
             Assert.Null(ban);
         }
 
@@ -85,7 +88,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object);
 
             // Act
-            var log = service.DrainActivityLog();
+            IReadOnlyList<string> log = service.DrainActivityLog();
 
             // Assert
             Assert.Empty(log);
@@ -98,14 +101,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewMediaDownloadService>>();
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewMediaDownloadService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act
-            var result = await service.DownloadVideosAsync(
+            DownloadResult result = await service.DownloadVideosAsync(
                 "1",
                 "/tmp",
                 DateTime.Now.AddDays(-7),
@@ -125,14 +128,14 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewMediaDownloadService>>();
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
-            mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns((UniviewClient?)null);
 
             var service = new UniviewMediaDownloadService(
                 mockLogger.Object,
                 mockSessionProvider.Object);
 
             // Act
-            var result = await service.DownloadSnapshotsAsync(
+            DownloadResult result = await service.DownloadSnapshotsAsync(
                 "1",
                 "/tmp",
                 DateTime.Now.AddDays(-7),
@@ -153,7 +156,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewMediaDownloadService(
                 mockLogger.Object,
@@ -162,7 +165,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act
-                var result = await service.DownloadVideosAsync(
+                DownloadResult result = await service.DownloadVideosAsync(
                     "invalid",
                     "/tmp",
                     DateTime.Now.AddDays(-7),
@@ -188,7 +191,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             var client = new UniviewClient("192.168.1.1", "admin", "password");
-            mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
+            _ = mockSessionProvider.Setup(s => s.GetClient()).Returns(client);
 
             var service = new UniviewMediaDownloadService(
                 mockLogger.Object,
@@ -197,7 +200,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             try
             {
                 // Act
-                var result = await service.DownloadSnapshotsAsync(
+                DownloadResult result = await service.DownloadSnapshotsAsync(
                     "not_a_number",
                     "/tmp",
                     DateTime.Now.AddDays(-7),
@@ -222,7 +225,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockSessionProvider = new Mock<IUniviewSessionProvider>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewMediaDownloadService(
                     null!,
                     mockSessionProvider.Object));
@@ -235,7 +238,7 @@ namespace VideoForensics.Providers.Uniview.Tests
             var mockLogger = new Mock<ILogger<UniviewMediaDownloadService>>();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            _ = Assert.Throws<ArgumentNullException>(() =>
                 new UniviewMediaDownloadService(
                     mockLogger.Object,
                     null!));
@@ -253,8 +256,8 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object);
 
             // Act
-            var log1 = service.DrainActivityLog();
-            var log2 = service.DrainActivityLog();
+            IReadOnlyList<string> log1 = service.DrainActivityLog();
+            IReadOnlyList<string> log2 = service.DrainActivityLog();
 
             // Assert - both should be empty, second drain gets nothing
             Assert.Empty(log1);

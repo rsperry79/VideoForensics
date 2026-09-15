@@ -67,7 +67,7 @@ namespace VideoForensics.Providers.Ring
             var uri = new Uri(BaseUrl, "ringtones");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            var parsed = JsonSerializer.Deserialize<RingtonesResponse>(response);
+            RingtonesResponse? parsed = JsonSerializer.Deserialize<RingtonesResponse>(response);
             return parsed?.Ringtones ?? [];
         }
 

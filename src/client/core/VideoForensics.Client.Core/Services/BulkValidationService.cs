@@ -38,14 +38,14 @@ namespace VideoForensics.Client.Core.Services
             DateTime? toUtcOverride = null,
             CancellationToken ct = default)
         {
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
             var result = new BulkValidationResult { RanAtUtc = startTime };
 
             try
             {
                 // Determine date range
-                var fromUtc = fromUtcOverride ?? DateTime.Today.AddDays(-90);
-                var toUtc = toUtcOverride ?? DateTime.Today;
+                DateTime fromUtc = fromUtcOverride ?? DateTime.Today.AddDays(-90);
+                DateTime toUtc = toUtcOverride ?? DateTime.Today;
 
                 _logger.LogInformation(
                     "Starting bulk validation run: {FromUtc} to {ToUtc}",
@@ -70,7 +70,7 @@ namespace VideoForensics.Client.Core.Services
                             "Validating device {DeviceId} ({DeviceName}) with provider ID {ProviderDeviceId}",
                             device.Id, device.Name, device.ProviderDeviceId);
 
-                        var discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
+                        IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
                             device.Id,
                             device.ProviderDeviceId,
                             fromUtc,
@@ -83,8 +83,8 @@ namespace VideoForensics.Client.Core.Services
                         // Count auto-fix results from the discrepancies
                         // Note: The actual auto-fix happens inside ReconcileWithProviderAsync,
                         // so we count the types of discrepancies that were fixed.
-                        var newEventCount = discrepancies.Count(d => d.Type == DiscrepancyType.NewEventFoundOnProvider);
-                        var metadataChangedCount = discrepancies.Count(d => d.Type == DiscrepancyType.MetadataChanged);
+                        int newEventCount = discrepancies.Count(d => d.Type == DiscrepancyType.NewEventFoundOnProvider);
+                        int metadataChangedCount = discrepancies.Count(d => d.Type == DiscrepancyType.MetadataChanged);
 
                         result.NewEventsInserted += newEventCount;
                         result.MetadataUpdated += metadataChangedCount;
@@ -96,7 +96,7 @@ namespace VideoForensics.Client.Core.Services
                     catch (Exception ex)
                     {
                         result.FailedDevices++;
-                        var errorMsg = $"Device {device.Id} ({device.Name}): {ex.Message}";
+                        string errorMsg = $"Device {device.Id} ({device.Name}): {ex.Message}";
                         result.ErrorsByDevice.Add(errorMsg);
 
                         _logger.LogError(ex,
@@ -143,7 +143,7 @@ namespace VideoForensics.Client.Core.Services
         public int FailedDevices { get; set; }
 
         /// <summary>Error details per device (device ID/name + error message).</summary>
-        public List<string> ErrorsByDevice { get; set; } = new();
+        public List<string> ErrorsByDevice { get; set; } = [];
 
         /// <summary>UTC timestamp when the validation run started.</summary>
         public DateTime RanAtUtc { get; set; }

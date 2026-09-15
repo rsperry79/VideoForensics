@@ -17,7 +17,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapDiscoveryEndpoints(this WebApplication app)
         {
-            var group = app.MapGroup("/api/v1/discovery").RequireAuthorization();
+            RouteGroupBuilder group = app.MapGroup("/api/v1/discovery").RequireAuthorization();
 
             // IDeviceDiscoveryService endpoints
 
@@ -77,12 +77,7 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             Device? device = await discoveryService.GetDeviceAsync(deviceId, ct);
-            if (device == null)
-            {
-                return Results.NotFound();
-            }
-
-            return Results.Ok(device.ToDto());
+            return device == null ? Results.NotFound() : Results.Ok(device.ToDto());
         }
 
         private static async Task<IResult> GetDeviceEvents(
@@ -109,12 +104,7 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             DeviceConfig? config = await configService.GetDeviceConfigAsync(deviceId, ct);
-            if (config == null)
-            {
-                return Results.NotFound();
-            }
-
-            return Results.Ok(config.ToDto());
+            return config == null ? Results.NotFound() : Results.Ok(config.ToDto());
         }
 
         private static async Task<IResult> UpdateDeviceConfig(
@@ -126,12 +116,7 @@ namespace VideoForensics.WebApp.Api
             DeviceConfig config = configDto.ToDomain();
             bool success = await configService.UpdateDeviceConfigAsync(deviceId, config, ct);
 
-            if (!success)
-            {
-                return Results.BadRequest("Failed to update device configuration.");
-            }
-
-            return Results.NoContent();
+            return !success ? Results.BadRequest("Failed to update device configuration.") : Results.NoContent();
         }
     }
 }

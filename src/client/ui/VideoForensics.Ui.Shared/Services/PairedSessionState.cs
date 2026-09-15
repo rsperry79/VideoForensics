@@ -43,7 +43,7 @@ namespace VideoForensics.Ui.Shared.Services
                     return;
                 }
 
-                var stored = JsonSerializer.Deserialize<StoredSession>(json);
+                StoredSession? stored = JsonSerializer.Deserialize<StoredSession>(json);
                 if (stored is not null)
                 {
                     SessionToken = stored.SessionToken;

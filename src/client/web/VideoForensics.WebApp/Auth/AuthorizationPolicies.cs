@@ -20,7 +20,7 @@ namespace VideoForensics.WebApp.Auth
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MinimumRoleRequirement requirement)
         {
             string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
-            if (roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out var role) && role >= requirement.MinimumRole)
+            if (roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= requirement.MinimumRole)
             {
                 context.Succeed(requirement);
             }
@@ -46,7 +46,7 @@ namespace VideoForensics.WebApp.Auth
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RequireLocalTierRequirement requirement)
         {
             string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
-            if (tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out var tier) && tier == NetworkTier.Local)
+            if (tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local)
             {
                 context.Succeed(requirement);
             }

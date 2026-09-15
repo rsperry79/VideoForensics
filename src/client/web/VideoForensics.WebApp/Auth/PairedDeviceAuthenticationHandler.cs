@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -7,6 +8,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 
 namespace VideoForensics.WebApp.Auth
@@ -53,20 +55,20 @@ namespace VideoForensics.WebApp.Auth
                 return AuthenticateResult.NoResult();
             }
 
-            var principal = _tokenService.Validate(token);
+            SessionPrincipal? principal = _tokenService.Validate(token);
             if (principal != null)
             {
                 // Session-token path (browser-based pairing with WebAuthn)
                 // Re-checked on EVERY request, deliberately not cached in the token itself - see the
                 // class doc comment. A device revoked mid-session must be rejected here immediately.
-                var device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
+                PairedDevice? device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
                 if (device == null || !device.IsActive)
                 {
                     return AuthenticateResult.Fail("Invalid or expired credential.");
                 }
 
-                var tier = _tierResolver.ResolveTier(Context);
-                var claims = new[]
+                NetworkTier tier = _tierResolver.ResolveTier(Context);
+                Claim[] claims = new[]
                 {
                     new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
                     new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.PairedDeviceId.ToString()),
@@ -83,14 +85,14 @@ namespace VideoForensics.WebApp.Auth
             // Fallback-API-key path (device-code-based pairing for headless CLI)
             // Hash the raw token and look it up in the database.
             string apiKeyHash = HashApiKey(token);
-            var fallbackDevice = await _pairedDeviceRepository.GetByFallbackApiKeyHashAsync(apiKeyHash, Context.RequestAborted);
+            PairedDevice? fallbackDevice = await _pairedDeviceRepository.GetByFallbackApiKeyHashAsync(apiKeyHash, Context.RequestAborted);
             if (fallbackDevice == null || !fallbackDevice.IsActive)
             {
                 return AuthenticateResult.Fail("Invalid or expired credential.");
             }
 
-            var fallbackTier = _tierResolver.ResolveTier(Context);
-            var fallbackClaims = new[]
+            NetworkTier fallbackTier = _tierResolver.ResolveTier(Context);
+            Claim[] fallbackClaims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, fallbackDevice.OperatorId.ToString()),
                 new Claim(VideoForensicsClaimTypes.PairedDeviceId, fallbackDevice.Id.ToString()),
@@ -109,7 +111,7 @@ namespace VideoForensics.WebApp.Auth
         /// </summary>
         private static string HashApiKey(string apiKey)
         {
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
             return Convert.ToHexStringLower(hash);
         }
 
@@ -123,7 +125,7 @@ namespace VideoForensics.WebApp.Auth
         /// </summary>
         private string? ExtractToken()
         {
-            if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+            if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
             {
                 string headerValue = authHeader.ToString();
                 if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -132,7 +134,7 @@ namespace VideoForensics.WebApp.Auth
                 }
             }
 
-            return Request.Path.StartsWithSegments("/hubs") && Request.Query.TryGetValue("access_token", out var queryToken)
+            return Request.Path.StartsWithSegments("/hubs") && Request.Query.TryGetValue("access_token", out StringValues queryToken)
                 ? queryToken.ToString()
                 : null;
         }

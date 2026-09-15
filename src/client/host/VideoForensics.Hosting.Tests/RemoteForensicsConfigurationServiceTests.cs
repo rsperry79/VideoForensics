@@ -1,6 +1,7 @@
-﻿using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -12,9 +13,9 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteForensicsConfigurationService(httpClient);
 
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            NotSupportedException exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
-                await service.LoadConfigurationAsync("/path/to/config.json", CancellationToken.None);
+                _ = await service.LoadConfigurationAsync("/path/to/config.json", CancellationToken.None);
             });
 
             Assert.NotNull(exception);
@@ -27,9 +28,9 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteForensicsConfigurationService(httpClient);
 
-            await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
-                await service.LoadConfigurationAsync("/path/to/config.json", new CancellationTokenSource().Token);
+                _ = await service.LoadConfigurationAsync("/path/to/config.json", new CancellationTokenSource().Token);
             });
         }
 
@@ -39,14 +40,14 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient() { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteForensicsConfigurationService(httpClient);
 
-            await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
-                await service.LoadConfigurationAsync("", CancellationToken.None);
+                _ = await service.LoadConfigurationAsync("", CancellationToken.None);
             });
 
-            await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
-                await service.LoadConfigurationAsync("C:\\config.json", CancellationToken.None);
+                _ = await service.LoadConfigurationAsync("C:\\config.json", CancellationToken.None);
             });
         }
 
@@ -57,7 +58,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteForensicsConfigurationService(httpClient);
             var config = new ForensicsConfiguration();
 
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            NotSupportedException exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
                 await service.SaveConfigurationAsync(config, CancellationToken.None);
             });
@@ -73,7 +74,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteForensicsConfigurationService(httpClient);
             var config = new ForensicsConfiguration();
 
-            await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
                 await service.SaveConfigurationAsync(config, new CancellationTokenSource().Token);
             });

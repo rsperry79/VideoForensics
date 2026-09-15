@@ -1,4 +1,4 @@
-﻿namespace VideoForensics.Forensics.Tests
+namespace VideoForensics.Forensics.Tests
 {
     public class MultiDeviceForensicsTests
     {
@@ -12,8 +12,8 @@
         [Fact]
         public async Task AnalyzeMultipleDevicesAsync_WithCorrelatedAnomalies_ReturnsSuspicionScore()
         {
-            var deviceIds = new[] { "camera-01", "camera-02", "camera-03" };
-            var baseTime = DateTime.UtcNow;
+            string[] deviceIds = new[] { "camera-01", "camera-02", "camera-03" };
+            DateTime baseTime = DateTime.UtcNow;
 
             var report1 = new SignalAnomalyReport
             {
@@ -37,9 +37,9 @@
                 ]
             };
 
-            var reports = new[] { report1, report2 };
-            var result = await _forensics.AnalyzeMultipleDevicesAsync(deviceIds, reports);
-            
+            SignalAnomalyReport[] reports = new[] { report1, report2 };
+            DeviceCorrelationReport result = await _forensics.AnalyzeMultipleDevicesAsync(deviceIds, reports);
+
             Assert.NotNull(result);
             Assert.Equal(2, result.DeviceIds.Count);
         }
@@ -47,25 +47,25 @@
         [Fact]
         public async Task AnalyzeMultipleDevicesAsync_WithSingleDevice_ReturnsReport()
         {
-            var deviceIds = new[] { "camera-01" };
-            var baseTime = DateTime.UtcNow;
+            string[] deviceIds = new[] { "camera-01" };
+            DateTime baseTime = DateTime.UtcNow;
             var report = new SignalAnomalyReport { ReportId = Guid.NewGuid().ToString(), GeneratedAt = baseTime, TotalEventsAnalyzed = 50, AnomalousEvents = [new SignalAnomalyFinding { EventTimestamp = baseTime }] };
-            var reports = new[] { report };
-            
-            var result = await _forensics.AnalyzeMultipleDevicesAsync(deviceIds, reports);
-            
+            SignalAnomalyReport[] reports = new[] { report };
+
+            DeviceCorrelationReport result = await _forensics.AnalyzeMultipleDevicesAsync(deviceIds, reports);
+
             Assert.NotNull(result);
-            Assert.Single(result.DeviceIds);
+            _ = Assert.Single(result.DeviceIds);
         }
 
         [Fact]
         public async Task DetectSynchronizedAnomaliesAsync_WithSingleDevice_ReturnsEmpty()
         {
-            var deviceIds = new[] { "camera-01" };
+            string[] deviceIds = new[] { "camera-01" };
             var coincidenceWindow = TimeSpan.FromSeconds(5);
-            
-            var result = await _forensics.DetectSynchronizedAnomaliesAsync(deviceIds, coincidenceWindow);
-            
+
+            IEnumerable<SyncedAnomalyEvent> result = await _forensics.DetectSynchronizedAnomaliesAsync(deviceIds, coincidenceWindow);
+
             Assert.NotNull(result);
             Assert.Empty(result);
         }
@@ -73,22 +73,22 @@
         [Fact]
         public async Task CalculateAnomalyCorrelationAsync_WithIdenticalDevices_ReturnsOne()
         {
-            var deviceId = "camera-01";
-            var startTime = DateTime.UtcNow.AddDays(-7);
-            var endTime = DateTime.UtcNow;
-            
-            var correlation = await _forensics.CalculateAnomalyCorrelationAsync(deviceId, deviceId, startTime, endTime);
-            
+            string deviceId = "camera-01";
+            DateTime startTime = DateTime.UtcNow.AddDays(-7);
+            DateTime endTime = DateTime.UtcNow;
+
+            double correlation = await _forensics.CalculateAnomalyCorrelationAsync(deviceId, deviceId, startTime, endTime);
+
             Assert.Equal(1.0, correlation);
         }
 
         [Fact]
         public async Task GetBaselineCorrelationAsync_WithDefaultBaseline_ReturnsBaseline()
         {
-            var deviceIds = new[] { "camera-01", "camera-02" };
-            
-            var baseline = await _forensics.GetBaselineCorrelationAsync(deviceIds);
-            
+            string[] deviceIds = new[] { "camera-01", "camera-02" };
+
+            BaselineCorrelation baseline = await _forensics.GetBaselineCorrelationAsync(deviceIds);
+
             Assert.NotNull(baseline);
             Assert.Equal(2, baseline.DeviceIds.Count);
         }
@@ -96,10 +96,10 @@
         [Fact]
         public async Task GetBaselineCorrelationAsync_WithEmptyDevices_ReturnsEmptyBaseline()
         {
-            var deviceIds = new string[] { };
-            
-            var baseline = await _forensics.GetBaselineCorrelationAsync(deviceIds);
-            
+            string[] deviceIds = new string[] { };
+
+            BaselineCorrelation baseline = await _forensics.GetBaselineCorrelationAsync(deviceIds);
+
             Assert.NotNull(baseline);
             Assert.Empty(baseline.DeviceIds);
         }

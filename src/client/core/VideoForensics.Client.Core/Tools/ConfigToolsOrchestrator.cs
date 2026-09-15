@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Client.Common;
+using System.Reflection;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
@@ -103,7 +104,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             var configObj = (ForensicsConfiguration)config;
-            var propInfo = typeof(ForensicsConfiguration).GetProperty(property);
+            PropertyInfo? propInfo = typeof(ForensicsConfiguration).GetProperty(property);
             if (propInfo != null)
             {
                 propInfo.SetValue(configObj, enabled);

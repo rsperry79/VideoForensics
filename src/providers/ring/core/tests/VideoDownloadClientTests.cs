@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 using VideoForensics.Providers.Ring.Clients;
 using VideoForensics.Providers.Ring.Entities;
@@ -30,11 +26,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetDoorbotHistoryException != null)
-                {
-                    throw GetDoorbotHistoryException;
-                }
-                return Task.FromResult(HistoryToReturn);
+                return GetDoorbotHistoryException != null ? throw GetDoorbotHistoryException : Task.FromResult(HistoryToReturn);
             }
 
             public Task<DownloadRecording> GetDoorbotHistoryRecording(
@@ -43,11 +35,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetDoorbotHistoryRecordingException != null)
-                {
-                    throw GetDoorbotHistoryRecordingException;
-                }
-                return Task.FromResult(new DownloadRecording());
+                return GetDoorbotHistoryRecordingException != null
+                    ? throw GetDoorbotHistoryRecordingException
+                    : Task.FromResult(new DownloadRecording());
             }
 
             public Task<DoorbotHistoryEventRecording> GetDoorbotHistoryRecordingInfo(
@@ -55,21 +45,15 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetDoorbotHistoryRecordingInfoException != null)
-                {
-                    throw GetDoorbotHistoryRecordingInfoException;
-                }
-                return Task.FromResult(new DoorbotHistoryEventRecording());
+                return GetDoorbotHistoryRecordingInfoException != null
+                    ? throw GetDoorbotHistoryRecordingInfoException
+                    : Task.FromResult(new DoorbotHistoryEventRecording());
             }
 
             public Task<Stream> GetLatestSnapshot(Doorbot doorbot, string saveAs, CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetLatestSnapshotException != null)
-                {
-                    throw GetLatestSnapshotException;
-                }
-                return Task.FromResult(new MemoryStream() as Stream);
+                return GetLatestSnapshotException != null ? throw GetLatestSnapshotException : Task.FromResult(new MemoryStream() as Stream);
             }
 
             public Task<bool> UpdateSnapshot(string doorbotId, CancellationToken cancellationToken = default)
@@ -80,11 +64,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             public Task<string> ShareRecording(string recordingId, CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (ShareRecordingException != null)
-                {
-                    throw ShareRecordingException;
-                }
-                return Task.FromResult("https://ring.com/share/video/xyz123");
+                return ShareRecordingException != null ? throw ShareRecordingException : Task.FromResult("https://ring.com/share/video/xyz123");
             }
 
             public Task<List<LocationEvent>> GetLocationEvents(Guid locationId, CancellationToken cancellationToken = default)
@@ -102,11 +82,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             public Task<List<Doorbot>> GetRingDevices(Guid? locationId = null, CancellationToken cancellationToken = default)
             {
                 LastCancellationToken = cancellationToken;
-                if (GetRingDevicesException != null)
-                {
-                    throw GetRingDevicesException;
-                }
-                return Task.FromResult(DevicesToReturn);
+                return GetRingDevicesException != null ? throw GetRingDevicesException : Task.FromResult(DevicesToReturn);
             }
 
             public Task<List<Location>> GetLocations(CancellationToken cancellationToken = default)
@@ -153,7 +129,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var deviceService = new MockDeviceDiscoveryService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new VideoDownloadClient(null, deviceService));
+            _ = Assert.Throws<ArgumentNullException>(() => new VideoDownloadClient(null, deviceService));
         }
 
         [Fact]
@@ -163,7 +139,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var recordingService = new MockRecordingService();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new VideoDownloadClient(recordingService, null));
+            _ = Assert.Throws<ArgumentNullException>(() => new VideoDownloadClient(recordingService, null));
         }
         #endregion
 
@@ -180,7 +156,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingsAsync();
+            List<DoorbotHistoryEvent> result = await client.GetRecordingsAsync();
 
             // Assert
             Assert.Equal(recordings, result);
@@ -198,7 +174,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingsAsync(limit: 50);
+            List<DoorbotHistoryEvent> result = await client.GetRecordingsAsync(limit: 50);
 
             // Assert
             Assert.NotNull(result);
@@ -218,7 +194,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingsAsync(eventKind: "motion");
+            List<DoorbotHistoryEvent> result = await client.GetRecordingsAsync(eventKind: "motion");
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -237,7 +213,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingsAsync(deviceId: "device123");
+            List<DoorbotHistoryEvent> result = await client.GetRecordingsAsync(deviceId: "device123");
 
             // Assert
             Assert.NotNull(result);
@@ -251,7 +227,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingsAsync();
+            List<DoorbotHistoryEvent> result = await client.GetRecordingsAsync();
 
             // Assert
             Assert.Empty(result);
@@ -266,7 +242,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetRecordingsAsync(cancellationToken: cts.Token);
+            _ = await client.GetRecordingsAsync(cancellationToken: cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, recordingService.LastCancellationToken);
@@ -283,7 +259,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => client.GetRecordingsAsync());
+            Exception ex = await Assert.ThrowsAsync<Exception>(() => client.GetRecordingsAsync());
             Assert.Equal("Failed to fetch history", ex.Message);
         }
         #endregion
@@ -298,7 +274,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.DownloadRecordingAsync(recording, "/tmp/video.mp4");
+            bool result = await client.DownloadRecordingAsync(recording, "/tmp/video.mp4");
 
             // Assert
             Assert.True(result);
@@ -311,7 +287,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
                 client.DownloadRecordingAsync(null, "/tmp/video.mp4"));
         }
 
@@ -323,7 +299,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadRecordingAsync(recording, ""));
         }
 
@@ -335,7 +311,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadRecordingAsync(recording, null));
         }
 
@@ -351,7 +327,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.DownloadRecordingAsync(recording, "/tmp/video.mp4");
+            bool result = await client.DownloadRecordingAsync(recording, "/tmp/video.mp4");
 
             // Assert
             Assert.False(result);
@@ -367,7 +343,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.DownloadRecordingAsync(recording, "/tmp/video.mp4", cts.Token);
+            _ = await client.DownloadRecordingAsync(recording, "/tmp/video.mp4", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, recordingService.LastCancellationToken);
@@ -388,7 +364,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, deviceService);
 
             // Act
-            var result = await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg");
+            bool result = await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg");
 
             // Assert
             Assert.True(result);
@@ -401,7 +377,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadSnapshotAsync("", "/tmp/snapshot.jpg"));
         }
 
@@ -412,7 +388,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadSnapshotAsync(null, "/tmp/snapshot.jpg"));
         }
 
@@ -423,7 +399,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadSnapshotAsync("device123", ""));
         }
 
@@ -434,7 +410,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.DownloadSnapshotAsync("device123", null));
         }
 
@@ -446,7 +422,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), deviceService);
 
             // Act
-            var result = await client.DownloadSnapshotAsync("nonexistent", "/tmp/snapshot.jpg");
+            bool result = await client.DownloadSnapshotAsync("nonexistent", "/tmp/snapshot.jpg");
 
             // Assert
             Assert.False(result);
@@ -468,7 +444,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, deviceService);
 
             // Act
-            var result = await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg");
+            bool result = await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg");
 
             // Assert
             Assert.False(result);
@@ -488,7 +464,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg", cts.Token);
+            _ = await client.DownloadSnapshotAsync("device123", "/tmp/snapshot.jpg", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, deviceService.LastCancellationToken);
@@ -505,7 +481,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.GetRecordingInfoAsync(recording);
+            DoorbotHistoryEventRecording result = await client.GetRecordingInfoAsync(recording);
 
             // Assert
             Assert.NotNull(result);
@@ -518,7 +494,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
                 client.GetRecordingInfoAsync(null));
         }
 
@@ -532,7 +508,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            await client.GetRecordingInfoAsync(recording, cts.Token);
+            _ = await client.GetRecordingInfoAsync(recording, cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, recordingService.LastCancellationToken);
@@ -550,7 +526,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() =>
+            Exception ex = await Assert.ThrowsAsync<Exception>(() =>
                 client.GetRecordingInfoAsync(recording));
             Assert.Equal("Failed to fetch info", ex.Message);
         }
@@ -565,7 +541,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act
-            var result = await client.ShareRecordingAsync("event123");
+            string result = await client.ShareRecordingAsync("event123");
 
             // Assert
             Assert.Equal("https://ring.com/share/video/xyz123", result);
@@ -578,7 +554,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.ShareRecordingAsync(""));
         }
 
@@ -589,7 +565,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(new MockRecordingService(), new MockDeviceDiscoveryService());
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
                 client.ShareRecordingAsync(null));
         }
 
@@ -602,7 +578,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            var result = await client.ShareRecordingAsync("event123", cts.Token);
+            _ = await client.ShareRecordingAsync("event123", cts.Token);
 
             // Assert
             Assert.Equal(cts.Token, recordingService.LastCancellationToken);
@@ -619,7 +595,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var client = new VideoDownloadClient(recordingService, new MockDeviceDiscoveryService());
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() =>
+            Exception ex = await Assert.ThrowsAsync<Exception>(() =>
                 client.ShareRecordingAsync("event123"));
             Assert.Equal("Sharing failed", ex.Message);
         }

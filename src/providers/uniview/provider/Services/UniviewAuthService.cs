@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Uniview;
 
 namespace VideoForensics.Providers.Uniview.Services
 {
@@ -41,8 +40,8 @@ namespace VideoForensics.Providers.Uniview.Services
             {
                 _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", username);
 
-                var host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
-                var ffmpegPath = _configuration.UniviewFfmpegPath ?? "ffmpeg";
+                string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
+                string ffmpegPath = _configuration.UniviewFfmpegPath ?? "ffmpeg";
 
                 var client = new UniviewClient(host, username, password, ffmpegPath);
 
@@ -113,7 +112,7 @@ namespace VideoForensics.Providers.Uniview.Services
         {
             try
             {
-                var client = _sessionProvider.GetClient();
+                UniviewClient? client = _sessionProvider.GetClient();
                 if (client == null)
                 {
                     return false;
@@ -138,7 +137,7 @@ namespace VideoForensics.Providers.Uniview.Services
         {
             try
             {
-                var client = _sessionProvider.GetClient();
+                UniviewClient? client = _sessionProvider.GetClient();
                 if (client == null)
                 {
                     return false;
@@ -185,8 +184,8 @@ namespace VideoForensics.Providers.Uniview.Services
                 {
                     try
                     {
-                        var usernameCred = await _credentialRepository.GetAsync(providerAccountId.Value, "Username", cancellationToken);
-                        var passwordCred = await _credentialRepository.GetAsync(providerAccountId.Value, "Password", cancellationToken);
+                        (string CredentialType, string DecryptedValue)? usernameCred = await _credentialRepository.GetAsync(providerAccountId.Value, "Username", cancellationToken);
+                        (string CredentialType, string DecryptedValue)? passwordCred = await _credentialRepository.GetAsync(providerAccountId.Value, "Password", cancellationToken);
 
                         if (usernameCred.HasValue && !string.IsNullOrWhiteSpace(usernameCred.Value.DecryptedValue))
                         {
@@ -212,7 +211,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 // If we have credentials, try to authenticate
                 if (username != null && password != null)
                 {
-                    var result = await AuthenticateAsync(username, password, cancellationToken);
+                    AuthResult result = await AuthenticateAsync(username, password, cancellationToken);
                     if (result.Success)
                     {
                         _logger.LogInformation("Successfully restored Uniview session from saved credentials");
@@ -235,7 +234,7 @@ namespace VideoForensics.Providers.Uniview.Services
         /// </summary>
         public string GetAuthStatus()
         {
-            var client = _sessionProvider.GetClient();
+            UniviewClient? client = _sessionProvider.GetClient();
             return client != null ? "Authenticated" : "Not authenticated";
         }
 

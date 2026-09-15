@@ -34,11 +34,11 @@ namespace VideoForensics.Providers.Ring
             DateTime adjustedDateFrom = effectiveDateFrom.Date.AddSeconds(1);
             DateTime adjustedDateTo = effectiveDateTo.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
-            var query = $"video_search/history?doorbot_id={doorbotId}" +
+            string query = $"video_search/history?doorbot_id={doorbotId}" +
                 $"&date_from={new DateTimeOffset(adjustedDateFrom).ToUnixTimeMilliseconds()}" +
                 $"&date_to={new DateTimeOffset(adjustedDateTo).ToUnixTimeMilliseconds()}";
 
-            var response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId, cancellationToken);
+            string response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId, cancellationToken);
 
             VideoSearchResponse? parsed = JsonSerializer.Deserialize<VideoSearchResponse>(response);
             return parsed?.VideoSearch ?? [];

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Primitives;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -45,11 +44,11 @@ namespace VideoForensics.WebApp.Api
                 CancellationToken ct) =>
             {
                 NetworkTier currentTier = config.ConfiguredNetworkTier;
-                var isWidening = request.Tier > currentTier;
+                bool isWidening = request.Tier > currentTier;
 
                 if (isWidening)
                 {
-                    var deviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+                    string? deviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
                     if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
                     {
                         return Results.Unauthorized();
@@ -67,7 +66,7 @@ namespace VideoForensics.WebApp.Api
                 config.ConfiguredNetworkTier = request.Tier;
                 await configService.SaveConfigurationAsync(config, ct);
 
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
                     Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     null, tierResolver.ResolveClientIp(context), $"{currentTier} -> {request.Tier}", isUrgent: true, ct);
@@ -98,7 +97,7 @@ namespace VideoForensics.WebApp.Api
                 config.InternetServerUrl = request.InternetServerUrl;
                 await configService.SaveConfigurationAsync(config, ct);
 
-                var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
                 await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
                     Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     null, tierResolver.ResolveClientIp(context), $"InternetServerUrl changed from '{oldValue}' to '{request.InternetServerUrl}'", isUrgent: true, ct);

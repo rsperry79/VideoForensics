@@ -27,19 +27,19 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = services.AddVideoForensicsSqlite(dbPath);
                 _ = services.AddLogging();
 
-                var provider = services.BuildServiceProvider();
-                var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                var logger = provider.GetRequiredService<ILogger<ConcurrencyTests>>();
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+                ILogger<ConcurrencyTests> logger = provider.GetRequiredService<ILogger<ConcurrencyTests>>();
 
                 // Initialize the database
                 await DatabaseInitializer.InitializeAsync(factory, logger);
 
                 // Act - Create two contexts concurrently
-                var context1Task = factory.CreateDbContextAsync();
-                var context2Task = factory.CreateDbContextAsync();
+                Task<VideoForensicsDbContext> context1Task = factory.CreateDbContextAsync();
+                Task<VideoForensicsDbContext> context2Task = factory.CreateDbContextAsync();
 
-                await using var context1 = await context1Task;
-                await using var context2 = await context2Task;
+                await using VideoForensicsDbContext context1 = await context1Task;
+                await using VideoForensicsDbContext context2 = await context2Task;
 
                 // Assert - Contexts are distinct instances
                 Assert.NotSame(context1, context2);
@@ -58,7 +58,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 _ = await context1.SaveChangesAsync();
 
                 // Read via context2 - should see the inserted data
-                var users = await context2.Users.ToListAsync();
+                List<User> users = await context2.Users.ToListAsync();
                 Assert.NotEmpty(users);
                 Assert.Contains(users, u => u.ProviderUserKey == "test-key");
 

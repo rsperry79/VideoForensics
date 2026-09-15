@@ -2,10 +2,10 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
 using Xunit;
@@ -24,7 +24,9 @@ namespace VideoForensics.Providers.Ring.Tests
         private readonly Mock<IForensicsConfiguration> _mockConfig = new();
         private readonly Mock<IMediaMetadataTagger> _mockTagger = new();
 
-        private BackupExportOrchestrator CreateOrchestrator() => new(
+        private BackupExportOrchestrator CreateOrchestrator()
+        {
+            return new(
             _mockLogger.Object,
             _mockAccountRepo.Object,
             _mockLocationRepo.Object,
@@ -34,6 +36,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _mockMediaItemRepo.Object,
             _mockConfig.Object,
             _mockTagger.Object);
+        }
 
         private static string CreateTempDirectory()
         {
@@ -46,10 +49,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task PrepareForExportAsync_WithNoDownloadedEvents_ReturnsEmptyResult()
         {
             _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Event>());
+                .ReturnsAsync([]);
 
-            var orchestrator = CreateOrchestrator();
-            var result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
+            BackupExportOrchestrator orchestrator = CreateOrchestrator();
+            PrepareExportResult result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
 
             Assert.Equal(0, result.Validated);
             Assert.Equal(0, result.Backfilled);
@@ -73,12 +76,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 Sha256Hash = "abc"
             };
 
-            _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Event> { evt });
+            _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([evt]);
             _ = _mockDownloadEventRepo.Setup(r => r.GetByProviderEventIdAsync(deviceId, "evt-1", It.IsAny<CancellationToken>())).ReturnsAsync(downloadEvent);
-            _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { mediaItem });
+            _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync([mediaItem]);
 
-            var orchestrator = CreateOrchestrator();
-            var result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
+            BackupExportOrchestrator orchestrator = CreateOrchestrator();
+            PrepareExportResult result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
 
             Assert.Equal(1, result.MissingMedia);
             Assert.Equal(0, result.Validated);
@@ -93,7 +96,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var deviceId = Guid.NewGuid();
                 var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", EventType = "motion", DownloadedAtUtc = DateTime.UtcNow };
                 var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", AppVersion = "1.0" };
-                var mediaFilePath = Path.Combine(tempDir, "clip.mp4");
+                string mediaFilePath = Path.Combine(tempDir, "clip.mp4");
                 File.WriteAllText(mediaFilePath, "dummy");
                 File.WriteAllText(Path.ChangeExtension(mediaFilePath, ".json"), $"{{\"EventDbId\": \"{evt.Id}\"}}");
 
@@ -108,12 +111,12 @@ namespace VideoForensics.Providers.Ring.Tests
                     Sha256Hash = "abc"
                 };
 
-                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Event> { evt });
+                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([evt]);
                 _ = _mockDownloadEventRepo.Setup(r => r.GetByProviderEventIdAsync(deviceId, "evt-1", It.IsAny<CancellationToken>())).ReturnsAsync(downloadEvent);
-                _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { mediaItem });
+                _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync([mediaItem]);
 
-                var orchestrator = CreateOrchestrator();
-                var result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
+                BackupExportOrchestrator orchestrator = CreateOrchestrator();
+                PrepareExportResult result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
 
                 Assert.Equal(1, result.Validated);
                 Assert.Equal(0, result.Backfilled);
@@ -134,7 +137,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 var deviceId = Guid.NewGuid();
                 var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", EventType = "motion", DownloadedAtUtc = DateTime.UtcNow };
                 var downloadEvent = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "evt-1", AppVersion = "1.0" };
-                var mediaFilePath = Path.Combine(tempDir, "clip.mp4");
+                string mediaFilePath = Path.Combine(tempDir, "clip.mp4");
                 File.WriteAllText(mediaFilePath, "dummy");
 
                 var mediaItem = new MediaItem
@@ -148,13 +151,13 @@ namespace VideoForensics.Providers.Ring.Tests
                     Sha256Hash = "abc"
                 };
 
-                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Event> { evt });
+                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([evt]);
                 _ = _mockDownloadEventRepo.Setup(r => r.GetByProviderEventIdAsync(deviceId, "evt-1", It.IsAny<CancellationToken>())).ReturnsAsync(downloadEvent);
-                _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { mediaItem });
+                _ = _mockMediaItemRepo.Setup(r => r.GetByDownloadEventIdAsync(downloadEvent.Id, It.IsAny<CancellationToken>())).ReturnsAsync([mediaItem]);
                 _ = _mockTagger.Setup(t => t.TagEventIdAsync(mediaFilePath, evt.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-                var orchestrator = CreateOrchestrator();
-                var result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
+                BackupExportOrchestrator orchestrator = CreateOrchestrator();
+                PrepareExportResult result = await orchestrator.PrepareForExportAsync(CancellationToken.None);
 
                 Assert.Equal(1, result.Backfilled);
                 Assert.True(File.Exists(Path.ChangeExtension(mediaFilePath, ".json")));
@@ -172,16 +175,16 @@ namespace VideoForensics.Providers.Ring.Tests
             string tempDir = CreateTempDirectory();
             try
             {
-                _ = _mockAccountRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<ProviderAccount>());
-                _ = _mockLocationRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<VideoForensics.Data.Common.Entities.Location>());
-                _ = _mockDeviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<VideoForensics.Data.Common.Entities.Device>());
-                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Event>());
-                _ = _mockDownloadEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<DownloadEvent>());
-                _ = _mockMediaItemRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem>());
+                _ = _mockAccountRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+                _ = _mockLocationRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+                _ = _mockDeviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+                _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+                _ = _mockDownloadEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+                _ = _mockMediaItemRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
                 _ = _mockConfig.Setup(c => c.DownloadLocation).Returns(tempDir);
 
-                var orchestrator = CreateOrchestrator();
-                var result = await orchestrator.ExportBackupAsync(tempDir, CancellationToken.None);
+                BackupExportOrchestrator orchestrator = CreateOrchestrator();
+                BackupExportResult result = await orchestrator.ExportBackupAsync(tempDir, CancellationToken.None);
 
                 Assert.True(result.Success);
                 Assert.NotNull(result.ArchivePath);

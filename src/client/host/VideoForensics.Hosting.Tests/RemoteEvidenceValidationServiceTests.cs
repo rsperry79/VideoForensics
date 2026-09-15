@@ -1,10 +1,12 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -32,7 +34,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
+            IReadOnlyList<MediaVerificationResult> results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/evidence/verify-local-integrity", capturedUri);
             Assert.Equal(2, results.Count);
@@ -47,15 +49,17 @@ namespace VideoForensics.Hosting.Tests
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
                 requestBody = await request.Content!.ReadAsStringAsync();
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            await service.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+            _ = await service.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
             Assert.NotNull(requestBody);
             Assert.Contains(deviceId.ToString("D"), requestBody);
@@ -82,7 +86,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
+            IReadOnlyList<MediaVerificationResult> results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
 
             Assert.Equal(id1, results[0].MediaItemId);
             Assert.Equal("verified", results[0].Status);
@@ -94,15 +98,17 @@ namespace VideoForensics.Hosting.Tests
         {
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
+            IReadOnlyList<MediaVerificationResult> results = await service.VerifyLocalIntegrityAsync(null, CancellationToken.None);
 
             Assert.Empty(results);
         }
@@ -115,15 +121,17 @@ namespace VideoForensics.Hosting.Tests
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
                 cancellationObserved = !ct.IsCancellationRequested;
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            await service.VerifyLocalIntegrityAsync(null, new CancellationTokenSource().Token);
+            _ = await service.VerifyLocalIntegrityAsync(null, new CancellationTokenSource().Token);
 
             Assert.True(cancellationObserved);
         }
@@ -150,7 +158,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.EndsWith("/api/v1/evidence/reconcile", capturedUri);
             Assert.Equal(2, results.Count);
@@ -176,7 +184,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.Equal(DiscrepancyType.MetadataChanged, results[0].Type);
             Assert.Equal("event-123", results[0].ProviderEventId);
@@ -191,15 +199,17 @@ namespace VideoForensics.Hosting.Tests
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
                 requestBody = await request.Content!.ReadAsStringAsync();
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+            _ = await service.ReconcileWithProviderAsync(deviceId, "ring-device-123", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
 
             Assert.Contains(deviceId.ToString("D"), requestBody);
             Assert.Contains("ring-device-123", requestBody);
@@ -210,15 +220,17 @@ namespace VideoForensics.Hosting.Tests
         {
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            var results = await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), CancellationToken.None);
+            IReadOnlyList<ReconciliationDiscrepancy> results = await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), CancellationToken.None);
 
             Assert.Empty(results);
         }
@@ -231,15 +243,17 @@ namespace VideoForensics.Hosting.Tests
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
                 cancellationObserved = !ct.IsCancellationRequested;
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceValidationService(httpClient);
 
-            await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), new CancellationTokenSource().Token);
+            _ = await service.ReconcileWithProviderAsync(Guid.NewGuid(), "device-id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), new CancellationTokenSource().Token);
 
             Assert.True(cancellationObserved);
         }

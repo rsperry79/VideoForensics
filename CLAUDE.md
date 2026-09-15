@@ -107,6 +107,19 @@ Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared
 
 **Mobile optimization is pending.** MAUI mobile (iOS/Android) needs a separate, touch-friendly layout with collapsible panels and vertical stacking instead of side-by-side panes. Do not add mobile-specific layout logic to MainLayout—create a new mobile layout component or detect platform and swap layouts at the Routes level.
 
+## Visual Studio MCP (`local-sdk`)
+
+This repo has a live Visual Studio instance reachable via the `local-sdk` MCP server
+(`http://localhost:3011/sdk`, registered in `.mcp.json`) with the `VideoForensics` solution
+already loaded. **Always use it when available** instead of ad-hoc grep/manual reading for the
+things it does natively:
+- Symbol navigation: `FindSymbolDefinition`, `FindSymbolUsages`, `GetMethodCallers`, `GetMethodCalls`, `GetSymbolAtLocation`, `GetInheritance` instead of grepping for a class/method by name.
+- Solution/project structure: `GetSolutionTree`, `GetProjectReferences`, `GetDocumentOutline` instead of `find`/`Glob` over `.csproj`/`.cs` files.
+- Compile errors/warnings: `GetDiagnostics`/`ErrorListGet` as a first check alongside (not instead of) `dotnet build`, since it reflects the IDE's live Roslyn analysis.
+- Refactors: `RenameSymbol` and `FormatDocument` for renames/formatting instead of hand-editing every call site.
+- Debugging a real repro: `DebugStart`/`DebugAttach`, `BreakpointSet`/`BreakpointList`/`BreakpointRemove`, `DebugContinue`/`DebugStep`, `DebugGetCallstack`/`DebugGetLocals`/`DebugEvaluate` instead of asking the user to describe what happened.
+If the server isn't connected (tools not listed / calls fail), fall back to the usual Bash/Grep/Read tools and mention that `local-sdk` was unreachable rather than silently guessing at its state.
+
 ## Execution workflow
 
 - **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.

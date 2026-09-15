@@ -20,7 +20,7 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "nonexistent-ffmpeg-binary-xyz");
-                var result = await tagger.TagEventIdAsync(tempFile, Guid.NewGuid(), CancellationToken.None);
+                bool result = await tagger.TagEventIdAsync(tempFile, Guid.NewGuid(), CancellationToken.None);
 
                 Assert.False(result);
             }
@@ -41,7 +41,7 @@ namespace VideoForensics.Providers.Ring.Tests
             try
             {
                 var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffprobePath: "nonexistent-ffprobe-binary-xyz");
-                var result = await tagger.ReadEventIdAsync(tempFile, CancellationToken.None);
+                Guid? result = await tagger.ReadEventIdAsync(tempFile, CancellationToken.None);
 
                 Assert.Null(result);
             }

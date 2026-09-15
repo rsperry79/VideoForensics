@@ -71,7 +71,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var helper = new MockSessionHelper();
 
             // Act
-            var mockSession = helper.CreateSessionWithMockHandler();
+            Session mockSession = helper.CreateSessionWithMockHandler();
 
             // Assert
             Assert.NotNull(mockSession);
@@ -85,7 +85,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var session = new Session("test@example.com", "password");
 
             // Act
-            var oauthUrl = session.OAuthUrl;
+            Uri oauthUrl = session.OAuthUrl;
 
             // Assert
             Assert.NotNull(oauthUrl);
@@ -99,7 +99,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var session = new Session("test@example.com", "password");
 
             // Act
-            var baseUrl = session.BaseUrl;
+            Uri baseUrl = session.BaseUrl;
 
             // Assert
             Assert.NotNull(baseUrl);

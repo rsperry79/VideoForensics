@@ -29,8 +29,8 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/selftest", cancellationToken);
             _ = response.EnsureSuccessStatusCode();
-            var endpoints = await response.Content.ReadFromJsonAsync<List<SelfTestEndpointDto>>(cancellationToken: cancellationToken)
-                ?? new List<SelfTestEndpointDto>();
+            List<SelfTestEndpointDto> endpoints = await response.Content.ReadFromJsonAsync<List<SelfTestEndpointDto>>(cancellationToken: cancellationToken)
+                ?? [];
             return endpoints.AsReadOnly();
         }
 
@@ -68,7 +68,7 @@ namespace VideoForensics.Hosting.Remote
                 }
 
                 // Any other non-success status: treat as an error
-                response.EnsureSuccessStatusCode();
+                _ = response.EnsureSuccessStatusCode();
                 return new SelfTestRunResponseDto(Accepted: false, Error: "Unexpected response from server.");
             }
             catch (HttpRequestException ex)
@@ -98,7 +98,7 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/selftest/status", cancellationToken);
             _ = response.EnsureSuccessStatusCode();
-            var status = await response.Content.ReadFromJsonAsync<SelfTestStatusDto>(cancellationToken: cancellationToken)
+            SelfTestStatusDto status = await response.Content.ReadFromJsonAsync<SelfTestStatusDto>(cancellationToken: cancellationToken)
                 ?? new SelfTestStatusDto(SelfTestRunStatus.Idle);
             return status;
         }

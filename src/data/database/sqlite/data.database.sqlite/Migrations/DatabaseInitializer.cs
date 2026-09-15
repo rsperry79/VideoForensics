@@ -37,7 +37,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                 // Check for pending migrations
                 IEnumerable<string> pendingMigrations = await db.Database.GetPendingMigrationsAsync(cancellationToken);
-                var hasPendingMigrations = pendingMigrations.Any();
+                bool hasPendingMigrations = pendingMigrations.Any();
 
                 // Backup database before migration if needed
                 if (hasPendingMigrations)
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 return; // Not a file-based SQLite database
             }
 
-            var dbPath = connection.DataSource;
+            string dbPath = connection.DataSource;
             if (!File.Exists(dbPath))
             {
                 return; // No file to back up on first run
@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             try
             {
-                var backupPath = GenerateBackupPath(dbPath);
+                string backupPath = GenerateBackupPath(dbPath);
                 File.Copy(dbPath, backupPath, overwrite: false);
                 // Note: We could also use VACUUM INTO for a cleaner backup, but file copy is simpler and works fine
             }
@@ -106,10 +106,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// </summary>
         private static string GenerateBackupPath(string originalPath)
         {
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-            var directory = Path.GetDirectoryName(originalPath);
-            var filename = Path.GetFileName(originalPath);
-            var backupFilename = $"{filename}.bak-{timestamp}";
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+            string? directory = Path.GetDirectoryName(originalPath);
+            string filename = Path.GetFileName(originalPath);
+            string backupFilename = $"{filename}.bak-{timestamp}";
             return Path.Combine(directory ?? "", backupFilename);
         }
 
@@ -132,7 +132,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 using DbCommand command = connection.CreateCommand();
                 command.CommandText = "PRAGMA integrity_check;";
 
-                var result = await command.ExecuteScalarAsync(cancellationToken) as string;
+                string? result = await command.ExecuteScalarAsync(cancellationToken) as string;
                 if (result == "ok")
                 {
                     logger.LogInformation("Database integrity check passed.");

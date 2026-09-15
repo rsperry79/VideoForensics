@@ -33,7 +33,7 @@ namespace VideoForensics.Providers.Ring
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
-            var parsed = JsonSerializer.Deserialize<GroupsResponse>(response);
+            GroupsResponse? parsed = JsonSerializer.Deserialize<GroupsResponse>(response);
             return parsed?.DeviceGroups ?? [];
         }
 

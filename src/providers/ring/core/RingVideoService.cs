@@ -96,10 +96,9 @@ namespace VideoForensics.Providers.Ring
 
         private void ReadSettings()
         {
-            string contents = null;
             try
             {
-                contents = System.IO.File.ReadAllText(SavedSettingsFile);
+                string contents = System.IO.File.ReadAllText(SavedSettingsFile);
                 Config? settings = jsonSerializer.Deserialize<Config>(contents);
                 Filter = settings.Filter ?? new Filter();
             }
@@ -108,7 +107,6 @@ namespace VideoForensics.Providers.Ring
                 Filter = defaultFilter ?? new Filter();
             }
         }
-
 
         private void SaveSettings(DateTime? lastSuccessUtc, DateTime? lastFailureUtc)
         {
@@ -133,7 +131,7 @@ namespace VideoForensics.Providers.Ring
             {
                 Filter = Filter
             };
-            var config = jsonSerializer.Serialize(conf, Pretty);
+            string config = jsonSerializer.Serialize(conf, Pretty);
 
             System.IO.File.WriteAllText(SavedSettingsFile, config);
             log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
@@ -164,9 +162,9 @@ namespace VideoForensics.Providers.Ring
                     bodyLength = call.Body?.Length ?? 0,
                     body = call.Body
                 };
-                var line = jsonSerializer.Serialize(entry, Raw);
+                string line = jsonSerializer.Serialize(entry, Raw);
 
-                var logPath = Path.Combine(logsDirectory, "api_raw_responses.jsonl");
+                string logPath = Path.Combine(logsDirectory, "api_raw_responses.jsonl");
                 lock (rawApiLogLock)
                 {
                     System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
@@ -194,8 +192,8 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                var line = $"{evt.Timestamp:o} [{evt.Category}] {evt.Message}";
-                var logPath = Path.Combine(logsDirectory, "session_debug.log");
+                string line = $"{evt.Timestamp:o} [{evt.Category}] {evt.Message}";
+                string logPath = Path.Combine(logsDirectory, "session_debug.log");
                 lock (rawApiLogLock)
                 {
                     System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
@@ -222,12 +220,12 @@ namespace VideoForensics.Providers.Ring
             try
             {
                 DateTime localTime = batch.Timestamp.ToLocalTime();
-                var seq = Interlocked.Increment(ref ringEventsFileCounter);
-                var fileName = $"events-{localTime:yyyy-MM-dd}-T{localTime:HH_mm_ss}-{seq}.json";
-                var filePath = Path.Combine(logsDirectory, fileName);
+                int seq = Interlocked.Increment(ref ringEventsFileCounter);
+                string fileName = $"events-{localTime:yyyy-MM-dd}-T{localTime:HH_mm_ss}-{seq}.json";
+                string filePath = Path.Combine(logsDirectory, fileName);
 
                 using var doc = JsonDocument.Parse(batch.EventsJson);
-                var pretty = jsonSerializer.Serialize(doc, Pretty);
+                string pretty = jsonSerializer.Serialize(doc, Pretty);
 
                 System.IO.File.WriteAllText(filePath, pretty, Utf8NoBom);
                 log.LogInformation("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
@@ -240,7 +238,7 @@ namespace VideoForensics.Providers.Ring
 
         public string GetFilterMessage()
         {
-            var expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath ?? string.Empty);
+            string expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath ?? string.Empty);
             var message = new StringBuilder();
             _ = message.AppendLine("----------------------------");
             if (Filter.StartDateTime.HasValue)
@@ -248,14 +246,9 @@ namespace VideoForensics.Providers.Ring
                 _ = message.AppendLine($"Start Date:\t{Filter.StartDateTime.Value} [UTC: {Filter.StartDateTimeUtc.Value}]");
             }
 
-            if (Filter.EndDateTime.HasValue)
-            {
-                _ = message.AppendLine($"End Date:\t{Filter.EndDateTime.Value} [UTC: {Filter.EndDateTimeUtc.Value}]");
-            }
-            else
-            {
-                _ = message.AppendLine($"End Date:\tCurrent Time");
-            }
+            _ = Filter.EndDateTime.HasValue
+                ? message.AppendLine($"End Date:\t{Filter.EndDateTime.Value} [UTC: {Filter.EndDateTimeUtc.Value}]")
+                : message.AppendLine($"End Date:\tCurrent Time");
 
             if (Filter.VideoCount != 10000)
             {
@@ -326,7 +319,7 @@ namespace VideoForensics.Providers.Ring
                             // Two factor authentication is enabled on the account - a text message with a
                             // code will have just been sent. Ask for it here.
                             reporter.Info("Two factor authentication enabled on this account, please enter the token received in the text message on your phone:");
-                            var token = await reporter.PromptTwoFactorCodeAsync();
+                            string token = await reporter.PromptTwoFactorCodeAsync();
                             if (!string.IsNullOrEmpty(token))
                             {
                                 log.LogInformation("2FA token received");
@@ -396,7 +389,7 @@ namespace VideoForensics.Providers.Ring
                     return -1;
                 }
 
-                var expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath);
+                string expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath);
                 if (!string.IsNullOrWhiteSpace(expandedPath))
                 {
                     if (!Directory.Exists(expandedPath))
@@ -532,8 +525,8 @@ namespace VideoForensics.Providers.Ring
                             parts.Add(health.FirmwareVersionStatus);
                         }
 
-                        var line = $"    {name}: {(parts.Count > 0 ? string.Join(", ", parts) : "no telemetry")}";
-                        var isConcern = health.Connected == false ||
+                        string line = $"    {name}: {(parts.Count > 0 ? string.Join(", ", parts) : "no telemetry")}";
+                        bool isConcern = health.Connected == false ||
                            string.Equals(health.RssiCategory, "poor", StringComparison.OrdinalIgnoreCase) ||
                            string.Equals(health.BatteryVoltageCategory, "poor", StringComparison.OrdinalIgnoreCase);
                         if (isConcern)
@@ -591,7 +584,7 @@ namespace VideoForensics.Providers.Ring
                                 if (loc.Id.HasValue && !string.IsNullOrEmpty(loc.Name))
                                 {
                                     locationNameCache[loc.Id.Value] = loc.Name;
-                                    var deviceCount = deviceIdToLocationId.Count(kvp => kvp.Value == loc.Id.Value);
+                                    int deviceCount = deviceIdToLocationId.Count(kvp => kvp.Value == loc.Id.Value);
                                     reporter.Info($"  {loc.Name} ({loc.Id}) - {deviceCount} device(s){(loc.IsOwner == false ? " [shared]" : string.Empty)}");
 
                                     // Ring only returns devices this account has been explicitly granted access to on
@@ -665,7 +658,7 @@ namespace VideoForensics.Providers.Ring
 
                     if (!string.IsNullOrWhiteSpace(Filter.DetectionType))
                     {
-                        var detType = Filter.DetectionType.Trim();
+                        string detType = Filter.DetectionType.Trim();
                         dings = dings.Where(d => d.CvProperties != null &&
                                                  (string.Equals(d.CvProperties.DetectionType, detType, StringComparison.OrdinalIgnoreCase) ||
                                                   (string.Equals(detType, "human", StringComparison.OrdinalIgnoreCase) && d.CvProperties.PersonDetected == true))).ToList();
@@ -673,7 +666,7 @@ namespace VideoForensics.Providers.Ring
 
                     if (!string.IsNullOrWhiteSpace(Filter.Kind))
                     {
-                        var kind = Filter.Kind.Trim();
+                        string kind = Filter.Kind.Trim();
                         dings = dings.Where(d => string.Equals(d.Kind, kind, StringComparison.OrdinalIgnoreCase)).ToList();
                     }
                     // Skip events that do not have a ready recording - snapshot/live-view events and
@@ -705,9 +698,9 @@ namespace VideoForensics.Providers.Ring
                     {
                         foreach (IGrouping<int, DoorbotHistoryEvent>? grp in byDevice)
                         {
-                            var name = deviceList.Devices.Where(d => d.Id == grp.FirstOrDefault().Doorbot.Id).FirstOrDefault().Name;
-                            var count = grp.Count();
-                            var s = "";
+                            string name = deviceList.Devices.Where(d => d.Id == grp.FirstOrDefault().Doorbot.Id).FirstOrDefault().Name;
+                            int count = grp.Count();
+                            string s = "";
                             if (count > 1)
                             {
                                 s = "s";
@@ -752,7 +745,7 @@ namespace VideoForensics.Providers.Ring
                     // now-zero active-download count instead of whatever was last drawn mid-run.
                     speedUpdateCancellation.Cancel();
                     UpdateFooterStatus();
-                    var success = results.Count(r => r.success == true);
+                    int success = results.Count(r => r.success == true);
                     var successfulCreatedDates = results.Where(r => r.success == true).Select(r => r.ding.CreatedAtDateTime).ToList();
                     lastSuccess = successfulCreatedDates.Any() ? successfulCreatedDates.Max() : null;
                     failedCount = results.Count(r => r.success == false);
@@ -800,7 +793,7 @@ namespace VideoForensics.Providers.Ring
 
         public async Task<bool> DownloadSnapshots(Filter filter)
         {
-            var expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
+            string expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
             DateTime est = DateTime.Now;
             string fileNameFormat = Path.Combine(expandedPath,
                 $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}-T{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}" + "--{0}.jpg");
@@ -810,7 +803,6 @@ namespace VideoForensics.Providers.Ring
             {
                 return false;
             }
-
 
             string fileName;
             if (devices.Doorbots != null)
@@ -886,25 +878,25 @@ namespace VideoForensics.Providers.Ring
         {
 
             await semaphore.WaitAsync();
-            var item = reporter.BeginItem("");
+            object item = reporter.BeginItem("");
             _ = Interlocked.Increment(ref activeDls);
             try
             {
 
                 string filename = string.Empty;
-                var expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
+                string expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
 
                 _ = TimeZoneInfo.Local.GetUtcOffset(ding.CreatedAtDateTime.Value);
                 DateTime est = ding.CreatedAtDateTime.Value.ToLocalTime();
-                var date = $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}";
-                var time = $"{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}";
-                var shortFileName = $"{date}-{time}-{ding.Kind}.mp4";
+                string date = $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}";
+                string time = $"{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}";
+                string shortFileName = $"{date}-{time}-{ding.Kind}.mp4";
 
                 // Organize by location/camera name
                 string locationName = ResolveLocationName(ding.Doorbot.Id);
 
-                var locationDir = Path.Combine(expandedPath, locationName);
-                var cameraDir = Path.Combine(locationDir, ding.Doorbot.Description);
+                string locationDir = Path.Combine(expandedPath, locationName);
+                string cameraDir = Path.Combine(locationDir, ding.Doorbot.Description);
                 if (!Directory.Exists(cameraDir))
                 {
                     _ = Directory.CreateDirectory(cameraDir);
@@ -1072,7 +1064,7 @@ namespace VideoForensics.Providers.Ring
 
         private void UpdateFooterStatus()
         {
-            var speed = GetDownloadSpeed();
+            string speed = GetDownloadSpeed();
             string status = $"▓ Active Downloads: {activeDls} | Speed: {speed} | Total: {totalBytesDownloaded / (1024 * 1024)} MB";
             reporter.UpdateFooter(status);
         }
@@ -1123,7 +1115,7 @@ namespace VideoForensics.Providers.Ring
                             continue;
                         }
 
-                        var parts = line.Split('\t');
+                        string[] parts = line.Split('\t');
                         if (parts.Length >= 5)
                         {
                             _ = loadedEventIds.Add(parts[4]); // EventId is at index 4
@@ -1148,7 +1140,7 @@ namespace VideoForensics.Providers.Ring
         {
             if (deviceIdToLocationId.TryGetValue(deviceId, out Guid locationId))
             {
-                if (locationNameCache.TryGetValue(locationId, out var name))
+                if (locationNameCache.TryGetValue(locationId, out string? name))
                 {
                     return name;
                 }
@@ -1172,11 +1164,11 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
-                var safeCameraName = string.Join("_", ding.Doorbot.Description.Split(Path.GetInvalidFileNameChars()));
-                var fileName = $"{safeCameraName}-{date}-T{time}-{ding.Kind}.json";
-                var filePath = Path.Combine(logsDirectory, fileName);
+                string safeCameraName = string.Join("_", ding.Doorbot.Description.Split(Path.GetInvalidFileNameChars()));
+                string fileName = $"{safeCameraName}-{date}-T{time}-{ding.Kind}.json";
+                string filePath = Path.Combine(logsDirectory, fileName);
 
-                var json = jsonSerializer.Serialize(ding, Pretty);
+                string json = jsonSerializer.Serialize(ding, Pretty);
 
                 System.IO.File.WriteAllText(filePath, json, Utf8NoBom);
                 log.LogInformation("PerEventJson {fileName} written", Path.GetFileName(filePath));
@@ -1228,12 +1220,9 @@ namespace VideoForensics.Providers.Ring
 
         private string ExtractErrorMessage(Exception exception, string webResponseBody = null)
         {
-            if (webResponseBody != null)
-            {
-                return webResponseBody.Length > 200 ? webResponseBody[..200] : webResponseBody;
-            }
-
-            return exception?.InnerException != null ? exception.InnerException.Message : exception?.Message ?? "Unknown error";
+            return webResponseBody != null
+                ? webResponseBody.Length > 200 ? webResponseBody[..200] : webResponseBody
+                : exception?.InnerException != null ? exception.InnerException.Message : exception?.Message ?? "Unknown error";
         }
 
         private void GenerateFailureReport(string reportsDir, List<FailedDownload> existingFailures)
@@ -1306,7 +1295,7 @@ namespace VideoForensics.Providers.Ring
 
                 void AddRow(string name, long? id, string kind, Guid? locationId, DeviceHealth health)
                 {
-                    string locName = locationId.HasValue && locationNames.TryGetValue(locationId.Value, out var ln) ? ln : "";
+                    string locName = locationId.HasValue && locationNames.TryGetValue(locationId.Value, out string? ln) ? ln : "";
                     string connected = health?.Connected?.ToString() ?? "";
                     string batteryPct = health?.BatteryPercentage?.ToString() ?? "";
                     string batteryVoltCat = health?.BatteryVoltageCategory ?? "";
@@ -1339,7 +1328,7 @@ namespace VideoForensics.Providers.Ring
                         writer.WriteLine("Timestamp\tLocationName\tCameraName\tCameraId\tKind\tConnected\tBatteryPercentage\tBatteryVoltageCategory\tWifiRssiCategory\tRssi\tFirmwareStatus\tOtaStatus");
                     }
 
-                    foreach (var row in rows)
+                    foreach (string row in rows)
                     {
                         writer.WriteLine(row);
                     }
@@ -1408,7 +1397,7 @@ namespace VideoForensics.Providers.Ring
                         writer.WriteLine("Timestamp\tEventId\tCameraId\tCameraName\tKind\tBatteryPercentage\tBatteryCategory\tSignalStrength\tSignalCategory\tPacketLoss\tConnected\tWifiName\tFirmwareVersion\tPersonDetected\tDetectionType\tConfidence");
                     }
 
-                    foreach (var row in rows)
+                    foreach (string row in rows)
                     {
                         writer.WriteLine(row);
                     }
@@ -1449,7 +1438,7 @@ namespace VideoForensics.Providers.Ring
                         continue;
                     }
 
-                    var parts = line.Split('\t');
+                    string[] parts = line.Split('\t');
                     if (parts.Length >= 8)
                     {
                         // Handle both old format (8 columns) and new format (9 columns with LocationName)
@@ -1464,7 +1453,7 @@ namespace VideoForensics.Providers.Ring
                             string eventType = isNewFormat ? parts[7] : parts[6];
                             string errorDesc = isNewFormat ? parts[8] : parts[7];
 
-                            if (int.TryParse(cameraIdStr, out var cameraId))
+                            if (int.TryParse(cameraIdStr, out int cameraId))
                             {
                                 existing.Add(new FailedDownload
                                 {
@@ -1544,17 +1533,11 @@ namespace VideoForensics.Providers.Ring
         /// <returns>Null if authentication can proceed, otherwise a user-facing error message.</returns>
         public static string ResolveAuthError(RingCredentials auth)
         {
-            if (!string.IsNullOrWhiteSpace(auth.RefreshToken))
-            {
-                return null;
-            }
-
-            if (string.IsNullOrWhiteSpace(auth.UserName))
-            {
-                return "A Ring username is required";
-            }
-
-            return string.IsNullOrWhiteSpace(auth.Password) ? "A Ring password is required" : null;
+            return !string.IsNullOrWhiteSpace(auth.RefreshToken)
+                ? null
+                : string.IsNullOrWhiteSpace(auth.UserName)
+                ? "A Ring username is required"
+                : string.IsNullOrWhiteSpace(auth.Password) ? "A Ring password is required" : null;
         }
     }
 }

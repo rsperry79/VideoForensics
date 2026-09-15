@@ -95,7 +95,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await _service.RecordExportAsync(
+            ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 caseReference,
                 recipientDescription,
@@ -235,7 +235,7 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            var result = await _service.RecordExportAsync(
+            ExportRecord result = await _service.RecordExportAsync(
                 exportedByUserName,
                 null,
                 null,
@@ -358,7 +358,7 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync(expectedRecords);
 
             // Act
-            var result = await _service.GetHistoryForMediaItemAsync(mediaItemId, CancellationToken.None);
+            IReadOnlyList<ExportRecord> result = await _service.GetHistoryForMediaItemAsync(mediaItemId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -390,7 +390,7 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync(expectedRecords);
 
             // Act
-            var result = await _service.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
+            IReadOnlyList<ExportRecord> result = await _service.GetHistoryForDeviceAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -410,7 +410,7 @@ namespace VideoForensics.Data.Core.Tests
                 .ReturnsAsync([]);
 
             // Act
-            var result = await _service.GetHistoryForMediaItemAsync(mediaItemId, CancellationToken.None);
+            IReadOnlyList<ExportRecord> result = await _service.GetHistoryForMediaItemAsync(mediaItemId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);

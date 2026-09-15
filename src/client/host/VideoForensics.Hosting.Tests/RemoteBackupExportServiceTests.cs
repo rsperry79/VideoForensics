@@ -1,8 +1,10 @@
 using System.Text.Json;
-using Xunit;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -12,7 +14,7 @@ namespace VideoForensics.Hosting.Tests
 
         public RemoteBackupExportServiceTests()
         {
-            Directory.CreateDirectory(_tempDirectory);
+            _ = Directory.CreateDirectory(_tempDirectory);
         }
 
         ~RemoteBackupExportServiceTests()
@@ -48,7 +50,7 @@ namespace VideoForensics.Hosting.Tests
                 Assert.Equal("/api/v1/backup/prepare-export", request.RequestUri?.AbsolutePath);
                 Assert.Null(request.Content);
 
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -59,7 +61,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            var result = await service.PrepareForExportAsync(CancellationToken.None);
+            PrepareExportResult result = await service.PrepareForExportAsync(CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -67,7 +69,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(5, result.Backfilled);
             Assert.Equal(2, result.MissingMedia);
             Assert.Equal(1, result.MissingSidecarUnrecoverable);
-            Assert.Single(result.Details);
+            _ = Assert.Single(result.Details);
             Assert.Equal("Validation complete", result.Details[0]);
         }
 
@@ -87,7 +89,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.PrepareForExportAsync(CancellationToken.None));
             Assert.Contains("null prepare-export result", ex.Message);
         }
@@ -108,7 +110,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.PrepareForExportAsync(CancellationToken.None));
         }
 
@@ -116,9 +118,9 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_WithZipResponse_SavesFileAndReturnsResult()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-zip");
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
-            var fileName = "backup-20240101-120000.zip";
+            string outputDir = Path.Combine(_tempDirectory, "export-zip");
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string fileName = "backup-20240101-120000.zip";
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -143,7 +145,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            var result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
+            BackupExportResult result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -151,7 +153,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Contains(fileName, result.ArchivePath);
             Assert.True(File.Exists(result.ArchivePath));
 
-            var savedBytes = File.ReadAllBytes(result.ArchivePath);
+            byte[] savedBytes = File.ReadAllBytes(result.ArchivePath);
             Assert.Equal(zipContent, savedBytes);
         }
 
@@ -159,8 +161,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_WithZipResponseAndNoFileName_UsesDefaultFileName()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-zip-default");
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string outputDir = Path.Combine(_tempDirectory, "export-zip-default");
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -178,7 +180,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            var result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
+            BackupExportResult result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -193,7 +195,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_WithJsonResponse_ReturnsBackupExportResult()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-json");
+            string outputDir = Path.Combine(_tempDirectory, "export-json");
             var expectedDto = new BackupExportResultDto(
                 Success: true,
                 ArchivePath: "/server/path/backup.zip",
@@ -212,7 +214,7 @@ namespace VideoForensics.Hosting.Tests
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal("/api/v1/backup/export", request.RequestUri?.AbsolutePath);
 
-                var jsonContent = JsonSerializer.Serialize(expectedDto);
+                string jsonContent = JsonSerializer.Serialize(expectedDto);
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
@@ -225,7 +227,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            var result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
+            BackupExportResult result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -245,10 +247,10 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_CreatesOutputDirectoryIfNotExists()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "deeply", "nested", "path");
+            string outputDir = Path.Combine(_tempDirectory, "deeply", "nested", "path");
             Assert.False(Directory.Exists(outputDir));
 
-            var zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -269,7 +271,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            var result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
+            BackupExportResult result = await service.ExportBackupAsync(outputDir, CancellationToken.None);
 
             // Assert
             Assert.True(Directory.Exists(outputDir));
@@ -281,7 +283,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_WithNullJsonResponse_ThrowsInvalidOperationException()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-null");
+            string outputDir = Path.Combine(_tempDirectory, "export-null");
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -297,7 +299,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.ExportBackupAsync(outputDir, CancellationToken.None));
             Assert.Contains("null export result", ex.Message);
         }
@@ -306,7 +308,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_WithHttpError_ThrowsHttpRequestException()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-error");
+            string outputDir = Path.Combine(_tempDirectory, "export-error");
 
             var handler = new FakeHttpMessageHandler(request =>
             {
@@ -320,7 +322,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.ExportBackupAsync(outputDir, CancellationToken.None));
         }
 
@@ -328,13 +330,13 @@ namespace VideoForensics.Hosting.Tests
         public async Task ExportBackupAsync_SendsCorrectJsonRequest()
         {
             // Arrange
-            var outputDir = Path.Combine(_tempDirectory, "export-request-check");
+            string outputDir = Path.Combine(_tempDirectory, "export-request-check");
             ExportBackupRequest? capturedRequest = null;
 
             var handler = new FakeHttpMessageHandler(async request =>
             {
                 Assert.NotNull(request.Content);
-                var content = await request.Content!.ReadAsStringAsync();
+                string content = await request.Content!.ReadAsStringAsync();
                 capturedRequest = JsonSerializer.Deserialize<ExportBackupRequest>(content);
 
                 var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
@@ -363,7 +365,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteBackupExportService(httpClient);
 
             // Act
-            await service.ExportBackupAsync(outputDir, CancellationToken.None);
+            _ = await service.ExportBackupAsync(outputDir, CancellationToken.None);
 
             // Assert
             Assert.NotNull(capturedRequest);
@@ -390,12 +392,7 @@ namespace VideoForensics.Hosting.Tests
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                if (_asyncHandler != null)
-                {
-                    return await _asyncHandler(request);
-                }
-
-                return _handler(request);
+                return _asyncHandler != null ? await _asyncHandler(request) : _handler(request);
             }
         }
     }

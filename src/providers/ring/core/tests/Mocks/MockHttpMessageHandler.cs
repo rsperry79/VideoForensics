@@ -100,7 +100,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             // Find matching response
             string? matchingKey = _responses.Keys.FirstOrDefault(k => requestUrl.Contains(k.Replace("https://", "").Replace("http://", "")));
 
-            if (matchingKey != null && _responses.TryGetValue(matchingKey, out var response))
+            if (matchingKey != null && _responses.TryGetValue(matchingKey, out (HttpStatusCode statusCode, string content) response))
             {
                 return await Task.FromResult(new HttpResponseMessage
                 {

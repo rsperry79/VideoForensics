@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+
 using VideoForensics.Providers.Ring.Exceptions;
 
 namespace VideoForensics.Providers.Ring.Common.Tests;
@@ -22,7 +23,7 @@ public class DeviceUnknownException_Construction_Tests
     [Fact]
     public void Construction_WithDeviceId_IncludesDeviceIdInMessage()
     {
-        var deviceId = 12345;
+        int deviceId = 12345;
         var exception = new DeviceUnknownException(deviceId);
 
         Assert.Contains(deviceId.ToString(), exception.Message);
@@ -40,7 +41,7 @@ public class DeviceUnknownException_Construction_Tests
     [Fact]
     public void Construction_WithDeviceIdAndWebException_SetsBothMessage()
     {
-        var deviceId = 12345;
+        int deviceId = 12345;
         var innerException = new WebException("Network error");
         var exception = new DeviceUnknownException(deviceId, innerException);
 
@@ -69,7 +70,7 @@ public class DeviceUnknownException_Construction_Tests
     [Fact]
     public void ResponseBody_WhenInitialized_IsStoredAsProperty()
     {
-        var responseBody = "Device not found";
+        string responseBody = "Device not found";
         var exception = new DeviceUnknownException(123) { ResponseBody = responseBody };
 
         Assert.Equal(responseBody, exception.ResponseBody);
@@ -84,7 +85,7 @@ public class DownloadFailedException_Construction_Tests
     [Fact]
     public void Construction_WithUrl_CreatesWithUrlInMessage()
     {
-        var url = "https://api.ring.com/recordings/123/video";
+        string url = "https://api.ring.com/recordings/123/video";
         var exception = new DownloadFailedException(url);
 
         Assert.Contains(url, exception.Message);
@@ -94,7 +95,7 @@ public class DownloadFailedException_Construction_Tests
     [Fact]
     public void Construction_WithUrlAndWebException_SetsBothMessage()
     {
-        var url = "https://api.ring.com/recordings/123/video";
+        string url = "https://api.ring.com/recordings/123/video";
         var innerException = new WebException("Connection timeout");
         var exception = new DownloadFailedException(url, innerException);
 
@@ -105,7 +106,7 @@ public class DownloadFailedException_Construction_Tests
     [Fact]
     public void StatusCode_WhenInitialized_IsStoredAsProperty()
     {
-        var url = "https://api.ring.com/recordings/123/video";
+        string url = "https://api.ring.com/recordings/123/video";
         var exception = new DownloadFailedException(url) { StatusCode = HttpStatusCode.Forbidden };
 
         Assert.Equal(HttpStatusCode.Forbidden, exception.StatusCode);
@@ -114,8 +115,8 @@ public class DownloadFailedException_Construction_Tests
     [Fact]
     public void ResponseBody_WhenInitialized_IsStoredAsProperty()
     {
-        var url = "https://api.ring.com/recordings/123/video";
-        var responseBody = "Access denied";
+        string url = "https://api.ring.com/recordings/123/video";
+        string responseBody = "Access denied";
         var exception = new DownloadFailedException(url) { ResponseBody = responseBody };
 
         Assert.Equal(responseBody, exception.ResponseBody);
@@ -130,7 +131,7 @@ public class SharingFailedException_Construction_Tests
     [Fact]
     public void Construction_WithId_CreatesWithIdInMessage()
     {
-        var id = "event-123";
+        string id = "event-123";
         var exception = new SharingFailedException(id);
 
         Assert.Contains(id, exception.Message);
@@ -140,7 +141,7 @@ public class SharingFailedException_Construction_Tests
     [Fact]
     public void Construction_WithIdAndWebException_SetsBothMessage()
     {
-        var id = "event-123";
+        string id = "event-123";
         var innerException = new WebException("Permission denied");
         var exception = new SharingFailedException(id, innerException);
 
@@ -151,7 +152,7 @@ public class SharingFailedException_Construction_Tests
     [Fact]
     public void Construction_WithEmptyId_StillIncludesIdInMessage()
     {
-        var id = "";
+        string id = "";
         var exception = new SharingFailedException(id);
 
         Assert.Contains("failed", exception.Message);
@@ -160,12 +161,12 @@ public class SharingFailedException_Construction_Tests
     [Fact]
     public void InnerException_WhenProvided_IsAccessible()
     {
-        var id = "event-123";
+        string id = "event-123";
         var webException = new WebException("Network error");
         var exception = new SharingFailedException(id, webException);
 
         Assert.NotNull(exception.InnerException);
-        Assert.IsType<WebException>(exception.InnerException);
+        _ = Assert.IsType<WebException>(exception.InnerException);
     }
 }
 
@@ -199,7 +200,7 @@ public class ThrottledException_Construction_Tests
     [Fact]
     public void Construction_WithCustomMessage_UsesCustomMessage()
     {
-        var customMessage = "Hard throttle ban applied";
+        string customMessage = "Hard throttle ban applied";
         var exception = new ThrottledException(customMessage);
 
         Assert.Equal(customMessage, exception.Message);
@@ -209,7 +210,7 @@ public class ThrottledException_Construction_Tests
     [Fact]
     public void Construction_WithMessageAndIsHardBan_SetsIsHardBanFlag()
     {
-        var message = "Hard ban";
+        string message = "Hard ban";
         var exception = new ThrottledException(message, isHardBan: true);
 
         Assert.True(exception.IsHardBan);
@@ -227,7 +228,7 @@ public class ThrottledException_Construction_Tests
     [Fact]
     public void ResponseBody_WhenInitialized_IsStoredAsProperty()
     {
-        var responseBody = "Rate limit exceeded";
+        string responseBody = "Rate limit exceeded";
         var exception = new ThrottledException() { ResponseBody = responseBody };
 
         Assert.Equal(responseBody, exception.ResponseBody);
@@ -258,8 +259,8 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void Construction_WithStatusCodes_CreateWithExpectationMessage()
     {
-        var returned = HttpStatusCode.BadRequest;
-        var expected = HttpStatusCode.OK;
+        HttpStatusCode returned = HttpStatusCode.BadRequest;
+        HttpStatusCode expected = HttpStatusCode.OK;
         var exception = new UnexpectedOutcomeException(returned, expected);
 
         Assert.NotNull(exception);
@@ -271,8 +272,8 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void Construction_WithStatusCodesAndWebException_SetsBothMessage()
     {
-        var returned = HttpStatusCode.Unauthorized;
-        var expected = HttpStatusCode.OK;
+        HttpStatusCode returned = HttpStatusCode.Unauthorized;
+        HttpStatusCode expected = HttpStatusCode.OK;
         var innerException = new WebException("Network error");
         var exception = new UnexpectedOutcomeException(returned, expected, innerException);
 
@@ -285,7 +286,7 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void Construction_WithOnlyReturnedStatus_CreateGenericMessage()
     {
-        var returned = HttpStatusCode.InternalServerError;
+        HttpStatusCode returned = HttpStatusCode.InternalServerError;
         var exception = new UnexpectedOutcomeException(returned);
 
         Assert.NotNull(exception);
@@ -297,8 +298,8 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void ReturnedStatusCode_WhenSet_IsAccessible()
     {
-        var returned = HttpStatusCode.NotFound;
-        var expected = HttpStatusCode.OK;
+        HttpStatusCode returned = HttpStatusCode.NotFound;
+        HttpStatusCode expected = HttpStatusCode.OK;
         var exception = new UnexpectedOutcomeException(returned, expected);
 
         Assert.Equal(HttpStatusCode.NotFound, exception.ReturnedStatusCode);
@@ -307,8 +308,8 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void ExpectedStatusCode_WhenSet_IsAccessible()
     {
-        var returned = HttpStatusCode.BadRequest;
-        var expected = HttpStatusCode.Created;
+        HttpStatusCode returned = HttpStatusCode.BadRequest;
+        HttpStatusCode expected = HttpStatusCode.Created;
         var exception = new UnexpectedOutcomeException(returned, expected);
 
         Assert.Equal(HttpStatusCode.Created, exception.ExpectedStatusCode);
@@ -317,7 +318,7 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void ExpectedStatusCode_WhenNotSet_IsNull()
     {
-        var returned = HttpStatusCode.InternalServerError;
+        HttpStatusCode returned = HttpStatusCode.InternalServerError;
         var exception = new UnexpectedOutcomeException(returned);
 
         Assert.Null(exception.ExpectedStatusCode);
@@ -326,9 +327,9 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void ResponseBody_WhenInitialized_IsStoredAsProperty()
     {
-        var returned = HttpStatusCode.BadRequest;
-        var expected = HttpStatusCode.OK;
-        var responseBody = "Invalid request";
+        HttpStatusCode returned = HttpStatusCode.BadRequest;
+        HttpStatusCode expected = HttpStatusCode.OK;
+        string responseBody = "Invalid request";
         var exception = new UnexpectedOutcomeException(returned, expected) { ResponseBody = responseBody };
 
         Assert.Equal(responseBody, exception.ResponseBody);
@@ -346,12 +347,12 @@ public class UnexpectedOutcomeException_Construction_Tests
     [Fact]
     public void InnerException_WhenProvided_IsAccessible()
     {
-        var returned = HttpStatusCode.ServiceUnavailable;
-        var expected = HttpStatusCode.OK;
+        HttpStatusCode returned = HttpStatusCode.ServiceUnavailable;
+        HttpStatusCode expected = HttpStatusCode.OK;
         var webException = new WebException("Service error");
         var exception = new UnexpectedOutcomeException(returned, expected, webException);
 
         Assert.NotNull(exception.InnerException);
-        Assert.IsType<WebException>(exception.InnerException);
+        _ = Assert.IsType<WebException>(exception.InnerException);
     }
 }

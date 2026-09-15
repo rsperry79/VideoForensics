@@ -42,11 +42,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 }
 
                 // 1. Check WAL file size
-                var dbPath = connection.DataSource;
-                var walPath = $"{dbPath}-wal";
+                string dbPath = connection.DataSource;
+                string walPath = $"{dbPath}-wal";
                 if (File.Exists(walPath))
                 {
-                    var walSize = new FileInfo(walPath).Length;
+                    long walSize = new FileInfo(walPath).Length;
                     diagnosis.WalSizeBytes = walSize;
                     diagnosis.NeedsWalCheckpoint = walSize > WalSizeThresholdBytes;
                     if (diagnosis.NeedsWalCheckpoint)
@@ -58,7 +58,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // 2. Check database file size
                 if (File.Exists(dbPath))
                 {
-                    var dbSize = new FileInfo(dbPath).Length;
+                    long dbSize = new FileInfo(dbPath).Length;
                     diagnosis.DatabaseSizeBytes = dbSize;
                     diagnosis.NeedsReindex = dbSize > DbSizeThresholdBytes;
                     if (diagnosis.NeedsReindex)
@@ -76,7 +76,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 DateTime? lastMaintenance = await GetLastMaintenanceTimeAsync(db, cancellationToken);
                 if (lastMaintenance.HasValue)
                 {
-                    var hoursSinceLastMaintenance = (DateTime.UtcNow - lastMaintenance.Value).TotalHours;
+                    double hoursSinceLastMaintenance = (DateTime.UtcNow - lastMaintenance.Value).TotalHours;
                     diagnosis.HoursSinceLastMaintenance = hoursSinceLastMaintenance;
                     diagnosis.NeedsTimedMaintenance = hoursSinceLastMaintenance > MaintenanceIntervalHours;
                     if (diagnosis.NeedsTimedMaintenance)

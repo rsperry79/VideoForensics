@@ -265,21 +265,14 @@ namespace VideoForensics.Providers.Ring
         private void DetermineEventType(DoorbotHistoryEvent ringEvent, VideoMetadata metadata)
         {
             // PhotoPrism event types based on Ring detection
-            if (metadata.PersonDetected == true)
-            {
-                metadata.EventType = EventTypePerson;
-            }
-            else if (string.Equals(ringEvent.Kind, "motion", StringComparison.OrdinalIgnoreCase))
-            {
-                metadata.EventType = EventTypeMotion;
-            }
-            else
-            {
-                metadata.EventType = string.Equals(ringEvent.Kind, "doorbell", StringComparison.OrdinalIgnoreCase) ||
+            metadata.EventType = metadata.PersonDetected == true
+                ? EventTypePerson
+                : string.Equals(ringEvent.Kind, "motion", StringComparison.OrdinalIgnoreCase)
+                    ? EventTypeMotion
+                    : string.Equals(ringEvent.Kind, "doorbell", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(ringEvent.Kind, "button", StringComparison.OrdinalIgnoreCase)
                     ? EventTypeDoorbell
                     : EventTypeRing;
-            }
         }
 
         private void BuildKeywords(VideoMetadata metadata)

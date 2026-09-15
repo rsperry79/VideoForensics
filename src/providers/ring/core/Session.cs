@@ -425,7 +425,7 @@ namespace VideoForensics.Providers.Ring
 
             string response = await _httpUtility.GetContents(new Uri(BaseUrl, query), AuthenticationToken, _hardwareId);
 
-            var devices = JsonSerializer.Deserialize<Devices>(response) ?? new Devices();
+            Devices devices = JsonSerializer.Deserialize<Devices>(response) ?? new Devices();
             ApiRawLogger.LogEvent("Devices", $"Retrieved {devices.Doorbots?.Count ?? 0} doorbots, {devices.AuthorizedDoorbots?.Count ?? 0} authorized doorbots, {devices.Chimes?.Count ?? 0} chimes, {devices.StickupCams?.Count ?? 0} stickup cams" + (locationId.HasValue ? $" (location {locationId})" : ""));
             return devices;
         }
@@ -445,7 +445,7 @@ namespace VideoForensics.Providers.Ring
 
             string response = await _httpUtility.GetContents(new Uri(RingDevicesApiBaseUrl, "locations"), AuthenticationToken, _hardwareId);
 
-            var parsed = JsonSerializer.Deserialize<Entities.UserLocationsResponse>(response);
+            UserLocationsResponse? parsed = JsonSerializer.Deserialize<Entities.UserLocationsResponse>(response);
             return parsed?.UserLocations ?? [];
         }
 
@@ -469,7 +469,7 @@ namespace VideoForensics.Providers.Ring
             string response = await _httpUtility.GetContents(new Uri(BaseUrl, $"doorbots/{(doorbotId.HasValue ? $"{doorbotId.Value}/" : "")}history{(limit.HasValue ? $"?limit={limit}" : "")}"), AuthenticationToken, _hardwareId);
 
             // Parse the result
-            var doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
+            List<DoorbotHistoryEvent>? doorbotHistory = JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response);
 
             // If no limit has been specified or the amount of items requested have been returned already, just return whatever has been returned by the API
             if (!limit.HasValue || doorbotHistory.Count >= limit.Value)
@@ -539,8 +539,8 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid();
 
             // Adjust dates to include full day boundaries: start at 00:00:01, end at 23:59:59
-            var effectiveStartDate = startDate.Date.AddSeconds(1);
-            var effectiveEndDate = endDate.HasValue
+            DateTime effectiveStartDate = startDate.Date.AddSeconds(1);
+            DateTime effectiveEndDate = endDate.HasValue
                 ? endDate.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59)
                 : DateTime.MaxValue;
 
@@ -580,7 +580,7 @@ namespace VideoForensics.Providers.Ring
             var doorbotHistory = new List<DoorbotHistoryEvent>();
             DateTime? lastItemDateTime = null;
             bool isFirstPage = true;
-            var lastChunkBoundary = effectiveEndDate;
+            DateTime lastChunkBoundary = effectiveEndDate;
 
             do
             {
@@ -671,7 +671,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task<Stream> GetDoorbotHistoryRecording(string dingId)
         {
-            var downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
+            DownloadRecording downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
             return await _videoDownloader.OpenStreamAsync(downloadResult.Url);
         }
 
@@ -710,7 +710,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task GetDoorbotHistoryRecording(string dingId, string saveAs)
         {
-            var downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
+            DownloadRecording downloadResult = await GetDoorbotHistoryRecordingInfo(dingId);
             await GetDoorbotHistoryRecording(downloadResult, saveAs);
         }
 
@@ -896,8 +896,8 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task GetLatestSnapshot(int doorbotId, string saveAs)
         {
-            using var stream = await GetLatestSnapshot(doorbotId);
-            using var fileStream = File.Create(saveAs);
+            using Stream stream = await GetLatestSnapshot(doorbotId);
+            using FileStream fileStream = File.Create(saveAs);
 
             _ = stream.Seek(0, SeekOrigin.Begin);
             await stream.CopyToAsync(fileStream);
@@ -1018,7 +1018,7 @@ namespace VideoForensics.Providers.Ring
             string bodyContent = string.Concat(@"{ ""doorbot_ids"": [", doorbotId, @"]}");
 
             // Send the request
-            var doorbotTimestamps = await _httpUtility.SendRequest<DoorbotTimestamps>(updateSnapshotUri, System.Net.Http.HttpMethod.Post, bodyContent, AuthenticationToken);
+            DoorbotTimestamps doorbotTimestamps = await _httpUtility.SendRequest<DoorbotTimestamps>(updateSnapshotUri, System.Net.Http.HttpMethod.Post, bodyContent, AuthenticationToken);
             return doorbotTimestamps;
         }
 

@@ -234,7 +234,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Send the request to the webserver
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Read the body up front (even on error responses) so it can be captured for diagnostics
             // before we potentially throw below.
@@ -282,7 +282,7 @@ namespace VideoForensics.Providers.Ring
             {
                 if (DateTime.UtcNow < hardBanUntil.Value)
                 {
-                    var remaining = hardBanUntil.Value - DateTime.UtcNow;
+                    TimeSpan remaining = hardBanUntil.Value - DateTime.UtcNow;
                     throw new Exceptions.ThrottledException(
                         $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
                         isHardBan: true);
@@ -407,7 +407,7 @@ namespace VideoForensics.Providers.Ring
             string json = JsonSerializer.Serialize(formFields);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
 
             if (response == null)
             {
@@ -451,7 +451,7 @@ namespace VideoForensics.Providers.Ring
                     break;
             }
 
-            return responseText == null ? null : responseText;
+            return responseText ?? null;
         }
 
         /// <summary>
@@ -477,7 +477,7 @@ namespace VideoForensics.Providers.Ring
 
             request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
             if (response == null)
             {
                 return null;
@@ -524,7 +524,7 @@ namespace VideoForensics.Providers.Ring
             request.Content = new FormUrlEncodedContent(formFields);
 
             // Receive the response from the webserver
-            var response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
 
             // Make sure the webserver has sent a response
             if (response == null)
@@ -569,7 +569,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Make sure the response content is available
-            return responseText == null ? null : responseText;
+            return responseText ?? null;
         }
 
         /// <summary>
@@ -601,7 +601,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Receive the response from the webserver
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
             byte[] bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
             return bytes;
@@ -632,7 +632,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Send the HTTP request
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Read the body up front (even on error responses) so it can be captured for diagnostics
             // before we potentially throw below. This is the request-body counterpart of the
@@ -706,7 +706,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             // Send the HTTP request
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Get the response body and return it
             string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);

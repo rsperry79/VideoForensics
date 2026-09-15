@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Tests
             var mediaItemId = Guid.NewGuid();
             var detectionId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 var detection = new MediaItemDetection
                 {
@@ -78,7 +78,7 @@ namespace VideoForensics.Data.Database.Tests
             VideoForensicsDbContext ctxBefore = _fixture.Factory.CreateDbContext();
             countBefore = await ctxBefore.MediaItemDetections.CountAsync();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddMediaItemDetectionAsync(null!, CancellationToken.None);
                 return null;
@@ -99,16 +99,14 @@ namespace VideoForensics.Data.Database.Tests
 
             var persons = new List<DetectedPerson>
             {
-                new DetectedPerson
-                {
+                new() {
                     Id = person1Id,
                     MediaItemId = mediaItemId,
                     ProfileId = "profile-1",
                     ProfileName = "Person 1",
                     Confidence = 0.85m
                 },
-                new DetectedPerson
-                {
+                new() {
                     Id = person2Id,
                     MediaItemId = mediaItemId,
                     ProfileId = "profile-2",
@@ -117,15 +115,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddDetectedPersonsAsync(persons, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.DetectedPersons.CountAsync(p => p.MediaItemId == mediaItemId);
-            var retrieved = await ctx.DetectedPersons.Where(p => p.MediaItemId == mediaItemId).ToListAsync();
+            int count = await ctx.DetectedPersons.CountAsync(p => p.MediaItemId == mediaItemId);
+            List<DetectedPerson> retrieved = await ctx.DetectedPersons.Where(p => p.MediaItemId == mediaItemId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, p => p.Id == person1Id && p.Confidence == 0.85m);
@@ -135,30 +133,30 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task DetectionEntityProvider_AddDetectedPersonsAsync_WithEmptyList_NoErrorAndNothingAdded()
         {
-            var countBefore = (await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync());
+            int countBefore = await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
-                await context.DetectionEntities.AddDetectedPersonsAsync(new List<DetectedPerson>(), CancellationToken.None);
+                await context.DetectionEntities.AddDetectedPersonsAsync([], CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            var countAfter = (await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync());
+            int countAfter = await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync();
             Assert.Equal(countBefore, countAfter);
         }
 
         [Fact]
         public async Task DetectionEntityProvider_AddDetectedPersonsAsync_WithNullList_NoErrorAndNothingAdded()
         {
-            var countBefore = (await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync());
+            int countBefore = await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddDetectedPersonsAsync(null!, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            var countAfter = (await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync());
+            int countAfter = await _fixture.Factory.CreateDbContext().DetectedPersons.CountAsync();
             Assert.Equal(countBefore, countAfter);
         }
 
@@ -171,15 +169,13 @@ namespace VideoForensics.Data.Database.Tests
 
             var occurrences = new List<DetectionTypeOccurrence>
             {
-                new DetectionTypeOccurrence
-                {
+                new() {
                     Id = occurrence1Id,
                     MediaItemDetectionId = mediaItemDetectionId,
                     DetectionType = "Vehicle",
                     DetectedAtUtc = DateTime.UtcNow
                 },
-                new DetectionTypeOccurrence
-                {
+                new() {
                     Id = occurrence2Id,
                     MediaItemDetectionId = mediaItemDetectionId,
                     DetectionType = "Animal",
@@ -187,15 +183,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.DetectionTypeOccurrences.CountAsync(o => o.MediaItemDetectionId == mediaItemDetectionId);
-            var retrieved = await ctx.DetectionTypeOccurrences.Where(o => o.MediaItemDetectionId == mediaItemDetectionId).ToListAsync();
+            int count = await ctx.DetectionTypeOccurrences.CountAsync(o => o.MediaItemDetectionId == mediaItemDetectionId);
+            List<DetectionTypeOccurrence> retrieved = await ctx.DetectionTypeOccurrences.Where(o => o.MediaItemDetectionId == mediaItemDetectionId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, o => o.Id == occurrence1Id && o.DetectionType == "Vehicle");
@@ -208,7 +204,7 @@ namespace VideoForensics.Data.Database.Tests
             var eventId = Guid.NewGuid();
             var detectionId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 var detection = new EventDetection
                 {
@@ -236,15 +232,15 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task DetectionEntityProvider_AddEventDetectionAsync_WithNullDetection_NoErrorAndNothingAdded()
         {
-            var countBefore = (await _fixture.Factory.CreateDbContext().EventDetections.CountAsync());
+            int countBefore = await _fixture.Factory.CreateDbContext().EventDetections.CountAsync();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddEventDetectionAsync(null!, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
-            var countAfter = (await _fixture.Factory.CreateDbContext().EventDetections.CountAsync());
+            int countAfter = await _fixture.Factory.CreateDbContext().EventDetections.CountAsync();
             Assert.Equal(countBefore, countAfter);
         }
 
@@ -257,16 +253,14 @@ namespace VideoForensics.Data.Database.Tests
 
             var zones = new List<EventDetectionZone>
             {
-                new EventDetectionZone
-                {
+                new() {
                     Id = zone1Id,
                     EventDetectionId = eventDetectionId,
                     ZoneId = "zone-a",
                     ZoneName = "Zone A",
                     Confidence = 0.90m
                 },
-                new EventDetectionZone
-                {
+                new() {
                     Id = zone2Id,
                     EventDetectionId = eventDetectionId,
                     ZoneId = "zone-b",
@@ -275,15 +269,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddEventDetectionZonesAsync(zones, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.EventDetectionZones.CountAsync(z => z.EventDetectionId == eventDetectionId);
-            var retrieved = await ctx.EventDetectionZones.Where(z => z.EventDetectionId == eventDetectionId).ToListAsync();
+            int count = await ctx.EventDetectionZones.CountAsync(z => z.EventDetectionId == eventDetectionId);
+            List<EventDetectionZone> retrieved = await ctx.EventDetectionZones.Where(z => z.EventDetectionId == eventDetectionId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, z => z.Id == zone1Id && z.ZoneName == "Zone A");
@@ -299,15 +293,13 @@ namespace VideoForensics.Data.Database.Tests
 
             var alerts = new List<EventSecurityAlert>
             {
-                new EventSecurityAlert
-                {
+                new() {
                     Id = alert1Id,
                     EventId = eventId,
                     Severity = "Low",
                     AlertText = "Low confidence alert"
                 },
-                new EventSecurityAlert
-                {
+                new() {
                     Id = alert2Id,
                     EventId = eventId,
                     Severity = "High",
@@ -315,15 +307,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.EventSecurityAlerts.CountAsync(a => a.EventId == eventId);
-            var retrieved = await ctx.EventSecurityAlerts.Where(a => a.EventId == eventId).ToListAsync();
+            int count = await ctx.EventSecurityAlerts.CountAsync(a => a.EventId == eventId);
+            List<EventSecurityAlert> retrieved = await ctx.EventSecurityAlerts.Where(a => a.EventId == eventId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, a => a.Id == alert1Id && a.Severity == "Low");
@@ -339,16 +331,14 @@ namespace VideoForensics.Data.Database.Tests
 
             var persons = new List<EventDetectedPerson>
             {
-                new EventDetectedPerson
-                {
+                new() {
                     Id = person1Id,
                     EventId = eventId,
                     ProfileId = "profile-suspect-1",
                     ProfileName = "Suspect 1",
                     Confidence = 0.92m
                 },
-                new EventDetectedPerson
-                {
+                new() {
                     Id = person2Id,
                     EventId = eventId,
                     ProfileId = "profile-witness-1",
@@ -357,15 +347,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.EventDetectedPersons.CountAsync(p => p.EventId == eventId);
-            var retrieved = await ctx.EventDetectedPersons.Where(p => p.EventId == eventId).ToListAsync();
+            int count = await ctx.EventDetectedPersons.CountAsync(p => p.EventId == eventId);
+            List<EventDetectedPerson> retrieved = await ctx.EventDetectedPersons.Where(p => p.EventId == eventId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, p => p.Id == person1Id && p.Confidence == 0.92m);
@@ -381,15 +371,13 @@ namespace VideoForensics.Data.Database.Tests
 
             var occurrences = new List<EventDetectionTypeOccurrence>
             {
-                new EventDetectionTypeOccurrence
-                {
+                new() {
                     Id = occurrence1Id,
                     EventDetectionId = eventDetectionId,
                     DetectionType = "Package",
                     DetectedAtUtc = DateTime.UtcNow
                 },
-                new EventDetectionTypeOccurrence
-                {
+                new() {
                     Id = occurrence2Id,
                     EventDetectionId = eventDetectionId,
                     DetectionType = "Intrusion",
@@ -397,15 +385,15 @@ namespace VideoForensics.Data.Database.Tests
                 }
             };
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, CancellationToken.None);
                 return null;
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var count = await ctx.EventDetectionTypeOccurrences.CountAsync(o => o.EventDetectionId == eventDetectionId);
-            var retrieved = await ctx.EventDetectionTypeOccurrences.Where(o => o.EventDetectionId == eventDetectionId).ToListAsync();
+            int count = await ctx.EventDetectionTypeOccurrences.CountAsync(o => o.EventDetectionId == eventDetectionId);
+            List<EventDetectionTypeOccurrence> retrieved = await ctx.EventDetectionTypeOccurrences.Where(o => o.EventDetectionId == eventDetectionId).ToListAsync();
 
             Assert.Equal(2, count);
             Assert.Contains(retrieved, o => o.Id == occurrence1Id && o.DetectionType == "Package");
@@ -418,7 +406,7 @@ namespace VideoForensics.Data.Database.Tests
             var mediaItemId = Guid.NewGuid();
             var eventId = Guid.NewGuid();
 
-            await _unitOfWork.ExecuteAsync<object?>(async context =>
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
             {
                 var mediaDetection = new MediaItemDetection
                 {
@@ -445,8 +433,8 @@ namespace VideoForensics.Data.Database.Tests
             }, CancellationToken.None);
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            var mediaCount = await ctx.MediaItemDetections.CountAsync(d => d.MediaItemId == mediaItemId);
-            var eventCount = await ctx.EventDetections.CountAsync(d => d.EventId == eventId);
+            int mediaCount = await ctx.MediaItemDetections.CountAsync(d => d.MediaItemId == mediaItemId);
+            int eventCount = await ctx.EventDetections.CountAsync(d => d.EventId == eventId);
 
             Assert.Equal(1, mediaCount);
             Assert.Equal(1, eventCount);
@@ -465,17 +453,11 @@ namespace VideoForensics.Data.Database.Tests
 
             public object? GetService(Type serviceType)
             {
-                if (serviceType == typeof(ICredentialEncryptionProvider))
-                {
-                    return _fixture.EncryptionProvider;
-                }
-
-                if (serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>))
-                {
-                    return _loggerFactory.CreateLogger<ICredentialRepository>();
-                }
-
-                return serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
+                return serviceType == typeof(ICredentialEncryptionProvider)
+                    ? _fixture.EncryptionProvider
+                    : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<ICredentialRepository>)
+                    ? _loggerFactory.CreateLogger<ICredentialRepository>()
+                    : serviceType == typeof(Microsoft.Extensions.Logging.ILogger<UnitOfWork>) ? _loggerFactory.CreateLogger<UnitOfWork>() : (object?)null;
             }
         }
     }

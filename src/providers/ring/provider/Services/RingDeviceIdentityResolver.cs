@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -71,7 +69,7 @@ namespace VideoForensics.Providers.Ring.Services
             // real Ring location id for this device — matches VideoDownloadServiceAdapter's own
             // fallback so both layers agree on the placeholder's identity instead of creating two
             // different "default" locations.
-            var effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
+            string effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
 
             // Resolve Account/Location once per effectiveLocationId and cache them
             await _identityResolutionLock.WaitAsync(ct);

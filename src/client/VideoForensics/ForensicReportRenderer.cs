@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using Spectre.Console;
 
-using VideoForensics.Client.Common;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -53,7 +52,7 @@ namespace VideoForensics
 
                 foreach (MediaItem item in report.MediaItems)
                 {
-                    var status = DetermineMediaStatus(item.Id, report.IntegrityRecords);
+                    string status = DetermineMediaStatus(item.Id, report.IntegrityRecords);
                     _ = table.AddRow(
                         item.Id.ToString("N")[..8],
                         item.DeviceId.ToString("N")[..8],
@@ -181,7 +180,7 @@ namespace VideoForensics
                     {
                         foreach (SignalAnomalyReport.SignalAnomaly anomaly in deviceAnomaly.Anomalies)
                         {
-                            var icon = anomaly.AnomalyType switch
+                            string icon = anomaly.AnomalyType switch
                             {
                                 "DegradedSignal" => "[orange3]⚠[/]",
                                 "ConnectionLoss" => "[red][/]",
@@ -355,12 +354,7 @@ namespace VideoForensics
         {
             IntegrityRecord? record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaId);
 
-            if (record == null)
-            {
-                return "[yellow]⚠ Not verified[/]";
-            }
-
-            return !record.Passed ? "[red]Integrity failed[/]" : "[green]✓ Verified[/]";
+            return record == null ? "[yellow]⚠ Not verified[/]" : !record.Passed ? "[red]Integrity failed[/]" : "[green]✓ Verified[/]";
         }
     }
 }

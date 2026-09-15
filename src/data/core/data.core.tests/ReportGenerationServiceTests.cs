@@ -369,7 +369,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task WriteReportAsync_WithJsonFormat_WritesJsonFile()
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), $"reports_{Guid.NewGuid()}");
+            string tempDir = Path.Combine(Path.GetTempPath(), $"reports_{Guid.NewGuid()}");
             _ = Directory.CreateDirectory(tempDir);
 
             var report = new EvidenceReviewReport
@@ -387,12 +387,12 @@ namespace VideoForensics.Data.Core.Tests
                 await _service.WriteReportAsync(report, "json", CancellationToken.None);
 
                 // Assert - The file should be created in the reports directory
-                var reportsDir = Path.Combine(
+                string reportsDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics",
                     "Reports");
 
-                var files = Directory.GetFiles(reportsDir, "EvidenceReviewReport_*.json");
+                string[] files = Directory.GetFiles(reportsDir, "EvidenceReviewReport_*.json");
                 Assert.NotEmpty(files);
             }
             finally
