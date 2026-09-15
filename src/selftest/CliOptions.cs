@@ -394,7 +394,7 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
         OUTPUT:
           --output-dir <path>       Directory to write index.json and result files into.
-                                     Default: ./SelfTesterResults/<UTC-timestamp>
+                                     Default: %ProgramData%\VideoForensics\SelfTesterResults\<UTC-timestamp>
           --quiet                   Suppress narration; only the final index.json path is printed.
 
         DATABASE COMPLETENESS CHECK:

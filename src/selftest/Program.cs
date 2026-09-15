@@ -212,7 +212,12 @@ namespace VideoForensics.Providers.Ring.SelfTester
                 return 2;
             }
 
-            string outputDir = options.OutputDir ?? Path.Combine("SelfTesterResults", DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
+            // Pick output directory under ProgramData, matching LocalRingSelfTestService's pattern; must not default into the source tree
+            string outputDir = options.OutputDir ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics",
+                "SelfTesterResults",
+                DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
             _ = Directory.CreateDirectory(outputDir);
 
             IndexDocument index;

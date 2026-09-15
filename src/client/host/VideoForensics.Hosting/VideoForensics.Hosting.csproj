@@ -22,14 +22,14 @@
     <ItemGroup>
         <PackageReference Include="CliWrap" Version="3.10.5" />
         <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
-        <PackageReference Include="MailKit" Version="4.17.0" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
+        <PackageReference Include="MailKit" Version="4.18.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
-        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.12" />
-        <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.13" />
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.12" />
     </ItemGroup>
 
     <ItemGroup>
