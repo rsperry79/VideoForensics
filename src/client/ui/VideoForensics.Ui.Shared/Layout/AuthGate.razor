@@ -1,0 +1,133 @@
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Data.Common.Contracts
+@inject PairedSessionState SessionState
+@inject NavigationManager NavigationManager
+@inject IOperatorRepository OperatorRepository
+@implements IDisposable
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+        <div class="text-center">
+            <div class="spinner-border mb-3" role="status">
+                <span class="visually-hidden">Checking session...</span>
+            </div>
+            <p>Checking session...</p>
+        </div>
+    </div>
+}
+else if (_redirecting)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+        <div class="text-center">
+            <div class="spinner-border mb-3" role="status">
+                <span class="visually-hidden">Redirecting...</span>
+            </div>
+            <p>Redirecting...</p>
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _loading = true;
+    private bool _redirecting = false;
+
+    // Routes that do not require authentication
+    private static readonly HashSet<string> AllowListedRoutes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/pair",
+        "/device-signin",
+        "/welcome"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+
+            // Subscribe to navigation changes after session is loaded
+            NavigationManager.LocationChanged += HandleLocationChanged;
+
+            // Run the initial authorization check
+            await EvaluateAuthorizationAsync();
+        }
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Re-evaluate authorization on every navigation
+        _ = EvaluateAuthorizationAsync();
+    }
+
+    private async Task EvaluateAuthorizationAsync()
+    {
+        try
+        {
+            // Get the current route path
+            var uri = new Uri(NavigationManager.Uri);
+            string path = uri.AbsolutePath;
+
+            // Remove trailing slash if present (except for root)
+            if (path.Length > 1 && path.EndsWith("/"))
+            {
+                path = path[..^1];
+            }
+
+            // Check if current route is allow-listed
+            if (AllowListedRoutes.Contains(path))
+            {
+                // Route is allow-listed, render content normally
+                _loading = false;
+                _redirecting = false;
+            }
+            else if (SessionState.IsSignedIn)
+            {
+                // User is signed in and route is protected, render content normally
+                _loading = false;
+                _redirecting = false;
+            }
+            else
+            {
+                // Not signed in and not on allow-list - determine where to redirect
+                _loading = false;
+                _redirecting = true;
+
+                bool isBootstrap = await OperatorRepository.IsEmptyAsync(CancellationToken.None);
+
+                if (isBootstrap)
+                {
+                    // No operators exist - go to /pair to initiate bootstrap pairing
+                    NavigationManager.NavigateTo("/pair", replace: true);
+                }
+                else
+                {
+                    // Operators exist - go to welcome page
+                    NavigationManager.NavigateTo("/welcome", replace: true);
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't let it crash the component
+            System.Diagnostics.Debug.WriteLine($"Authorization check failed: {ex}");
+            _loading = false;
+            _redirecting = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+}

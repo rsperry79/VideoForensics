@@ -26,7 +26,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_WithValidAccountId_ReturnsProviderAccount()
         {
             var accountId = Guid.NewGuid();
-            var dto = new ProviderAccountDto(accountId, Guid.NewGuid(), "Ring", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddHours(-1), true, DateTime.UtcNow.AddHours(-2));
+            var dto = new ProviderAccountDto(accountId, Guid.NewGuid(), "Ring", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddHours(-1), true, DateTime.UtcNow.AddHours(-2), null, null);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
@@ -49,7 +49,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListAsync_CallsListEndpoint_ReturnsAllAccounts()
         {
-            var dtoList = new List<ProviderAccountDto> { new(Guid.NewGuid(), Guid.NewGuid(), "Ring", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddHours(-1), true, DateTime.UtcNow.AddHours(-2)) };
+            var dtoList = new List<ProviderAccountDto> { new(Guid.NewGuid(), Guid.NewGuid(), "Ring", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddHours(-1), true, DateTime.UtcNow.AddHours(-2), null, null) };
             string json = JsonSerializer.Serialize(dtoList, JsonOptions);
             var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") }; });
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };

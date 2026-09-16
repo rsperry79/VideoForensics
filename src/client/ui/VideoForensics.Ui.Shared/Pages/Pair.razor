@@ -1,22 +1,45 @@
 @page "/pair"
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Data.Common.Contracts
 @using Microsoft.Extensions.Localization
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
+@inject IOperatorRepository OperatorRepository
 @inject IStringLocalizer<Pair> L
 
 <h4 class="mb-4">@L["Title"]</h4>
 
-@if (_token is null)
+@if (_initiating)
 {
-    <div class="alert alert-danger">@L["NoTokenAlert"]</div>
+    <div class="d-flex justify-content-center gap-2">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Initiating pairing...</span>
+        </div>
+        <span>Initiating pairing ceremony...</span>
+    </div>
+}
+else if (_token is null)
+{
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
 }
 else if (_result is not null)
 {
-    <div class="alert alert-success">
-        @L["SuccessAlert", _result.Value.Role]
-        You can now <a href="/device-signin">@L["SignInLink"]</a>.
-    </div>
+    @if (_result.IsApproved)
+    {
+        <div class="alert alert-success">
+            @L["SuccessAlert", _result.Role]
+            You can now <a href="/device-signin">@L["SignInLink"]</a>.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">
+            Account created successfully! Your account is awaiting admin approval. You will be notified once approved — please try signing in again later.
+        </div>
+    }
 }
 else
 {
@@ -44,14 +67,60 @@ else
     private string _operatorDisplayName = string.Empty;
     private string _deviceName = string.Empty;
     private bool _isPairing;
+    private bool _initiating;
     private string? _error;
-    private (Guid OperatorId, Guid PairedDeviceId, string Role)? _result;
+    private RegistrationResult? _result;
+    private bool _isBootstrap;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
         _token = query["token"];
+
+        // Determine if this is the bootstrap (first-run) scenario
+        _isBootstrap = await OperatorRepository.IsEmptyAsync(CancellationToken.None);
+
+        // If no token provided, initiate the pairing ceremony (bootstrap or self-service)
+        if (_token is null)
+        {
+            await InitiatePairingAsync();
+        }
+    }
+
+    private async Task InitiatePairingAsync()
+    {
+        _initiating = true;
+        _error = null;
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            var response = await client.PostAsync("api/v1/pairing/initiate", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = $"Failed to initiate pairing: {response.StatusCode}";
+                return;
+            }
+
+            var responseContent = await response.Content.ReadFromJsonAsync<InitiateResponse>();
+            if (responseContent?.Token is not null)
+            {
+                _token = responseContent.Token;
+            }
+            else
+            {
+                _error = "Invalid response from pairing initiate endpoint";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error initiating pairing: {ex.Message}";
+        }
+        finally
+        {
+            _initiating = false;
+        }
     }
 
     private async Task PairAsync()
@@ -82,4 +151,6 @@ else
             _isPairing = false;
         }
     }
+
+    private record InitiateResponse(string? Token, DateTime ExpiresAtUtc, string? Role);
 }

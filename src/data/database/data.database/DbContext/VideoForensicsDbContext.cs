@@ -19,6 +19,12 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the provider accounts.</summary>
         public DbSet<ProviderAccount> ProviderAccounts { get; set; }
 
+        /// <summary>Gets or sets the sync schedules.</summary>
+        public DbSet<SyncSchedule> SyncSchedules { get; set; }
+
+        /// <summary>Gets or sets the jamming schedule windows.</summary>
+        public DbSet<JammingScheduleWindow> JammingScheduleWindows { get; set; }
+
         /// <summary>Gets or sets the locations.</summary>
         public DbSet<Location> Locations { get; set; }
 
@@ -144,6 +150,18 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the per-operator UI preferences (theme mode, language).</summary>
         public DbSet<OperatorPreferences> OperatorPreferences { get; set; }
+
+        /// <summary>Gets or sets the notices (persisted notification events for audit trail and history).</summary>
+        public DbSet<Notice> Notices { get; set; }
+
+        /// <summary>Gets or sets the notice dismissals (per-operator suppression of notices).</summary>
+        public DbSet<NoticeDismissal> NoticeDismissals { get; set; }
+
+        /// <summary>Gets or sets the per-operator push notification preferences.</summary>
+        public DbSet<OperatorNotificationPreference> OperatorNotificationPreferences { get; set; }
+
+        /// <summary>Gets or sets the push subscriptions (Web Push API credentials per browser/device).</summary>
+        public DbSet<PushSubscription> PushSubscriptions { get; set; }
 
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)

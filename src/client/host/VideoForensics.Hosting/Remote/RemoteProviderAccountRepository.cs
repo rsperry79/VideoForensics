@@ -111,5 +111,17 @@ namespace VideoForensics.Hosting.Remote
             HttpResponseMessage response = await _httpClient.DeleteAsync($"/api/v1/accounts/provider-accounts/{accountId}", ct);
             _ = response.EnsureSuccessStatusCode();
         }
+
+        /// <inheritdoc />
+        public async Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken)
+        {
+            var request = new
+            {
+                errorMessage
+            };
+
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"/api/v1/accounts/provider-accounts/{providerAccountId}/record-error", request, cancellationToken);
+            _ = response.EnsureSuccessStatusCode();
+        }
     }
 }

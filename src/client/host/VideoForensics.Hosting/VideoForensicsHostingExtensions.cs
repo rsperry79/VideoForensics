@@ -50,7 +50,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ICredentialRepository>(),
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
-                provider.GetRequiredService<IUserRepository>()
+                provider.GetRequiredService<IUserRepository>(),
+                provider.GetRequiredService<VideoForensics.Providers.Common.Contracts.INotificationDispatcher>()
             );
         }
 
@@ -172,6 +173,18 @@ namespace VideoForensics.Hosting
         {
             return new WyzeEventAndConfigService(
                 provider.GetRequiredService<ILogger<WyzeEventAndConfigService>>()
+            );
+        }
+
+        /// <summary>
+        /// Builds a notification dispatcher for use by multiple registration paths.
+        /// </summary>
+        private static INotificationDispatcher BuildNotificationDispatcher(IServiceProvider provider)
+        {
+            return new NotificationDispatcher(
+                provider.GetRequiredService<IEnumerable<INotificationProvider>>(),
+                provider.GetRequiredService<ILogger<NotificationDispatcher>>(),
+                provider.GetRequiredService<INoticeRepository>()
             );
         }
 
@@ -413,7 +426,7 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
             _ = services.AddScoped<EmailNotificationProvider>();
-            _ = services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+            _ = services.AddScoped<INotificationDispatcher>(BuildNotificationDispatcher);
 
             return services;
         }

@@ -28,13 +28,14 @@ namespace VideoForensics.WebApp.Tests
         }
 
         private static PairedDeviceAuthenticationHandler CreateHandler(
-            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver)
+            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver, Mock<IOperatorRepository>? operatorRepository = null)
         {
             var options = new Mock<IOptionsMonitor<AuthenticationSchemeOptions>>();
             _ = options.Setup(o => o.Get(It.IsAny<string>())).Returns(new AuthenticationSchemeOptions());
             ILoggerFactory loggerFactory = LoggerFactory.Create(b => { });
             UrlEncoder encoder = UrlEncoder.Default;
-            return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, tierResolver.Object);
+            operatorRepository ??= new Mock<IOperatorRepository>();
+            return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, tierResolver.Object, operatorRepository.Object);
         }
 
         private static HttpContext CreateHttpContextWithAuthorizationHeader(string token)
@@ -82,6 +83,7 @@ namespace VideoForensics.WebApp.Tests
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
+            var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -98,7 +100,17 @@ namespace VideoForensics.WebApp.Tests
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
-            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("valid-token");
 
             // Act
@@ -123,6 +135,7 @@ namespace VideoForensics.WebApp.Tests
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
+            var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -139,7 +152,7 @@ namespace VideoForensics.WebApp.Tests
             };
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
 
-            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("revoked-token");
 
             // Act
@@ -160,13 +173,14 @@ namespace VideoForensics.WebApp.Tests
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
+            var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             _ = tokenService.Setup(t => t.Validate("unknown-token")).Returns(principal);
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
 
-            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("unknown-token");
 
             // Act
@@ -186,6 +200,7 @@ namespace VideoForensics.WebApp.Tests
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
+            var operatorRepository = new Mock<IOperatorRepository>();
 
             _ = tokenService.Setup(t => t.Validate(It.IsAny<string>())).Returns((SessionPrincipal?)null);
 
@@ -200,7 +215,7 @@ namespace VideoForensics.WebApp.Tests
             _ = repo.Setup(r => r.GetByFallbackApiKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(device);
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
 
-            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("some-api-key");
 
             // Act
@@ -283,6 +298,7 @@ namespace VideoForensics.WebApp.Tests
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
+            var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
                 operatorId, pairedDeviceId, OperatorRole.SuperAdmin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
@@ -299,7 +315,17 @@ namespace VideoForensics.WebApp.Tests
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
             _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
 
-            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver);
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAccessTokenQuery("signalr-token", "/hubs/notifications");
 
             // Act

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -10,6 +11,7 @@ namespace VideoForensics.Client.Core.Tools
         private readonly ILogger<JammingToolsOrchestrator> _logger;
         private readonly IJammingRepository _jammingRepository;
         private readonly IDeviceHealthRepository _healthRepository;
+        private readonly INotificationDispatcher? _notificationDispatcher;
 
         // A drop of at least this many dB below the device's own baseline RSSI is treated as
         // "degraded" for a single reading. Matches the playbook in JammingAnalysisResource
@@ -23,11 +25,13 @@ namespace VideoForensics.Client.Core.Tools
         public JammingToolsOrchestrator(
             ILogger<JammingToolsOrchestrator> logger,
             IJammingRepository jammingRepository,
-            IDeviceHealthRepository healthRepository)
+            IDeviceHealthRepository healthRepository,
+            INotificationDispatcher? notificationDispatcher = null)
         {
             _logger = logger;
             _jammingRepository = jammingRepository;
             _healthRepository = healthRepository;
+            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<(bool Success, string Message, JammingStatsSummary? Stats)> RunJammingDetectionNotificationAsync(
@@ -93,6 +97,29 @@ namespace VideoForensics.Client.Core.Tools
                 JammingIncidentRecord persisted = await _jammingRepository.UpsertIncidentAsync(record, ct);
                 _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
                 _logger.LogInformation("Recorded manual jamming incident for device {deviceId}", deviceId);
+
+                // Dispatch notice for new manually-recorded jamming incident
+                if (_notificationDispatcher != null)
+                {
+                    try
+                    {
+                        await _notificationDispatcher.DispatchAsync(
+                            new NotificationEvent(
+                                EventType: "JammingDetected",
+                                TimestampUtc: DateTime.UtcNow,
+                                OperatorId: null,
+                                PairedDeviceId: null,
+                                SourceIp: null,
+                                Details: $"Jamming incident recorded for device {deviceId}: {averageDegradationDb:F1} dB avg degradation over {(endUtc - startUtc).TotalMinutes:F0} minutes",
+                                Audience: NotificationAudience.AdminsOnly,
+                                Severity: NoticeSeverity.Alert),
+                            ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
+                    }
+                }
 
                 return (true, "Jamming incident recorded successfully", persisted);
             }
@@ -271,6 +298,29 @@ namespace VideoForensics.Client.Core.Tools
                                 Notes = $"Auto-detected: baseline RSSI {baselineRssi:F1} dBm, {runLength} consecutive degraded reading(s)",
                                 Source = JammingIncidentSource.AutoDetected
                             }, ct);
+
+                            // Dispatch notice for newly auto-detected jamming incident
+                            if (_notificationDispatcher != null)
+                            {
+                                try
+                                {
+                                    await _notificationDispatcher.DispatchAsync(
+                                        new NotificationEvent(
+                                            EventType: "JammingDetected",
+                                            TimestampUtc: DateTime.UtcNow,
+                                            OperatorId: null,
+                                            PairedDeviceId: null,
+                                            SourceIp: null,
+                                            Details: $"Jamming auto-detected for device {deviceId}: {avgDegradation:F1} dB avg degradation, {runLength} consecutive readings, baseline {baselineRssi:F1} dBm",
+                                            Audience: NotificationAudience.AdminsOnly,
+                                            Severity: NoticeSeverity.Alert),
+                                        ct);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
+                                }
+                            }
 
                             detected++;
                         }

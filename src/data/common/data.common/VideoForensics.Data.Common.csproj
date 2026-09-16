@@ -19,4 +19,8 @@
       <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+    </ItemGroup>
+
 </Project>

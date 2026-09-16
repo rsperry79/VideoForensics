@@ -1,0 +1,207 @@
+@page "/accounts/{Id:guid}"
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject IUserRepository UserRepository
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+@inject NavigationManager NavigationManager
+
+<div class="mb-4">
+    <SfButton CssClass="e-outline" Content="Back to Accounts" OnClick="GoBack" />
+</div>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <p>@_statusMessage</p>
+    }
+
+    @if (_account == null)
+    {
+        <p>Account not found.</p>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">@(_displayName ?? _account.ProviderName)</h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Display Name</label>
+                    <p class="form-control-plaintext">@_displayName</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Provider</label>
+                    <p class="form-control-plaintext">@_account.ProviderName</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Linked</label>
+                    <p class="form-control-plaintext">@_account.LinkedUtc</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Last Successful Auth</label>
+                    <p class="form-control-plaintext">@(_account.LastSuccessfulAuthUtc?.ToString() ?? "Never")</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Active</label>
+                    <p class="form-control-plaintext">@(_account.IsActive ? "Yes" : "No")</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Last Download</label>
+                    <p class="form-control-plaintext">@(_account.LastDownloadTimeUtc?.ToString() ?? "Never")</p>
+                </div>
+
+                @if (_account.LastErrorUtc.HasValue || !string.IsNullOrEmpty(_account.LastErrorMessage))
+                {
+                    <div class="mb-3 p-3 border border-danger rounded" style="background-color: #fff5f5;">
+                        <label class="form-label fw-bold text-danger">Last Error</label>
+                        <p class="form-control-plaintext mb-1">
+                            <strong>Time:</strong> @(_account.LastErrorUtc?.ToString() ?? "-")
+                        </p>
+                        <p class="form-control-plaintext">
+                            <strong>Message:</strong> @(_account.LastErrorMessage ?? "-")
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <SfButton CssClass="e-primary" Content="Sync Schedule" OnClick="GoToSyncSchedule" />
+        </div>
+
+        <div>
+            @if (_confirmingRemove)
+            {
+                <div class="d-flex gap-2 align-items-center p-3 border border-danger rounded">
+                    <p class="mb-0">Are you sure you want to remove this account? This cannot be undone.</p>
+                    <SfButton CssClass="e-danger" Content="Yes, Remove" OnClick="ConfirmRemoveAsync" Disabled="@_isBusy" />
+                    <SfButton CssClass="e-outline" Content="Cancel" OnClick="CancelRemove" Disabled="@_isBusy" />
+                </div>
+            }
+            else
+            {
+                <SfButton CssClass="e-danger" Content="Remove Account" OnClick="PromptRemove" Disabled="@_isBusy" />
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private VideoForensics.Data.Common.Entities.ProviderAccount? _account;
+    private string? _displayName;
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private bool _confirmingRemove;
+    private string? _statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountAsync();
+    }
+
+    private async Task LoadAccountAsync()
+    {
+        _isLoading = true;
+        _statusMessage = null;
+        try
+        {
+            _account = await ProviderAccountRepository.GetAsync(Id, CancellationToken.None);
+
+            if (_account is not null)
+            {
+                _displayName = _account.ProviderName;
+                try
+                {
+                    var user = await UserRepository.GetAsync(_account.UserId, CancellationToken.None);
+                    if (user is not null)
+                    {
+                        _displayName = user.DisplayName;
+                    }
+                }
+                catch
+                {
+                    // Fall back to ProviderName if user lookup fails
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error loading account: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/accounts");
+    }
+
+    private void GoToSyncSchedule()
+    {
+        NavigationManager.NavigateTo($"/accounts/{Id}/schedule");
+    }
+
+    private void PromptRemove()
+    {
+        _confirmingRemove = true;
+    }
+
+    private void CancelRemove()
+    {
+        _confirmingRemove = false;
+    }
+
+    private async Task ConfirmRemoveAsync()
+    {
+        _isBusy = true;
+        _confirmingRemove = false;
+        _statusMessage = null;
+        try
+        {
+            await ProviderAccountRepository.DeleteAsync(Id, CancellationToken.None);
+
+            if (ForensicsConfig.ActiveProviderAccountId == Id)
+            {
+                ForensicsConfig.ActiveProviderAccountId = null;
+                try
+                {
+                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+                }
+                catch (NotSupportedException)
+                {
+                    _statusMessage = "This setting can only be changed from the server directly.";
+                    _isBusy = false;
+                    return;
+                }
+            }
+
+            NavigationManager.NavigateTo("/accounts");
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error removing account: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Hubs
@@ -28,7 +29,7 @@ namespace VideoForensics.WebApp.Hubs
             _connectionTracker = connectionTracker;
         }
 
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
             Guid? deviceId = GetPairedDeviceId();
             if (deviceId is not null)
@@ -36,7 +37,14 @@ namespace VideoForensics.WebApp.Hubs
                 _connectionTracker.Register(deviceId.Value, Context);
             }
 
-            return base.OnConnectedAsync();
+            // Add admins to the admins group for admin-only notifications
+            string? roleClaim = Context.User?.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
+            if (Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= OperatorRole.Admin)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "admins", CancellationToken.None);
+            }
+
+            await base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
