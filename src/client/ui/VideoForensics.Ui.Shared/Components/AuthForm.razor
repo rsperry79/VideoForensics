@@ -32,7 +32,7 @@
             <label for="@($"{IdPrefix}-password")">Password:</label>
             <SfTextBox ID="@($"{IdPrefix}-password")" Type="Syncfusion.Blazor.Inputs.InputType.Password" @bind-Value="_password" />
         </div>
-        <SfButton CssClass="e-primary" Type="Syncfusion.Blazor.Buttons.ButtonType.Submit" Disabled="@_isBusy" Content="@(_isBusy ? "Signing in..." : SubmitLabel)" />
+        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? "Signing in..." : SubmitLabel)" />
     </EditForm>
 }
 else
@@ -42,7 +42,7 @@ else
             <label for="@($"{IdPrefix}-2fa")">Enter your 2FA code:</label>
             <SfTextBox ID="@($"{IdPrefix}-2fa")" @bind-Value="_twoFactorCode" />
         </div>
-        <SfButton CssClass="e-primary" Type="Syncfusion.Blazor.Buttons.ButtonType.Submit" Disabled="@_isBusy" Content="@(_isBusy ? "Verifying..." : "Verify")" />
+        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? "Verifying..." : "Verify")" />
     </EditForm>
 }
 

@@ -1,0 +1,393 @@
+@page "/accounts/{Id:guid}/schedule"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Data.Common.Contracts
+@inject ISyncScheduleRepository SyncScheduleRepository
+@inject NavigationManager NavigationManager
+
+<h4 class="mb-4">Sync Schedule</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert @(_statusMessage.StartsWith("Failed") ? "alert-danger" : "alert-success")">
+            @_statusMessage
+        </div>
+    }
+
+    <div class="card p-4">
+        <div class="card-body">
+            <h5 class="card-title">Configure Sync Settings</h5>
+
+            <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
+                <div class="mb-3">
+                    <label for="snapshot-rssi-interval">Snapshot/RSSI Interval (minutes):</label>
+                    <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" Min="1" Step="1" />
+                </div>
+                <div class="mb-3">
+                    <label for="event-poll-interval">Event Poll Interval (minutes):</label>
+                    <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="is-enabled">
+                        <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" TChecked="bool" />
+                        Enable Sync
+                    </label>
+                </div>
+
+                @if (_schedule != null)
+                {
+                    <div class="mb-3">
+                        <label>Last Event Poll:</label>
+                        <p>@(_schedule.EventLastRunUtc?.ToString("g") ?? "Never")</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Next Event Poll:</label>
+                        <p>@(_schedule.EventNextRunUtc?.ToString("g") ?? "N/A")</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Last Snapshot Poll:</label>
+                        <p>@(_schedule.SnapshotLastRunUtc?.ToString("g") ?? "Never")</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Next Snapshot Poll:</label>
+                        <p>@(_schedule.SnapshotNextRunUtc?.ToString("g") ?? "N/A")</p>
+                    </div>
+                }
+
+                <hr class="my-4" />
+
+                <div class="mb-3">
+                    <label for="use-advanced-jamming">
+                        <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" TChecked="bool" />
+                        Advanced Jamming Schedule
+                    </label>
+                </div>
+
+                @if (_useAdvancedJammingSchedule)
+                {
+                    <div class="card border-secondary mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Jamming Detection Windows</h6>
+                        </div>
+                        <div class="card-body">
+                            @if (_jammingWindows == null || _jammingWindows.Count == 0)
+                            {
+                                <p class="text-muted">No jamming windows configured yet.</p>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Day of Week</th>
+                                                <th>Start Time</th>
+                                                <th>End Time</th>
+                                                <th>Interval (min)</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var window in _jammingWindows)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <select class="form-select form-select-sm" @bind="window.DayOfWeek">
+                                                            <option value="0">Sunday</option>
+                                                            <option value="1">Monday</option>
+                                                            <option value="2">Tuesday</option>
+                                                            <option value="3">Wednesday</option>
+                                                            <option value="4">Thursday</option>
+                                                            <option value="5">Friday</option>
+                                                            <option value="6">Saturday</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-select form-select-sm" @bind="window.StartMinuteOfDay">
+                                                            @foreach (var timeOption in _timeOptions)
+                                                            {
+                                                                <option value="@timeOption.Minutes">@timeOption.Display</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-select form-select-sm" @bind="window.EndMinuteOfDay">
+                                                            @foreach (var timeOption in _timeOptions)
+                                                            {
+                                                                <option value="@timeOption.Minutes">@timeOption.Display</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" Min="1" Step="1" />
+                                                    </td>
+                                                    <td>
+                                                        <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="Remove" />
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+
+                            <div class="mt-3">
+                                <SfButton type="button" OnClick="AddWindow" CssClass="e-outline" Content="Add Window" />
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="mt-4">
+                    <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? "Saving..." : "Save")" />
+                    <SfButton type="button" CssClass="e-outline ms-2" OnClick="GoBack" Disabled="@_isBusy" Content="Back to Account Details" />
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private SyncSchedule? _schedule;
+    private int _snapshotRssiIntervalMinutes = 60;
+    private int _eventPollIntervalMinutes = 60;
+    private bool _isEnabled = true;
+    private bool _useAdvancedJammingSchedule;
+    private List<JammingScheduleWindow>? _jammingWindows;
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private string? _statusMessage;
+
+    private record TimeOption(int Minutes, string Display);
+    private List<TimeOption> _timeOptions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _timeOptions = BuildTimeOptions();
+        await LoadScheduleAsync();
+    }
+
+    private List<TimeOption> BuildTimeOptions()
+    {
+        var options = new List<TimeOption>();
+        for (int minutes = 0; minutes < 24 * 60; minutes += 15)
+        {
+            int hours = minutes / 60;
+            int mins = minutes % 60;
+            options.Add(new TimeOption(minutes, $"{hours:D2}:{mins:D2}"));
+        }
+        return options;
+    }
+
+    private async Task LoadScheduleAsync()
+    {
+        _isLoading = true;
+        _statusMessage = null;
+        try
+        {
+            _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
+            if (_schedule != null)
+            {
+                _snapshotRssiIntervalMinutes = _schedule.SnapshotRssiIntervalMinutes;
+                _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
+                _isEnabled = _schedule.IsEnabled;
+                _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
+                // Create a mutable copy of jamming windows for editing
+                _jammingWindows = new List<JammingScheduleWindow>(_schedule.JammingWindows ?? []);
+            }
+            else
+            {
+                _jammingWindows = [];
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Failed to load schedule: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void AddWindow()
+    {
+        if (_jammingWindows == null)
+        {
+            _jammingWindows = [];
+        }
+
+        // Default: Monday, 00:00-00:15, matching default interval
+        var newWindow = new JammingScheduleWindow
+        {
+            Id = Guid.NewGuid(),
+            SyncScheduleId = _schedule?.Id ?? Guid.Empty,
+            DayOfWeek = 1, // Monday
+            StartMinuteOfDay = 0, // 00:00
+            EndMinuteOfDay = 15, // 00:15
+            SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes
+        };
+
+        _jammingWindows.Add(newWindow);
+    }
+
+    private void RemoveWindow(JammingScheduleWindow window)
+    {
+        _jammingWindows?.Remove(window);
+    }
+
+    private bool ValidateJammingWindows()
+    {
+        if (!_useAdvancedJammingSchedule)
+        {
+            return true; // No validation needed when advanced mode is off
+        }
+
+        if (_jammingWindows == null || _jammingWindows.Count == 0)
+        {
+            _statusMessage = "Advanced Jamming Schedule is enabled but no windows are configured.";
+            return false;
+        }
+
+        foreach (var window in _jammingWindows)
+        {
+            // Validate day of week
+            if (window.DayOfWeek < 0 || window.DayOfWeek > 6)
+            {
+                _statusMessage = $"Invalid day of week: {window.DayOfWeek}. Must be 0-6.";
+                return false;
+            }
+
+            // Validate start and end times are multiples of 15
+            if (window.StartMinuteOfDay % 15 != 0)
+            {
+                _statusMessage = $"Start time {FormatMinutes(window.StartMinuteOfDay)} must be a multiple of 15 minutes.";
+                return false;
+            }
+
+            if (window.EndMinuteOfDay % 15 != 0)
+            {
+                _statusMessage = $"End time {FormatMinutes(window.EndMinuteOfDay)} must be a multiple of 15 minutes.";
+                return false;
+            }
+
+            // Validate end time is after start time
+            if (window.EndMinuteOfDay <= window.StartMinuteOfDay)
+            {
+                _statusMessage = $"End time must be after start time for {GetDayName(window.DayOfWeek)}.";
+                return false;
+            }
+
+            // Validate interval meets minimum
+            if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+            {
+                _statusMessage = $"Window interval must be >= {SyncSchedule.MinimumPollIntervalMinutes} minute(s).";
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private string FormatMinutes(int minutes)
+    {
+        int hours = minutes / 60;
+        int mins = minutes % 60;
+        return $"{hours:D2}:{mins:D2}";
+    }
+
+    private string GetDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => "Sunday",
+        1 => "Monday",
+        2 => "Tuesday",
+        3 => "Wednesday",
+        4 => "Thursday",
+        5 => "Friday",
+        6 => "Saturday",
+        _ => "Unknown"
+    };
+
+    private async Task SaveScheduleAsync()
+    {
+        // Validate jamming windows before attempting save
+        if (!ValidateJammingWindows())
+        {
+            return;
+        }
+
+        _isBusy = true;
+        try
+        {
+            if (_schedule == null)
+            {
+                _schedule = new SyncSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderAccountId = Id,
+                    SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes,
+                    EventPollIntervalMinutes = _eventPollIntervalMinutes,
+                    IsEnabled = _isEnabled,
+                    UseAdvancedJammingSchedule = _useAdvancedJammingSchedule,
+                    EventNextRunUtc = null,
+                    EventLastRunUtc = null,
+                    SnapshotNextRunUtc = null,
+                    SnapshotLastRunUtc = null,
+                    JammingWindows = _useAdvancedJammingSchedule ? (_jammingWindows ?? []) : []
+                };
+            }
+            else
+            {
+                _schedule.SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes;
+                _schedule.EventPollIntervalMinutes = _eventPollIntervalMinutes;
+                _schedule.IsEnabled = _isEnabled;
+                _schedule.UseAdvancedJammingSchedule = _useAdvancedJammingSchedule;
+                // Ensure SyncScheduleId is set on windows for persistence
+                if (_useAdvancedJammingSchedule && _jammingWindows != null)
+                {
+                    foreach (var window in _jammingWindows)
+                    {
+                        window.SyncScheduleId = _schedule.Id;
+                    }
+                    _schedule.JammingWindows = _jammingWindows;
+                }
+                else
+                {
+                    _schedule.JammingWindows = [];
+                }
+            }
+
+            await SyncScheduleRepository.UpsertAsync(_schedule, CancellationToken.None);
+            _statusMessage = "Schedule saved successfully.";
+
+            // Navigate back after a brief delay to show the success message
+            await Task.Delay(1500);
+            NavigationManager.NavigateTo($"/accounts/{Id}");
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Failed to save schedule: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo($"/accounts/{Id}");
+    }
+}

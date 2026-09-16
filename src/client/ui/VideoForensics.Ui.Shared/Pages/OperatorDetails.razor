@@ -1,0 +1,325 @@
+@page "/settings/operators/{Id:guid}"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using Operator = VideoForensics.Data.Common.Entities.Operator
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<OperatorDetails> L
+
+<h4 class="mb-4">@L["Title"] @if (_operator is not null) { <span>- @_operator.DisplayName</span> }</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+    </div>
+}
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+    <div class="mt-3">
+        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
+    </div>
+}
+else if (_operator is null)
+{
+    <span>@L["FailedToLoad", "Unknown error"]</span>
+    <div class="mt-3">
+        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <div class="mb-3">
+            <label class="form-label">@L["DisplayName"]</label>
+            <div class="d-flex gap-2">
+                <input type="text" @bind-value="_displayNameInput" class="form-control" style="max-width: 300px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveDisplayName" Disabled="@string.IsNullOrWhiteSpace(_displayNameInput)" CssClass="e-primary" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["CreatedAt"]</label>
+            <div>@_operator.CreatedAtUtc.ToString("u")</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["ActiveStatus"]</label>
+            <div>
+                @if (_operator.Active)
+                {
+                    <span style="color: var(--bs-success);">@L["StatusActive"]</span>
+                }
+                else
+                {
+                    <span style="color: var(--bs-danger);">@L["StatusInactive"]</span>
+                }
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["ApprovalStatus"]</label>
+            <div>
+                @if (_operator.IsApproved)
+                {
+                    <span style="color: var(--bs-success);">@L["StatusApproved"]</span>
+                }
+                else
+                {
+                    <span style="color: var(--bs-warning);">@L["StatusPendingApproval"]</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-row gap-2 mb-4">
+        @if (!_operator.IsApproved && _operator.Active)
+        {
+            <SfButton Content="@L["ApproveButton"]" OnClick="ApproveOperator" CssClass="e-primary" />
+        }
+
+        @if (_operator.Active)
+        {
+            <SfButton Content="@L["RevokeButton"]" OnClick="BeginRevoke" CssClass="e-flat e-danger" />
+            @if (_pendingRevoke)
+            {
+                <div class="d-flex flex-row align-items-center gap-2">
+                    <input type="text" @bind-value="_reasonInput" placeholder="@L["ReasonPlaceholder"]" style="max-width: 260px;" />
+                    <SfButton Content="@L["ConfirmButton"]" OnClick="ConfirmRevoke" CssClass="e-primary e-danger" />
+                    <SfButton Content="@L["CancelButton"]" OnClick="CancelRevoke" CssClass="e-flat" />
+                </div>
+            }
+        }
+    </div>
+
+    <div>
+        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
+    </div>
+}
+
+@if (_updateError is not null)
+{
+    <div class="alert alert-danger mt-4">@_updateError</div>
+}
+
+@if (_actionError is not null)
+{
+    <div class="alert alert-danger mt-4">@_actionError</div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool _isLoading = true;
+    private Operator? _operator;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionError;
+    private string? _updateError;
+    private string _displayNameInput = string.Empty;
+    private bool _pendingRevoke;
+    private string _reasonInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityOperators.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _actionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync($"api/devices-management/operators/{Id}");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = L["NotAuthorizedToView"];
+                _operator = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            _operator = await response.Content.ReadFromJsonAsync<Operator>(JsonOptions);
+            if (_operator is not null)
+            {
+                _displayNameInput = _operator.DisplayName;
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToLoad", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BeginRevoke()
+    {
+        _pendingRevoke = true;
+        _reasonInput = string.Empty;
+        _actionError = null;
+    }
+
+    private void CancelRevoke()
+    {
+        _pendingRevoke = false;
+        _reasonInput = string.Empty;
+    }
+
+    private async Task ConfirmRevoke()
+    {
+        if (string.IsNullOrWhiteSpace(_reasonInput))
+        {
+            return;
+        }
+
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = L["SignInFirstError"];
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            // Revocation is high-risk (plan §5.7) - a fresh passkey assertion is required at the
+            // moment of the action, not just an already-open session.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operators/{Id}/deactivate", new { reason = _reasonInput });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["RevokeFailed", response.StatusCode];
+                return;
+            }
+
+            CancelRevoke();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["RevokeFailed", ex.Message];
+        }
+    }
+
+    private async Task ApproveOperator()
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = L["SignInFirstError"];
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            // Approval is high-risk (plan §5.7) - a fresh passkey assertion is required at the
+            // moment of the action, not just an already-open session.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operators/{Id}/approve", new { });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["ApproveFailed", response.StatusCode];
+                return;
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["ApproveFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveDisplayName()
+    {
+        if (string.IsNullOrWhiteSpace(_displayNameInput))
+        {
+            return;
+        }
+
+        _updateError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync($"api/devices-management/operators/{Id}/display-name", new { displayName = _displayNameInput });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _updateError = body ?? L["SaveFailed", response.StatusCode];
+                return;
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _updateError = L["SaveFailed", ex.Message];
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}

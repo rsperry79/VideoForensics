@@ -32,6 +32,7 @@ namespace VideoForensics.WebApp.Auth
         private readonly ISessionTokenService _tokenService;
         private readonly IPairedDeviceRepository _pairedDeviceRepository;
         private readonly INetworkTierResolver _tierResolver;
+        private readonly IOperatorRepository _operatorRepository;
 
         public PairedDeviceAuthenticationHandler(
             IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -39,12 +40,14 @@ namespace VideoForensics.WebApp.Auth
             UrlEncoder encoder,
             ISessionTokenService tokenService,
             IPairedDeviceRepository pairedDeviceRepository,
-            INetworkTierResolver tierResolver)
+            INetworkTierResolver tierResolver,
+            IOperatorRepository operatorRepository)
             : base(options, logger, encoder)
         {
             _tokenService = tokenService;
             _pairedDeviceRepository = pairedDeviceRepository;
             _tierResolver = tierResolver;
+            _operatorRepository = operatorRepository;
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -63,6 +66,13 @@ namespace VideoForensics.WebApp.Auth
                 // class doc comment. A device revoked mid-session must be rejected here immediately.
                 PairedDevice? device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
                 if (device == null || !device.IsActive)
+                {
+                    return AuthenticateResult.Fail("Invalid or expired credential.");
+                }
+
+                // Verify operator is approved and active
+                Operator? op = await _operatorRepository.GetAsync(device.OperatorId, Context.RequestAborted);
+                if (op == null || !op.IsApproved || !op.Active)
                 {
                     return AuthenticateResult.Fail("Invalid or expired credential.");
                 }

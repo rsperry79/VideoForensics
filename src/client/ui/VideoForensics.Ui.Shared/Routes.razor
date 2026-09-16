@@ -1,7 +1,11 @@
+@using VideoForensics.Ui.Shared.Layout
+
 <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <AuthGate>
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </AuthGate>
     </Found>
     <NotFound>
         <LayoutView Layout="typeof(Layout.MainLayout)">

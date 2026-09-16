@@ -26,6 +26,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             // Register repository implementations (per-call pattern with IDbContextFactory)
             services.TryAddScoped<IUserRepository, UserRepository>();
             services.TryAddScoped<IProviderAccountRepository, ProviderAccountRepository>();
+            services.TryAddScoped<ISyncScheduleRepository, SyncScheduleRepository>();
             services.TryAddScoped<IRingAccountRepository, RingAccountRepository>();
             services.TryAddScoped<ILocationRepository, LocationRepository>();
             services.TryAddScoped<IDeviceRepository, DeviceRepository>();
@@ -50,6 +51,10 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IOperatorPreferencesRepository, OperatorPreferencesRepository>();
             services.TryAddScoped<IAccessAuditLogRepository, AccessAuditLogRepository>();
             services.TryAddScoped<IExportAuditRecordRepository, ExportAuditRecordRepository>();
+            services.TryAddScoped<INoticeRepository, NoticeRepository>();
+            services.TryAddScoped<INoticeDismissalRepository, NoticeDismissalRepository>();
+            services.TryAddScoped<IOperatorNotificationPreferenceRepository, OperatorNotificationPreferenceRepository>();
+            services.TryAddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
 
             // Register unit of work
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();

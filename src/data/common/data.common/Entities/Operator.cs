@@ -13,5 +13,11 @@ namespace VideoForensics.Data.Common.Entities
         public required string DisplayName { get; set; }
         public DateTime CreatedAtUtc { get; set; }
         public bool Active { get; set; } = true;
+
+        /// <summary>
+        /// True if this operator is approved to access the system; false if awaiting approval (for self-service signups when other operators already exist).
+        /// Bootstrap operators (first pairing) default to true. Admin-approved operators are set to true.
+        /// </summary>
+        public bool IsApproved { get; set; } = true;
     }
 }

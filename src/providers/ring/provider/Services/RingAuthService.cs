@@ -18,6 +18,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IRingAccountRepository? _ringAccountRepository;
         private readonly IProviderAccountRepository? _providerAccountRepository;
         private readonly IUserRepository? _userRepository;
+        private readonly INotificationDispatcher? _notificationDispatcher;
         private readonly ApiResponseNormalizer? _normalizer;
 
         public RingAuthService(
@@ -28,6 +29,7 @@ namespace VideoForensics.Providers.Ring.Services
             IRingAccountRepository? ringAccountRepository = null,
             IProviderAccountRepository? providerAccountRepository = null,
             IUserRepository? userRepository = null,
+            INotificationDispatcher? notificationDispatcher = null,
             ApiResponseNormalizer? normalizer = null)
         {
             _logger = logger;
@@ -37,6 +39,7 @@ namespace VideoForensics.Providers.Ring.Services
             _ringAccountRepository = ringAccountRepository;
             _providerAccountRepository = providerAccountRepository;
             _userRepository = userRepository;
+            _notificationDispatcher = notificationDispatcher;
             _normalizer = normalizer;
         }
 
@@ -294,6 +297,41 @@ namespace VideoForensics.Providers.Ring.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", providerAccountId);
+                        if (_providerAccountRepository != null && providerAccountId.HasValue)
+                        {
+                            try
+                            {
+                                await _providerAccountRepository.RecordErrorAsync(
+                                    providerAccountId.Value,
+                                    $"Failed to decrypt stored credential: {ex.Message}",
+                                    cancellationToken);
+                            }
+                            catch (Exception recordEx)
+                            {
+                                _logger.LogError(recordEx, "Failed to record error for account {AccountId}", providerAccountId);
+                            }
+                        }
+                        if (_notificationDispatcher != null)
+                        {
+                            try
+                            {
+                                await _notificationDispatcher.DispatchAsync(
+                                    new NotificationEvent(
+                                        EventType: "CredentialDecryptionFailed",
+                                        TimestampUtc: DateTime.UtcNow,
+                                        OperatorId: null,
+                                        PairedDeviceId: null,
+                                        SourceIp: null,
+                                        Details: $"Failed to decrypt stored credential for account {providerAccountId.Value}: {ex.Message}",
+                                        Audience: NotificationAudience.AdminsOnly,
+                                        Severity: VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                    cancellationToken);
+                            }
+                            catch (Exception notifEx)
+                            {
+                                _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId}", providerAccountId.Value);
+                            }
+                        }
                     }
                 }
                 else if (_providerAccountRepository != null)
@@ -327,6 +365,41 @@ namespace VideoForensics.Providers.Ring.Services
                                 catch (Exception ex)
                                 {
                                     _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", account.Id);
+                                    if (_providerAccountRepository != null)
+                                    {
+                                        try
+                                        {
+                                            await _providerAccountRepository.RecordErrorAsync(
+                                                account.Id,
+                                                $"Failed to decrypt stored credential: {ex.Message}",
+                                                cancellationToken);
+                                        }
+                                        catch (Exception recordEx)
+                                        {
+                                            _logger.LogError(recordEx, "Failed to record error for account {AccountId}", account.Id);
+                                        }
+                                    }
+                                    if (_notificationDispatcher != null)
+                                    {
+                                        try
+                                        {
+                                            await _notificationDispatcher.DispatchAsync(
+                                                new NotificationEvent(
+                                                    EventType: "CredentialDecryptionFailed",
+                                                    TimestampUtc: DateTime.UtcNow,
+                                                    OperatorId: null,
+                                                    PairedDeviceId: null,
+                                                    SourceIp: null,
+                                                    Details: $"Failed to decrypt stored credential for account {account.Id}: {ex.Message}",
+                                                    Audience: NotificationAudience.AdminsOnly,
+                                                    Severity: VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                                cancellationToken);
+                                        }
+                                        catch (Exception notifEx)
+                                        {
+                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId}", account.Id);
+                                        }
+                                    }
                                 }
                             }
                         }

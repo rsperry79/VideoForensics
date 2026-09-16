@@ -9,6 +9,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api
@@ -44,14 +45,17 @@ namespace VideoForensics.WebApp.Api
                     bool isSuperAdmin = roleClaim != null && Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role == OperatorRole.SuperAdmin;
                     bool isLocal = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
 
-                    if (!isSuperAdmin || !isLocal)
+                    // If authenticated, must be SuperAdmin+Local. Anonymous callers (self-service) are allowed.
+                    bool isAuthenticated = context.User.Identity?.IsAuthenticated ?? false;
+                    if (isAuthenticated && (!isSuperAdmin || !isLocal))
                     {
                         return Results.Forbid();
                     }
                 }
 
                 OperatorRole requestedRole = isBootstrap ? OperatorRole.SuperAdmin : OperatorRole.ReadOnly;
-                PairingTokenInfo info = pairingTokens.CreateToken(requestedRole);
+                bool isAnonymousInitiation = !isBootstrap && !(context.User.Identity?.IsAuthenticated ?? false);
+                PairingTokenInfo info = pairingTokens.CreateToken(requestedRole, isAnonymousInitiation);
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingInitiated, null, null,
                     tierResolver.ResolveClientIp(context), $"role={requestedRole}, bootstrap={isBootstrap}", isUrgent: false, ct);
@@ -151,6 +155,7 @@ namespace VideoForensics.WebApp.Api
                 IForensicsConfiguration config,
                 HttpContext context,
                 IFido2 fido2,
+                INotificationDispatcher notificationDispatcher,
                 CancellationToken ct) =>
             {
                 string? cached = ceremonyCache.TryTake(request.Nonce);
@@ -160,6 +165,8 @@ namespace VideoForensics.WebApp.Api
                 }
 
                 PendingRegistration pending = JsonSerializer.Deserialize<PendingRegistration>(cached)!;
+                PairingTokenInfo? tokenInfo = pairingTokens.Peek(token);
+                bool isAnonymousInitiation = tokenInfo?.IsAnonymousInitiation ?? false;
                 if (pending.Token != token || !pairingTokens.TryConsume(token, out _))
                 {
                     return Results.BadRequest(new { error = "Pairing token mismatch or already used." });
@@ -200,7 +207,8 @@ namespace VideoForensics.WebApp.Api
                     Id = pending.OperatorId,
                     DisplayName = pending.OperatorDisplayName,
                     CreatedAtUtc = DateTime.UtcNow,
-                    Active = true
+                    Active = true,
+                    IsApproved = !isAnonymousInitiation  // false only for self-service anonymous initiation
                 }, ct);
 
                 PairedDevice pairedDevice = await pairedDevices.AddAsync(new PairedDevice
@@ -215,6 +223,29 @@ namespace VideoForensics.WebApp.Api
                     PairedAtUtc = DateTime.UtcNow
                 }, ct);
 
+                // Notify admins of new self-service registration pending approval
+                if (isAnonymousInitiation)
+                {
+                    try
+                    {
+                        var notification = new NotificationEvent(
+                            EventType: "NewAccountPendingApproval",
+                            TimestampUtc: DateTime.UtcNow,
+                            OperatorId: op.Id,
+                            PairedDeviceId: pairedDevice.Id,
+                            SourceIp: tierResolver.ResolveClientIp(context),
+                            Details: $"New account '{op.DisplayName}' created and awaiting admin approval",
+                            Audience: NotificationAudience.AdminsOnly,
+                            Severity: NoticeSeverity.Warning);
+                        await notificationDispatcher.DispatchAsync(notification, ct);
+                    }
+                    catch (Exception)
+                    {
+                        // Non-critical - log but don't fail registration if notification dispatch fails
+                        // Per CLAUDE.md: defensive try/catch around non-critical side effects like notifications
+                    }
+                }
+
                 await auditLog.LogAsync(SecurityAuditEventTypes.PairingCompleted, op.Id, pairedDevice.Id,
                     tierResolver.ResolveClientIp(context), $"device={pending.DeviceName}, role={pending.Role}", isUrgent: true, ct);
 
@@ -227,7 +258,7 @@ namespace VideoForensics.WebApp.Api
                     initialInternetServerUrl = config.InternetServerUrl;
                 }
 
-                return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString(), initialInternetServerUrl });
+                return Results.Ok(new { operatorId = op.Id, pairedDeviceId = pairedDevice.Id, role = pending.Role.ToString(), isApproved = op.IsApproved, initialInternetServerUrl });
             }).RequireRateLimiting("auth");
 
             _ = app.MapPost("/api/v1/auth/webauthn/assertion-options", async (
@@ -263,6 +294,7 @@ namespace VideoForensics.WebApp.Api
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
+                IOperatorRepository operators,
                 ISessionTokenService sessionTokens,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -314,6 +346,16 @@ namespace VideoForensics.WebApp.Api
                 {
                     await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, device.OperatorId, device.Id,
                         tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
+                    return Results.Unauthorized();
+                }
+
+                // Check that the operator is approved and active before issuing a session token
+                Operator? op = await operators.GetAsync(device.OperatorId, ct);
+                if (op == null || !op.IsApproved || !op.Active)
+                {
+                    string reason = op == null ? "Operator not found" : !op.IsApproved ? "Your account is pending admin approval" : "Your account has been deactivated";
+                    await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, device.OperatorId, device.Id,
+                        tierResolver.ResolveClientIp(context), reason, isUrgent: true, ct);
                     return Results.Unauthorized();
                 }
 

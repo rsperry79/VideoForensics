@@ -28,5 +28,11 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Deletes a provider account.</summary>
         Task DeleteAsync(Guid accountId, CancellationToken ct);
+
+        /// <summary>Records an error condition for a provider account.</summary>
+        /// <param name="providerAccountId">The provider account ID.</param>
+        /// <param name="errorMessage">The error message describing the failure condition.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken);
     }
 }

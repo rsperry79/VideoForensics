@@ -92,4 +92,13 @@
   <data name="ApplyFilter" xml:space="preserve">
     <value>Apply Filter</value>
   </data>
+  <data name="ColApprovalStatus" xml:space="preserve">
+    <value>Approval Status</value>
+  </data>
+  <data name="StatusPendingApproval" xml:space="preserve">
+    <value>Pending Approval</value>
+  </data>
+  <data name="DetailsButton" xml:space="preserve">
+    <value>Details</value>
+  </data>
 </root>

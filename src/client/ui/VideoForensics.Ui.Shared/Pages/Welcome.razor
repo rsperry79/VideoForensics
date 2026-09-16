@@ -1,0 +1,21 @@
+@page "/welcome"
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+
+<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+    <div class="card" style="width: 100%; max-width: 500px;">
+        <div class="card-body">
+            <h1 class="card-title text-center mb-4">VideoForensics</h1>
+            <p class="card-text text-center text-muted mb-5">Welcome to your video surveillance and forensics platform</p>
+
+            <div class="d-flex flex-column gap-3">
+                <button class="btn btn-primary btn-lg" onclick="@(() => NavigationManager.NavigateTo("/device-signin"))">
+                    Login
+                </button>
+                <button class="btn btn-outline-primary btn-lg" onclick="@(() => NavigationManager.NavigateTo("/pair"))">
+                    Create New Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -32,7 +32,7 @@
     -->
     <!-- Test projects need Microsoft.Testing.Platform for .NET 10 compatibility -->
     <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-        <PackageReference Include="Microsoft.Testing.Platform" Version="2.3.3" />
+        <PackageReference Include="Microsoft.Testing.Platform" Version="2.4.1" />
     </ItemGroup>
 
     <Target Name="SetApiVersionFromGit" BeforeTargets="BeforeBuild;GetAssemblyVersion;GenerateNuspec">

@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.Layouts
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Resources
@@ -12,6 +14,8 @@
 @inject IStringLocalizer<SharedResources> L
 @inject IServerConnectivityState ConnectivityState
 @inject IJSRuntime JS
+@inject INoticeRepository NoticeRepository
+@inject INoticeDismissalRepository NoticeDismissalRepository
 
 <div class="app-layout">
     @if (ConnectivityState.IsUnreachable)
@@ -33,9 +37,54 @@
                 }
             </div>
 
+            <div style="position: relative;">
+                <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="Notices" />
+                @if (_undismissedCount > 0)
+                {
+                    <span class="notices-badge">@_undismissedCount</span>
+                }
+            </div>
             <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="Toggle settings panel" />
         </div>
     </div>
+
+    @if (_noticesDropdownOpen)
+    {
+        <div class="notices-dropdown">
+            <div style="max-height: 400px; overflow-y: auto;">
+                @if (_noticesList.Count == 0)
+                {
+                    <div style="padding: 16px; text-align: center; color: #666;">No notices</div>
+                }
+                else
+                {
+                    @foreach (var notice in _noticesList)
+                    {
+                        <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                    <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
+                                        @GetSeverityLabel(notice.Severity)
+                                    </span>
+                                    <strong style="font-size: 13px;">@notice.EventType</strong>
+                                </div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
+                                    @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
+                                </div>
+                                <div style="font-size: 11px; color: #999;">
+                                    @GetRelativeTime(notice.TimestampUtc)
+                                </div>
+                            </div>
+                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
+                        </div>
+                    }
+                }
+            </div>
+            <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
+                <a href="/notices" style="color: #0066cc; text-decoration: none; font-size: 12px;">View All</a>
+            </div>
+        </div>
+    }
 
     <div class="app-body">
         @* Left-nav collapse is driven imperatively via CollapseAsync/ExpandAsync (see
