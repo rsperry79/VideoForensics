@@ -59,5 +59,33 @@ namespace VideoForensics.Data.Database.Repositories
             _ = await db.SaveChangesAsync(ct);
             _logger.LogInformation("Operator deactivated: {OperatorId}", operatorId);
         }
+
+        public async Task ApproveAsync(Guid operatorId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.IsApproved = true;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator approved: {OperatorId}", operatorId);
+        }
+
+        public async Task UpdateDisplayNameAsync(Guid operatorId, string displayName, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.DisplayName = displayName;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator display name updated: {OperatorId}", operatorId);
+        }
     }
 }

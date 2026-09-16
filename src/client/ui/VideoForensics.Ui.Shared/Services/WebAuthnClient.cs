@@ -39,7 +39,7 @@ namespace VideoForensics.Ui.Shared.Services
             }
         }
 
-        public async Task<(Guid OperatorId, Guid PairedDeviceId, string Role)> CompleteRegistrationAsync(
+        public async Task<RegistrationResult> CompleteRegistrationAsync(
             string pairingToken, string operatorDisplayName, string deviceName)
         {
             using HttpClient client = CreateClient(null);
@@ -68,10 +68,11 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
-            return (
+            return new RegistrationResult(
                 result.GetProperty("operatorId").GetGuid(),
                 result.GetProperty("pairedDeviceId").GetGuid(),
-                result.GetProperty("role").GetString()!);
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("isApproved").GetBoolean());
         }
 
         public async Task<(string SessionToken, Guid OperatorId, string Role)> SignInAsync()
@@ -164,4 +165,6 @@ namespace VideoForensics.Ui.Shared.Services
             return $"Request failed: {response.StatusCode}";
         }
     }
+
+    public record RegistrationResult(Guid OperatorId, Guid PairedDeviceId, string Role, bool IsApproved);
 }

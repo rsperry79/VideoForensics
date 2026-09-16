@@ -9,6 +9,7 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<Accounts> L
+@inject NavigationManager NavigationManager
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -32,6 +33,17 @@ else
         <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
+                <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+                    <Template>
+                        @{
+                            var row = (AccountRow)context;
+                            @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
+                            {
+                                <i class="material-icons" style="color: #d32f2f; cursor: help;" title="@($"{row.Account.LastErrorMessage}\n(as of {row.Account.LastErrorUtc?.ToString() ?? "unknown"})")">error</i>
+                            }
+                        }
+                    </Template>
+                </GridColumn>
                 <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" />
                 <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
                 <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
@@ -66,6 +78,8 @@ else
                             else
                             {
                                 <div class="d-flex gap-2">
+                                    <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
+                                    <SfButton Content="@L["Schedule"]" OnClick="@((UIMouseEventArgs) => GoToAccountScheduleAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
                                     <SfButton Content="@L["Select"]" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-primary" />
                                     <SfButton Content="@L["Remove"]" OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" CssClass="e-danger" />
                                 </div>
@@ -78,8 +92,9 @@ else
     }
 }
 
-<h5 class="mt-4 mb-2">@L["AddAccount"]</h5>
-<AuthForm IdPrefix="addaccount" SubmitLabel="@L["AddAccount"]" OnAuthenticated="HandleAccountAddedAsync" AvailableProviders="_availableProviders" />
+<div class="mt-4">
+    <SfButton CssClass="e-primary" Content="@L["AddAccount"]" OnClick="GoToAddAccount" />
+</div>
 
 @code {
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
@@ -90,12 +105,10 @@ else
     private bool _isBusy;
     private string? _statusMessage;
     private Guid? _confirmingRemoveId;
-    private IReadOnlyList<string>? _availableProviders;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAccountsAsync();
-        _availableProviders = await MultiProviderAuthService.GetAvailableProvidersAsync();
     }
 
     private async Task LoadAccountsAsync()
@@ -201,9 +214,24 @@ else
         }
     }
 
+    private void GoToAddAccount()
+    {
+        NavigationManager.NavigateTo("/accounts/add");
+    }
+
     private async Task HandleAccountAddedAsync(AuthResult result)
     {
         _statusMessage = L["AccountAdded"];
         await LoadAccountsAsync();
+    }
+
+    private void GoToAccountDetailsAsync(Guid accountId)
+    {
+        NavigationManager.NavigateTo($"/accounts/{accountId}");
+    }
+
+    private void GoToAccountScheduleAsync(Guid accountId)
+    {
+        NavigationManager.NavigateTo($"/accounts/{accountId}/schedule");
     }
 }

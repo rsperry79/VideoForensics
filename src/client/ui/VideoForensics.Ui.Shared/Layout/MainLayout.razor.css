@@ -113,6 +113,57 @@
     gap: 0.5rem;
 }
 
+/* Notices badge and dropdown */
+.notices-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.notices-dropdown {
+    position: absolute;
+    top: 56px;
+    right: 1rem;
+    width: 400px;
+    background-color: var(--rz-card-background, #fff);
+    border: 1px solid var(--rz-border-color, #e0e0e0);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+}
+
+/* Severity badge colors */
+.severity-badge-info {
+    background-color: #6c757d;
+    color: white;
+}
+
+.severity-badge-warning {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.severity-badge-alert {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.severity-badge-critical {
+    background-color: #dc3545;
+    color: white;
+}
+
 /* Syncfusion Splitter theme + row-reverse overrides live in wwwroot/app.css, not here - Blazor CSS
    isolation has no ":global(...)" escape (that's a CSS-modules/webpack convention); it just treats
    an unrecognized selector as literal text and still appends this file's scope attribute after it,

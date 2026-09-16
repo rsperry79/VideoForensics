@@ -1,0 +1,158 @@
+@page "/notices"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Services
+@inject INoticeRepository NoticeRepository
+@inject INoticeDismissalRepository NoticeDismissalRepository
+@inject PairedSessionState SessionState
+
+<h4 class="mb-4">Notices</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+        <label style="display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" @onchange="@ToggleShowDismissedAsync" />
+            <span>Show dismissed</span>
+        </label>
+        <SfButton Content="Mark all as read" OnClick="@DismissAllAsync" Disabled="@(_notices.Count == 0)" CssClass="e-info" />
+    </div>
+
+    @if (_notices.Count == 0)
+    {
+        <p>@(_showDismissed ? "No notices found." : "No undismissed notices.")</p>
+    }
+    else
+    {
+        <SfGrid TValue="Notice" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn HeaderText="Severity" Width="100px" AllowSorting="true">
+                    <Template>
+                        @{
+                            var notice = (Notice)context;
+                            <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                                @GetSeverityLabel(notice.Severity)
+                            </span>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="EventType" HeaderText="Event Type" AllowSorting="true" />
+                <GridColumn HeaderText="Details" AllowSorting="false">
+                    <Template>
+                        @{
+                            var notice = (Notice)context;
+                            @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="TimestampUtc" HeaderText="Timestamp" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" />
+                <GridColumn HeaderText="" Width="120px" AllowSorting="false" AllowFiltering="false">
+                    <Template>
+                        @{
+                            var notice = (Notice)context;
+                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" />
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+}
+
+@code {
+    private List<Notice> _notices = new();
+    private bool _showDismissed = false;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNoticesAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityAuditLog.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadNoticesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadNoticesAsync()
+    {
+        if (!SessionState.OperatorId.HasValue)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        _isLoading = true;
+        _notices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, _showDismissed, CancellationToken.None))
+            .OrderByDescending(n => n.TimestampUtc)
+            .ToList();
+        _isLoading = false;
+    }
+
+    private async Task DismissNoticeAsync(Guid noticeId)
+    {
+        if (!SessionState.OperatorId.HasValue)
+        {
+            return;
+        }
+
+        await NoticeDismissalRepository.DismissAsync(noticeId, SessionState.OperatorId.Value, CancellationToken.None);
+        await LoadNoticesAsync();
+    }
+
+    private async Task DismissAllAsync()
+    {
+        if (!SessionState.OperatorId.HasValue || _notices.Count == 0)
+        {
+            return;
+        }
+
+        await NoticeDismissalRepository.DismissAllAsync(_notices.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
+        await LoadNoticesAsync();
+    }
+
+    private async Task ToggleShowDismissedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _showDismissed = (bool)(e.Value ?? false);
+        await LoadNoticesAsync();
+    }
+
+    private string GetSeverityBadgeClass(NoticeSeverity severity)
+    {
+        return severity switch
+        {
+            NoticeSeverity.Info => "severity-badge-info",
+            NoticeSeverity.Warning => "severity-badge-warning",
+            NoticeSeverity.Alert => "severity-badge-alert",
+            NoticeSeverity.Critical => "severity-badge-critical",
+            _ => "severity-badge-info"
+        };
+    }
+
+    private string GetSeverityLabel(NoticeSeverity severity)
+    {
+        return severity switch
+        {
+            NoticeSeverity.Info => "Info",
+            NoticeSeverity.Warning => "Warning",
+            NoticeSeverity.Alert => "Alert",
+            NoticeSeverity.Critical => "Critical",
+            _ => "Info"
+        };
+    }
+}

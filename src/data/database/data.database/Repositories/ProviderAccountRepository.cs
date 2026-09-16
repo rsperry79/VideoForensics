@@ -110,5 +110,28 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Records an error condition for a provider account.</summary>
+        public async Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(cancellationToken);
+            try
+            {
+                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
+                if (account != null)
+                {
+                    account.LastErrorUtc = DateTime.UtcNow;
+                    account.LastErrorMessage = errorMessage;
+                    _ = db.ProviderAccounts.Update(account);
+                    _ = await db.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Provider account error recorded: {ProviderAccountId}, Message: {ErrorMessage}", providerAccountId, errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording error for provider account: {ProviderAccountId}", providerAccountId);
+                throw;
+            }
+        }
     }
 }

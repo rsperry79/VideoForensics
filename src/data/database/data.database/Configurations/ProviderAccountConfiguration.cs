@@ -16,6 +16,9 @@ namespace VideoForensics.Data.Database.Configurations
                 .IsRequired()
                 .HasMaxLength(256);
 
+            _ = builder.Property(pa => pa.LastErrorMessage)
+                .HasMaxLength(2000);
+
             _ = builder.HasIndex(pa => new { pa.UserId, pa.ProviderName })
                 .IsUnique();
 

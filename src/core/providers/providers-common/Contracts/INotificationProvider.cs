@@ -1,5 +1,15 @@
 namespace VideoForensics.Providers.Common.Contracts
 {
+    /// <summary>Audience routing for notification events.</summary>
+    public enum NotificationAudience
+    {
+        /// <summary>Send to all connected clients (default).</summary>
+        All = 0,
+
+        /// <summary>Send only to admin-and-above users.</summary>
+        AdminsOnly = 1
+    }
+
     /// <summary>A security-audit event (plan §5.5) being fanned out to notification channels (plan §5.6).</summary>
     public record NotificationEvent(
         string EventType,
@@ -7,7 +17,9 @@ namespace VideoForensics.Providers.Common.Contracts
         Guid? OperatorId,
         Guid? PairedDeviceId,
         string? SourceIp,
-        string? Details);
+        string? Details,
+        NotificationAudience Audience = NotificationAudience.All,
+        NoticeSeverity Severity = NoticeSeverity.Info);
 
     /// <summary>
     /// A pluggable urgent-notification channel (plan §5.6) - email, Web Push, MAUI toast, or an
@@ -24,5 +36,14 @@ namespace VideoForensics.Providers.Common.Contracts
 
         /// <summary>Delivers the event. Implementations should let exceptions propagate - the dispatcher isolates one channel's failure from the others.</summary>
         Task SendAsync(NotificationEvent notificationEvent, CancellationToken ct);
+    }
+
+    /// <summary>
+    /// Fans a notification event out to every enabled INotificationProvider
+    /// (plan §5.6). One provider's failure is isolated and logged, not allowed to block the others or bubble up.
+    /// </summary>
+    public interface INotificationDispatcher
+    {
+        Task DispatchAsync(NotificationEvent notificationEvent, CancellationToken ct);
     }
 }

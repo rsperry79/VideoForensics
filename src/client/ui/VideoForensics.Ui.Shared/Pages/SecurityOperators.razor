@@ -58,6 +58,10 @@ else
                         {
                             <span style="color: var(--bs-danger);">@L["StatusInactive"]</span>
                         }
+                        @if (!op.IsApproved)
+                        {
+                            <span style="color: var(--bs-warning);">@L["StatusPendingApproval"]</span>
+                        }
                     }
                 </Template>
             </GridColumn>
@@ -67,6 +71,7 @@ else
                         var op = (Operator)context;
                         @if (op.Active)
                         {
+                            <SfButton Content="@L["DetailsButton"]" OnClick="() => GoToOperatorDetails(op.Id)" CssClass="e-flat" />
                             <SfButton Content="@L["DeactivateButton"]" OnClick="() => BeginDeactivate(op.Id)" CssClass="e-flat e-danger" />
                             @if (_pendingDeactivateOperatorId == op.Id)
                             {
@@ -145,6 +150,11 @@ else
         {
             _isLoading = false;
         }
+    }
+
+    private void GoToOperatorDetails(Guid operatorId)
+    {
+        NavigationManager.NavigateTo($"/settings/operators/{operatorId}");
     }
 
     private void BeginDeactivate(Guid operatorId)

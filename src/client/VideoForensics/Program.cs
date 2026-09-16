@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -37,6 +38,27 @@ namespace VideoForensics
                 _ = builder.SetMinimumLevel(LogLevel.Information);
                 _ = builder.AddVideoForensicsLogging(logFilePath, LogLevel.Information);
             });
+
+            // Session tokens, step-up tokens, and encrypted credentials (stored by RingAuthService,
+            // RingDeviceDiscoveryService, etc.) are all IDataProtector-protected. AddDataProtection()
+            // alone relies on ASP.NET Core's default key-storage heuristic (usually %LOCALAPPDATA%\ASP.NET\
+            // DataProtection-Keys on Windows) - explicit here so a credential encrypted by one host
+            // (WebApp, MAUI, this console app) can be decrypted by another instead of depending on
+            // that heuristic continuing to resolve the same way. Keys live next to this app's database
+            // and logs (%ProgramData%\VideoForensics\keys), matching how every other persistent state
+            // is already rooted at %ProgramData%\VideoForensics.
+            string dataProtectionKeyPath = Path.Combine(configDir, "keys");
+            _ = Directory.CreateDirectory(dataProtectionKeyPath);
+            IDataProtectionBuilder dataProtectionBuilder = services.AddDataProtection()
+                .SetApplicationName("VideoForensics")
+                .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
+            // DPAPI encrypts the key-ring file at rest but is Windows-only (this app is platform-agnostic).
+            // On Linux/macOS the key-ring falls back to ASP.NET Core's unencrypted-on-disk default,
+            // protected only by filesystem permissions on the ProgramData-equivalent directory above.
+            if (OperatingSystem.IsWindows())
+            {
+                _ = dataProtectionBuilder.ProtectKeysWithDpapi();
+            }
 
             // Shared data layer + server-tier provider/orchestrator registrations (session provider,
             // active provider's four services, download/evidence orchestrators, IForensicsConfigurationService,

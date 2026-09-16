@@ -1,0 +1,20 @@
+/* Severity badge colors */
+.severity-badge-info {
+    background-color: #6c757d;
+    color: white;
+}
+
+.severity-badge-warning {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.severity-badge-alert {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.severity-badge-critical {
+    background-color: #dc3545;
+    color: white;
+}
