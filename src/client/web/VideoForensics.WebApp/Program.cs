@@ -17,6 +17,7 @@ using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
+using VideoForensics.WebApp.Services;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -132,6 +133,8 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
+builder.Services.AddScoped<VapidKeyProvider>();
+builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>();
 
 // Rate limiting on auth/pairing endpoints (plan §5.7): keyed by the SAME network-tier-aware client
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
@@ -255,6 +258,9 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 
+// Client-side Web Push API driver for push notification subscription management.
+builder.Services.AddScoped<WebPushClient>();
+
 // Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state (device-local),
 // right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
 // PairedSessionState above.
@@ -338,6 +344,7 @@ app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
+app.MapPushEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
 // Gated with paired-device authorization (matching other API endpoints)
