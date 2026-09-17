@@ -50,9 +50,9 @@ namespace VideoForensics.Data.Database.Repositories
             // Validate jamming windows
             if (schedule.JammingWindows != null)
             {
-                foreach (var window in schedule.JammingWindows)
+                foreach (JammingScheduleWindow window in schedule.JammingWindows)
                 {
-                    if (window.DayOfWeek < 0 || window.DayOfWeek > 6)
+                    if (window.DayOfWeek is < 0 or > 6)
                     {
                         throw new ArgumentException(
                             $"DayOfWeek ({window.DayOfWeek}) must be in range 0..6 (Sunday=0, Saturday=6)",
@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.JammingWindows.Clear();
                     if (schedule.JammingWindows != null)
                     {
-                        foreach (var window in schedule.JammingWindows)
+                        foreach (JammingScheduleWindow window in schedule.JammingWindows)
                         {
                             existing.JammingWindows.Add(window);
                         }

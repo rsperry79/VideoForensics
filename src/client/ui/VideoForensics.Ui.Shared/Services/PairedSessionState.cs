@@ -27,6 +27,9 @@ namespace VideoForensics.Ui.Shared.Services
 
         public bool IsSignedIn => SessionToken is not null;
 
+        /// <summary>Fired when the server rejects the session token as invalid or expired.</summary>
+        public event Action? AuthenticationExpired;
+
         public async Task EnsureLoadedAsync()
         {
             if (_loaded)
@@ -90,6 +93,13 @@ namespace VideoForensics.Ui.Shared.Services
             {
                 // See SetAsync - persistence is best-effort where vfWebAuthn isn't loaded.
             }
+        }
+
+        /// <summary>Clears the expired session and notifies listeners to re-authenticate.</summary>
+        public async Task NotifyAuthenticationExpiredAsync()
+        {
+            await ClearAsync();
+            AuthenticationExpired?.Invoke();
         }
 
         private record StoredSession(string SessionToken, Guid OperatorId, string Role);

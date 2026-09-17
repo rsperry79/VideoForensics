@@ -59,14 +59,14 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                var result = await _js.InvokeAsync<dynamic>("vfWebPush.subscribe", vapidPublicKey);
+                dynamic result = await _js.InvokeAsync<dynamic>("vfWebPush.subscribe", vapidPublicKey);
 
                 // Deserialize the dynamic result to extract the subscription details
                 if (result != null)
                 {
-                    var endpoint = result["endpoint"]?.ToString() ?? "";
-                    var p256dhKey = result["p256dhKey"]?.ToString() ?? "";
-                    var authKey = result["authKey"]?.ToString() ?? "";
+                    dynamic endpoint = result["endpoint"]?.ToString() ?? "";
+                    dynamic p256dhKey = result["p256dhKey"]?.ToString() ?? "";
+                    dynamic authKey = result["authKey"]?.ToString() ?? "";
                     return (endpoint, p256dhKey, authKey);
                 }
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                var result = await _js.InvokeAsync<string?>("vfWebPush.unsubscribe");
+                string? result = await _js.InvokeAsync<string?>("vfWebPush.unsubscribe");
                 return result;
             }
             catch (JSException ex)
@@ -103,7 +103,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             try
             {
-                var result = await _js.InvokeAsync<string?>("vfWebPush.getCurrentSubscriptionEndpoint");
+                string? result = await _js.InvokeAsync<string?>("vfWebPush.getCurrentSubscriptionEndpoint");
                 return result;
             }
             catch (JSException)

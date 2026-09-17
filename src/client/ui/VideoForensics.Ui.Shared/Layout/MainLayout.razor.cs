@@ -3,9 +3,7 @@ using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.Layouts;
 
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Ui.Shared.Layout
 {
@@ -21,7 +19,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
-        private List<Notice> _noticesList = new();
+        private List<Notice> _noticesList = [];
 
         private readonly string _rightPanelHandleId = $"vf-right-handle-{Guid.NewGuid():N}";
         private readonly string _rightPanelId = $"vf-right-panel-{Guid.NewGuid():N}";
@@ -61,6 +59,7 @@ namespace VideoForensics.Ui.Shared.Layout
             _currentPath = ToAppRelative(Nav.Uri);
             Nav.LocationChanged += OnLocationChanged;
             ThemeService.OnChange += StateHasChanged;
+            SessionState.AuthenticationExpired += OnAuthenticationExpired;
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -140,6 +139,15 @@ namespace VideoForensics.Ui.Shared.Layout
             _ = InvokeAsync(StateHasChanged);
         }
 
+        private void OnAuthenticationExpired()
+        {
+            _ = InvokeAsync(() =>
+            {
+                Nav.NavigateTo("/device-signin");
+                StateHasChanged();
+            });
+        }
+
         private static string ToAppRelative(string uri)
         {
             string path = new Uri(uri).AbsolutePath;
@@ -212,6 +220,7 @@ namespace VideoForensics.Ui.Shared.Layout
             {
                 _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, CancellationToken.None);
             }
+
             StateHasChanged();
         }
 
@@ -268,21 +277,20 @@ namespace VideoForensics.Ui.Shared.Layout
         private string GetRelativeTime(DateTime utcTime)
         {
             TimeSpan elapsed = DateTime.UtcNow - utcTime;
-            if (elapsed.TotalSeconds < 60)
-                return "just now";
-            if (elapsed.TotalMinutes < 60)
-                return $"{(int)elapsed.TotalMinutes}m ago";
-            if (elapsed.TotalHours < 24)
-                return $"{(int)elapsed.TotalHours}h ago";
-            if (elapsed.TotalDays < 7)
-                return $"{(int)elapsed.TotalDays}d ago";
-            return utcTime.ToString("MMM d, yyyy");
+            return elapsed.TotalSeconds < 60
+                ? "just now"
+                : elapsed.TotalMinutes < 60
+                ? $"{(int)elapsed.TotalMinutes}m ago"
+                : elapsed.TotalHours < 24
+                ? $"{(int)elapsed.TotalHours}h ago"
+                : elapsed.TotalDays < 7 ? $"{(int)elapsed.TotalDays}d ago" : utcTime.ToString("MMM d, yyyy");
         }
 
         public void Dispose()
         {
             Nav.LocationChanged -= OnLocationChanged;
             ThemeService.OnChange -= StateHasChanged;
+            SessionState.AuthenticationExpired -= OnAuthenticationExpired;
             _selfRef?.Dispose();
         }
     }

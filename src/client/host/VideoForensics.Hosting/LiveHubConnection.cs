@@ -93,6 +93,9 @@ namespace VideoForensics.Hosting
                 .WithAutomaticReconnect()
                 .Build();
 
+            // Subscribe to connection closure events to detect auth failures after reconnect attempts are exhausted.
+            _connection.Closed += OnConnectionClosedAsync;
+
             _ = _connection.On<DownloadProgressPayload>("DownloadProgress", payload =>
             {
                 DownloadProgressReceived?.Invoke(payload);
@@ -131,6 +134,35 @@ namespace VideoForensics.Hosting
         {
             await Task.CompletedTask;
             return _sessionState.SessionToken;
+        }
+
+        /// <summary>
+        /// Handles connection closure. If the closure was due to an HTTP 401/Unauthorized error
+        /// (which may indicate an expired session token), clears the stale credential and notifies
+        /// listeners. This handler runs only after <see cref="WithAutomaticReconnect"/> has exhausted
+        /// all reconnection attempts, so no additional retry-suppression logic is needed.
+        /// </summary>
+        private async Task OnConnectionClosedAsync(Exception? exception)
+        {
+            // Check if the exception indicates a 401/Unauthorized failure.
+            bool is401 = false;
+
+            if (exception is HttpRequestException httpEx && httpEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                is401 = true;
+            }
+            else if (exception?.Message?.Contains("401", StringComparison.OrdinalIgnoreCase) == true ||
+                     exception?.Message?.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                is401 = true;
+            }
+
+            if (is401)
+            {
+                await _sessionState.NotifyAuthenticationExpiredAsync();
+            }
+
+            await Task.CompletedTask;
         }
     }
 }

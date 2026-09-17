@@ -1,5 +1,5 @@
-using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Api.Contracts
 {

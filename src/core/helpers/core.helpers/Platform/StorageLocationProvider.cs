@@ -9,7 +9,7 @@ public class StorageLocationProvider : IStorageLocationProvider
     {
         if (OperatingSystem.IsWindows())
         {
-            var root = Path.Combine(
+            string root = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "VideoForensics");
 
@@ -41,11 +41,6 @@ public class StorageLocationProvider : IStorageLocationProvider
 
     public string GetEffectiveRoot(StorageCategory category, string? configuredOverride)
     {
-        if (!string.IsNullOrWhiteSpace(configuredOverride))
-        {
-            return configuredOverride;
-        }
-
-        return GetDefaultRoot(category);
+        return !string.IsNullOrWhiteSpace(configuredOverride) ? configuredOverride : GetDefaultRoot(category);
     }
 }

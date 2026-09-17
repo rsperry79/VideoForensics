@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                var query = db.Notices.AsQueryable();
+                IQueryable<Notice> query = db.Notices.AsQueryable();
 
                 // Filter by audience: Audience=0 (All) or (Audience=1 (AdminsOnly) AND operator is Admin)
                 // Note: For now, we include all notices with Audience=0. Admin filtering would require
