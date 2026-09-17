@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Client.Core.Tools
@@ -14,10 +15,12 @@ namespace VideoForensics.Client.Core.Tools
     public class LocalRingSelfTestService : IRingSelfTestService
     {
         private readonly IRingSelfTestOrchestrator _orchestrator;
+        private readonly IStorageLocationProvider _storageLocationProvider;
 
-        public LocalRingSelfTestService(IRingSelfTestOrchestrator orchestrator)
+        public LocalRingSelfTestService(IRingSelfTestOrchestrator orchestrator, IStorageLocationProvider storageLocationProvider)
         {
             _orchestrator = orchestrator;
+            _storageLocationProvider = storageLocationProvider;
         }
 
         public Task<IReadOnlyList<SelfTestEndpointDto>> ListEndpointsAsync(CancellationToken cancellationToken = default)
@@ -96,9 +99,9 @@ namespace VideoForensics.Client.Core.Tools
             );
 
             // Pick output directory under ProgramData, matching other persistent state in this app
+            string baseTempDir = _storageLocationProvider.GetDefaultRoot(StorageCategory.TempDownload);
             string outputDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
+                baseTempDir,
                 "SelfTesterResults",
                 DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
             _ = Directory.CreateDirectory(outputDir);

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
@@ -25,6 +26,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
 
             // Phase 2 reporting and retention services
             _ = services.AddScoped<IReportGenerationService, ReportGenerationService>();
+            _ = services.AddScoped<IStorageSettingsService, StorageSettingsService>();
 
             // Register RetentionService with configurable retention days
             _ = services.AddScoped<IRetentionService>(sp =>

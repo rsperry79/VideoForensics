@@ -11,12 +11,14 @@ using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
+using VideoForensics.WebApp.Services;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -62,9 +64,10 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // Register file-based logging + Windows Event Log (service visibility) + Linux syslog. Log file
 // lands under %ProgramData%/VideoForensics/logs, matching the console/MAUI apps' pattern.
-string loggingConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
-Directory.CreateDirectory(loggingConfigDir);
-string logFilePath = Path.Combine(loggingConfigDir, "logs", $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
+var storageProvider = new StorageLocationProvider();
+string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
+Directory.CreateDirectory(logsDir);
+string logFilePath = Path.Combine(logsDir, $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
@@ -109,8 +112,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 // server restart instead of depending on that heuristic continuing to resolve the same way. Keys
 // live next to the app's own database rather than the OS default location, matching how every
 // other piece of this app's persistent state is already rooted at %ProgramData%\VideoForensics.
-string dataProtectionKeyPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
+string dataProtectionKeyPath = storageProvider.GetDefaultRoot(StorageCategory.Keys);
 Directory.CreateDirectory(dataProtectionKeyPath);
 IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
     .SetApplicationName("VideoForensics")
@@ -338,6 +340,7 @@ app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
+app.MapStorageSettingsEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
 // Gated with paired-device authorization (matching other API endpoints)

@@ -470,5 +470,67 @@ namespace VideoForensics.Client.Core.Tests
             Assert.NotNull(config);
             Assert.Equal("", config.DownloadStartDate);
         }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_WithStoredStorageLocationSettings_LoadsCorrectly()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("DatabaseLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\Database");
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("TempDownloadLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\Temp");
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("LogsLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\Logs");
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("ReportsLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\Reports");
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsNotIn("DatabaseLocation", "TempDownloadLocation", "LogsLocation", "ReportsLocation"), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
+
+            Assert.NotNull(config);
+            Assert.Equal("C:\\Database", config.DatabaseLocation);
+            Assert.Equal("C:\\Temp", config.TempDownloadLocation);
+            Assert.Equal("C:\\Logs", config.LogsLocation);
+            Assert.Equal("C:\\Reports", config.ReportsLocation);
+        }
+
+        [Fact]
+        public async Task SaveConfigurationAsync_SavesAllStorageLocationSettings()
+        {
+            var config = new ForensicsConfiguration
+            {
+                DatabaseLocation = "C:\\Database",
+                TempDownloadLocation = "C:\\Temp",
+                LogsLocation = "C:\\Logs",
+                ReportsLocation = "C:\\Reports"
+            };
+
+            await _service.SaveConfigurationAsync(config);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("DatabaseLocation", "C:\\Database", It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("TempDownloadLocation", "C:\\Temp", It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("LogsLocation", "C:\\Logs", It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("ReportsLocation", "C:\\Reports", It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
     }
 }

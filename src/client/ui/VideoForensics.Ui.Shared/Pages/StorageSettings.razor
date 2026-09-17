@@ -1,0 +1,252 @@
+@page "/settings/storage"
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Providers.Common.Helpers.Platform
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services
+@inject IStorageSettingsService StorageService
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<VideoForensics.Ui.Shared.Pages.StorageSettings> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+    </div>
+}
+
+<div class="d-flex flex-row gap-2 mb-2">
+    <SfButton Content="@L["RefreshButton"]" OnClick="LoadAsync" Disabled="@_isLoading" CssClass="e-flat" />
+</div>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_storageData is null || _storageData.Categories.Count == 0)
+{
+    <span>@L["NoStorageFound"]</span>
+}
+else
+{
+    <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false">
+        <GridColumns>
+            <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" />
+            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" />
+            <GridColumn HeaderText="@L["ColDefault"]">
+                <Template>
+                    @{
+                        var status = (StorageCategoryStatus)context;
+                        @if (status.IsDefault)
+                        {
+                            <span class="badge bg-info">@L["DefaultBadge"]</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">@L["CustomBadge"]</span>
+                        }
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="@L["ColUsedSpace"]">
+                <Template>
+                    @{
+                        var status = (StorageCategoryStatus)context;
+                        @FormatBytes(status.UsedBytes)
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="@L["ColFreeSpace"]">
+                <Template>
+                    @{
+                        var status = (StorageCategoryStatus)context;
+                        @FormatBytes(status.FreeBytes)
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="">
+                <Template>
+                    @{
+                        var status = (StorageCategoryStatus)context;
+                        @if (status.IsRelocatable)
+                        {
+                            <SfButton Content="@L["ChangeButton"]" OnClick="() => BeginRelocate(status.Category)" CssClass="e-flat" />
+                            @if (_pendingRelocateCategory == status.Category)
+                            {
+                                <div class="mt-2 d-flex flex-column gap-2">
+                                    <input type="text" @bind-value="_newPathInput" placeholder="@L["PathPlaceholder"]" style="max-width: 400px;" />
+                                    <div class="d-flex flex-row gap-2">
+                                        <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRelocate(status.Category)" CssClass="e-primary" />
+                                        <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
+}
+
+@if (_actionMessage is not null)
+{
+    <div class="alert @(_actionSuccess ? "alert-success" : "alert-danger") mt-4">
+        @_actionMessage
+        @if (_restartRequired)
+        {
+            <div class="mt-2">
+                <strong>@L["RestartRequiredMessage"]</strong>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private VideoForensics.Client.Common.Contracts.StorageSettings? _storageData;
+    private string? _authError;
+    private string? _loadError;
+    private string? _actionMessage;
+    private bool _actionSuccess;
+    private bool _restartRequired;
+    private StorageCategory? _pendingRelocateCategory;
+    private string _newPathInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _actionMessage = null;
+        _actionSuccess = false;
+        _restartRequired = false;
+
+        try
+        {
+            _storageData = await StorageService.GetStatusAsync(CancellationToken.None);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _authError = L["NotAuthorizedToView"];
+            _storageData = null;
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToLoad", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BeginRelocate(StorageCategory category)
+    {
+        _pendingRelocateCategory = category;
+        _newPathInput = string.Empty;
+        _actionMessage = null;
+    }
+
+    private void CancelPending()
+    {
+        _pendingRelocateCategory = null;
+        _newPathInput = string.Empty;
+    }
+
+    private async Task ConfirmRelocate(StorageCategory category)
+    {
+        if (string.IsNullOrWhiteSpace(_newPathInput))
+        {
+            _actionMessage = L["PathRequired"];
+            _actionSuccess = false;
+            return;
+        }
+
+        _actionMessage = null;
+        try
+        {
+            var request = new RelocateStorageCategoryRequest(category, _newPathInput);
+            var result = await StorageService.RelocateAsync(request, CancellationToken.None);
+
+            if (result.Succeeded)
+            {
+                CancelPending();
+                _actionSuccess = true;
+                _restartRequired = result.RestartRequired;
+                _actionMessage = L["RelocateSuccess", GetCategoryName(category)];
+                await LoadAsync();
+            }
+            else
+            {
+                _actionSuccess = false;
+                _restartRequired = false;
+                _actionMessage = result.ErrorMessage ?? L["RelocateFailed"];
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _actionSuccess = false;
+            _restartRequired = false;
+            _actionMessage = L["NotAuthorizedToModify"];
+            _authError = L["NotAuthorizedToView"];
+        }
+        catch (Exception ex)
+        {
+            _actionSuccess = false;
+            _restartRequired = false;
+            _actionMessage = L["RelocateFailed2", ex.Message];
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kb = 1024;
+        const double mb = kb * 1024;
+        const double gb = mb * 1024;
+        const double tb = gb * 1024;
+
+        return bytes >= tb ? $"{bytes / tb:F2} TB"
+            : bytes >= gb ? $"{bytes / gb:F2} GB"
+            : bytes >= mb ? $"{bytes / mb:F2} MB"
+            : bytes >= kb ? $"{bytes / kb:F2} KB"
+            : $"{bytes} bytes";
+    }
+
+    private static string GetCategoryName(StorageCategory category) => category switch
+    {
+        StorageCategory.Database => "Database",
+        StorageCategory.Media => "Media",
+        StorageCategory.TempDownload => "Temp Downloads",
+        StorageCategory.Logs => "Logs",
+        StorageCategory.Reports => "Reports",
+        StorageCategory.Backup => "Backups",
+        StorageCategory.Keys => "Keys",
+        _ => category.ToString()
+    };
+}
