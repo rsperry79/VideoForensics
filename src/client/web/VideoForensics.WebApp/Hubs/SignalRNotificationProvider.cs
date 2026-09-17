@@ -31,12 +31,9 @@ namespace VideoForensics.WebApp.Hubs
 
         public Task SendAsync(NotificationEvent notificationEvent, CancellationToken ct)
         {
-            if (notificationEvent.Audience == NotificationAudience.AdminsOnly)
-            {
-                return _hubContext.Clients.Group("admins").SendAsync("UrgentEvent", notificationEvent, ct);
-            }
-
-            return _hubContext.Clients.All.SendAsync("UrgentEvent", notificationEvent, ct);
+            return notificationEvent.Audience == NotificationAudience.AdminsOnly
+                ? _hubContext.Clients.Group("admins").SendAsync("UrgentEvent", notificationEvent, ct)
+                : _hubContext.Clients.All.SendAsync("UrgentEvent", notificationEvent, ct);
         }
     }
 }

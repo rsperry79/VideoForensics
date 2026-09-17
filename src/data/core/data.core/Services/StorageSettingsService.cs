@@ -84,7 +84,7 @@ namespace VideoForensics.Data.Core.Services
             try
             {
                 // Ensure the destination directory exists
-                Directory.CreateDirectory(request.NewRootPath);
+                _ = Directory.CreateDirectory(request.NewRootPath);
 
                 // Load current configuration to get the current path and override
                 IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
@@ -245,7 +245,7 @@ namespace VideoForensics.Data.Core.Services
                 string? destFileDir = Path.GetDirectoryName(destFilePath);
                 if (destFileDir != null)
                 {
-                    Directory.CreateDirectory(destFileDir);
+                    _ = Directory.CreateDirectory(destFileDir);
                 }
 
                 // Copy file with overwrite

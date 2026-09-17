@@ -20,7 +20,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             _orchestratorMock = new Mock<IRingSelfTestOrchestrator>();
             _storageProviderMock = new Mock<IStorageLocationProvider>();
-            _storageProviderMock
+            _ = _storageProviderMock
                 .Setup(s => s.GetDefaultRoot(StorageCategory.TempDownload))
                 .Returns(Path.Combine(Path.GetTempPath(), "VideoForensics", "temp"));
             _service = new LocalRingSelfTestService(_orchestratorMock.Object, _storageProviderMock.Object);

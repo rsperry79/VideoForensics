@@ -1,10 +1,11 @@
-using System.Text.Json;
 using System.Net;
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Services;
+
 using WebPush;
 
 namespace VideoForensics.WebApp.Hubs
@@ -62,7 +63,7 @@ namespace VideoForensics.WebApp.Hubs
                 }
 
                 // Get VAPID keys for signing
-                var (publicKey, privateKey) = await _vapidKeyProvider.GetOrCreateKeysAsync(ct);
+                (string? publicKey, string? privateKey) = await _vapidKeyProvider.GetOrCreateKeysAsync(ct);
                 var vapidDetails = new VapidDetails("mailto:admin@videoforensics.local", publicKey, privateKey);
 
                 // Build the notification payload
@@ -77,12 +78,12 @@ namespace VideoForensics.WebApp.Hubs
                 var client = new WebPushClient();
 
                 // Send to each subscription, filtering by operator preferences
-                foreach (var subscription in targetSubscriptions)
+                foreach (Data.Common.Entities.PushSubscription subscription in targetSubscriptions)
                 {
                     try
                     {
                         // Load operator preferences
-                        var preferences = await _preferenceRepository.GetAsync(subscription.OperatorId, ct);
+                        OperatorNotificationPreference? preferences = await _preferenceRepository.GetAsync(subscription.OperatorId, ct);
 
                         // Skip if push is disabled or severity doesn't meet minimum threshold
                         if (preferences == null || !preferences.PushEnabled)
@@ -120,7 +121,7 @@ namespace VideoForensics.WebApp.Hubs
                             subscription.OperatorId,
                             TruncateEndpoint(subscription.Endpoint));
                     }
-                    catch (WebPushException ex) when (ex.StatusCode == HttpStatusCode.NotFound || ex.StatusCode == HttpStatusCode.Gone)
+                    catch (WebPushException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
                     {
                         // Subscription is no longer valid - remove it
                         _logger.LogInformation(
@@ -159,7 +160,7 @@ namespace VideoForensics.WebApp.Hubs
         private IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription> LogAndReturn(NotificationEvent notificationEvent)
         {
             _logger.LogDebug("All-audience web push not implemented yet - EventType={EventType}", notificationEvent.EventType);
-            return new List<VideoForensics.Data.Common.Entities.PushSubscription>();
+            return [];
         }
 
         private static string TruncateEndpoint(string endpoint)

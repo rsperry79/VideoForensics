@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
 {
     public class StorageLocationProviderTests
     {
-        private readonly StorageLocationProvider _provider = new StorageLocationProvider();
+        private readonly StorageLocationProvider _provider = new();
 
         #region GetDefaultRoot Tests
 
@@ -238,7 +238,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
         {
             // Cast an out-of-range value to StorageCategory
             var invalidCategory = (StorageCategory)999;
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 _provider.GetDefaultRoot(invalidCategory));
         }
 
@@ -247,7 +247,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
         {
             // Cast an out-of-range value to StorageCategory
             var invalidCategory = (StorageCategory)(-1);
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 _provider.GetEffectiveRoot(invalidCategory, null));
         }
 

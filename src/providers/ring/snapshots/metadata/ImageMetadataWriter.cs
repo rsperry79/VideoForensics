@@ -202,17 +202,11 @@ namespace VideoForensics.Providers.Ring
                 IFileInfo fileInfo = _fileSystem.FileInfo.New(snapshotFilePath);
                 long fileSize = fileInfo.Length;
 
-                if (fileSize == 0)
-                {
-                    return 0;
-                }
-
-                if (fileSize > 5_000_000)
-                {
-                    return 95;
-                }
-
-                return fileSize > 2_000_000 ? 85 : fileSize > 1_000_000 ? 75 : fileSize > 500_000 ? 65 : fileSize > 100_000 ? 50 : 30;
+                return fileSize == 0
+                    ? 0
+                    : fileSize > 5_000_000
+                    ? 95
+                    : fileSize > 2_000_000 ? 85 : fileSize > 1_000_000 ? 75 : fileSize > 500_000 ? 65 : fileSize > 100_000 ? 50 : 30;
             }
             catch
             {

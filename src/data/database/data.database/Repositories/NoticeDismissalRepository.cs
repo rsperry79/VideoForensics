@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 // Find existing dismissals
-                var existingDismissals = await db.NoticeDismissals
+                HashSet<Guid> existingDismissals = await db.NoticeDismissals
                     .Where(nd => noticeIdsList.Contains(nd.NoticeId) && nd.OperatorId == operatorId)
                     .Select(nd => nd.NoticeId)
                     .ToHashSetAsync(ct);

@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Data.Common.Contracts
 {
     /// <summary>Repository for per-operator notice dismissals (suppressing notices for a single operator).</summary>

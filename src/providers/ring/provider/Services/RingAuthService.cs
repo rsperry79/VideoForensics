@@ -311,6 +311,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 _logger.LogError(recordEx, "Failed to record error for account {AccountId}", providerAccountId);
                             }
                         }
+
                         if (_notificationDispatcher != null)
                         {
                             try
@@ -379,6 +380,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             _logger.LogError(recordEx, "Failed to record error for account {AccountId}", account.Id);
                                         }
                                     }
+
                                     if (_notificationDispatcher != null)
                                     {
                                         try
