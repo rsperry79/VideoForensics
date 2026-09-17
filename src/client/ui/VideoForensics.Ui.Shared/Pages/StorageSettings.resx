@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage storage settings.</value>
+  </data>
+  <data name="RefreshButton" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="NotAuthorizedMessage" xml:space="preserve">
+    <value>Not authorized. Sign in with your passkey - a Super Admin device is required to manage storage settings.</value>
+  </data>
+  <data name="NoStorageFound" xml:space="preserve">
+    <value>No storage categories found.</value>
+  </data>
+  <data name="ColCategory" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="ColPath" xml:space="preserve">
+    <value>Current Path</value>
+  </data>
+  <data name="ColDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="ColUsedSpace" xml:space="preserve">
+    <value>Used Space</value>
+  </data>
+  <data name="ColFreeSpace" xml:space="preserve">
+    <value>Free Space</value>
+  </data>
+  <data name="DefaultBadge" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="CustomBadge" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="ChangeButton" xml:space="preserve">
+    <value>Change...</value>
+  </data>
+  <data name="PathPlaceholder" xml:space="preserve">
+    <value>Enter new root path</value>
+  </data>
+  <data name="ConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="PathRequired" xml:space="preserve">
+    <value>Path is required.</value>
+  </data>
+  <data name="RelocateSuccess" xml:space="preserve">
+    <value>Successfully relocated {0} storage. Refresh the page to see updated information.</value>
+  </data>
+  <data name="RelocateFailed" xml:space="preserve">
+    <value>Failed to relocate storage.</value>
+  </data>
+  <data name="RelocateFailed2" xml:space="preserve">
+    <value>Failed to relocate storage: {0}</value>
+  </data>
+  <data name="NotAuthorizedToView" xml:space="preserve">
+    <value>Not authorized to view storage settings.</value>
+  </data>
+  <data name="NotAuthorizedToModify" xml:space="preserve">
+    <value>Not authorized to modify storage settings.</value>
+  </data>
+  <data name="FailedToLoad" xml:space="preserve">
+    <value>Failed to load storage settings: {0}</value>
+  </data>
+  <data name="RestartRequiredMessage" xml:space="preserve">
+    <value>A restart is required for this change to take effect.</value>
+  </data>
+</root>

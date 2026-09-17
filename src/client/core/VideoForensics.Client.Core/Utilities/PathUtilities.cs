@@ -2,6 +2,8 @@ using Microsoft.Win32;
 
 using System.Runtime.InteropServices;
 
+using VideoForensics.Providers.Common.Helpers.Platform;
+
 namespace VideoForensics.Client.Core.Utilities
 {
     /// <summary>Utilities for detecting and constructing save paths.</summary>
@@ -10,10 +12,8 @@ namespace VideoForensics.Client.Core.Utilities
         /// <summary>Returns the system-wide media storage location for the service.</summary>
         public static string GetDefaultDownloadLocation()
         {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
-                "media");
+            var storageProvider = new StorageLocationProvider();
+            return storageProvider.GetDefaultRoot(StorageCategory.Media);
         }
 
         /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Pictures/VideoForensics (legacy location).</summary>
@@ -50,10 +50,8 @@ namespace VideoForensics.Client.Core.Utilities
         /// <summary>Returns the system-wide backup storage location for the service.</summary>
         public static string GetDefaultQueryExportLocation()
         {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
-                "backup");
+            var storageProvider = new StorageLocationProvider();
+            return storageProvider.GetDefaultRoot(StorageCategory.Backup);
         }
 
         /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Documents/VideoForensics (legacy location).</summary>

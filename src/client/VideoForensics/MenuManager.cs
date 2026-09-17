@@ -12,6 +12,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics
 {
@@ -37,6 +38,7 @@ namespace VideoForensics
         private readonly IUserRepository _userRepository;
         private readonly ConfigToolsOrchestrator _configToolsOrchestrator;
         private readonly JammingToolsOrchestrator _jammingToolsOrchestrator;
+        private readonly IStorageLocationProvider _storageLocationProvider;
 
         public MenuManager(
             ILogger<MenuManager> logger,
@@ -58,7 +60,8 @@ namespace VideoForensics
             IProviderAccountRepository providerAccountRepository,
             IUserRepository userRepository,
             ConfigToolsOrchestrator configToolsOrchestrator,
-            JammingToolsOrchestrator jammingToolsOrchestrator)
+            JammingToolsOrchestrator jammingToolsOrchestrator,
+            IStorageLocationProvider storageLocationProvider)
         {
             _logger = logger;
             _forensicsConfig = config;
@@ -80,6 +83,7 @@ namespace VideoForensics
             _userRepository = userRepository;
             _configToolsOrchestrator = configToolsOrchestrator;
             _jammingToolsOrchestrator = jammingToolsOrchestrator;
+            _storageLocationProvider = storageLocationProvider;
         }
 
         /// <summary>Formats an account for display as its user's email/display name, falling back to the provider name if the user record is missing.</summary>
@@ -270,10 +274,7 @@ namespace VideoForensics
 
             Console.WriteLine($"Exporting {mediaItemIds.Count} item(s)...");
 
-            string outputDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
-                "Exports");
+            string outputDir = _storageLocationProvider.GetDefaultRoot(StorageCategory.TempDownload);
 
             ExportResult result = await _evidenceExportService.ExportEvidenceAsync(
                 mediaItemIds,

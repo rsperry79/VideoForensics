@@ -6,6 +6,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 using Xunit;
 
@@ -21,6 +22,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IJammingRepository> _mockJammingRepository;
         private readonly Mock<IIntegrityRecordRepository> _mockIntegrityRecordRepository;
         private readonly Mock<ILogger<ReportGenerationService>> _mockLogger;
+        private readonly Mock<IStorageLocationProvider> _mockStorageLocationProvider;
         private readonly ReportGenerationService _service;
 
         public ReportGenerationServiceTests()
@@ -33,10 +35,19 @@ namespace VideoForensics.Data.Core.Tests
             _mockJammingRepository = new Mock<IJammingRepository>();
             _mockIntegrityRecordRepository = new Mock<IIntegrityRecordRepository>();
             _mockLogger = new Mock<ILogger<ReportGenerationService>>();
+            _mockStorageLocationProvider = new Mock<IStorageLocationProvider>();
 
             _ = _mockIntegrityRecordRepository
                 .Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
+
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetDefaultRoot(It.IsAny<StorageCategory>()))
+                .Returns(Path.GetTempPath());
+
+            _ = _mockStorageLocationProvider
+                .Setup(x => x.GetEffectiveRoot(It.IsAny<StorageCategory>(), It.IsAny<string?>()))
+                .Returns(Path.GetTempPath());
 
             _service = new ReportGenerationService(
                 _mockMediaItemRepository.Object,
@@ -46,7 +57,8 @@ namespace VideoForensics.Data.Core.Tests
                 _mockEventRepository.Object,
                 _mockJammingRepository.Object,
                 _mockIntegrityRecordRepository.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockStorageLocationProvider.Object);
         }
 
         [Fact]

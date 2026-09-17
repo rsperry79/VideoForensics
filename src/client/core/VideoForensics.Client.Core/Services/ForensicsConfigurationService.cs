@@ -50,6 +50,10 @@ namespace VideoForensics.Client.Core.Services
                 config.ReportOutputFormat = await GetStringSetting("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 config.DownloadLocation = await GetStringSetting("DownloadLocation", config.DownloadLocation, cancellationToken);
                 config.QueryExportLocation = await GetStringSetting("QueryExportLocation", config.QueryExportLocation, cancellationToken);
+                config.DatabaseLocation = await GetStringSetting("DatabaseLocation", config.DatabaseLocation, cancellationToken);
+                config.TempDownloadLocation = await GetStringSetting("TempDownloadLocation", config.TempDownloadLocation, cancellationToken);
+                config.LogsLocation = await GetStringSetting("LogsLocation", config.LogsLocation, cancellationToken);
+                config.ReportsLocation = await GetStringSetting("ReportsLocation", config.ReportsLocation, cancellationToken);
                 config.RedactionLevel = await GetEnumSetting("RedactionLevel", config.RedactionLevel, cancellationToken);
                 config.KeyStorageProvider = await GetEnumSetting("KeyStorageProvider", config.KeyStorageProvider, cancellationToken);
                 config.RetentionDaysDefault = await GetIntSetting("RetentionDaysDefault", config.RetentionDaysDefault, cancellationToken);
@@ -93,6 +97,10 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("DatabaseLocation", config.DatabaseLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("ReportsLocation", config.ReportsLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("RedactionLevel", config.RedactionLevel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("KeyStorageProvider", config.KeyStorageProvider.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RetentionDaysDefault", config.RetentionDaysDefault.ToString(), cancellationToken);

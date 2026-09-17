@@ -21,6 +21,7 @@ using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
@@ -229,6 +230,7 @@ namespace VideoForensics.Hosting
             // server's own UI (which is never "unreachable" from its own perspective) and won't
             // conflict if a client host's own registrations also call this.
             _ = services.AddServerLocationServices();
+            _ = services.AddSingleton<IStorageLocationProvider, StorageLocationProvider>();
 
             // Shared session providers (must be singleton so all services/scopes observe the same
             // keyed session map - see ISessionProvider's per-account redesign). ICredentialStore is
@@ -420,8 +422,8 @@ namespace VideoForensics.Hosting
             // Urgent notifications (plan §5.6) - fanned out from SecurityAuditLogger itself, not
             // from individual call sites, so a new urgent event type never needs a second wire-up.
             // Email is the one channel built so far (the plan's stated reliable baseline); Web Push
-            // and MAUI toast are deliberately not yet implemented - see INotificationProvider's doc
-            // comment for why the extensibility point exists regardless.
+            // is now also implemented - MAUI toast remains deliberately not yet implemented (see
+            // INotificationProvider's doc comment for why the extensibility point exists regardless).
             _ = services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
             _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
@@ -530,6 +532,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session

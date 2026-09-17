@@ -30,6 +30,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\data.database\VideoForensics.Data.Database.csproj" />
+        <ProjectReference Include="..\..\..\..\core\helpers\core.helpers\VideoForensics.Providers.Common.Helpers.csproj" />
     </ItemGroup>
 
 </Project>

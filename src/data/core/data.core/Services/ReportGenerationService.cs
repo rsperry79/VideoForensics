@@ -6,6 +6,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -20,6 +21,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IJammingRepository _jammingRepository;
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
+        private readonly IStorageLocationProvider _storageLocationProvider;
 
         public ReportGenerationService(
             IMediaItemRepository mediaItemRepository,
@@ -29,7 +31,8 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IJammingRepository jammingRepository,
             IIntegrityRecordRepository integrityRecordRepository,
-            ILogger<ReportGenerationService> logger)
+            ILogger<ReportGenerationService> logger,
+            IStorageLocationProvider storageLocationProvider)
         {
             _mediaItemRepository = mediaItemRepository;
             _deviceRepository = deviceRepository;
@@ -39,6 +42,7 @@ namespace VideoForensics.Data.Core.Services
             _jammingRepository = jammingRepository;
             _integrityRecordRepository = integrityRecordRepository;
             _logger = logger;
+            _storageLocationProvider = storageLocationProvider;
         }
 
         public async Task<EvidenceReviewReport> BuildEvidenceReviewAsync(
@@ -287,11 +291,8 @@ namespace VideoForensics.Data.Core.Services
                 string reportTypeName = reportDto.GetType().Name;
                 string fileName = $"{reportTypeName}_{timestamp}.{format.ToLowerInvariant()}";
 
-                // Determine output directory (using a default reports directory)
-                string reportsDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "Reports");
+                // Determine output directory using storage provider
+                string reportsDir = _storageLocationProvider.GetDefaultRoot(StorageCategory.Reports);
                 _ = Directory.CreateDirectory(reportsDir);
 
                 string filePath = Path.Combine(reportsDir, fileName);
