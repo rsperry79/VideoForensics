@@ -22,6 +22,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
         <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+        <ProjectReference Include="..\..\..\core\helpers\core.helpers\VideoForensics.Providers.Common.Helpers.csproj" />
     </ItemGroup>
 
 </Project>

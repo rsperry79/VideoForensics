@@ -3,6 +3,7 @@ using Moq;
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 
 using Xunit;
@@ -12,12 +13,17 @@ namespace VideoForensics.Client.Core.Tests
     public class LocalRingSelfTestServiceTests
     {
         private readonly Mock<IRingSelfTestOrchestrator> _orchestratorMock;
+        private readonly Mock<IStorageLocationProvider> _storageProviderMock;
         private readonly LocalRingSelfTestService _service;
 
         public LocalRingSelfTestServiceTests()
         {
             _orchestratorMock = new Mock<IRingSelfTestOrchestrator>();
-            _service = new LocalRingSelfTestService(_orchestratorMock.Object);
+            _storageProviderMock = new Mock<IStorageLocationProvider>();
+            _storageProviderMock
+                .Setup(s => s.GetDefaultRoot(StorageCategory.TempDownload))
+                .Returns(Path.Combine(Path.GetTempPath(), "VideoForensics", "temp"));
+            _service = new LocalRingSelfTestService(_orchestratorMock.Object, _storageProviderMock.Object);
         }
 
         [Fact]

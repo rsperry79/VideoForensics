@@ -23,7 +23,15 @@ namespace VideoForensics.Client.Core.Tests
             string result = PathUtilities.GetDefaultDownloadLocation();
             string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
-            Assert.True(result.StartsWith(programDataPath));
+            // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.True(result.StartsWith(programDataPath));
+            }
+            else
+            {
+                Assert.True(result.StartsWith("/var/lib"));
+            }
         }
 
         [Fact]
@@ -60,7 +68,15 @@ namespace VideoForensics.Client.Core.Tests
             string result = PathUtilities.GetDefaultQueryExportLocation();
             string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
-            Assert.True(result.StartsWith(programDataPath));
+            // On Windows, paths should start with ProgramData; on Linux they should use /var/lib
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.True(result.StartsWith(programDataPath));
+            }
+            else
+            {
+                Assert.True(result.StartsWith("/var/lib"));
+            }
         }
 
         [Fact]

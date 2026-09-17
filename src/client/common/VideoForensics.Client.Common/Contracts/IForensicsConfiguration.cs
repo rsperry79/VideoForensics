@@ -13,6 +13,10 @@ namespace VideoForensics.Client.Common.Contracts
         string ReportOutputFormat { get; set; }
         string? DownloadLocation { get; set; }
         string? QueryExportLocation { get; set; }
+        string? DatabaseLocation { get; set; }
+        string? TempDownloadLocation { get; set; }
+        string? LogsLocation { get; set; }
+        string? ReportsLocation { get; set; }
         RedactionLevel RedactionLevel { get; set; }
         KeyStorageProvider KeyStorageProvider { get; set; }
         int RetentionDaysDefault { get; set; }
@@ -95,6 +99,10 @@ namespace VideoForensics.Client.Common.Contracts
         public string ReportOutputFormat { get; set; } = "json";
         public string? DownloadLocation { get; set; }
         public string? QueryExportLocation { get; set; }
+        public string? DatabaseLocation { get; set; }
+        public string? TempDownloadLocation { get; set; }
+        public string? LogsLocation { get; set; }
+        public string? ReportsLocation { get; set; }
         public RedactionLevel RedactionLevel { get; set; } = RedactionLevel.Medium;
         public KeyStorageProvider KeyStorageProvider { get; set; } = KeyStorageProvider.Auto;
         public int RetentionDaysDefault { get; set; } = 180;

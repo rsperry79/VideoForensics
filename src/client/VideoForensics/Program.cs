@@ -10,6 +10,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics
 {
@@ -116,7 +117,8 @@ namespace VideoForensics
                     serviceProvider.GetRequiredService<IProviderAccountRepository>(),
                     serviceProvider.GetRequiredService<IUserRepository>(),
                     serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.ConfigToolsOrchestrator>(),
-                    serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>()
+                    serviceProvider.GetRequiredService<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>(),
+                    serviceProvider.GetRequiredService<IStorageLocationProvider>()
                 );
             });
 

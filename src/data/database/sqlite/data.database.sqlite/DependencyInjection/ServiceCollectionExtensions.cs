@@ -7,6 +7,7 @@ using System.Security.Principal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
+using VideoForensics.Providers.Common.Helpers.Platform;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {
@@ -24,8 +25,9 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             // Resolve default database path if not provided
             if (string.IsNullOrEmpty(dbPath))
             {
-                string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                dbPath = Path.Combine(programDataPath, "VideoForensics", "videoforensics.db");
+                var storageProvider = new StorageLocationProvider();
+                string dbRoot = storageProvider.GetDefaultRoot(StorageCategory.Database);
+                dbPath = Path.Combine(dbRoot, "videoforensics.db");
             }
 
             // Ensure parent directory exists

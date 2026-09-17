@@ -75,7 +75,7 @@ namespace VideoForensics.Forensics.KeyManagement
 
             // Fallback: File-based encrypted storage
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-            string keyStorePath = Path.Combine(appDataPath, "RingForensics", "Keys");
+            string keyStorePath = Path.Combine(appDataPath, "VideoForensics", "keys");
             try
             {
                 providers.Add(new FileBasedKeyStorageProvider(keyStorePath));
