@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "NoticeDismissals",
                 columns: table => new
                 {
@@ -22,10 +21,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_NoticeDismissals", x => x.Id);
+                    _ = table.PrimaryKey("PK_NoticeDismissals", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "Notices",
                 columns: table => new
                 {
@@ -40,10 +39,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Notices", x => x.Id);
+                    _ = table.PrimaryKey("PK_Notices", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "OperatorNotificationPreferences",
                 columns: table => new
                 {
@@ -53,10 +52,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OperatorNotificationPreferences", x => x.OperatorId);
+                    _ = table.PrimaryKey("PK_OperatorNotificationPreferences", x => x.OperatorId);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "PushSubscriptions",
                 columns: table => new
                 {
@@ -70,16 +69,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PushSubscriptions", x => x.Id);
+                    _ = table.PrimaryKey("PK_PushSubscriptions", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_NoticeDismissals_NoticeId_OperatorId",
                 table: "NoticeDismissals",
                 columns: new[] { "NoticeId", "OperatorId" },
                 unique: true);
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_PushSubscriptions_Endpoint",
                 table: "PushSubscriptions",
                 column: "Endpoint",
@@ -89,16 +88,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "NoticeDismissals");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "Notices");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "OperatorNotificationPreferences");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "PushSubscriptions");
         }
     }

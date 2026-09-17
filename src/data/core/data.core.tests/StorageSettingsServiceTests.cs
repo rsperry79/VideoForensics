@@ -24,11 +24,11 @@ namespace VideoForensics.Data.Core.Tests
             _mockLogger = new Mock<ILogger<StorageSettingsService>>();
 
             // Default mocks return temp path for all categories
-            _mockStorageLocationProvider
+            _ = _mockStorageLocationProvider
                 .Setup(x => x.GetDefaultRoot(It.IsAny<StorageCategory>()))
                 .Returns((StorageCategory cat) => Path.Combine(Path.GetTempPath(), cat.ToString()));
 
-            _mockStorageLocationProvider
+            _ = _mockStorageLocationProvider
                 .Setup(x => x.GetEffectiveRoot(It.IsAny<StorageCategory>(), It.IsAny<string?>()))
                 .Returns((StorageCategory cat, string? overridePath) =>
                     string.IsNullOrWhiteSpace(overridePath)
@@ -36,7 +36,7 @@ namespace VideoForensics.Data.Core.Tests
                         : overridePath);
 
             // Default mock for configuration loads empty config (no overrides)
-            _mockConfigurationService
+            _ = _mockConfigurationService
                 .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ForensicsConfiguration());
 
@@ -168,17 +168,17 @@ namespace VideoForensics.Data.Core.Tests
         public async Task RelocateAsync_SucceedsAndPersistsConfigForRelocatableCategory()
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
                 var config = new ForensicsConfiguration();
-                _mockConfigurationService
+                _ = _mockConfigurationService
                     .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(config);
 
-                _mockStorageLocationProvider
+                _ = _mockStorageLocationProvider
                     .Setup(x => x.GetEffectiveRoot(StorageCategory.Reports, It.IsAny<string?>()))
                     .Returns((StorageCategory cat, string? overridePath) =>
                         string.IsNullOrWhiteSpace(overridePath)
@@ -207,7 +207,9 @@ namespace VideoForensics.Data.Core.Tests
             }
             finally
             {
-                try { Directory.Delete(tempDir, recursive: true); } catch { }
+                try
+                { Directory.Delete(tempDir, recursive: true); }
+                catch { }
             }
         }
 
@@ -217,17 +219,17 @@ namespace VideoForensics.Data.Core.Tests
         public async Task RelocateAsync_RequiresRestartForDatabaseAndLogs(StorageCategory category)
         {
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
                 var config = new ForensicsConfiguration();
-                _mockConfigurationService
+                _ = _mockConfigurationService
                     .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(config);
 
-                _mockStorageLocationProvider
+                _ = _mockStorageLocationProvider
                     .Setup(x => x.GetEffectiveRoot(category, It.IsAny<string?>()))
                     .Returns((StorageCategory cat, string? overridePath) =>
                         string.IsNullOrWhiteSpace(overridePath)
@@ -245,7 +247,9 @@ namespace VideoForensics.Data.Core.Tests
             }
             finally
             {
-                try { Directory.Delete(tempDir, recursive: true); } catch { }
+                try
+                { Directory.Delete(tempDir, recursive: true); }
+                catch { }
             }
         }
 
@@ -253,18 +257,18 @@ namespace VideoForensics.Data.Core.Tests
         public async Task RelocateAsync_CreatesDestinationDirectoryIfNotExists()
         {
             // Arrange
-            var parentDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            var newDir = Path.Combine(parentDir, "new-storage");
+            string parentDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string newDir = Path.Combine(parentDir, "new-storage");
             Assert.False(Directory.Exists(newDir));
 
             try
             {
                 var config = new ForensicsConfiguration();
-                _mockConfigurationService
+                _ = _mockConfigurationService
                     .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(config);
 
-                _mockStorageLocationProvider
+                _ = _mockStorageLocationProvider
                     .Setup(x => x.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>()))
                     .Returns((StorageCategory cat, string? overridePath) =>
                         string.IsNullOrWhiteSpace(overridePath)
@@ -284,7 +288,9 @@ namespace VideoForensics.Data.Core.Tests
             }
             finally
             {
-                try { Directory.Delete(parentDir, recursive: true); } catch { }
+                try
+                { Directory.Delete(parentDir, recursive: true); }
+                catch { }
             }
         }
     }

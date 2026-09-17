@@ -1,4 +1,3 @@
-using System.Text.Json;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
@@ -20,7 +19,7 @@ namespace VideoForensics.WebApp.Api
                 VapidKeyProvider vapidProvider,
                 CancellationToken ct) =>
             {
-                var (publicKey, _) = await vapidProvider.GetOrCreateKeysAsync(ct);
+                (string? publicKey, string _) = await vapidProvider.GetOrCreateKeysAsync(ct);
                 return Results.Ok(new { publicKey });
             })
             .RequireAuthorization();

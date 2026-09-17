@@ -69,13 +69,13 @@ namespace VideoForensics.Hosting.Tests
             Assert.NotNull(result);
             Assert.Equal(2, result.Categories.Count);
 
-            var dbCategory = result.Categories[0];
+            StorageCategoryStatus dbCategory = result.Categories[0];
             Assert.Equal(StorageCategory.Database, dbCategory.Category);
             Assert.Equal("/data/database", dbCategory.CurrentPath);
             Assert.True(dbCategory.IsDefault);
             Assert.True(dbCategory.RequiresRestart);
 
-            var mediaCategory = result.Categories[1];
+            StorageCategoryStatus mediaCategory = result.Categories[1];
             Assert.Equal(StorageCategory.Media, mediaCategory.Category);
             Assert.Equal("/data/media", mediaCategory.CurrentPath);
             Assert.False(mediaCategory.IsDefault);

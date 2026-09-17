@@ -1,5 +1,5 @@
-using System.Text.Json;
 using VideoForensics.Data.Common.Contracts;
+
 using WebPush;
 
 namespace VideoForensics.WebApp.Services
@@ -35,7 +35,7 @@ namespace VideoForensics.WebApp.Services
             // If either key is missing, generate a new pair
             if (string.IsNullOrEmpty(publicKey) || string.IsNullOrEmpty(privateKey))
             {
-                var vapidDetails = VapidHelper.GenerateVapidKeys();
+                VapidDetails vapidDetails = VapidHelper.GenerateVapidKeys();
                 publicKey = vapidDetails.PublicKey;
                 privateKey = vapidDetails.PrivateKey;
 
