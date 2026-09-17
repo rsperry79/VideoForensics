@@ -5,6 +5,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Notifications> L
+@inject WebPushClient WebPushClient
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -127,6 +128,60 @@ else
             </SfGrid>
         }
     </div>
+
+    <h6 class="mt-4 mb-2">@L["PushNotifications"]</h6>
+    <div class="card border pa-4 mb-4">
+        <div class="d-flex flex-column gap-2">
+            <p>
+                @L["PushNotificationsDescription"]
+            </p>
+
+            <div class="d-flex flex-row gap-2 mb-3">
+                <div style="flex: 1;">
+                    <label>@L["MinimumSeverity"]</label>
+                    <select class="form-control" @bind="_minimumSeverity" disabled="@(!_pushEnabled || _isCheckingPush)">
+                        <option value="0">@L["SeverityInfo"]</option>
+                        <option value="1">@L["SeverityWarning"]</option>
+                        <option value="2">@L["SeverityAlert"]</option>
+                        <option value="3">@L["SeverityCritical"]</option>
+                    </select>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <label><SfCheckBox TChecked="bool" Checked="@_pushEnabled" CheckedChanged="@((v) => { _pushEnabled = v; _pushPrefsDirty = true; })" /> @L["EnablePushNotifications"]</label>
+                </div>
+            </div>
+
+            <div class="d-flex flex-row gap-2 mb-3">
+                <SfButton Content="@(_isCheckingPush ? L["CheckingConfigButton"] : L["CheckConfigButton"])" OnClick="CheckConfigurationAsync" CssClass="e-flat" Disabled="@_isCheckingPush" />
+                <div style="flex: 1; display: flex; align-items: center;">
+                    <span style="padding: 6px 12px; border-radius: 4px; @GetStatusStyle()">@GetStatusDisplay()</span>
+                </div>
+            </div>
+
+            @if (_pushStatus == "Active")
+            {
+                <SfButton Content="@(_isDisabling ? L["DisablingPushButton"] : L["DisablePushButton"])" OnClick="DisablePushAsync" CssClass="e-danger" Disabled="@_isDisabling" />
+            }
+            else if (_pushStatus == "NotEnabled")
+            {
+                <SfButton Content="@(_isEnabling ? L["EnablingPushButton"] : L["EnablePushButton"])" OnClick="EnablePushAsync" CssClass="e-primary" Disabled="@_isEnabling" />
+            }
+            else if (_pushStatus == "Blocked")
+            {
+                <div class="alert alert-warning mb-0">
+                    @L["PushBlockedMessage"]
+                </div>
+            }
+
+            @if (_pushMessage is not null)
+            {
+                <span style="color: @(_pushSuccess ? "#4caf50" : "#f44336")">@_pushMessage</span>
+            }
+
+            <SfButton Content="@(_isSavingPushPrefs ? L["SavingButton"] : L["SaveButton"])" OnClick="SavePushPreferencesAsync" CssClass="e-primary" Disabled="@(_isSavingPushPrefs || !_pushPrefsDirty)" />
+        </div>
+    </div>
 }
 
 @code {
@@ -150,6 +205,18 @@ else
     private record UrgencyRow(string EventType, bool DefaultUrgent, bool? OverrideUrgent, bool EffectiveUrgent);
     private List<UrgencyRow> _urgencyRows = new();
     private IEnumerable<UrgencyRow> _filteredUrgencyRows = new List<UrgencyRow>();
+
+    // Push notifications state
+    private string _pushStatus = "Unknown"; // "NotSupported", "Blocked", "NotEnabled", "Active", "Unknown"
+    private bool _pushEnabled;
+    private string _minimumSeverity = "1"; // Default to Warning (1)
+    private bool _isCheckingPush;
+    private bool _isEnabling;
+    private bool _isDisabling;
+    private bool _isSavingPushPrefs;
+    private string? _pushMessage;
+    private bool _pushSuccess;
+    private bool _pushPrefsDirty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -342,4 +409,183 @@ else
 
         return client;
     }
+
+    private async Task CheckConfigurationAsync()
+    {
+        _isCheckingPush = true;
+        _pushMessage = null;
+        try
+        {
+            bool isSupported = await WebPushClient.IsSupportedAsync();
+            if (!isSupported)
+            {
+                _pushStatus = "NotSupported";
+                return;
+            }
+
+            string permission = await WebPushClient.GetPermissionStateAsync();
+            if (permission == "denied")
+            {
+                _pushStatus = "Blocked";
+                return;
+            }
+
+            string? endpoint = await WebPushClient.GetCurrentSubscriptionEndpointAsync();
+            _pushStatus = endpoint != null ? "Active" : "NotEnabled";
+        }
+        catch (Exception ex)
+        {
+            _pushSuccess = false;
+            _pushMessage = L["CheckConfigFailed", ex.Message];
+        }
+        finally
+        {
+            _isCheckingPush = false;
+        }
+    }
+
+    private async Task EnablePushAsync()
+    {
+        _isEnabling = true;
+        _pushMessage = null;
+        try
+        {
+            var client = CreateClient();
+            var keyResponse = await client.GetAsync("api/v1/push/vapid-public-key");
+            if (!keyResponse.IsSuccessStatusCode)
+            {
+                _pushSuccess = false;
+                _pushMessage = L["GetVapidKeyFailed", keyResponse.StatusCode.ToString()];
+                return;
+            }
+
+            var keyBody = await keyResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            string publicKey = keyBody.GetProperty("publicKey").GetString() ?? "";
+
+            var (endpoint, p256dhKey, authKey) = await WebPushClient.SubscribeAsync(publicKey);
+
+            var subscribeResponse = await client.PostAsJsonAsync("api/v1/push/subscribe", new
+            {
+                endpoint,
+                p256dhKey,
+                authKey
+            });
+
+            if (!subscribeResponse.IsSuccessStatusCode)
+            {
+                _pushSuccess = false;
+                _pushMessage = L["SubscribeFailed", subscribeResponse.StatusCode.ToString()];
+                return;
+            }
+
+            _pushSuccess = true;
+            _pushMessage = L["PushEnabled"];
+            _pushEnabled = true;
+            _pushPrefsDirty = true;
+            await CheckConfigurationAsync();
+        }
+        catch (Exception ex)
+        {
+            _pushSuccess = false;
+            _pushMessage = L["EnablePushFailed", ex.Message];
+        }
+        finally
+        {
+            _isEnabling = false;
+        }
+    }
+
+    private async Task DisablePushAsync()
+    {
+        _isDisabling = true;
+        _pushMessage = null;
+        try
+        {
+            string? endpoint = await WebPushClient.UnsubscribeAsync();
+            if (endpoint == null)
+            {
+                _pushSuccess = false;
+                _pushMessage = L["NoActiveSubscription"];
+                return;
+            }
+
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync("api/v1/push/unsubscribe", new { endpoint });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _pushSuccess = false;
+                _pushMessage = L["UnsubscribeFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _pushSuccess = true;
+            _pushMessage = L["PushDisabled"];
+            _pushEnabled = false;
+            _pushPrefsDirty = true;
+            await CheckConfigurationAsync();
+        }
+        catch (Exception ex)
+        {
+            _pushSuccess = false;
+            _pushMessage = L["DisablePushFailed", ex.Message];
+        }
+        finally
+        {
+            _isDisabling = false;
+        }
+    }
+
+    private async Task SavePushPreferencesAsync()
+    {
+        _isSavingPushPrefs = true;
+        _pushMessage = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync("api/v1/push/preferences", new
+            {
+                pushEnabled = _pushEnabled,
+                minimumSeverity = int.Parse(_minimumSeverity)
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _pushSuccess = false;
+                _pushMessage = L["SavePreferencesFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _pushSuccess = true;
+            _pushMessage = L["PreferencesSaved"];
+            _pushPrefsDirty = false;
+        }
+        catch (Exception ex)
+        {
+            _pushSuccess = false;
+            _pushMessage = L["SavePreferencesFailed", ex.Message];
+        }
+        finally
+        {
+            _isSavingPushPrefs = false;
+        }
+    }
+
+    private string GetStatusDisplay() => _pushStatus switch
+    {
+        "NotSupported" => L["PushNotSupported"],
+        "Blocked" => L["PushBlocked"],
+        "NotEnabled" => L["PushNotEnabled"],
+        "Active" => L["PushActive"],
+        _ => L["CheckingStatus"]
+    };
+
+    private string GetStatusStyle() => _pushStatus switch
+    {
+        "Active" => "background-color: #e8f5e9; color: #2e7d32; border: 1px solid #81c784;",
+        "Blocked" => "background-color: #ffebee; color: #c62828; border: 1px solid #ef5350;",
+        "NotSupported" => "background-color: #f5f5f5; color: #616161; border: 1px solid #bdbdbd;",
+        "NotEnabled" => "background-color: #fff3e0; color: #e65100; border: 1px solid #ffb74d;",
+        _ => "background-color: #f5f5f5; color: #616161; border: 1px solid #bdbdbd;"
+    };
 }

@@ -17,6 +17,8 @@
   <ItemGroup>
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <!-- Web Push Notifications (RFC 8291) - push subscription management and VAPID key handling. -->
+    <PackageReference Include="WebPush" Version="1.0.13" />
     <!-- WebAuthn/passkey attestation+assertion verification (plan §5.1/§6). Fido2NetLib does the
          CBOR/COSE parsing and attestation-statement cryptographic verification - explicitly called
          out in the plan as a "looks right and isn't" risk area not to hand-roll. -->
