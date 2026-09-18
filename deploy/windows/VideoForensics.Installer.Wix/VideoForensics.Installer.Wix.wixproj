@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WiX v5 MSI Project for VideoForensics
+
+  IMPORTANT: This project requires building on a Windows machine or CI runner with the WiX v5 SDK installed.
+  Cannot be validated in this sandbox environment (no WiX toolset, not Windows).
+
+  On first real build, check:
+  - Event Log source registration approach (util:EventSource vs. direct registry)
+  - Service failure-recovery config (util:ServiceConfig availability)
+  - DefineConstants path validity for publish output
+-->
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+
+    <!-- Define default constants for the WiX build. These are placeholders meant to be overridden
+         at CI build time via -p:DefineConstants=... with the real self-contained publish path
+         and product version read from VideoForensics.WebApp.csproj. -->
+    <DefineConstants>PublishDir=..\..\..\src\client\web\VideoForensics.WebApp\bin\Release\net10.0\win-x64\publish;ProductVersion=1.0.0</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Package.wxs" />
+  </ItemGroup>
+</Project>

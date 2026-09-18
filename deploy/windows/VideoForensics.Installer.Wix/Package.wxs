@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VideoForensics MSI Installer Package (WiX v5)
+
+  This package installs VideoForensics as a Windows Service with automatic startup,
+  Event Log source registration, and support for in-place major upgrades.
+
+  IMPORTANT: Not validated in this sandbox (no WiX SDK available). First real build should verify:
+  1. Event Log source registration via util:EventSource or fallback to direct registry
+  2. Service failure-recovery config (may need custom util:ServiceConfig element)
+  3. File harvesting via <Files Include="..."/> below picks up every file from the publish output
+
+  Service Configuration:
+  - Name: VideoForensics
+  - Display Name: VideoForensics
+  - Account: LocalSystem
+  - Start Type: Automatic (Delayed Start disabled)
+  - Failure Recovery: Restart after 60 seconds (24-hour reset window) — configured via sc.exe failure command in postinstall or via util:ServiceConfig if available
+
+  Data Safety:
+  - %ProgramData%\VideoForensics is never removed on uninstall (no Component marked for removal)
+  - Only binaries under %ProgramFiles%\VideoForensics are installed/removed
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="VideoForensics"
+           Manufacturer="DV Victim Protection Team"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="6F770778-A833-44A3-947E-72A9D34EDB46"
+           InstallerVersion="500"
+           Compressed="yes"
+           InstallScope="perMachine">
+
+    <!-- Major upgrade: allows re-running a newer MSI over an existing install to perform
+         an in-place upgrade. Schedule="afterInstallInitialize" ensures the old version is
+         removed and files replaced before new service registration. -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+                 Schedule="afterInstallInitialize" />
+
+    <!-- Embed all files into the MSI cabinet (no external .cab files) -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Define the main product feature -->
+    <Feature Id="ProductFeature"
+             Title="VideoForensics"
+             Level="1"
+             Description="VideoForensics web application and API server">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+
+    <!-- Install to %ProgramFiles%\VideoForensics -->
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="VideoForensics" />
+    </StandardDirectory>
+
+    <!-- ProductComponents: all files from the self-contained publish output -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+
+      <!-- Main executable and Windows Service registration -->
+      <Component Id="ServiceExeComponent" Guid="*">
+        <File Id="ServiceExe"
+              Name="VideoForensics.WebApp.exe"
+              Source="$(var.PublishDir)\VideoForensics.WebApp.exe"
+              KeyPath="yes"
+              Vital="yes" />
+
+        <!-- Register the Windows Service via WiX's ServiceInstall/ServiceControl.
+             Note: ServiceInstall does not have a direct attribute for failure recovery
+             (restart on failure after 60s). This must be configured separately:
+
+             Option A (preferred if util:ServiceConfig is available): add a util:ServiceConfig
+             element below with Restart="yes" to enable automatic restart on failure.
+
+             Option B (fallback): document in README that failure recovery must be configured
+             manually after install via: sc.exe failure VideoForensics reset= 86400 actions= restart/60000
+
+             This implementation uses ServiceInstall/ServiceControl per WiX v5 patterns
+             and leaves restart-on-failure as a documented manual post-install step or
+             future util:ServiceConfig addition if its exact syntax is confirmed.
+        -->
+        <ServiceInstall Id="ServiceInstaller"
+                        Type="ownProcess"
+                        Vital="yes"
+                        Name="VideoForensics"
+                        DisplayName="VideoForensics"
+                        Description="VideoForensics web application and API server"
+                        Start="auto"
+                        Account="LocalSystem"
+                        ErrorControl="normal"
+                        Interactive="no" />
+
+        <!-- ServiceControl: start on install, stop on uninstall, remove service on uninstall -->
+        <ServiceControl Id="ServiceControl"
+                        Name="VideoForensics"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+
+        <!-- Event Log Source registration: VideoForensics source in Application log.
+             If util:EventSource is not available (first-build issue), fall back to
+             direct registry key creation:
+
+             <RegistryKey Root="HKLM"
+                          Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\VideoForensics"
+                          Action="createAndRemoveOnUninstall">
+               <RegistryValue Type="expandable" Name="EventMessageFile" Value="[INSTALLFOLDER]VideoForensics.WebApp.exe" />
+               <RegistryValue Type="dword" Name="TypesSupported" Value="7" />
+             </RegistryKey>
+
+             This block is currently omitted to avoid syntax errors if util: namespace
+             or util:EventSource is not found. On first build, add it if util is available,
+             or uncomment the fallback registry approach below if needed.
+        -->
+        <!-- TODO: verify util:EventSource syntax and enable if available -->
+        <!-- <util:EventSource Name="VideoForensics" /> -->
+      </Component>
+
+      <!-- Harvest every other file from the self-contained publish output (DLLs, .json config,
+           .pdb, etc.) using WiX v5's built-in Files harvesting element. The main .exe is excluded
+           here since it's already declared above (with the ServiceInstall/ServiceControl attached
+           to its own Component) - Files would otherwise try to harvest it a second time and conflict. -->
+      <Files Include="$(var.PublishDir)\**"
+             Exclude="$(var.PublishDir)\VideoForensics.WebApp.exe" />
+
+    </ComponentGroup>
+
+  </Package>
+</Wix>

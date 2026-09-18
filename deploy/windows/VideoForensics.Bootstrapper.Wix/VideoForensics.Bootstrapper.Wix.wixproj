@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WiX v5 Burn Bootstrapper Project for VideoForensics
+
+  Wraps the MSI (from VideoForensics.Installer.Wix) into a single .exe bootstrapper
+  with the WiX Standard Bootstrapper Application UI.
+
+  IMPORTANT: This project requires building on a Windows machine or CI runner with the WiX v5 SDK installed.
+  Cannot be validated in this sandbox environment (no WiX toolset, not Windows).
+
+  On first real build, verify:
+  - ProjectReference harvesting of MSI project's .TargetPath
+  - Bootstrapper application selection (WixStandardBootstrapperApplication variant)
+  - License file path (if using variant that requires it)
+-->
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Bundle</OutputType>
+
+    <!-- Define default constants for the WiX build. ProductVersion should match the MSI.
+         These are placeholders meant to be overridden at CI build time. -->
+    <DefineConstants>ProductVersion=1.0.0</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.BootstrapperApplications.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+  </ItemGroup>
+
+  <!-- ProjectReference to the MSI project. WiX v5 SDK automatically harvests the MSI's
+       TargetPath and makes it available as $(var.VideoForensics.Installer.Wix.TargetPath)
+       in the Bundle.wxs file, which is used to reference the MSI in the Chain element. -->
+  <ItemGroup>
+    <ProjectReference Include="..\VideoForensics.Installer.Wix\VideoForensics.Installer.Wix.wixproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Bundle.wxs" />
+  </ItemGroup>
+</Project>
