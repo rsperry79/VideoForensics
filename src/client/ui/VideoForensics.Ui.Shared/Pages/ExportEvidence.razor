@@ -5,6 +5,8 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
 
+<Breadcrumb Items="@_breadcrumbItems" />
+
 <h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
@@ -30,7 +32,7 @@ else
         <SfTextBox @bind-Value="_recipientDescription" Placeholder="@L["RecipientDescriptionPlaceholder"]" Enabled="@(!_isExporting)" />
     </div>
     <div>
-        <input type="password" @bind="_passphrase" placeholder="@L["PassphrasePlaceholder"].Value" disabled="@_isExporting" />
+        <SfTextBox @bind-Value="_passphrase" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PassphrasePlaceholder"].Value" Enabled="@(!_isExporting)" />
     </div>
     <div>
         <SfTextBox @bind-Value="_outputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Enabled="@(!_isExporting)" />
@@ -67,6 +69,7 @@ else
     [SupplyParameterFromQuery(Name = "ids")]
     public string? Ids { get; set; }
 
+    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Events", "/events"), ("Export Evidence", null) };
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _isExporting;

@@ -8,6 +8,8 @@
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<OperatorDetails> L
 
+<Breadcrumb Items="@_breadcrumbItems" />
+
 <h4 class="mb-4">@L["Title"] @if (_operator is not null) { <span>- @_operator.DisplayName</span> }</h4>
 
 @if (!SessionState.IsSignedIn)
@@ -29,16 +31,10 @@ else if (_authError is not null)
 else if (_loadError is not null)
 {
     <div class="alert alert-danger">@_loadError</div>
-    <div class="mt-3">
-        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
-    </div>
 }
 else if (_operator is null)
 {
     <span>@L["FailedToLoad", "Unknown error"]</span>
-    <div class="mt-3">
-        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
-    </div>
 }
 else
 {
@@ -46,7 +42,7 @@ else
         <div class="mb-3">
             <label class="form-label">@L["DisplayName"]</label>
             <div class="d-flex gap-2">
-                <input type="text" @bind-value="_displayNameInput" class="form-control" style="max-width: 300px;" />
+                <SfTextBox @bind-Value="_displayNameInput" CssClass="form-control" Style="max-width: 300px;" />
                 <SfButton Content="@L["SaveButton"]" OnClick="SaveDisplayName" Disabled="@string.IsNullOrWhiteSpace(_displayNameInput)" CssClass="e-primary" />
             </div>
         </div>
@@ -97,16 +93,12 @@ else
             @if (_pendingRevoke)
             {
                 <div class="d-flex flex-row align-items-center gap-2">
-                    <input type="text" @bind-value="_reasonInput" placeholder="@L["ReasonPlaceholder"]" style="max-width: 260px;" />
+                    <SfTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"].Value" Style="max-width: 260px;" />
                     <SfButton Content="@L["ConfirmButton"]" OnClick="ConfirmRevoke" CssClass="e-primary e-danger" />
                     <SfButton Content="@L["CancelButton"]" OnClick="CancelRevoke" CssClass="e-flat" />
                 </div>
             }
         }
-    </div>
-
-    <div>
-        <a href="/settings/operators" class="btn btn-outline-secondary">@L["BackButton"]</a>
     </div>
 }
 
@@ -124,6 +116,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
+    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Operators", "/settings/operators"), ("Operator Details", null) };
     private bool _isLoading = true;
     private Operator? _operator;
     private string? _authError;

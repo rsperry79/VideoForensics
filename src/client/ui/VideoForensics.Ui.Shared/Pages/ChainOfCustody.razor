@@ -5,6 +5,7 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.Calendars
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -31,9 +32,9 @@ else
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
             </SfDropDownList>
             <small class="mt-3">@L["FromLabel"]</small>
-            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <small class="mt-2">@L["ToLabel"]</small>
-            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary" class="mt-3 w-100" />
         </div>
 
@@ -58,6 +59,7 @@ else
         else
         {
             <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />

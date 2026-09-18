@@ -39,12 +39,33 @@ else if (_entries is null || _entries.Count == 0)
 else
 {
     <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
             <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" />
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.OperatorId)" HeaderText="@L["ColOperatorId"]" />
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.PairedDeviceId)" HeaderText="@L["ColPairedDeviceId"]" />
+            <GridColumn HeaderText="@L["ColOperatorId"]">
+                <Template>
+                    @{
+                        var entry = (SecurityAuditLogEntry)context;
+                        var operatorName = entry.OperatorId.HasValue && _operatorLookup.TryGetValue(entry.OperatorId.Value, out var opName)
+                            ? opName
+                            : entry.OperatorId?.ToString("N")?[..8] ?? L["NotAvailable"].Value;
+                        @operatorName
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="@L["ColPairedDeviceId"]">
+                <Template>
+                    @{
+                        var entry = (SecurityAuditLogEntry)context;
+                        var deviceName = entry.PairedDeviceId.HasValue && _pairedDeviceLookup.TryGetValue(entry.PairedDeviceId.Value, out var devName)
+                            ? devName
+                            : entry.PairedDeviceId?.ToString("N")?[..8] ?? L["NotAvailable"].Value;
+                        @deviceName
+                    }
+                </Template>
+            </GridColumn>
             <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" />
             <GridColumn HeaderText="@L["ColDetails"]">
                 <Template>
@@ -65,6 +86,8 @@ else
     private string? _authError;
     private string? _loadError;
     private string _operatorIdInput = string.Empty;
+    private Dictionary<Guid, string> _operatorLookup = new();
+    private Dictionary<Guid, string> _pairedDeviceLookup = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,6 +114,37 @@ else
         try
         {
             var client = CreateClient();
+
+            // Fetch operators
+            try
+            {
+                var operatorResponse = await client.GetAsync("api/devices-management/operators");
+                if (operatorResponse.IsSuccessStatusCode)
+                {
+                    var operators = await operatorResponse.Content.ReadFromJsonAsync<List<VideoForensics.Data.Common.Entities.Operator>>(JsonOptions);
+                    if (operators is not null)
+                    {
+                        _operatorLookup = operators.ToDictionary(o => o.Id, o => o.DisplayName);
+                    }
+                }
+            }
+            catch { /* Ignore operator fetch errors */ }
+
+            // Fetch paired devices
+            try
+            {
+                var deviceResponse = await client.GetAsync("api/devices-management/paired-devices");
+                if (deviceResponse.IsSuccessStatusCode)
+                {
+                    var devices = await deviceResponse.Content.ReadFromJsonAsync<List<VideoForensics.Data.Common.Entities.PairedDevice>>(JsonOptions);
+                    if (devices is not null)
+                    {
+                        _pairedDeviceLookup = devices.ToDictionary(d => d.Id, d => d.DeviceName);
+                    }
+                }
+            }
+            catch { /* Ignore device fetch errors */ }
+
             var url = "api/security-audit-log";
             if (Guid.TryParse(_operatorIdInput, out var operatorId))
             {

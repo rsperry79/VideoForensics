@@ -33,10 +33,10 @@ else
                     <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
                 </SfDropDownList>
                 <label>
-                    @L["FromLabel"] <input type="date" @bind="_fromDate" />
+                    @L["FromLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" CssClass="w-100" />
                 </label>
                 <label>
-                    @L["ToLabel"] <input type="date" @bind="_toDate" />
+                    @L["ToLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_toDate" CssClass="w-100" />
                 </label>
                 <SfButton Content="@L["RunReportButton"]" OnClick="RunReportAsync" CssClass="e-primary" />
             </div>
@@ -90,6 +90,7 @@ else
         else
         {
             <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_filteredJammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" />

@@ -60,6 +60,7 @@ else if (_devices is null || _devices.Count == 0)
 else
 {
     <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" />
@@ -114,7 +115,7 @@ else
                             @if (_pendingRevokeDeviceId == device.Id)
                             {
                                 <div class="d-flex flex-row gap-2 align-items-center mt-2">
-                                    <input type="text" @bind="_reasonInput" placeholder="@L["ReasonPlaceholder"]" style="max-width: 260px;" class="form-control" />
+                                    <SfTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"].Value" Style="max-width: 260px;" CssClass="form-control" />
                                     <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRevoke(device.Id)" CssClass="e-danger" />
                                     <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
                                 </div>

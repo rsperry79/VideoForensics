@@ -9,6 +9,8 @@
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject PairedSessionState SessionState
 
+<Breadcrumb Items="@_breadcrumbItems" />
+
 <h4 class="mb-4">Notices</h4>
 
 @if (_isLoading)
@@ -18,10 +20,7 @@
 else
 {
     <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
-        <label style="display: flex; align-items: center; gap: 6px;">
-            <input type="checkbox" @onchange="@ToggleShowDismissedAsync" />
-            <span>Show dismissed</span>
-        </label>
+        <SfCheckBox TChecked="bool" @bind-Checked="_showDismissed" @bind-Checked:after="LoadNoticesAsync" Label="Show dismissed" />
         <SfButton Content="Mark all as read" OnClick="@DismissAllAsync" Disabled="@(_notices.Count == 0)" CssClass="e-info" />
     </div>
 
@@ -32,6 +31,7 @@ else
     else
     {
         <SfGrid TValue="Notice" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn HeaderText="Severity" Width="100px" AllowSorting="true">
@@ -68,6 +68,7 @@ else
 }
 
 @code {
+    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Home", "/"), ("Notices", null) };
     private List<Notice> _notices = new();
     private bool _showDismissed = false;
     private bool _isLoading = true;
