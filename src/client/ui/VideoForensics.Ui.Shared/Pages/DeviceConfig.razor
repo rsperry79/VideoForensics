@@ -85,6 +85,7 @@ else
         else
         {
             <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />

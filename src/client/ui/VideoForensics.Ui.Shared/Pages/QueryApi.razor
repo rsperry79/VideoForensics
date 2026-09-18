@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.Calendars
 @inject IProviderAuthService AuthService
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
@@ -29,11 +30,11 @@
             </div>
             <div>
                 <label>@L["LabelFrom"]</label>
-                <input type="date" @bind="_eventsFromDate" class="w-100" />
+                <SfDatePicker TValue="DateTime" @bind-Value="_eventsFromDate" CssClass="w-100" />
             </div>
             <div>
                 <label>@L["LabelTo"]</label>
-                <input type="date" @bind="_eventsToDate" class="w-100" />
+                <SfDatePicker TValue="DateTime" @bind-Value="_eventsToDate" CssClass="w-100" />
             </div>
         </div>
     </div>
@@ -64,6 +65,7 @@
         else
         {
             <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" />
@@ -91,6 +93,7 @@
         else
         {
             <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" />
@@ -126,6 +129,7 @@
         else
         {
             <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" />

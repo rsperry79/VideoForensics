@@ -78,7 +78,7 @@ else
         @if (_pendingHoldRow is not null || _pendingReleaseRow is not null)
         {
             <div style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
-                <input type="text" @bind-value="_holdReasonInput" placeholder="@(_pendingHoldRow is not null ? L["ReasonForHold"] : L["ReasonForRelease"])" style="max-width: 260px;" />
+                <SfTextBox @bind-Value="_holdReasonInput" Placeholder="@(_pendingHoldRow is not null ? L["ReasonForHold"].Value : L["ReasonForRelease"].Value)" Style="max-width: 260px;" />
                 <SfButton Content="@L["Confirm"]" OnClick="ConfirmPendingHoldActionAsync" CssClass="e-primary e-small" />
                 <SfButton Content="@L["Cancel"]" OnClick="CancelPendingHoldAction" CssClass="e-flat e-small" />
             </div>
@@ -94,6 +94,7 @@ else
         else
         {
             <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" AllowFiltering="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">

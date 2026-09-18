@@ -42,6 +42,7 @@ else if (_operators is null || _operators.Count == 0)
 else
 {
     <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" />
@@ -76,7 +77,7 @@ else
                             @if (_pendingDeactivateOperatorId == op.Id)
                             {
                                 <div class="d-flex flex-row align-items-center gap-2 mt-2">
-                                    <input type="text" @bind-value="_reasonInput" placeholder="@L["ReasonPlaceholder"]" style="max-width: 260px;" />
+                                    <SfTextBox @bind-Value="_reasonInput" Placeholder="@L["ReasonPlaceholder"].Value" Style="max-width: 260px;" />
                                     <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmDeactivate(op.Id)" CssClass="e-primary e-danger" />
                                     <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />
                                 </div>

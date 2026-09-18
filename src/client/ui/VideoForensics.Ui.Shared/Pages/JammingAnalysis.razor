@@ -31,8 +31,8 @@ else
                 <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceIdStr" DataSource="@(DeviceOptions.ToList())"
                     Placeholder="@L["SelectDevice"]"><DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings></SfDropDownList>
                 <div class="d-flex flex-row gap-2">
-                    <input type="date" @bind="_fromDate" />
-                    <input type="date" @bind="_toDate" />
+                    <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" CssClass="w-100" />
+                    <SfDatePicker TValue="DateTime" @bind-Value="_toDate" CssClass="w-100" />
                     <SfButton Content="@L["Analyze"]" OnClick="AnalyzeAsync" CssClass="e-primary" Disabled="@(_analyzing || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
                 </div>
 
@@ -52,6 +52,7 @@ else
         @if (_report.Incidents.Count > 0)
         {
             <SfGrid TValue="JammingIncidentRecord" DataSource="@_filteredIncidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" />
@@ -76,22 +77,22 @@ else
         <div class="d-flex flex-column gap-2">
             <div>
                 <label for="startUtc">@L["LabelStartUtc"]</label>
-                <input type="datetime-local" @bind="_manualStartUtc" />
+                <SfDateTimePicker TValue="DateTime" @bind-Value="_manualStartUtc" />
             </div>
             <div>
                 <label for="endUtc">@L["LabelEndUtc"]</label>
-                <input type="datetime-local" @bind="_manualEndUtc" />
+                <SfDateTimePicker TValue="DateTime" @bind-Value="_manualEndUtc" />
             </div>
             <div>
                 <label>@L["LabelAffectedEventCount"]</label>
-                <input type="number" @bind="_manualAffectedEventCount" />
+                <SfNumericTextBox TValue="int" @bind-Value="_manualAffectedEventCount" />
             </div>
             <div>
                 <label>@L["LabelAvgDegradation"]</label>
-                <input type="number" step="0.1" @bind="_manualAverageDegradationDb" />
+                <SfNumericTextBox TValue="double" @bind-Value="_manualAverageDegradationDb" Step="0.1" Format="N1" />
             </div>
             <SfDropDownList TValue="JammingConfidenceLevel" TItem="JammingConfidenceLevel" @bind-Value="_manualConfidence" DataSource="@(Enum.GetValues<JammingConfidenceLevel>().ToList())" />
-            <textarea @bind="_manualNotes" rows="3" placeholder="@L["ColNotes"]" class="form-control"></textarea>
+            <SfTextBox @bind-Value="_manualNotes" Multiline="true" Placeholder="@L["ColNotes"]" />
             <SfButton Content="@L["RecordIncident"]" OnClick="RecordIncidentAsync" CssClass="e-primary" Disabled="@_recording" />
 
             @if (!string.IsNullOrEmpty(_recordMessage))

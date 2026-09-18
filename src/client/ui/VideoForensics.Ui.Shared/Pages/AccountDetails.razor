@@ -7,9 +7,7 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 
-<div class="mb-4">
-    <SfButton CssClass="e-outline" Content="Back to Accounts" OnClick="GoBack" />
-</div>
+<Breadcrumb Items="@_breadcrumbItems" />
 
 @if (_isLoading)
 {
@@ -102,6 +100,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
+    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Accounts", "/accounts"), ("Account Details", null) };
     private VideoForensics.Data.Common.Entities.ProviderAccount? _account;
     private string? _displayName;
     private bool _isLoading = true;
@@ -147,11 +146,6 @@ else
         {
             _isLoading = false;
         }
-    }
-
-    private void GoBack()
-    {
-        NavigationManager.NavigateTo("/accounts");
     }
 
     private void GoToSyncSchedule()
