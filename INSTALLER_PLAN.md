@@ -55,12 +55,18 @@ installed" — don't let Windows and Debian invent two different version schemes
   `ProductVersion`, `.deb`'s `Version:` control field) so a release always ships the same
   version number on both platforms.
 - Upgrade semantics: **in-place upgrade, not side-by-side install.** Installing a new
-  version over an existing one must stop the running service, replace the binaries, run
-  any pending DB migration (existing EF Core/SQLite migration path — confirm current
-  migration mechanism before assuming `dotnet ef database update` vs. an in-app
-  migrator), and restart the service — automatically, without the user manually
-  uninstalling first. This is the actual "installer that supports updating" requirement,
-  not just "an installer that also happens to work twice."
+  version over an existing one must stop the running service, replace the binaries, and
+  restart the service — automatically, without the user manually uninstalling first.
+  This is the actual "installer that supports updating" requirement, not just "an
+  installer that also happens to work twice."
+  - **DB migration confirmed:** no separate migration step is needed by either packager.
+    `VideoForensicsHostingExtensions.cs` calls `DatabaseInitializer.InitializeAsync` on
+    every app startup (`src/data/database/sqlite/data.database.sqlite/Migrations/DatabaseInitializer.cs`),
+    which runs `db.Database.MigrateAsync(...)` unconditionally — with a pre-migration
+    file-copy backup when pending migrations are detected. So "stop service, replace
+    binaries, restart service" is already sufficient: the app migrates itself on its next
+    start. Neither the MSI's upgrade path nor Debian's `postinst` needs to invoke
+    `dotnet ef database update` or any other explicit migration command.
 - Data safety on upgrade/uninstall: mirror the existing PowerShell script's contract —
   `%ProgramData%\VideoForensics` (Windows) / the Linux data dir (Debian) is **never**
   touched by upgrade or uninstall, only by an explicit "purge" path the user opts into.
@@ -110,10 +116,12 @@ installed" — don't let Windows and Debian invent two different version schemes
      future prerequisite (e.g. VC++ redistributable) without touching the MSI.
    - Inherits the MSI's upgrade behavior automatically — Burn re-runs the same MSI logic
      under the hood, so update support does not need separate bootstrapper-level logic.
-5. **Signing:** the MSI, the bootstrapper `.exe`, and `VideoForensics.WebApp.exe` inside
-   it should all be Authenticode-signed before distribution — flag this as a
-   release-process step (cert + signing tool in CI), not something to hack around with
-   `Set-ExecutionPolicy`-style workarounds for end users. Still open — see below.
+5. **Signing: unsigned for now (confirmed).** No Authenticode signing in this pass —
+   ship the MSI, bootstrapper `.exe`, and `VideoForensics.WebApp.exe` unsigned, and
+   document the resulting SmartScreen/Defender friction in `deploy/windows/README.md`
+   rather than trying to work around it with `Set-ExecutionPolicy`-style hacks. Signing
+   is a CI-pipeline addition to slot in later (cert + signing tool step) once a
+   certificate is available — it does not change the WiX project structure.
 6. **Retire vs. keep the PowerShell scripts:** keep `deploy/install-service.ps1` /
    `uninstall-service.ps1` for developer/CI use (quick iteration without building an MSI
    every time) but make the README clear the bootstrapper `.exe` is the supported
@@ -154,8 +162,9 @@ installed" — don't let Windows and Debian invent two different version schemes
    is non-empty on upgrade) and:
    - Fresh install: create the system user, create the data directory, `systemctl enable
      --now videoforensics`.
-   - Upgrade: run any pending DB migration, then `systemctl restart videoforensics` (not
-     `enable --now` again — it's already enabled).
+   - Upgrade: `systemctl restart videoforensics` (not `enable --now` again — it's already
+     enabled). No separate migration command needed — confirmed above, the app migrates
+     its own DB on startup via `DatabaseInitializer.InitializeAsync`.
 5. **`postrm` responsibilities:** on `remove`, stop/disable the service but leave the data
    directory untouched (matches the Windows uninstall contract above); only a `purge`
    action removes the data directory — spell this out explicitly since `postrm` gets
@@ -166,11 +175,15 @@ installed" — don't let Windows and Debian invent two different version schemes
    `Depends:` only needs baseline glibc/libicu-type shared-library deps (check what
    `dotnet publish --self-contained` for net10.0 actually links against), not a
    `dotnet-runtime-10.0` package dependency.
-7. **Distro scope:** confirm with the user which Debian/Ubuntu versions must be supported
-   (affects glibc baseline if self-contained, and whether an `apt` repo/PPA is wanted for
-   `apt upgrade` to "just find" new versions, vs. distributing a bare `.deb` file for
-   manual `dpkg -i`) — this changes whether a hosted apt repository is in scope for this
-   plan or is a separate follow-up.
+7. **Distro scope (confirmed):** no hosted apt repository/PPA for now — distribute a bare
+   `.deb` file (GitHub release asset) for manual `dpkg -i`/`apt install ./file.deb`.
+   Re-running the same command with a newer `.deb` performs the upgrade via the
+   `postinst` logic above. A hosted apt repo (for `apt upgrade` to auto-discover new
+   versions) is a possible future follow-up, out of scope here. Target Debian/Ubuntu
+   version floor: not yet specified by the user — default to whatever glibc baseline
+   `dotnet publish --self-contained` for net10.0 actually requires (verify at
+   implementation time) and note it in `deploy/debian/README.md`; revisit if a specific
+   older LTS needs support.
 
 ## CI / release pipeline
 
@@ -200,15 +213,18 @@ installed" — don't let Windows and Debian invent two different version schemes
    - Both are produced from every release; the MSI is also kept as a standalone artifact
      for `msiexec`/group-policy deployment scenarios.
 
-## Open questions still to confirm with the user before implementation starts
+## All open questions resolved (2026-09-18)
 
-1. Is a code-signing certificate available for the MSI/`.exe`? If not, ship unsigned for
-   now and flag the SmartScreen/Defender friction this causes.
-2. Target Debian/Ubuntu version floor, and whether a hosted apt repo is in scope now or
-   later.
-3. Confirm the actual current EF Core/SQLite migration invocation mechanism (needed by
-   both `postinst` and the MSI's upgrade path) before either packaging script assumes how
-   migrations run.
+1. **Signing: unsigned for now.** No code-signing certificate in hand. The MSI, the Burn
+   bootstrapper `.exe`, and `VideoForensics.WebApp.exe` inside them ship unsigned.
+   End users will see SmartScreen "unknown publisher" warnings on first run of the `.exe`
+   on Windows — call this out prominently in `deploy/windows/README.md` (right-click →
+   Properties → Unblock, or "More info" → "Run anyway" on the SmartScreen prompt) rather
+   than silently shipping it. Revisit once a cert is available; signing is a CI-pipeline
+   step to slot in later, not a structural change to the WiX projects.
+2. **Distro scope: resolved above** — no hosted apt repo; bare `.deb` file distribution.
+3. **DB migration mechanism: resolved above** — automatic, in-app, on every startup via
+   `DatabaseInitializer.InitializeAsync`. No explicit migration step in either packager.
 
 ## Execution order
 
