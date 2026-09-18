@@ -43,32 +43,32 @@ else
             <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelSmtpHost"]</label>
-                    <input type="text" class="form-control" @bind="_smtpHost" style="max-width: 260px;" />
+                    <SfTextBox @bind-Value="_smtpHost" Style="max-width: 260px;" />
                 </div>
                 <div>
                     <label>@L["LabelPort"]</label>
-                    <input type="number" class="form-control" @bind="_smtpPort" style="max-width: 120px;" />
+                    <SfNumericTextBox TValue="int" @bind-Value="_smtpPort" Style="max-width: 120px;" />
                 </div>
                 <SfCheckBox TChecked="bool" @bind-Checked="_smtpUseTls" Label="@L["LabelUseStarttls"].Value" />
             </div>
             <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelSmtpUsername"]</label>
-                    <input type="text" class="form-control" @bind="_smtpUsername" style="max-width: 260px;" />
+                    <SfTextBox @bind-Value="_smtpUsername" Style="max-width: 260px;" />
                 </div>
                 <div>
                     <label>@L["LabelSmtpPassword"]</label>
-                    <input type="password" class="form-control" @bind="_smtpPassword" placeholder="@L["PlaceholderPassword"]" style="max-width: 260px;" />
+                    <SfTextBox @bind-Value="_smtpPassword" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PlaceholderPassword"]" Style="max-width: 260px;" />
                 </div>
             </div>
             <div class="d-flex flex-row gap-2">
                 <div>
                     <label>@L["LabelFromAddress"]</label>
-                    <input type="text" class="form-control" @bind="_smtpFromAddress" style="max-width: 300px;" />
+                    <SfTextBox @bind-Value="_smtpFromAddress" Style="max-width: 300px;" />
                 </div>
                 <div>
                     <label>@L["LabelNotifyAddress"]</label>
-                    <input type="text" class="form-control" @bind="_recipientEmail" style="max-width: 300px;" />
+                    <SfTextBox @bind-Value="_recipientEmail" Style="max-width: 300px;" />
                 </div>
             </div>
             <div class="d-flex flex-row gap-2">
@@ -94,6 +94,7 @@ else
         else
         {
             <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(UrgencyRow.EventType)" HeaderText="@L["ColEventType"]" />
@@ -139,12 +140,9 @@ else
             <div class="d-flex flex-row gap-2 mb-3">
                 <div style="flex: 1;">
                     <label>@L["MinimumSeverity"]</label>
-                    <select class="form-control" @bind="_minimumSeverity" disabled="@(!_pushEnabled || _isCheckingPush)">
-                        <option value="0">@L["SeverityInfo"]</option>
-                        <option value="1">@L["SeverityWarning"]</option>
-                        <option value="2">@L["SeverityAlert"]</option>
-                        <option value="3">@L["SeverityCritical"]</option>
-                    </select>
+                    <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_minimumSeverity" DataSource="@_severityOptions" Enabled="@(_pushEnabled && !_isCheckingPush)" Style="max-width: 200px;">
+                        <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                    </SfDropDownList>
                 </div>
                 <div>
                     <label>&nbsp;</label>
@@ -217,6 +215,14 @@ else
     private string? _pushMessage;
     private bool _pushSuccess;
     private bool _pushPrefsDirty;
+
+    private List<KeyValuePair<string, string>> _severityOptions => new()
+    {
+        new("0", L["SeverityInfo"].Value),
+        new("1", L["SeverityWarning"].Value),
+        new("2", L["SeverityAlert"].Value),
+        new("3", L["SeverityCritical"].Value),
+    };
 
     protected override async Task OnInitializedAsync()
     {

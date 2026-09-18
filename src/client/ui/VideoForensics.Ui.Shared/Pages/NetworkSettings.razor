@@ -40,16 +40,16 @@ else
     <div class="card mb-4"><div class="card-body">
         <div>
             <div>
-                <input type="radio" id="tierLocal" name="tier" value="local" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Local))" @checked="_selectedTier == NetworkTier.Local" />
-                <label for="tierLocal"><b>Local</b> - @L["LocalLabelText"]</label>
+                <SfRadioButton Label="Local" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Local" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
+                <span style="margin-left: 8px;">- @L["LocalLabelText"]</span>
             </div>
             <div>
-                <input type="radio" id="tierNetwork" name="tier" value="network" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Network))" @checked="_selectedTier == NetworkTier.Network" />
-                <label for="tierNetwork"><b>Network</b> - @L["NetworkLabelText"]</label>
+                <SfRadioButton Label="Network" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Network" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
+                <span style="margin-left: 8px;">- @L["NetworkLabelText"]</span>
             </div>
             <div>
-                <input type="radio" id="tierInternet" name="tier" value="internet" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => OnTierChanged(NetworkTier.Internet))" @checked="_selectedTier == NetworkTier.Internet" />
-                <label for="tierInternet"><b>Internet</b> - @L["InternetLabelText"]</label>
+                <SfRadioButton Label="Internet" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Internet" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
+                <span style="margin-left: 8px;">- @L["InternetLabelText"]</span>
             </div>
         </div>
 

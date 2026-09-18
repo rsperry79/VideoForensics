@@ -31,6 +31,7 @@ else
     else
     {
         <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">

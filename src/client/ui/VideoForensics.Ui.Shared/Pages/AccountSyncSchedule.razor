@@ -4,6 +4,8 @@
 @inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
 
+<Breadcrumb Items="@_breadcrumbItems" />
+
 <h4 class="mb-4">Sync Schedule</h4>
 
 @if (_isLoading)
@@ -101,31 +103,19 @@ else
                                             {
                                                 <tr>
                                                     <td>
-                                                        <select class="form-select form-select-sm" @bind="window.DayOfWeek">
-                                                            <option value="0">Sunday</option>
-                                                            <option value="1">Monday</option>
-                                                            <option value="2">Tuesday</option>
-                                                            <option value="3">Wednesday</option>
-                                                            <option value="4">Thursday</option>
-                                                            <option value="5">Friday</option>
-                                                            <option value="6">Saturday</option>
-                                                        </select>
+                                                        <SfDropDownList TValue="int" TItem="(int Value, string Display)" DataSource="@_dayOfWeekOptions" @bind-Value="window.DayOfWeek">
+                                                            <DropDownListFieldSettings Text="Display" Value="Value"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <select class="form-select form-select-sm" @bind="window.StartMinuteOfDay">
-                                                            @foreach (var timeOption in _timeOptions)
-                                                            {
-                                                                <option value="@timeOption.Minutes">@timeOption.Display</option>
-                                                            }
-                                                        </select>
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.StartMinuteOfDay">
+                                                            <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <select class="form-select form-select-sm" @bind="window.EndMinuteOfDay">
-                                                            @foreach (var timeOption in _timeOptions)
-                                                            {
-                                                                <option value="@timeOption.Minutes">@timeOption.Display</option>
-                                                            }
-                                                        </select>
+                                                        <SfDropDownList TValue="int" TItem="TimeOption" DataSource="@_timeOptions" @bind-Value="window.EndMinuteOfDay">
+                                                            <DropDownListFieldSettings Text="@nameof(TimeOption.Display)" Value="@nameof(TimeOption.Minutes)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
                                                     </td>
                                                     <td>
                                                         <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" Min="1" Step="1" />
@@ -149,7 +139,6 @@ else
 
                 <div class="mt-4">
                     <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? "Saving..." : "Save")" />
-                    <SfButton type="button" CssClass="e-outline ms-2" OnClick="GoBack" Disabled="@_isBusy" Content="Back to Account Details" />
                 </div>
             </EditForm>
         </div>
@@ -160,6 +149,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private SyncSchedule? _schedule;
     private int _snapshotRssiIntervalMinutes = 60;
     private int _eventPollIntervalMinutes = 60;
@@ -172,10 +162,13 @@ else
 
     private record TimeOption(int Minutes, string Display);
     private List<TimeOption> _timeOptions = [];
+    private List<(int Value, string Display)> _dayOfWeekOptions = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { ("Accounts", "/accounts"), ("Account Details", $"/accounts/{Id}"), ("Sync Schedule", null) };
         _timeOptions = BuildTimeOptions();
+        _dayOfWeekOptions = BuildDayOfWeekOptions();
         await LoadScheduleAsync();
     }
 
@@ -189,6 +182,20 @@ else
             options.Add(new TimeOption(minutes, $"{hours:D2}:{mins:D2}"));
         }
         return options;
+    }
+
+    private List<(int Value, string Display)> BuildDayOfWeekOptions()
+    {
+        return new List<(int Value, string Display)>
+        {
+            (0, "Sunday"),
+            (1, "Monday"),
+            (2, "Tuesday"),
+            (3, "Wednesday"),
+            (4, "Thursday"),
+            (5, "Friday"),
+            (6, "Saturday")
+        };
     }
 
     private async Task LoadScheduleAsync()
@@ -386,8 +393,4 @@ else
         }
     }
 
-    private void GoBack()
-    {
-        NavigationManager.NavigateTo($"/accounts/{Id}");
-    }
 }

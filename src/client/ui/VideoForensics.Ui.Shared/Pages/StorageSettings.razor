@@ -40,6 +40,7 @@ else if (_storageData is null || _storageData.Categories.Count == 0)
 else
 {
     <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false">
+        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridColumns>
             <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" />
             <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" />
@@ -84,7 +85,7 @@ else
                             @if (_pendingRelocateCategory == status.Category)
                             {
                                 <div class="mt-2 d-flex flex-column gap-2">
-                                    <input type="text" @bind-value="_newPathInput" placeholder="@L["PathPlaceholder"]" style="max-width: 400px;" />
+                                    <SfTextBox @bind-Value="_newPathInput" Placeholder="@L["PathPlaceholder"].Value" Style="max-width: 400px;" />
                                     <div class="d-flex flex-row gap-2">
                                         <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRelocate(status.Category)" CssClass="e-primary" />
                                         <SfButton Content="@L["CancelButton"]" OnClick="CancelPending" CssClass="e-flat" />

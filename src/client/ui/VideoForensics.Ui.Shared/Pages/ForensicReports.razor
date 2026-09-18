@@ -33,9 +33,9 @@ else
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
             </SfDropDownList>
             <small class="mt-3">@L["FromDate"]</small>
-            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <small class="mt-2">@L["ToDate"]</small>
-            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
         </div>
 
@@ -51,6 +51,7 @@ else
         else
         {
             <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn HeaderText="@L["ColEvidenceId"]">
@@ -65,7 +66,8 @@ else
                         <Template>
                             @{
                                 var item = (MediaItem)context;
-                                @(item.DeviceId.ToString("N")[..8])
+                                var deviceName = _devices.FirstOrDefault(d => d.Id == item.DeviceId)?.Name ?? item.DeviceId.ToString("N")[..8];
+                                @deviceName
                             }
                         </Template>
                     </GridColumn>
@@ -83,6 +85,7 @@ else
         else
         {
             <SfGrid TValue="DeviceHealth" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
@@ -90,7 +93,8 @@ else
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
-                                @(snapshot.DeviceId.ToString("N")[..8])
+                                var deviceName = _devices.FirstOrDefault(d => d.Id == snapshot.DeviceId)?.Name ?? snapshot.DeviceId.ToString("N")[..8];
+                                @deviceName
                             }
                         </Template>
                     </GridColumn>
@@ -146,6 +150,7 @@ else
         else
         {
             <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />

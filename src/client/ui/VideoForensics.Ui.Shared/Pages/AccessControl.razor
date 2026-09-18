@@ -8,6 +8,7 @@
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.DropDowns
 @using Syncfusion.Blazor.Buttons
+@using Syncfusion.Blazor.Calendars
 @inject IProviderAuthService AuthService
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -35,9 +36,9 @@ else
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
             </SfDropDownList>
             <small class="mt-3 d-block">@L["FromLabel"]</small>
-            <input type="date" @bind="_fromDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <small class="mt-2 d-block">@L["ToLabel"]</small>
-            <input type="date" @bind="_toDate" @bind:after="RunReportAsync" class="w-100" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <SfButton Content="@L["RunReport"]" OnClick="RunReportAsync" CssClass="e-primary mt-3 w-100" />
         </div>
     </PageRightPanelContent>
@@ -52,6 +53,7 @@ else
         else
         {
             <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" />
@@ -78,6 +80,7 @@ else
         else
         {
             <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" />

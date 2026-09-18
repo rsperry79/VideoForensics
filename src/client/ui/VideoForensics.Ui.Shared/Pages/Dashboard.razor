@@ -26,6 +26,7 @@ else
     else
     {
         <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
                 <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" HeaderText="@L["ColumnName"]" />

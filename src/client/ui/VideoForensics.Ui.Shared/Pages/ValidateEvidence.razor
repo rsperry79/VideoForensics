@@ -4,6 +4,7 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using Syncfusion.Blazor.Calendars
 @inject IProviderAuthService AuthService
 @inject IEvidenceValidationService EvidenceValidationService
 @inject IDeviceRepository DeviceRepository
@@ -51,6 +52,7 @@ else
             else
             {
                 <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
                         <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" />
@@ -83,11 +85,11 @@ else
             </div>
             <div class="right-panel-section">
                 <span>@L["FromLabel"]</span>
-                <input type="date" @bind="_fromDate" />
+                <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" CssClass="w-100" />
             </div>
             <div class="right-panel-section">
                 <span>@L["ToLabel"]</span>
-                <input type="date" @bind="_toDate" />
+                <SfDatePicker TValue="DateTime" @bind-Value="_toDate" CssClass="w-100" />
             </div>
         </PageRightPanelContent>
 
@@ -102,6 +104,7 @@ else
             else
             {
                 <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
                         <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" />
