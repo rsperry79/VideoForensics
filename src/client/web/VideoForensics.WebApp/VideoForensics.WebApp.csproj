@@ -28,6 +28,8 @@
     <!-- Windows Service hosting (plan: allows dotnet run/debug unchanged, becomes a Windows Service
          in production when installed via deploy/install-service.ps1). -->
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <!-- systemd integration on Linux (plan: allows app to run as a systemd service; no-op on other platforms). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.12" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
