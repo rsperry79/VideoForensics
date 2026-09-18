@@ -17,17 +17,17 @@ else if (!_isAuthenticated)
 }
 else
 {
-    <div class="collect-form">
+    <div class="d-flex flex-column gap-2 mb-4" style="gap: 0.5rem !important;">
         <div>
             <SfTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
         </div>
         <div>
             <label for="startDate">@L["StartDateLabel"]</label>
-            <input id="startDate" type="date" @bind="_startDate" disabled="@_isDownloading" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_startDate" Enabled="@(!_isDownloading)" />
         </div>
         <div>
             <label for="endDate">@L["EndDateLabel"]</label>
-            <input id="endDate" type="date" @bind="_endDate" disabled="@_isDownloading" />
+            <SfDatePicker TValue="DateTime" @bind-Value="_endDate" Enabled="@(!_isDownloading)" />
         </div>
         <div>
             <SfCheckBox TChecked="bool" @bind-Checked="_force" Label="@L["ForceFullRescan"].Value" />

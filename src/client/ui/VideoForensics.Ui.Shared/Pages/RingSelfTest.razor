@@ -31,17 +31,12 @@
             {
                 <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
                     <small style="color: #666;">@L["ReadOnlyEndpoints"]</small>
-                    @foreach (var endpoint in _readOnlyEndpoints)
-                    {
-                        <div style="margin-top: 0.5rem;">
-                            <input type="checkbox" id="ep_@endpoint.Key"
-                                @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleEndpoint(endpoint.Key, (bool)e.Value!))"
-                                checked="@_selectedEndpoints.Contains(endpoint.Key)" />
-                            <label for="ep_@endpoint.Key" style="margin-left: 0.5rem; cursor: pointer;">
-                                @endpoint.DisplayName
-                            </label>
-                        </div>
-                    }
+                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_readOnlyEndpoints"
+                        @bind-Value="_selectedReadOnlyKeys"
+                        Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["SelectEndpoints"]">
+                        <MultiSelectFieldSettings Text="DisplayName" Value="Key"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="string[]" TItem="SelfTestEndpointDto" ValueChange="OnReadOnlySelectionChanged"></MultiSelectEvents>
+                    </SfMultiSelect>
                 </div>
             }
 
@@ -50,17 +45,12 @@
             {
                 <div style="border: 1px solid #dc3545; background-color: #fff5f5; padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem;">
                     <small style="color: #dc3545; font-weight: bold;">@L["DestructivePhysicalEndpoints"]</small>
-                    @foreach (var endpoint in _destructiveEndpoints)
-                    {
-                        <div style="margin-top: 0.5rem;">
-                            <input type="checkbox" id="ep_@endpoint.Key"
-                                @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleEndpoint(endpoint.Key, (bool)e.Value!))"
-                                checked="@_selectedEndpoints.Contains(endpoint.Key)" />
-                            <label for="ep_@endpoint.Key" style="margin-left: 0.5rem; cursor: pointer;">
-                                @endpoint.DisplayName
-                            </label>
-                        </div>
-                    }
+                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_destructiveEndpoints"
+                        @bind-Value="_selectedDestructiveKeys"
+                        Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["SelectEndpoints"]">
+                        <MultiSelectFieldSettings Text="DisplayName" Value="Key"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="string[]" TItem="SelfTestEndpointDto" ValueChange="OnDestructiveSelectionChanged"></MultiSelectEvents>
+                    </SfMultiSelect>
                 </div>
             }
         </div>
@@ -76,12 +66,7 @@
 
                 <!-- Confirmation Checkbox -->
                 <div style="margin-top: 0.5rem;">
-                    <input type="checkbox" id="confirmDestructive"
-                        @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _confirmDestructive = (bool)e.Value!)"
-                        checked="@_confirmDestructive" />
-                    <label for="confirmDestructive" style="margin-left: 0.5rem; cursor: pointer;">
-                        @L["ConfirmDestructive"]
-                    </label>
+                    <SfCheckBox @bind-Checked="_confirmDestructive" Label="@L["ConfirmDestructive"]" />
                 </div>
             </div>
         }
@@ -93,34 +78,31 @@
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
                 <!-- Location ID -->
                 <div>
-                    <label for="locationId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationId"]</label>
-                    <input type="text" id="locationId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _locationIdInput = (string)e.Value!)" value="@_locationIdInput" placeholder="@L["LocationIdPlaceholder"]" class="form-control form-control-sm" />
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationId"]</label>
+                    <SfTextBox @bind-Value="_locationIdInput" Placeholder="@L["LocationIdPlaceholder"]" />
                 </div>
 
                 <!-- Doorbot ID -->
                 <div>
-                    <label for="doorbotId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DoorbotId"]</label>
-                    <input type="number" id="doorbotId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _doorbotIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@(_doorbotIdInput?.ToString() ?? "")" placeholder="@L["DoorbotIdPlaceholder"]" class="form-control form-control-sm" />
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DoorbotId"]</label>
+                    <SfNumericTextBox @bind-Value="_doorbotIdInput" Placeholder="@L["DoorbotIdPlaceholder"]" />
                 </div>
 
                 <!-- Chime ID -->
                 <div>
-                    <label for="chimeId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeId"]</label>
-                    <input type="number" id="chimeId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeIdInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : long.Parse(e.Value!.ToString()!))" value="@(_chimeIdInput?.ToString() ?? "")" placeholder="@L["ChimeIdPlaceholder"]" class="form-control form-control-sm" />
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeId"]</label>
+                    <SfNumericTextBox @bind-Value="_chimeIdInput" Placeholder="@L["ChimeIdPlaceholder"]" />
                 </div>
 
                 <!-- History Limit -->
                 <div>
-                    <label for="historyLimit" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["HistoryLimit"]</label>
-                    <input type="number" id="historyLimit" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _historyLimitInput = int.TryParse(e.Value?.ToString(), out var val) ? val : 5)" value="@_historyLimitInput" min="1" class="form-control form-control-sm" />
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["HistoryLimit"]</label>
+                    <SfNumericTextBox @bind-Value="_historyLimitInput" Min="1" />
                 </div>
 
                 <!-- No Physical Checkbox -->
                 <div>
-                    <input type="checkbox" id="noPhysical" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _noPhysicalInput = (bool)e.Value!)" checked="@_noPhysicalInput" />
-                    <label for="noPhysical" style="margin-left: 0.5rem; cursor: pointer; font-size: 0.85rem;">
-                        @L["NoPhysical"]
-                    </label>
+                    <SfCheckBox @bind-Checked="_noPhysicalInput" Label="@L["NoPhysical"]" />
                 </div>
 
                 <!-- Destructive-only fields -->
@@ -131,50 +113,50 @@
 
                         <!-- Siren Duration -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="sirenDuration" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["SirenDurationSeconds"]</label>
-                            <input type="number" id="sirenDuration" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _sirenDurationInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_sirenDurationInput?.ToString() ?? "")" placeholder="@L["SirenDurationPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["SirenDurationSeconds"]</label>
+                            <SfNumericTextBox @bind-Value="_sirenDurationInput" Placeholder="@L["SirenDurationPlaceholder"]" />
                         </div>
 
                         <!-- Volume Level -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="volumeLevel" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["VolumeLevel"]</label>
-                            <input type="number" id="volumeLevel" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _volumeLevelInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_volumeLevelInput?.ToString() ?? "")" placeholder="@L["VolumeLevelPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["VolumeLevel"]</label>
+                            <SfNumericTextBox @bind-Value="_volumeLevelInput" Placeholder="@L["VolumeLevelPlaceholder"]" />
                         </div>
 
                         <!-- Chime Type Value -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="chimeTypeValue" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeTypeValue"]</label>
-                            <input type="number" id="chimeTypeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _chimeTypeValueInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_chimeTypeValueInput?.ToString() ?? "")" placeholder="@L["ChimeTypeValuePlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ChimeTypeValue"]</label>
+                            <SfNumericTextBox @bind-Value="_chimeTypeValueInput" Placeholder="@L["ChimeTypeValuePlaceholder"]" />
                         </div>
 
                         <!-- DND Seconds -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="dndSeconds" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DndSeconds"]</label>
-                            <input type="number" id="dndSeconds" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dndSecondsInput = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value!.ToString()!))" value="@(_dndSecondsInput?.ToString() ?? "")" placeholder="@L["DndSecondsPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DndSeconds"]</label>
+                            <SfNumericTextBox @bind-Value="_dndSecondsInput" Placeholder="@L["DndSecondsPlaceholder"]" />
                         </div>
 
                         <!-- Location Mode Value -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="locationModeValue" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationModeValue"]</label>
-                            <input type="text" id="locationModeValue" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _locationModeValueInput = (string)e.Value!)" value="@_locationModeValueInput" placeholder="@L["LocationModeValuePlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["LocationModeValue"]</label>
+                            <SfTextBox @bind-Value="_locationModeValueInput" Placeholder="@L["LocationModeValuePlaceholder"]" />
                         </div>
 
                         <!-- Ding Id -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="dingId" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DingId"]</label>
-                            <input type="text" id="dingId" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _dingIdInput = (string)e.Value!)" value="@_dingIdInput" placeholder="@L["DingIdPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["DingId"]</label>
+                            <SfTextBox @bind-Value="_dingIdInput" Placeholder="@L["DingIdPlaceholder"]" />
                         </div>
 
                         <!-- Asset Uuid -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="assetUuid" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["AssetUuid"]</label>
-                            <input type="text" id="assetUuid" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _assetUuidInput = (string)e.Value!)" value="@_assetUuidInput" placeholder="@L["AssetUuidPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["AssetUuid"]</label>
+                            <SfTextBox @bind-Value="_assetUuidInput" Placeholder="@L["AssetUuidPlaceholder"]" />
                         </div>
 
                         <!-- Push Token -->
                         <div style="margin-top: 0.5rem;">
-                            <label for="pushToken" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["PushToken"]</label>
-                            <input type="text" id="pushToken" @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => _pushTokenInput = (string)e.Value!)" value="@_pushTokenInput" placeholder="@L["PushTokenPlaceholder"]" class="form-control form-control-sm" />
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["PushToken"]</label>
+                            <SfTextBox @bind-Value="_pushTokenInput" Placeholder="@L["PushTokenPlaceholder"]" />
                         </div>
                     </div>
                 }
@@ -219,6 +201,7 @@
         @if (_result.Calls.Count > 0)
         {
             <SfGrid TValue="SelfTestCallDto" DataSource="@_result.Calls" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(SelfTestCallDto.DisplayName)" HeaderText="@L["ColEndpoint"]" />
@@ -293,6 +276,8 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
     private List<SelfTestEndpointDto> _readOnlyEndpoints = new();
     private List<SelfTestEndpointDto> _destructiveEndpoints = new();
     private HashSet<string> _selectedEndpoints = new();
+    private string[] _selectedReadOnlyKeys = Array.Empty<string>();
+    private string[] _selectedDestructiveKeys = Array.Empty<string>();
     private bool _hasDestructive;
     private bool _confirmDestructive;
     private string? _runError;
@@ -327,6 +312,14 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 
             _readOnlyEndpoints = _allEndpoints.Where(e => !e.Destructive && !e.Physical).ToList();
             _destructiveEndpoints = _allEndpoints.Where(e => e.Destructive || e.Physical).ToList();
+
+            // Initialize selected keys from current selections
+            _selectedReadOnlyKeys = _selectedEndpoints
+                .Where(k => _readOnlyEndpoints.Any(e => e.Key == k))
+                .ToArray();
+            _selectedDestructiveKeys = _selectedEndpoints
+                .Where(k => _destructiveEndpoints.Any(e => e.Key == k))
+                .ToArray();
 
             // Check if a run is already in progress or completed
             try
@@ -377,6 +370,28 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
             _allEndpoints.FirstOrDefault(e => e.Key == key) is { } ep &&
             (ep.Destructive || ep.Physical)
         );
+    }
+
+    private void OnReadOnlySelectionChanged(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<string[]> e)
+    {
+        _selectedReadOnlyKeys = e.Value ?? Array.Empty<string>();
+        SyncSelectedEndpoints();
+    }
+
+    private void OnDestructiveSelectionChanged(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<string[]> e)
+    {
+        _selectedDestructiveKeys = e.Value ?? Array.Empty<string>();
+        SyncSelectedEndpoints();
+    }
+
+    private void SyncSelectedEndpoints()
+    {
+        _selectedEndpoints.Clear();
+        foreach (var key in _selectedReadOnlyKeys.Concat(_selectedDestructiveKeys))
+        {
+            _selectedEndpoints.Add(key);
+        }
+        UpdateDestructiveFlag();
     }
 
     private async Task RunReportAsync()
