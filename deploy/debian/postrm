@@ -1,0 +1,35 @@
+#!/bin/sh
+set -e
+
+# postrm script for videoforensics package
+# Called after package files are removed.
+# Different behavior for "remove" vs. "purge" to preserve user data on uninstall.
+
+case "$1" in
+    remove)
+        # On plain remove: disable the service and reload systemd,
+        # but leave data and system user intact for possible reinstall
+        systemctl disable videoforensics || true
+        systemctl daemon-reload || true
+        ;;
+
+    purge)
+        # On purge: this is an explicit request to remove everything
+        # Disable the service
+        systemctl disable videoforensics || true
+        systemctl daemon-reload || true
+
+        # Remove the data directory - THIS IS THE ONLY PLACE USER DATA IS DELETED
+        # This matches the Windows uninstall contract where %ProgramData%\VideoForensics
+        # is only touched on explicit purge, never on plain uninstall
+        if [ -d /var/lib/videoforensics ]; then
+            rm -rf /var/lib/videoforensics
+        fi
+
+        # Remove the system user and group (idempotent, will fail silently if already gone)
+        # This cleanup is optional but good practice - the user likely won't be needed again
+        deluser --system videoforensics 2>/dev/null || true
+        ;;
+esac
+
+exit 0

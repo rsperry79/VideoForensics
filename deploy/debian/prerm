@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+# prerm script for videoforensics package
+# Called before the package files are removed.
+# The first argument is the action: "remove" or "deconfigure".
+
+if [ "$1" = "remove" ]; then
+    # Stop the service before removing files
+    systemctl stop videoforensics || true
+fi
+
+exit 0
