@@ -17,6 +17,11 @@
   <PropertyGroup>
     <OutputType>Bundle</OutputType>
 
+    <!-- Pin the output filename to VideoForensicsBootstrapper.exe rather than relying on the
+         WiX SDK's default (which follows the .wixproj filename) - the release CI workflow
+         (.github/workflows/release-installers.yml) depends on this exact, predictable name. -->
+    <OutputName>VideoForensicsBootstrapper</OutputName>
+
     <!-- Define default constants for the WiX build. ProductVersion should match the MSI.
          These are placeholders meant to be overridden at CI build time. -->
     <DefineConstants>ProductVersion=1.0.0</DefineConstants>

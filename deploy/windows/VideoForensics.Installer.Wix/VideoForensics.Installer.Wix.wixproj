@@ -14,6 +14,12 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
 
+    <!-- Pin the output filename to VideoForensics.msi rather than relying on the WiX SDK's
+         default (which follows the .wixproj filename, i.e. VideoForensics.Installer.Wix.msi) -
+         the release CI workflow (.github/workflows/release-installers.yml) depends on this
+         exact, predictable name. -->
+    <OutputName>VideoForensics</OutputName>
+
     <!-- Define default constants for the WiX build. These are placeholders meant to be overridden
          at CI build time via -p:DefineConstants=... with the real self-contained publish path
          and product version read from VideoForensics.WebApp.csproj. -->
