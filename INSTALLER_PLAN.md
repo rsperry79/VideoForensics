@@ -67,20 +67,25 @@ installed" — don't let Windows and Debian invent two different version schemes
   WiX and `.deb` postrm both need this spelled out explicitly (WiX: don't remove
   `CommonAppDataFolder` components; `.deb`: `postrm purge` only, never plain `remove`).
 
-## Windows: MSI installer
+## Windows: MSI installer + EXE bootstrapper
 
 1. **Tooling:** WiX Toolset v5 (current, actively maintained; MSBuild-integrated via the
    `WixToolset.Sdk` — fits this repo's all-MSBuild/`dotnet build` workflow better than
-   hand-rolled `candle`/`light` calls or a third-party bundler). New project:
-   `deploy/windows/VideoForensics.Installer.Wix/` (WiX `.wixproj`), **not** under `src/` —
-   packaging is not application code and shouldn't confuse the client/server split rules
-   in `CLAUDE.md`. Per this repo's global convention, its `.wixproj` still needs the
-   `Microsoft.CodeAnalysis` package reference alongside whatever WiX packages it takes.
-2. **What the MSI does:**
-   - Harvests the `dotnet publish` output of `VideoForensics.WebApp` (framework-dependent
-     or self-contained — decide alongside the Debian self-contained decision above so
-     Windows and Linux artifacts are produced the same way in CI) into
-     `%ProgramFiles%\VideoForensics\`.
+   hand-rolled `candle`/`light` calls or a third-party bundler), plus the
+   `WixToolset.Bal.wixext` (Burn) extension for the bootstrapper. Two new projects, both
+   under `deploy/windows/`, **not** under `src/` — packaging is not application code and
+   shouldn't confuse the client/server split rules in `CLAUDE.md`:
+   - `deploy/windows/VideoForensics.Installer.Wix/` — the `.msi` (`.wixproj`).
+   - `deploy/windows/VideoForensics.Bootstrapper.Wix/` — the Burn `.exe` (`.wixproj`),
+     `ProjectReference`-ing (WiX's package-reference mechanism, i.e. `<PackageGroupRef>`/
+     harvested `.wixproj` output) the MSI project so it always bundles the MSI just built.
+   Per this repo's global convention, both `.wixproj` files still need the
+   `Microsoft.CodeAnalysis` package reference alongside whatever WiX packages they take.
+2. **Publish input:** both are built from a self-contained `dotnet publish -r win-x64
+   --self-contained true` of `VideoForensics.WebApp` (per the confirmed decision above) —
+   no runtime-presence check needed in the bootstrapper because of this.
+3. **What the MSI does:**
+   - Harvests the self-contained publish output into `%ProgramFiles%\VideoForensics\`.
    - Registers the Windows Service via WiX's built-in `ServiceInstall`/`ServiceControl`
      elements (start type Automatic, account LocalSystem, failure recovery config) —
      replacing the manual `New-Service`/`sc.exe` calls in `install-service.ps1` with the
@@ -97,15 +102,23 @@ installed" — don't let Windows and Debian invent two different version schemes
      rollback-safe.
    - `%ProgramData%\VideoForensics` is referenced (for the Event Log source and any
      first-run seed file) but never marked for removal on uninstall.
-3. **Signing:** the MSI (and the `VideoForensics.WebApp.exe` inside it) should be
-   Authenticode-signed before distribution — flag this as a release-process step (cert +
-   signing tool in CI), not something to hack around with `Set-ExecutionPolicy`-style
-   workarounds for end users. Confirm with the user whether a code-signing cert already
-   exists before treating this as blocking.
-4. **Retire vs. keep the PowerShell scripts:** keep `deploy/install-service.ps1` /
+4. **What the Burn `.exe` bootstrapper adds:**
+   - Wraps the MSI as a single `.exe` payload with a themed UI (WiX's standard Burn
+     `WixStandardBootstrapperApplication`) — the file most end users should download.
+   - Because publish is self-contained, the bootstrapper needs no chained prerequisite
+     package for the .NET runtime; it's kept anyway as the extensibility point for a
+     future prerequisite (e.g. VC++ redistributable) without touching the MSI.
+   - Inherits the MSI's upgrade behavior automatically — Burn re-runs the same MSI logic
+     under the hood, so update support does not need separate bootstrapper-level logic.
+5. **Signing:** the MSI, the bootstrapper `.exe`, and `VideoForensics.WebApp.exe` inside
+   it should all be Authenticode-signed before distribution — flag this as a
+   release-process step (cert + signing tool in CI), not something to hack around with
+   `Set-ExecutionPolicy`-style workarounds for end users. Still open — see below.
+6. **Retire vs. keep the PowerShell scripts:** keep `deploy/install-service.ps1` /
    `uninstall-service.ps1` for developer/CI use (quick iteration without building an MSI
-   every time) but make the README clear the MSI is the supported end-user path once it
-   exists.
+   every time) but make the README clear the bootstrapper `.exe` is the supported
+   end-user path once it exists, with the `.msi` available directly for
+   `msiexec`/group-policy scenarios.
 
 ## Debian: `.deb` package
 
@@ -161,23 +174,39 @@ installed" — don't let Windows and Debian invent two different version schemes
 
 ## CI / release pipeline
 
-- Single release job builds both artifacts from the same tagged commit/`<Version>`:
-  `dotnet publish` → WiX build → `.msi`; `dotnet publish` (linux-x64) → `.deb` build.
+- Single release job builds all artifacts from the same tagged commit/`<Version>`:
+  `dotnet publish -r win-x64 --self-contained true` → WiX MSI build → Burn bootstrapper
+  build (`.msi` + `.exe`); `dotnet publish -r linux-x64 --self-contained true` → `.deb`
+  build.
 - Output both artifacts plus their checksums as GitHub release assets — don't hand-carry
   binaries.
 - This plan does not commit to auto-update (an in-app "check for updates" ping) — that is
   a distinct feature from "the installer supports being re-run to update" and should be
   scoped separately if wanted; flag this explicitly rather than silently expanding scope.
 
-## Open questions to confirm with the user before implementation starts
+## Decisions confirmed by user (2026-09-18)
 
-1. Self-contained vs. framework-dependent publish for both platforms (affects `Depends:`
-   and MSI size) — recommend self-contained, but confirm.
-2. Is a code-signing certificate available for the MSI/`.exe`? If not, ship unsigned for
+1. **Publish mode: self-contained** for both platforms (Windows `win-x64`, Linux
+   `linux-x64`) — no runtime dependency on the target machine; `.deb` `Depends:` only
+   needs baseline shared libraries, not `dotnet-runtime-10.0`.
+2. **Windows output: both formats.**
+   - A `.msi` built directly with WiX (the installable unit — Windows Service
+     registration, major-upgrade, Event Log source all live here).
+   - A `.exe` **Burn bootstrapper** (WiX v5's `WixToolset.Bal.wixext`) wrapping that MSI,
+     so end users get a single double-clickable file. Since the app is self-contained,
+     the bootstrapper does not need to chain-install the .NET runtime as a prerequisite —
+     its main value here is the familiar single-`.exe` UX and room to add prerequisite
+     checks later (e.g. VC++ redistributables) without changing the MSI.
+   - Both are produced from every release; the MSI is also kept as a standalone artifact
+     for `msiexec`/group-policy deployment scenarios.
+
+## Open questions still to confirm with the user before implementation starts
+
+1. Is a code-signing certificate available for the MSI/`.exe`? If not, ship unsigned for
    now and flag the SmartScreen/Defender friction this causes.
-3. Target Debian/Ubuntu version floor, and whether a hosted apt repo is in scope now or
+2. Target Debian/Ubuntu version floor, and whether a hosted apt repo is in scope now or
    later.
-4. Confirm the actual current EF Core/SQLite migration invocation mechanism (needed by
+3. Confirm the actual current EF Core/SQLite migration invocation mechanism (needed by
    both `postinst` and the MSI's upgrade path) before either packaging script assumes how
    migrations run.
 
@@ -188,10 +217,12 @@ installed" — don't let Windows and Debian invent two different version schemes
 2. Debian packaging (`deploy/debian/`): control file, systemd unit, postinst/prerm/postrm,
    build script. Test on a real Debian/Ubuntu VM/container: fresh install, upgrade over an
    existing install, remove, purge.
-3. Windows packaging (`deploy/windows/VideoForensics.Installer.Wix/`): WiX project,
-   major-upgrade config, service registration. Test: fresh install, upgrade over an
-   existing install (including one from the old PowerShell-script-based install, if that
-   migration path matters), uninstall.
+3. Windows packaging: `deploy/windows/VideoForensics.Installer.Wix/` (MSI project,
+   major-upgrade config, service registration), then
+   `deploy/windows/VideoForensics.Bootstrapper.Wix/` (Burn bootstrapper wrapping it).
+   Test: fresh install via both `.msi` and `.exe`, upgrade over an existing install
+   (including one from the old PowerShell-script-based install, if that migration path
+   matters), uninstall.
 4. Wire both into the release CI pipeline.
 5. Update `deploy/README.md` (or split into `deploy/windows/README.md` +
    `deploy/debian/README.md`) to document the new installer-first workflow, keeping the
