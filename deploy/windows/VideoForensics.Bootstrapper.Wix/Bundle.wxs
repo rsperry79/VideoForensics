@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VideoForensics Burn Bootstrapper Bundle (WiX v5)
+
+  Wraps the VideoForensics MSI installer in a single .exe with a standard UI.
+  Provides the end-user-friendly double-clickable installer experience.
+
+  IMPORTANT: Not validated in this sandbox (no WiX SDK available). First real build should verify:
+  1. MSI harvesting via $(var.VideoForensics.Installer.Wix.TargetPath) is correctly populated
+  2. Bundle UpgradeCode is different from the MSI's UpgradeCode (bundles need their own code) - confirmed different here
+  3. Whether a real license/icon should be added later (currently suppressed/omitted - see below)
+
+  Upgrade Behavior:
+  - Inherits from the MSI's MajorUpgrade configuration: re-running a newer .exe bootstrapper
+    will automatically invoke the MSI's major-upgrade logic (stop service, replace files, restart).
+  - No separate bootstrapper-level upgrade logic needed.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="VideoForensics"
+          Manufacturer="DV Victim Protection Team"
+          Version="$(var.ProductVersion)"
+          UpgradeCode="7E881889-B944-44B4-A968-83BA5E4FEC57">
+
+    <!-- BootstrapperApplication: use the standard WiX-provided UI (HyperlinkLicense variant),
+         with LicenseUrl="" to suppress the license link/checkbox entirely - this is the
+         documented way to ship an "unlicensed" bootstrapper UI with this variant. A real
+         license page can be added later by setting LicenseUrl to a real URL. No icon file
+         exists yet in this repo, so IconSourceFile is intentionally omitted (would fail the
+         build if pointed at a nonexistent file) - add one later and set IconSourceFile on
+         the Bundle element when available. -->
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" />
+    </BootstrapperApplicationRef>
+
+    <Variable Name="InstallScope" Value="perMachine" />
+
+    <!-- Chain: list of packages to install in order.
+         The MSI is harvested from the VideoForensics.Installer.Wix project build output.
+         When building the bootstrapper, WiX v5 SDK automatically provides:
+         $(var.VideoForensics.Installer.Wix.TargetPath) — the path to the built MSI.
+    -->
+    <Chain>
+      <!-- Include the MSI that was just built alongside this bootstrapper.
+           InstallCondition: only install if the architecture matches (x64 machine).
+           Vital: if the MSI fails, the bundle fails.
+      -->
+      <MsiPackage SourceFile="$(var.VideoForensics.Installer.Wix.TargetPath)"
+                  InstallCondition="VersionNT64"
+                  Vital="yes"
+                  Compressed="yes" />
+    </Chain>
+
+  </Bundle>
+</Wix>

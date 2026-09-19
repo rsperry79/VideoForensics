@@ -1,0 +1,18 @@
+[Unit]
+Description=VideoForensics Web Application
+Documentation=https://github.com/DVVictimProtection/VideoForensics
+After=network.target
+
+[Service]
+Type=notify
+User=videoforensics
+Group=videoforensics
+WorkingDirectory=/usr/lib/videoforensics
+ExecStart=/usr/lib/videoforensics/VideoForensics.WebApp
+Restart=on-failure
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
