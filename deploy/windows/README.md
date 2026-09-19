@@ -54,6 +54,12 @@ To use a different or newer ffmpeg version:
 
 Ensure any custom ffmpeg build is compatible with the app's video processing requirements.
 
+## Hardware-Accelerated Video Decoding
+
+The app auto-detects and uses hardware-accelerated video decoding when available, including NVIDIA CUDA, Intel Quick Sync, and Direct3D11/DXVA2 acceleration. The bundled ffmpeg build already includes support for these acceleration methods.
+
+No separate installation is required — hardware acceleration activates automatically if your GPU driver (already required for display) exposes the necessary runtime support. If no compatible hardware or driver is found, the app transparently falls back to software decoding. No configuration is needed either way.
+
 ## Building the Installer
 
 ### Quick Build (Default Paths)
