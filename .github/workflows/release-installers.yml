@@ -1,0 +1,224 @@
+# Build and release Windows MSI/bootstrapper and Debian .deb installers from tagged versions.
+#
+# This workflow builds both installers from the same tagged commit per INSTALLER_PLAN.md:
+# - Windows: self-contained dotnet publish (win-x64) → WiX MSI → Burn bootstrapper (.exe wrapping .msi)
+# - Debian:  self-contained dotnet publish (linux-x64) → dpkg-based .deb package
+#
+# Both installers are unsigned (no code-signing certificate yet) — end users will see SmartScreen
+# warnings on Windows. Signing will be added as a CI step once a certificate is available.
+#
+# The Windows build (first CI run via release-installers.yml) has not yet been validated on a
+# real Windows machine. First run should be treated as a shakedown build; see deploy/windows/README.md
+# for validation checklist.
+
+name: Build and Release Installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-debian:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Extract version from tag
+        id: extract-version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # For workflow_dispatch without a tag, fallback to dev version
+          if [[ -z "$VERSION" ]] || [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            VERSION="0.0.0-dev"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Publish WebApp (linux-x64, self-contained)
+        run: |
+          dotnet publish src/client/web/VideoForensics.WebApp \
+            -c Release -r linux-x64 --self-contained true \
+            -o /tmp/publish-linux
+
+      - name: Build Debian package
+        run: |
+          chmod +x deploy/debian/build-deb.sh
+          ./deploy/debian/build-deb.sh /tmp/publish-linux "${{ steps.extract-version.outputs.version }}"
+
+      - name: Compute SHA256 checksums
+        shell: bash
+        run: |
+          cd deploy/debian
+          sha256sum "videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb" \
+            > "videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb.sha256"
+          echo "Generated checksum file:"
+          cat "videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb.sha256"
+
+      - name: Upload Debian package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: |
+            deploy/debian/videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb
+            deploy/debian/videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb.sha256
+
+  build-windows:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Extract version from tag (PowerShell)
+        id: extract-version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v',''
+          # For workflow_dispatch without a tag, fallback to dev version
+          if ([string]::IsNullOrEmpty($version) -or $version -eq $env:GITHUB_REF_NAME) {
+            $version = "0.0.0-dev"
+          }
+          Add-Content $env:GITHUB_OUTPUT "version=$version"
+          Write-Host "Detected version: $version"
+
+      - name: Publish WebApp (win-x64, self-contained)
+        run: |
+          dotnet publish src/client/web/VideoForensics.WebApp `
+            -c Release -r win-x64 --self-contained true `
+            -o publish-win
+
+      - name: Build WiX Bootstrapper (transitively builds MSI)
+        shell: pwsh
+        # Build the Bootstrapper project which has a ProjectReference to the MSI project.
+        # The -p:DefineConstants passes PublishDir (location of publish output) and ProductVersion
+        # to the WiX build. Adjust the path syntax if needed after first real Windows CI run.
+        run: |
+          $publishPath = (Resolve-Path "publish-win").Path
+          $version = "${{ steps.extract-version.outputs.version }}"
+          Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
+          dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
+            -c Release `
+            -p:DefineConstants="PublishDir=$publishPath;ProductVersion=$version"
+
+      - name: Locate built installers
+        shell: pwsh
+        # The exact output paths may need adjusting after the first real CI run if WiX
+        # projects have non-standard output directory configurations. Current expected paths:
+        # - MSI: deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
+        # - EXE: deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
+        # Verify these exist; if not, inspect the bin/Release/ directories for actual output.
+        run: |
+          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
+          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
+
+          if (-not (Test-Path $msiPath)) {
+            Write-Host "ERROR: MSI not found at expected path: $msiPath"
+            Write-Host "Checking Installer.Wix/bin/Release:"
+            Get-ChildItem "deploy/windows/VideoForensics.Installer.Wix/bin/Release" -ErrorAction SilentlyContinue
+            exit 1
+          }
+          if (-not (Test-Path $exePath)) {
+            Write-Host "ERROR: Bootstrapper .exe not found at expected path: $exePath"
+            Write-Host "Checking Bootstrapper.Wix/bin/Release:"
+            Get-ChildItem "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release" -ErrorAction SilentlyContinue
+            exit 1
+          }
+
+          Write-Host "Found MSI: $msiPath"
+          Write-Host "Found EXE: $exePath"
+
+      - name: Compute SHA256 checksums (Windows)
+        shell: pwsh
+        run: |
+          $version = "${{ steps.extract-version.outputs.version }}"
+          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
+          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
+          $msiOut = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256"
+          $exeOut = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256"
+
+          $msiHash = (Get-FileHash -Path $msiPath -Algorithm SHA256).Hash
+          "$msiHash  $(Split-Path -Leaf $msiPath)" | Out-File -FilePath $msiOut -Encoding ASCII
+
+          $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
+          "$exeHash  $(Split-Path -Leaf $exePath)" | Out-File -FilePath $exeOut -Encoding ASCII
+
+          Write-Host "MSI checksum:"
+          Get-Content $msiOut
+          Write-Host "EXE checksum:"
+          Get-Content $exeOut
+
+      - name: Upload Windows installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
+            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256
+            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
+            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-debian, build-windows]
+    # Only create a GitHub Release on actual version tag pushes, not on workflow_dispatch test runs
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Organize release files
+        shell: bash
+        run: |
+          mkdir -p release-files
+          # Copy all downloaded artifacts into a single directory for the release
+          cp -v release-artifacts/debian-package/* release-files/ 2>/dev/null || true
+          cp -v release-artifacts/windows-installer/* release-files/ 2>/dev/null || true
+          echo "Release files ready:"
+          ls -lah release-files/
+
+      - name: Create GitHub Release (Draft)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          draft: true
+          # Draft releases are not auto-published. Review the unsigned installers and
+          # publish manually once validated. Signing support (with a code-signing cert)
+          # will be added as a CI step later — for now, draft status acknowledges that
+          # these binaries are unsigned and should be manually reviewed before publication.
+          body: |
+            ## Release Notes
+
+            **Installers:**
+            - `videoforensics_*.deb` — Debian/Ubuntu package (self-contained .NET 10 linux-x64)
+            - `VideoForensics.msi` — Windows MSI installer (self-contained .NET 10 win-x64)
+            - `VideoForensicsBootstrapper.exe` — Windows Burn bootstrapper wrapping the MSI
+
+            **Status:** Draft release (unsigned installers).
+
+            All files are accompanied by `.sha256` checksum files for integrity verification.
+
+            See `deploy/debian/README.md` and `deploy/windows/README.md` for installation and upgrade instructions.
+
+            ---
+
+            **IMPORTANT:** These installers are unsigned. Windows may display SmartScreen warnings on first run. Signing support will be added once a code-signing certificate is available.

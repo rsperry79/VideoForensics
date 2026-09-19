@@ -1,0 +1,11 @@
+Package: videoforensics
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: libc6, libicu70 | libicu71 | libicu72, libssl3, ca-certificates, zlib1g
+Maintainer: DV Victim Protection Team <noreply@example.com>
+Description: VideoForensics web application and API server
+ VideoForensics is a comprehensive platform for managing and analyzing video
+ evidence from multiple providers. It provides unified device discovery, media
+ download, and forensic analysis capabilities for video surveillance systems.

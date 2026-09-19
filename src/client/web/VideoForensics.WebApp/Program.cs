@@ -42,6 +42,10 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // not running under the SCM, so no conditional is needed).
 builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics");
 
+// systemd integration on Linux - enables running under systemd while keeping dotnet run/debugging
+// unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
+builder.Host.UseSystemd();
+
 int listenPort = ResolveConfiguredPort(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
