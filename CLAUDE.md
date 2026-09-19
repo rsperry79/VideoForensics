@@ -61,6 +61,8 @@ There is no `archive/` directory in this repo — don't assume one exists.
 
 ## Testing
 
+- **Every non-test code change ships with tests covering it.** This applies to new classes, new methods, and behavior changes to existing code (e.g. new branches, fallback paths, retry logic) — not just new interfaces. "Existing tests still pass" is not sufficient proof of coverage for new behavior; if a change adds a new code path, add a test that exercises that path. Treat a change with no accompanying test as incomplete, not as a follow-up to do later.
+- **Write code TDD-style: test first, then implementation.** For new behavior (a new class, method, branch, fallback/retry path, or bugfix), write the test(s) that describe the expected behavior before writing the code that satisfies them — the test should fail for the right reason first, then the implementation makes it pass. When dispatching to a Haiku subagent, tell it to write the test(s) first and confirm they fail, then implement, then confirm they pass — don't dispatch "implement X" and "test X" as if testing were an afterthought tacked onto a finished implementation.
 - Location: `<project>/tests/<Feature>Tests.cs` (sibling `tests/` project next to the implementation)
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`

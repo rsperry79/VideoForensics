@@ -113,21 +113,76 @@ namespace VideoForensics.Providers.Ring
 
             try
             {
+                // Detect best available hardware acceleration method
+                string? hwAccelMethod = FfmpegHardwareAccelDetector.Detect(_ffmpegPath);
+                string[] hwAccelArgs = FfmpegHardwareAccelDetector.BuildDecodeArgs(hwAccelMethod);
+
+                // Try extraction with hwaccel args first, then fallback to software decode if hwaccel fails
+                // isFinalAttempt is true if there's no hwaccel to fall back to
+                bool isFinalAttempt = hwAccelArgs.Length == 0;
+                ExtractedFrame? result = TryExtractFrame(videoFilePath, timestampMs, timeFormatted, frameFileName, frameFilePath, hwAccelArgs, isFinalAttempt);
+                if (result != null || isFinalAttempt)
+                {
+                    return result;
+                }
+
+                // Fallback: retry without hwaccel args (this is the final attempt)
+                return TryExtractFrame(videoFilePath, timestampMs, timeFormatted, frameFileName, frameFilePath, Array.Empty<string>(), isFinalAttempt: true);
+            }
+            catch (Exception ex)
+            {
+                return new ExtractedFrame
+                {
+                    TimestampMs = timestampMs,
+                    TimeFormatted = timeFormatted,
+                    FrameFileName = frameFileName,
+                    FrameFilePath = frameFilePath,
+                    ExtractionSuccessful = false,
+                    ExtractionError = ex.Message,
+                    ExtractedAt = DateTime.UtcNow
+                };
+            }
+        }
+
+        private ExtractedFrame? TryExtractFrame(
+            string videoFilePath,
+            long timestampMs,
+            string timeFormatted,
+            string frameFileName,
+            string frameFilePath,
+            string[] hwAccelArgs,
+            bool isFinalAttempt)
+        {
+            try
+            {
                 // Use FFmpeg to extract frame at timestamp
                 // -ss seeks to timestamp before decoding (fast)
                 // -vframes 1 extracts exactly 1 frame
                 // -f image2 outputs image format
-                string arguments = $"-ss {timeFormatted} -i \"{videoFilePath}\" -vframes 1 -f image2 \"{frameFilePath}\"";
-
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = _ffmpegPath,
-                    Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 };
+
+                // Build arguments via ArgumentList for proper escaping and ordering
+                // Order: hwaccel args (if any), then -ss, timeFormatted, -i, videoFilePath, -vframes, 1, -f, image2, frameFilePath
+                foreach (string arg in hwAccelArgs)
+                {
+                    processInfo.ArgumentList.Add(arg);
+                }
+                processInfo.ArgumentList.Add("-ss");
+                processInfo.ArgumentList.Add(timeFormatted);
+                processInfo.ArgumentList.Add("-i");
+                processInfo.ArgumentList.Add(videoFilePath);
+                processInfo.ArgumentList.Add("-vframes");
+                processInfo.ArgumentList.Add("1");
+                processInfo.ArgumentList.Add("-f");
+                processInfo.ArgumentList.Add("image2");
+                processInfo.ArgumentList.Add(frameFilePath);
 
                 using (var process = Process.Start(processInfo))
                 {
@@ -149,6 +204,12 @@ namespace VideoForensics.Providers.Ring
 
                     if (process.ExitCode != 0)
                     {
+                        if (!isFinalAttempt)
+                        {
+                            return null; // Signal caller to try fallback
+                        }
+
+                        // Final attempt: return failure frame with error message
                         return new ExtractedFrame
                         {
                             TimestampMs = timestampMs,
@@ -192,6 +253,12 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception ex)
             {
+                if (!isFinalAttempt)
+                {
+                    return null; // Signal caller to try fallback
+                }
+
+                // Final attempt: return failure frame with error message
                 return new ExtractedFrame
                 {
                     TimestampMs = timestampMs,

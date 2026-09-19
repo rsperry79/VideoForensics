@@ -93,6 +93,22 @@ Downgrading is supported but not recommended, especially if the newer version in
 sudo apt install ./videoforensics_1.9.0_amd64.deb --allow-downgrades
 ```
 
+## Hardware-Accelerated Video Decoding
+
+The app auto-detects and uses hardware-accelerated video decoding when available, supporting VAAPI on Intel/AMD GPUs and NVIDIA CUDA on compatible NVIDIA hardware.
+
+The package's `Recommends` field automatically installs VAAPI userspace drivers (`mesa-va-drivers`, `intel-media-va-driver`, and `vainfo`) on fresh install unless you use `apt install --no-install-recommends`. These packages enable hardware acceleration on most Intel and AMD GPUs without additional configuration.
+
+To verify VAAPI is working with your hardware, run:
+
+```bash
+vainfo
+```
+
+If a compatible GPU is present, this command lists supported hardware profiles. If no output is shown or `vainfo` is not found, VAAPI hardware acceleration is not available on your system.
+
+NVIDIA GPU acceleration requires the proprietary NVIDIA driver stack, which is not installed automatically (it requires enabling `contrib`/`non-free` repositories and installing driver packages matching your specific GPU and kernel — see NVIDIA's official Debian/Ubuntu driver installation documentation). Without a supported NVIDIA driver or compatible Intel/AMD GPU, the app transparently falls back to software decoding — no configuration is required either way.
+
 ## Removal
 
 ### Remove (keep data)

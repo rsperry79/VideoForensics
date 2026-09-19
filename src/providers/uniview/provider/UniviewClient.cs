@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using VideoForensics.Providers.Core;
 
 namespace VideoForensics.Providers.Uniview;
 
@@ -574,8 +575,15 @@ public sealed class UniviewClient : IDisposable
     public Task CaptureLiveSnapshotAsync(int channel, string destinationJpegPath, CancellationToken ct = default)
     {
         string rtspUrl = $"rtsp://{Uri.EscapeDataString(_username)}:{Uri.EscapeDataString(_password)}@{_host}:554/unicast/c{channel}/s0/live";
-        return RunFfmpegAsync(
-        [
+
+        // Detect hardware acceleration and build the args list with hwaccel prepended
+        string? hwAccelMethod = FfmpegHardwareAccelDetector.Detect(_ffmpegPath);
+        string[] hwAccelArgs = FfmpegHardwareAccelDetector.BuildDecodeArgs(hwAccelMethod);
+
+        var args = new List<string>();
+        args.AddRange(hwAccelArgs); // Prepend hwaccel args if any
+        args.AddRange(new[]
+        {
             "-y",
             "-rtsp_transport", "tcp",
             // Bounds the RTSP connect/read attempt (microseconds) - channels
@@ -590,7 +598,9 @@ public sealed class UniviewClient : IDisposable
             "-i", rtspUrl,
             "-frames:v", "1",
             destinationJpegPath,
-        ], "live snapshot", ct);
+        });
+
+        return RunFfmpegAsync(args, "live snapshot", hwAccelArgs.Length, ct);
     }
 
     /// <summary>
@@ -600,7 +610,13 @@ public sealed class UniviewClient : IDisposable
     /// </summary>
     public Task CaptureFrameFromFileAsync(string videoPath, string destinationJpegPath, TimeSpan? at = null, CancellationToken ct = default)
     {
-        var args = new List<string> { "-y" };
+        // Detect hardware acceleration and build the args list with hwaccel prepended
+        string? hwAccelMethod = FfmpegHardwareAccelDetector.Detect(_ffmpegPath);
+        string[] hwAccelArgs = FfmpegHardwareAccelDetector.BuildDecodeArgs(hwAccelMethod);
+
+        var args = new List<string>();
+        args.AddRange(hwAccelArgs); // Prepend hwaccel args if any
+        args.Add("-y");
         if (at is { } offset)
         {
             args.Add("-ss");
@@ -612,7 +628,7 @@ public sealed class UniviewClient : IDisposable
         args.Add("-frames:v");
         args.Add("1");
         args.Add(destinationJpegPath);
-        return RunFfmpegAsync(args, "frame capture", ct);
+        return RunFfmpegAsync(args, "frame capture", hwAccelArgs.Length, ct);
     }
 
     /// <summary>
@@ -885,7 +901,34 @@ public sealed class UniviewClient : IDisposable
         }
     }
 
-    private async Task RunFfmpegAsync(List<string> args, string label, CancellationToken ct)
+    private async Task RunFfmpegAsync(List<string> args, string label, int hwAccelArgCount, CancellationToken ct)
+    {
+        string? stderrFromFirstAttempt = await RunFfmpegAttemptAsync(args, ct);
+        if (stderrFromFirstAttempt is null)
+        {
+            return; // Success
+        }
+
+        // If hwaccel args were used and the first attempt failed, retry without them (pure software decode)
+        if (hwAccelArgCount > 0)
+        {
+            // Remove the leading hwaccel args and try again
+            var softwareFallbackArgs = new List<string>(args.Skip(hwAccelArgCount));
+            string? stderrFromSecondAttempt = await RunFfmpegAttemptAsync(softwareFallbackArgs, ct);
+            if (stderrFromSecondAttempt is null)
+            {
+                return; // Success on fallback
+            }
+
+            // Both attempts failed - throw using the second (software) attempt's error
+            throw new InvalidOperationException($"ffmpeg {label} failed (exit non-zero): {stderrFromSecondAttempt}");
+        }
+
+        // No hwaccel args to fall back on - throw immediately with the first error
+        throw new InvalidOperationException($"ffmpeg {label} failed (exit non-zero): {stderrFromFirstAttempt}");
+    }
+
+    private async Task<string?> RunFfmpegAttemptAsync(List<string> args, CancellationToken ct)
     {
         var psi = new System.Diagnostics.ProcessStartInfo(_ffmpegPath)
         {
@@ -904,8 +947,10 @@ public sealed class UniviewClient : IDisposable
         await process.WaitForExitAsync(ct);
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"ffmpeg {label} failed (exit {process.ExitCode}): {await stderrTask}");
+            return await stderrTask; // Return stderr for the caller to decide what to do
         }
+
+        return null; // Success
     }
 
     private static string GetLocalAddressFor(string remoteHost)
