@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 
+using VideoForensics.Providers.Core;
 using VideoForensics.Providers.Ring.Models;
 
 namespace VideoForensics.Providers.Ring
@@ -26,7 +27,7 @@ namespace VideoForensics.Providers.Ring
         public VideoFrameExtractor(IFileSystem? fileSystem = null, string? ffmpegPath = null)
         {
             _fileSystem = fileSystem ?? new FileSystem();
-            _ffmpegPath = ffmpegPath ?? "ffmpeg";
+            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
         }
 
         public async Task<List<ExtractedFrame>> ExtractDetectionFramesAsync(

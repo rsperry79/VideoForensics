@@ -29,6 +29,31 @@ dotnet publish src/client/web/VideoForensics.WebApp -c Release -r win-x64 --self
 
 This produces approximately 150-200 MB of binaries (larger than framework-dependent because .NET runtime is included). The publish output is fed into the WiX MSI build via MSBuild properties.
 
+## FFmpeg Binaries
+
+VideoForensics bundles ffmpeg and ffprobe binaries with the Windows installer — no separate ffmpeg installation needed on the target machine.
+
+### What's Bundled
+
+The MSI installer includes statically-linked LGPL ffmpeg binaries from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds):
+- `ffmpeg.exe` — video transcoding and metadata extraction
+- `ffprobe.exe` — video metadata probing
+
+Both are installed to `%ProgramFiles%\VideoForensics\`.
+
+### License Compliance
+
+The bundled ffmpeg binaries are LGPL-licensed. The license/copyright notice is included as `ffmpeg-LICENSE.txt` in the installation directory. Do not remove this file.
+
+### Using a Custom ffmpeg Build
+
+To use a different or newer ffmpeg version:
+
+- **Uniview provider:** Supports a custom path via the `UniviewFfmpegPath` configuration setting. This setting is stored in the application's configuration database and can be configured through the admin UI or directly in the database.
+- **Ring provider:** No user-facing configuration setting is available today. The Ring provider resolves ffmpeg from: (1) bundled binaries in the installation directory, or (2) system PATH. To use a custom ffmpeg build with Ring, you must rebuild the application with a code change.
+
+Ensure any custom ffmpeg build is compatible with the app's video processing requirements.
+
 ## Building the Installer
 
 ### Quick Build (Default Paths)

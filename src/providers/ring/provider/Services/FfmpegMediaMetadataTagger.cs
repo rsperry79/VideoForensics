@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Core;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -19,11 +20,11 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly string _ffprobePath;
         private readonly ILogger _logger;
 
-        public FfmpegMediaMetadataTagger(ILogger logger, string ffmpegPath = "ffmpeg", string ffprobePath = "ffprobe")
+        public FfmpegMediaMetadataTagger(ILogger logger, string? ffmpegPath = null, string? ffprobePath = null)
         {
             _logger = logger;
-            _ffmpegPath = ffmpegPath;
-            _ffprobePath = ffprobePath;
+            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
+            _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe");
         }
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)

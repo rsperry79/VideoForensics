@@ -104,6 +104,55 @@ jobs:
             -c Release -r win-x64 --self-contained true `
             -o publish-win
 
+      - name: Download and bundle FFmpeg binaries
+        shell: pwsh
+        # IMPORTANT: This URL uses the rolling "latest" GitHub release tag. The exact asset
+        # filename and internal zip structure may vary — verify on the first real Windows CI run.
+        # Consider pinning to a specific dated release tag (e.g., ffmpeg-2025-01-15) once
+        # validated, for build reproducibility.
+        run: |
+          $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip"
+          $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "ffmpeg-btbn-$(Get-Random)"
+          $publishDir = "publish-win"
+
+          Write-Host "Downloading FFmpeg from $ffmpegUrl"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile "$tempDir\ffmpeg.zip" -ErrorAction Stop
+
+          Write-Host "Extracting to $tempDir"
+          Expand-Archive -Path "$tempDir\ffmpeg.zip" -DestinationPath $tempDir -ErrorAction Stop
+
+          # The extracted archive contains a root folder with bin/, docs/, etc.
+          $extractedDir = Get-ChildItem -Path $tempDir -Directory -ErrorAction Stop | Select-Object -First 1
+          if (-not $extractedDir) {
+            Write-Host "ERROR: No directory found in extracted archive"
+            exit 1
+          }
+
+          $binDir = Join-Path $extractedDir.FullName "bin"
+          if (-not (Test-Path $binDir)) {
+            Write-Host "ERROR: bin directory not found at $binDir"
+            exit 1
+          }
+
+          Write-Host "Copying ffmpeg.exe and ffprobe.exe to $publishDir"
+          Copy-Item (Join-Path $binDir "ffmpeg.exe") "$publishDir\" -ErrorAction Stop
+          Copy-Item (Join-Path $binDir "ffprobe.exe") "$publishDir\" -ErrorAction Stop
+
+          Write-Host "Copying license file as ffmpeg-LICENSE.txt"
+          $licenseFile = Get-ChildItem -Path $extractedDir.FullName -Filter "LICENSE*" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($licenseFile) {
+            Copy-Item $licenseFile.FullName "$publishDir\ffmpeg-LICENSE.txt" -ErrorAction Stop
+            Write-Host "  - License: $(Split-Path -Leaf $licenseFile.FullName) -> ffmpeg-LICENSE.txt"
+          } else {
+            Write-Host "  WARNING: No LICENSE* file found in extracted archive"
+          }
+
+          Write-Host "FFmpeg binaries bundled successfully:"
+          Get-ChildItem "$publishDir\ffmpeg*" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  - $($_.Name)" }
+
+          Write-Host "Cleaning up temporary directory"
+          Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+
       - name: Build WiX Bootstrapper (transitively builds MSI)
         shell: pwsh
         # Build the Bootstrapper project which has a ProjectReference to the MSI project.
