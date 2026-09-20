@@ -32,14 +32,7 @@ namespace VideoForensics.Providers.Ring.Services
             string tmpPath = mediaFilePath + ".tmp";
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = _ffmpegPath,
-                    Arguments = $"-y -i \"{mediaFilePath}\" -map_metadata 0 -metadata comment=\"{CommentPrefix}{eventId}\" -codec copy \"{tmpPath}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false
-                };
+                var psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
 
                 using var process = Process.Start(psi);
                 if (process == null)
@@ -79,17 +72,36 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        private ProcessStartInfo BuildTaggingProcessInfo(string mediaFilePath, Guid eventId, string tmpPath)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ffmpegPath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+
+            // Build arguments via ArgumentList for proper escaping and ordering
+            psi.ArgumentList.Add("-y");
+            psi.ArgumentList.Add("-i");
+            psi.ArgumentList.Add(mediaFilePath);
+            psi.ArgumentList.Add("-map_metadata");
+            psi.ArgumentList.Add("0");
+            psi.ArgumentList.Add("-metadata");
+            psi.ArgumentList.Add($"comment={CommentPrefix}{eventId}");
+            psi.ArgumentList.Add("-codec");
+            psi.ArgumentList.Add("copy");
+            psi.ArgumentList.Add(tmpPath);
+
+            return psi;
+        }
+
         public async Task<Guid?> ReadEventIdAsync(string mediaFilePath, CancellationToken ct)
         {
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = _ffprobePath,
-                    Arguments = $"-v quiet -show_entries format_tags=comment -of default=noprint_wrappers=1:nokey=1 \"{mediaFilePath}\"",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false
-                };
+                var psi = BuildReadingProcessInfo(mediaFilePath);
 
                 using var process = Process.Start(psi);
                 if (process == null)
@@ -110,6 +122,27 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogWarning(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
                 return null;
             }
+        }
+
+        private ProcessStartInfo BuildReadingProcessInfo(string mediaFilePath)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ffprobePath,
+                RedirectStandardOutput = true,
+                UseShellExecute = false
+            };
+
+            // Build arguments via ArgumentList for proper escaping and ordering
+            psi.ArgumentList.Add("-v");
+            psi.ArgumentList.Add("quiet");
+            psi.ArgumentList.Add("-show_entries");
+            psi.ArgumentList.Add("format_tags=comment");
+            psi.ArgumentList.Add("-of");
+            psi.ArgumentList.Add("default=noprint_wrappers=1:nokey=1");
+            psi.ArgumentList.Add(mediaFilePath);
+
+            return psi;
         }
     }
 }
