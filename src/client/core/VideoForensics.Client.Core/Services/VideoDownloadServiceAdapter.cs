@@ -365,7 +365,7 @@ namespace VideoForensics.Client.Core.Services
 
             try
             {
-                _logger.LogInformation("Starting video download to {OutputPath} from {StartDate} to {EndDate}", outputPath, startDate, endDate);
+                _logger.LogInformation("Starting video download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
 
                 _downloadService.SetMaxConcurrentDownloads(_forensicsConfig.MaxConcurrentDownloads);
 
@@ -606,7 +606,7 @@ namespace VideoForensics.Client.Core.Services
 
             try
             {
-                _logger.LogInformation("Starting snapshot download to {OutputPath} from {StartDate} to {EndDate}", outputPath, startDate, endDate);
+                _logger.LogInformation("Starting snapshot download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
 
                 if (!await _authService.IsAuthenticatedAsync())
                 {
@@ -872,5 +872,9 @@ namespace VideoForensics.Client.Core.Services
         {
             _downloadService.OverrideRateLimitBan();
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

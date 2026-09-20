@@ -20,6 +20,12 @@ namespace VideoForensics.Providers.Uniview.Services
         private readonly IForensicsConfiguration _configuration;
         private readonly ICredentialRepository _credentialRepository;
 
+        /// <summary>
+        /// Masks a sensitive string for logging (shows first and last character, hides the rest).
+        /// </summary>
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+
         public UniviewAuthService(
             ILogger<UniviewAuthService> logger,
             IUniviewSessionProvider sessionProvider,
@@ -39,7 +45,7 @@ namespace VideoForensics.Providers.Uniview.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", username);
+                _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
 
                 string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
                 string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg");
@@ -47,7 +53,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 var client = new UniviewClient(host, username, password, ffmpegPath);
 
                 await client.LoginAsync(cancellationToken);
-                _logger.LogInformation("Successfully authenticated with Uniview NVR for user: {Username}", username);
+                _logger.LogInformation("Successfully authenticated with Uniview NVR for user: {Username}", MaskForLog(username));
 
                 // Store the authenticated client in the session provider
                 _sessionProvider.SetClient(client);

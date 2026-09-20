@@ -147,7 +147,7 @@ namespace VideoForensics.Client.Core.Services
                 string manifestJson = JsonSerializer.Serialize(manifest, jsonOptions);
 
                 string archiveFileName = $"VideoForensics_Backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-                string archivePath = Path.Combine(outputDirectory, archiveFileName);
+                string archivePath = EnsureWithinRoot(outputDirectory, Path.Combine(outputDirectory, archiveFileName));
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
@@ -170,7 +170,7 @@ namespace VideoForensics.Client.Core.Services
                 result.MediaItemCount = mediaItems.Count;
                 result.Success = true;
 
-                _logger.LogInformation("Backup export completed: {ArchivePath}", archivePath);
+                _logger.LogInformation("Backup export completed: {ArchivePath}", SanitizeForLog(archivePath));
                 return result;
             }
             catch (Exception ex)
@@ -249,5 +249,30 @@ namespace VideoForensics.Client.Core.Services
             byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
+
+        /// <summary>
+        /// Validates that a resolved path stays within the intended root directory.
+        /// Prevents path traversal attacks by ensuring the resolved path does not escape the root.
+        /// </summary>
+        /// <param name="root">The root directory that the candidate path must stay within.</param>
+        /// <param name="candidatePath">The path to validate (may contain relative components or symlinks).</param>
+        /// <returns>The canonicalized (full) path, if it stays within root.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the resolved path escapes the root directory.</exception>
+        private static string EnsureWithinRoot(string root, string candidatePath)
+        {
+            string fullRoot = Path.GetFullPath(root);
+            string fullCandidate = Path.GetFullPath(candidatePath);
+            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+            }
+
+            return fullCandidate;
+        }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

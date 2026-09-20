@@ -154,5 +154,43 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal($"{prefix}video.mp4", videoFile);
             Assert.Equal($"{prefix}metadata.json", metadataFile);
         }
+
+        [Fact]
+        public void FormatMediaFileName_SanitizesMediaTypeWithPathTraversalAttempt()
+        {
+            // Path traversal attempt in mediaType should be stripped
+            var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
+            string result = MediaFileNamer.FormatMediaFileName("Camera", timestamp, "../video", "mp4");
+
+            // Should not contain path traversal characters (.. sequence is stripped)
+            Assert.DoesNotContain("/", result);
+            Assert.DoesNotContain("\\", result);
+            // Verify the result contains sanitized type, not the traversal attempt
+            Assert.Contains("video", result); // The "video" part remains after ".." is stripped
+        }
+
+        [Theory]
+        [InlineData("video")]
+        [InlineData("../video")]
+        [InlineData("..\\video")]
+        [InlineData("video<type>")]
+        [InlineData("video:type")]
+        public void FormatMediaFileName_SanitizesMediaTypeConsistently(string mediaType)
+        {
+            // All media types (even those with forbidden characters) should be sanitized
+            var timestamp = new DateTime(2026, 8, 27, 14, 30, 22, DateTimeKind.Utc);
+            string result = MediaFileNamer.FormatMediaFileName("Camera", timestamp, mediaType, "mp4");
+
+            // Result should not contain forbidden Windows/OneDrive filename characters
+            Assert.DoesNotContain("<", result);
+            Assert.DoesNotContain(">", result);
+            Assert.DoesNotContain(":", result);
+            Assert.DoesNotContain("\"", result);
+            Assert.DoesNotContain("/", result);
+            Assert.DoesNotContain("\\", result);
+            Assert.DoesNotContain("|", result);
+            Assert.DoesNotContain("?", result);
+            Assert.DoesNotContain("*", result);
+        }
     }
 }

@@ -58,6 +58,7 @@ namespace VideoForensics.Hosting.Remote
                 }
 
                 string outputPath = Path.Combine(outputDirectory, fileName);
+                outputPath = EnsureWithinRoot(outputDirectory, outputPath);
                 _ = Directory.CreateDirectory(outputDirectory);
 
                 using (Stream contentStream = await response.Content.ReadAsStreamAsync(ct))
@@ -87,6 +88,27 @@ namespace VideoForensics.Hosting.Remote
                 BackupExportResultDto? dto = await response.Content.ReadFromJsonAsync<BackupExportResultDto>(JsonOptions, ct);
                 return (dto ?? throw new InvalidOperationException("Server returned null export result")).ToDomain();
             }
+        }
+
+        /// <summary>
+        /// Validates that a resolved path stays within the intended root directory.
+        /// Prevents path traversal attacks by ensuring the resolved path does not escape the root.
+        /// </summary>
+        /// <param name="root">The root directory that the candidate path must stay within.</param>
+        /// <param name="candidatePath">The path to validate (may contain relative components or symlinks).</param>
+        /// <returns>The canonicalized (full) path, if it stays within root.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the resolved path escapes the root directory.</exception>
+        private static string EnsureWithinRoot(string root, string candidatePath)
+        {
+            string fullRoot = Path.GetFullPath(root);
+            string fullCandidate = Path.GetFullPath(candidatePath);
+            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+            }
+
+            return fullCandidate;
         }
     }
 

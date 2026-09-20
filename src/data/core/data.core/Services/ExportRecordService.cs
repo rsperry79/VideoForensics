@@ -93,16 +93,16 @@ namespace VideoForensics.Data.Core.Services
                     _logger.LogInformation(
                         "Export recorded: {ItemCount} items, archive={FileName}, encrypted={WasEncrypted}, case={CaseReference}",
                         items.Count,
-                        archiveFileName,
+                        SanitizeForLog(archiveFileName),
                         wasEncrypted,
-                        caseReference ?? "[no case reference]");
+                        SanitizeForLog(caseReference ?? "[no case reference]"));
 
                     return exportRecord;
                 }, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording export: {ArchiveFileName}", archiveFileName);
+                _logger.LogError(ex, "Error recording export: {ArchiveFileName}", SanitizeForLog(archiveFileName));
                 throw;
             }
         }
@@ -149,5 +149,8 @@ namespace VideoForensics.Data.Core.Services
                 return "Unknown";
             }
         }
+
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

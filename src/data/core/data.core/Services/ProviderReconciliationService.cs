@@ -149,7 +149,7 @@ namespace VideoForensics.Data.Core.Services
                             {
                                 result.Failed++;
                                 result.ErrorDetails.Add($"No events fetched for provider event {discrepancy.ProviderEventId}");
-                                _logger.LogWarning("No events fetched from provider for event {ProviderEventId}", discrepancy.ProviderEventId);
+                                _logger.LogWarning("No events fetched from provider for event {ProviderEventId}", SanitizeForLog(discrepancy.ProviderEventId));
                                 continue;
                             }
 
@@ -175,7 +175,7 @@ namespace VideoForensics.Data.Core.Services
                             result.NewEventsInserted++;
 
                             _logger.LogInformation("Auto-fixed new event {ProviderEventId} for device {DeviceId}",
-                                discrepancy.ProviderEventId, deviceId);
+                                SanitizeForLog(discrepancy.ProviderEventId), deviceId);
 
                             // Log to action log
                             _ = await context.ActionLog.AppendAsync(
@@ -192,7 +192,7 @@ namespace VideoForensics.Data.Core.Services
                             result.Failed++;
                             result.ErrorDetails.Add($"Error fixing new event {discrepancy.ProviderEventId}: {ex.Message}");
                             _logger.LogError(ex, "Error auto-fixing new event {ProviderEventId} for device {DeviceId}",
-                                discrepancy.ProviderEventId, deviceId);
+                                SanitizeForLog(discrepancy.ProviderEventId), deviceId);
                         }
                     }
 
@@ -212,7 +212,7 @@ namespace VideoForensics.Data.Core.Services
                             {
                                 result.Failed++;
                                 result.ErrorDetails.Add($"Stored event not found for provider event {discrepancy.ProviderEventId}");
-                                _logger.LogWarning("Stored event not found for provider event {ProviderEventId}", discrepancy.ProviderEventId);
+                                _logger.LogWarning("Stored event not found for provider event {ProviderEventId}", SanitizeForLog(discrepancy.ProviderEventId));
                                 continue;
                             }
 
@@ -239,7 +239,7 @@ namespace VideoForensics.Data.Core.Services
                             result.MetadataUpdated++;
 
                             _logger.LogInformation("Auto-fixed metadata for event {ProviderEventId} field {FieldName} for device {DeviceId}",
-                                discrepancy.ProviderEventId, fieldName, deviceId);
+                                SanitizeForLog(discrepancy.ProviderEventId), SanitizeForLog(fieldName), deviceId);
 
                             // Log to action log
                             _ = await context.ActionLog.AppendAsync(
@@ -256,7 +256,7 @@ namespace VideoForensics.Data.Core.Services
                             result.Failed++;
                             result.ErrorDetails.Add($"Error fixing metadata for {discrepancy.ProviderEventId}: {ex.Message}");
                             _logger.LogError(ex, "Error auto-fixing metadata for event {ProviderEventId} for device {DeviceId}",
-                                discrepancy.ProviderEventId, deviceId);
+                                SanitizeForLog(discrepancy.ProviderEventId), deviceId);
                         }
                     }
 
@@ -275,5 +275,8 @@ namespace VideoForensics.Data.Core.Services
                 throw;
             }
         }
+
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

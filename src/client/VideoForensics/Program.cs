@@ -132,7 +132,7 @@ namespace VideoForensics
             // returned instead of guessing.
             ILogger apiLogger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("RingApi");
             VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
-                apiLogger.LogInformation("{Method} {Url} -> {StatusCode}: {Body}", call.Method, call.Url, call.StatusCode, call.Body);
+                apiLogger.LogInformation("{Method} {Url} -> {StatusCode}: {Body}", SanitizeForLog(call.Method), SanitizeForLog(call.Url), call.StatusCode, SanitizeForLog(call.Body));
             VideoForensics.Providers.Ring.ApiRawLogger.OnEvent += evt =>
                 apiLogger.LogInformation("[{Category}] {Message}", evt.Category, evt.Message);
 
@@ -154,5 +154,9 @@ namespace VideoForensics
             // Show UI
             await menuManager.ShowMainMenuAsync();
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string? SanitizeForLog(string? value) =>
+            string.IsNullOrEmpty(value) ? value : value.Replace('\r', '_').Replace('\n', '_');
     }
 }

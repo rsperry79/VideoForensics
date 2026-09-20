@@ -122,7 +122,7 @@ namespace VideoForensics.Client.Core.Services
             {
                 _logger.LogInformation(
                     "Starting provider reconciliation for device {DeviceId} ({ProviderDeviceId}) from {FromUtc} to {ToUtc}",
-                    deviceId, providerDeviceId, fromUtc, toUtc);
+                    deviceId, SanitizeForLog(providerDeviceId), fromUtc, toUtc);
 
                 // Fetch live events from provider with retry
                 IReadOnlyList<DeviceEvent>? liveEvents = null;
@@ -135,12 +135,12 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to fetch events from provider for device {ProviderDeviceId}", providerDeviceId);
+                    _logger.LogError(ex, "Failed to fetch events from provider for device {ProviderDeviceId}", SanitizeForLog(providerDeviceId));
                     throw;
                 }
 
                 _logger.LogInformation("Provider returned {EventCount} live event(s) for device {ProviderDeviceId}",
-                    liveEvents?.Count ?? 0, providerDeviceId);
+                    liveEvents?.Count ?? 0, SanitizeForLog(providerDeviceId));
 
                 // Fetch stored events from database
                 IReadOnlyList<Event> storedEvents = await _eventRepository.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
@@ -311,7 +311,7 @@ namespace VideoForensics.Client.Core.Services
                 catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries)
                 {
                     _logger.LogWarning(ex, "Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
-                        operationName, attempt, MaxRetries, delayMs);
+                        SanitizeForLog(operationName), attempt, MaxRetries, delayMs);
 
                     await Task.Delay(delayMs, cancellationToken);
                     delayMs = Math.Min(delayMs * 2, MaxDelayMs);
@@ -338,5 +338,9 @@ namespace VideoForensics.Client.Core.Services
         {
             return (a == null && b == null) || (a != null && b != null && a.Equals(b, StringComparison.OrdinalIgnoreCase));
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

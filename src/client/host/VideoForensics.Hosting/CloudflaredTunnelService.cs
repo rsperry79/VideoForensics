@@ -176,7 +176,7 @@ namespace VideoForensics.Hosting
             // callers observe progress, not awaiting this task.
             _ = RunAsync(kind, arguments, cts);
 
-            _logger.LogInformation("cloudflared tunnel starting ({Kind}): {Arguments}", kind, arguments);
+            _logger.LogInformation("cloudflared tunnel starting ({Kind}): {Arguments}", kind, SanitizeForLog(arguments));
             return Task.CompletedTask;
         }
 
@@ -306,5 +306,9 @@ namespace VideoForensics.Hosting
                 return new TunnelState(_kind, _status, _publicUrl, _errorMessage, _logLines.ToList());
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }
