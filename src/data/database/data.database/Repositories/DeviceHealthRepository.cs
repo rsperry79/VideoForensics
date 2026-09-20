@@ -27,14 +27,51 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DeviceHealths.Add(health);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device health metric recorded: {HealthId} (device: {DeviceId}, online: {IsOnline})",
-                    health.Id, health.DeviceId, health.IsOnline);
+
+                (string? DeviceName, string? LocationName) = await GetDeviceAndLocationNamesAsync(db, health.DeviceId, ct);
+                _logger.LogInformation(
+                    "Device health metric recorded: {HealthId} (device: {DeviceName} @ {LocationName} [{DeviceId}], online: {IsOnline})",
+                    health.Id, DeviceName ?? "unknown", LocationName ?? "unknown", health.DeviceId, health.IsOnline);
                 return health;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Best-effort lookup of a device's name and its location's name, purely for human-readable
+        /// log output - a raw device GUID in a log line isn't actionable for an operator scanning
+        /// logs, but "Front Door @ 123 Main St" is. Never lets a lookup failure break the health
+        /// metric that was already successfully persisted above.
+        /// </summary>
+        private async Task<(string? DeviceName, string? LocationName)> GetDeviceAndLocationNamesAsync(VideoForensicsDbContext db, Guid deviceId, CancellationToken ct)
+        {
+            try
+            {
+                var device = await db.Devices
+                    .Where(d => d.Id == deviceId)
+                    .Select(d => new { d.Name, d.LocationId })
+                    .FirstOrDefaultAsync(ct);
+
+                if (device is null)
+                {
+                    return (null, null);
+                }
+
+                string? locationName = await db.Locations
+                    .Where(l => l.Id == device.LocationId)
+                    .Select(l => l.Name)
+                    .FirstOrDefaultAsync(ct);
+
+                return (device.Name, locationName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not resolve device/location name for log output (device {DeviceId})", deviceId);
+                return (null, null);
             }
         }
 

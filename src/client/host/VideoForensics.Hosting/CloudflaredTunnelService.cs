@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.RegularExpressions;
 
+using VideoForensics.Providers.Core;
+
 namespace VideoForensics.Hosting
 {
     public enum TunnelKind
@@ -84,11 +86,19 @@ namespace VideoForensics.Hosting
             _logger = logger;
         }
 
+        /// <summary>
+        /// Resolves the cloudflared executable the same way FfmpegPathResolver does for ffmpeg/ffprobe:
+        /// a copy bundled next to this app's own binary (AppContext.BaseDirectory) takes precedence
+        /// over a bare name resolved via the system PATH, so installing this app doesn't also require
+        /// a separate system-wide cloudflared install/PATH entry.
+        /// </summary>
+        internal static string ResolveExecutablePath() => FfmpegPathResolver.Resolve(configuredPath: null, "cloudflared");
+
         public async Task<bool> IsInstalledAsync(CancellationToken ct)
         {
             try
             {
-                BufferedCommandResult result = await Cli.Wrap("cloudflared")
+                BufferedCommandResult result = await Cli.Wrap(ResolveExecutablePath())
                     .WithArguments("--version")
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteBufferedAsync(ct);
@@ -104,7 +114,7 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                BufferedCommandResult result = await Cli.Wrap("cloudflared")
+                BufferedCommandResult result = await Cli.Wrap(ResolveExecutablePath())
                     .WithArguments("tunnel list")
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteBufferedAsync(ct);
@@ -172,7 +182,7 @@ namespace VideoForensics.Hosting
 
         private async Task RunAsync(TunnelKind kind, string arguments, CancellationTokenSource cts)
         {
-            Command command = Cli.Wrap("cloudflared")
+            Command command = Cli.Wrap(ResolveExecutablePath())
                 .WithArguments(arguments)
                 .WithValidation(CommandResultValidation.None);
 

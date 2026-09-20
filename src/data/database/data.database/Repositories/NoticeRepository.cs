@@ -37,19 +37,18 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        /// <summary>Lists notices for an operator, excluding those dismissed by that operator (unless includeDismissed is true). Includes notices with Audience=All or (Audience=AdminsOnly AND operator is Admin+).</summary>
-        public async Task<IReadOnlyList<Notice>> ListForOperatorAsync(Guid operatorId, bool includeDismissed = false, CancellationToken ct = default)
+        /// <summary>Lists notices for an operator, excluding those dismissed by that operator (unless includeDismissed is true). Includes notices with Audience=All, plus Audience=AdminsOnly when isAdmin is true.</summary>
+        public async Task<IReadOnlyList<Notice>> ListForOperatorAsync(Guid operatorId, bool isAdmin, bool includeDismissed = false, CancellationToken ct = default)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
                 IQueryable<Notice> query = db.Notices.AsQueryable();
 
-                // Filter by audience: Audience=0 (All) or (Audience=1 (AdminsOnly) AND operator is Admin)
-                // Note: For now, we include all notices with Audience=0. Admin filtering would require
-                // checking operator role via navigation, which we avoid to keep the query simple.
-                // A more sophisticated implementation could check operator role in a separate step.
-                query = query.Where(n => n.Audience == 0); // For MVP, only include All-audience notices
+                // Filter by audience: Audience=0 (All) is always included; Audience=1 (AdminsOnly) is included
+                // only when the caller has already determined the operator is Admin+ (avoids a DB join/role lookup
+                // here — the caller resolves role from session state).
+                query = query.Where(n => n.Audience == 0 || (n.Audience == 1 && isAdmin));
 
                 if (!includeDismissed)
                 {
@@ -71,8 +70,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        /// <summary>Counts undismissed notices for an operator, for UI badge/indicator purposes.</summary>
-        public async Task<int> CountUndismissedForOperatorAsync(Guid operatorId, CancellationToken ct)
+        /// <summary>Counts undismissed notices for an operator, for UI badge/indicator purposes. Includes Audience=AdminsOnly notices only when isAdmin is true.</summary>
+        public async Task<int> CountUndismissedForOperatorAsync(Guid operatorId, bool isAdmin, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
@@ -83,7 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
                     .ToHashSet();
 
                 return await db.Notices
-                    .Where(n => n.Audience == 0 && !dismissedNoticeIds.Contains(n.Id))
+                    .Where(n => (n.Audience == 0 || (n.Audience == 1 && isAdmin)) && !dismissedNoticeIds.Contains(n.Id))
                     .CountAsync(ct);
             }
             catch (Exception ex)

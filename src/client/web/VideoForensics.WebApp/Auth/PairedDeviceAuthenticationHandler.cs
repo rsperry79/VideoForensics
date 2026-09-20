@@ -31,6 +31,7 @@ namespace VideoForensics.WebApp.Auth
     {
         private readonly ISessionTokenService _tokenService;
         private readonly IPairedDeviceRepository _pairedDeviceRepository;
+        private readonly IOperatorCredentialRepository _operatorCredentialRepository;
         private readonly INetworkTierResolver _tierResolver;
         private readonly IOperatorRepository _operatorRepository;
 
@@ -40,12 +41,14 @@ namespace VideoForensics.WebApp.Auth
             UrlEncoder encoder,
             ISessionTokenService tokenService,
             IPairedDeviceRepository pairedDeviceRepository,
+            IOperatorCredentialRepository operatorCredentialRepository,
             INetworkTierResolver tierResolver,
             IOperatorRepository operatorRepository)
             : base(options, logger, encoder)
         {
             _tokenService = tokenService;
             _pairedDeviceRepository = pairedDeviceRepository;
+            _operatorCredentialRepository = operatorCredentialRepository;
             _tierResolver = tierResolver;
             _operatorRepository = operatorRepository;
         }
@@ -61,30 +64,87 @@ namespace VideoForensics.WebApp.Auth
             SessionPrincipal? principal = _tokenService.Validate(token);
             if (principal != null)
             {
-                // Session-token path (browser-based pairing with WebAuthn)
+                // Session-token path - branches on credential kind.
                 // Re-checked on EVERY request, deliberately not cached in the token itself - see the
-                // class doc comment. A device revoked mid-session must be rejected here immediately.
-                PairedDevice? device = await _pairedDeviceRepository.GetAsync(principal.PairedDeviceId, Context.RequestAborted);
-                if (device == null || !device.IsActive)
+                // class doc comment. A device revoked mid-session or an operator with a reset password
+                // must be rejected here immediately.
+
+                // All paths check: operator exists, is approved, is active, and has not had their
+                // password reset since token issuance (SecurityStamp must match).
+                Operator? op = await _operatorRepository.GetAsync(principal.OperatorId, Context.RequestAborted);
+                if (op == null || !op.IsApproved || !op.Active || op.SecurityStamp != principal.SecurityStampAtIssuance)
                 {
                     return AuthenticateResult.Fail("Invalid or expired credential.");
                 }
 
-                // Verify operator is approved and active
-                Operator? op = await _operatorRepository.GetAsync(device.OperatorId, Context.RequestAborted);
-                if (op == null || !op.IsApproved || !op.Active)
-                {
-                    return AuthenticateResult.Fail("Invalid or expired credential.");
-                }
+                Claim[] claims;
 
-                NetworkTier tier = _tierResolver.ResolveTier(Context);
-                Claim[] claims = new[]
+                if (principal.Kind == CredentialKind.ServiceDevice)
                 {
-                    new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
-                    new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.PairedDeviceId.ToString()),
-                    new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
-                    new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
-                };
+                    // ServiceDevice: PairedDevice row must still exist and be active.
+                    // Check device early so we fail before resolving tier.
+                    PairedDevice? device = await _pairedDeviceRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
+                    if (device == null || !device.IsActive)
+                    {
+                        return AuthenticateResult.Fail("Invalid or expired credential.");
+                    }
+
+                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    claims = new[]
+                    {
+                        new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
+                        new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.CredentialId.Value.ToString()),
+                        new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                    };
+                }
+                else if (principal.Kind == CredentialKind.Password)
+                {
+                    // Password: plain username+password login, no credential row.
+                    // Check if password change is forced.
+                    if (op.MustChangePassword && !Context.Request.Path.StartsWithSegments("/api/v1/auth/change-password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return AuthenticateResult.Fail("Password change required.");
+                    }
+
+                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    // Emit claims without PairedDeviceId since this is not a service/device credential.
+                    claims = new[]
+                    {
+                        new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
+                        new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                    };
+                }
+                else if (principal.Kind == CredentialKind.OperatorPasskey)
+                {
+                    // OperatorPasskey: credential is an OperatorCredential row.
+                    var credential = await _operatorCredentialRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
+                    if (credential == null || !credential.IsActive || !credential.IsApproved)
+                    {
+                        return AuthenticateResult.Fail("Invalid or expired credential.");
+                    }
+
+                    // Check if password change is forced.
+                    if (op.MustChangePassword && !Context.Request.Path.StartsWithSegments("/api/v1/auth/change-password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return AuthenticateResult.Fail("Password change required.");
+                    }
+
+                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    // Emit claims with PairedDeviceId claim = OperatorCredential.Id (reuse same claim type for now).
+                    claims = new[]
+                    {
+                        new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
+                        new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.CredentialId.Value.ToString()),
+                        new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                    };
+                }
+                else
+                {
+                    return AuthenticateResult.Fail("Invalid credential kind.");
+                }
 
                 var identity = new ClaimsIdentity(claims, PairedDeviceAuthenticationDefaults.SchemeName);
                 var claimsPrincipal = new ClaimsPrincipal(identity);

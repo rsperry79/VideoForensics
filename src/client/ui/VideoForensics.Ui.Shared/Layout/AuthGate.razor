@@ -44,6 +44,7 @@ else
     {
         "/pair",
         "/device-signin",
+        "/register",
         "/welcome"
     };
 
@@ -90,9 +91,20 @@ else
             }
             else if (SessionState.IsSignedIn)
             {
-                // User is signed in and route is protected, render content normally
-                _loading = false;
-                _redirecting = false;
+                // User is signed in - check if they must change password
+                if (SessionState.MustChangePassword && path != "/change-password")
+                {
+                    // Redirect to change password if not already there
+                    _loading = false;
+                    _redirecting = true;
+                    NavigationManager.NavigateTo("/change-password", replace: true);
+                }
+                else
+                {
+                    // User is signed in and route is protected, render content normally
+                    _loading = false;
+                    _redirecting = false;
+                }
             }
             else
             {

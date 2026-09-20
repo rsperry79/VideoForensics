@@ -25,13 +25,13 @@ else
     }
     else
     {
-        <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+        <SfGrid TValue="VideoForensics.Data.Common.Entities.Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" HeaderText="@L["ColumnName"]" />
-                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" HeaderText="@L["ColumnType"]" />
-                <GridColumn HeaderText="@L["ColumnOnline"]">
+                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Name)" HeaderText="@L["ColumnName"]" MinWidth="100" />
+                <GridColumn Field="@nameof(VideoForensics.Data.Common.Entities.Device.Type)" HeaderText="@L["ColumnType"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColumnOnline"]" MinWidth="100">
                     <Template>
                         @{
                             var device = (VideoForensics.Data.Common.Entities.Device)context;
@@ -39,7 +39,7 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="@L["ColumnLastSynced"]">
+                <GridColumn HeaderText="@L["ColumnLastSynced"]" MinWidth="100">
                     <Template>
                         @{
                             var device = (VideoForensics.Data.Common.Entities.Device)context;

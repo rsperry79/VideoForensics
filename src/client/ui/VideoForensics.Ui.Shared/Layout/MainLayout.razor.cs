@@ -21,6 +21,8 @@ namespace VideoForensics.Ui.Shared.Layout
         private bool _noticesDropdownOpen = false;
         private List<Notice> _noticesList = [];
 
+        private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
+
         private readonly string _rightPanelHandleId = $"vf-right-handle-{Guid.NewGuid():N}";
         private readonly string _rightPanelId = $"vf-right-panel-{Guid.NewGuid():N}";
 
@@ -88,7 +90,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 // Load undismissed notice count for badge
                 if (SessionState.OperatorId.HasValue)
                 {
-                    _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, CancellationToken.None);
+                    _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);
                 }
 
                 StateHasChanged();
@@ -218,7 +220,7 @@ namespace VideoForensics.Ui.Shared.Layout
             }
             else if (!_noticesDropdownOpen && SessionState.OperatorId.HasValue)
             {
-                _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, CancellationToken.None);
+                _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);
             }
 
             StateHasChanged();
@@ -231,7 +233,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 return;
             }
 
-            _noticesList = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, includeDismissed: false, CancellationToken.None))
+            _noticesList = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None))
                 .OrderByDescending(n => n.TimestampUtc)
                 .Take(5)
                 .ToList();
@@ -246,8 +248,30 @@ namespace VideoForensics.Ui.Shared.Layout
 
             await NoticeDismissalRepository.DismissAsync(noticeId, SessionState.OperatorId.Value, CancellationToken.None);
             await LoadNoticesForDropdownAsync();
-            _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, CancellationToken.None);
+            _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);
             StateHasChanged();
+        }
+
+        private async Task DismissAllNoticesAsync()
+        {
+            if (!SessionState.OperatorId.HasValue)
+            {
+                return;
+            }
+
+            // Dismiss every undismissed notice, not just the 5 shown in this dropdown.
+            var allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
+            await NoticeDismissalRepository.DismissAllAsync(allUndismissed.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
+            await LoadNoticesForDropdownAsync();
+            _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);
+            StateHasChanged();
+        }
+
+        private async Task GoToAllNoticesAsync()
+        {
+            _noticesDropdownOpen = false;
+            Nav.NavigateTo("/notices");
+            await Task.CompletedTask;
         }
 
         private string GetSeverityBadgeClass(VideoForensics.Providers.Common.Contracts.NoticeSeverity severity)
