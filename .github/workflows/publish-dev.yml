@@ -39,7 +39,7 @@ jobs:
         id: get-version
         shell: bash
         run: |
-          dotnet tool install --global nbgv --version 3.7.115
+          dotnet tool update --global nbgv
           export PATH="$PATH:$HOME/.dotnet/tools"
           VERSION=$(nbgv get-version -v Version)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -100,7 +100,7 @@ jobs:
         id: get-version
         shell: pwsh
         run: |
-          dotnet tool install --global nbgv --version 3.7.115
+          dotnet tool update --global nbgv
           $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
           $version = nbgv get-version -v Version
           Add-Content $env:GITHUB_OUTPUT "version=$version"
