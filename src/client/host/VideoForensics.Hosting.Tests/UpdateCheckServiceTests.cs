@@ -155,19 +155,24 @@ namespace VideoForensics.Hosting.Tests
             (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, Mock<IUpdateInstaller> installer) =
                 CreateService(config, () => "1.0.0");
 
-            var asset = new GitHubReleaseAsset("VideoForensics-99.0.0.exe", "https://example.com/download", 1000);
+            // Include both a Windows and a Debian asset so this test passes regardless of the
+            // OS it actually runs on - UpdateCheckService picks .exe on Windows and .deb
+            // elsewhere (RuntimeInformation.IsOSPlatform), and this test only cares that the
+            // installer gets invoked with whichever asset matched, not which platform matched.
+            var windowsAsset = new GitHubReleaseAsset("VideoForensics-99.0.0.exe", "https://example.com/download.exe", 1000);
+            var debianAsset = new GitHubReleaseAsset("videoforensics_99.0.0_amd64.deb", "https://example.com/download.deb", 1000);
             var release = new GitHubReleaseInfo(
                 "v99.0.0",
                 "https://github.com/rsperry79/VideoForensics/releases/tag/v99.0.0",
                 false,
                 false,
-                new[] { asset }
+                new[] { windowsAsset, debianAsset }
             );
             _ = gitHubClient.Setup(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(release);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            installer.Verify(i => i.DownloadAndInvokeAsync(asset, It.IsAny<CancellationToken>()), Times.Once);
+            installer.Verify(i => i.DownloadAndInvokeAsync(It.IsAny<GitHubReleaseAsset>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

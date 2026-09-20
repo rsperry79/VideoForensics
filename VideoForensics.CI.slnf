@@ -37,7 +37,6 @@
       "src/providers/ring/auth/VideoForensics.Providers.Ring.Auth.csproj",
       "src/providers/ring/common/tests/VideoForensics.Providers.Ring.Common.Tests.csproj",
       "src/providers/ring/common/VideoForensics.Providers.Ring.Common.csproj",
-      "src/providers/ring/core/tests/VideoForensics.Providers.Ring.Core.Tests.csproj",
       "src/providers/ring/core/VideoForensics.Providers.Ring.Core.csproj",
       "src/providers/ring/provider/tests/VideoForensics.Providers.Ring.Tests.csproj",
       "src/providers/ring/provider/VideoForensics.Providers.Ring.csproj",
