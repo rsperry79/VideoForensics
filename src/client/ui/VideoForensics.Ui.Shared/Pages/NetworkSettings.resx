@@ -54,13 +54,19 @@
     <value>Not authorized to view network settings.</value>
   </data>
   <data name="LocalLabelText" xml:space="preserve">
-    <value>reachable only from this machine (loopback). Default.</value>
+    <value>Local (this machine only) — Default</value>
   </data>
   <data name="NetworkLabelText" xml:space="preserve">
-    <value>reachable on the local network (LAN).</value>
+    <value>Network (local network / LAN)</value>
   </data>
   <data name="InternetLabelText" xml:space="preserve">
-    <value>reachable on the LAN, and eligible to use the Remote Access Cloudflare Tunnel for internet reachability.</value>
+    <value>Internet (LAN + Cloudflare Tunnel)</value>
+  </data>
+  <data name="HelpButtonTitle" xml:space="preserve">
+    <value>What do these options mean?</value>
+  </data>
+  <data name="CloseHelp" xml:space="preserve">
+    <value>Close</value>
   </data>
   <data name="ConfirmWiden" xml:space="preserve">
     <value>Widening from {0} to {1} requires a fresh passkey confirmation.</value>
@@ -82,5 +88,86 @@
   </data>
   <data name="LoadFailed" xml:space="preserve">
     <value>Failed to load network settings: {0}</value>
+  </data>
+  <data name="RemoteAccessHelpText" xml:space="preserve">
+    <value>A tunnel only changes network transport - it does not replace passkey pairing/sign-in. An unauthenticated request arriving over the tunnel still cannot reach any data. Starting a tunnel makes this server reachable from the internet, so it requires a fresh passkey confirmation (step-up) even in an already-signed-in session.</value>
+  </data>
+  <data name="RemoteAccessSectionTitle" xml:space="preserve">
+    <value>Remote Access (Cloudflare Tunnel)</value>
+  </data>
+  <data name="RequiresInternetTier" xml:space="preserve">
+    <value>Select the Internet tier above to manage remote access tunnels.</value>
+  </data>
+  <data name="RefreshButton" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="CloudflaredNotFoundPrefix" xml:space="preserve">
+    <value>was not found on this server's PATH or bundled alongside the app. Install it from</value>
+  </data>
+  <data name="CloudflaredDownloadLink" xml:space="preserve">
+    <value>Cloudflare's downloads page</value>
+  </data>
+  <data name="CloudflaredNotFoundSuffix" xml:space="preserve">
+    <value>and restart the server, then refresh this screen.</value>
+  </data>
+  <data name="CurrentStatus" xml:space="preserve">
+    <value>Current Status</value>
+  </data>
+  <data name="StatusLabel" xml:space="preserve">
+    <value>Status:</value>
+  </data>
+  <data name="PublicUrlLabel" xml:space="preserve">
+    <value>Public URL:</value>
+  </data>
+  <data name="StopTunnelButton" xml:space="preserve">
+    <value>Stop Tunnel</value>
+  </data>
+  <data name="RecentLogLabel" xml:space="preserve">
+    <value>Recent log output:</value>
+  </data>
+  <data name="QuickTunnelHeading" xml:space="preserve">
+    <value>Quick Tunnel</value>
+  </data>
+  <data name="QuickTunnelDescription" xml:space="preserve">
+    <value>Starts an ephemeral *.trycloudflare.com URL - no Cloudflare account needed. Good for short-term remote access; the URL changes every time you start a new one.</value>
+  </data>
+  <data name="StartQuickTunnelButton" xml:space="preserve">
+    <value>Start Quick Tunnel</value>
+  </data>
+  <data name="StartingQuickTunnelButton" xml:space="preserve">
+    <value>Starting...</value>
+  </data>
+  <data name="NamedTunnelHeading" xml:space="preserve">
+    <value>Named Tunnel</value>
+  </data>
+  <data name="NamedTunnelDescription" xml:space="preserve">
+    <value>Runs a persistent tunnel you already configured at the command line (cloudflared tunnel login, cloudflared tunnel create &lt;name&gt;, and a DNS route) - that one-time setup is not automated here. Select an already-configured tunnel to run it.</value>
+  </data>
+  <data name="NoNamedTunnels" xml:space="preserve">
+    <value>No configured named tunnels found (or cloudflared is not logged in to a Cloudflare account).</value>
+  </data>
+  <data name="TunnelLabel" xml:space="preserve">
+    <value>Tunnel</value>
+  </data>
+  <data name="SelectTunnelPlaceholder" xml:space="preserve">
+    <value>Select tunnel</value>
+  </data>
+  <data name="StartNamedTunnelButton" xml:space="preserve">
+    <value>Start Named Tunnel</value>
+  </data>
+  <data name="StartingNamedTunnelButton" xml:space="preserve">
+    <value>Starting...</value>
+  </data>
+  <data name="RemoteAccessSignInRequired" xml:space="preserve">
+    <value>Sign in with your passkey first.</value>
+  </data>
+  <data name="RemoteAccessActionFailed" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="RemoteAccessLoadFailed" xml:space="preserve">
+    <value>Failed to load remote access status: {0}</value>
+  </data>
+  <data name="RemoteAccessStopFailed" xml:space="preserve">
+    <value>Stop failed: {0}</value>
   </data>
 </root>

@@ -200,14 +200,14 @@
         <!-- Calls Table -->
         @if (_result.Calls.Count > 0)
         {
-            <SfGrid TValue="SelfTestCallDto" DataSource="@_result.Calls" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="SelfTestCallDto" DataSource="@_result.Calls" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(SelfTestCallDto.DisplayName)" HeaderText="@L["ColEndpoint"]" />
-                    <GridColumn Field="@nameof(SelfTestCallDto.Target)" HeaderText="@L["ColTarget"]" />
-                    <GridColumn Field="@nameof(SelfTestCallDto.DurationMs)" HeaderText="@L["ColDuration"]" />
-                    <GridColumn HeaderText="@L["ColSuccess"]">
+                    <GridColumn Field="@nameof(SelfTestCallDto.DisplayName)" HeaderText="@L["ColEndpoint"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SelfTestCallDto.Target)" HeaderText="@L["ColTarget"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SelfTestCallDto.DurationMs)" HeaderText="@L["ColDuration"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColSuccess"]" MinWidth="100">
                         <Template>
                             @{
                                 var call = (SelfTestCallDto)context;
@@ -217,8 +217,8 @@
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(SelfTestCallDto.Error)" HeaderText="@L["ColError"]" />
-                    <GridColumn HeaderText="@L["ColRestore"]">
+                    <GridColumn Field="@nameof(SelfTestCallDto.Error)" HeaderText="@L["ColError"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColRestore"]" MinWidth="100">
                         <Template>
                             @{
                                 var call = (SelfTestCallDto)context;
@@ -239,7 +239,7 @@
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColSchemaIssues"]">
+                    <GridColumn HeaderText="@L["ColSchemaIssues"]" MinWidth="100">
                         <Template>
                             @{
                                 var call = (SelfTestCallDto)context;

@@ -34,7 +34,7 @@ else if (_loadError is not null)
 else
 {
     <h6 class="mt-4 mb-2">@L["EmailSection"]</h6>
-    <div class="card border pa-4 mb-4">
+    <div class="card border p-4 mb-4">
         <div class="d-flex flex-column gap-2">
             <p>
                 @L["EmailDescription"]
@@ -83,7 +83,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["UrgentEventOverrides"]</h6>
-    <div class="card border pa-4 mb-4">
+    <div class="card border p-4 mb-4">
         <p class="mb-2">
             @L["UrgencyDescription"]
         </p>
@@ -93,12 +93,12 @@ else
         }
         else
         {
-            <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="UrgencyRow" DataSource="@_filteredUrgencyRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(UrgencyRow.EventType)" HeaderText="@L["ColEventType"]" />
-                    <GridColumn HeaderText="@L["ColDefault"]" AllowSorting="false" AllowFiltering="false">
+                    <GridColumn Field="@nameof(UrgencyRow.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColDefault"]" AllowSorting="false" AllowFiltering="false" MinWidth="100">
                         <Template>
                             @{
                                 var row = (UrgencyRow)context;
@@ -106,7 +106,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColEffective"]" AllowSorting="false" AllowFiltering="false">
+                    <GridColumn HeaderText="@L["ColEffective"]" AllowSorting="false" AllowFiltering="false" MinWidth="100">
                         <Template>
                             @{
                                 var row = (UrgencyRow)context;
@@ -114,7 +114,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
+                    <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false" MinWidth="100">
                         <Template>
                             @{
                                 var row = (UrgencyRow)context;
@@ -131,7 +131,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["PushNotifications"]</h6>
-    <div class="card border pa-4 mb-4">
+    <div class="card border p-4 mb-4">
         <div class="d-flex flex-column gap-2">
             <p>
                 @L["PushNotificationsDescription"]

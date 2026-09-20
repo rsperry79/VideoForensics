@@ -1,0 +1,28 @@
+@using VideoForensics.Providers.Common.Contracts
+
+<SfDialog @bind-Visible="Visible" Width="420px" IsModal="true" ShowCloseIcon="true" Header="@($"Re-authenticate {ProviderName}")">
+    <p>Enter the current password for this account to restore access.</p>
+    <AuthForm IdPrefix="reauth" SubmitLabel="Log In"
+              OnAuthenticated="HandleAuthenticatedAsync"
+              AvailableProviders="@(new[] { ProviderName })"
+              InitialEmail="@InitialEmail" />
+</SfDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public required string ProviderName { get; set; }
+    [Parameter] public string? InitialEmail { get; set; }
+    [Parameter] public EventCallback<AuthResult> OnAuthenticated { get; set; }
+
+    private async Task HandleAuthenticatedAsync(AuthResult result)
+    {
+        if (result.Success)
+        {
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
+        }
+
+        await OnAuthenticated.InvokeAsync(result);
+    }
+}

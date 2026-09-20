@@ -1,0 +1,161 @@
+@page "/register"
+@layout MinimalLayout
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@inject NavigationManager NavigationManager
+@inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<Register> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isSubmitting)
+            {
+                <div class="d-flex justify-content-center gap-2">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Registering...</span>
+                    </div>
+                    <span>Creating your account...</span>
+                </div>
+            }
+            else if (_registrationSuccess)
+            {
+                <div class="alert alert-success mb-3">
+                    @if (_isApproved)
+                    {
+                        <div>Account created successfully! You're ready to sign in as an administrator.</div>
+                    }
+                    else
+                    {
+                        <div>Account created successfully! An administrator needs to approve your account before you can sign in.</div>
+                    }
+                </div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <SfButton Content="@L["SignInButton"]" OnClick="@(() => NavigationManager.NavigateTo("/device-signin"))" CssClass="e-primary" />
+                    <SfButton Content="@L["BackButton"]" OnClick="@(() => NavigationManager.NavigateTo("/welcome"))" CssClass="e-flat" />
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    <div class="mb-3">
+                        <label class="form-label">@L["UsernameLabel"]</label>
+                        <SfTextBox @bind-Value="_form.Username" Placeholder="@L["UsernamePlaceholder"]" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["PasswordLabel"]</label>
+                        <input type="password" class="form-control" @bind="_form.Password" placeholder="@L["PasswordPlaceholder"]" />
+                        <small class="d-block text-muted mt-1">@L["PasswordHint"]</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["ConfirmPasswordLabel"]</label>
+                        <input type="password" class="form-control" @bind="_form.ConfirmPassword" placeholder="@L["ConfirmPasswordPlaceholder"]" />
+                        @if (!string.IsNullOrEmpty(_form.Password) && _form.Password != _form.ConfirmPassword)
+                        {
+                            <div class="text-danger small">@L["PasswordMismatch"]</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["FirstNameLabel"]</label>
+                        <SfTextBox @bind-Value="_form.FirstName" Placeholder="@L["FirstNamePlaceholder"]" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["LastNameLabel"]</label>
+                        <SfTextBox @bind-Value="_form.LastName" Placeholder="@L["LastNamePlaceholder"]" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["EmailLabel"]</label>
+                        <SfTextBox @bind-Value="_form.Email" Placeholder="@L["EmailPlaceholder"]" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["PhoneLabel"] <span class="text-muted">(@L["Optional"])</span></label>
+                        <SfTextBox @bind-Value="_form.Phone" Placeholder="@L["PhonePlaceholder"]" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["DisplayNameLabel"] <span class="text-muted">(@L["Optional"])</span></label>
+                        <SfTextBox @bind-Value="_form.DisplayName" Placeholder="@L["DisplayNamePlaceholder"]" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-3">@_errorMessage</div>
+                    }
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <SfButton Content="@L["RegisterButton"]" OnClick="RegisterAsync" CssClass="e-primary" Disabled="@(_isSubmitting || (!string.IsNullOrEmpty(_form.Password) && _form.Password != _form.ConfirmPassword))" />
+                        <SfButton Content="@L["CancelButton"]" OnClick="@(() => NavigationManager.NavigateTo("/welcome"))" CssClass="e-flat" />
+                    </div>
+                </div>
+            }
+
+@code {
+    private RegisterForm _form = new();
+    private bool _isSubmitting;
+    private bool _registrationSuccess;
+    private bool _isApproved;
+    private string? _errorMessage;
+
+    private async Task RegisterAsync()
+    {
+        if (_form.Password != _form.ConfirmPassword)
+        {
+            _errorMessage = L["PasswordMismatch"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.Password) || _form.Password.Length < 12)
+        {
+            _errorMessage = L["PasswordTooShort"];
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+        try
+        {
+            var (success, errorMessage, isApproved) = await WebAuthn.RegisterOperatorAsync(
+                _form.Username.Trim(),
+                _form.Password,
+                _form.FirstName.Trim(),
+                _form.LastName.Trim(),
+                _form.Email.Trim().ToLower(),
+                string.IsNullOrWhiteSpace(_form.Phone) ? null : _form.Phone.Trim(),
+                string.IsNullOrWhiteSpace(_form.DisplayName) ? null : _form.DisplayName.Trim());
+
+            if (!success)
+            {
+                _errorMessage = errorMessage ?? L["RegistrationFailed"];
+                return;
+            }
+
+            _isApproved = isApproved;
+            _registrationSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["RegistrationFailed"] + ": " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private class RegisterForm
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? DisplayName { get; set; }
+    }
+}

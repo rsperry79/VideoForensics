@@ -1,6 +1,7 @@
 @page "/accounts/{Id:guid}"
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Providers.Common.Contracts
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IForensicsConfiguration ForensicsConfig
@@ -76,7 +77,13 @@ else
         </div>
 
         <div class="mb-4">
-            <SfButton CssClass="e-primary" Content="Sync Schedule" OnClick="GoToSyncSchedule" />
+            <div class="d-flex gap-2">
+                <SfButton CssClass="e-primary" Content="Sync Schedule" OnClick="GoToSyncSchedule" />
+                @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
+                {
+                    <SfButton CssClass="e-warning" Content="Login" OnClick="() => _reAuthDialogVisible = true" />
+                }
+            </div>
         </div>
 
         <div>
@@ -93,6 +100,14 @@ else
                 <SfButton CssClass="e-danger" Content="Remove Account" OnClick="PromptRemove" Disabled="@_isBusy" />
             }
         </div>
+
+        @if (_account is not null)
+        {
+            <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
+                          ProviderName="@_account.ProviderName"
+                          InitialEmail="@_displayName"
+                          OnAuthenticated="HandleReAuthenticatedAsync" />
+        }
     }
 }
 
@@ -106,6 +121,7 @@ else
     private bool _isLoading = true;
     private bool _isBusy;
     private bool _confirmingRemove;
+    private bool _reAuthDialogVisible;
     private string? _statusMessage;
 
     protected override async Task OnInitializedAsync()
@@ -196,6 +212,14 @@ else
         finally
         {
             _isBusy = false;
+        }
+    }
+
+    private async Task HandleReAuthenticatedAsync(AuthResult result)
+    {
+        if (result.Success)
+        {
+            await LoadAccountAsync();
         }
     }
 }

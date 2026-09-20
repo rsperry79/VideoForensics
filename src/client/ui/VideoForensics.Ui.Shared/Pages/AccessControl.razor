@@ -52,15 +52,15 @@ else
         }
         else
         {
-            <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_filteredAccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" />
-                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" />
-                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" />
-                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" />
-                    <GridColumn HeaderText="@L["ColDetails"]">
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
                         <Template>
                             @{
                                 var row = (AccessControlReport.AccessEvent)context;
@@ -79,13 +79,13 @@ else
         }
         else
         {
-            <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_filteredExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" />
-                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" />
-                    <GridColumn HeaderText="@L["ColCaseReference"]">
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColCaseReference"]" MinWidth="100">
                         <Template>
                             @{
                                 var row = (AccessControlReport.ExportEvent)context;
@@ -93,7 +93,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColRecipient"]">
+                    <GridColumn HeaderText="@L["ColRecipient"]" MinWidth="100">
                         <Template>
                             @{
                                 var row = (AccessControlReport.ExportEvent)context;
@@ -101,7 +101,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" />
+                    <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }

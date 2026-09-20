@@ -89,6 +89,11 @@ else
 
         @if (_operator.Active)
         {
+            <SfButton Content="@L["ResetPasswordButton"]" OnClick="ResetPasswordAsync" CssClass="e-flat" />
+        }
+
+        @if (_operator.Active)
+        {
             <SfButton Content="@L["RevokeButton"]" OnClick="BeginRevoke" CssClass="e-flat e-danger" />
             @if (_pendingRevoke)
             {
@@ -100,6 +105,17 @@ else
             }
         }
     </div>
+
+    @if (_showTempPasswordAlert && _tempPassword is not null)
+    {
+        <div class="alert alert-warning mb-4">
+            <strong>@L["TempPasswordWarning"]</strong>
+            <div class="mt-2">
+                <input type="text" readonly value="@_tempPassword" class="form-control" style="max-width: 400px;" />
+                <small class="d-block mt-2">@L["TempPasswordNote"]</small>
+            </div>
+        </div>
+    }
 }
 
 @if (_updateError is not null)
@@ -126,6 +142,8 @@ else
     private string _displayNameInput = string.Empty;
     private bool _pendingRevoke;
     private string _reasonInput = string.Empty;
+    private bool _showTempPasswordAlert;
+    private string? _tempPassword;
 
     protected override async Task OnInitializedAsync()
     {
@@ -290,6 +308,46 @@ else
         }
     }
 
+    private async Task ResetPasswordAsync()
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _actionError = L["SignInFirstError"];
+            return;
+        }
+
+        _actionError = null;
+        _showTempPasswordAlert = false;
+        _tempPassword = null;
+        try
+        {
+            // Password reset is high-risk (plan §5.7) - a fresh passkey assertion is required at the
+            // moment of the action, not just an already-open session.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operators/{Id}/reset-password", new { });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["ResetPasswordFailed", response.StatusCode];
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ResetPasswordResponse>(JsonOptions);
+            if (result?.TemporaryPassword is not null)
+            {
+                _tempPassword = result.TemporaryPassword;
+                _showTempPasswordAlert = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["ResetPasswordFailed", ex.Message];
+        }
+    }
+
     private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
     {
         try
@@ -315,4 +373,6 @@ else
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private record ResetPasswordResponse(string? TemporaryPassword);
 }

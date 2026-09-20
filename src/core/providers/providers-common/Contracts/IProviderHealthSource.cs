@@ -9,10 +9,11 @@ namespace VideoForensics.Providers.Common.Contracts
     public interface IProviderHealthSource
     {
         /// <summary>
-        /// Fetches current health/connectivity telemetry for every device visible on the
-        /// authenticated account in one call. Returns an empty list (not a throw) when no session
-        /// is currently available, so a caller iterating multiple health sources isn't interrupted
-        /// by one provider's account not being signed in.
+        /// Fetches current health/connectivity telemetry for every device visible across all active
+        /// provider accounts in one call (for providers supporting multiple accounts per operator).
+        /// Returns an empty list (not a throw) when no sessions are currently available, so a caller
+        /// iterating multiple health sources isn't interrupted by one provider's account not being
+        /// signed in. Automatically restores expired sessions from saved credentials where possible.
         /// </summary>
         Task<IReadOnlyList<DeviceHealthReading>> FetchHealthAsync(CancellationToken ct);
     }

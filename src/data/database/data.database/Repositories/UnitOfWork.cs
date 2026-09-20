@@ -181,6 +181,20 @@ namespace VideoForensics.Data.Database.Repositories
 
             return Task.CompletedTask;
         }
+
+        public Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == providerAccountId);
+            if (account != null)
+            {
+                account.LastSuccessfulAuthUtc = DateTime.UtcNow;
+                account.LastErrorUtc = null;
+                account.LastErrorMessage = null;
+                _ = _db.ProviderAccounts.Update(account);
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     internal class UnitOfWorkLocationRepository : ILocationRepository

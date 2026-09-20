@@ -51,14 +51,14 @@ else
 
         @if (_report.Incidents.Count > 0)
         {
-            <SfGrid TValue="JammingIncidentRecord" DataSource="@_filteredIncidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="JammingIncidentRecord" DataSource="@_filteredIncidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" />
-                    <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" />
-                    <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" />
-                    <GridColumn HeaderText="@L["ColAvgDegradation"]">
+                    <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColAvgDegradation"]" MinWidth="100">
                         <Template>
                             @{
                                 var incident = (JammingIncidentRecord)context;
@@ -66,9 +66,9 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(JammingIncidentRecord.Confidence)" HeaderText="@L["ColConfidence"]" />
-                    <GridColumn Field="@nameof(JammingIncidentRecord.Source)" HeaderText="@L["ColSource"]" />
-                    <GridColumn Field="@nameof(JammingIncidentRecord.Notes)" HeaderText="@L["ColNotes"]" />
+                    <GridColumn Field="@nameof(JammingIncidentRecord.Confidence)" HeaderText="@L["ColConfidence"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(JammingIncidentRecord.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(JammingIncidentRecord.Notes)" HeaderText="@L["ColNotes"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }

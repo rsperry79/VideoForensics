@@ -1,34 +1,39 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
 @inject IProviderAuthService AuthService
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<SharedResources> L
+@inject PairedSessionState SessionState
 
-<div class="right-panel-section">
-    <small>@L["Active Account"]</small>
-    @if (_isLoading)
-    {
-        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
-    }
-    else if (_rows.Count == 0)
-    {
-        <small>No accounts linked yet.</small>
-    }
-    else
-    {
-        <SfDropDownList TValue="Guid?" TItem="AccountRow" Value="@ForensicsConfig.ActiveProviderAccountId" ValueChanged="@(async (Guid? v) => await SelectAccountAsync(v))"
-                         DataSource="@_rows" Enabled="@(!_isBusy)" CssClass="w-100">
-            <DropDownListFieldSettings Text="DisplayName" Value="Id"></DropDownListFieldSettings>
-        </SfDropDownList>
-    }
-    @if (!string.IsNullOrEmpty(_statusMessage))
-    {
-        <small>@_statusMessage</small>
-    }
-</div>
+@if (SessionState.IsSignedIn)
+{
+    <div class="right-panel-section">
+        <small>@L["Active Account"]</small>
+        @if (_isLoading)
+        {
+            <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+        }
+        else if (_rows.Count == 0)
+        {
+            <small>No accounts linked yet.</small>
+        }
+        else
+        {
+            <SfDropDownList TValue="Guid?" TItem="AccountRow" Value="@ForensicsConfig.ActiveProviderAccountId" ValueChanged="@(async (Guid? v) => await SelectAccountAsync(v))"
+                             DataSource="@_rows" Enabled="@(!_isBusy)" CssClass="w-100">
+                <DropDownListFieldSettings Text="DisplayName" Value="Id"></DropDownListFieldSettings>
+            </SfDropDownList>
+        }
+        @if (!string.IsNullOrEmpty(_statusMessage))
+        {
+            <small>@_statusMessage</small>
+        }
+    </div>
+}
 
 @code {
     private sealed record AccountRow(Guid Id, string DisplayName);
@@ -40,7 +45,30 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAccountsAsync();
+        // Session state must be loaded via EnsureLoadedAsync in OnAfterRenderAsync before IsSignedIn is meaningful.
+        // Don't load accounts here yet.
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // IJSRuntime is unavailable during Blazor's static prerender pass, so session state
+            // can only be resolved once the circuit is connected.
+            await SessionState.EnsureLoadedAsync();
+
+            // Only load accounts if operator is signed in
+            if (SessionState.IsSignedIn)
+            {
+                await LoadAccountsAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                _isLoading = false;
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task LoadAccountsAsync()

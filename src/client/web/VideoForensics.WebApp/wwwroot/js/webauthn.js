@@ -101,17 +101,19 @@
             return JSON.stringify(result);
         },
 
-        // Session-token persistence (plain localStorage - the token itself is a short-lived opaque
-        // bearer credential via IDataProtector, not a secret worth extra protection beyond what the
-        // browser already gives same-origin storage).
+        // Session-token persistence (session cookie - no Expires/Max-Age means the browser discards it
+        // when the browser itself closes, while cookies are automatically shared across every tab/window
+        // of the same browser so navigation and new tabs stay signed in. The token itself is a short-lived
+        // opaque bearer credential via IDataProtector, not a secret worth extra protection beyond that.)
         saveSession: function (json) {
-            localStorage.setItem("vf.pairedSession", json);
+            document.cookie = "vf.pairedSession=" + encodeURIComponent(json) + "; path=/; SameSite=Lax";
         },
         loadSession: function () {
-            return localStorage.getItem("vf.pairedSession");
+            const match = document.cookie.match(/(?:^|;\s*)vf\.pairedSession=([^;]*)/);
+            return match ? decodeURIComponent(match[1]) : null;
         },
         clearSession: function () {
-            localStorage.removeItem("vf.pairedSession");
+            document.cookie = "vf.pairedSession=; path=/; SameSite=Lax; Max-Age=0";
         }
     };
 })();

@@ -29,13 +29,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_AddAndGet_RoundTrips()
         {
-            var @operator = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "John Forensics",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
+            var @operator = TestDataBuilder.BuildOperator(displayName: "John Forensics");
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
             Operator? retrieved = await _repository.GetAsync(@operator.Id, CancellationToken.None);
@@ -58,29 +52,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_ListAsync_ReturnsAllOperators()
         {
-            var op1 = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Alice",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
-
-            var op2 = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Bob",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
-
-            var op3 = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Charlie",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = false
-            };
+            var op1 = TestDataBuilder.BuildOperator(displayName: "Alice");
+            var op2 = TestDataBuilder.BuildOperator(displayName: "Bob");
+            var op3 = TestDataBuilder.BuildOperator(displayName: "Charlie", active: false);
 
             _ = await _repository.AddAsync(op1, CancellationToken.None);
             _ = await _repository.AddAsync(op2, CancellationToken.None);
@@ -114,13 +88,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_IsEmptyAsync_WithOperators_ReturnsFalse()
         {
-            var @operator = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Test Operator",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -132,13 +100,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_DeactivateAsync_SetsFalse()
         {
-            var @operator = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Test Operator",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -164,13 +126,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_Add_AlreadyActive_Persists()
         {
-            var @operator = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Active Operator",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
+            var @operator = TestDataBuilder.BuildOperator(displayName: "Active Operator");
 
             Operator result = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -182,13 +138,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_MultipleDeactivations_Idempotent()
         {
-            var @operator = new Operator
-            {
-                Id = Guid.NewGuid(),
-                DisplayName = "Test Operator",
-                CreatedAtUtc = DateTime.UtcNow,
-                Active = true
-            };
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 

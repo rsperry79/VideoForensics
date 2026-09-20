@@ -34,5 +34,10 @@ namespace VideoForensics.Data.Common.Contracts
         /// <param name="errorMessage">The error message describing the failure condition.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken);
+
+        /// <summary>Records a successful authentication for a provider account, clearing any prior error state.</summary>
+        /// <param name="providerAccountId">The provider account ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken);
     }
 }

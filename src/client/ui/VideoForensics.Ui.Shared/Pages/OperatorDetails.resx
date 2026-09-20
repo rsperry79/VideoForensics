@@ -104,4 +104,16 @@
   <data name="SignInToManage" xml:space="preserve">
     <value>to manage operators.</value>
   </data>
+  <data name="ResetPasswordButton" xml:space="preserve">
+    <value>Reset Password</value>
+  </data>
+  <data name="TempPasswordWarning" xml:space="preserve">
+    <value>Temporary password generated</value>
+  </data>
+  <data name="TempPasswordNote" xml:space="preserve">
+    <value>This password will not be shown again - copy it now and give it to the operator.</value>
+  </data>
+  <data name="ResetPasswordFailed" xml:space="preserve">
+    <value>Password reset failed: {0}</value>
+  </data>
 </root>

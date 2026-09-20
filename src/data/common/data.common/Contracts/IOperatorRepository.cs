@@ -20,5 +20,17 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Updates only the DisplayName field for an Operator.</summary>
         Task UpdateDisplayNameAsync(Guid operatorId, string displayName, CancellationToken ct);
+
+        /// <summary>Finds an Operator by their login username, or null if none exists.</summary>
+        Task<Operator?> GetByUsernameAsync(string username, CancellationToken ct);
+
+        /// <summary>Sets the password hash for an Operator, regenerates their security stamp (invalidating existing sessions), and updates PasswordUpdatedAtUtc to now.</summary>
+        Task SetPasswordAsync(Guid operatorId, string passwordHash, bool mustChangePassword, CancellationToken ct);
+
+        /// <summary>Updates the canonical Role for an Operator.</summary>
+        Task SetRoleAsync(Guid operatorId, OperatorRole role, CancellationToken ct);
+
+        /// <summary>Marks that the operator's first successful login after approval has been notified (sets ApprovalFirstLoginNotifiedAtUtc to now).</summary>
+        Task SetApprovalFirstLoginNotifiedAsync(Guid operatorId, CancellationToken ct);
     }
 }

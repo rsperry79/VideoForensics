@@ -507,5 +507,258 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(readings);
             Assert.Empty(readings);
         }
+
+        [Fact]
+        public async Task FetchHealthAsync_WithNoProviderAccountRepository_FallsBackToSingleSessionBehavior()
+        {
+            // Arrange - construct with only 2 args (logger, sessionProvider), no account/auth repos
+            // This should behave exactly as the current implementation
+            var health = new DeviceHealth { Connected = true, BatteryPercentage = 80, Rssi = -40.0, WifiName = "WiFi1", FirmwareVersion = "1.0.0" };
+            var doorbot = new Doorbot { Id = 100, Description = "Door 1", Health = health };
+            var devices = new Devices
+            {
+                Doorbots = [doorbot],
+                StickupCams = null,
+                AuthorizedDoorbots = null,
+                Chimes = null
+            };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("testuser", "testpass", null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var service = new RingHealthSource(logger, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert - should have exactly 1 reading from the single session
+            Assert.NotNull(readings);
+            Assert.Single(readings);
+            Assert.Equal("100", readings[0].ProviderDeviceId);
+        }
+
+        [Fact]
+        public async Task FetchHealthAsync_WithMultipleActiveAccounts_AggregatesReadingsFromAllAccounts()
+        {
+            // Arrange - construct with all 4 args; provide multiple Ring accounts with different sessions
+            var accountId1 = Guid.NewGuid();
+            var accountId2 = Guid.NewGuid();
+
+            // Account 1 account object
+            var account1 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId1,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1)
+            };
+
+            // Account 2 account object
+            var account2 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId2,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow
+            };
+
+            // Sessions with different devices
+            var health1 = new DeviceHealth { Connected = true, BatteryPercentage = 80, Rssi = -40.0, WifiName = "WiFi1", FirmwareVersion = "1.0.0" };
+            var doorbot1 = new Doorbot { Id = 100, Description = "Door 1", Health = health1 };
+            var devices1 = new Devices
+            {
+                Doorbots = [doorbot1],
+                StickupCams = null,
+                AuthorizedDoorbots = null,
+                Chimes = null
+            };
+
+            var health2 = new DeviceHealth { Connected = true, BatteryPercentage = 60, Rssi = -50.0, WifiName = "WiFi2", FirmwareVersion = "2.0.0" };
+            var stickupCam2 = new StickupCam { Id = 200, Description = "Cam 1", Health = health2 };
+            var devices2 = new Devices
+            {
+                Doorbots = null,
+                StickupCams = [stickupCam2],
+                AuthorizedDoorbots = null,
+                Chimes = null
+            };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session1 = new Mock<Session>("user1", "pass1", null, null);
+            _ = session1.Setup(s => s.GetRingDevices()).ReturnsAsync(devices1);
+            var session2 = new Mock<Session>("user2", "pass2", null, null);
+            _ = session2.Setup(s => s.GetRingDevices()).ReturnsAsync(devices2);
+
+            // Setup GetSession to return different sessions based on account id
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
+
+            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account1, account2 });
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+
+            // Create the health source with the optional parameters
+            var authServiceMock = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert - should have readings from both accounts
+            Assert.NotNull(readings);
+            Assert.Equal(2, readings.Count);
+            Assert.Contains(readings, r => r.ProviderDeviceId == "100");
+            Assert.Contains(readings, r => r.ProviderDeviceId == "200");
+        }
+
+        [Fact]
+        public async Task FetchHealthAsync_WithAccountMissingSession_RestoresViaAuthServiceThenFetches()
+        {
+            // Arrange - one account, first GetSession returns null, AuthService restores it
+            var accountId = Guid.NewGuid();
+            var account = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow
+            };
+
+            var health = new DeviceHealth { Connected = true, BatteryPercentage = 80, Rssi = -40.0, WifiName = "WiFi1", FirmwareVersion = "1.0.0" };
+            var doorbot = new Doorbot { Id = 100, Description = "Door 1", Health = health };
+            var devices = new Devices
+            {
+                Doorbots = [doorbot],
+                StickupCams = null,
+                AuthorizedDoorbots = null,
+                Chimes = null
+            };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("user", "pass", null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
+
+            // First call returns null, second call (after restore) returns session
+            var callCount = 0;
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId))
+                .Returns(() =>
+                {
+                    callCount++;
+                    return callCount == 1 ? null : session.Object;
+                });
+
+            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
+
+            var authService = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authService.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert - should have restored and fetched the session
+            Assert.NotNull(readings);
+            Assert.Single(readings);
+            Assert.Equal("100", readings[0].ProviderDeviceId);
+            authService.Verify(ras => ras.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task FetchHealthAsync_WithAccountThatCannotBeRestored_SkipsAccountWithoutThrowing()
+        {
+            // Arrange - one account, GetSession returns null, RestoreFromSavedCredentialsAsync returns false
+            var accountId = Guid.NewGuid();
+            var account = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow
+            };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+
+            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
+
+            var authService = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false); // Restore failed
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authService.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert - should return empty list without throwing
+            Assert.NotNull(readings);
+            Assert.Empty(readings);
+        }
+
+        [Fact]
+        public async Task FetchHealthAsync_WithOneAccountThrowing_StillReturnsOtherAccountsReadings()
+        {
+            // Arrange - two accounts, first throws, second succeeds
+            var accountId1 = Guid.NewGuid();
+            var accountId2 = Guid.NewGuid();
+
+            var account1 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId1,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow.AddHours(-1)
+            };
+
+            var account2 = new VideoForensics.Data.Common.Entities.ProviderAccount
+            {
+                Id = accountId2,
+                ProviderName = "Ring",
+                LastSuccessfulAuthUtc = DateTime.UtcNow
+            };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session1 = new Mock<Session>("user1", "pass1", null, null);
+            _ = session1.Setup(s => s.GetRingDevices()).ThrowsAsync(new InvalidOperationException("Network error"));
+
+            var health2 = new DeviceHealth { Connected = true, BatteryPercentage = 60, Rssi = -50.0, WifiName = "WiFi2", FirmwareVersion = "2.0.0" };
+            var stickupCam2 = new StickupCam { Id = 200, Description = "Cam 1", Health = health2 };
+            var devices2 = new Devices
+            {
+                Doorbots = null,
+                StickupCams = [stickupCam2],
+                AuthorizedDoorbots = null,
+                Chimes = null
+            };
+            var session2 = new Mock<Session>("user2", "pass2", null, null);
+            _ = session2.Setup(s => s.GetRingDevices()).ReturnsAsync(devices2);
+
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(session2.Object);
+
+            var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account1, account2 });
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var authServiceMock = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert - should have only the second account's reading, no throw
+            Assert.NotNull(readings);
+            Assert.Single(readings);
+            Assert.Equal("200", readings[0].ProviderDeviceId);
+        }
     }
 }

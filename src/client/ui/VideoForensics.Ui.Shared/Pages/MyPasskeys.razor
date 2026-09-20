@@ -1,0 +1,280 @@
+@page "/settings/passkeys"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<MyPasskeys> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+    </div>
+}
+
+<h6 class="mt-4 mb-2">@L["AddPasskeyHeading"]</h6>
+<div class="d-flex flex-row gap-2 mb-4">
+    <SfTextBox @bind-Value="_labelInput" Placeholder="@L["LabelPlaceholder"].Value" Style="max-width: 300px;" CssClass="form-control" />
+    <SfButton Content="@(_isAdding ? L["AddingButton"] : L["AddButton"])" OnClick="AddPasskeyAsync" Disabled="@(_isAdding || string.IsNullOrWhiteSpace(_labelInput))" CssClass="e-primary" />
+</div>
+@if (_addError is not null)
+{
+    <div class="alert alert-danger mb-4">@_addError</div>
+}
+@if (_addSuccess)
+{
+    <div class="alert alert-info mb-4">@L["PasskeyAddedPending"]</div>
+}
+
+<h6 class="mt-4 mb-2">@L["MyPasskeysHeading"]</h6>
+<div class="d-flex flex-row gap-2 mb-2">
+    <SfButton Content="@L["RefreshButton"]" OnClick="LoadAsync" Disabled="@_isLoading" CssClass="e-flat" />
+</div>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["NotAuthorizedMessage"]</span>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_credentials is null || _credentials.Count == 0)
+{
+    <span>@L["NoPasskeys"]</span>
+}
+else
+{
+    <SfGrid TValue="OperatorCredential" DataSource="@_credentials" AllowSorting="true" AllowPaging="true" AllowResizing="true">
+        <GridPageSettings PageSize="20"></GridPageSettings>
+        <GridColumns>
+            <GridColumn Field="@nameof(OperatorCredential.Label)" HeaderText="@L["ColLabel"]" MinWidth="100" />
+            <GridColumn Field="@nameof(OperatorCredential.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false" MinWidth="100">
+                <Template>
+                    @{
+                        var cred = (OperatorCredential)context;
+                        @if (cred.RevokedAtUtc.HasValue)
+                        {
+                            <span style="color: var(--bs-danger);">@L["StatusRevoked"]</span>
+                        }
+                        else if (cred.IsApproved)
+                        {
+                            <span style="color: var(--bs-success);">@L["StatusApproved"]</span>
+                        }
+                        else
+                        {
+                            <span style="color: var(--bs-warning);">@L["StatusPending"]</span>
+                        }
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="@L["ColLastUsedAt"]" MinWidth="100">
+                <Template>
+                    @{
+                        var cred = (OperatorCredential)context;
+                        @(cred.LastUsedAtUtc?.ToString() ?? L["NotAvailable"].Value)
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn HeaderText="" AllowSorting="false" MinWidth="100">
+                <Template>
+                    @{
+                        var cred = (OperatorCredential)context;
+                        @if (!cred.RevokedAtUtc.HasValue)
+                        {
+                            <SfButton Content="@L["RevokeButton"]" OnClick="() => BeginRevoke(cred.Id)" CssClass="e-danger" />
+                            @if (_pendingRevokeCredentialId == cred.Id)
+                            {
+                                <div class="d-flex flex-row gap-2 align-items-center mt-2">
+                                    <SfTextBox @bind-Value="_passwordInput" PlaceHolder="@L["PasswordPlaceholder"].Value" Type="Syncfusion.Blazor.Inputs.InputType.Password" Style="max-width: 200px;" CssClass="form-control" />
+                                    <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRevoke(cred.Id)" CssClass="e-danger" />
+                                    <SfButton Content="@L["CancelButton"]" OnClick="CancelRevoke" CssClass="e-flat" />
+                                </div>
+                            }
+                        }
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
+}
+
+@if (_revokeError is not null)
+{
+    <div class="alert alert-danger mt-4">@_revokeError</div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private List<OperatorCredential>? _credentials = new();
+    private string? _authError;
+    private string? _loadError;
+    private string? _revokeError;
+    private string? _addError;
+    private bool _addSuccess;
+    private string _labelInput = string.Empty;
+    private string _passwordInput = string.Empty;
+    private Guid? _pendingRevokeCredentialId;
+    private bool _isAdding;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // IJSRuntime is unavailable during Blazor's static prerender pass - see the identical note
+        // on SecurityDevices.razor.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _addSuccess = false;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/devices-management/operator-credentials/mine");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = L["NotAuthorizedToView"];
+                _credentials = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            _credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredential>>(JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToLoad", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AddPasskeyAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_labelInput) || SessionState.SessionToken is null)
+        {
+            return;
+        }
+
+        _isAdding = true;
+        _addError = null;
+        _addSuccess = false;
+        try
+        {
+            var (success, errorMessage, isApproved) = await WebAuthn.RegisterOperatorCredentialAsync(SessionState.SessionToken, _labelInput);
+            if (!success)
+            {
+                _addError = errorMessage ?? L["RegistrationFailed"];
+                return;
+            }
+
+            _labelInput = string.Empty;
+            _addSuccess = !isApproved; // Show pending message if not approved
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _addError = L["RegistrationFailed", ex.Message];
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+
+    private void BeginRevoke(Guid credentialId)
+    {
+        _pendingRevokeCredentialId = credentialId;
+        _passwordInput = string.Empty;
+        _revokeError = null;
+    }
+
+    private void CancelRevoke()
+    {
+        _pendingRevokeCredentialId = null;
+        _passwordInput = string.Empty;
+    }
+
+    private async Task ConfirmRevoke(Guid credentialId)
+    {
+        if (string.IsNullOrWhiteSpace(_passwordInput) || SessionState.SessionToken is null)
+        {
+            return;
+        }
+
+        _revokeError = null;
+        try
+        {
+            // Step-up via password since this page is for operators who may not have approved passkeys yet
+            var stepUpToken = await WebAuthn.StepUpWithPasswordAsync(SessionState.SessionToken, _passwordInput);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operator-credentials/{credentialId}/revoke", new { Reason = "Revoked by operator" });
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _revokeError = body ?? L["RevokeFailed", response.StatusCode];
+                return;
+            }
+
+            CancelRevoke();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _revokeError = L["RevokeFailed", ex.Message];
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        return client;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+}
