@@ -63,6 +63,10 @@ namespace VideoForensics.Client.Core.Services
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
+                config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
+                config.UpdateMode = await GetEnumSetting("UpdateMode", config.UpdateMode, cancellationToken);
+                config.UpdateCheckIntervalHours = await GetIntSetting("UpdateCheckIntervalHours", config.UpdateCheckIntervalHours, cancellationToken);
+                config.ReleaseChannel = await GetEnumSetting("ReleaseChannel", config.ReleaseChannel, cancellationToken);
                 config.EnableEmailNotifications = await GetBoolSetting("EnableEmailNotifications", config.EnableEmailNotifications, cancellationToken);
                 config.SmtpHost = await GetStringSetting("SmtpHost", config.SmtpHost, cancellationToken);
                 config.SmtpPort = await GetIntSetting("SmtpPort", config.SmtpPort, cancellationToken);
@@ -110,6 +114,10 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("UpdateMode", config.UpdateMode.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("UpdateCheckIntervalHours", config.UpdateCheckIntervalHours.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ReleaseChannel", config.ReleaseChannel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableEmailNotifications", config.EnableEmailNotifications.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("SmtpHost", config.SmtpHost, cancellationToken);
                 await _settingRepository!.SetAsync("SmtpPort", config.SmtpPort.ToString(), cancellationToken);

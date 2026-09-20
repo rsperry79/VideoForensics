@@ -208,7 +208,13 @@ namespace VideoForensics.WebApp.Api
                     DisplayName = pending.OperatorDisplayName,
                     CreatedAtUtc = DateTime.UtcNow,
                     Active = true,
-                    IsApproved = !isAnonymousInitiation  // false only for self-service anonymous initiation
+                    IsApproved = !isAnonymousInitiation,  // false only for self-service anonymous initiation
+                    Username = $"device-{pending.OperatorId:N}",
+                    FirstName = pending.DeviceName,
+                    LastName = "(service account)",
+                    Email = $"{pending.OperatorId:N}@device.invalid",
+                    Role = pending.Role,
+                    SecurityStamp = Guid.NewGuid()
                 }, ct);
 
                 PairedDevice pairedDevice = await pairedDevices.AddAsync(new PairedDevice
@@ -268,12 +274,16 @@ namespace VideoForensics.WebApp.Api
                 CancellationToken ct) =>
             {
                 IReadOnlyList<PairedDevice> allDevices = await pairedDevices.ListAsync(ct);
+                // Every credential registration forces AuthenticatorAttachment.Platform above, so every
+                // stored credential is guaranteed to be a platform/internal authenticator; hinting that
+                // here (rather than leaving transports unset) lets the browser invoke Windows Hello
+                // directly instead of showing the full authenticator chooser.
                 var allowedCredentials = allDevices
                     .Where(d => d.IsActive && d.WebAuthnCredentialId != null)
                     .Select(d => new PublicKeyCredentialDescriptor(
                         PublicKeyCredentialType.PublicKey,
                         Convert.FromBase64String(d.WebAuthnCredentialId!),
-                        null))
+                        new[] { AuthenticatorTransport.Internal }))
                     .ToList();
 
                 AssertionOptions options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
@@ -362,7 +372,7 @@ namespace VideoForensics.WebApp.Api
                 NetworkTier tier = tierResolver.ResolveTier(context);
                 await pairedDevices.RecordSuccessfulAuthAsync(device.Id, result.SignCount, tierResolver.ResolveClientIp(context), tier, ct);
 
-                string token = sessionTokens.Issue(device.OperatorId, device.Id, device.Role);
+                string token = sessionTokens.Issue(device.OperatorId, device.Id, CredentialKind.ServiceDevice, device.Role, op.SecurityStamp);
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, device.OperatorId, device.Id,
                     tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);

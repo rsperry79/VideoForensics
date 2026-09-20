@@ -299,5 +299,37 @@ namespace VideoForensics.Data.Database.Tests
                 ApiResponseHash = apiHash ?? $"{Guid.NewGuid():N}{Guid.NewGuid():N}"
             };
         }
+
+        public static Notice BuildNotice(string? eventType = null, int audience = 0, Guid? operatorId = null, Guid? providerAccountId = null)
+        {
+            return new Notice
+            {
+                Id = Guid.NewGuid(),
+                EventType = eventType ?? "TestEvent",
+                Audience = audience,
+                TimestampUtc = DateTime.UtcNow,
+                OperatorId = operatorId,
+                ProviderAccountId = providerAccountId
+            };
+        }
+
+        public static Operator BuildOperator(string? displayName = null, string? username = null, string? firstName = null, string? lastName = null, string? email = null, OperatorRole role = OperatorRole.ReadOnly, bool active = true, bool isApproved = true)
+        {
+            var operatorId = Guid.NewGuid();
+            return new Operator
+            {
+                Id = operatorId,
+                DisplayName = displayName ?? $"Test Operator {Guid.NewGuid():N}",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = active,
+                IsApproved = isApproved,
+                Username = username ?? $"test-{operatorId:N}",
+                FirstName = firstName ?? "Test",
+                LastName = lastName ?? "Operator",
+                Email = email ?? $"{operatorId:N}@test.invalid",
+                Role = role,
+                SecurityStamp = Guid.NewGuid()
+            };
+        }
     }
 }

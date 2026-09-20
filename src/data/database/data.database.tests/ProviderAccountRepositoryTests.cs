@@ -142,5 +142,41 @@ namespace VideoForensics.Data.Database.Tests
             _ = await Assert.ThrowsAsync<DbUpdateException>(async () =>
                 await _repository.AddAsync(account2, CancellationToken.None));
         }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RecordErrorAsync_SetsErrorState()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            const string errorMessage = "Authentication failed";
+            await _repository.RecordErrorAsync(account.Id, errorMessage, CancellationToken.None);
+
+            ProviderAccount? retrieved = await _repository.GetAsync(account.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.NotNull(retrieved.LastErrorUtc);
+            Assert.Equal(errorMessage, retrieved.LastErrorMessage);
+            Assert.True(retrieved.LastErrorUtc > DateTime.UtcNow.AddMinutes(-1));
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RecordSuccessAsync_ClearsErrorState()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            // First record an error to put the account in error state
+            await _repository.RecordErrorAsync(account.Id, "some error", CancellationToken.None);
+
+            // Then record success, which should clear the error state
+            await _repository.RecordSuccessAsync(account.Id, CancellationToken.None);
+
+            ProviderAccount? retrieved = await _repository.GetAsync(account.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Null(retrieved.LastErrorUtc);
+            Assert.Null(retrieved.LastErrorMessage);
+            Assert.NotNull(retrieved.LastSuccessfulAuthUtc);
+            Assert.True(retrieved.LastSuccessfulAuthUtc > DateTime.UtcNow.AddMinutes(-1));
+        }
     }
 }

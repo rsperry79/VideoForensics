@@ -1,0 +1,54 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - main
+      - wip
+  pull_request:
+    branches:
+      - main
+      - wip
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['csharp']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj - see
+      # ci.yml for why; CodeQL doesn't need the MAUI Windows target analyzed
+      # separately from what the cross-platform library/test projects cover.
+      - name: Restore
+        run: dotnet restore VideoForensics.CI.slnf
+
+      - name: Build
+        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

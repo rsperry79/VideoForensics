@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
@@ -9,7 +9,6 @@
 
         <AssemblyName>VideoForensics.Mcp</AssemblyName>
         <RootNamespace>VideoForensics.Mcp</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>MCP server for forensic evidence analysis - Claude Desktop integration</Description>
         <Copyright>2026</Copyright>

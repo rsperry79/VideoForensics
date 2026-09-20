@@ -28,14 +28,15 @@ namespace VideoForensics.WebApp.Tests
         }
 
         private static PairedDeviceAuthenticationHandler CreateHandler(
-            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver, Mock<IOperatorRepository>? operatorRepository = null)
+            Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<INetworkTierResolver> tierResolver, Mock<IOperatorRepository>? operatorRepository = null, Mock<IOperatorCredentialRepository>? credentialRepository = null)
         {
             var options = new Mock<IOptionsMonitor<AuthenticationSchemeOptions>>();
             _ = options.Setup(o => o.Get(It.IsAny<string>())).Returns(new AuthenticationSchemeOptions());
             ILoggerFactory loggerFactory = LoggerFactory.Create(b => { });
             UrlEncoder encoder = UrlEncoder.Default;
             operatorRepository ??= new Mock<IOperatorRepository>();
-            return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, tierResolver.Object, operatorRepository.Object);
+            credentialRepository ??= new Mock<IOperatorCredentialRepository>();
+            return new PairedDeviceAuthenticationHandler(options.Object, loggerFactory, encoder, tokenService.Object, repo.Object, credentialRepository.Object, tierResolver.Object, operatorRepository.Object);
         }
 
         private static HttpContext CreateHttpContextWithAuthorizationHeader(string token)
@@ -80,13 +81,14 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var pairedDeviceId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
-                operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+                operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             _ = tokenService.Setup(t => t.Validate("valid-token")).Returns(principal);
 
             var device = new PairedDevice
@@ -106,7 +108,12 @@ namespace VideoForensics.WebApp.Tests
                 DisplayName = "Test Operator",
                 CreatedAtUtc = DateTime.UtcNow,
                 Active = true,
-                IsApproved = true
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
             };
             _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
@@ -132,13 +139,14 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var pairedDeviceId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
-                operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+                operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             _ = tokenService.Setup(t => t.Validate("revoked-token")).Returns(principal);
 
             var device = new PairedDevice
@@ -151,6 +159,21 @@ namespace VideoForensics.WebApp.Tests
                 RevokedAtUtc = DateTime.UtcNow.AddMinutes(-5)
             };
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("revoked-token");
@@ -170,15 +193,31 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var pairedDeviceId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
-                operatorId, pairedDeviceId, OperatorRole.Admin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+                operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             _ = tokenService.Setup(t => t.Validate("unknown-token")).Returns(principal);
             _ = repo.Setup(r => r.GetAsync(pairedDeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((PairedDevice?)null);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository);
             HttpContext context = CreateHttpContextWithAuthorizationHeader("unknown-token");
@@ -295,13 +334,14 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var pairedDeviceId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
             var tokenService = new Mock<ISessionTokenService>();
             var repo = new Mock<IPairedDeviceRepository>();
             var tierResolver = new Mock<INetworkTierResolver>();
             var operatorRepository = new Mock<IOperatorRepository>();
 
             var principal = new SessionPrincipal(
-                operatorId, pairedDeviceId, OperatorRole.SuperAdmin, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+                operatorId, pairedDeviceId, CredentialKind.ServiceDevice, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             _ = tokenService.Setup(t => t.Validate("signalr-token")).Returns(principal);
 
             var device = new PairedDevice
@@ -321,7 +361,12 @@ namespace VideoForensics.WebApp.Tests
                 DisplayName = "Test Operator",
                 CreatedAtUtc = DateTime.UtcNow,
                 Active = true,
-                IsApproved = true
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
             };
             _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
 

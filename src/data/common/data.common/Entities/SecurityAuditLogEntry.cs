@@ -30,6 +30,12 @@ namespace VideoForensics.Data.Common.Entities
         public const string DeviceCodeApproved = nameof(DeviceCodeApproved);
         public const string DeviceCodeExpired = nameof(DeviceCodeExpired);
         public const string OperatorDeactivated = nameof(OperatorDeactivated);
+        public const string OperatorApproved = nameof(OperatorApproved);
+        public const string OperatorRegistered = nameof(OperatorRegistered);
+        public const string PasswordReset = nameof(PasswordReset);
+        public const string CredentialRegistered = nameof(CredentialRegistered);
+        public const string CredentialApproved = nameof(CredentialApproved);
+        public const string CredentialRevoked = nameof(CredentialRevoked);
         public const string AuthSuccess = nameof(AuthSuccess);
         public const string AuthFailure = nameof(AuthFailure);
         public const string SessionVerified = nameof(SessionVerified);
@@ -62,6 +68,12 @@ namespace VideoForensics.Data.Common.Entities
             [DeviceCodeApproved] = true,
             [DeviceCodeExpired] = false,
             [OperatorDeactivated] = true,
+            [OperatorApproved] = true,
+            [OperatorRegistered] = false,
+            [PasswordReset] = true,
+            [CredentialRegistered] = false,
+            [CredentialApproved] = true,
+            [CredentialRevoked] = true,
             [AuthSuccess] = false,
             [AuthFailure] = true,
             [SessionVerified] = false,

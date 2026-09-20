@@ -1,289 +1,42 @@
-# Ring API
-[![licence badge]][licence]
-[![stars badge]][stars]
-[![forks badge]][forks]
-[![issues badge]][issues]
-[![Continuous Integration Build](https://github.com/Ring/Ring.Api/actions/workflows/cibuild.yml/badge.svg)](https://github.com/Ring/Ring.Api/actions/workflows/cibuild.yml)
+# VideoForensics
 
-[licence badge]:https://img.shields.io/badge/license-MIT-blue.svg
-[stars badge]:https://img.shields.io/github/stars/Ring/Ring.Api.svg
-[forks badge]:https://img.shields.io/github/forks/Ring/Ring.Api.svg
-[issues badge]:https://img.shields.io/github/issues/Ring/Ring.Api.svg
+[![CI](https://github.com/rsperry79/VideoForensics/actions/workflows/ci.yml/badge.svg)](https://github.com/rsperry79/VideoForensics/actions/workflows/ci.yml)
 
-[licence]:https://github.com/Ring/Ring.Api/blob/master/LICENSE.md
-[stars]:https://github.com/Ring/Ring.Api/stargazers
-[forks]:https://github.com/Ring/Ring.Api/network
-[issues]:https://github.com/Ring/Ring.Api/issues
+VideoForensics is a forensic video evidence capture and management platform that aggregates video recordings and device information from multiple camera and doorbell providers (Ring, Wyze, Uniview) into a centralized, chain-of-custody system for evidence analysis and reporting.
 
-This library for C# compiled against .NET 8 will allow you to easily communicate with the Ring API and retrieve details about your Ring doorbells and Ring chimes.
+## Installation
 
-If you're just looking for a tool to download your Ring recordings, [go here instead](https://github.com/Ring/RingRecordingDownload).  
-If you're looking for a tool to download snapshots from your Ring cameras, [go here](https://github.com/Ring/RingSnapshotDownload).
+The recommended way to install VideoForensics is via one of the thin bootstrap scripts below, which fetch the current release for your chosen channel at runtime:
 
-## Version History
+```bash
+# Windows
+irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex
 
-[1.0.0.0](https://www.nuget.org/packages/Ring.Api/1.0.0.0) - released Oct 23, 2024
-
-- Added support for .NET 8 and stopped support for .NET 6
-
-[0.5.4.0](https://www.nuget.org/packages/Ring.Api/0.5.4.0) - released April 5, 2024
-
-- Fixed 406 Http Response issue due to missing headers in http calls.
-
-[0.5.3.0](https://www.nuget.org/packages/Ring.Api/0.5.3.0) - released September 2, 2023
-
-- Fixed a few more issues with Ring devices not properly being parsed
-
-[0.5.2.0](https://www.nuget.org/packages/Ring.Api/0.5.2.0) - released July 4, 2023
-
-- Fixed issue with Ring devices not properly being parsed
-
-[0.5.1.0](https://www.nuget.org/packages/Ring.Api/0.5.1.0) - released July 3, 2023
-
-- Updated default clientId from Windows to Android to restore the service to the Ring API. Thanks to [@chrisstuart-cl](https://github.com/chrisstuart-cl) for assisting on the fix.
-
-[0.5.0.1](https://www.nuget.org/packages/Ring.Api/0.5.0.1) - released September 14, 2022
-
-- Fixing regression in multi factor authentication
-
-[0.5.0.0](https://www.nuget.org/packages/Ring.Api/0.5.0.0) - released September 14, 2022
-
-- Replaced obsolete method of working with HTTP requests with modern method
-- Rebuild code to avoid port exhaustion potentially causing random crashed when used in a loop
-- Code is not fully backwards compatible. You may need to update your code if you upgrade to this version.
-
-[0.4.4.0](https://www.nuget.org/packages/Ring.Api/0.4.4) - released September 14, 2022
-
-- Compiled against .NET 6
-- Switched to .NET JSON instead of NewtonSoft JSON. Note that I had to change the types of some properties to become nullable and some to become longs instead of strings, so it might require some changes in your code as well.
-
-[0.4.3.2](https://www.nuget.org/packages/Ring.Api/0.4.3.2) - released April 29, 2020
-
-- Bugfix in `GetDoorbotsHistory` throwing a NullReferenceException when the Ring API would return an empty result
-
-0.4.3.1 - released March 18, 2020
-
-- Added exception of type `DeviceUnknownException` to be thrown when using `GetDoorbotsHistory` requesting information for a specific Ring device which does not exist
-
-0.4.3.0 - released March 18, 2020
-
-- Added `GetDoorbotsHistory` method which allows providing a specific doorbot id to retrieve only the items for that specific doorbot
-
-0.4.2.2 - released March 16, 2020
-
-- Merged [PR # 13](https://github.com/Ring/Ring.Api/pull/13) adding possible exceptions to each method call and doing some code efficiency improvements. Thanks to [ronwarner](https://github.com/ronwarner) for his contribution!
-
-0.4.2.1 - released January 22, 2020
-
-- Fixed an issue where `session.GetDoorbotsHistory(startDate, endDate)` could end up in an endless loop
-
-0.4.2.0 - released January 2, 2020
-
-- Added method `GetLatestSnapshot` to retrieve a snapshot from a doorbot
-- Added method `UpdateSnapshot` to force refreshing a snapshot from a doorbot
-- Added method `GetDoorbotSnapshotTimestamp` to retrieve the date and time at which the last snapshot was taken from a doorbot
-
-0.4.1.0 - released December 24, 2019
-
-- Updated method for downloading of recordings which is also used by the native Ring apps and seems more stable
-- Added new option `session.ShareRecording()` to share a recording and get returned the unique URL from which it can be downloaded by anyone if in their posession
-
-0.4.0.3 - released December 24, 2019
-
-- Changed to less strict JSON result parsing as it turns out that the API responses may differ quite a bit between users. To avoid the slightest change not making possible to use the returned results, I followed [insane4sure](https://github.com/insane4sure)'s recommendation in [issue 4](https://github.com/Ring/Ring.Api/issues/4) and applied this to all responses except for the authentication part.
-
-0.4.0.2 - released December 24, 2019
-
- - Added support for AuthorizedDoorbots in the devices response from Ring. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 6](https://github.com/Ring/Ring.Api/issues/6).
-
-0.4.0.1 - released December 24, 2019
-
-- Fixed issue where having certain special characters such as a + in your e-mail or password used to log on would make the authentication fail. Thanks to [insane4sure](https://github.com/insane4sure) for reporting this in [issue 5](https://github.com/Ring/Ring.Api/issues/5).
-
-0.4.0.0 - released December 23, 2019
-
-- Added support for Multi Factor Authentication on Ring accounts. To trigger receiving the text message from Ring with the token, call `session.Authenticate()` first. Then once you have received the token, call `session.Authenticate(twoFactorAuthCode: "12345")` where you replace 12345 with the token you received. Once this returns the access token, you can use this access token to access the Ring API without any further multi factor authentication requirements anymore.
-
-0.3.5.0 - released October 27, 2019
-
-- Added method `public async Task RefreshSession()` which will try to renew the session based on the refresh token in the session
-- Added method `public async Task EnsureSessionValid()` which validates if the current session is still valid and renews it if it isn't anymore. This method is called inside every method that retrieves data from the Ring service so you should not have to call this method yourself.
-
-0.3.4.0 - released October 4, 2019
-
-- Added method `public async Task<List<Entities.DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate)` which allows for retrieving historical items between a specific date/time span. Note though that since the Ring API does not expose this functionality, it relies on retrieving historical items in batches until it has found all that fit within the date/time span, so it's not super efficient, but it works.'
-
-0.3.3.0 - released October 4, 2019
-
-- Further improvements to support Ring Stickup Cams
-- It could be that this version introduces backwards compatibility issues and requires you to update your code. I.e. switching from non nullable types to nullable types. Keep this in mind when upgrading to this version.
-
-0.3.2.0 - released August 9, 2019
-
-- Added support for working with Ring Stickup Cams
-- Removed CredentialsEncoded property in Session as it was no longer used and deprecated a few versions back
-
-0.3.1.0 - released August 9, 2019
-
-- Changed the implementation of GetDoorbotsHistory(int limit) so that it will return as many items as you request, instead of just a maximum of 100 items, even if you would provide a higher number. Discussed in [issue #2](https://github.com/Ring/Ring.Api/issues/2).
-
-0.3.0.1 - released March 2, 2019
-
-- Added optional int parameter to GetDoorbotsHistory which allows setting a specific number of history items that should be returned. If you don't provide a number, it will default to the Ring default of the most recent 20 items
-
-0.3.0.0 - released March 2, 2019
-
-- Converted API library into .NET Standard so it can be used on non Windows platforms as well
-- Upgraded the Unit Test NuGet Packages so the Unit Tests work again
-- Upgraded to Newtonsoft JSON 12.0.1
-
-0.2.2.1 - released September 13, 2018
-
-- Fixed issue when using GetDoorbotHistoryRecording and it not downloading the actual recording. Thanks to Gary Quigley for reporting it!
-
-0.2.2 - released July 2, 2018
-
-- Ring seems to have switched off their old API command support. Updated the methods to use the new API.
-- Added static `Api.Session.GetSessionByRefreshToken(string refreshToken)` method to support using OAuth Refresh Tokens for getting an Access Token.
-- Ring seems to have introduced throttling protection against too many requests sent to their API which seems to kick in pretty easily. I've added a specific `Api.Exceptions.ThrottlingException` to notify you if the request has failed due too throttling. Just try it again in a few minutes and it typically works again. Check the `InnerException` of it for the glory details on why it failed.
-- Added property `OAuthToken` on the `Api.Session` class which gives you access to the full OAuth Token retrieved during authentication against the Ring API.
-
-0.2.1 - released June 28, 2018
-
-- Ring had changed their authentication from Basic authentication to simple HTTP Form POST authentication. Updated the code to accommodate this. Thanks to Kevin Chemali for bringing this to my attention.
-- Few additional new properties provided in the session by the Ring service are now mapped to the typed Session object.
-
-0.2 - released August 18, 2017
-
-- Added the option to specify the device information in the Authenticate method
-
-0.1 - released August 13, 2017
-
-- Initial version
-
-## System Requirements
-
-This API is built using Microsoft .NET Standard 2.0 and is fully asynchronous
-
-## Usage Instructions
-
-To communicate with the Ring API, [add the NuGet package](https://github.com/Ring/Ring.Api#available-via-nuget) to your solution and add a using reference in your code:
-
-```C#
-using Ring.Api;
+# Debian/Ubuntu
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash
 ```
 
-Then create a new session instance using:
+Alternatively, direct installer downloads (Windows MSI + Burn bootstrapper, or Debian `.deb` package) are available from the [GitHub Releases](https://github.com/rsperry79/VideoForensics/releases) page for air-gapped environments or manual deployment. See [`deploy/README.md`](deploy/README.md) for detailed installation documentation and configuration options.
 
-```C#
-var session = new Session("your@email.com", "yourpassword");
-```
+## Release Channels
 
-Note that this line does not perform any communications with the Ring API yet. You need to manually trigger authenticate before you can start using the session:
+VideoForensics publishes two release channels:
 
-```C#
-await session.Authenticate();
-```
+- **Stable**: Tagged releases (`vX.Y.Z`) off the `main` branch, published as GitHub Releases. Assets are signed and ready for production use.
+- **Dev**: Rolling prerelease built on every push to the `wip` branch and tagged as `dev`. This channel receives new features first and is suitable for testing, but may be unstable.
 
-If the Ring account you're connecting with has been set up with a two factor authentication requirement, wait for the text message or e-mail from Ring with the code to arrive and run Authenticate again providing this code:
+Both channels are configurable per-installation via the built-in update-check feature, which can notify you of available updates or automatically download and install them.
 
-```C#
-await session.Authenticate(twoFactorAuthCode: "12345");
-```
+## Components
 
-If the account does not require two factor authentication, you can skip this step.
+- **VideoForensics.WebApp** — ASP.NET Core Blazor Server UI and REST API backend. Runs as a Windows Service (Windows) or systemd service (Debian/Ubuntu). Manages all forensic data, evidence chain-of-custody, device connectivity, and multi-user access control.
+- **VideoForensics.MauiApp** — .NET MAUI desktop client for Windows. Connects to the WebApp server over the network.
+- **VideoForensics.Mcp** — Model Context Protocol (MCP) server for AI-assistant integration with Claude and other MCP-compatible tools.
 
-Once this succeeds, you can call one of the methods on the session instance to retrieve data, i.e.:
+## License
 
-To retrieve all Ring devices connected to your account to i.e. retrieve the device Id needed for some methods:
+This software is proprietary and all rights are reserved. See the [`LICENSE`](LICENSE) file for details. Third-party component licenses are listed in [`CREDITS.md`](CREDITS.md).
 
-```C#
-var devices = await session.GetRingDevices();
-```
+## Changelog
 
-To retrieve all recorded doorbell events including the recording Ids which you will need for the next two samples:
-
-```C#
-var doorbotHistory = await session.GetDoorbotsHistory();
-```
-
-To save a recording directly to your disk (use GetDoorbotsHistory to get the Id):
-
-```C#
-await session.GetDoorbotHistoryRecording("6000000004618901011", "c:\\temp\\recording.mp4");
-```
-
-To share a recording (use GetDoorbotsHistory to get the Id):
-
-```C#
-await session.ShareRecording("6000000004618901011");
-```
-
-To retrieve the latest available snapshot from a doorbot and save it to disk (use GetRingDevices to get the Id):
-
-```C#
-await session.GetLatestSnapshot(1111111, "c:\\temp\\snapshot.jpg");
-```
-
-To force a new snapshot to be taken from a doorbot (use GetRingDevices to get the Id):
-
-```C#
-await session.UpdateSnapshot(1111111);
-```
-
-To retrieve the date and time at which the last snapshot was taken from a doorbot (use GetRingDevices to get the Id):
-
-```C#
-var timestamps = await session.GetDoorbotSnapshotTimestamp(1111111);
-```
-
-### Unit Tests
-
-Check out the UnitTest project in this solution for full insight in the possibilities and working code samples. Mock-based tests (`ConverterTests`, `SessionTests`, `MockIntegrationTests`) need no credentials at all. `RealIntegrationTests` hits the live Ring API - see "Authenticating for local tooling" below for how to give it credentials; without them, those tests report `Inconclusive` rather than failing.
-
-Alternatively, App.config still works for RealIntegrationTests: copy App.sample.config to App.config and fill in your Ring username and password. If your account uses two factor authentication, leave `TwoFactorAuthenticationToken` empty, run the tests once to trigger the text/e-mail code, then fill in `TwoFactorAuthenticationToken` and run again - it fills in `RingRefreshToken` for you so subsequent runs don't need credentials or 2FA again.
-
-### Authenticating for local tooling
-
-The SelfTester tool (this repo's non-destructive API smoke-test CLI - see `src/selftest/README.md`) and the `RealIntegrationTests` in the Ring provider tests both authenticate through the same mechanism: `Ring.Api.CredentialStore`, reading/writing encrypted credentials to the VideoForensics database:
-
-```
-%AppData%\VideoForensics\videoforensics.db
-```
-
-Credentials are encrypted with a key derived from the current machine and user account, so they're only usable where they were stored, and safe to leave in AppData.
-
-**To generate or refresh it**, run SelfTester's interactive login once:
-
-```powershell
-cd src/selftest
-dotnet run -- --auth
-```
-
-This prompts for your Ring username and password (password input is masked), and if your account requires two-factor authentication, prompts for the code Ring texts/e-mails you and completes the challenge automatically. On success it saves a reusable refresh token to the database. Every SelfTester run after that, and every integration test run, picks it up automatically - no further prompts, no re-entering 2FA codes.
-
-If a run reports "no credentials found" or "requires two-factor authentication", that's this step - run `--auth` and retry. The retry-with-2FA-code mechanics themselves live in `Api/InteractiveAuth.cs` (`Ring.Api.InteractiveAuth`), independent of any console app, so anything in this repo can reuse them without shelling out to ApiTester.
-
-## Available via NuGet
-
-You can also pull this API in as a NuGet package by adding "Ring.Api" or running:
-
-Install-Package Ring.Api
-
-Package statistics: https://www.nuget.org/packages/Ring.Api
-
-## Current functionality
-
-With this API at its current state you can:
-
-- Authenticate to the Ring API with or without two factor authentication
-- Retrieve all registered Ring devices (Rings and Chimes) under your account
-- Retrieve the event history of your Ring devices
-- Download the movie recording of the event of your Ring devices
-- Share a recorded event
-- Download and refresh the latest snapshot from a Ring doorbell
-
-## Feedback
-
-Any kind of feedback is welcome! Feel free to drop me an e-mail at koen@zomers.eu or [create an issue](https://github.com/Ring/Ring.Api/issues)
-
+Project changes are documented in [`CHANGELOG.md`](CHANGELOG.md), which adheres to [Keep a Changelog](https://keepachangelog.com/) conventions.

@@ -1,21 +1,15 @@
 @page "/welcome"
+@layout MinimalLayout
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 
-<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-    <div class="card" style="width: 100%; max-width: 500px;">
-        <div class="card-body">
-            <h1 class="card-title text-center mb-4">VideoForensics</h1>
-            <p class="card-text text-center text-muted mb-5">Welcome to your video surveillance and forensics platform</p>
+<p class="card-text text-center text-muted mb-5">Welcome to your video surveillance and forensics platform</p>
 
-            <div class="d-flex flex-column gap-3">
-                <SfButton CssClass="btn-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/device-signin"))">
-                    Login
-                </SfButton>
-                <SfButton CssClass="btn-outline-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/pair"))">
-                    Create New Account
-                </SfButton>
-            </div>
-        </div>
-    </div>
+<div class="d-flex flex-column gap-3">
+    <SfButton CssClass="btn-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/device-signin"))">
+        Login
+    </SfButton>
+    <SfButton CssClass="btn-outline-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/register"))">
+        Create New Account
+    </SfButton>
 </div>

@@ -51,12 +51,12 @@ else
             }
             else
             {
-                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
-                        <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" />
-                        <GridColumn HeaderText="@L["ColStatus"]">
+                        <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
+                        <GridColumn HeaderText="@L["ColStatus"]" MinWidth="100">
                             <Template>
                                 @{
                                     var result = (MediaVerificationResult)context;
@@ -64,7 +64,7 @@ else
                                 }
                             </Template>
                         </GridColumn>
-                        <GridColumn Field="@nameof(MediaVerificationResult.FailureReason)" HeaderText="@L["ColFailureReason"]" />
+                        <GridColumn Field="@nameof(MediaVerificationResult.FailureReason)" HeaderText="@L["ColFailureReason"]" MinWidth="100" />
                     </GridColumns>
                 </SfGrid>
             }
@@ -103,15 +103,15 @@ else
             }
             else
             {
-                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.FieldName)" HeaderText="@L["ColField"]" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.StoredValue)" HeaderText="@L["ColStoredValue"]" />
-                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderValue)" HeaderText="@L["ColProviderValue"]" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.FieldName)" HeaderText="@L["ColField"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.StoredValue)" HeaderText="@L["ColStoredValue"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(ReconciliationDiscrepancy.ProviderValue)" HeaderText="@L["ColProviderValue"]" MinWidth="100" />
                     </GridColumns>
                 </SfGrid>
             }

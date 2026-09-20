@@ -87,5 +87,56 @@ namespace VideoForensics.Data.Database.Repositories
             _ = await db.SaveChangesAsync(ct);
             _logger.LogInformation("Operator display name updated: {OperatorId}", operatorId);
         }
+
+        public async Task<Operator?> GetByUsernameAsync(string username, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Operators.FirstOrDefaultAsync(o => o.Username == username, ct);
+        }
+
+        public async Task SetPasswordAsync(Guid operatorId, string passwordHash, bool mustChangePassword, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.PasswordHash = passwordHash;
+            op.MustChangePassword = mustChangePassword;
+            op.PasswordUpdatedAtUtc = DateTime.UtcNow;
+            op.SecurityStamp = Guid.NewGuid();
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator password updated: {OperatorId}", operatorId);
+        }
+
+        public async Task SetRoleAsync(Guid operatorId, OperatorRole role, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.Role = role;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator role updated: {OperatorId} - {Role}", operatorId, role);
+        }
+
+        public async Task SetApprovalFirstLoginNotifiedAsync(Guid operatorId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.ApprovalFirstLoginNotifiedAtUtc = DateTime.UtcNow;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator approval first login marked as notified: {OperatorId}", operatorId);
+        }
     }
 }

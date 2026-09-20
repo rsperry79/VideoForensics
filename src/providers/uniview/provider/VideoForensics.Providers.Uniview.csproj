@@ -8,7 +8,6 @@
 
         <AssemblyName>VideoForensics.Uniview</AssemblyName>
         <RootNamespace>VideoForensics.Providers.Uniview</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Uniview NVR provider implementation for VideoForensics using IVideoProvider abstraction</Description>
         <Copyright>2026</Copyright>

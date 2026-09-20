@@ -38,6 +38,13 @@ namespace VideoForensics.Hosting
     public static class VideoForensicsHostingExtensions
     {
         /// <summary>
+        /// Fixed default password for the auto-seeded first SuperAdmin account (Username "admin"), used only
+        /// when the Operators table is empty at startup. MustChangePassword is set true on this account, so
+        /// it can never be used for anything beyond the very first login. Documented here AND in CLAUDE.md
+        /// so an operator can find it without reading source: **ChangeMe123!**
+        /// </summary>
+        public const string DefaultSuperAdminPassword = "ChangeMe123!";
+        /// <summary>
         /// Builds a Ring authentication service for use by multiple registration paths (unkeyed,
         /// multi-provider auth factories, and keyed per-provider services). Centralizes the
         /// construction logic so there's exactly one place per service that builds it.
@@ -403,6 +410,17 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
 
+            // Update-check background service (plan §3). Periodically polls GitHub for a newer release
+            // and either notifies or auto-downloads/launches the installer based on configuration.
+            _ = services.AddHttpClient<IGitHubReleaseClient, GitHubReleaseClient>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.github.com/");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("VideoForensics-UpdateCheck/1.0");
+            });
+            _ = services.AddSingleton<IUpdateInstaller, UpdateInstaller>();
+            _ = services.AddSingleton<Client.Common.Contracts.IUpdateCheckService, VideoForensics.Hosting.BackgroundServices.UpdateCheckService>();
+            _ = services.AddHostedService(sp => (VideoForensics.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
+
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
             _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
 
@@ -453,7 +471,19 @@ namespace VideoForensics.Hosting
                     _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildRingDeviceDiscoveryService(provider));
                     _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildRingMediaDownloadService(provider));
                     _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildRingEventAndConfigService(provider));
-                    _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(providerName);
+                    _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(
+                        providerName,
+                        (provider, key) =>
+                        {
+                            var logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
+                            var sessionProvider = provider.GetRequiredService<ISessionProvider>();
+                            var accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+                            // Must be resolved keyed by "Ring", not the unkeyed IProviderAuthService - this loop
+                            // registers Ring/Uniview/Wyze side by side, and the unkeyed overload only ever
+                            // returns whichever provider's factory happened to run last in the loop above.
+                            var authService = provider.GetRequiredKeyedService<VideoForensics.Providers.Common.Contracts.IProviderAuthService>(providerName);
+                            return new RingHealthSource(logger, sessionProvider, accountRepository, authService);
+                        });
                 }
                 else if (string.Equals(providerName, "Uniview", StringComparison.OrdinalIgnoreCase))
                 {
@@ -533,6 +563,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
@@ -580,6 +611,34 @@ namespace VideoForensics.Hosting
             ForensicsConfiguration appConfig = services.GetRequiredService<IForensicsConfiguration>() as ForensicsConfiguration
                 ?? throw new InvalidOperationException("Configuration must be a ForensicsConfiguration instance");
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, logger, ct);
+
+            // Seed a default SuperAdmin account if the Operators table is empty
+            IOperatorRepository operatorRepo = sp.GetRequiredService<IOperatorRepository>();
+            if (await operatorRepo.IsEmptyAsync(ct))
+            {
+                var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<VideoForensics.Data.Common.Entities.Operator>();
+                var defaultAdmin = new VideoForensics.Data.Common.Entities.Operator
+                {
+                    Id = Guid.NewGuid(),
+                    Username = "admin",
+                    DisplayName = "Administrator",
+                    FirstName = "Super",
+                    LastName = "Admin",
+                    Email = "admin@localhost.invalid",
+                    Role = VideoForensics.Data.Common.Entities.OperatorRole.SuperAdmin,
+                    IsApproved = true,
+                    Active = true,
+                    MustChangePassword = true,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    PasswordUpdatedAtUtc = DateTime.UtcNow,
+                    SecurityStamp = Guid.NewGuid()
+                };
+                defaultAdmin.PasswordHash = passwordHasher.HashPassword(defaultAdmin, DefaultSuperAdminPassword);
+                _ = await operatorRepo.AddAsync(defaultAdmin, ct);
+                logger.LogWarning(
+                    "No operators existed - seeded a default SuperAdmin account. Username: '{Username}', password: the fixed default documented in CLAUDE.md (DefaultSuperAdminPassword constant). You MUST sign in and change this password immediately.",
+                    defaultAdmin.Username);
+            }
         }
     }
 }

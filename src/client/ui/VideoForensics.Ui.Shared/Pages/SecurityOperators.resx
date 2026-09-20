@@ -101,4 +101,31 @@
   <data name="DetailsButton" xml:space="preserve">
     <value>Details</value>
   </data>
+  <data name="PendingCredentialsTitle" xml:space="preserve">
+    <value>Pending Credentials</value>
+  </data>
+  <data name="ColOperator" xml:space="preserve">
+    <value>Operator</value>
+  </data>
+  <data name="ColCredentialLabel" xml:space="preserve">
+    <value>Credential Label</value>
+  </data>
+  <data name="NoPendingCredentials" xml:space="preserve">
+    <value>No pending credentials awaiting approval.</value>
+  </data>
+  <data name="ApproveButton" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="ApprovingButton" xml:space="preserve">
+    <value>Approving...</value>
+  </data>
+  <data name="ApproveFailed" xml:space="preserve">
+    <value>Approval failed: {0}</value>
+  </data>
+  <data name="NotAuthorizedToViewCredentials" xml:space="preserve">
+    <value>Not authorized to view pending credentials.</value>
+  </data>
+  <data name="NotSuperAdminLocal" xml:space="preserve">
+    <value>Only a SuperAdmin on the local network can approve credentials.</value>
+  </data>
 </root>

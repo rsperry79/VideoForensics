@@ -133,5 +133,29 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Records a successful authentication for a provider account, clearing any prior error state.</summary>
+        public async Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(cancellationToken);
+            try
+            {
+                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
+                if (account != null)
+                {
+                    account.LastSuccessfulAuthUtc = DateTime.UtcNow;
+                    account.LastErrorUtc = null;
+                    account.LastErrorMessage = null;
+                    _ = db.ProviderAccounts.Update(account);
+                    _ = await db.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Provider account success recorded, error state cleared: {ProviderAccountId}", providerAccountId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording success for provider account: {ProviderAccountId}", providerAccountId);
+                throw;
+            }
+        }
     }
 }

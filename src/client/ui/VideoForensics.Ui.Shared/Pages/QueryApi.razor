@@ -40,7 +40,7 @@
     </div>
 </PageRightPanelContent>
 
-<div class="card border rounded pa-4 mb-4">
+<div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>
     <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatus" CssClass="e-primary" />
     @if (_accountStatus is not null)
@@ -49,7 +49,7 @@
     }
 </div>
 
-<div class="card border rounded pa-4 mb-4">
+<div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["Locations"]</h5>
     <SfButton Content="@L["GetLocations"]" OnClick="RunLocationsAsync" CssClass="e-primary" Disabled="@_locationsLoading" />
     @if (!string.IsNullOrEmpty(_locationsError))
@@ -64,20 +64,20 @@
         }
         else
         {
-            <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+            <SfGrid TValue="Location" DataSource="@_filteredLocations" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" />
-                    <GridColumn Field="@nameof(Location.Name)" HeaderText="@L["ColName"]" />
-                    <GridColumn Field="@nameof(Location.Address)" HeaderText="@L["ColAddress"]" />
+                    <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(Location.Name)" HeaderText="@L["ColName"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(Location.Address)" HeaderText="@L["ColAddress"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }
     }
 </div>
 
-<div class="card border rounded pa-4 mb-4">
+<div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["Devices"]</h5>
     <SfButton Content="@L["GetDevices"]" OnClick="RunDevicesAsync" CssClass="e-primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
     @if (!string.IsNullOrEmpty(_devicesError))
@@ -92,14 +92,14 @@
         }
         else
         {
-            <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+            <SfGrid TValue="Device" DataSource="@_filteredDevices" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" />
-                    <GridColumn Field="@nameof(Device.Name)" HeaderText="@L["ColName"]" />
-                    <GridColumn Field="@nameof(Device.Type)" HeaderText="@L["ColType"]" />
-                    <GridColumn HeaderText="@L["ColOnline"]">
+                    <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(Device.Name)" HeaderText="@L["ColName"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(Device.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColOnline"]" MinWidth="100">
                         <Template>
                             @{
                                 var device = (Device)context;
@@ -113,7 +113,7 @@
     }
 </div>
 
-<div class="card border rounded pa-4 mb-4">
+<div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["DeviceEvents"]</h5>
     <SfButton Content="@L["GetEvents"]" OnClick="RunEventsAsync" CssClass="e-primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
     @if (!string.IsNullOrEmpty(_eventsError))
@@ -128,21 +128,21 @@
         }
         else
         {
-            <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2">
+            <SfGrid TValue="DeviceEvent" DataSource="@_filteredEvents" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Class="mt-2" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" />
-                    <GridColumn Field="@nameof(DeviceEvent.EventType)" HeaderText="@L["ColEventType"]" />
-                    <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" />
-                    <GridColumn Field="@nameof(DeviceEvent.SnapshotUrl)" HeaderText="@L["ColSnapshotUrl"]" />
+                    <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(DeviceEvent.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(DeviceEvent.SnapshotUrl)" HeaderText="@L["ColSnapshotUrl"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }
     }
 </div>
 
-<div class="card border rounded pa-4 mb-4">
+<div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["DeviceConfig"]</h5>
     <div class="d-flex flex-row gap-2 mb-2">
         <label>@L["LabelDeviceId"]</label>
@@ -161,11 +161,11 @@
         }
         else
         {
-            <SfGrid TValue="VideoForensics.Providers.Common.Contracts.DeviceConfig" DataSource="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2">
+            <SfGrid TValue="VideoForensics.Providers.Common.Contracts.DeviceConfig" DataSource="@(new List<VideoForensics.Providers.Common.Contracts.DeviceConfig> { _config })" Class="mt-2" AllowResizing="true">
                 <GridColumns>
-                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" HeaderText="@L["ColMotionDetectionEnabled"]" />
-                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" HeaderText="@L["ColMotionSensitivity"]" />
-                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" HeaderText="@L["ColRecordingMode"]" />
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionDetectionEnabled)" HeaderText="@L["ColMotionDetectionEnabled"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.MotionSensitivity)" HeaderText="@L["ColMotionSensitivity"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(VideoForensics.Providers.Common.Contracts.DeviceConfig.RecordingMode)" HeaderText="@L["ColRecordingMode"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }

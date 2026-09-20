@@ -39,12 +39,12 @@ else if (_storageData is null || _storageData.Categories.Count == 0)
 }
 else
 {
-    <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false">
+    <SfGrid TValue="StorageCategoryStatus" DataSource="@_storageData.Categories" AllowSorting="true" AllowPaging="false" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" />
-            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" />
-            <GridColumn HeaderText="@L["ColDefault"]">
+            <GridColumn Field="@nameof(StorageCategoryStatus.Category)" HeaderText="@L["ColCategory"]" MinWidth="100" />
+            <GridColumn Field="@nameof(StorageCategoryStatus.CurrentPath)" HeaderText="@L["ColPath"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColDefault"]" MinWidth="100">
                 <Template>
                     @{
                         var status = (StorageCategoryStatus)context;
@@ -59,7 +59,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColUsedSpace"]">
+            <GridColumn HeaderText="@L["ColUsedSpace"]" MinWidth="100">
                 <Template>
                     @{
                         var status = (StorageCategoryStatus)context;
@@ -67,7 +67,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColFreeSpace"]">
+            <GridColumn HeaderText="@L["ColFreeSpace"]" MinWidth="100">
                 <Template>
                     @{
                         var status = (StorageCategoryStatus)context;
@@ -75,7 +75,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="">
+            <GridColumn HeaderText="" MinWidth="100">
                 <Template>
                     @{
                         var status = (StorageCategoryStatus)context;

@@ -30,7 +30,7 @@ else
     }
     else
     {
-        <SfGrid TValue="Notice" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+        <SfGrid TValue="Notice" DataSource="@_notices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
@@ -44,16 +44,18 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="EventType" HeaderText="Event Type" AllowSorting="true" />
-                <GridColumn HeaderText="Details" AllowSorting="false">
+                <GridColumn Field="EventType" HeaderText="Event Type" AllowSorting="true" MinWidth="100" />
+                <GridColumn HeaderText="Details" AllowSorting="false" MinWidth="100">
                     <Template>
                         @{
                             var notice = (Notice)context;
-                            @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
+                            <span title="@notice.Details">
+                                @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
+                            </span>
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="TimestampUtc" HeaderText="Timestamp" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" />
+                <GridColumn Field="TimestampUtc" HeaderText="Timestamp" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" MinWidth="100" />
                 <GridColumn HeaderText="" Width="120px" AllowSorting="false" AllowFiltering="false">
                     <Template>
                         @{
@@ -99,7 +101,8 @@ else
         }
 
         _isLoading = true;
-        _notices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, _showDismissed, CancellationToken.None))
+        bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Admin;
+        _notices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, isAdmin, _showDismissed, CancellationToken.None))
             .OrderByDescending(n => n.TimestampUtc)
             .ToList();
         _isLoading = false;

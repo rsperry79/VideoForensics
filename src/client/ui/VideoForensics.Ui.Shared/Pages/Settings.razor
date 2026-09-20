@@ -14,14 +14,14 @@
 <h4 class="mb-4">@L["Title"]</h4>
 
 <h6 class="mt-4 mb-2">@L["AppearanceSection"]</h6>
-<div class="card pa-4 mb-4">
+<div class="card p-4 mb-4">
     <div class="card-body">
         <ThemeLanguagePicker />
     </div>
 </div>
 
 <h6 class="mt-4 mb-2">Server Connection</h6>
-<div class="card pa-4 mb-4">
+<div class="card p-4 mb-4">
     <div class="card-body d-flex flex-column gap-2">
         <div class="d-flex flex-row gap-3">
             <div>
@@ -54,7 +54,7 @@ else if (!_isAuthenticated)
 else
 {
     <h6 class="mt-4 mb-2">@L["ReportsSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-2">
             <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableForensicAnalysisReports" @bind-Checked:after="@(async () => await SaveForensicAnalysisReportsAsync(Config.EnableForensicAnalysisReports))" Label="@L["ForensicAnalysis"].Value" />
             @if (_reportMessages.TryGetValue("ForensicAnalysis", out var m1))
@@ -85,7 +85,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["HealthSyncSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-2">
             <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableHealthSync" @bind-Checked:after="@(async () => await SaveHealthSyncAsync(Config.EnableHealthSync))" Label="@L["EnableHealthSync"].Value" />
             @if (_healthSyncMessage is not null)
@@ -96,7 +96,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-2">
             <SfCheckBox TChecked="bool" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
             @if (_mdnsMessage is not null)
@@ -107,7 +107,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["RetentionSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-row gap-2 align-items-center">
             <label>@L["RetentionDaysLabel"]</label>
             <SfNumericTextBox TValue="int" @bind-Value="_retentionDays" Style="max-width: 200px;" />
@@ -120,7 +120,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["DownloadsSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-3">
             <div class="d-flex flex-row gap-2 align-items-center">
                 <label>@L["MaxConcurrentDownloads"]</label>
@@ -144,7 +144,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["ReportingFormatSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-3">
             <div class="d-flex flex-row gap-2 align-items-center">
                 <SfDropDownList TValue="string" TItem="string" @bind-Value="_reportFormat" DataSource="@(new[] { "json", "xml", "csv" })" Style="max-width: 200px;" />
@@ -166,7 +166,7 @@ else
     </div>
 
     <h6 class="mt-4 mb-2">@L["LoggingSection"]</h6>
-    <div class="card pa-4 mb-4">
+    <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-row gap-2 align-items-center">
             <SfDropDownList TValue="string" TItem="string" @bind-Value="_loggingLevel" DataSource="@(new[] { "Debug", "Information", "Warning", "Error", "Critical" })" Style="max-width: 200px;" />
             <SfButton Content="@L["SaveButton"]" OnClick="SaveLoggingLevelAsync" CssClass="e-primary" />

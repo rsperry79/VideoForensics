@@ -1,0 +1,183 @@
+@page "/settings/update-check"
+@using VideoForensics.Client.Common.Contracts
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services
+@inject IUpdateCheckService UpdateCheckService
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<UpdateCheck> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+
+<div class="d-flex flex-row gap-2 mb-2">
+    <SfButton Content="@(_isChecking ? L["CheckingButton"] : L["CheckNowButton"])" OnClick="CheckNowAsync" Disabled="@_isChecking" CssClass="e-primary" />
+</div>
+
+@if (_isChecking)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_state is not null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column gap-3">
+                <div>
+                    <small class="text-muted">@L["CurrentVersionLabel"]</small>
+                    <p class="mb-0">@_state.CurrentVersion</p>
+                </div>
+
+                <div>
+                    <small class="text-muted">@L["LastCheckedLabel"]</small>
+                    <p class="mb-0">
+                        @if (_state.LastCheckedUtc is null)
+                        {
+                            @L["NeverChecked"]
+                        }
+                        else
+                        {
+                            @FormatTime(_state.LastCheckedUtc.Value)
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_state.UpdateAvailable)
+    {
+        <div class="card border-success mb-4">
+            <div class="card-body bg-light">
+                <h5 class="card-title text-success">@L["UpdateAvailableTitle"]</h5>
+                <p class="card-text">@L["UpdateAvailableMessage"]</p>
+
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <small class="text-muted">@L["LatestVersionLabel"]</small>
+                        <p class="mb-0"><strong>@_state.LatestVersion</strong></p>
+                    </div>
+
+                    @if (_state.DownloadUrl is not null)
+                    {
+                        <div>
+                            <a href="@_state.DownloadUrl" target="_blank" rel="noopener" class="btn btn-sm btn-success">@L["ViewReleaseButton"]</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <small class="text-muted">@L["NoDownloadUrlMessage"]</small>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_state.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger mb-4">
+            <small>@L["ErrorLabel"]</small>
+            <p class="mb-0">@_state.ErrorMessage</p>
+        </div>
+    }
+}
+
+@code {
+    private bool _isChecking;
+    private string? _loadError;
+    private UpdateCheckState? _state;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            LoadState();
+            StateHasChanged();
+        }
+    }
+
+    private void LoadState()
+    {
+        _loadError = null;
+        try
+        {
+            _state = UpdateCheckService.GetState();
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["LoadFailed", ex.Message];
+        }
+    }
+
+    private async Task CheckNowAsync()
+    {
+        if (_isChecking)
+        {
+            return;
+        }
+
+        _isChecking = true;
+        _loadError = null;
+        try
+        {
+            await UpdateCheckService.TriggerCheckNowAsync(CancellationToken.None);
+            LoadState();
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["CheckFailed", ex.Message];
+        }
+        finally
+        {
+            _isChecking = false;
+        }
+    }
+
+    private static string FormatTime(DateTime utcTime)
+    {
+        var localTime = utcTime.ToLocalTime();
+        var now = DateTime.Now;
+        var elapsed = now - localTime;
+
+        if (elapsed.TotalSeconds < 60)
+        {
+            return "Just now";
+        }
+        else if (elapsed.TotalMinutes < 60)
+        {
+            int minutes = (int)elapsed.TotalMinutes;
+            return $"{minutes} minute{(minutes == 1 ? "" : "s")} ago";
+        }
+        else if (elapsed.TotalHours < 24)
+        {
+            int hours = (int)elapsed.TotalHours;
+            return $"{hours} hour{(hours == 1 ? "" : "s")} ago";
+        }
+        else if (elapsed.TotalDays < 7)
+        {
+            int days = (int)elapsed.TotalDays;
+            return $"{days} day{(days == 1 ? "" : "s")} ago";
+        }
+        else
+        {
+            return localTime.ToString("MMM d, yyyy");
+        }
+    }
+}

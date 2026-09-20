@@ -7,9 +7,10 @@ namespace VideoForensics.Ui.Shared.Services
     /// <summary>
     /// Circuit-scoped holder for the current paired-device session (plan §5.1/§5.11) - the WebAuthn
     /// bearer token, distinct from and unrelated to the existing Ring-account sign-in
-    /// (<c>IProviderAuthService</c>). Persisted to the browser's localStorage via
-    /// <c>wwwroot/js/webauthn.js</c> so a page refresh within the same tab resumes the session
-    /// without a fresh ceremony; a genuinely new tab has no localStorage entry and must re-pair.
+    /// (<c>IProviderAuthService</c>). Persisted via a session cookie (see
+    /// <c>wwwroot/js/webauthn.js</c>) so navigation and new tabs within the same browser session stay
+    /// signed in without a fresh pairing ceremony; closing the browser itself clears the cookie and
+    /// requires signing in again.
     /// </summary>
     public class PairedSessionState
     {
@@ -24,6 +25,7 @@ namespace VideoForensics.Ui.Shared.Services
         public string? SessionToken { get; private set; }
         public Guid? OperatorId { get; private set; }
         public string? Role { get; private set; }
+        public bool MustChangePassword { get; private set; }
 
         public bool IsSignedIn => SessionToken is not null;
 
@@ -52,6 +54,7 @@ namespace VideoForensics.Ui.Shared.Services
                     SessionToken = stored.SessionToken;
                     OperatorId = stored.OperatorId;
                     Role = stored.Role;
+                    MustChangePassword = stored.MustChangePassword;
                 }
             }
             catch (JSException)
@@ -61,14 +64,15 @@ namespace VideoForensics.Ui.Shared.Services
             }
         }
 
-        public async Task SetAsync(string sessionToken, Guid operatorId, string role)
+        public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false)
         {
             SessionToken = sessionToken;
             OperatorId = operatorId;
             Role = role;
+            MustChangePassword = mustChangePassword;
             try
             {
-                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role));
+                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role, mustChangePassword));
                 await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
             }
             catch (JSException)
@@ -85,6 +89,7 @@ namespace VideoForensics.Ui.Shared.Services
             SessionToken = null;
             OperatorId = null;
             Role = null;
+            MustChangePassword = false;
             try
             {
                 await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
@@ -102,6 +107,6 @@ namespace VideoForensics.Ui.Shared.Services
             AuthenticationExpired?.Invoke();
         }
 
-        private record StoredSession(string SessionToken, Guid OperatorId, string Role);
+        private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword);
     }
 }

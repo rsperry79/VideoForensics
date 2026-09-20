@@ -8,7 +8,6 @@
 
         <AssemblyName>VideoForensics.Data.Database.Sqlite</AssemblyName>
         <RootNamespace>VideoForensics.Data.Database.Sqlite</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>SQLite EF Core provider implementation for the VideoForensics data access layer</Description>
         <Copyright>2026</Copyright>
