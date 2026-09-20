@@ -11,10 +11,7 @@ permissions:
 
 jobs:
   build-and-test:
-    # windows-latest, not ubuntu-latest: VideoForensics.MauiApp.csproj targets
-    # net10.0-windows10.0.19041.0 and cannot restore/build without Windows-only
-    # MAUI workloads that aren't available on Linux runners.
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -26,14 +23,19 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj (targets
+      # net10.0-windows10.0.19041.0, needs Windows-only MAUI workloads and an
+      # explicit win-x64 RuntimeIdentifier to restore/build - out of scope for
+      # this build+test gate, which only needs the cross-platform library and
+      # test projects).
       - name: Restore
-        run: dotnet restore VideoForensics.sln
+        run: dotnet restore VideoForensics.CI.slnf
 
       - name: Build
-        run: dotnet build VideoForensics.sln --configuration Release --no-restore
+        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test VideoForensics.sln --configuration Release --no-build --logger trx --results-directory TestResults
+        run: dotnet test VideoForensics.CI.slnf --configuration Release --no-build --logger trx --results-directory TestResults
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

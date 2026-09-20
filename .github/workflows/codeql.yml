@@ -19,10 +19,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze
-    # windows-latest, not ubuntu-latest: VideoForensics.MauiApp.csproj targets
-    # net10.0-windows10.0.19041.0 and cannot restore/build without Windows-only
-    # MAUI workloads that aren't available on Linux runners.
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +39,14 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj - see
+      # ci.yml for why; CodeQL doesn't need the MAUI Windows target analyzed
+      # separately from what the cross-platform library/test projects cover.
       - name: Restore
-        run: dotnet restore VideoForensics.sln
+        run: dotnet restore VideoForensics.CI.slnf
 
       - name: Build
-        run: dotnet build VideoForensics.sln --configuration Release --no-restore
+        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
