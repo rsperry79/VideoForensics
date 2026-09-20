@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # windows-latest, not ubuntu-latest: VideoForensics.MauiApp.csproj targets
+    # net10.0-windows10.0.19041.0 and cannot restore/build without Windows-only
+    # MAUI workloads that aren't available on Linux runners.
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
