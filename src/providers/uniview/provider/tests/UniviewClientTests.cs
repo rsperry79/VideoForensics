@@ -381,5 +381,24 @@ namespace VideoForensics.Providers.Uniview.Tests
             // Assert
             Assert.Equal(expectedMessage, exception.Message);
         }
+
+        [Fact]
+        public async Task CaptureFrameFromFileAsync_WhenFfmpegBinaryMissing_ThrowsException()
+        {
+            // Arrange
+            string nonexistentFfmpeg = "nonexistent-ffmpeg-binary-xyz-uniview-test";
+            var client = new UniviewClient(TestHost, TestUsername, TestPassword, nonexistentFfmpeg);
+            string testVideoPath = "some-nonexistent-video.mp4";
+            string testOutputPath = "some-output.jpg";
+
+            // Act & Assert
+            // When the ffmpeg binary doesn't exist, Process.Start will throw.
+            // The exact exception type varies by platform (Win32Exception on Windows),
+            // but the key invariant is that the error is not silently swallowed.
+            _ = await Assert.ThrowsAnyAsync<Exception>(
+                () => client.CaptureFrameFromFileAsync(testVideoPath, testOutputPath)
+            );
+            client.Dispose();
+        }
     }
 }

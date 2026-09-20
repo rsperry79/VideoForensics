@@ -319,5 +319,6 @@ namespace VideoForensics.Providers.Ring.Tests
                 cr => cr.SetAsync(It.IsAny<Guid>(), "RefreshToken", It.IsAny<string>(), It.IsAny<CancellationToken>()),
                 Times.AtMostOnce);
         }
+
     }
 }

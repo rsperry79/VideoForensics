@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Core;
 
 namespace VideoForensics.Providers.Uniview.Services
 {
@@ -41,7 +42,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", username);
 
                 string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
-                string ffmpegPath = _configuration.UniviewFfmpegPath ?? "ffmpeg";
+                string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg");
 
                 var client = new UniviewClient(host, username, password, ffmpegPath);
 

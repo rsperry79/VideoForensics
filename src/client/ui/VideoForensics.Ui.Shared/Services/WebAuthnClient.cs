@@ -45,7 +45,7 @@ namespace VideoForensics.Ui.Shared.Services
             using HttpClient client = CreateClient(null);
 
             HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
-                $"api/pairing/{pairingToken}/register/options",
+                $"api/v1/pairing/{pairingToken}/register/options",
                 new { operatorDisplayName, deviceName });
             if (!optionsResponse.IsSuccessStatusCode)
             {
@@ -60,7 +60,7 @@ namespace VideoForensics.Ui.Shared.Services
             JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
-                $"api/pairing/{pairingToken}/register/complete",
+                $"api/v1/pairing/{pairingToken}/register/complete",
                 new { nonce, attestationResponse = attestation });
             if (!completeResponse.IsSuccessStatusCode)
             {
@@ -79,7 +79,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             using HttpClient client = CreateClient(null);
 
-            HttpResponseMessage optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/v1/auth/webauthn/assertion-options", null);
             if (!optionsResponse.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
@@ -93,7 +93,7 @@ namespace VideoForensics.Ui.Shared.Services
             JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
-                "api/auth/webauthn/assertion-complete",
+                "api/v1/auth/webauthn/assertion-complete",
                 new { nonce, assertionResponse = assertion });
             if (!completeResponse.IsSuccessStatusCode)
             {
@@ -112,7 +112,7 @@ namespace VideoForensics.Ui.Shared.Services
         {
             using HttpClient client = CreateClient(sessionToken);
 
-            HttpResponseMessage optionsResponse = await client.PostAsync("api/auth/webauthn/assertion-options", null);
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/v1/auth/webauthn/assertion-options", null);
             if (!optionsResponse.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
@@ -126,7 +126,7 @@ namespace VideoForensics.Ui.Shared.Services
             JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
 
             HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
-                "api/auth/webauthn/stepup-complete",
+                "api/v1/auth/webauthn/stepup-complete",
                 new { nonce, assertionResponse = assertion });
             if (!completeResponse.IsSuccessStatusCode)
             {
@@ -134,6 +134,156 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return result.GetProperty("stepUpToken").GetString()!;
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword)> SignInWithPasswordAsync(string username, string password)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/login/password",
+                new { Username = username, Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), null, default, "", false);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("mustChangePassword").GetBoolean());
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-options",
+                new { Username = username });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "");
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-complete",
+                new { nonce, assertionResponse = assertion });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "");
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorAsync(
+            string username, string password, string firstName, string lastName, string email, string? phone, string? displayName)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/register",
+                new { Username = username, Password = password, FirstName = firstName, LastName = lastName, Email = email, Phone = phone, DisplayName = displayName });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), false);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            bool isApproved = result.GetProperty("isApproved").GetBoolean();
+            return (true, null, isApproved);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorCredentialAsync(string sessionToken, string label)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/operator-credentials/register/options",
+                new { Label = label });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), false);
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
+            JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/operator-credentials/register/complete",
+                new { nonce, attestationResponse = attestation, label });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), false);
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            bool isApproved = result.GetProperty("isApproved").GetBoolean();
+            return (true, null, isApproved);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? NewSessionToken)> ChangePasswordAsync(
+            string sessionToken, string? currentPassword, string newPassword)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/change-password",
+                new { CurrentPassword = currentPassword, NewPassword = newPassword });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), null);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            string newSessionToken = result.GetProperty("sessionToken").GetString()!;
+            return (true, null, newSessionToken);
+        }
+
+        public async Task<string> StepUpWithPasswordAsync(string sessionToken, string password)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/stepup/password",
+                new { Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(response));
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
             return result.GetProperty("stepUpToken").GetString()!;
         }
 

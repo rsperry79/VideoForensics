@@ -50,11 +50,11 @@ else
         }
         else
         {
-            <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="MediaItem" DataSource="@_filteredEvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn HeaderText="@L["ColEvidenceId"]">
+                    <GridColumn HeaderText="@L["ColEvidenceId"]" MinWidth="100">
                         <Template>
                             @{
                                 var item = (MediaItem)context;
@@ -62,7 +62,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColDeviceId"]">
+                    <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
                         <Template>
                             @{
                                 var item = (MediaItem)context;
@@ -71,8 +71,8 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(MediaItem.FileName)" HeaderText="@L["ColFileName"]" />
-                    <GridColumn Field="@nameof(MediaItem.MediaFormat)" HeaderText="@L["ColFormat"]" />
+                    <GridColumn Field="@nameof(MediaItem.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(MediaItem.MediaFormat)" HeaderText="@L["ColFormat"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }
@@ -84,12 +84,12 @@ else
         }
         else
         {
-            <SfGrid TValue="DeviceHealth" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="DeviceHealth" DataSource="@_filteredAnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
-                    <GridColumn HeaderText="@L["ColDeviceId"]">
+                    <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -98,7 +98,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColConnected"]">
+                    <GridColumn HeaderText="@L["ColConnected"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -106,7 +106,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColBatteryPercent"]">
+                    <GridColumn HeaderText="@L["ColBatteryPercent"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -114,7 +114,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColRssi"]">
+                    <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -122,7 +122,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColWifi"]">
+                    <GridColumn HeaderText="@L["ColWifi"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -130,7 +130,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColFirmware"]">
+                    <GridColumn HeaderText="@L["ColFirmware"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceHealth)context;
@@ -149,14 +149,14 @@ else
         }
         else
         {
-            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredSignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }

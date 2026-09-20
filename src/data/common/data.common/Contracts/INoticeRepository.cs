@@ -8,10 +8,10 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Persists a new notice event to the database.</summary>
         Task AddAsync(Notice notice, CancellationToken ct);
 
-        /// <summary>Lists notices for an operator, excluding those dismissed by that operator (unless includeDismissed is true). Includes notices with Audience=All or (Audience=AdminsOnly AND operator is Admin+).</summary>
-        Task<IReadOnlyList<Notice>> ListForOperatorAsync(Guid operatorId, bool includeDismissed = false, CancellationToken ct = default);
+        /// <summary>Lists notices for an operator, excluding those dismissed by that operator (unless includeDismissed is true). Includes notices with Audience=All, plus Audience=AdminsOnly when isAdmin is true.</summary>
+        Task<IReadOnlyList<Notice>> ListForOperatorAsync(Guid operatorId, bool isAdmin, bool includeDismissed = false, CancellationToken ct = default);
 
-        /// <summary>Counts undismissed notices for an operator, for UI badge/indicator purposes.</summary>
-        Task<int> CountUndismissedForOperatorAsync(Guid operatorId, CancellationToken ct);
+        /// <summary>Counts undismissed notices for an operator, for UI badge/indicator purposes. Includes Audience=AdminsOnly notices only when isAdmin is true.</summary>
+        Task<int> CountUndismissedForOperatorAsync(Guid operatorId, bool isAdmin, CancellationToken ct);
     }
 }

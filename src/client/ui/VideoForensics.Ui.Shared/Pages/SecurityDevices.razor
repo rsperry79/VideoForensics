@@ -27,11 +27,11 @@
 }
 @if (_pairingToken is not null)
 {
-    <div class="border rounded pa-4 mb-4">
+    <div class="border rounded p-4 mb-4 d-flex flex-column align-items-start gap-2" style="max-width: 480px;">
         <img src="@QrCodeUrl" alt="Pairing QR code" width="240" height="240" />
-        <span class="mt-2 d-block">@L["QrInstructions"]</span>
-        <span><code>@PairingUrl</code></span>
-        <span>@L["ExpiresMessage", _pairingExpiresAtUtc]</span>
+        <span>@L["QrInstructions"]</span>
+        <a href="@PairingUrl" target="_blank" rel="noopener" class="text-break">@PairingUrl</a>
+        <span class="text-muted">@L["ExpiresMessage", _pairingExpiresAtUtc]</span>
     </div>
 }
 
@@ -59,14 +59,14 @@ else if (_devices is null || _devices.Count == 0)
 }
 else
 {
-    <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+    <SfGrid TValue="PairedDevice" DataSource="@_filteredDevices" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" />
-            <GridColumn Field="@nameof(PairedDevice.Role)" HeaderText="@L["ColRole"]" />
-            <GridColumn Field="@nameof(PairedDevice.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" />
-            <GridColumn HeaderText="@L["ColLastSeenUtc"]">
+            <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" MinWidth="100" />
+            <GridColumn Field="@nameof(PairedDevice.Role)" HeaderText="@L["ColRole"]" MinWidth="100" />
+            <GridColumn Field="@nameof(PairedDevice.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColLastSeenUtc"]" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
@@ -74,7 +74,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColLastSeenIp"]">
+            <GridColumn HeaderText="@L["ColLastSeenIp"]" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
@@ -82,7 +82,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColLastSeenTier"]">
+            <GridColumn HeaderText="@L["ColLastSeenTier"]" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
@@ -90,7 +90,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false">
+            <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
@@ -105,7 +105,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="" AllowSorting="false">
+            <GridColumn HeaderText="" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
@@ -148,7 +148,7 @@ else
     private DateTime? _pairingExpiresAtUtc;
 
     private string PairingUrl => $"{NavigationManager.BaseUri.TrimEnd('/')}/pair?token={_pairingToken}";
-    private string QrCodeUrl => $"api/pairing/{_pairingToken}/qrcode.png";
+    private string QrCodeUrl => $"api/v1/pairing/{_pairingToken}/qrcode.png";
 
     protected override async Task OnInitializedAsync()
     {
@@ -177,7 +177,7 @@ else
         try
         {
             var client = CreateClient();
-            var response = await client.PostAsync("api/pairing/initiate", null);
+            var response = await client.PostAsync("api/v1/pairing/initiate", null);
             if (!response.IsSuccessStatusCode)
             {
                 _pairingError = await SafeReadErrorAsync(response) ?? L["PairingError1", response.StatusCode];

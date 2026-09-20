@@ -28,7 +28,7 @@ else
 
     <h6 class="mt-4 mb-2">@L["KeyStorageSection"]</h6>
     <div class="card mb-4">
-        <div class="card-body pa-4">
+        <div class="card-body p-4">
             <div class="d-flex flex-row gap-2">
                 <SfDropDownList TValue="KeyStorageProvider" TItem="KeyStorageProvider" @bind-Value="_keyStorageProvider" DataSource="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
                 <SfButton Content="@L["SaveButton"]" OnClick="SaveKeyStorageProviderAsync" CssClass="e-primary" />
@@ -42,7 +42,7 @@ else
 
     <h6 class="mt-4 mb-2">@L["FactoryResetSection"]</h6>
     <div class="card mb-4">
-        <div class="card-body pa-4">
+        <div class="card-body p-4">
             @if (!_showFactoryResetConfirm)
             {
                 <SfButton Content="@L["FactoryResetButton"]" OnClick="() => _showFactoryResetConfirm = true" CssClass="e-danger" />

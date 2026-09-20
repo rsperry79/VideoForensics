@@ -76,7 +76,8 @@ namespace VideoForensics.Ui.Shared.Layout
             [
                 new("Query API", "/query"),
                 new("Import / Export", "/tools/import-export"),
-                new("Ring Self-Test", "/tools/ring-selftest")
+                new("Ring Self-Test", "/tools/ring-selftest"),
+                new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin))
             ]),
 
             new("settings", "Settings", "/settings",
@@ -86,10 +87,8 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Network Access", "/settings/network", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
-                new("Remote Access", "/settings/remote-access", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Storage", "/settings/storage", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
-                new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported)
             ])
         ];

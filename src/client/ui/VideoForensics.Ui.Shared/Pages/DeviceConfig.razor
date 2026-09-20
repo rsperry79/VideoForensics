@@ -45,10 +45,10 @@ else
         }
         else
         {
-            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@(new[] { _latest })" AllowPaging="false">
+            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@(new[] { _latest })" AllowPaging="false" AllowResizing="true">
                 <GridColumns>
-                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
-                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]">
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -56,7 +56,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColMotionSensitivity"]">
+                    <GridColumn HeaderText="@L["ColMotionSensitivity"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -64,7 +64,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColRecordingMode"]">
+                    <GridColumn HeaderText="@L["ColRecordingMode"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -72,7 +72,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" />
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }
@@ -84,12 +84,12 @@ else
         }
         else
         {
-            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+            <SfGrid TValue="DeviceConfigSnapshot" DataSource="@_filteredHistory" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" />
-                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]">
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColMotionDetectionEnabled"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -97,7 +97,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColMotionSensitivity"]">
+                    <GridColumn HeaderText="@L["ColMotionSensitivity"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -105,7 +105,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColRecordingMode"]">
+                    <GridColumn HeaderText="@L["ColRecordingMode"]" MinWidth="100">
                         <Template>
                             @{
                                 var snapshot = (DeviceConfigSnapshot)context;
@@ -113,7 +113,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" />
+                    <GridColumn Field="@nameof(DeviceConfigSnapshot.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
                 </GridColumns>
             </SfGrid>
         }

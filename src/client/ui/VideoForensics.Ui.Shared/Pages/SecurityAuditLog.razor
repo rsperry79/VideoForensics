@@ -38,13 +38,13 @@ else if (_entries is null || _entries.Count == 0)
 }
 else
 {
-    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+    <SfGrid TValue="SecurityAuditLogEntry" DataSource="@_filteredEntries" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" />
-            <GridColumn HeaderText="@L["ColOperatorId"]">
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColOperatorId"]" MinWidth="100">
                 <Template>
                     @{
                         var entry = (SecurityAuditLogEntry)context;
@@ -55,7 +55,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="@L["ColPairedDeviceId"]">
+            <GridColumn HeaderText="@L["ColPairedDeviceId"]" MinWidth="100">
                 <Template>
                     @{
                         var entry = (SecurityAuditLogEntry)context;
@@ -66,8 +66,8 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" />
-            <GridColumn HeaderText="@L["ColDetails"]">
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.SourceIp)" HeaderText="@L["ColSourceIp"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
                 <Template>
                     @{
                         var row = (SecurityAuditLogEntry)context;

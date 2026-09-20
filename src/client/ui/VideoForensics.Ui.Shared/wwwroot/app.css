@@ -55,3 +55,35 @@ nav a:hover {
 .e-splitter-layout .e-splitter-bar {
     background-color: var(--vf-border-color);
 }
+
+/* Every Syncfusion button (.e-btn) gets breathing room above/below by default, so a lone button or
+   one that isn't inside a Bootstrap d-flex/gap container never sits flush against neighboring text
+   or other controls. Buttons already grouped with Bootstrap's gap-* utility still look right - this
+   only adds vertical margin, gap already handles the horizontal spacing between grouped buttons. */
+.e-btn {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+/* Small circular "?" toggle used to reveal/hide an inline help explanation (e.g. Network Access),
+   instead of showing a long explanatory banner permanently on the page. */
+.help-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--vf-border-color);
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.help-toggle-btn:hover {
+    background: var(--vf-border-color);
+}
