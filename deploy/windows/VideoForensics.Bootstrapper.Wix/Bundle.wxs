@@ -5,10 +5,11 @@
   Wraps the VideoForensics MSI installer in a single .exe with a standard UI.
   Provides the end-user-friendly double-clickable installer experience.
 
-  IMPORTANT: Not validated in this sandbox (no WiX SDK available). First real build should verify:
-  1. MSI harvesting via $(var.VideoForensics.Installer.Wix.TargetPath) is correctly populated
-  2. Bundle UpgradeCode is different from the MSI's UpgradeCode (bundles need their own code) - confirmed different here
-  3. Whether a real license/icon should be added later (currently suppressed/omitted - see below)
+  IMPORTANT: Compiles and produces VideoForensicsBootstrapper.exe with a real WiX v5.0.2 SDK build
+  (validated 2026-09-20), including MSI harvesting via $(var.VideoForensics.Installer.Wix.TargetPath)
+  through the ProjectReference. Bundle UpgradeCode is different from the MSI's UpgradeCode (bundles
+  need their own code) - confirmed different here. Still open: whether a real license/icon should be
+  added later (currently suppressed/omitted - see below).
 
   Upgrade Behavior:
   - Inherits from the MSI's MajorUpgrade configuration: re-running a newer .exe bootstrapper
@@ -30,9 +31,9 @@
          exists yet in this repo, so IconSourceFile is intentionally omitted (would fail the
          build if pointed at a nonexistent file) - add one later and set IconSourceFile on
          the Bundle element when available. -->
-    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
-      <bal:WixStandardBootstrapperApplication LicenseUrl="" />
-    </BootstrapperApplicationRef>
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense" LicenseUrl="" />
+    </BootstrapperApplication>
 
     <Variable Name="InstallScope" Value="perMachine" />
 

@@ -171,9 +171,16 @@ jobs:
           $publishPath = (Resolve-Path "publish-win").Path
           $version = "${{ steps.get-version.outputs.version }}"
           Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
+          # Pass PublishDir/ProductVersion as their own -p: properties rather than a single
+          # -p:DefineConstants="PublishDir=...;ProductVersion=..." value: the WixBuild MSBuild
+          # task turns each ';'-separated DefineConstants entry into its own "-d Name=Value"
+          # argument to wix.exe, but a single command-line -p:DefineConstants override collapses
+          # to one "-d" entry whose value swallows everything after the first "=", which silently
+          # drops ProductVersion and surfaces as WIX0150 (undefined preprocessor variable).
           dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
             -c Release `
-            -p:DefineConstants="PublishDir=$publishPath;ProductVersion=$version"
+            -p:PublishDir="$publishPath" `
+            -p:ProductVersion="$version"
 
       - name: Locate built installers
         shell: pwsh
