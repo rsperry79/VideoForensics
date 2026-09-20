@@ -35,12 +35,20 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # NBGV computes its version via an MSBuild TARGET that runs during actual
+      # build execution, not via static property evaluation - `dotnet msbuild
+      # -getProperty:Version` only evaluates properties without running targets,
+      # so it silently returns the .NET SDK's own default "1.0.0" instead of the
+      # real computed version. The `nbgv` CLI tool computes it directly without
+      # needing a build, and `-v Version` gives the clean 4-part numeric format
+      # (e.g. 1.0.9.44078) that WiX's ProductVersion needs - no +metadata to strip.
       - name: Extract version from tag
         id: extract-version
         shell: bash
         run: |
-          VERSION=$(dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version)
-          VERSION="${VERSION%%+*}"
+          dotnet tool install --global nbgv --version 3.7.115
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
@@ -97,11 +105,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # See the bash variant of this step (build-debian job) for why nbgv
+      # replaces `dotnet msbuild -getProperty:Version` here.
       - name: Extract version from tag (PowerShell)
         id: extract-version
         shell: pwsh
         run: |
-          $version = (dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version) -replace '\+.*$',''
+          dotnet tool install --global nbgv --version 3.7.115
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          $version = nbgv get-version -v Version
           Add-Content $env:GITHUB_OUTPUT "version=$version"
           Write-Host "Detected version: $version"
 
