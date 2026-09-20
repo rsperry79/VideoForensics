@@ -239,7 +239,12 @@ jobs:
     needs: [build-debian-dev, build-windows-dev]
 
     steps:
+      # fetch-depth: 0 - this job's `dotnet pack` steps need NBGV, which needs
+      # full git history to compute the version height (same requirement as
+      # every other job in this repo's workflows that builds/packs anything).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
