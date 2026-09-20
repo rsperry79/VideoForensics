@@ -120,7 +120,7 @@ namespace VideoForensics.Providers.Wyze.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);
         }
 
@@ -143,7 +143,7 @@ namespace VideoForensics.Providers.Wyze.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);
         }
     }
