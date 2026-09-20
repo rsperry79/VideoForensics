@@ -80,11 +80,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.MediaItems.Add(mediaItem);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Media item added: {MediaItemId} ({FileName})", mediaItem.Id, mediaItem.FileName);
+                _logger.LogInformation("Media item added: {MediaItemId} ({FileName})", mediaItem.Id, SanitizeForLog(mediaItem.FileName));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding media item: {FileName}", mediaItem.FileName);
+                _logger.LogError(ex, "Error adding media item: {FileName}", SanitizeForLog(mediaItem.FileName));
                 throw;
             }
         }
@@ -126,5 +126,9 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

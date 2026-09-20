@@ -12,6 +12,9 @@ namespace VideoForensics.Providers.Ring.Services
         private const string ProviderName = "Ring";
 
         private readonly ILogger _logger;
+
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
         private readonly ISessionProvider _sessionProvider;
         private readonly ICredentialStore _credentialStore;
         private readonly ICredentialRepository _credentialRepository;
@@ -52,7 +55,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Ring API for user: {Username}", username);
+                _logger.LogInformation("Authenticating with Ring API for user: {Username}", MaskForLog(username));
 
                 var credentials = new RingCredentials { UserName = username, Password = password };
 
@@ -564,7 +567,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _ringAccountRepository.AddAsync(ringAccount, ct);
             }
 
-            _logger.LogInformation("Persisted Ring authentication for {Username}", username);
+            _logger.LogInformation("Persisted Ring authentication for {Username}", MaskForLog(username));
         }
     }
 }

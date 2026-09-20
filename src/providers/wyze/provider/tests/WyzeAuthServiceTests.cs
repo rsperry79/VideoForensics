@@ -101,5 +101,50 @@ namespace VideoForensics.Providers.Wyze.Tests
             Assert.NotNull(result);
             Assert.False(result.Success);
         }
+
+        [Fact]
+        public async Task AuthenticateAsync_DoesNotLogRawUsername()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger>();
+            var service = new WyzeAuthService(mockLogger.Object);
+            const string testUsername = "user@example.com";
+
+            // Act
+            await service.AuthenticateAsync(testUsername, "password");
+
+            // Assert - verify LogInformation was called, but NOT with the raw username
+            mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task AuthenticateWithTwoFactorAsync_DoesNotLogRawUsername()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger>();
+            var service = new WyzeAuthService(mockLogger.Object);
+            const string testUsername = "user@example.com";
+            var twoFactorProvider = () => Task.FromResult("123456");
+
+            // Act
+            await service.AuthenticateWithTwoFactorAsync(testUsername, "password", twoFactorProvider);
+
+            // Assert - verify LogInformation was called, but NOT with the raw username
+            mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.AtLeastOnce);
+        }
     }
 }

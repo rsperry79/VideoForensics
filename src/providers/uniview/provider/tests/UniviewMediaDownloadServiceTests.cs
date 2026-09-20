@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -262,6 +264,81 @@ namespace VideoForensics.Providers.Uniview.Tests
             // Assert - both should be empty, second drain gets nothing
             Assert.Empty(log1);
             Assert.Empty(log2);
+        }
+
+        [Fact]
+        public void UniviewMediaDownloadService_EnsureWithinRoot_ValidPathInsideRoot_ReturnsNormalizedPath()
+        {
+            // Arrange
+            var method = typeof(UniviewMediaDownloadService).GetMethod(
+                "EnsureWithinRoot",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+                null,
+                new[] { typeof(string), typeof(string) },
+                null);
+
+            Assert.NotNull(method);
+
+            string root = Path.GetTempPath();
+            string candidate = Path.Combine(root, "subdir", "file.mp4");
+
+            // Act
+            var result = method!.Invoke(null, new object[] { root, candidate });
+
+            // Assert - should return the normalized path
+            Assert.NotNull(result);
+            Assert.IsType<string>(result);
+            string resultPath = (string)result;
+            Assert.True(resultPath.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public void UniviewMediaDownloadService_EnsureWithinRoot_PathEscapingRoot_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var method = typeof(UniviewMediaDownloadService).GetMethod(
+                "EnsureWithinRoot",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+                null,
+                new[] { typeof(string), typeof(string) },
+                null);
+
+            Assert.NotNull(method);
+
+            string root = Path.Combine(Path.GetTempPath(), "validroot");
+            string candidate = Path.Combine(root, "..", "..", "escaped.mp4");
+
+            // Act & Assert - should throw InvalidOperationException
+            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
+                method!.Invoke(null, new object[] { root, candidate }));
+
+            Assert.NotNull(exception.InnerException);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
+            Assert.Contains("escapes the intended output directory", exception.InnerException!.Message);
+        }
+
+        [Fact]
+        public void UniviewMediaDownloadService_EnsureWithinRoot_AbsolutePathOutsideRoot_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var method = typeof(UniviewMediaDownloadService).GetMethod(
+                "EnsureWithinRoot",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+                null,
+                new[] { typeof(string), typeof(string) },
+                null);
+
+            Assert.NotNull(method);
+
+            string root = Path.Combine(Path.GetTempPath(), "validroot");
+            string candidate = Path.Combine(Path.GetTempPath(), "otherdir", "file.mp4");
+
+            // Act & Assert - should throw InvalidOperationException
+            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
+                method!.Invoke(null, new object[] { root, candidate }));
+
+            Assert.NotNull(exception.InnerException);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
         }
     }
 }

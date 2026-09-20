@@ -49,11 +49,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Users.Add(user);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("User added: {UserId} ({DisplayName})", user.Id, user.DisplayName);
+                _logger.LogInformation("User added: {UserId} ({DisplayName})", user.Id, MaskForLog(SanitizeForLog(user.DisplayName)));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding user: {DisplayName}", user.DisplayName);
+                _logger.LogError(ex, "Error adding user: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
                 throw;
             }
         }
@@ -95,5 +95,13 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
+
+        /// <summary>Masks a string for logging to prevent exposure of sensitive information like email addresses.</summary>
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
     }
 }

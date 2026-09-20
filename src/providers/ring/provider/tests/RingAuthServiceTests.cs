@@ -320,5 +320,43 @@ namespace VideoForensics.Providers.Ring.Tests
                 Times.AtMostOnce);
         }
 
+        [Fact]
+        public async Task AuthenticateWithTwoFactorAsync_DoesNotLogRawUsername()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger>();
+            var sessionProvider = new Mock<ISessionProvider>();
+            var credentialStore = new Mock<ICredentialStore>();
+            var credentialRepository = new Mock<ICredentialRepository>();
+
+            var service = new RingAuthService(
+                mockLogger.Object,
+                sessionProvider.Object,
+                credentialStore.Object,
+                credentialRepository.Object);
+
+            string testEmail = "user@example.com";
+
+            // Act
+            try
+            {
+                await service.AuthenticateWithTwoFactorAsync(testEmail, "password", null!, CancellationToken.None);
+            }
+            catch
+            {
+                // Expected to fail since we're not providing live Ring API access; we just want to verify logging
+            }
+
+            // Assert - the raw email should never appear in LogInformation calls
+            mockLogger.Verify(
+                l => l.Log(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(testEmail)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
+        }
+
     }
 }

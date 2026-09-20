@@ -138,7 +138,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     break;
                 }
 
-                string fileName = BuildSegmentFileName(outputPath, deviceId, segment);
+                string fileName = EnsureWithinRoot(outputPath, BuildSegmentFileName(outputPath, deviceId, segment));
 
                 try
                 {
@@ -298,7 +298,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
             }
 
-            string fileName = Path.Combine(outputPath, $"snapshot_{deviceId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg");
+            string fileName = EnsureWithinRoot(outputPath, Path.Combine(outputPath, $"snapshot_{deviceId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg"));
 
             try
             {
@@ -479,5 +479,22 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         const double kb = 1024;
         const double mb = kb * 1024;
         return bytes >= mb ? $"{bytes / mb:F1} MB" : bytes >= kb ? $"{bytes / kb:F1} KB" : $"{bytes} bytes";
+    }
+
+    /// <summary>Guard against path-traversal attacks by ensuring the resolved path stays within the intended root.</summary>
+    private static string EnsureWithinRoot(string root, string candidatePath)
+    {
+        // Trim any trailing separator so callers passing e.g. Path.GetTempPath() (which
+        // returns a trailing backslash on Windows) don't produce a spurious double separator
+        // below and cause a legitimately-nested path to fail the StartsWith check.
+        string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string fullCandidate = Path.GetFullPath(candidatePath);
+        if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+        }
+
+        return fullCandidate;
     }
 }
