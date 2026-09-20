@@ -79,12 +79,19 @@ namespace VideoForensics.WebApp.Api
                 string apiKeyHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawApiKey)));
 
                 // Create the operator
+                var operatorId = Guid.NewGuid();
                 Operator op = await operators.AddAsync(new Operator
                 {
-                    Id = Guid.NewGuid(),
+                    Id = operatorId,
                     DisplayName = $"{request.DeviceName} (device-code)",
                     CreatedAtUtc = DateTime.UtcNow,
-                    Active = true
+                    Active = true,
+                    Username = $"device-{operatorId:N}",
+                    FirstName = request.DeviceName,
+                    LastName = "(service account)",
+                    Email = $"{operatorId:N}@device.invalid",
+                    Role = request.Role,
+                    SecurityStamp = Guid.NewGuid()
                 }, ct);
 
                 // Create the paired device

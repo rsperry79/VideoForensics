@@ -1,0 +1,289 @@
+name: Publish - Dev
+
+on:
+  push:
+    branches: [ wip ]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: publish-dev
+  cancel-in-progress: true
+
+jobs:
+  build-debian-dev:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Get NBGV-computed version
+        id: get-version
+        shell: bash
+        run: |
+          VERSION=$(dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version)
+          VERSION="${VERSION%%+*}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Publish WebApp (linux-x64, self-contained)
+        run: |
+          dotnet publish src/client/web/VideoForensics.WebApp \
+            -c Release -r linux-x64 --self-contained true \
+            -o /tmp/publish-linux
+
+      - name: Download and bundle cloudflared binary
+        run: |
+          curl -fsSL -o /tmp/publish-linux/cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /tmp/publish-linux/cloudflared
+
+      - name: Build Debian package
+        run: |
+          chmod +x deploy/debian/build-deb.sh
+          ./deploy/debian/build-deb.sh /tmp/publish-linux "${{ steps.get-version.outputs.version }}"
+
+      - name: Compute SHA256 checksums
+        shell: bash
+        run: |
+          cd deploy/debian
+          sha256sum "videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb" \
+            > "videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256"
+          echo "Generated checksum file:"
+          cat "videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256"
+
+      - name: Upload Debian package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package-dev
+          path: |
+            deploy/debian/videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb
+            deploy/debian/videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256
+
+  build-windows-dev:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Get NBGV-computed version (PowerShell)
+        id: get-version
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version) -replace '\+.*$',''
+          Add-Content $env:GITHUB_OUTPUT "version=$version"
+          Write-Host "Detected version: $version"
+
+      - name: Publish WebApp (win-x64, self-contained)
+        run: |
+          dotnet publish src/client/web/VideoForensics.WebApp `
+            -c Release -r win-x64 --self-contained true `
+            -o publish-win
+
+      - name: Download and bundle FFmpeg binaries
+        shell: pwsh
+        run: |
+          $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip"
+          $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "ffmpeg-btbn-$(Get-Random)"
+          $publishDir = "publish-win"
+
+          Write-Host "Downloading FFmpeg from $ffmpegUrl"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile "$tempDir\ffmpeg.zip" -ErrorAction Stop
+
+          Write-Host "Extracting to $tempDir"
+          Expand-Archive -Path "$tempDir\ffmpeg.zip" -DestinationPath $tempDir -ErrorAction Stop
+
+          $extractedDir = Get-ChildItem -Path $tempDir -Directory -ErrorAction Stop | Select-Object -First 1
+          if (-not $extractedDir) {
+            Write-Host "ERROR: No directory found in extracted archive"
+            exit 1
+          }
+
+          $binDir = Join-Path $extractedDir.FullName "bin"
+          if (-not (Test-Path $binDir)) {
+            Write-Host "ERROR: bin directory not found at $binDir"
+            exit 1
+          }
+
+          Write-Host "Copying ffmpeg.exe and ffprobe.exe to $publishDir"
+          Copy-Item (Join-Path $binDir "ffmpeg.exe") "$publishDir\" -ErrorAction Stop
+          Copy-Item (Join-Path $binDir "ffprobe.exe") "$publishDir\" -ErrorAction Stop
+
+          Write-Host "Copying license file as ffmpeg-LICENSE.txt"
+          $licenseFile = Get-ChildItem -Path $extractedDir.FullName -Filter "LICENSE*" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($licenseFile) {
+            Copy-Item $licenseFile.FullName "$publishDir\ffmpeg-LICENSE.txt" -ErrorAction Stop
+            Write-Host "  - License: $(Split-Path -Leaf $licenseFile.FullName) -> ffmpeg-LICENSE.txt"
+          } else {
+            Write-Host "  WARNING: No LICENSE* file found in extracted archive"
+          }
+
+          Write-Host "FFmpeg binaries bundled successfully:"
+          Get-ChildItem "$publishDir\ffmpeg*" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  - $($_.Name)" }
+
+          Write-Host "Cleaning up temporary directory"
+          Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+
+      - name: Download and bundle cloudflared binary
+        shell: pwsh
+        run: |
+          $cloudflaredUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+          Write-Host "Downloading cloudflared from $cloudflaredUrl"
+          Invoke-WebRequest -Uri $cloudflaredUrl -OutFile "publish-win\cloudflared.exe" -ErrorAction Stop
+          Write-Host "Bundled cloudflared.exe successfully"
+
+      - name: Build WiX Bootstrapper (transitively builds MSI)
+        shell: pwsh
+        run: |
+          $publishPath = (Resolve-Path "publish-win").Path
+          $version = "${{ steps.get-version.outputs.version }}"
+          Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
+          dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
+            -c Release `
+            -p:DefineConstants="PublishDir=$publishPath;ProductVersion=$version"
+
+      - name: Locate built installers
+        shell: pwsh
+        run: |
+          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
+          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
+
+          if (-not (Test-Path $msiPath)) {
+            Write-Host "ERROR: MSI not found at expected path: $msiPath"
+            Write-Host "Checking Installer.Wix/bin/Release:"
+            Get-ChildItem "deploy/windows/VideoForensics.Installer.Wix/bin/Release" -ErrorAction SilentlyContinue
+            exit 1
+          }
+          if (-not (Test-Path $exePath)) {
+            Write-Host "ERROR: Bootstrapper .exe not found at expected path: $exePath"
+            Write-Host "Checking Bootstrapper.Wix/bin/Release:"
+            Get-ChildItem "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release" -ErrorAction SilentlyContinue
+            exit 1
+          }
+
+          Write-Host "Found MSI: $msiPath"
+          Write-Host "Found EXE: $exePath"
+
+      - name: Compute SHA256 checksums (Windows)
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get-version.outputs.version }}"
+          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
+          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
+          $msiOut = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256"
+          $exeOut = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256"
+
+          $msiHash = (Get-FileHash -Path $msiPath -Algorithm SHA256).Hash
+          "$msiHash  $(Split-Path -Leaf $msiPath)" | Out-File -FilePath $msiOut -Encoding ASCII
+
+          $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
+          "$exeHash  $(Split-Path -Leaf $exePath)" | Out-File -FilePath $exeOut -Encoding ASCII
+
+          Write-Host "MSI checksum:"
+          Get-Content $msiOut
+          Write-Host "EXE checksum:"
+          Get-Content $exeOut
+
+      - name: Upload Windows installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-dev
+          path: |
+            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
+            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256
+            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
+            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256
+
+  publish-dev-release:
+    runs-on: ubuntu-latest
+    needs: [build-debian-dev, build-windows-dev]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Organize release files
+        shell: bash
+        run: |
+          mkdir -p release-files
+          cp -v release-artifacts/debian-package-dev/* release-files/ 2>/dev/null || true
+          cp -v release-artifacts/windows-installer-dev/* release-files/ 2>/dev/null || true
+          echo "Release files ready:"
+          ls -lah release-files/
+
+      - name: Pack VideoForensics.Providers.Common
+        run: |
+          dotnet pack src/core/providers/providers-common/VideoForensics.Providers.Common.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Api.Contracts
+        run: |
+          dotnet pack src/core/api/VideoForensics.Api.Contracts/VideoForensics.Api.Contracts.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Data.Common
+        run: |
+          dotnet pack src/data/common/data.common/VideoForensics.Data.Common.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Core.Logging
+        run: |
+          dotnet pack src/core/core/core.logging/VideoForensics.Core.Logging.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Push NuGet packages to GitHub Packages
+        run: |
+          dotnet nuget push "./nupkgs/*.nupkg" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --source https://nuget.pkg.github.com/rsperry79/index.json \
+            --skip-duplicate
+
+      - name: Create/Update dev release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          tag_name: dev
+          prerelease: true
+          draft: false
+          body: |
+            ## Development Build
+
+            This is an automatically-updated rolling prerelease build from the `wip` branch.
+
+            **Installers:**
+            - `videoforensics_*.deb` — Debian/Ubuntu package (self-contained .NET 10 linux-x64)
+            - `VideoForensics.msi` — Windows MSI installer (self-contained .NET 10 win-x64)
+            - `VideoForensicsBootstrapper.exe` — Windows Burn bootstrapper wrapping the MSI
+
+            **Status:** Unsigned, prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/wip
+
+            All files are accompanied by `.sha256` checksum files for integrity verification.

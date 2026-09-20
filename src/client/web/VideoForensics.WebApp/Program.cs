@@ -87,8 +87,8 @@ builder.Services.AddSyncfusionBlazor();
 // instead, which is a configuration concern for that work, not this registration.
 builder.Services.AddFido2(options =>
 {
-    options.ServerDomain = "localhost";
-    options.ServerName = "VideoForensics";
+    options.RPID = "localhost";
+    options.RPName = "VideoForensics";
     options.Origins = new HashSet<string> { "https://localhost:5162", "http://localhost:5162" };
 });
 
@@ -332,6 +332,7 @@ app.MapVideoForensicsHealthEndpoints();
 app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
+app.MapOperatorAuthEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceCodePairingEndpoints();
 app.MapDeviceManagementEndpoints();
@@ -350,6 +351,7 @@ app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
+app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)

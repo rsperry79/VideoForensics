@@ -9,6 +9,8 @@
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<SecurityOperators> L
 
+<Breadcrumb Items="@_breadcrumbItems" />
+
 <h4 class="mb-4">@L["Title"]</h4>
 
 @if (!SessionState.IsSignedIn)
@@ -41,13 +43,13 @@ else if (_operators is null || _operators.Count == 0)
 }
 else
 {
-    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+    <SfGrid TValue="Operator" DataSource="@_filteredOperators" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" />
-            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" />
-            <GridColumn HeaderText="@L["ColActive"]">
+            <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" MinWidth="100" />
+            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
                 <Template>
                     @{
                         var op = (Operator)context;
@@ -66,7 +68,7 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn HeaderText="">
+            <GridColumn HeaderText="" MinWidth="100">
                 <Template>
                     @{
                         var op = (Operator)context;
@@ -90,12 +92,75 @@ else
     </SfGrid>
 }
 
+<div class="mt-5 pt-5 border-top">
+    <h5 class="mb-4">@L["PendingCredentialsTitle"]</h5>
+
+    @if (!SessionState.IsSignedIn)
+    {
+        <div class="alert alert-info mb-4">
+            <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+        </div>
+    }
+    else if (_isLoadingCredentials)
+    {
+        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+    }
+    else if (_credentialsAuthError is not null)
+    {
+        <div class="alert alert-danger mb-2">@_credentialsAuthError</div>
+        <span>@L["NotAuthorizedMessage"]</span>
+    }
+    else if (_credentialsLoadError is not null)
+    {
+        <div class="alert alert-danger">@_credentialsLoadError</div>
+    }
+    else if (_pendingCredentials is null || _pendingCredentials.Count == 0)
+    {
+        <span>@L["NoPendingCredentials"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="PendingCredentialDisplay" DataSource="@_pendingCredentials" AllowSorting="true" AllowPaging="true" AllowResizing="true">
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(PendingCredentialDisplay.OperatorDisplayName)" HeaderText="@L["ColOperator"]" MinWidth="100" />
+                <GridColumn Field="@nameof(PendingCredentialDisplay.Label)" HeaderText="@L["ColCredentialLabel"]" MinWidth="100" />
+                <GridColumn Field="@nameof(PendingCredentialDisplay.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" Type="Syncfusion.Blazor.Grids.ColumnType.DateTime" Format="u" MinWidth="100" />
+                <GridColumn HeaderText="" MinWidth="100">
+                    <Template>
+                        @{
+                            var cred = (PendingCredentialDisplay)context;
+                            @if (_approvingCredentialId == cred.Id)
+                            {
+                                <SfButton Content="@L["ApprovingButton"]" Disabled="true" CssClass="e-primary" />
+                            }
+                            else
+                            {
+                                <SfButton Content="@L["ApproveButton"]" OnClick="() => ApproveCredential(cred.Id)" CssClass="e-primary" />
+                            }
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+}
+</div>
+
 @if (_actionError is not null)
 {
     <div class="alert alert-danger mt-4">@_actionError</div>
 }
 
+@if (_credentialsActionError is not null)
+{
+    <div class="alert alert-danger mt-4">@_credentialsActionError</div>
+}
+
 @code {
+    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Settings", "/settings"), ("Operators", null) };
+
+    // Operators
     private bool _isLoading = true;
     private List<VideoForensics.Data.Common.Entities.Operator>? _operators;
     private IEnumerable<VideoForensics.Data.Common.Entities.Operator> _filteredOperators = new List<VideoForensics.Data.Common.Entities.Operator>();
@@ -105,9 +170,18 @@ else
     private Guid? _pendingDeactivateOperatorId;
     private string _reasonInput = string.Empty;
 
+    // Pending Credentials
+    private bool _isLoadingCredentials = false;
+    private List<PendingCredentialDisplay>? _pendingCredentials;
+    private string? _credentialsAuthError;
+    private string? _credentialsLoadError;
+    private string? _credentialsActionError;
+    private Guid? _approvingCredentialId;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+        await LoadPendingCredentialsAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -118,6 +192,7 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             await LoadAsync();
+            await LoadPendingCredentialsAsync();
             StateHasChanged();
         }
     }
@@ -150,6 +225,98 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task LoadPendingCredentialsAsync()
+    {
+        _isLoadingCredentials = true;
+        _credentialsAuthError = null;
+        _credentialsLoadError = null;
+        _credentialsActionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/devices-management/operator-credentials/pending");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _credentialsAuthError = L["NotAuthorizedToViewCredentials"];
+                _pendingCredentials = null;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var credentials = await response.Content.ReadFromJsonAsync<List<OperatorCredential>>(JsonOptions);
+
+            // Fetch operators to resolve display names
+            var opsResponse = await client.GetAsync("api/devices-management/operators");
+            if (!opsResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("Failed to load operators for credential display names");
+            }
+
+            var ops = await opsResponse.Content.ReadFromJsonAsync<List<Operator>>(JsonOptions);
+            var opMap = ops?.ToDictionary(o => o.Id, o => o.DisplayName) ?? new Dictionary<Guid, string>();
+
+            _pendingCredentials = credentials?
+                .Select(c => new PendingCredentialDisplay(
+                    c.Id,
+                    opMap.TryGetValue(c.OperatorId, out var displayName) ? displayName : $"Unknown (ID: {c.OperatorId})",
+                    c.Label,
+                    c.CreatedAtUtc))
+                .ToList() ?? new List<PendingCredentialDisplay>();
+        }
+        catch (Exception ex)
+        {
+            _credentialsLoadError = L["FailedToLoad", ex.Message];
+        }
+        finally
+        {
+            _isLoadingCredentials = false;
+        }
+    }
+
+    private async Task ApproveCredential(Guid credentialId)
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _credentialsActionError = L["SignInFirstError"];
+            return;
+        }
+
+        _credentialsActionError = null;
+        _approvingCredentialId = credentialId;
+        try
+        {
+            // Approval is high-risk (plan §5.7) - a fresh passkey assertion is required
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync($"api/devices-management/operator-credentials/{credentialId}/approve", new { });
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                _credentialsActionError = L["NotSuperAdminLocal"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _credentialsActionError = body ?? L["ApproveFailed", response.StatusCode];
+                return;
+            }
+
+            await LoadPendingCredentialsAsync();
+        }
+        catch (Exception ex)
+        {
+            _credentialsActionError = L["ApproveFailed", ex.Message];
+        }
+        finally
+        {
+            _approvingCredentialId = null;
         }
     }
 
@@ -223,7 +390,6 @@ else
         }
     }
 
-
     private HttpClient CreateClient()
     {
         var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
@@ -236,4 +402,6 @@ else
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private record PendingCredentialDisplay(Guid Id, string OperatorDisplayName, string Label, DateTime CreatedAtUtc);
 }

@@ -104,6 +104,16 @@ namespace VideoForensics.Providers.Ring.Services
                             try
                             {
                                 await PersistRingAccountAsync(username, session, resolvedAccountId, cancellationToken);
+                                // Record successful auth to clear any previously-recorded error
+                                try
+                                {
+                                    await _providerAccountRepository.RecordSuccessAsync(resolvedAccountId, cancellationToken);
+                                }
+                                catch (Exception recordEx)
+                                {
+                                    _logger.LogError(recordEx, "Failed to record authentication success for account {AccountId}", resolvedAccountId);
+                                    // Non-fatal — auth itself succeeded
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -440,7 +450,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
-                _sessionProvider.SetSession(session);
+                _sessionProvider.SetSession(resolvedAccountId ?? Guid.Empty, session);
 
                 try
                 {
@@ -455,6 +465,8 @@ namespace VideoForensics.Providers.Ring.Services
                     if (resolvedAccountId != Guid.Empty)
                     {
                         await PersistRingAccountAsync(credentials.UserName ?? "unknown", session, resolvedAccountId.Value, cancellationToken);
+                        // Record successful auth to clear any previously-recorded error
+                        await _providerAccountRepository.RecordSuccessAsync(resolvedAccountId.Value, cancellationToken);
                     }
                 }
                 catch (Exception ex)

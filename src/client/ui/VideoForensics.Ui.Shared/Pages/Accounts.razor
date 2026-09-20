@@ -1,5 +1,6 @@
 @page "/accounts"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Providers.Common.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @inject IProviderAccountRepository ProviderAccountRepository
@@ -30,7 +31,7 @@ else
     }
     else
     {
-        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
@@ -45,10 +46,10 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" />
-                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
-                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
-                <GridColumn HeaderText="@L["ColLastAuth"]">
+                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" MinWidth="100" />
+                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" MinWidth="100" />
+                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColLastAuth"]" MinWidth="100">
                     <Template>
                         @{
                             var row = (AccountRow)context;
@@ -56,7 +57,7 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="@L["ColActive"]">
+                <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
                     <Template>
                         @{
                             var row = (AccountRow)context;
@@ -64,7 +65,7 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="">
+                <GridColumn HeaderText="" MinWidth="100">
                     <Template>
                         @{
                             var row = (AccountRow)context;
@@ -79,6 +80,10 @@ else
                             else
                             {
                                 <div class="d-flex gap-2">
+                                    @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
+                                    {
+                                        <SfButton Content="@L["Login"]" OnClick="() => OpenReAuthDialog(row)" Disabled="@_isBusy" CssClass="e-warning" />
+                                    }
                                     <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
                                     <SfButton Content="@L["Schedule"]" OnClick="@((UIMouseEventArgs) => GoToAccountScheduleAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
                                     <SfButton Content="@L["Select"]" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-primary" />
@@ -91,6 +96,14 @@ else
             </GridColumns>
         </SfGrid>
     }
+}
+
+@if (_reAuthAccount is not null)
+{
+    <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
+                  ProviderName="@_reAuthAccount.Account.ProviderName"
+                  InitialEmail="@_reAuthAccount.DisplayName"
+                  OnAuthenticated="HandleReAuthenticatedAsync" />
 }
 
 <div class="mt-4">
@@ -106,6 +119,8 @@ else
     private bool _isBusy;
     private string? _statusMessage;
     private Guid? _confirmingRemoveId;
+    private bool _reAuthDialogVisible;
+    private AccountRow? _reAuthAccount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -234,5 +249,24 @@ else
     private void GoToAccountScheduleAsync(Guid accountId)
     {
         NavigationManager.NavigateTo($"/accounts/{accountId}/schedule");
+    }
+
+    private void OpenReAuthDialog(AccountRow row)
+    {
+        _reAuthAccount = row;
+        _reAuthDialogVisible = true;
+    }
+
+    private async Task HandleReAuthenticatedAsync(AuthResult result)
+    {
+        if (result.Success)
+        {
+            _statusMessage = L["AccountReauthenticated"];
+            await LoadAccountsAsync();
+        }
+        else
+        {
+            _statusMessage = L["CouldNotSwitch", result.ErrorMessage ?? "Authentication failed."];
+        }
     }
 }

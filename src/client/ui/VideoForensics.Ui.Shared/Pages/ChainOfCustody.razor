@@ -58,16 +58,16 @@ else
         }
         else
         {
-            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true" AllowFiltering="true">
+            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.ActorType)" HeaderText="@L["ColActorType"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" />
-                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" />
-                    <GridColumn HeaderText="@L["ColEntityId"]">
+                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.ActorType)" HeaderText="@L["ColActorType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColEntityId"]" MinWidth="100">
                         <Template>
                             @{
                                 var entry = (ActionLogEntry)context;

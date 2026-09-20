@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using VideoForensics.Ui.Shared.Services
+@inject ThemePreferenceService ThemeService
+
+<div class="minimal-layout d-flex justify-content-center align-items-center" style="min-height: 100vh; padding: 24px;">
+    <div class="card" style="width: 100%; max-width: 480px;">
+        <div class="card-body">
+            <h1 class="card-title text-center mb-4">VideoForensics</h1>
+            @Body
+        </div>
+    </div>
+</div>
+
+@code {
+    // Pre-auth pages (Welcome, DeviceSignIn, Register, ChangePassword, Pair) share this layout for
+    // a consistent branded card instead of each repeating their own wrapper/title markup - and,
+    // unlike MainLayout's chrome, this must never inject anything that reads session/account data
+    // (see the security fix earlier this session for why AccountSwitcher leaked before sign-in).
+    // ThemePreferenceService is safe here: it already handles the no-signed-in-operator case by
+    // design (falls back to the OS/browser prefers-color-scheme snapshot without persisting
+    // anything), it just was never wired up for these pages before now.
+    protected override void OnInitialized()
+    {
+        ThemeService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnChange -= StateHasChanged;
+    }
+}

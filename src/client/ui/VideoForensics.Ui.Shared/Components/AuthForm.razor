@@ -58,6 +58,9 @@ else
 
     [Parameter] public IReadOnlyList<string>? AvailableProviders { get; set; }
 
+    /// <summary>Optional email/username to pre-fill (e.g. when re-authenticating a known existing account, to reduce the risk of a typo resolving to a different account).</summary>
+    [Parameter] public string? InitialEmail { get; set; }
+
     private string _email = "";
     private string _password = "";
     private string _twoFactorCode = "";
@@ -70,6 +73,10 @@ else
     protected override void OnParametersSet()
     {
         _selectedProvider ??= AvailableProviders?.FirstOrDefault();
+        if (!string.IsNullOrEmpty(InitialEmail) && string.IsNullOrEmpty(_email))
+        {
+            _email = InitialEmail;
+        }
     }
 
     private async Task SubmitCredentialsAsync()

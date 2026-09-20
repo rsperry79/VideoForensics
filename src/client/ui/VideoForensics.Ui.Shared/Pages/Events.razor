@@ -93,7 +93,7 @@ else
         }
         else
         {
-            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" AllowFiltering="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked">
+            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" AllowFiltering="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>

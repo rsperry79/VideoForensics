@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 
+using Moq;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
@@ -11,6 +13,8 @@ namespace VideoForensics.Data.Database.Tests
     {
         private SqliteInMemoryFixture _fixture = null!;
         private DeviceHealthRepository _repository = null!;
+        private LocationRepository _locationRepository = null!;
+        private DeviceRepository _deviceRepository = null!;
 
         public async ValueTask InitializeAsync()
         {
@@ -18,12 +22,38 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new DeviceHealthRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceHealthRepository>());
+            _locationRepository = new LocationRepository(_fixture.Factory, loggerFactory.CreateLogger<LocationRepository>());
+            _deviceRepository = new DeviceRepository(_fixture.Factory, loggerFactory.CreateLogger<DeviceRepository>());
         }
 
         public async ValueTask DisposeAsync()
         {
             await _fixture.DisposeAsync();
             _fixture.Dispose();
+        }
+
+        [Fact]
+        public async Task DeviceHealthRepository_AddAsync_LogsHumanReadableDeviceAndLocationName()
+        {
+            Location location = TestDataBuilder.BuildLocation(name: "123 Main St");
+            await _locationRepository.AddAsync(location, CancellationToken.None);
+
+            Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Front Door Camera");
+            await _deviceRepository.AddAsync(device, CancellationToken.None);
+
+            var mockLogger = new Mock<ILogger<DeviceHealthRepository>>();
+            var repository = new DeviceHealthRepository(_fixture.Factory, mockLogger.Object);
+
+            DeviceHealth health = TestDataBuilder.BuildDeviceHealth(device.Id);
+            _ = await repository.AddAsync(health, CancellationToken.None);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, t) => state.ToString()!.Contains("Front Door Camera") && state.ToString()!.Contains("123 Main St")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
 
         [Fact]

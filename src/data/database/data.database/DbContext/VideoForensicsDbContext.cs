@@ -136,6 +136,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the Operators (plan §5.11).</summary>
         public DbSet<Operator> Operators { get; set; }
 
+        /// <summary>Gets or sets the operator credentials (WebAuthn passkeys for operator login).</summary>
+        public DbSet<OperatorCredential> OperatorCredentials { get; set; } = null!;
+
         /// <summary>Gets or sets the paired devices (plan §5.1/§5.4).</summary>
         public DbSet<PairedDevice> PairedDevices { get; set; }
 

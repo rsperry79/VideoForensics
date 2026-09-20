@@ -8,7 +8,6 @@
 
         <AssemblyName>VideoForensics.Client.Common</AssemblyName>
         <RootNamespace>VideoForensics.Client.Common</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Shared interfaces and dependency-free DTOs for the VideoForensics console client and MCP server</Description>
         <Copyright>2026</Copyright>

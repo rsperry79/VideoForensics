@@ -2,12 +2,27 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.DropDowns
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<NetworkSettings> L
 
-<h4 class="mb-4">@L["Title"]</h4>
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+    <button type="button" class="help-toggle-btn" title="@L["HelpButtonTitle"]" @onclick="() => _showHelp = !_showHelp">?</button>
+</div>
+
+@if (_showHelp)
+{
+    <div class="alert alert-warning mb-4 d-flex justify-content-between align-items-start gap-2">
+        <div>
+            <p class="mb-2">@L["WarningText"]</p>
+            <p class="mb-0">@L["RemoteAccessHelpText"]</p>
+        </div>
+        <SfButton Content="@L["CloseHelp"]" OnClick="@(() => _showHelp = false)" CssClass="e-flat e-small" />
+    </div>
+}
 
 @if (!SessionState.IsSignedIn)
 {
@@ -15,10 +30,6 @@
         <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
     </div>
 }
-
-<div class="alert alert-warning mb-4">
-    @L["WarningText"]
-</div>
 
 @if (_isLoading)
 {
@@ -39,18 +50,10 @@ else
 {
     <div class="card mb-4"><div class="card-body">
         <div>
-            <div>
-                <SfRadioButton Label="Local" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Local" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
-                <span style="margin-left: 8px;">- @L["LocalLabelText"]</span>
-            </div>
-            <div>
-                <SfRadioButton Label="Network" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Network" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
-                <span style="margin-left: 8px;">- @L["NetworkLabelText"]</span>
-            </div>
-            <div>
-                <SfRadioButton Label="Internet" Name="tier" TChecked="NetworkTier" Value="NetworkTier.Internet" Checked="@_selectedTier" ValueChange="@(async (Syncfusion.Blazor.Buttons.ChangeArgs<NetworkTier> args) => await OnTierChanged(args.Value))" />
-                <span style="margin-left: 8px;">- @L["InternetLabelText"]</span>
-            </div>
+            <SfDropDownList TValue="NetworkTier" TItem="NetworkTierOption" DataSource="@_tierOptions" @bind-Value="_selectedTier" Style="max-width: 420px;">
+                <DropDownListFieldSettings Text="Text" Value="Value" />
+                <DropDownListEvents TValue="NetworkTier" TItem="NetworkTierOption" ValueChange="@(async (ChangeEventArgs<NetworkTier, NetworkTierOption> args) => await OnTierChanged(args.Value))" />
+            </SfDropDownList>
         </div>
 
         @if (_pendingTier is not null)
@@ -67,11 +70,118 @@ else
             <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
     </div></div>
+
+    <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
+
+    @if (_currentTier != NetworkTier.Internet)
+    {
+        <div class="alert alert-info mb-4">@L["RequiresInternetTier"]</div>
+    }
+    else if (_isRemoteAccessLoading)
+    {
+        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+    }
+    else if (_remoteAccessLoadError is not null)
+    {
+        <div class="alert alert-danger">@_remoteAccessLoadError</div>
+    }
+    else
+    {
+        <div class="d-flex flex-row gap-2 mb-2">
+            <SfButton Content="@L["RefreshButton"]" OnClick="LoadRemoteAccessStatusAsync" Disabled="@_isRemoteAccessLoading" CssClass="e-flat" />
+        </div>
+
+        @if (!_cloudflaredInstalled)
+        {
+            <div class="alert alert-danger mb-4">
+                <code>cloudflared</code> @L["CloudflaredNotFoundPrefix"]
+                <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener">@L["CloudflaredDownloadLink"]</a>
+                @L["CloudflaredNotFoundSuffix"]
+            </div>
+        }
+        else
+        {
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-column gap-2">
+                        <span>
+                            @L["StatusLabel"] <span class="badge @GetTunnelBadgeClass()">@_tunnelStatus</span>
+                            @if (_tunnelKind != "None")
+                            {
+                                <span>(@_tunnelKind)</span>
+                            }
+                        </span>
+                        @if (_tunnelPublicUrl is not null)
+                        {
+                            <span>@L["PublicUrlLabel"] <a href="@_tunnelPublicUrl" target="_blank" rel="noopener">@_tunnelPublicUrl</a></span>
+                        }
+                        @if (_tunnelErrorMessage is not null)
+                        {
+                            <span>@_tunnelErrorMessage</span>
+                        }
+                        @if (_tunnelStatus is "Running" or "Starting")
+                        {
+                            <div style="width: fit-content;">
+                                <SfButton Content="@L["StopTunnelButton"]" OnClick="StopTunnelAsync" CssClass="e-danger" />
+                            </div>
+                        }
+                        @if (_tunnelRecentLogLines.Count > 0)
+                        {
+                            <small class="mt-2">@L["RecentLogLabel"]</small>
+                            <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _tunnelRecentLogLines)</pre>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (_tunnelStatus is "Stopped" or "Failed")
+            {
+                <h6 class="mt-4 mb-2">@L["QuickTunnelHeading"]</h6>
+                <div class="card mb-4">
+                    <div class="card-body p-4">
+                        <span class="mb-2 d-block">
+                            @L["QuickTunnelDescription"]
+                        </span>
+                        <SfButton Content="@(_isTunnelActing ? L["StartingQuickTunnelButton"] : L["StartQuickTunnelButton"])" OnClick="StartQuickTunnelAsync" Disabled="@_isTunnelActing" CssClass="e-primary" />
+                    </div>
+                </div>
+
+                <h6 class="mt-4 mb-2">@L["NamedTunnelHeading"]</h6>
+                <div class="card mb-4">
+                    <div class="card-body p-4">
+                        <span class="mb-2 d-block">
+                            @L["NamedTunnelDescription"]
+                        </span>
+                        @if (_namedTunnels.Count == 0)
+                        {
+                            <small>@L["NoNamedTunnels"]</small>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-row gap-2 align-items-center">
+                                <label>@L["TunnelLabel"]</label>
+                                <SfDropDownList TValue="string" TItem="string" @bind-Value="_selectedNamedTunnel" DataSource="@_namedTunnels" Placeholder="@L["SelectTunnelPlaceholder"]" Style="max-width: 260px;" />
+                                <SfButton Content="@(_isTunnelActing ? L["StartingNamedTunnelButton"] : L["StartNamedTunnelButton"])" OnClick="StartNamedTunnelAsync" Disabled="@(_isTunnelActing || _selectedNamedTunnel is null)" CssClass="e-primary" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
+        @if (_tunnelActionError is not null)
+        {
+            <div class="alert alert-danger mt-4">@_tunnelActionError</div>
+        }
+    }
 }
 
 @code {
+    private sealed record NetworkTierOption(string Text, NetworkTier Value);
+
     private bool _isLoading = true;
     private bool _isSaving;
+    private bool _showHelp;
     private string? _authError;
     private string? _loadError;
     private string? _message;
@@ -80,6 +190,36 @@ else
     private NetworkTier _currentTier;
     private NetworkTier _selectedTier;
     private NetworkTier? _pendingTier;
+
+    private List<NetworkTierOption> _tierOptions => new()
+    {
+        new(L["LocalLabelText"], NetworkTier.Local),
+        new(L["NetworkLabelText"], NetworkTier.Network),
+        new(L["InternetLabelText"], NetworkTier.Internet),
+    };
+
+    // Remote access (Cloudflare Tunnel) state - only relevant/shown once the Internet tier is selected.
+    private bool _isRemoteAccessLoading = true;
+    private bool _isTunnelActing;
+    private string? _remoteAccessLoadError;
+    private string? _tunnelActionError;
+
+    private bool _cloudflaredInstalled;
+    private string _tunnelKind = "None";
+    private string _tunnelStatus = "Stopped";
+    private string? _tunnelPublicUrl;
+    private string? _tunnelErrorMessage;
+    private List<string> _tunnelRecentLogLines = new();
+    private List<string> _namedTunnels = new();
+    private string? _selectedNamedTunnel;
+
+    private string GetTunnelBadgeClass() => _tunnelStatus switch
+    {
+        "Running" => "bg-success",
+        "Starting" => "bg-info",
+        "Failed" => "bg-danger",
+        _ => "bg-light text-dark"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,6 +234,11 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             await LoadAsync();
+            if (_currentTier == NetworkTier.Internet)
+            {
+                await LoadRemoteAccessStatusAsync();
+            }
+
             StateHasChanged();
         }
     }
@@ -199,6 +344,11 @@ else
             _currentTier = tier;
             _success = true;
             _message = L["SavedMessage"];
+
+            if (_currentTier == NetworkTier.Internet)
+            {
+                await LoadRemoteAccessStatusAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -218,6 +368,126 @@ else
         catch
         {
             return null;
+        }
+    }
+
+    private async Task LoadRemoteAccessStatusAsync()
+    {
+        _isRemoteAccessLoading = true;
+        _remoteAccessLoadError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/remote-access/status");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _remoteAccessLoadError = L["AuthUnauthorized"];
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _cloudflaredInstalled = body.GetProperty("installed").GetBoolean();
+            _tunnelKind = body.GetProperty("kind").GetString() ?? "None";
+            _tunnelStatus = body.GetProperty("status").GetString() ?? "Stopped";
+            _tunnelPublicUrl = body.GetProperty("publicUrl").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("publicUrl").GetString();
+            _tunnelErrorMessage = body.GetProperty("errorMessage").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("errorMessage").GetString();
+            _tunnelRecentLogLines = body.GetProperty("recentLogLines").EnumerateArray().Select(e => e.GetString() ?? "").ToList();
+
+            if (_cloudflaredInstalled && _tunnelStatus is "Stopped" or "Failed")
+            {
+                var namedResponse = await client.GetAsync("api/remote-access/named-tunnels");
+                if (namedResponse.IsSuccessStatusCode)
+                {
+                    _namedTunnels = (await namedResponse.Content.ReadFromJsonAsync<List<string>>()) ?? new();
+                    _selectedNamedTunnel = _namedTunnels.FirstOrDefault();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _remoteAccessLoadError = L["RemoteAccessLoadFailed", ex.Message];
+        }
+        finally
+        {
+            _isRemoteAccessLoading = false;
+        }
+    }
+
+    private async Task StartQuickTunnelAsync()
+    {
+        await RunTunnelStepUpGatedActionAsync("api/remote-access/quick-tunnel/start", null);
+    }
+
+    private async Task StartNamedTunnelAsync()
+    {
+        if (_selectedNamedTunnel is null)
+        {
+            return;
+        }
+
+        await RunTunnelStepUpGatedActionAsync("api/remote-access/named-tunnel/start", new { name = _selectedNamedTunnel });
+    }
+
+    private async Task RunTunnelStepUpGatedActionAsync(string url, object? body)
+    {
+        if (SessionState.SessionToken is null)
+        {
+            _tunnelActionError = L["RemoteAccessSignInRequired"];
+            return;
+        }
+
+        _isTunnelActing = true;
+        _tunnelActionError = null;
+        try
+        {
+            // Starting a tunnel exposes this server to the internet - a fresh passkey assertion is
+            // required at the moment of the action, not just an already-open session (plan §5.7).
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = body is null
+                ? await client.PostAsync(url, null)
+                : await client.PostAsJsonAsync(url, body);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await SafeReadErrorAsync(response);
+                _tunnelActionError = errorBody ?? L["RemoteAccessActionFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            await LoadRemoteAccessStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _tunnelActionError = L["RemoteAccessActionFailed", ex.Message];
+        }
+        finally
+        {
+            _isTunnelActing = false;
+        }
+    }
+
+    private async Task StopTunnelAsync()
+    {
+        _tunnelActionError = null;
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsync("api/remote-access/stop", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _tunnelActionError = await SafeReadErrorAsync(response) ?? L["RemoteAccessStopFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            await LoadRemoteAccessStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _tunnelActionError = L["RemoteAccessStopFailed", ex.Message];
         }
     }
 

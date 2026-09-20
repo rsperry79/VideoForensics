@@ -56,12 +56,12 @@ else
             @foreach (var deviceFindings in _report.AnomaliesByDevice)
             {
                 <h6>@deviceFindings.DeviceName</h6>
-                <SfGrid TValue="SignalAnomalyReport.SignalAnomaly" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true">
+                <SfGrid TValue="SignalAnomalyReport.SignalAnomaly" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true" AllowResizing="true">
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
-                        <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" />
-                        <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" HeaderText="@L["ColAnomalyType"]" />
-                        <GridColumn HeaderText="@L["ColDescription"]">
+                        <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100" />
+                        <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" HeaderText="@L["ColAnomalyType"]" MinWidth="100" />
+                        <GridColumn HeaderText="@L["ColDescription"]" MinWidth="100">
                             <Template>
                                 @{
                                     var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
@@ -69,7 +69,7 @@ else
                                 }
                             </Template>
                         </GridColumn>
-                        <GridColumn HeaderText="@L["ColRssi"]">
+                        <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
                             <Template>
                                 @{
                                     var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
@@ -89,16 +89,16 @@ else
         }
         else
         {
-            <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_filteredJammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+            <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_filteredJammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" />
-                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" HeaderText="@L["ColIncidentCount"]" />
-                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" HeaderText="@L["ColTotalJammedMin"]" />
-                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" HeaderText="@L["ColAvgDegradation"]" />
-                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" />
-                    <GridColumn HeaderText="@L["ColFirstIncident"]">
+                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" HeaderText="@L["ColIncidentCount"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" HeaderText="@L["ColTotalJammedMin"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" HeaderText="@L["ColAvgDegradation"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColFirstIncident"]" MinWidth="100">
                         <Template>
                             @{
                                 var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
@@ -106,7 +106,7 @@ else
                             }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="@L["ColLastIncident"]">
+                    <GridColumn HeaderText="@L["ColLastIncident"]" MinWidth="100">
                         <Template>
                             @{
                                 var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
