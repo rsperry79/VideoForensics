@@ -8,7 +8,6 @@
 
         <AssemblyName>VideoForensics.Hosting</AssemblyName>
         <RootNamespace>VideoForensics.Hosting</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Shared dependency-injection registration and background services for every VideoForensics host (console, MCP, MAUI, Web)</Description>
         <Copyright>2026</Copyright>

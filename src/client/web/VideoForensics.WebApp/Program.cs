@@ -351,6 +351,7 @@ app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
+app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)

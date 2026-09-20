@@ -7,7 +7,6 @@
 
     <AssemblyName>VideoForensics.WebApp</AssemblyName>
     <RootNamespace>VideoForensics.WebApp</RootNamespace>
-    <Version>1.0.0</Version>
     <Authors>DV Victim Protection Team</Authors>
     <Description>ASP.NET Core Blazor Server host for VideoForensics</Description>
     <Copyright>2026</Copyright>

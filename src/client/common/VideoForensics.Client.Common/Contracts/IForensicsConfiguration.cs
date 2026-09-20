@@ -30,6 +30,15 @@ namespace VideoForensics.Client.Common.Contracts
         /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
         bool EnableMdnsAdvertisement { get; set; }
 
+        /// <summary>Toggles the periodic update-check background service. Default on.</summary>
+        bool EnableUpdateCheck { get; set; }
+        /// <summary>Whether an available update is only surfaced to the UI (NotifyOnly) or automatically downloaded and the installer launched (AutoDownloadAndInstall). Default is NotifyOnly.</summary>
+        UpdateCheckMode UpdateMode { get; set; }
+        /// <summary>Polling interval in hours for the update-check background service. GitHub's unauthenticated REST API is rate-limited to 60 requests/hour, so this must stay well above "every few minutes". Default is 24.</summary>
+        int UpdateCheckIntervalHours { get; set; }
+        /// <summary>Selects whether the update-check tracks tagged Stable releases or the rolling Dev prerelease build. Default is Stable.</summary>
+        UpdateReleaseChannel ReleaseChannel { get; set; }
+
         /// <summary>Toggles the email notification channel for urgent security events (plan §5.6). The SMTP password itself is NOT stored here - see ISmtpPasswordStore, which routes it through ICredentialEncryptionProvider per plan §4.1.</summary>
         bool EnableEmailNotifications { get; set; }
         string SmtpHost { get; set; }
@@ -88,6 +97,18 @@ namespace VideoForensics.Client.Common.Contracts
         FileBased
     }
 
+    public enum UpdateCheckMode
+    {
+        NotifyOnly,
+        AutoDownloadAndInstall
+    }
+
+    public enum UpdateReleaseChannel
+    {
+        Stable,
+        Dev
+    }
+
     public class ForensicsConfiguration : IForensicsConfiguration
     {
         public bool EnableForensicAnalysisReports { get; set; } = true;
@@ -112,6 +133,10 @@ namespace VideoForensics.Client.Common.Contracts
         public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
         public bool EnableMdnsAdvertisement { get; set; } = true;
+        public bool EnableUpdateCheck { get; set; } = true;
+        public UpdateCheckMode UpdateMode { get; set; } = UpdateCheckMode.NotifyOnly;
+        public int UpdateCheckIntervalHours { get; set; } = 24;
+        public UpdateReleaseChannel ReleaseChannel { get; set; } = UpdateReleaseChannel.Stable;
         public bool EnableEmailNotifications { get; set; } = false;
         public string SmtpHost { get; set; } = "";
         public int SmtpPort { get; set; } = 587;

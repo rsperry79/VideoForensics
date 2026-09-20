@@ -9,7 +9,6 @@
 
         <AssemblyName>VideoForensics.Api.Contracts</AssemblyName>
         <RootNamespace>VideoForensics.Api.Contracts</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Data transfer objects (DTOs) shared between server and clients</Description>
         <Copyright>2026</Copyright>

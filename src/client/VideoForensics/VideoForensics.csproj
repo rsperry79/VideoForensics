@@ -9,7 +9,6 @@
 
         <AssemblyName>VideoForensics</AssemblyName>
         <RootNamespace>VideoForensics</RootNamespace>
-        <Version>1.0.0</Version>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Desktop forensic evidence analysis application for DV victim protection</Description>
         <Copyright>2026</Copyright>
