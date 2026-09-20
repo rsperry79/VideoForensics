@@ -279,13 +279,16 @@ jobs:
           if [ ! -s "$NOTES_FILE" ]; then
             echo "No CHANGELOG.md entry found for $VERSION; see commit history for details." > "$NOTES_FILE"
           fi
-          # Append the unsigned installers disclaimer
-          cat >> "$NOTES_FILE" << 'EOF'
-
----
-
-**IMPORTANT:** These installers are unsigned. Windows may display SmartScreen warnings on first run. Signing support will be added once a code-signing certificate is available.
-EOF
+          # Append the unsigned installers disclaimer. Uses individual echo appends
+          # rather than a heredoc: a heredoc's content must sit at column 0 to avoid
+          # picking up unwanted leading whitespace in the output file, but a bare
+          # "***" or other YAML-special character at column 0 inside this `run: |`
+          # block scalar gets misparsed as a YAML document/alias token instead of
+          # literal text.
+          echo "" >> "$NOTES_FILE"
+          echo "***" >> "$NOTES_FILE"
+          echo "" >> "$NOTES_FILE"
+          echo "**IMPORTANT:** These installers are unsigned. Windows may display SmartScreen warnings on first run. Signing support will be added once a code-signing certificate is available." >> "$NOTES_FILE"
           echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release (Draft)
