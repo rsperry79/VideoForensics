@@ -27,10 +27,7 @@ jobs:
       # net10.0-windows10.0.19041.0, needs Windows-only MAUI workloads and an
       # explicit win-x64 RuntimeIdentifier to restore/build - out of scope for
       # this build+test gate, which only needs the cross-platform library and
-      # test projects) and VideoForensics.Providers.Ring.Core.Tests (its whole
-      # fixture requires live Ring account credentials stored in a local dev
-      # database - not something a CI runner has; see its own failure message:
-      # "Run 'dotnet run -- --auth' from src/selftest to authenticate").
+      # test projects).
       - name: Restore
         run: dotnet restore VideoForensics.CI.slnf
 
@@ -43,21 +40,9 @@ jobs:
       # (every project reports "Zero tests ran"). Use MTP's native xUnit trx
       # reporter flag instead.
       #
-      # The three --filter-not-* exclusions below are pre-existing tests that
-      # assert OS/installer-specific absolute paths (e.g. /usr/share/VideoForensics
-      # or /var/lib/videoforensics, or Windows-style system paths) that only
-      # exist on an installed machine, never on a bare CI checkout. This is the
-      # first CI pipeline this repo has ever had that actually ran its test
-      # suite, so these were never previously caught. Excluding them here does
-      # not delete or change the tests themselves - they still run fine
-      # locally/on an installed Windows machine. Fixing their underlying path
-      # assumptions to be CI-hermetic is tracked as a follow-up, not done here.
       - name: Test
         run: >
           dotnet test VideoForensics.CI.slnf --configuration Release --no-build
-          --filter-not-class "VideoForensics.Client.Core.Tests.PathUtilitiesTests"
-          --filter-not-method "VideoForensics.Data.Core.Tests.ReportGenerationServiceTests.WriteReportAsync_WithJsonFormat_WritesJsonFile"
-          --filter-not-method "VideoForensics.Data.Database.Sqlite.Tests.ServiceCollectionExtensionsTests.AddVideoForensicsSqlite_DefaultPath_ResolvesFactory"
           --report-xunit-trx --results-directory TestResults
 
       - name: Upload test results
