@@ -34,8 +34,13 @@ jobs:
       - name: Build
         run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
 
+      # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props),
+      # so `dotnet test` routes through MTP's own CLI, not legacy VSTest - the
+      # VSTest-style `--logger trx` flag silently breaks test discovery there
+      # (every project reports "Zero tests ran"). Use MTP's native xUnit trx
+      # reporter flag instead.
       - name: Test
-        run: dotnet test VideoForensics.CI.slnf --configuration Release --no-build --logger trx --results-directory TestResults
+        run: dotnet test VideoForensics.CI.slnf --configuration Release --no-build --report-xunit-trx --results-directory TestResults
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
