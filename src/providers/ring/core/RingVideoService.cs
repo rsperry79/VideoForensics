@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring
                 lock (rawApiLogLock)
                 {
                     System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
-                    log.LogInformation("RawApiResponse {method} {url} {statusCode}", entry.method, entry.url, entry.statusCode);
+                    log.LogInformation("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
                 }
             }
             catch (Exception exe)
@@ -176,6 +176,10 @@ namespace VideoForensics.Providers.Ring
                 log.LogWarning(exe, "Failed to write raw API response log entry");
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
 
         private static int ringEventsFileCounter = 0;
 

@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using Moq;
+
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -91,6 +94,43 @@ namespace VideoForensics.Data.Database.Tests
 
             IReadOnlyList<User> list = await _repository.ListAsync(CancellationToken.None);
             Assert.Equal(2, list.Count);
+        }
+
+        [Fact]
+        public async Task UserRepository_AddAsync_MasksEmailInLogs_ButPreservesinDatabase()
+        {
+            // Arrange: Create a user with an email address as DisplayName
+            const string emailAddress = "jane.doe@example.com";
+            User user = TestDataBuilder.BuildUser("provider_key_email_test", emailAddress);
+
+            // Mock the logger to capture log calls
+            Mock<ILogger<UserRepository>> mockLogger = new();
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            UserRepository repositoryWithMockedLogger = new(
+                _fixture.Factory,
+                mockLogger.Object
+            );
+
+            // Act: Add the user
+            await repositoryWithMockedLogger.AddAsync(user, CancellationToken.None);
+
+            // Assert: Verify that the raw email is NOT in any logged message
+            mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(emailAddress)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never,
+                "Email address should not appear in logs"
+            );
+
+            // Assert: Verify that the raw email IS preserved in the database
+            User? retrieved = await _repository.GetAsync(user.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal(emailAddress, retrieved.DisplayName);
         }
 
         [Fact]

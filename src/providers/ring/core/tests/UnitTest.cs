@@ -13,7 +13,17 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Check if we have a refresh token to authenticate to Ring with
             if (string.IsNullOrEmpty(UnitTest.RefreshToken))
             {
-                // No refresh token available, try to authenticate with the credentials from the config file
+                // No refresh token available. Only attempt a real authentication if we actually
+                // have username/password credentials to try (e.g. from the config file). On a bare
+                // checkout with no saved credentials, leave UnitTest.session as null so each test's
+                // IsSessionActive() guard can skip gracefully instead of this fixture crashing and
+                // failing every test in the class.
+                if (string.IsNullOrEmpty(UnitTest.Username) || string.IsNullOrEmpty(UnitTest.Password))
+                {
+                    return;
+                }
+
+                // Try to authenticate with the credentials from the config file
                 UnitTest.session = new Session(UnitTest.Username, UnitTest.Password);
 
                 Entities.Session? authResult = null;

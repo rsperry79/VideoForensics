@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Wyze.Services
             try
             {
                 _logger.LogInformation("Fetching Wyze events for device {DeviceId} from {StartDate} to {EndDate}",
-                    deviceId, startDate, endDate);
+                    SanitizeForLog(deviceId), startDate, endDate);
 
                 // TODO: Implement event retrieval
                 // - Call Wyze API for device events
@@ -39,7 +39,7 @@ namespace VideoForensics.Providers.Wyze.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching Wyze events for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error fetching Wyze events for device {DeviceId}", SanitizeForLog(deviceId));
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -92,5 +92,9 @@ namespace VideoForensics.Providers.Wyze.Services
                 return false;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

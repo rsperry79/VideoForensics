@@ -5,10 +5,10 @@
   This package installs VideoForensics as a Windows Service with automatic startup,
   Event Log source registration, and support for in-place major upgrades.
 
-  IMPORTANT: Not validated in this sandbox (no WiX SDK available). First real build should verify:
+  IMPORTANT: Compiles and produces VideoForensics.msi with a real WiX v5.0.2 SDK build (validated
+  2026-09-20 against a real publish output). Still unverified on a real machine install/uninstall:
   1. Event Log source registration via util:EventSource or fallback to direct registry
   2. Service failure-recovery config (may need custom util:ServiceConfig element)
-  3. File harvesting via <Files Include="..."/> below picks up every file from the publish output
 
   Service Configuration:
   - Name: VideoForensics
@@ -30,7 +30,7 @@
            UpgradeCode="6F770778-A833-44A3-947E-72A9D34EDB46"
            InstallerVersion="500"
            Compressed="yes"
-           InstallScope="perMachine">
+           Scope="perMachine">
 
     <!-- Major upgrade: allows re-running a newer MSI over an existing install to perform
          an in-place upgrade. Schedule="afterInstallInitialize" ensures the old version is
@@ -121,8 +121,9 @@
            .pdb, etc.) using WiX v5's built-in Files harvesting element. The main .exe is excluded
            here since it's already declared above (with the ServiceInstall/ServiceControl attached
            to its own Component) - Files would otherwise try to harvest it a second time and conflict. -->
-      <Files Include="$(var.PublishDir)\**"
-             Exclude="$(var.PublishDir)\VideoForensics.WebApp.exe" />
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\VideoForensics.WebApp.exe" />
+      </Files>
 
     </ComponentGroup>
 

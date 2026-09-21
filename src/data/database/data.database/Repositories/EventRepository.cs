@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Repositories
                 if (existing == null)
                 {
                     _ = db.Events.Add(@event);
-                    _logger.LogInformation("Event inserted: {EventId} ({ProviderEventId})", @event.Id, @event.ProviderEventId);
+                    _logger.LogInformation("Event inserted: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 }
                 else
                 {
@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting event: {ProviderEventId}", @event.ProviderEventId);
+                _logger.LogError(ex, "Error upserting event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
                 throw;
             }
         }
@@ -100,12 +100,12 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = await db.Events.AddAsync(@event, ct);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Event created: {EventId} ({ProviderEventId})", @event.Id, @event.ProviderEventId);
+                _logger.LogInformation("Event created: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 return @event;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating event: {ProviderEventId}", @event.ProviderEventId);
+                _logger.LogError(ex, "Error creating event: {ProviderEventId}", SanitizeForLog(@event.ProviderEventId));
                 throw;
             }
         }
@@ -281,5 +281,9 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

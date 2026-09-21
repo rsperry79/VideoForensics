@@ -64,11 +64,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.ProviderAccounts.Add(account);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, account.ProviderName);
+                _logger.LogInformation("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding provider account: {ProviderName}", account.ProviderName);
+                _logger.LogError(ex, "Error adding provider account: {ProviderName}", SanitizeForLog(account.ProviderName));
                 throw;
             }
         }
@@ -157,5 +157,9 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

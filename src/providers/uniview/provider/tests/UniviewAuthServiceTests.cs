@@ -245,5 +245,37 @@ namespace VideoForensics.Providers.Uniview.Tests
                     mockConfig.Object,
                     null!));
         }
+
+        [Fact]
+        public async Task UniviewAuthService_AuthenticateAsync_MasksUsernameInLogs()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewAuthService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var mockConfig = new Mock<IForensicsConfiguration>();
+            var mockCredentialRepository = new Mock<ICredentialRepository>();
+
+            // Make UniviewNvrHost return null so AuthenticateAsync fails early (after first log)
+            _ = mockConfig.Setup(c => c.UniviewNvrHost).Returns((string?)null);
+
+            var service = new UniviewAuthService(
+                mockLogger.Object,
+                mockSessionProvider.Object,
+                mockConfig.Object,
+                mockCredentialRepository.Object);
+
+            // Act
+            string testUsername = "secretadmin";
+            string testPassword = "password";
+            await service.AuthenticateAsync(testUsername, testPassword, CancellationToken.None);
+
+            // Assert
+            // Check all log invocations for the raw username
+            foreach (var invocation in mockLogger.Invocations)
+            {
+                string invocationString = invocation.ToString();
+                Assert.DoesNotContain(testUsername, invocationString);
+            }
+        }
     }
 }

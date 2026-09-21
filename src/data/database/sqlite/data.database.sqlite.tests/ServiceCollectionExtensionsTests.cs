@@ -12,18 +12,31 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
     public class ServiceCollectionExtensionsTests
     {
         [Fact]
-        public void AddVideoForensicsSqlite_DefaultPath_ResolvesFactory()
+        public void AddVideoForensicsSqlite_ExplicitPath_ResolvesFactory()
         {
             // Arrange
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dbPath = Path.Combine(tempDir, "test.db");
             var services = new ServiceCollection();
 
-            // Act
-            _ = services.AddVideoForensicsSqlite();
-            ServiceProvider provider = services.BuildServiceProvider();
-            IDbContextFactory<VideoForensicsDbContext>? factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
+            try
+            {
+                // Act
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext>? factory = provider.GetService<IDbContextFactory<VideoForensicsDbContext>>();
 
-            // Assert
-            Assert.NotNull(factory);
+                // Assert
+                Assert.NotNull(factory);
+            }
+            finally
+            {
+                // Cleanup
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+            }
         }
 
         [Fact]
