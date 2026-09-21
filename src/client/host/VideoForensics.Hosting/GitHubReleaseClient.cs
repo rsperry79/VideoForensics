@@ -25,10 +25,10 @@ namespace VideoForensics.Hosting
         Task<GitHubReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct);
 
         /// <summary>
-        /// Fetches the dev channel prerelease (the rolling "dev" release on the rolling "dev" tag).
+        /// Fetches the testing channel prerelease (the rolling "testing" release on the rolling "testing" tag).
         /// Returns null if the API call fails, the response cannot be parsed, or the release is not found.
         /// </summary>
-        Task<GitHubReleaseInfo?> GetLatestDevReleaseAsync(CancellationToken ct);
+        Task<GitHubReleaseInfo?> GetLatestTestingReleaseAsync(CancellationToken ct);
     }
 
     /// <summary>
@@ -53,9 +53,9 @@ namespace VideoForensics.Hosting
             return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/latest", ct);
         }
 
-        public async Task<GitHubReleaseInfo?> GetLatestDevReleaseAsync(CancellationToken ct)
+        public async Task<GitHubReleaseInfo?> GetLatestTestingReleaseAsync(CancellationToken ct)
         {
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/dev", ct);
+            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/testing", ct);
         }
 
         private async Task<GitHubReleaseInfo?> FetchReleaseAsync(string endpoint, CancellationToken ct)

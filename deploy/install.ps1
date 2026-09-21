@@ -9,9 +9,12 @@
 #
 #   # Silent (auto-install)
 #   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing | iex" -- -Channel Stable -Silent
+#
+#   # Testing channel (rolling prerelease, built from the `dev` branch)
+#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing | iex" -- -Channel Testing
 
 param(
-    [ValidateSet("Stable", "Dev")]
+    [ValidateSet("Stable", "Testing")]
     [string]$Channel = "Stable",
 
     [switch]$Silent
@@ -31,9 +34,9 @@ function Write-Error {
 
 try {
     # Determine the API endpoint based on channel
-    if ($Channel -eq "Dev") {
-        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/tags/dev"
-        Write-Progress "Fetching latest Dev release from GitHub"
+    if ($Channel -eq "Testing") {
+        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/tags/testing"
+        Write-Progress "Fetching latest Testing release from GitHub"
     }
     else {
         $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/latest"

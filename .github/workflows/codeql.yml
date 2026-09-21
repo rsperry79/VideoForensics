@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - dev
       - wip
   pull_request:
     branches:
       - main
+      - dev
       - wip
   schedule:
     - cron: '0 3 * * 1'

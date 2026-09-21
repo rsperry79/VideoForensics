@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- GitHub Actions CI pipeline running build and test on every pull request and push to `main` and `wip` branches.
+- GitHub Actions CI pipeline running build and test on every pull request and push to `main`, `dev`, and `wip` branches.
 - Automated versioning via Nerdbank.GitVersioning, encoding branch/tag information into build numbers and assembly versions.
-- Stable and Dev release channels: Stable releases are tagged (`vX.Y.Z`) off the `main` branch; Dev is a rolling prerelease at the `dev` tag, rebuilt on every push to `wip`.
+- Three-tier branch strategy: feature branches land on `wip`, `wip` is PR'd into `dev` for integration testing, and `dev` is PR'd into `main` for release.
+- Stable and Testing release channels: Stable releases are tagged (`vX.Y.Z`) off the `main` branch; Testing is a rolling prerelease at the `testing` tag, rebuilt on every push to `dev`.
 - Update-check feature allowing users to manually check for available updates or automatically download and install them, with configurable notify-only or auto-install behavior per-installation.
 - Thin installer bootstrap scripts (`deploy/install.ps1` for Windows, `deploy/install.sh` for Debian/Ubuntu) that fetch the current release for a chosen channel at runtime, enabling single-command installation.
 - CodeQL static analysis scanning for security vulnerabilities, run on every pull request.

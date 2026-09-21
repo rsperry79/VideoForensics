@@ -106,7 +106,7 @@ namespace VideoForensics.Client.Common.Contracts
     public enum UpdateReleaseChannel
     {
         Stable,
-        Dev
+        Testing
     }
 
     public class ForensicsConfiguration : IForensicsConfiguration
