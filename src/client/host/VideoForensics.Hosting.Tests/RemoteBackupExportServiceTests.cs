@@ -378,7 +378,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             string outputDir = Path.Combine(_tempDirectory, "export-path-traversal");
             byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
-            string maliciousFileName = "..\\..\\..\\..\\etc\\passwd.zip"; // Path traversal attempt
+            string maliciousFileName = "../../../../etc/passwd.zip"; // Path traversal attempt
 
             var handler = new FakeHttpMessageHandler(request =>
             {
