@@ -245,8 +245,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-files
-          cp -v release-artifacts/debian-package-testing/* release-files/ 2>/dev/null || true
-          cp -v release-artifacts/windows-installer-testing/* release-files/ 2>/dev/null || true
+          # actions/upload-artifact preserves subdirectories below the common ancestor of
+          # the listed paths - the windows-installer-testing artifact's paths only share
+          # deploy/windows/ as their ancestor, so the downloaded files land nested rather
+          # than flat. A flat `cp dir/*` only copies top-level entries and silently no-ops
+          # on directories, so use find to copy every file regardless of nesting depth.
+          find release-artifacts/debian-package-testing release-artifacts/windows-installer-testing -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/
 
