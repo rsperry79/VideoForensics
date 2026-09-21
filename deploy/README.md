@@ -80,13 +80,13 @@ irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/insta
 Testing channel:
 
 ```powershell
-irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex -- -Channel Testing
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Channel Testing
 ```
 
 Silent installation (unattended, Stable channel):
 
 ```powershell
-irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex -- -Silent
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Silent
 ```
 
 #### Debian/Ubuntu (Bash)
