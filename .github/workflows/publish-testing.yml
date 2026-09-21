@@ -229,7 +229,13 @@ jobs:
     needs: [build-debian-dev, build-windows-dev]
 
     steps:
+      # fetch-depth: 0 (full clone) is required here: the dotnet pack steps below use
+      # Nerdbank.GitVersioning, which needs full commit history to calculate version
+      # height. A shallow clone (the actions/checkout default) fails with
+      # "Shallow clone lacks the objects required to calculate version height."
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
