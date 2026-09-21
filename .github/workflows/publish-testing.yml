@@ -1,15 +1,15 @@
-name: Publish - Dev
+name: Publish - Testing
 
 on:
   push:
-    branches: [ wip ]
+    branches: [ dev ]
 
 permissions:
   contents: write
   packages: write
 
 concurrency:
-  group: publish-dev
+  group: publish-testing
   cancel-in-progress: true
 
 jobs:
@@ -66,7 +66,7 @@ jobs:
       - name: Upload Debian package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debian-package-dev
+          name: debian-package-testing
           path: |
             deploy/debian/videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb
             deploy/debian/videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256
@@ -207,7 +207,7 @@ jobs:
       - name: Upload Windows installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer-dev
+          name: windows-installer-testing
           path: |
             deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
             deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256
@@ -235,8 +235,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-files
-          cp -v release-artifacts/debian-package-dev/* release-files/ 2>/dev/null || true
-          cp -v release-artifacts/windows-installer-dev/* release-files/ 2>/dev/null || true
+          cp -v release-artifacts/debian-package-testing/* release-files/ 2>/dev/null || true
+          cp -v release-artifacts/windows-installer-testing/* release-files/ 2>/dev/null || true
           echo "Release files ready:"
           ls -lah release-files/
 
@@ -267,23 +267,24 @@ jobs:
             --source https://nuget.pkg.github.com/rsperry79/index.json \
             --skip-duplicate
 
-      - name: Create/Update dev release
+      - name: Create/Update testing release
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          tag_name: dev
+          tag_name: testing
           prerelease: true
           draft: false
           body: |
-            ## Development Build
+            ## Testing Build
 
-            This is an automatically-updated rolling prerelease build from the `wip` branch.
+            This is an automatically-updated rolling prerelease build from the `dev` branch
+            (the integration branch that feature branches land on via `wip` before reaching `main`).
 
             **Installers:**
             - `videoforensics_*.deb` — Debian/Ubuntu package (self-contained .NET 10 linux-x64)
             - `VideoForensics.msi` — Windows MSI installer (self-contained .NET 10 win-x64)
             - `VideoForensicsBootstrapper.exe` — Windows Burn bootstrapper wrapping the MSI
 
-            **Status:** Unsigned, prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/wip
+            **Status:** Unsigned, prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/dev
 
             All files are accompanied by `.sha256` checksum files for integrity verification.

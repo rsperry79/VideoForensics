@@ -9,8 +9,8 @@
 #   # Stable channel (default)
 #   curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash
 #
-#   # Dev channel (rolling prerelease)
-#   curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel dev
+#   # Testing channel (rolling prerelease, built from the `dev` branch)
+#   curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel testing
 
 set -euo pipefail
 
@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --channel CHANNEL    Release channel: 'stable' (default) or 'dev'"
+            echo "  --channel CHANNEL    Release channel: 'stable' (default) or 'testing'"
             echo "  --help               Show this help message"
             exit 0
             ;;
@@ -40,15 +40,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate channel
-if [[ "$CHANNEL" != "stable" && "$CHANNEL" != "dev" ]]; then
-    echo "!!! ERROR: Invalid channel '$CHANNEL'. Must be 'stable' or 'dev'."
+if [[ "$CHANNEL" != "stable" && "$CHANNEL" != "testing" ]]; then
+    echo "!!! ERROR: Invalid channel '$CHANNEL'. Must be 'stable' or 'testing'."
     exit 1
 fi
 
 # Determine the API endpoint based on channel
-if [[ "$CHANNEL" == "dev" ]]; then
-    API_URL="https://api.github.com/repos/rsperry79/VideoForensics/releases/tags/dev"
-    echo ">>> Fetching latest Dev release from GitHub"
+if [[ "$CHANNEL" == "testing" ]]; then
+    API_URL="https://api.github.com/repos/rsperry79/VideoForensics/releases/tags/testing"
+    echo ">>> Fetching latest Testing release from GitHub"
 else
     API_URL="https://api.github.com/repos/rsperry79/VideoForensics/releases/latest"
     echo ">>> Fetching latest Stable release from GitHub"

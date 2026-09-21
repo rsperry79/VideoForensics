@@ -23,7 +23,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     }
 
     /// <summary>
-    /// Periodically checks GitHub for a newer release (Stable or Dev channel per config)
+    /// Periodically checks GitHub for a newer release (Stable or Testing channel per config)
     /// and either just reports it's available (NotifyOnly) or downloads and launches the installer
     /// (AutoDownloadAndInstall) based on user configuration.
     ///
@@ -117,7 +117,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // Fetch the latest release from GitHub based on the configured release channel.
                 GitHubReleaseInfo? release = _config.ReleaseChannel switch
                 {
-                    UpdateReleaseChannel.Dev => await _gitHubClient.GetLatestDevReleaseAsync(ct),
+                    UpdateReleaseChannel.Testing => await _gitHubClient.GetLatestTestingReleaseAsync(ct),
                     _ => await _gitHubClient.GetLatestReleaseAsync(ct)
                 };
 
