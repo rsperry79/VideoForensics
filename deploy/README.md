@@ -54,6 +54,55 @@ The installation script will:
 
 The service is configured to start automatically on system boot.
 
+## Bootstrap Installer Scripts
+
+The two bootstrap installer scripts (`install.ps1` and `install.sh`) fetch the latest VideoForensics release for your chosen channel from GitHub at runtime and launch the platform-specific installer (MSI + Bootstrapper .exe on Windows, .deb on Debian/Ubuntu).
+
+These are thin wrappers around the platform installers and do not perform installation themselves — they simply download and invoke the appropriate installer for your system. For detailed installation mechanics, see [`deploy/windows/README.md`](windows/README.md) (Windows) or [`deploy/debian/README.md`](debian/README.md) (Debian/Ubuntu).
+
+### Channels
+
+VideoForensics publishes two release channels:
+
+- **Stable** (default): Tagged releases (`vX.Y.Z`) off the `main` branch. Assets are signed and ready for production use. Specify `-Channel Stable` (PowerShell) or `--channel stable` (bash), or omit the flag to use this channel by default.
+- **Testing**: Rolling prerelease built on every push to the `dev` branch and tagged as `testing`. This channel receives new features first and is suitable for testing, but may be unstable. Specify `-Channel Testing` (PowerShell) or `--channel testing` (bash).
+
+### Usage Examples
+
+#### Windows (PowerShell)
+
+Interactive installation (Stable channel, default):
+
+```powershell
+irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex
+```
+
+Testing channel:
+
+```powershell
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Channel Testing
+```
+
+Silent installation (unattended, Stable channel):
+
+```powershell
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Silent
+```
+
+#### Debian/Ubuntu (Bash)
+
+Interactive installation (Stable channel, default):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash
+```
+
+Testing channel:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel testing
+```
+
 ## Uninstallation
 
 Run the uninstall script **as Administrator**:

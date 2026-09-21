@@ -155,13 +155,22 @@ jobs:
 
       - name: Build WiX Bootstrapper (transitively builds MSI)
         shell: pwsh
+        # PublishDir and ProductVersion are passed as their own -p: properties rather than a
+        # single -p:DefineConstants="PublishDir=...;ProductVersion=..." value: the WixBuild
+        # MSBuild task turns each ';'-separated DefineConstants entry into its own "-d Name=Value"
+        # argument to wix.exe, but a single command-line -p:DefineConstants override collapses to
+        # one "-d" entry whose value swallows everything after the first "=", which silently drops
+        # ProductVersion and surfaces as WIX0150 (undefined preprocessor variable). See
+        # release-installers.yml for the same fix and VideoForensics.Installer.Wix.wixproj for the
+        # property definitions.
         run: |
           $publishPath = (Resolve-Path "publish-win").Path
           $version = "${{ steps.get-version.outputs.version }}"
           Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
           dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
             -c Release `
-            -p:DefineConstants="PublishDir=$publishPath;ProductVersion=$version"
+            -p:PublishDir="$publishPath" `
+            -p:ProductVersion="$version"
 
       - name: Locate built installers
         shell: pwsh
@@ -220,7 +229,13 @@ jobs:
     needs: [build-debian-dev, build-windows-dev]
 
     steps:
+      # fetch-depth: 0 (full clone) is required here: the dotnet pack steps below use
+      # Nerdbank.GitVersioning, which needs full commit history to calculate version
+      # height. A shallow clone (the actions/checkout default) fails with
+      # "Shallow clone lacks the objects required to calculate version height."
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -236,8 +251,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-files
-          cp -v release-artifacts/debian-package-testing/* release-files/ 2>/dev/null || true
-          cp -v release-artifacts/windows-installer-testing/* release-files/ 2>/dev/null || true
+          # actions/upload-artifact preserves subdirectories below the common ancestor of
+          # the listed paths - the windows-installer-testing artifact's paths only share
+          # deploy/windows/ as their ancestor, so the downloaded files land nested rather
+          # than flat. A flat `cp dir/*` only copies top-level entries and silently no-ops
+          # on directories, so use find to copy every file regardless of nesting depth.
+          find release-artifacts/debian-package-testing release-artifacts/windows-installer-testing -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/
 

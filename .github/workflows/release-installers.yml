@@ -282,9 +282,15 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-files
-          # Copy all downloaded artifacts into a single directory for the release
-          cp -v release-artifacts/debian-package/* release-files/ 2>/dev/null || true
-          cp -v release-artifacts/windows-installer/* release-files/ 2>/dev/null || true
+          # actions/upload-artifact preserves subdirectories below the common ancestor of
+          # the listed paths - the windows-installer artifact's paths only share
+          # deploy/windows/ as their ancestor (VideoForensics.Installer.Wix/ vs
+          # VideoForensics.Bootstrapper.Wix/ diverge below that), so the downloaded files
+          # land nested (e.g. windows-installer/VideoForensics.Installer.Wix/bin/Release/
+          # VideoForensics.msi) rather than flat. A flat `cp dir/*` only copies top-level
+          # entries and silently no-ops on directories, so use find to copy every file
+          # regardless of nesting depth.
+          find release-artifacts/debian-package release-artifacts/windows-installer -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/
 
