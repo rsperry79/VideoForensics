@@ -28,12 +28,20 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # NBGV computes its version via an MSBuild TARGET that runs during actual
+      # build execution, not via static property evaluation - `dotnet msbuild
+      # -getProperty:Version` only evaluates properties without running targets,
+      # so it silently returns the .NET SDK's own default "1.0.0" instead of the
+      # real computed version. The `nbgv` CLI tool computes it directly without
+      # needing a build, and `-v Version` gives the clean 4-part numeric format
+      # (e.g. 1.0.9.44078) that WiX's ProductVersion needs - no +metadata to strip.
       - name: Get NBGV-computed version
         id: get-version
         shell: bash
         run: |
-          VERSION=$(dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version)
-          VERSION="${VERSION%%+*}"
+          dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
@@ -86,11 +94,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # See the bash variant of this step (build-debian-dev job) for why nbgv
+      # replaces `dotnet msbuild -getProperty:Version` here.
       - name: Get NBGV-computed version (PowerShell)
         id: get-version
         shell: pwsh
         run: |
-          $version = (dotnet msbuild src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj -getProperty:Version) -replace '\+.*$',''
+          dotnet tool update --global nbgv
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          $version = nbgv get-version -v Version
           Add-Content $env:GITHUB_OUTPUT "version=$version"
           Write-Host "Detected version: $version"
 
@@ -106,6 +118,7 @@ jobs:
           $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip"
           $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "ffmpeg-btbn-$(Get-Random)"
           $publishDir = "publish-win"
+          New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
           Write-Host "Downloading FFmpeg from $ffmpegUrl"
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile "$tempDir\ffmpeg.zip" -ErrorAction Stop
@@ -158,9 +171,16 @@ jobs:
           $publishPath = (Resolve-Path "publish-win").Path
           $version = "${{ steps.get-version.outputs.version }}"
           Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
+          # Pass PublishDir/ProductVersion as their own -p: properties rather than a single
+          # -p:DefineConstants="PublishDir=...;ProductVersion=..." value: the WixBuild MSBuild
+          # task turns each ';'-separated DefineConstants entry into its own "-d Name=Value"
+          # argument to wix.exe, but a single command-line -p:DefineConstants override collapses
+          # to one "-d" entry whose value swallows everything after the first "=", which silently
+          # drops ProductVersion and surfaces as WIX0150 (undefined preprocessor variable).
           dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
             -c Release `
-            -p:DefineConstants="PublishDir=$publishPath;ProductVersion=$version"
+            -p:PublishDir="$publishPath" `
+            -p:ProductVersion="$version"
 
       - name: Locate built installers
         shell: pwsh
@@ -219,7 +239,12 @@ jobs:
     needs: [build-debian-dev, build-windows-dev]
 
     steps:
+      # fetch-depth: 0 - this job's `dotnet pack` steps need NBGV, which needs
+      # full git history to compute the version height (same requirement as
+      # every other job in this repo's workflows that builds/packs anything).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4

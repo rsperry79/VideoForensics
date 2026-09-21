@@ -83,7 +83,7 @@ namespace VideoForensics.Data.Database.Repositories
             device.RevokedAtUtc = DateTime.UtcNow;
             device.RevokedReason = reason;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogWarning("Paired device revoked: {PairedDeviceId} - {Reason}", pairedDeviceId, reason);
+            _logger.LogWarning("Paired device revoked: {PairedDeviceId} - {Reason}", pairedDeviceId, SanitizeForLog(reason));
         }
 
         public async Task<IReadOnlyList<Guid>> RevokeAllForOperatorAsync(Guid operatorId, string reason, CancellationToken ct)
@@ -101,7 +101,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogWarning("Revoked all {Count} active device(s) for Operator {OperatorId} - {Reason}", devices.Count, operatorId, reason);
+            _logger.LogWarning("Revoked all {Count} active device(s) for Operator {OperatorId} - {Reason}", devices.Count, operatorId, SanitizeForLog(reason));
             return devices.Select(d => d.Id).ToList();
         }
 
@@ -120,5 +120,9 @@ namespace VideoForensics.Data.Database.Repositories
             device.LastSeenTier = tier;
             _ = await db.SaveChangesAsync(ct);
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

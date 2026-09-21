@@ -85,8 +85,12 @@ namespace VideoForensics.Data.Database.Repositories
             credential.RevokedAtUtc = DateTime.UtcNow;
             credential.RevokedReason = reason;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogWarning("Operator credential revoked: {CredentialId} - {Reason}", credentialId, reason);
+            _logger.LogWarning("Operator credential revoked: {CredentialId} - {Reason}", credentialId, SanitizeForLog(reason));
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
 
         public async Task RecordSuccessfulAuthAsync(Guid credentialId, uint newSignCount, CancellationToken ct)
         {

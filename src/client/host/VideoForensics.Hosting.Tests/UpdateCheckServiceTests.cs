@@ -45,7 +45,7 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             gitHubClient.Verify(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
-            gitHubClient.Verify(c => c.GetLatestDevReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
+            gitHubClient.Verify(c => c.GetLatestTestingReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -92,7 +92,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public async Task RunOneTickAsync_StableChannel_CallsGetLatestReleaseAsync_NotDevVariant()
+        public async Task RunOneTickAsync_StableChannel_CallsGetLatestReleaseAsync_NotTestingVariant()
         {
             var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Stable };
             (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, _) = CreateService(config);
@@ -102,20 +102,20 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             gitHubClient.Verify(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>()), Times.Once);
-            gitHubClient.Verify(c => c.GetLatestDevReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
+            gitHubClient.Verify(c => c.GetLatestTestingReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task RunOneTickAsync_DevChannel_CallsGetLatestDevReleaseAsync_NotStableVariant()
+        public async Task RunOneTickAsync_TestingChannel_CallsGetLatestTestingReleaseAsync_NotStableVariant()
         {
-            var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Dev };
+            var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Testing };
             (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, _) = CreateService(config);
 
-            _ = gitHubClient.Setup(c => c.GetLatestDevReleaseAsync(It.IsAny<CancellationToken>())).ReturnsAsync((GitHubReleaseInfo?)null);
+            _ = gitHubClient.Setup(c => c.GetLatestTestingReleaseAsync(It.IsAny<CancellationToken>())).ReturnsAsync((GitHubReleaseInfo?)null);
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            gitHubClient.Verify(c => c.GetLatestDevReleaseAsync(It.IsAny<CancellationToken>()), Times.Once);
+            gitHubClient.Verify(c => c.GetLatestTestingReleaseAsync(It.IsAny<CancellationToken>()), Times.Once);
             gitHubClient.Verify(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 

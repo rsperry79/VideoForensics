@@ -264,7 +264,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                             if (existingRecord != null && !existsOnDisk)
                             {
-                                _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, fileName);
+                                _logger.LogInformation("Event {EventId} is marked downloaded in the database but {FileName} is missing on disk; redownloading", eventIdStr, SanitizeForLog(fileName));
                             }
 
                             if (existsOnDisk)
@@ -281,7 +281,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", fileName);
+                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -394,7 +394,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", fileName);
+                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -467,7 +467,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", fileName);
+                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -786,7 +786,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", fileName);
+                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
                     }
                 }
 
@@ -836,7 +836,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", fileName);
+                        _logger.LogWarning(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                     }
                 }
 
@@ -1103,7 +1103,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
+                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1111,7 +1111,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1397,7 +1397,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
+                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1405,7 +1405,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1469,7 +1469,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // File exists and is readable
                 if (!File.Exists(jsonPath))
                 {
-                    _logger.LogWarning("JSON sidecar file does not exist: {JsonPath}", jsonPath);
+                    _logger.LogWarning("JSON sidecar file does not exist: {JsonPath}", SanitizeForLog(jsonPath));
                     return false;
                 }
 
@@ -1478,7 +1478,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // File is not empty (minimum valid JSON is {})
                 if (fileInfo.Length < 2)
                 {
-                    _logger.LogWarning("JSON sidecar file is too small ({Size} bytes): {JsonPath}", fileInfo.Length, jsonPath);
+                    _logger.LogWarning("JSON sidecar file is too small ({Size} bytes): {JsonPath}", fileInfo.Length, SanitizeForLog(jsonPath));
                     return false;
                 }
 
@@ -1489,25 +1489,29 @@ namespace VideoForensics.Providers.Ring.Services
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
                     _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
-                        metadataType, Path.GetFileName(jsonPath), fileInfo.Length);
+                        SanitizeForLog(metadataType), Path.GetFileName(SanitizeForLog(jsonPath)), fileInfo.Length);
                     return true;
                 }
                 else
                 {
-                    _logger.LogWarning("JSON sidecar root is not an object: {JsonPath}", jsonPath);
+                    _logger.LogWarning("JSON sidecar root is not an object: {JsonPath}", SanitizeForLog(jsonPath));
                     return false;
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
+                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
+                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

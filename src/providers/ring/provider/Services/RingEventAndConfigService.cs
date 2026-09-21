@@ -28,7 +28,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 _logger.LogInformation("Fetching events for device {DeviceId} from {StartDate} to {EndDate}",
-                    deviceId, startDate, endDate);
+                    SanitizeForLog(deviceId), startDate, endDate);
 
                 Session? session = _sessionProvider.GetSession();
                 if (session == null)
@@ -51,12 +51,12 @@ namespace VideoForensics.Providers.Ring.Services
                     ))
                     .ToList() ?? [];
 
-                _logger.LogInformation("Found {EventCount} events for device {DeviceId}", deviceEvents.Count, deviceId);
+                _logger.LogInformation("Found {EventCount} events for device {DeviceId}", deviceEvents.Count, SanitizeForLog(deviceId));
                 return deviceEvents.AsReadOnly();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching events for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error fetching events for device {DeviceId}", SanitizeForLog(deviceId));
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -134,5 +134,9 @@ namespace VideoForensics.Providers.Ring.Services
                 _ = _historyCacheLock.Release();
             }
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

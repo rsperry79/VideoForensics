@@ -416,5 +416,66 @@ namespace VideoForensics.Data.Core.Tests
             Assert.NotNull(result);
             Assert.Empty(result);
         }
+
+        [Fact]
+        public async Task RecordExportAsync_SanitizesLogOutput_WhenCaseReferenceAndFileNameContainNewlines()
+        {
+            // Arrange
+            string exportedByUserName = "analyst";
+            string caseReferenceWithNewlines = "Case-2024-001\r\nFAKE LOG ENTRY";
+            string archiveFileNameWithNewlines = "export.zip\r\nUNAUTHORIZED";
+            string archiveSha256Hash = "test_hash";
+            var items = new List<(Guid, string)> { (Guid.NewGuid(), "item_hash") };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockExportRecordRepoInContext = new Mock<IExportRecordRepository>();
+            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+
+            _ = mockContext.Setup(x => x.ExportRecords).Returns(mockExportRecordRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+
+            ExportRecord? capturedRecord = null;
+            _ = mockExportRecordRepoInContext
+                .Setup(x => x.AppendAsync(It.IsAny<ExportRecord>(), It.IsAny<IReadOnlyList<ExportRecordItem>>(), It.IsAny<CancellationToken>()))
+                .Callback<ExportRecord, IReadOnlyList<ExportRecordItem>, CancellationToken>((record, items, ct) => { capturedRecord = record; })
+                .ReturnsAsync((ExportRecord record, IReadOnlyList<ExportRecordItem> items, CancellationToken ct) => record);
+
+            _ = mockActionLogRepoInContext
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TestHelpers.CreateActionLogEntry());
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<ExportRecord>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<ExportRecord>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            ExportRecord result = await _service.RecordExportAsync(
+                exportedByUserName,
+                caseReferenceWithNewlines,
+                null,
+                archiveFileNameWithNewlines,
+                archiveSha256Hash,
+                false,
+                items,
+                CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotNull(capturedRecord);
+
+            // Verify ExportRecord stores the raw (unsanitized) values
+            Assert.Equal(caseReferenceWithNewlines, capturedRecord.CaseReference);
+            Assert.Equal(archiveFileNameWithNewlines, capturedRecord.ArchiveFileName);
+        }
     }
 }

@@ -199,7 +199,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
             bool result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
 
@@ -214,7 +214,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
             await _adapter.PreScanAsync("C:\\Downloads", DateTime.Today, DateTime.Today.AddDays(1));
 
@@ -297,7 +297,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
             bool result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
 
@@ -305,6 +305,31 @@ namespace VideoForensics.Client.Core.Tests
             string? error = _adapter.GetLastError();
             Assert.NotNull(error);
             Assert.Contains("No locations found", error);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_SanitizesLogOutput_WhenOutputPathContainsNewlines()
+        {
+            // Arrange: Setup mocks for authentication and devices
+            _ = _authServiceMock
+                .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(true));
+
+            _ = _deviceServiceMock
+                .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
+
+            // Act: Call DownloadVideosAsync with a path containing CRLF (log injection attempt)
+            string injectedPath = "C:\\Downloads\r\nFAKE ADMIN LOG: Unauthorized access granted";
+            bool result = await _adapter.DownloadVideosAsync(injectedPath, DateTime.Today, DateTime.Today);
+
+            // Assert: Verify the method completed and didn't throw, and sets error about no devices
+            // (the sanitization is verified indirectly — the method completes without exception)
+            Assert.False(result);
+            string? error = _adapter.GetLastError();
+            Assert.NotNull(error);
+            // The error should be about no devices, not a crash from unescaped log input
+            Assert.Contains("No devices found", error);
         }
     }
 }

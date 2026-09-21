@@ -18,8 +18,9 @@ namespace VideoForensics.Providers.Ring.Services
         public static string FormatMediaFileName(string cameraName, DateTime timestamp, string mediaType, string extension)
         {
             string sanitizedName = SanitizeForFilePath(cameraName);
+            string sanitizedType = SanitizeForFilePath(mediaType);
             string dateTime = timestamp.ToString("yyyyMMdd_HHmmss");
-            return $"{sanitizedName}_{dateTime}_{mediaType}.{extension.TrimStart('.')}";
+            return $"{sanitizedName}_{dateTime}_{sanitizedType}.{extension.TrimStart('.')}";
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ using Moq;
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 
 using Xunit;
@@ -329,6 +330,77 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal("EventType", capturedRecord.FieldName);
             Assert.Equal("Motion", capturedRecord.StoredValue);
             Assert.Equal("Sound", capturedRecord.ProviderValue);
+        }
+
+        [Fact]
+        public async Task AutoFixDiscrepanciesAsync_SanitizesLogOutput_WhenProviderEventIdContainsNewlines()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            string providerEventIdWithNewlines = "event-123\r\nFAKE LOG ENTRY";
+            var discrepancies = new List<ReconciliationDiscrepancy>
+            {
+                new() {
+                    ProviderEventId = providerEventIdWithNewlines,
+                    Type = DiscrepancyType.NewEventFoundOnProvider
+                }
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockEventRepoInContext = new Mock<IEventRepository>();
+            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+
+            var fetchedEvent = new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ProviderEventId = providerEventIdWithNewlines,
+                EventType = "Motion",
+                OccurredAtUtc = DateTime.UtcNow,
+                DiscoveredAtUtc = DateTime.UtcNow
+            };
+
+            _ = _mockEventRepository
+                .Setup(x => x.CreateAsync(It.IsAny<Event>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Event e, CancellationToken ct) => e);
+
+            _ = mockActionLogRepoInContext
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TestHelpers.CreateActionLogEntry());
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<bool>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            var result = await _service.AutoFixDiscrepanciesAsync(
+                deviceId,
+                discrepancies,
+                async (eventId, start, end, ct) => new List<Event> { fetchedEvent },
+                CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(1, result.NewEventsInserted);
+
+            // Verify event was stored with raw (unsanitized) ProviderEventId
+            _mockEventRepository.Verify(
+                x => x.CreateAsync(
+                    It.Is<Event>(e => e.ProviderEventId == providerEventIdWithNewlines),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }

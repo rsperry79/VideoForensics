@@ -19,6 +19,9 @@ namespace VideoForensics.Providers.Wyze.Services
             _isAuthenticated = false;
         }
 
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+
         /// <summary>
         /// Authenticates with Wyze API using username and password.
         /// Returns auth token with expiration information.
@@ -36,7 +39,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Wyze API for user: {Username}", username);
+                _logger.LogInformation("Authenticating with Wyze API for user: {Username}", MaskForLog(username));
 
                 // TODO: Implement Wyze authentication
                 // - Call Wyze API with credentials
