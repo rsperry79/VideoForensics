@@ -8,10 +8,10 @@
 #   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing | iex"
 #
 #   # Silent (auto-install)
-#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing | iex" -- -Channel Stable -Silent
+#   powershell -NoProfile -Command "&([scriptblock]::Create((iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing).Content)) -Channel Stable -Silent"
 #
 #   # Testing channel (rolling prerelease, built from the `dev` branch)
-#   powershell -NoProfile -Command "iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing | iex" -- -Channel Testing
+#   powershell -NoProfile -Command "&([scriptblock]::Create((iwr https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 -UseBasicParsing).Content)) -Channel Testing"
 
 param(
     [ValidateSet("Stable", "Testing")]
