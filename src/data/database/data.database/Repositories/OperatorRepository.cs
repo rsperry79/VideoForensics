@@ -30,7 +30,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.Operators.Add(@operator);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator created: {OperatorId} ({DisplayName})", @operator.Id, @operator.DisplayName);
+            _logger.LogInformation("Operator created: {OperatorId} ({DisplayName})", @operator.Id, SanitizeForLog(@operator.DisplayName));
             return @operator;
         }
 
@@ -138,5 +138,9 @@ namespace VideoForensics.Data.Database.Repositories
             _ = await db.SaveChangesAsync(ct);
             _logger.LogInformation("Operator approval first login marked as notified: {OperatorId}", operatorId);
         }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

@@ -132,31 +132,31 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public async Task GetLatestDevReleaseAsync_SuccessfulResponse_ReturnsParsedReleaseInfo()
+        public async Task GetLatestTestingReleaseAsync_SuccessfulResponse_ReturnsParsedReleaseInfo()
         {
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                // Verify it's calling the dev endpoint
-                Assert.EndsWith("releases/tags/dev", request.RequestUri?.ToString() ?? "");
+                // Verify it's calling the testing endpoint
+                Assert.EndsWith("releases/tags/testing", request.RequestUri?.ToString() ?? "");
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new StringContent(GetRealisticReleaseJson("dev", draft: false, prerelease: true))
+                    Content = new StringContent(GetRealisticReleaseJson("testing", draft: false, prerelease: true))
                 };
                 response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 return Task.FromResult(response);
             });
 
             var client = new GitHubReleaseClient(httpClient);
-            var result = await client.GetLatestDevReleaseAsync(CancellationToken.None);
+            var result = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("dev", result!.TagName);
+            Assert.Equal("testing", result!.TagName);
             Assert.True(result.Prerelease);
             Assert.Equal(2, result.Assets.Count);
         }
 
         [Fact]
-        public async Task GetLatestDevReleaseAsync_NotFound_ReturnsNull()
+        public async Task GetLatestTestingReleaseAsync_NotFound_ReturnsNull()
         {
             HttpClient httpClient = CreateHttpClient(request =>
             {
@@ -164,7 +164,7 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var client = new GitHubReleaseClient(httpClient);
-            var result = await client.GetLatestDevReleaseAsync(CancellationToken.None);
+            var result = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
 
             Assert.Null(result);
         }

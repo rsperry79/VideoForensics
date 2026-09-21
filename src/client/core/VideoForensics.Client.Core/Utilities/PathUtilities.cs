@@ -147,6 +147,16 @@ namespace VideoForensics.Client.Core.Utilities
             return Path.Combine(basePath, sanitizedLocation, sanitizedCamera);
         }
 
+        /// <summary>
+        /// Fixed, OS-independent set of invalid path segment characters (the Windows-reserved set).
+        /// Using a fixed set instead of <see cref="Path.GetInvalidFileNameChars"/> keeps sanitization
+        /// consistent across platforms, since that API only returns '/' and NUL on Linux.
+        /// </summary>
+        private static readonly char[] InvalidPathSegmentChars = Enumerable.Range(0x00, 0x20)
+            .Select(c => (char)c)
+            .Concat(new[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*' })
+            .ToArray();
+
         /// <summary>Removes invalid path characters from a string segment.</summary>
         private static string SanitizePathSegment(string segment)
         {
@@ -155,9 +165,8 @@ namespace VideoForensics.Client.Core.Utilities
                 return "Unknown";
             }
 
-            char[] invalidChars = Path.GetInvalidFileNameChars();
             string sanitized = new(segment
-                .Where(c => !invalidChars.Contains(c) && c != ':' && c != '|' && c != '?')
+                .Where(c => !InvalidPathSegmentChars.Contains(c))
                 .ToArray());
 
             return string.IsNullOrWhiteSpace(sanitized) ? "Unknown" : sanitized.Trim();

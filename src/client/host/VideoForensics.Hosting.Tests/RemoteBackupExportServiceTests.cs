@@ -372,6 +372,38 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(outputDir, capturedRequest!.OutputDirectory);
         }
 
+        [Fact]
+        public async Task ExportBackupAsync_WithPathTraversalFileName_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            string outputDir = Path.Combine(_tempDirectory, "export-path-traversal");
+            byte[] zipContent = new byte[] { 0x50, 0x4B, 0x03, 0x04 }; // ZIP magic bytes
+            string maliciousFileName = "../../../../etc/passwd.zip"; // Path traversal attempt
+
+            var handler = new FakeHttpMessageHandler(request =>
+            {
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(zipContent)
+                };
+                response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+                response.Content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment")
+                {
+                    FileName = $"\"{maliciousFileName}\""
+                };
+
+                return response;
+            });
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+            var service = new RemoteBackupExportService(httpClient);
+
+            // Act & Assert
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ExportBackupAsync(outputDir, CancellationToken.None));
+            Assert.Contains("escapes the intended output directory", ex.Message);
+        }
+
         /// <summary>
         /// Fake HTTP message handler that executes a delegate to generate responses for testing.
         /// </summary>

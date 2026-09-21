@@ -394,17 +394,15 @@ namespace VideoForensics.Data.Core.Tests
 
             try
             {
-                // Act - This will use the default reports directory
-                // We can't easily override it in the service, so we test the behavior
+                _mockStorageLocationProvider
+                    .Setup(x => x.GetDefaultRoot(StorageCategory.Reports))
+                    .Returns(tempDir);
+
+                // Act
                 await _service.WriteReportAsync(report, "json", CancellationToken.None);
 
-                // Assert - The file should be created in the reports directory
-                string reportsDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
-                    "Reports");
-
-                string[] files = Directory.GetFiles(reportsDir, "EvidenceReviewReport_*.json");
+                // Assert - The file should be created in the isolated temp reports directory
+                string[] files = Directory.GetFiles(tempDir, "EvidenceReviewReport_*.json");
                 Assert.NotEmpty(files);
             }
             finally

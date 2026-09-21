@@ -13,7 +13,7 @@ namespace VideoForensics.Client.Core.Tests
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
-            Assert.True(result.Contains("VideoForensics"));
+            Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
             Assert.True(result.Contains("media"));
         }
 
@@ -58,7 +58,7 @@ namespace VideoForensics.Client.Core.Tests
 
             Assert.NotNull(result);
             Assert.NotEmpty(result);
-            Assert.True(result.Contains("VideoForensics"));
+            Assert.Contains("VideoForensics", result, StringComparison.OrdinalIgnoreCase);
             Assert.True(result.Contains("backup"));
         }
 

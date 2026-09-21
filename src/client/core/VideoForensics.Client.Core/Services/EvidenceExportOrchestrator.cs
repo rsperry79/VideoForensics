@@ -49,8 +49,8 @@ namespace VideoForensics.Client.Core.Services
                 _logger.LogInformation(
                     "Starting evidence export for {ItemCount} item(s). Case: {CaseRef}, Recipient: {Recipient}, Encrypted: {IsEncrypted}",
                     mediaItemIds.Count,
-                    caseReference ?? "[no case reference]",
-                    recipientDescription ?? "[no recipient]",
+                    SanitizeForLog(caseReference ?? "[no case reference]"),
+                    SanitizeForLog(recipientDescription ?? "[no recipient]"),
                     !string.IsNullOrEmpty(passphrase));
 
                 // Ensure output directory exists
@@ -151,7 +151,7 @@ namespace VideoForensics.Client.Core.Services
 
                 // Step 4: Create ZIP archive
                 string archiveFileName = $"Evidence_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-                string archivePath = Path.Combine(outputDirectory, archiveFileName);
+                string archivePath = EnsureWithinRoot(outputDirectory, Path.Combine(outputDirectory, archiveFileName));
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
@@ -235,7 +235,7 @@ namespace VideoForensics.Client.Core.Services
 
                 _logger.LogInformation(
                     "Export completed successfully: {ArchivePath}, {ItemCount} items, hash={Hash}, encrypted={IsEncrypted}",
-                    archivePath,
+                    SanitizeForLog(archivePath),
                     itemsToExport.Count,
                     archiveHash,
                     !string.IsNullOrEmpty(passphrase));
@@ -258,5 +258,30 @@ namespace VideoForensics.Client.Core.Services
             byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
+
+        /// <summary>
+        /// Validates that a resolved path stays within the intended root directory.
+        /// Prevents path traversal attacks by ensuring the resolved path does not escape the root.
+        /// </summary>
+        /// <param name="root">The root directory that the candidate path must stay within.</param>
+        /// <param name="candidatePath">The path to validate (may contain relative components or symlinks).</param>
+        /// <returns>The canonicalized (full) path, if it stays within root.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the resolved path escapes the root directory.</exception>
+        private static string EnsureWithinRoot(string root, string candidatePath)
+        {
+            string fullRoot = Path.GetFullPath(root);
+            string fullCandidate = Path.GetFullPath(candidatePath);
+            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+            }
+
+            return fullCandidate;
+        }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

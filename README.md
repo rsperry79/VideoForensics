@@ -23,7 +23,9 @@ Alternatively, direct installer downloads (Windows MSI + Burn bootstrapper, or D
 VideoForensics publishes two release channels:
 
 - **Stable**: Tagged releases (`vX.Y.Z`) off the `main` branch, published as GitHub Releases. Assets are signed and ready for production use.
-- **Dev**: Rolling prerelease built on every push to the `wip` branch and tagged as `dev`. This channel receives new features first and is suitable for testing, but may be unstable.
+- **Testing**: Rolling prerelease built on every push to the `dev` branch and tagged as `testing`. This channel receives new features first and is suitable for testing, but may be unstable.
+
+Feature work lands via pull request onto `wip`, then `wip` is periodically PR'd into `dev` for integration testing, and `dev` is PR'd into `main` for release.
 
 Both channels are configurable per-installation via the built-in update-check feature, which can notify you of available updates or automatically download and install them.
 
