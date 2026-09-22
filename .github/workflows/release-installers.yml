@@ -1,15 +1,17 @@
-# Build and release Windows MSI/bootstrapper and Debian .deb installers from tagged versions.
+# Build and release Windows (Inno Setup) and Debian .deb installers from tagged versions.
 #
-# This workflow builds both installers from the same tagged commit per INSTALLER_PLAN.md:
-# - Windows: self-contained dotnet publish (win-x64) → WiX MSI → Burn bootstrapper (.exe wrapping .msi)
+# This workflow builds both installers from the same tagged commit:
+# - Windows: self-contained dotnet publish (WebApp win-x64 + MauiApp win-x64) → Inno Setup .exe
 # - Debian:  self-contained dotnet publish (linux-x64) → dpkg-based .deb package
 #
 # Both installers are unsigned (no code-signing certificate yet) — end users will see SmartScreen
 # warnings on Windows. Signing will be added as a CI step once a certificate is available.
 #
-# The Windows build (first CI run via release-installers.yml) has not yet been validated on a
-# real Windows machine. First run should be treated as a shakedown build; see deploy/windows/README.md
-# for validation checklist.
+# Windows previously used a WiX v5 MSI + Burn bootstrapper; that was replaced with Inno Setup
+# because WiX v5's steward (FireGiant) charges an "Open Source Maintenance Fee" to commercial
+# users above a revenue threshold, which this proprietary app likely doesn't qualify to avoid.
+# Inno Setup is free for any use, including closed-source commercial software, with no
+# revenue-based fee. See deploy/windows/README.md and deploy/windows/VideoForensics.iss.
 
 name: Build and Release Installers
 
@@ -126,6 +128,18 @@ jobs:
             -c Release -r win-x64 --self-contained true `
             -o publish-win
 
+      - name: Publish MauiApp (win-x64, self-contained)
+        run: |
+          dotnet publish src/client/maui/VideoForensics.MauiApp `
+            -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
+            -o publish-desktop
+
+      - name: Publish DbSetup (win-x64, self-contained)
+        run: |
+          dotnet publish src/tools/DbSetup/DbSetup.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -o publish-dbsetup
+
       - name: Download and bundle FFmpeg binaries
         shell: pwsh
         # IMPORTANT: This URL uses the rolling "latest" GitHub release tag. The exact asset
@@ -188,81 +202,48 @@ jobs:
           Invoke-WebRequest -Uri $cloudflaredUrl -OutFile "publish-win\cloudflared.exe" -ErrorAction Stop
           Write-Host "Bundled cloudflared.exe successfully"
 
-      - name: Build WiX Bootstrapper (transitively builds MSI)
+      - name: Compile Inno Setup installer
         shell: pwsh
-        # Build the Bootstrapper project which has a ProjectReference to the MSI project.
-        # PublishDir (location of publish output) and ProductVersion are passed as their own
-        # -p: properties rather than a single -p:DefineConstants="PublishDir=...;ProductVersion=..."
-        # value: the WixBuild MSBuild task turns each ';'-separated DefineConstants entry into its
-        # own "-d Name=Value" argument to wix.exe, but a single command-line -p:DefineConstants
-        # override collapses to one "-d" entry whose value swallows everything after the first "=",
-        # which silently drops ProductVersion and surfaces as WIX0150 (undefined preprocessor
-        # variable). See VideoForensics.Installer.Wix.wixproj for the property definitions.
         run: |
-          $publishPath = (Resolve-Path "publish-win").Path
           $version = "${{ steps.extract-version.outputs.version }}"
-          Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
-          dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
-            -c Release `
-            -p:PublishDir="$publishPath" `
-            -p:ProductVersion="$version"
+          $serverDir = (Resolve-Path "publish-win").Path
+          $desktopDir = (Resolve-Path "publish-desktop").Path
+          $dbSetupDir = (Resolve-Path "publish-dbsetup").Path
+          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" deploy\windows\VideoForensics.iss `
+            "/DAppVersion=$version" `
+            "/DServerPublishDir=$serverDir" `
+            "/DDesktopPublishDir=$desktopDir" `
+            "/DDbSetupPublishDir=$dbSetupDir"
 
-      - name: Locate built installers
+      - name: Locate built installer
         shell: pwsh
-        # The exact output paths may need adjusting after the first real CI run if WiX
-        # projects have non-standard output directory configurations. Current expected paths:
-        # - MSI: deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
-        # - EXE: deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
-        # Verify these exist; if not, inspect the bin/Release/ directories for actual output.
         run: |
-          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
-          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
-
-          if (-not (Test-Path $msiPath)) {
-            Write-Host "ERROR: MSI not found at expected path: $msiPath"
-            Write-Host "Checking Installer.Wix/bin/Release:"
-            Get-ChildItem "deploy/windows/VideoForensics.Installer.Wix/bin/Release" -ErrorAction SilentlyContinue
-            exit 1
-          }
+          $exePath = "deploy/windows/bin/VideoForensicsSetup.exe"
           if (-not (Test-Path $exePath)) {
-            Write-Host "ERROR: Bootstrapper .exe not found at expected path: $exePath"
-            Write-Host "Checking Bootstrapper.Wix/bin/Release:"
-            Get-ChildItem "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release" -ErrorAction SilentlyContinue
+            Write-Host "ERROR: Setup exe not found at expected path: $exePath"
+            Get-ChildItem "deploy/windows/bin" -ErrorAction SilentlyContinue
             exit 1
           }
+          Write-Host "Found: $exePath"
 
-          Write-Host "Found MSI: $msiPath"
-          Write-Host "Found EXE: $exePath"
-
-      - name: Compute SHA256 checksums (Windows)
+      - name: Compute SHA256 checksum (Windows)
         shell: pwsh
         run: |
-          $version = "${{ steps.extract-version.outputs.version }}"
-          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
-          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
-          $msiOut = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256"
-          $exeOut = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256"
-
-          $msiHash = (Get-FileHash -Path $msiPath -Algorithm SHA256).Hash
-          "$msiHash  $(Split-Path -Leaf $msiPath)" | Out-File -FilePath $msiOut -Encoding ASCII
-
+          $exePath = "deploy/windows/bin/VideoForensicsSetup.exe"
+          $exeOut = "deploy/windows/bin/VideoForensicsSetup.exe.sha256"
           $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
           "$exeHash  $(Split-Path -Leaf $exePath)" | Out-File -FilePath $exeOut -Encoding ASCII
-
-          Write-Host "MSI checksum:"
-          Get-Content $msiOut
           Write-Host "EXE checksum:"
           Get-Content $exeOut
 
-      - name: Upload Windows installer artifacts
+      - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: |
-            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
-            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256
-            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
-            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256
+            deploy/windows/bin/VideoForensicsSetup.exe
+            deploy/windows/bin/VideoForensicsSetup.exe.sha256
 
   create-release:
     runs-on: ubuntu-latest
@@ -283,13 +264,10 @@ jobs:
         run: |
           mkdir -p release-files
           # actions/upload-artifact preserves subdirectories below the common ancestor of
-          # the listed paths - the windows-installer artifact's paths only share
-          # deploy/windows/ as their ancestor (VideoForensics.Installer.Wix/ vs
-          # VideoForensics.Bootstrapper.Wix/ diverge below that), so the downloaded files
-          # land nested (e.g. windows-installer/VideoForensics.Installer.Wix/bin/Release/
-          # VideoForensics.msi) rather than flat. A flat `cp dir/*` only copies top-level
-          # entries and silently no-ops on directories, so use find to copy every file
-          # regardless of nesting depth.
+          # the listed paths - the debian-package artifact's paths land nested under
+          # deploy/debian/ rather than flat. A flat `cp dir/*` only copies top-level entries
+          # and silently no-ops on directories, so use find to copy every file regardless of
+          # nesting depth (windows-installer is already flat, but find handles that too).
           find release-artifacts/debian-package release-artifacts/windows-installer -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/

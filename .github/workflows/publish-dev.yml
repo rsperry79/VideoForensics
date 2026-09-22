@@ -112,6 +112,18 @@ jobs:
             -c Release -r win-x64 --self-contained true `
             -o publish-win
 
+      - name: Publish MauiApp (win-x64, self-contained)
+        run: |
+          dotnet publish src/client/maui/VideoForensics.MauiApp `
+            -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
+            -o publish-desktop
+
+      - name: Publish DbSetup (win-x64, self-contained)
+        run: |
+          dotnet publish src/tools/DbSetup/DbSetup.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -o publish-dbsetup
+
       - name: Download and bundle FFmpeg binaries
         shell: pwsh
         run: |
@@ -165,74 +177,48 @@ jobs:
           Invoke-WebRequest -Uri $cloudflaredUrl -OutFile "publish-win\cloudflared.exe" -ErrorAction Stop
           Write-Host "Bundled cloudflared.exe successfully"
 
-      - name: Build WiX Bootstrapper (transitively builds MSI)
+      - name: Compile Inno Setup installer
         shell: pwsh
         run: |
-          $publishPath = (Resolve-Path "publish-win").Path
           $version = "${{ steps.get-version.outputs.version }}"
-          Write-Host "Building WiX with PublishDir=$publishPath and ProductVersion=$version"
-          # Pass PublishDir/ProductVersion as their own -p: properties rather than a single
-          # -p:DefineConstants="PublishDir=...;ProductVersion=..." value: the WixBuild MSBuild
-          # task turns each ';'-separated DefineConstants entry into its own "-d Name=Value"
-          # argument to wix.exe, but a single command-line -p:DefineConstants override collapses
-          # to one "-d" entry whose value swallows everything after the first "=", which silently
-          # drops ProductVersion and surfaces as WIX0150 (undefined preprocessor variable).
-          dotnet build deploy/windows/VideoForensics.Bootstrapper.Wix `
-            -c Release `
-            -p:PublishDir="$publishPath" `
-            -p:ProductVersion="$version"
+          $serverDir = (Resolve-Path "publish-win").Path
+          $desktopDir = (Resolve-Path "publish-desktop").Path
+          $dbSetupDir = (Resolve-Path "publish-dbsetup").Path
+          Write-Host "Compiling Inno Setup installer: version=$version server=$serverDir desktop=$desktopDir dbsetup=$dbSetupDir"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" deploy\windows\VideoForensics.iss `
+            "/DAppVersion=$version" `
+            "/DServerPublishDir=$serverDir" `
+            "/DDesktopPublishDir=$desktopDir" `
+            "/DDbSetupPublishDir=$dbSetupDir"
 
-      - name: Locate built installers
+      - name: Locate built installer
         shell: pwsh
         run: |
-          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
-          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
-
-          if (-not (Test-Path $msiPath)) {
-            Write-Host "ERROR: MSI not found at expected path: $msiPath"
-            Write-Host "Checking Installer.Wix/bin/Release:"
-            Get-ChildItem "deploy/windows/VideoForensics.Installer.Wix/bin/Release" -ErrorAction SilentlyContinue
-            exit 1
-          }
+          $exePath = "deploy/windows/bin/VideoForensicsSetup.exe"
           if (-not (Test-Path $exePath)) {
-            Write-Host "ERROR: Bootstrapper .exe not found at expected path: $exePath"
-            Write-Host "Checking Bootstrapper.Wix/bin/Release:"
-            Get-ChildItem "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release" -ErrorAction SilentlyContinue
+            Write-Host "ERROR: Setup exe not found at expected path: $exePath"
+            Get-ChildItem "deploy/windows/bin" -ErrorAction SilentlyContinue
             exit 1
           }
+          Write-Host "Found: $exePath"
 
-          Write-Host "Found MSI: $msiPath"
-          Write-Host "Found EXE: $exePath"
-
-      - name: Compute SHA256 checksums (Windows)
+      - name: Compute SHA256 checksum (Windows)
         shell: pwsh
         run: |
-          $version = "${{ steps.get-version.outputs.version }}"
-          $msiPath = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi"
-          $exePath = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe"
-          $msiOut = "deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256"
-          $exeOut = "deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256"
-
-          $msiHash = (Get-FileHash -Path $msiPath -Algorithm SHA256).Hash
-          "$msiHash  $(Split-Path -Leaf $msiPath)" | Out-File -FilePath $msiOut -Encoding ASCII
-
+          $exePath = "deploy/windows/bin/VideoForensicsSetup.exe"
+          $exeOut = "deploy/windows/bin/VideoForensicsSetup.exe.sha256"
           $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
           "$exeHash  $(Split-Path -Leaf $exePath)" | Out-File -FilePath $exeOut -Encoding ASCII
-
-          Write-Host "MSI checksum:"
-          Get-Content $msiOut
           Write-Host "EXE checksum:"
           Get-Content $exeOut
 
-      - name: Upload Windows installer artifacts
+      - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer-dev
           path: |
-            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi
-            deploy/windows/VideoForensics.Installer.Wix/bin/Release/VideoForensics.msi.sha256
-            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe
-            deploy/windows/VideoForensics.Bootstrapper.Wix/bin/Release/VideoForensicsBootstrapper.exe.sha256
+            deploy/windows/bin/VideoForensicsSetup.exe
+            deploy/windows/bin/VideoForensicsSetup.exe.sha256
 
   publish-dev-release:
     runs-on: ubuntu-latest
@@ -306,8 +292,7 @@ jobs:
 
             **Installers:**
             - `videoforensics_*.deb` — Debian/Ubuntu package (self-contained .NET 10 linux-x64)
-            - `VideoForensics.msi` — Windows MSI installer (self-contained .NET 10 win-x64)
-            - `VideoForensicsBootstrapper.exe` — Windows Burn bootstrapper wrapping the MSI
+            - `VideoForensicsSetup.exe` — Windows Inno Setup installer (self-contained .NET 10 win-x64, Server + Desktop Client)
 
             **Status:** Unsigned, prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/wip
 

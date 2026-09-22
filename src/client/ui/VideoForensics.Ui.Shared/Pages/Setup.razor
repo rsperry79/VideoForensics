@@ -1,0 +1,118 @@
+@page "/setup"
+@layout MinimalLayout
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@inject NavigationManager NavigationManager
+@inject WebAuthnClient WebAuthn
+@inject IStringLocalizer<Setup> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+<p class="text-muted mb-4">@L["Subtitle"]</p>
+
+@if (_isSubmitting)
+{
+    <div class="d-flex justify-content-center gap-2">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Creating account...</span>
+        </div>
+        <span>@L["CreatingAccount"]</span>
+    </div>
+}
+else if (_setupSuccess)
+{
+    <div class="alert alert-success mb-3">@L["SetupSuccess"]</div>
+    <div class="d-flex justify-content-center">
+        <SfButton Content="@L["SignInButton"]" OnClick="@(() => NavigationManager.NavigateTo("/device-signin"))" CssClass="e-primary" />
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        <div class="mb-3">
+            <label class="form-label">@L["UsernameLabel"]</label>
+            <SfTextBox @bind-Value="_form.Username" Placeholder="@L["UsernamePlaceholder"]" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["PasswordLabel"]</label>
+            <input type="password" class="form-control" @bind="_form.Password" placeholder="@L["PasswordPlaceholder"]" />
+            <small class="d-block text-muted mt-1">@L["PasswordHint"]</small>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["ConfirmPasswordLabel"]</label>
+            <input type="password" class="form-control" @bind="_form.ConfirmPassword" placeholder="@L["ConfirmPasswordPlaceholder"]" />
+            @if (!string.IsNullOrEmpty(_form.Password) && _form.Password != _form.ConfirmPassword)
+            {
+                <div class="text-danger small">@L["PasswordMismatch"]</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger mb-3">@_errorMessage</div>
+        }
+
+        <div class="d-flex justify-content-center">
+            <SfButton Content="@L["CreateAccountButton"]" OnClick="CreateAdminAsync" CssClass="e-primary" Disabled="@(_isSubmitting || (!string.IsNullOrEmpty(_form.Password) && _form.Password != _form.ConfirmPassword))" />
+        </div>
+    </div>
+}
+
+@code {
+    private SetupForm _form = new();
+    private bool _isSubmitting;
+    private bool _setupSuccess;
+    private string? _errorMessage;
+
+    private async Task CreateAdminAsync()
+    {
+        if (_form.Password != _form.ConfirmPassword)
+        {
+            _errorMessage = L["PasswordMismatch"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.Username))
+        {
+            _errorMessage = L["UsernameRequired"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.Password) || _form.Password.Length < 12)
+        {
+            _errorMessage = L["PasswordTooShort"];
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+        try
+        {
+            var (success, errorMessage) = await WebAuthn.CreateSetupAdminAsync(_form.Username.Trim(), _form.Password);
+
+            if (!success)
+            {
+                _errorMessage = errorMessage ?? L["SetupFailed"];
+                return;
+            }
+
+            _setupSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["SetupFailed"] + ": " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private class SetupForm
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

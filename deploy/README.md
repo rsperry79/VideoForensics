@@ -56,7 +56,7 @@ The service is configured to start automatically on system boot.
 
 ## Bootstrap Installer Scripts
 
-The two bootstrap installer scripts (`install.ps1` and `install.sh`) fetch the latest VideoForensics release for your chosen channel from GitHub at runtime and launch the platform-specific installer (MSI + Bootstrapper .exe on Windows, .deb on Debian/Ubuntu).
+The two bootstrap installer scripts (`install.ps1` and `install.sh`) fetch the latest VideoForensics release for your chosen channel from GitHub at runtime and launch the platform-specific installer (`VideoForensicsSetup.exe` on Windows, `.deb` on Debian/Ubuntu).
 
 These are thin wrappers around the platform installers and do not perform installation themselves — they simply download and invoke the appropriate installer for your system. For detailed installation mechanics, see [`deploy/windows/README.md`](windows/README.md) (Windows) or [`deploy/debian/README.md`](debian/README.md) (Debian/Ubuntu).
 

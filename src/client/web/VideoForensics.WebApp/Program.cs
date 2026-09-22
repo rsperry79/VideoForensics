@@ -289,7 +289,7 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadToken
 builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
-WebApplication app = builder.Build();
+    WebApplication app = builder.Build();
 
 // DB init + Events backfill + persisted-config load, in that order - see
 // VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
@@ -333,6 +333,7 @@ app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
 app.MapOperatorAuthEndpoints();
+app.MapSetupEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceCodePairingEndpoints();
 app.MapDeviceManagementEndpoints();
