@@ -45,7 +45,8 @@ else
         "/pair",
         "/device-signin",
         "/register",
-        "/welcome"
+        "/welcome",
+        "/setup"
     };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -116,8 +117,10 @@ else
 
                 if (isBootstrap)
                 {
-                    // No operators exist - go to /pair to initiate bootstrap pairing
-                    NavigationManager.NavigateTo("/pair", replace: true);
+                    // No operators exist - go to /setup for first-run admin account creation.
+                    // /pair's own WebAuthn-based bootstrap path still exists for QR/mobile pairing
+                    // flows reached by direct URL, but /setup is now the default UI entry point.
+                    NavigationManager.NavigateTo("/setup", replace: true);
                 }
                 else
                 {

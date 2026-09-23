@@ -65,8 +65,8 @@ namespace VideoForensics.Hosting.BackgroundServices
             IForensicsConfiguration config,
             IGitHubReleaseClient gitHubClient,
             IUpdateInstaller updateInstaller,
-            Func<string>? currentVersionProvider,
-            ILogger<UpdateCheckService> logger)
+            ILogger<UpdateCheckService> logger,
+            Func<string>? currentVersionProvider = null)
         {
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _config = config ?? throw new ArgumentNullException(nameof(config));

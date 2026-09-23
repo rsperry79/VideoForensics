@@ -4,23 +4,24 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>VideoForensics.DbDiagnostics</AssemblyName>
-    <RootNamespace>VideoForensics.DbDiagnostics</RootNamespace>
+    <AssemblyName>VideoForensics.DbSetup</AssemblyName>
+    <RootNamespace>VideoForensics.DbSetup</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
     <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
     <ProjectReference Include="..\..\client\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
-    <ProjectReference Include="..\VideoForensics.Diagnostics\VideoForensics.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\core\helpers\core.helpers\VideoForensics.Providers.Common.Helpers.csproj" />
   </ItemGroup>
 
 </Project>

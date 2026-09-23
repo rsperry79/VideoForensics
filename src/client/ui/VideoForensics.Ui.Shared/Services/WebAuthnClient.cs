@@ -217,6 +217,24 @@ namespace VideoForensics.Ui.Shared.Services
             return (true, null, isApproved);
         }
 
+        /// <summary>First-run setup: create the initial SuperAdmin account. Only succeeds while the
+        /// operators table is empty - see SetupEndpoints.cs.</summary>
+        public async Task<(bool Success, string? ErrorMessage)> CreateSetupAdminAsync(string username, string password)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/setup/create-admin",
+                new { Username = username, Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response));
+            }
+
+            return (true, null);
+        }
+
         public async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorCredentialAsync(string sessionToken, string label)
         {
             using HttpClient client = CreateClient(sessionToken);

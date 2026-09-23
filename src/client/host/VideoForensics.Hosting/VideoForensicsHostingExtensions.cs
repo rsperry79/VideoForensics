@@ -612,9 +612,17 @@ namespace VideoForensics.Hosting
                 ?? throw new InvalidOperationException("Configuration must be a ForensicsConfiguration instance");
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, logger, ct);
 
-            // Seed a default SuperAdmin account if the Operators table is empty
+            // Seed a default SuperAdmin account if the Operators table is empty - but only when
+            // explicitly opted into via VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN=true (headless/scripted
+            // deployments that can't drive a browser). By default this is left off: the interactive
+            // /setup wizard (SetupEndpoints.cs) handles first-run admin creation instead, letting the
+            // installing user pick their own username/password rather than getting the fixed
+            // admin/ChangeMe123! account.
             IOperatorRepository operatorRepo = sp.GetRequiredService<IOperatorRepository>();
-            if (await operatorRepo.IsEmptyAsync(ct))
+            bool enableDefaultAdmin = string.Equals(
+                Environment.GetEnvironmentVariable("VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN"),
+                "true", StringComparison.OrdinalIgnoreCase);
+            if (enableDefaultAdmin && await operatorRepo.IsEmptyAsync(ct))
             {
                 var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<VideoForensics.Data.Common.Entities.Operator>();
                 var defaultAdmin = new VideoForensics.Data.Common.Entities.Operator

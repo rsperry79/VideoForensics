@@ -91,7 +91,8 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             }
 
             string result = _provider.GetDefaultRoot(StorageCategory.Database);
-            Assert.EndsWith("VideoForensics", result);
+            Assert.EndsWith("Database", result);
+            Assert.Contains("VideoForensics", result);
             Assert.DoesNotContain("Logs", result);
             Assert.DoesNotContain("media", result);
         }
@@ -131,7 +132,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             }
 
             string result = _provider.GetDefaultRoot(StorageCategory.Database);
-            Assert.Equal("/var/lib/videoforensics", result);
+            Assert.Equal("/var/lib/videoforensics/Database", result);
         }
 
         [Fact]
@@ -158,6 +159,69 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             Assert.Contains("/var/lib/videoforensics", result);
             Assert.Contains("media", result);
         }
+
+        [Fact]
+        public void GetDefaultRoot_LinuxWithPerCategoryEnvVar_UsesConfiguredPath()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            Environment.SetEnvironmentVariable("VIDEOFORENSICS_DATABASE_PATH", "/custom/db-path");
+            Environment.SetEnvironmentVariable("VIDEOFORENSICS_MEDIA_PATH", "/custom/media-path");
+            try
+            {
+                Assert.Equal("/custom/db-path", _provider.GetDefaultRoot(StorageCategory.Database));
+                Assert.Equal("/custom/media-path", _provider.GetDefaultRoot(StorageCategory.Media));
+                // An unrelated category with no env var set is unaffected.
+                Assert.Equal("/var/log/videoforensics", _provider.GetDefaultRoot(StorageCategory.Logs));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("VIDEOFORENSICS_DATABASE_PATH", null);
+                Environment.SetEnvironmentVariable("VIDEOFORENSICS_MEDIA_PATH", null);
+            }
+        }
+
+        [Fact]
+        public void GetEnvironmentVariableName_Keys_ReturnsNull()
+        {
+            // Keys is deliberately excluded from the override mechanism - it's excluded from
+            // relocation in StorageSettingsService too, and too security-sensitive to expose in an
+            // installer UI.
+            Assert.Null(StorageLocationProvider.GetEnvironmentVariableName(StorageCategory.Keys));
+            Assert.Null(StorageLocationProvider.GetRegistryValueName(StorageCategory.Keys));
+        }
+
+        [Fact]
+        public void GetDefaultRoot_WindowsWithoutRegistryOverride_UsesProgramDataDefault()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            using Microsoft.Win32.RegistryKey? existing = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(StorageLocationProvider.RegistryKey);
+            if (existing?.GetValue("DatabasePath") != null)
+            {
+                // A real override is configured on this machine - the "no override" assumption
+                // this test relies on doesn't hold here, so there's nothing meaningful to assert.
+                return;
+            }
+
+            string result = _provider.GetDefaultRoot(StorageCategory.Database);
+            Assert.EndsWith("Database", result);
+            Assert.Contains("VideoForensics", result);
+        }
+
+        // Note: a test that writes to HKLM\SOFTWARE\VideoForensics to verify the Windows registry
+        // override is intentionally not included here - it requires administrator privileges that a
+        // regular `dotnet test` run doesn't have (fails with UnauthorizedAccessException outside an
+        // elevated shell/CI runner), which would make this test flaky depending on the environment
+        // rather than the code. GetDefaultRoot_WindowsWithoutRegistryOverride_UsesProgramDataDefault
+        // above and the GetConfiguredWindowsPath try/catch (falls back silently on any registry
+        // access failure) cover the behavior that's actually reliably testable across environments.
 
         [Fact]
         public void GetDefaultRoot_AllCategoriesReturnAbsolutePaths()

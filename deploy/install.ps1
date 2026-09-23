@@ -58,26 +58,26 @@ try {
 
     Write-Progress "Found release: $($release.tag_name) ($version)"
 
-    # Find the bootstrapper asset
-    $bootstrapperAsset = $release.assets | Where-Object { $_.name -eq "VideoForensicsBootstrapper.exe" }
+    # Find the installer asset
+    $installerAsset = $release.assets | Where-Object { $_.name -eq "VideoForensicsSetup.exe" }
 
-    if (-not $bootstrapperAsset) {
-        Write-Error "VideoForensicsBootstrapper.exe not found in release assets"
+    if (-not $installerAsset) {
+        Write-Error "VideoForensicsSetup.exe not found in release assets"
         exit 1
     }
 
     # Download to temp path
-    $tempPath = Join-Path $env:TEMP "VideoForensicsBootstrapper.exe"
-    Write-Progress "Downloading bootstrapper to $tempPath"
+    $tempPath = Join-Path $env:TEMP "VideoForensicsSetup.exe"
+    Write-Progress "Downloading installer to $tempPath"
 
-    Invoke-WebRequest -Uri $bootstrapperAsset.browser_download_url -OutFile $tempPath -UseBasicParsing
+    Invoke-WebRequest -Uri $installerAsset.browser_download_url -OutFile $tempPath -UseBasicParsing
 
     Write-Progress "Download complete ($([math]::Round(((Get-Item $tempPath).Length / 1MB), 2)) MB)"
 
     # Launch the installer
     if ($Silent) {
-        Write-Progress "Launching installer in silent mode (/passive)"
-        & $tempPath /passive
+        Write-Progress "Launching installer in silent mode (/VERYSILENT)"
+        & $tempPath /VERYSILENT
     }
     else {
         Write-Progress "Launching installer (interactive)"
