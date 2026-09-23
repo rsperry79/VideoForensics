@@ -91,7 +91,8 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             }
 
             string result = _provider.GetDefaultRoot(StorageCategory.Database);
-            Assert.EndsWith("VideoForensics", result);
+            Assert.EndsWith("Database", result);
+            Assert.Contains("VideoForensics", result);
             Assert.DoesNotContain("Logs", result);
             Assert.DoesNotContain("media", result);
         }
@@ -131,7 +132,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             }
 
             string result = _provider.GetDefaultRoot(StorageCategory.Database);
-            Assert.Equal("/var/lib/videoforensics", result);
+            Assert.Equal("/var/lib/videoforensics/Database", result);
         }
 
         [Fact]
@@ -210,7 +211,8 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             }
 
             string result = _provider.GetDefaultRoot(StorageCategory.Database);
-            Assert.EndsWith("VideoForensics", result);
+            Assert.EndsWith("Database", result);
+            Assert.Contains("VideoForensics", result);
         }
 
         // Note: a test that writes to HKLM\SOFTWARE\VideoForensics to verify the Windows registry

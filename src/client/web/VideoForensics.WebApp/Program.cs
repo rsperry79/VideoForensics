@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Data.Sqlite;
 
 using Syncfusion.Blazor;
 
@@ -27,7 +26,7 @@ using VideoForensics.WebApp.Services;
 // ADO.NET connection - not the full EF/DI stack - and tolerates a missing file/table (first run,
 // or a fresh install) by defaulting to Local, the safest "hasn't been configured yet" state (plan
 // §5.2's "Local-only by default").
-NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
+NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocationProvider()).ReadConfiguredTier();
 
 string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
 if (File.Exists(syncfusionLicenseKeyPath))
@@ -373,31 +372,6 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(VideoForensics.Ui.Shared.Routes).Assembly);
 
 app.Run();
-
-static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
-{
-    try
-    {
-        string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "videoforensics.db");
-        if (!File.Exists(dbPath))
-        {
-            return NetworkTier.Local;
-        }
-
-        using var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
-        connection.Open();
-        using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'ConfiguredNetworkTier' LIMIT 1";
-        string? value = command.ExecuteScalar() as string;
-        return Enum.TryParse<NetworkTier>(value, out NetworkTier tier) ? tier : NetworkTier.Local;
-    }
-    catch
-    {
-        // Any failure here (DB locked by another process, table not created yet, corrupt row) falls
-        // back to the safest default rather than risking an unintended wide-open bind.
-        return NetworkTier.Local;
-    }
-}
 
 static int ResolveConfiguredPort(IConfiguration configuration)
 {

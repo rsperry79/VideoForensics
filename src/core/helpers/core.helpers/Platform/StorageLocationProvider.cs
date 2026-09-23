@@ -31,7 +31,7 @@ public class StorageLocationProvider : IStorageLocationProvider
             string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
             return category switch
             {
-                StorageCategory.Database => root,
+                StorageCategory.Database => Path.Combine(root, "Database"),
                 StorageCategory.Media => Path.Combine(root, "media"),
                 StorageCategory.TempDownload => Path.Combine(root, "temp"),
                 StorageCategory.Logs => Path.Combine(root, "Logs"),
@@ -50,7 +50,7 @@ public class StorageLocationProvider : IStorageLocationProvider
 
         return category switch
         {
-            StorageCategory.Database => "/var/lib/videoforensics",
+            StorageCategory.Database => "/var/lib/videoforensics/Database",
             StorageCategory.Media => "/var/lib/videoforensics/media",
             StorageCategory.TempDownload => "/var/lib/videoforensics/tmp",
             StorageCategory.Logs => "/var/log/videoforensics",
@@ -94,6 +94,7 @@ public class StorageLocationProvider : IStorageLocationProvider
         _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
     };
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static string? GetConfiguredWindowsPath(StorageCategory category)
     {
         string? valueName = GetRegistryValueName(category);

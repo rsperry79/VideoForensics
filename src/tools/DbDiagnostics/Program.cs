@@ -1,20 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Diagnostics.Contracts;
 using VideoForensics.Hosting;
 
 // Build services
 var services = new ServiceCollection();
 services.AddVideoForensicsDataLayer();
+services.AddScoped<IDatabaseHealthChecker, VideoForensics.Diagnostics.DatabaseHealthChecker>();
 var provider = services.BuildServiceProvider();
 
-// Get database context
-var factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-await using var db = await factory.CreateDbContextAsync();
+// Get the health checker
+var healthChecker = provider.GetRequiredService<IDatabaseHealthChecker>();
+var ct = CancellationToken.None;
 
 Console.WriteLine("═══════════════════════════════════════════════════════════════");
 Console.WriteLine("DATABASE REDUNDANCY DIAGNOSTIC REPORT");
@@ -24,24 +25,14 @@ Console.WriteLine("════════════════════�
 Console.WriteLine("SECTION 1: DUPLICATE PROVIDER IDS (Missing Unique Constraints)");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
-var duplicateDevices = await db.Devices
-    .GroupBy(d => new { d.LocationId, d.ProviderDeviceId })
-    .Where(g => g.Count() > 1)
-    .Select(g => new
-    {
-        LocationId = g.Key.LocationId,
-        ProviderDeviceId = g.Key.ProviderDeviceId,
-        Count = g.Count(),
-        DeviceIds = string.Join(", ", g.Select(d => d.Id.ToString().Substring(0, 8)))
-    })
-    .ToListAsync();
+var duplicateDevices = await healthChecker.FindDuplicateDevicesAsync(ct);
 
 if (duplicateDevices.Count > 0)
 {
     Console.WriteLine($"⚠️  FOUND {duplicateDevices.Count} duplicate device entries:");
     foreach (var dup in duplicateDevices.Take(10))
     {
-        Console.WriteLine($"  • Location: {dup.LocationId.ToString().Substring(0, 8)}..., ProviderDeviceId: {dup.ProviderDeviceId}, Count: {dup.Count}");
+        Console.WriteLine($"  • Location: {dup.LocationId?.ToString().Substring(0, 8)}..., ProviderDeviceId: {dup.ProviderKey}, Count: {dup.Count}");
     }
 }
 else
@@ -49,23 +40,14 @@ else
     Console.WriteLine("✅ No duplicate devices found.");
 }
 
-var duplicateEvents = await db.Events
-    .GroupBy(e => new { e.DeviceId, e.ProviderEventId })
-    .Where(g => g.Count() > 1)
-    .Select(g => new
-    {
-        DeviceId = g.Key.DeviceId,
-        ProviderEventId = g.Key.ProviderEventId,
-        Count = g.Count()
-    })
-    .ToListAsync();
+var duplicateEvents = await healthChecker.FindDuplicateEventsAsync(ct);
 
 if (duplicateEvents.Count > 0)
 {
     Console.WriteLine($"\n⚠️  FOUND {duplicateEvents.Count} duplicate event entries:");
     foreach (var dup in duplicateEvents.Take(10))
     {
-        Console.WriteLine($"  • Device: {dup.DeviceId.ToString().Substring(0, 8)}..., ProviderEventId: {dup.ProviderEventId}, Count: {dup.Count}");
+        Console.WriteLine($"  • Device: {dup.DeviceId?.ToString().Substring(0, 8)}..., ProviderEventId: {dup.ProviderKey}, Count: {dup.Count}");
     }
 }
 else
@@ -77,38 +59,29 @@ else
 Console.WriteLine("\n\nSECTION 2: REDUNDANT DETECTION DATA");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
-var mediaDetectionCount = await db.MediaItemDetections.CountAsync();
-var eventDetectionCount = await db.EventDetections.CountAsync();
+var detectionSummary = await healthChecker.GetDetectionRedundancySummaryAsync(ct);
 
-Console.WriteLine($"MediaItemDetection rows: {mediaDetectionCount:N0}");
-Console.WriteLine($"EventDetection rows:     {eventDetectionCount:N0}");
+Console.WriteLine($"MediaItemDetection rows: {detectionSummary.MediaItemDetectionCount:N0}");
+Console.WriteLine($"EventDetection rows:     {detectionSummary.EventDetectionCount:N0}");
 
-if (mediaDetectionCount > 0 && eventDetectionCount > 0)
+if (detectionSummary.AvgDetectionsPerMediaItem.HasValue)
 {
-    var avgMediaDetections = Math.Round((double)mediaDetectionCount / await db.MediaItems.CountAsync(), 2);
-    var avgEventDetections = Math.Round((double)eventDetectionCount / await db.Events.CountAsync(), 2);
-    Console.WriteLine($"\nAverage detections per MediaItem: {avgMediaDetections}");
-    Console.WriteLine($"Average detections per Event:     {avgEventDetections}");
+    Console.WriteLine($"\nAverage detections per MediaItem: {detectionSummary.AvgDetectionsPerMediaItem}");
+    Console.WriteLine($"Average detections per Event:     {detectionSummary.AvgDetectionsPerEvent}");
 }
 
 // SECTION 3: Device Health
 Console.WriteLine("\n\nSECTION 3: DEVICE HEALTH");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
-var deviceHealthCount = await db.DeviceHealths.CountAsync();
-Console.WriteLine($"DeviceHealth rows: {deviceHealthCount:N0}");
+var healthSummary = await healthChecker.GetDeviceHealthSummaryAsync(ct);
 
-var healthDates = await db.DeviceHealths
-    .GroupBy(h => h.CapturedAtUtc.Date)
-    .OrderByDescending(g => g.Key)
-    .Select(g => new { Date = g.Key, Count = g.Count() })
-    .Take(5)
-    .ToListAsync();
+Console.WriteLine($"DeviceHealth rows: {healthSummary.DeviceHealthRowCount:N0}");
 
-if (healthDates.Count > 0)
+if (healthSummary.RecentDates.Count > 0)
 {
     Console.WriteLine($"\n   Recent dates:");
-    foreach (var date in healthDates)
+    foreach (var date in healthSummary.RecentDates)
     {
         Console.WriteLine($"     • {date.Date}: {date.Count} records");
     }
@@ -118,47 +91,33 @@ if (healthDates.Count > 0)
 Console.WriteLine("\n\nSECTION 4: DEVICE FEATURES REDUNDANCY");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
-var deviceCapabilitiesCount = await db.DeviceCapabilities.CountAsync();
-var deviceFeaturesCount = await db.DeviceFeatures.CountAsync();
+var featureOverlap = await healthChecker.GetDeviceFeatureOverlapAsync(ct);
 
-Console.WriteLine($"DeviceCapabilities rows:  {deviceCapabilitiesCount:N0}");
-Console.WriteLine($"DeviceFeatures rows:      {deviceFeaturesCount:N0}");
+Console.WriteLine($"DeviceCapabilities rows:  {featureOverlap.DeviceCapabilitiesCount:N0}");
+Console.WriteLine($"DeviceFeatures rows:      {featureOverlap.DeviceFeaturesCount:N0}");
 
-var bothTables = await db.DeviceCapabilities
-    .Join(db.DeviceFeatures, dc => dc.DeviceId, df => df.DeviceId, (dc, df) => new { dc.DeviceId })
-    .Select(x => x.DeviceId)
-    .Distinct()
-    .CountAsync();
+Console.WriteLine($"\nDevices with both tables:     {featureOverlap.DevicesWithBoth}");
+Console.WriteLine($"Devices with Capabilities only: {featureOverlap.CapabilitiesOnlyCount}");
+Console.WriteLine($"Devices with Features only:     {featureOverlap.FeaturesOnlyCount}");
 
-var capOnly = await db.DeviceCapabilities
-    .Where(dc => !db.DeviceFeatures.Any(df => df.DeviceId == dc.DeviceId))
-    .CountAsync();
-
-var featuresOnly = await db.DeviceFeatures
-    .Where(df => !db.DeviceCapabilities.Any(dc => dc.DeviceId == df.DeviceId))
-    .CountAsync();
-
-Console.WriteLine($"\nDevices with both tables:     {bothTables}");
-Console.WriteLine($"Devices with Capabilities only: {capOnly}");
-Console.WriteLine($"Devices with Features only:     {featuresOnly}");
-
-if (bothTables > 0)
+if (featureOverlap.DevicesWithBoth > 0)
 {
-    Console.WriteLine($"\n⚠️  {bothTables} devices have BOTH DeviceCapabilities and DeviceFeatures!");
+    Console.WriteLine($"\n⚠️  {featureOverlap.DevicesWithBoth} devices have BOTH DeviceCapabilities and DeviceFeatures!");
 }
 
-// SECTION 5: Data Quality Metrics
+// SECTION 5: Data Quality Metrics (actually SECTION 6 in output)
 Console.WriteLine("\n\nSECTION 6: OVERALL TABLE SIZES");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
+var tableSizes = await healthChecker.GetTableSizesAsync(ct);
 var tableStats = new[]
 {
-    ("MediaItems", await db.MediaItems.CountAsync()),
-    ("Events", await db.Events.CountAsync()),
-    ("Devices", await db.Devices.CountAsync()),
-    ("Locations", await db.Locations.CountAsync()),
-    ("Detections (both)", mediaDetectionCount + eventDetectionCount),
-    ("DeviceHealth", deviceHealthCount),
+    ("MediaItems", tableSizes.FirstOrDefault(t => t.TableName == "MediaItems")?.RowCount ?? 0),
+    ("Events", tableSizes.FirstOrDefault(t => t.TableName == "Events")?.RowCount ?? 0),
+    ("Devices", tableSizes.FirstOrDefault(t => t.TableName == "Devices")?.RowCount ?? 0),
+    ("Locations", tableSizes.FirstOrDefault(t => t.TableName == "Locations")?.RowCount ?? 0),
+    ("Detections (both)", detectionSummary.MediaItemDetectionCount + detectionSummary.EventDetectionCount),
+    ("DeviceHealth", healthSummary.DeviceHealthRowCount),
 };
 
 foreach (var (name, count) in tableStats.OrderByDescending(x => x.Item2))
@@ -176,8 +135,8 @@ if (duplicateDevices.Count > 0)
     issues.Add($"❌ {duplicateDevices.Count} duplicate devices (fix with unique constraint)");
 if (duplicateEvents.Count > 0)
     issues.Add($"❌ {duplicateEvents.Count} duplicate events (fix with unique constraint)");
-if (bothTables > 0)
-    issues.Add($"⚠️  {bothTables} devices with both DeviceCapabilities AND DeviceFeatures (merge needed)");
+if (featureOverlap.DevicesWithBoth > 0)
+    issues.Add($"⚠️  {featureOverlap.DevicesWithBoth} devices with both DeviceCapabilities AND DeviceFeatures (merge needed)");
 
 if (issues.Count == 0)
 {
@@ -196,45 +155,24 @@ else
 Console.WriteLine("\n\nSECTION 7: ORPHANED RECORDS (Foreign Key Violations)");
 Console.WriteLine("─────────────────────────────────────────────────────────────────\n");
 
-var orphanedEvents = await db.Events
-    .Where(e => !db.Devices.Any(d => d.Id == e.DeviceId))
-    .CountAsync();
+var orphanedSummary = await healthChecker.FindOrphanedRecordsAsync(ct);
 
-var orphanedMediaItems = await db.MediaItems
-    .Where(m => !db.Devices.Any(d => d.Id == m.DeviceId))
-    .CountAsync();
+if (orphanedSummary.OrphanedEventCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedEventCount} orphaned Events (Device deleted?)");
+if (orphanedSummary.OrphanedMediaItemCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedMediaItemCount} orphaned MediaItems (Device deleted?)");
+if (orphanedSummary.OrphanedMediaItemDetectionCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedMediaItemDetectionCount} orphaned MediaItemDetections (MediaItem deleted?)");
+if (orphanedSummary.OrphanedEventDetectionCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedEventDetectionCount} orphaned EventDetections (Event deleted?)");
+if (orphanedSummary.OrphanedDeviceCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedDeviceCount} orphaned Devices (Location deleted?)");
+if (orphanedSummary.OrphanedDownloadEventCount > 0)
+    Console.WriteLine($"⚠️  {orphanedSummary.OrphanedDownloadEventCount} orphaned DownloadEvents (ProviderAccount deleted?)");
 
-var orphanedDetections = await db.MediaItemDetections
-    .Where(mid => !db.MediaItems.Any(m => m.Id == mid.MediaItemId))
-    .CountAsync();
-
-var orphanedEventDetections = await db.EventDetections
-    .Where(ed => !db.Events.Any(e => e.Id == ed.EventId))
-    .CountAsync();
-
-var orphanedDevices = await db.Devices
-    .Where(d => !db.Locations.Any(l => l.Id == d.LocationId))
-    .CountAsync();
-
-var orphanedDownloadEvents = await db.DownloadEvents
-    .Where(de => !db.Devices.Any(d => d.Id == de.DeviceId))
-    .CountAsync();
-
-if (orphanedEvents > 0)
-    Console.WriteLine($"⚠️  {orphanedEvents} orphaned Events (Device deleted?)");
-if (orphanedMediaItems > 0)
-    Console.WriteLine($"⚠️  {orphanedMediaItems} orphaned MediaItems (Device deleted?)");
-if (orphanedDetections > 0)
-    Console.WriteLine($"⚠️  {orphanedDetections} orphaned MediaItemDetections (MediaItem deleted?)");
-if (orphanedEventDetections > 0)
-    Console.WriteLine($"⚠️  {orphanedEventDetections} orphaned EventDetections (Event deleted?)");
-if (orphanedDevices > 0)
-    Console.WriteLine($"⚠️  {orphanedDevices} orphaned Devices (Location deleted?)");
-if (orphanedDownloadEvents > 0)
-    Console.WriteLine($"⚠️  {orphanedDownloadEvents} orphaned DownloadEvents (ProviderAccount deleted?)");
-
-if (orphanedEvents == 0 && orphanedMediaItems == 0 && orphanedDetections == 0 &&
-    orphanedEventDetections == 0 && orphanedDevices == 0 && orphanedDownloadEvents == 0)
+if (orphanedSummary.OrphanedEventCount == 0 && orphanedSummary.OrphanedMediaItemCount == 0 &&
+    orphanedSummary.OrphanedMediaItemDetectionCount == 0 && orphanedSummary.OrphanedEventDetectionCount == 0 &&
+    orphanedSummary.OrphanedDeviceCount == 0 && orphanedSummary.OrphanedDownloadEventCount == 0)
     Console.WriteLine("✅ No orphaned records found.");
 
 Console.WriteLine("\nNext steps:");
