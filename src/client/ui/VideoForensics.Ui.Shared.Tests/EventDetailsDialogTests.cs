@@ -7,7 +7,7 @@ using Xunit;
 using Syncfusion.Blazor;
 using VideoForensics.Ui.Shared.Components;
 
-public class EventDetailsDialog_Rendering_Tests : Bunit.TestContext
+public class EventDetailsDialog_Rendering_Tests : BunitContext
 {
     public EventDetailsDialog_Rendering_Tests()
     {

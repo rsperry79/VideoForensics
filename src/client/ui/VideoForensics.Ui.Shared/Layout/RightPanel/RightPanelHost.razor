@@ -1,8 +1,10 @@
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Components.Inspector
 @implements IDisposable
 @inject RightPanelContentService RightPanelContent
 
 <div class="right-panel">
+    <InspectorPanel />
     <AccountSwitcher />
 
     @if (RightPanelContent.Content is not null)

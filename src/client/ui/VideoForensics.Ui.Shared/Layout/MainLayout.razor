@@ -4,6 +4,7 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
@@ -16,6 +17,7 @@
 @inject IJSRuntime JS
 @inject INoticeRepository NoticeRepository
 @inject INoticeDismissalRepository NoticeDismissalRepository
+@inject InspectorState InspectorState
 
 <div class="app-layout">
     @if (ConnectivityState.IsUnreachable)

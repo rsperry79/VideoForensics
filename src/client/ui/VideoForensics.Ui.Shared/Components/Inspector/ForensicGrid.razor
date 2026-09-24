@@ -1,0 +1,114 @@
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
+@inject InspectorState InspectorState
+
+@typeparam TItem
+
+<SfGrid @ref="_grid"
+        TValue="TItem"
+        DataSource="@DataSource"
+        AllowPaging="true"
+        AllowSorting="true"
+        AllowFiltering="true"
+        AllowResizing="true"
+        AllowExcelExport="true"
+        ShowColumnChooser="true"
+        Toolbar="@ToolbarItems">
+    <GridPageSettings PageSize="@PageSize"></GridPageSettings>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+    <GridEvents TValue="TItem" RowSelected="@OnGridRowSelected" OnToolbarClick="@OnToolbarClick"></GridEvents>
+    <GridColumns>
+        @Columns
+    </GridColumns>
+</SfGrid>
+
+@code {
+    /// <summary>
+    /// The rendered grid instance, captured via <c>@ref</c> so <see cref="OnToolbarClick"/> can drive
+    /// its export APIs directly (e.g. <see cref="SfGrid{TValue}.ExportToCsvAsync(ExcelExportProperties)"/>).
+    /// </summary>
+    private SfGrid<TItem>? _grid;
+
+    [Parameter]
+    public IEnumerable<TItem>? DataSource { get; set; }
+
+    [Parameter]
+    public RenderFragment? Columns { get; set; }
+
+    [Parameter]
+    public Func<TItem, InspectorModel>? ToInspector { get; set; }
+
+    [Parameter]
+    public int PageSize { get; set; } = 20;
+
+    [Parameter]
+    public EventCallback<TItem> OnRowSelected { get; set; }
+
+    [Parameter]
+    public string? ExportFileName { get; set; }
+
+    private List<string> ToolbarItems => new()
+    {
+        "Search",
+        "ColumnChooser",
+        "CsvExport"
+    };
+
+    /// <summary>
+    /// Identify CSV export toolbar items by checking item ID.
+    /// Exposed as public static so tests can call it directly.
+    /// </summary>
+    public static bool IsCsvExportItem(string? itemId)
+    {
+        return itemId?.Contains("csvexport", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    /// <summary>
+    /// Builds the <see cref="ExcelExportProperties"/> used for CSV export, defaulting the
+    /// file name to "export.csv" when none is supplied.
+    /// Exposed as public static so tests can call it directly.
+    /// </summary>
+    public static ExcelExportProperties BuildCsvExportProperties(string? fileName)
+    {
+        return new ExcelExportProperties
+        {
+            FileName = string.IsNullOrWhiteSpace(fileName) ? "export.csv" : fileName
+        };
+    }
+
+    /// <summary>
+    /// Handle toolbar clicks. When the CSV export item is clicked, exports the grid's
+    /// current data to a CSV file via <see cref="SfGrid{TValue}.ExportToCsvAsync(ExcelExportProperties)"/>.
+    /// </summary>
+    private async Task OnToolbarClick(ClickEventArgs args)
+    {
+        if (args?.Item?.Id is string itemId && IsCsvExportItem(itemId) && _grid is not null)
+        {
+            await _grid.ExportToCsvAsync(BuildCsvExportProperties(ExportFileName));
+        }
+    }
+
+    /// <summary>
+    /// Handle row selection: map to inspector model if needed, then invoke the callback.
+    /// Exposed as public so tests can call it directly.
+    /// </summary>
+    public async Task HandleRowSelectedAsync(TItem item)
+    {
+        if (ToInspector is not null)
+        {
+            var model = ToInspector(item);
+            InspectorState.Show(model);
+        }
+
+        await OnRowSelected.InvokeAsync(item);
+    }
+
+    private async Task OnGridRowSelected(RowSelectEventArgs<TItem> args)
+    {
+        if (args.Data is not null)
+        {
+            await HandleRowSelectedAsync(args.Data);
+        }
+    }
+}

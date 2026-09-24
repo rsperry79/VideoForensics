@@ -272,6 +272,7 @@ builder.Services.AddScoped<WebPushClient>();
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
