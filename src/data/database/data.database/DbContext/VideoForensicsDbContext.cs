@@ -175,6 +175,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the banned IP ranges (Phase 0 security hardening).</summary>
         public DbSet<BannedIpRange> BannedIpRanges { get; set; }
 
+        /// <summary>Gets or sets the security events (Phase 0.5 login/breach tracking).</summary>
+        public DbSet<SecurityEvent> SecurityEvents { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

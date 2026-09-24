@@ -528,6 +528,7 @@ namespace VideoForensics.WebApp.Api
             IBannedIpMatchService bannedIpService,
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
             HttpContext context,
             CancellationToken ct)
         {
@@ -630,8 +631,17 @@ namespace VideoForensics.WebApp.Api
                 // Password verification failed. If operator exists, increment failed login attempts and check for lockout.
                 if (op != null)
                 {
+                    // Audit log for invalid password attempt
+                    await auditService.RecordLoginAttemptAsync(op.Id, sourceIpString, success: false, reason: "Invalid password", ct);
+
                     await operators.IncrementFailedLoginAttemptAsync(
                         op.Id, policy.MaxFailedAttempts, policy.LockoutDurationMinutes, ct);
+
+                    // Detect and audit account lockout if triggered
+                    if (op.LockedOutUntilUtc.HasValue && op.LockedOutUntilUtc.Value > DateTime.UtcNow)
+                    {
+                        await auditService.RecordAccountLockoutAsync(op.Id, sourceIpString, ct);
+                    }
                 }
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op?.Id, null,
@@ -650,6 +660,9 @@ namespace VideoForensics.WebApp.Api
 
             // Password verification succeeded - reset failed login attempts for this operator.
             await operators.ResetFailedLoginAttemptsAsync(op.Id, ct);
+
+            // Audit log for successful password verification
+            await auditService.RecordLoginAttemptAsync(op.Id, sourceIpString, success: true, reason: null, ct);
 
             // Check approval and active status
             if (!op.IsApproved)

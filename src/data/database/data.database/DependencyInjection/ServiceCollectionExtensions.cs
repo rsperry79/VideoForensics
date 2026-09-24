@@ -57,6 +57,9 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IOperatorNotificationPreferenceRepository, OperatorNotificationPreferenceRepository>();
             services.TryAddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
 
+            // Register security audit service (Phase 0.5)
+            services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
+
             // Register unit of work
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
 
