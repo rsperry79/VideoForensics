@@ -1,12 +1,13 @@
 using System.Net;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Moq;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.WebApp.Api;
+using VideoForensics.WebApp.Services;
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Api
@@ -181,19 +182,6 @@ namespace VideoForensics.WebApp.Tests.Api
             context.Connection.RemoteIpAddress = tier == NetworkTier.Local
                 ? IPAddress.Loopback
                 : IPAddress.Parse("192.168.1.1");
-            return context;
-        }
-
-        private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId)
-        {
-            var context = new DefaultHttpContext();
-            context.Connection.RemoteIpAddress = IPAddress.Loopback;
-            var claims = new[]
-            {
-                new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
-                new Claim(ClaimTypes.Role, OperatorRole.SuperAdmin.ToString())
-            };
-            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims));
             return context;
         }
 
