@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 name: "IX_SecurityEvents_OccurredAtUtc",
                 table: "SecurityEvents",
                 column: "OccurredAtUtc",
-                descending: true);
+                descending: new[] { true });
         }
 
         /// <inheritdoc />
