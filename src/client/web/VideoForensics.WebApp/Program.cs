@@ -7,6 +7,7 @@ using System.Threading.RateLimiting;
 
 using VideoForensics.Core.Logging.DependencyInjection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
@@ -144,7 +145,7 @@ builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>()
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
 // AddVideoForensicsServerCore() below), so a request over the Cloudflare Tunnel is bucketed by the
 // real client behind it, not Cloudflare's shared edge IP - the escalation-flagged mistake the plan
-// calls out explicitly. A separate, more generous policy covers /api/media/* so an already-paired
+// calls out explicitly. A separate, more generous policy covers /api/v1/media/* so an already-paired
 // device can't hammer it into a self-inflicted DoS.
 builder.Services.AddRateLimiter(options =>
 {
@@ -261,6 +262,7 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // to the pairing/auth API in Api/PairingEndpoints.cs.
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
+builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
