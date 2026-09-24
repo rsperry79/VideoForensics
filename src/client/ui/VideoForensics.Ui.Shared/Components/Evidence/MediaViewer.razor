@@ -1,0 +1,344 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Evidence
+@using Microsoft.AspNetCore.Components
+
+<div class="media-viewer" data-testid="media-viewer" tabindex="0" @onkeydown="HandleKeydown" @ref="_rootElement">
+    <!-- Header -->
+    <div class="viewer-header">
+        <span>@Item.Label · @Item.DeviceName · @Item.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</span>
+        <span class="viewer-hash" title="@Item.Media?.Sha256Hash">
+            @if (!string.IsNullOrEmpty(Item.Media?.Sha256Hash) && Item.Media.Sha256Hash.Length >= 12)
+            {
+                @Item.Media.Sha256Hash.Substring(0, 12)
+            }
+        </span>
+    </div>
+
+    <!-- Toolbar -->
+    @if (!string.IsNullOrEmpty(ContentUrl))
+    {
+        <div class="viewer-toolbar">
+            @if (MediaFormatHelper.IsImage(Item.Media?.MediaFormat))
+            {
+                <!-- Image toolbar -->
+                <button class="btn btn-sm btn-outline-light" data-testid="zoom-in" @onclick="ZoomIn">+</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="zoom-out" @onclick="ZoomOut">-</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="zoom-fit" @onclick="ZoomFit">Fit</button>
+            }
+            else if (MediaFormatHelper.IsVideo(Item.Media?.MediaFormat))
+            {
+                <!-- Video toolbar -->
+                <select class="form-select form-select-sm speed-select" data-testid="speed" @onchange="ChangePlaybackSpeed">
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                </select>
+                <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">◀ frame</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">frame ▶</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
+            }
+        </div>
+    }
+
+    <!-- Media area -->
+    <div class="viewer-media">
+        @if (string.IsNullOrEmpty(ContentUrl))
+        {
+            <div class="viewer-unavailable">
+                Media preview unavailable.
+            </div>
+        }
+        else if (MediaFormatHelper.IsImage(Item.Media?.MediaFormat))
+        {
+            <img src="@ContentUrl"
+                 class="@GetImageCssClass()"
+                 style="@_viewport.ToCssTransform()"
+                 @onwheel="HandleMouseWheel"
+                 @onmousedown="HandleMouseDown"
+                 @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp"
+                 @onmouseleave="HandleMouseUp" />
+        }
+        else if (MediaFormatHelper.IsVideo(Item.Media?.MediaFormat))
+        {
+            <video controls preload="metadata" @ref="_video" src="@ContentUrl"></video>
+        }
+    </div>
+
+    <!-- Footer -->
+    <div class="viewer-footer">
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-prev" disabled="@(!HasPrevious)" @onclick="OnPrevious">← Prev</button>
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-next" disabled="@(!HasNext)" @onclick="OnNext">Next →</button>
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-close" @onclick="OnClose">Close</button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public required EvidenceItem Item { get; set; }
+
+    [Parameter]
+    public string? ContentUrl { get; set; }
+
+    [Parameter]
+    public bool HasPrevious { get; set; }
+
+    [Parameter]
+    public bool HasNext { get; set; }
+
+    [Parameter]
+    public EventCallback OnPrevious { get; set; }
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private ElementReference _rootElement;
+    private ElementReference? _video;
+    private IJSObjectReference? _jsModule;
+    private ImageViewport _viewport = new();
+    private bool _isDragging = false;
+    private double _dragStartX = 0;
+    private double _dragStartY = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+
+            await FocusViewerAsync();
+        }
+    }
+
+    private async Task FocusViewerAsync()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("focusElement", _rootElement);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore JS disconnection
+            }
+        }
+    }
+
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        var oldItemKey = Item?.Key;
+
+        await base.SetParametersAsync(parameters);
+
+        // Reset viewport when item changes
+        if (Item?.Key != oldItemKey)
+        {
+            _viewport = new ImageViewport();
+        }
+    }
+
+    private async Task ZoomIn()
+    {
+        _viewport = _viewport.ZoomIn();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ZoomOut()
+    {
+        _viewport = _viewport.ZoomOut();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ZoomFit()
+    {
+        _viewport = _viewport.Fit();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ChangePlaybackSpeed(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out var rate) && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("setPlaybackRate", _video, rate);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore
+            }
+        }
+    }
+
+    private async Task FrameBack()
+    {
+        await StepFrame(-GetFrameStepSeconds());
+    }
+
+    private async Task FrameForward()
+    {
+        await StepFrame(GetFrameStepSeconds());
+    }
+
+    /// <summary>
+    /// Computes the number of seconds a single frame step represents.
+    /// Falls back to 30 fps when the media's frame rate is unknown, zero, or negative,
+    /// since dividing by zero or a negative rate would be nonsensical.
+    /// </summary>
+    private double GetFrameStepSeconds()
+    {
+        var frameRate = Item.Media?.FrameRate;
+        var effectiveFrameRate = frameRate is > 0 ? (double)frameRate.Value : 30d;
+        return 1.0 / effectiveFrameRate;
+    }
+
+    private async Task StepFrame(double seconds)
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("stepFrame", _video, seconds);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore
+            }
+        }
+    }
+
+    private async Task PlayToggle()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("togglePlay", _video);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore
+            }
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        var isVideo = MediaFormatHelper.IsVideo(Item.Media?.MediaFormat);
+        var action = MediaViewerKeys.Map(e.Key, isVideo);
+
+        switch (action)
+        {
+            case MediaViewerAction.Previous:
+                if (HasPrevious)
+                    await OnPrevious.InvokeAsync();
+                break;
+            case MediaViewerAction.Next:
+                if (HasNext)
+                    await OnNext.InvokeAsync();
+                break;
+            case MediaViewerAction.Close:
+                await OnClose.InvokeAsync();
+                break;
+            case MediaViewerAction.ZoomIn:
+                await ZoomIn();
+                break;
+            case MediaViewerAction.ZoomOut:
+                await ZoomOut();
+                break;
+            case MediaViewerAction.TogglePlay:
+                await PlayToggle();
+                break;
+            case MediaViewerAction.FrameBack:
+                await FrameBack();
+                break;
+            case MediaViewerAction.FrameForward:
+                await FrameForward();
+                break;
+        }
+    }
+
+    private async Task HandleMouseWheel(WheelEventArgs e)
+    {
+        if (!MediaFormatHelper.IsImage(Item.Media?.MediaFormat))
+            return;
+
+        if (e.DeltaY < 0)
+        {
+            await ZoomIn();
+        }
+        else if (e.DeltaY > 0)
+        {
+            await ZoomOut();
+        }
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (!MediaFormatHelper.IsImage(Item.Media?.MediaFormat) || _viewport.Scale <= 1)
+            return;
+
+        _isDragging = true;
+        _dragStartX = e.ClientX;
+        _dragStartY = e.ClientY;
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (!_isDragging)
+            return;
+
+        var deltaX = e.ClientX - _dragStartX;
+        var deltaY = e.ClientY - _dragStartY;
+        _viewport = _viewport.PanBy(deltaX, deltaY);
+        _dragStartX = e.ClientX;
+        _dragStartY = e.ClientY;
+    }
+
+    private void HandleMouseUp(MouseEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    /// <summary>
+    /// CSS classes for the image element: "zoomed" when scale > 1 (pan is available),
+    /// and "dragging" while a pan gesture is in progress, to drive grab/grabbing cursors.
+    /// </summary>
+    private string GetImageCssClass()
+    {
+        var classes = new List<string>();
+        if (_viewport.Scale > 1)
+        {
+            classes.Add("zoomed");
+        }
+        if (_isDragging)
+        {
+            classes.Add("dragging");
+        }
+        return string.Join(' ', classes);
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (_jsModule is not null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore
+            }
+        }
+    }
+}
