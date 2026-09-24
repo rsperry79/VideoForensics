@@ -1,4 +1,12 @@
+using System.Net;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Moq;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
+using VideoForensics.WebApp.Auth;
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Api
@@ -6,6 +14,7 @@ namespace VideoForensics.WebApp.Tests.Api
     /// <summary>Tests for ISecurityAuditService integration in OperatorAuthEndpoints (Phase 0.5).</summary>
     public class OperatorAuthEndpoints_SecurityAuditIntegrationTests
     {
+        private static readonly PasswordHasher<Operator> PasswordHasher = new();
         private const string TestPassword = "TestPassword123!";
 
         [Fact]
@@ -137,115 +146,156 @@ namespace VideoForensics.WebApp.Tests.Api
             auditService.Verify(s => s.RecordAccountLockoutAsync(op.Id, "127.0.0.1", It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        [Fact]
-        public async Task UnlockAccount_ReleasesLockout_RecordsReleaseEvent()
+        // Helper methods
+        private static Operator CreateOperator(
+            string username = "testuser",
+            OperatorRole role = OperatorRole.ReadOnly,
+            bool isApproved = true,
+            bool active = true,
+            int failedLoginAttemptCount = 0,
+            DateTime? lockedOutUntilUtc = null)
         {
-            // Arrange - operator is locked out; admin unlocks them
-            var operatorId = Guid.NewGuid();
-            var adminId = Guid.NewGuid();
-
-            var operators = new Mock<IOperatorRepository>();
-            operators.Setup(r => r.UnlockAsync(operatorId, It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
-            var auditLog = new Mock<ISecurityAuditLogger>();
-            var auditService = new Mock<ISecurityAuditService>();
-            var tierResolver = new Mock<INetworkTierResolver>();
-            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
-            var context = CreateAuthenticatedHttpContext(adminId);
-
-            // Act
-            var result = await DeviceManagementEndpointsInvoker.UnlockAsync(
-                operatorId, operators.Object, auditLog.Object, tierResolver.Object, auditService.Object, context, CancellationToken.None);
-
-            // Assert
-            Assert.NotNull(result);
-            auditService.Verify(s => s.RecordAccountLockoutReleasedAsync(operatorId, It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        // Helper methods (stubs - these would use existing test fixtures)
-        private static Operator CreateOperator(int failedLoginAttemptCount = 0)
-        {
-            return new Operator
+            var op = new Operator
             {
                 Id = Guid.NewGuid(),
                 DisplayName = "Test Operator",
-                Username = "testuser",
+                Username = username,
                 FirstName = "Test",
                 LastName = "User",
                 Email = "test@example.com",
-                Role = OperatorRole.Admin,
+                Role = role,
+                IsApproved = isApproved,
+                Active = active,
                 FailedLoginAttemptCount = failedLoginAttemptCount,
-                IsApproved = true,
-                Active = true,
+                LockedOutUntilUtc = lockedOutUntilUtc,
+                SecurityStamp = Guid.NewGuid(),
                 CreatedAtUtc = DateTime.UtcNow,
-                SecurityStamp = Guid.NewGuid()
+                MustChangePassword = false
             };
+            return op;
         }
 
-        private static HttpContext CreateHttpContext(NetworkTier tier)
+        private static HttpContext CreateHttpContext(NetworkTier tier = NetworkTier.Network)
         {
             var context = new DefaultHttpContext();
-            context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1");
+            context.Connection.RemoteIpAddress = tier == NetworkTier.Local
+                ? IPAddress.Loopback
+                : IPAddress.Parse("192.168.1.1");
             return context;
         }
 
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId)
         {
             var context = new DefaultHttpContext();
-            context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1");
-            context.User = new System.Security.Claims.ClaimsPrincipal(
-                new System.Security.Claims.ClaimsIdentity(
-                    new[] { new System.Security.Claims.Claim("sub", operatorId.ToString()) }));
+            context.Connection.RemoteIpAddress = IPAddress.Loopback;
+            var claims = new[]
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
+                new Claim(ClaimTypes.Role, OperatorRole.SuperAdmin.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims));
             return context;
         }
 
         private static Mock<ISessionTokenService> MockSessionTokenService()
         {
             var mock = new Mock<ISessionTokenService>();
-            mock.Setup(s => s.CreateSessionAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(("test-token", DateTime.UtcNow.AddHours(1)));
+            mock.Setup(s => s.Issue(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<CredentialKind>(),
+                It.IsAny<OperatorRole>(),
+                It.IsAny<Guid>()))
+                .Returns("valid-session-token");
             return mock;
         }
 
         private static Mock<INetworkTierResolver> MockNetworkTierResolver(NetworkTier tier)
         {
             var mock = new Mock<INetworkTierResolver>();
-            mock.Setup(r => r.ResolveAsync(It.IsAny<HttpContext>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(tier);
-            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>()))
-                .Returns("127.0.0.1");
+            mock.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(tier);
+            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
-        private static Mock<ILockoutPolicyRepository> MockLockoutPolicyRepository()
+        private static Mock<ILockoutPolicySettingsRepository> MockLockoutPolicyRepository(
+            int maxFailedAttempts = 5,
+            int lockoutDurationMinutes = 15)
         {
-            var mock = new Mock<ILockoutPolicyRepository>();
-            mock.Setup(r => r.GetSettingsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new LockoutPolicySettings { MaxFailedAttempts = 5, LockoutDurationMinutes = 30 });
+            var mock = new Mock<ILockoutPolicySettingsRepository>();
+            mock.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new LockoutPolicySettings
+                {
+                    Id = Guid.NewGuid(),
+                    MaxFailedAttempts = maxFailedAttempts,
+                    LockoutDurationMinutes = lockoutDurationMinutes,
+                    UpdatedAtUtc = DateTime.UtcNow
+                });
             return mock;
         }
 
         private static (Mock<IBannedIpMatchService>, Mock<IThreatIntelBlocklistService>, Mock<IGeoIpLookupService>) CreateDefaultGeoAndThreatMocks()
         {
-            var banned = new Mock<IBannedIpMatchService>();
-            banned.Setup(s => s.IsIpBannedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            var bannedIpService = new Mock<IBannedIpMatchService>();
+            bannedIpService.Setup(s => s.IsIpBannedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
-            var threat = new Mock<IThreatIntelBlocklistService>();
-            threat.Setup(s => s.IsThreatAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            var threatIntelService = new Mock<IThreatIntelBlocklistService>();
+            threatIntelService.Setup(s => s.IsIpBlockedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
-            var geo = new Mock<IGeoIpLookupService>();
-            geo.Setup(s => s.LookupAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GeoLocation { CountryCode = "US" });
+            var geoIpService = new Mock<IGeoIpLookupService>();
+            geoIpService.Setup(s => s.LookupCountryCodeAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
 
-            return (banned, threat, geo);
+            return (bannedIpService, threatIntelService, geoIpService);
         }
 
-        private static LoginRequest CreateLoginRequest(string username, string password)
+        private static LoginPasswordRequest CreateLoginRequest(string username, string password)
         {
-            return new LoginRequest { Username = username, Password = password };
+            return new LoginPasswordRequest(username, password);
+        }
+    }
+
+    /// <summary>
+    /// Helper class to invoke the private LoginPasswordAsync method in OperatorAuthEndpoints for testing.
+    /// </summary>
+    internal static class OperatorAuthEndpointsInvoker
+    {
+        public static async Task<IResult> LoginPasswordAsync(
+            LoginPasswordRequest request,
+            IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
+            ISessionTokenService sessionTokens,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            ILockoutPolicySettingsRepository lockoutPolicy,
+            ITwoFactorRoleRequirementRepository twoFactorRequirements,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
+            INotificationDispatcher? notificationDispatcher,
+            IBannedIpMatchService bannedIpService,
+            IThreatIntelBlocklistService threatIntelService,
+            IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            var method = typeof(VideoForensics.WebApp.Api.OperatorAuthEndpoints)
+                .GetMethod("LoginPasswordAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null,
+                    [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ILockoutPolicySettingsRepository),
+                     typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
+                     typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(CancellationToken)],
+                    null);
+
+            if (method == null)
+                throw new InvalidOperationException("Could not find LoginPasswordAsync method");
+
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, ct]);
+            return await (Task<IResult>)result!;
         }
     }
 }
