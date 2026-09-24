@@ -345,6 +345,7 @@ app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
 app.MapOperatorAuthEndpoints();
+app.MapSecurityEventsEndpoints();
 app.MapSetupEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceCodePairingEndpoints();
