@@ -51,7 +51,7 @@ Workflow page is removed — the nav order is the workflow.
 - ✅ Inspector panel (Fields / Raw / Related / Provenance) in the right panel; clears on navigation.
 - ✅ `ForensicGrid<TItem>` — standard grid (paging, sort, checkbox filter, column chooser, search,
   CSV export); row select opens the inspector.
-- 🔄 `ScopeState` + left `ScopeRail` (devices, date range, search), synced to the URL query string.
+- ✅ `ScopeState` + left `ScopeRail` (devices, date range, search, quick ranges), synced to the URL query string.
 - ⏳ Migrate Events and Query API pages onto ScopeRail + ForensicGrid + inspector.
 
 ### Phase 3 — Evidence Timeline / Gallery / media viewer ⏳

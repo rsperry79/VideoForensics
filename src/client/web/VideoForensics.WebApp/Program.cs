@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Syncfusion.Blazor;
 
@@ -273,6 +274,8 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();

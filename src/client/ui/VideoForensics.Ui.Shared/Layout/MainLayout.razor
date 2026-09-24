@@ -5,7 +5,9 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Services.Scope
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
 @inject IAppLockPreferencesStore AppLockPreferences
@@ -111,11 +113,20 @@
         <SfSplitter @ref="_outerSplitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">
             <SplitterPanes>
                 <SplitterPane Size="@($"{_leftNavWidth}px")" Min="48px" Max="400px" Resizable="false" CssClass="splitter-left-nav">
-                    <div class="left-nav-items">
-                        @foreach (var item in ActiveGroupItems)
+                    <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+                        <div class="left-nav-items">
+                            @foreach (var item in ActiveGroupItems)
+                            {
+                                <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
+                                          CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
+                            }
+                        </div>
+                        @if (SessionState.IsSignedIn)
                         {
-                            <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
-                                      CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
+                            <hr class="scope-divider" style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;" />
+                            <div style="flex: 1; overflow-y: auto;">
+                                <ScopeRail />
+                            </div>
                         }
                     </div>
                 </SplitterPane>
