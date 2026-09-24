@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -40,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
             await RecordEventAsync(operatorId, SecurityEventType.LockedOutReleased, null, true, null, ct);
         }
 
-        public async IAsyncEnumerable<SecurityEventDto> GetOperatorEventsAsync(Guid operatorId, int skip, int take, CancellationToken ct)
+        public async IAsyncEnumerable<SecurityEventDto> GetOperatorEventsAsync(Guid operatorId, int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var events = db.SecurityEvents
@@ -55,7 +57,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        public async IAsyncEnumerable<SecurityEventDto> GetAllEventsAsync(int skip, int take, CancellationToken ct)
+        public async IAsyncEnumerable<SecurityEventDto> GetAllEventsAsync(int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             var events = db.SecurityEvents

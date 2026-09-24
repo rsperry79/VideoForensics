@@ -20,9 +20,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(e => e.CreatedAtUtc).IsRequired();
 
             _ = builder.HasIndex(e => new { e.OperatorId, e.OccurredAtUtc })
-                .HasName("IX_SecurityEvents_OperatorId_OccurredAtUtc");
+                .HasDatabaseName("IX_SecurityEvents_OperatorId_OccurredAtUtc");
             _ = builder.HasIndex(e => e.OccurredAtUtc)
-                .HasName("IX_SecurityEvents_OccurredAtUtc");
+                .HasDatabaseName("IX_SecurityEvents_OccurredAtUtc");
         }
     }
 }
