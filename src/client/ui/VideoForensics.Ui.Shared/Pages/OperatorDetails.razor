@@ -79,6 +79,29 @@ else
                 }
             </div>
         </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["LockoutStatus"]</label>
+            <div>
+                @if (_operator.LockedOutUntilUtc.HasValue && _operator.LockedOutUntilUtc.Value > DateTime.UtcNow)
+                {
+                    <span style="color: var(--bs-danger);">@L["StatusLockedOut", _operator.LockedOutUntilUtc.Value.ToString("u")]</span>
+                }
+                else
+                {
+                    <span style="color: var(--bs-success);">@L["StatusNotLockedOut"]</span>
+                }
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">@L["TwoFactorOverride"]</label>
+            <div class="d-flex gap-2 align-items-center">
+                <SfDropDownList TValue="TwoFactorRequirementOverride" TItem="TwoFactorRequirementOverride" @bind-Value="_twoFactorOverrideInput" DataSource="@(Enum.GetValues<TwoFactorRequirementOverride>())" Enabled="@(!_isSavingTwoFactorOverride)" Style="max-width: 200px;">
+                    <DropDownListEvents TValue="TwoFactorRequirementOverride" TItem="TwoFactorRequirementOverride" ValueChange="@(async (ChangeEventArgs<TwoFactorRequirementOverride, TwoFactorRequirementOverride> args) => await SaveTwoFactorOverrideAsync(args.Value))" />
+                </SfDropDownList>
+            </div>
+        </div>
     </div>
 
     <div class="d-flex flex-row gap-2 mb-4">
@@ -90,6 +113,11 @@ else
         @if (_operator.Active)
         {
             <SfButton Content="@L["ResetPasswordButton"]" OnClick="ResetPasswordAsync" CssClass="e-flat" />
+        }
+
+        @if (_operator.LockedOutUntilUtc.HasValue && _operator.LockedOutUntilUtc.Value > DateTime.UtcNow && _operator.Active)
+        {
+            <SfButton Content="@(_isUnlocking ? L["UnlockingButton"] : L["UnlockButton"])" OnClick="UnlockAsync" Disabled="@_isUnlocking" CssClass="e-flat" />
         }
 
         @if (_operator.Active)
@@ -145,6 +173,13 @@ else
     private bool _showTempPasswordAlert;
     private string? _tempPassword;
 
+    // Two-factor override state
+    private TwoFactorRequirementOverride _twoFactorOverrideInput;
+    private bool _isSavingTwoFactorOverride;
+
+    // Unlock state
+    private bool _isUnlocking;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
@@ -184,6 +219,7 @@ else
             if (_operator is not null)
             {
                 _displayNameInput = _operator.DisplayName;
+                _twoFactorOverrideInput = _operator.TwoFactorRequirementOverride;
             }
         }
         catch (Exception ex)
@@ -345,6 +381,90 @@ else
         catch (Exception ex)
         {
             _actionError = L["ResetPasswordFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveTwoFactorOverrideAsync(TwoFactorRequirementOverride newOverride)
+    {
+        if (_operator is null)
+        {
+            return;
+        }
+
+        _isSavingTwoFactorOverride = true;
+        _actionError = null;
+
+        try
+        {
+            var client = CreateClient();
+            var payload = new { Override = newOverride };
+            var response = await client.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{_operator.Id}/override", payload);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["TwoFactorOverrideSaveFailed", response.StatusCode.ToString()];
+                // Revert UI
+                _twoFactorOverrideInput = _operator.TwoFactorRequirementOverride;
+                return;
+            }
+
+            _operator.TwoFactorRequirementOverride = newOverride;
+            _twoFactorOverrideInput = newOverride;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _actionError = L["NotAuthorizedToUpdate"];
+            // Revert UI
+            _twoFactorOverrideInput = _operator.TwoFactorRequirementOverride;
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["TwoFactorOverrideSaveFailed", ex.Message];
+            // Revert UI
+            _twoFactorOverrideInput = _operator.TwoFactorRequirementOverride;
+        }
+        finally
+        {
+            _isSavingTwoFactorOverride = false;
+        }
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (_operator is null || SessionState.SessionToken is null)
+        {
+            _actionError = L["SignInFirstError"];
+            return;
+        }
+
+        _isUnlocking = true;
+        _actionError = null;
+
+        try
+        {
+            // Unlock is high-risk (plan §5.7) - a fresh passkey assertion is required
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsync($"api/devices-management/operators/{_operator.Id}/unlock", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _actionError = body ?? L["UnlockFailed", response.StatusCode];
+                return;
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = L["UnlockFailed", ex.Message];
+        }
+        finally
+        {
+            _isUnlocking = false;
         }
     }
 

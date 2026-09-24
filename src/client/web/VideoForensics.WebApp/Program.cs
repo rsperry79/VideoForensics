@@ -11,6 +11,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
@@ -243,6 +244,17 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
 
+// Geo-IP and threat-intelligence blocking services for login pipeline
+// GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
+string geoLite2DbPath = Path.Combine(storageProvider.GetDefaultRoot(StorageCategory.Database), "GeoLite2-Country.mmdb");
+builder.Services.AddScoped<IGeoIpLookupService>(_ => new MaxMindGeoIpLookupService(geoLite2DbPath));
+
+// Threat intelligence blocklist service (null implementation for now; actual feed fetching is separate work)
+builder.Services.AddScoped<IThreatIntelBlocklistService, NullThreatIntelBlocklistService>();
+
+// Banned IP range matching service
+builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
+
 builder.Services.AddHealthChecks();
 
 // LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
@@ -341,6 +353,8 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLockoutPolicyEndpoints();
+app.MapTwoFactorPolicyEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();

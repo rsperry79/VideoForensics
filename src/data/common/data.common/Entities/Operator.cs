@@ -74,5 +74,44 @@ namespace VideoForensics.Data.Common.Entities
         /// One-shot flag set the first time a newly-approved self-service operator successfully logs in, so the approval-confirmation notice fires exactly once.
         /// </summary>
         public DateTime? ApprovalFirstLoginNotifiedAtUtc { get; set; }
+
+        /// <summary>
+        /// True only for the one permanent break-glass SuperAdmin account created at first-run setup; never reassignable afterward.
+        /// This operator cannot be downgraded or deleted, providing an irreversible recovery path even if all other operator accounts are compromised or misconfigured.
+        /// </summary>
+        public bool IsPrimarySuperAdmin { get; set; }
+
+        /// <summary>
+        /// Count of consecutive failed password or LDAP login attempts; incremented on failure, reset to 0 on success.
+        /// Drives account lockout when it crosses the threshold in LockoutPolicySettings.MaxFailedAttempts.
+        /// </summary>
+        public int FailedLoginAttemptCount { get; set; }
+
+        /// <summary>
+        /// Timestamp when account lockout expires, in UTC; null means not locked out.
+        /// Set when FailedLoginAttemptCount crosses the threshold; login is blocked until this time passes.
+        /// </summary>
+        public DateTime? LockedOutUntilUtc { get; set; }
+
+        /// <summary>
+        /// Operator-specific override for the two-factor authentication requirement: Inherit (follow role default), Required (force on), or NotRequired (force off).
+        /// Allows a SuperAdmin to force two-factor on/off for one person regardless of their role's default policy.
+        /// </summary>
+        public TwoFactorRequirementOverride TwoFactorRequirementOverride { get; set; }
+    }
+
+    /// <summary>
+    /// Operator-specific override for two-factor authentication requirement, allowing a SuperAdmin to force the policy on/off for one person.
+    /// </summary>
+    public enum TwoFactorRequirementOverride
+    {
+        /// <summary>Follow the operator's role's default two-factor policy.</summary>
+        Inherit = 0,
+
+        /// <summary>Force two-factor authentication on, regardless of role default.</summary>
+        Required = 1,
+
+        /// <summary>Force two-factor authentication off, regardless of role default.</summary>
+        NotRequired = 2
     }
 }

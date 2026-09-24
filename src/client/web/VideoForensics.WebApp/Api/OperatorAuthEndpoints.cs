@@ -3,6 +3,7 @@ using Fido2NetLib.Objects;
 
 using Microsoft.AspNetCore.Identity;
 
+using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Data.Common.Contracts;
@@ -10,6 +11,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Services;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -24,6 +26,32 @@ namespace VideoForensics.WebApp.Api
     /// </summary>
     public static class OperatorAuthEndpoints
     {
+        /// <summary>
+        /// Dummy operator used for consistent password verification timing (timing-attack mitigation).
+        /// Fields are minimal since we only use this for password hash verification, never for real operations.
+        /// </summary>
+        private static readonly Operator DummyOperator = new Operator
+        {
+            Id = Guid.Empty,
+            DisplayName = "Dummy",
+            Username = "dummy",
+            FirstName = "Dummy",
+            LastName = "User",
+            Email = "dummy@example.invalid",
+            Role = OperatorRole.ReadOnly,
+            CreatedAtUtc = DateTime.UtcNow,
+            SecurityStamp = Guid.Empty
+        };
+
+        /// <summary>
+        /// Dummy password hash used for username-enumeration timing-attack mitigation.
+        /// This is a known PBKDF2 hash of a random string, so password verification against it
+        /// takes the same CPU time as verification against a real operator's hash, preventing
+        /// attackers from discovering valid usernames by timing the login endpoint.
+        /// </summary>
+        private static readonly string DummyPasswordHash = new PasswordHasher<Operator>()
+            .HashPassword(DummyOperator, "DummyPasswordForTimingAttackMitigation123!");
+
         public static void MapOperatorAuthEndpoints(this WebApplication app)
         {
             // Username-first WebAuthn assertion (sign-in by username, then prove passkey)
@@ -53,7 +81,9 @@ namespace VideoForensics.WebApp.Api
 
             _ = app.MapPost("/api/v1/auth/login/password", LoginPasswordAsync)
                 .RequireRateLimiting("auth")
-                .WithSummary("Login with operator username and password");
+                .WithSummary("Login with operator username and password")
+                .Produces<dynamic>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status401Unauthorized);
 
             // Password management - AUTHENTICATED
             _ = app.MapPost("/api/v1/auth/change-password", ChangePasswordAsync)
@@ -109,6 +139,7 @@ namespace VideoForensics.WebApp.Api
             IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             IWebAuthnCeremonyCache ceremonyCache,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             INotificationDispatcher? notificationDispatcher,
@@ -175,6 +206,19 @@ namespace VideoForensics.WebApp.Api
 
             // Record successful auth
             await credentials.RecordSuccessfulAuthAsync(credential.Id, result.SignCount, ct);
+
+            // If a 2FA correlation ID is provided, validate it matches this operator
+            if (!string.IsNullOrEmpty(request.TwoFactorCorrelationId))
+            {
+                Guid? correlatedOperatorId = twoFactorPendingAuthCache.TryTake(request.TwoFactorCorrelationId);
+                if (correlatedOperatorId == null || correlatedOperatorId.Value != credential.OperatorId)
+                {
+                    // Invalid/expired correlation token or doesn't match this operator's password login
+                    await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, credential.OperatorId, null,
+                        tierResolver.ResolveClientIp(context), "Invalid two-factor correlation token", isUrgent: true, ct);
+                    return Results.Unauthorized();
+                }
+            }
 
             // First-login-after-credential-approval notification
             if (credential.FirstLoginNotifiedAtUtc == null)
@@ -473,47 +517,227 @@ namespace VideoForensics.WebApp.Api
         private static async Task<IResult> LoginPasswordAsync(
             LoginPasswordRequest request,
             IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
+            ILockoutPolicySettingsRepository lockoutPolicy,
+            ITwoFactorRoleRequirementRepository twoFactorRequirements,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
             INotificationDispatcher? notificationDispatcher,
+            IBannedIpMatchService bannedIpService,
+            IThreatIntelBlocklistService threatIntelService,
+            IGeoIpLookupService geoIpService,
             HttpContext context,
             CancellationToken ct)
         {
-            Operator? op = await operators.GetByUsernameAsync(request.Username, ct);
+            // Resolve the caller's source IP address early for all subsequent checks
+            string sourceIpString = tierResolver.ResolveClientIp(context);
+            IPAddress? sourceIp = null;
+            if (IPAddress.TryParse(sourceIpString, out var parsedIp))
+            {
+                sourceIp = parsedIp;
+            }
 
-            // Generic failure message (anti-enumeration)
-            if (op == null || op.PasswordHash == null)
+            // Check: if IP is in banned ranges, reject immediately.
+            // This is deterministic (admin-curated), so always block without fail-open/fail-closed logic.
+            if (sourceIp != null && await bannedIpService.IsIpBannedAsync(sourceIp, ct))
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
-                    tierResolver.ResolveClientIp(context), "Invalid username or password", isUrgent: true, ct);
+                    sourceIpString, "Invalid username or password", isUrgent: true, ct);
                 return Results.Unauthorized();
             }
 
+            // Check: if IP is blocked by threat intelligence, reject immediately.
+            if (sourceIp != null && await threatIntelService.IsIpBlockedAsync(sourceIp, ct))
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                    sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                return Results.Unauthorized();
+            }
+
+            // Look up operator by username (may be null)
+            Operator? op = await operators.GetByUsernameAsync(request.Username, ct);
+
+            // Check: if operator is primary SuperAdmin, they may only log in from Local tier.
+            // We do this check BEFORE password verification to avoid timing leaks on which accounts are primary.
+            // If the operator exists but is not local-tier, reject with generic error (don't reveal the reason).
+            if (op != null && op.IsPrimarySuperAdmin)
+            {
+                NetworkTier currentTier = tierResolver.ResolveTier(context);
+                if (currentTier != NetworkTier.Local)
+                {
+                    // Primary SuperAdmin attempting login from non-local tier - reject with generic failure.
+                    // Don't perform password verification (timing is less critical since we're rejecting anyway).
+                    await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                        sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                    return Results.Unauthorized();
+                }
+            }
+
+            // Check: if operator is locked out (LockedOutUntilUtc is in the future), reject immediately.
+            // This check happens BEFORE password verification to prevent timing leaks.
+            if (op != null && op.LockedOutUntilUtc.HasValue && op.LockedOutUntilUtc.Value > DateTime.UtcNow)
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
+                    sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                return Results.Unauthorized();
+            }
+
+            // Check: if BlockedCountryCodes is configured, check if this IP's country is blocked.
+            LockoutPolicySettings policy = await lockoutPolicy.GetAsync(ct);
+            if (!string.IsNullOrEmpty(policy.BlockedCountryCodes) && sourceIp != null)
+            {
+                string? countryCode = await geoIpService.LookupCountryCodeAsync(sourceIp, ct);
+                if (countryCode == null)
+                {
+                    // GeoIP lookup failed. Consult FailClosedOnLookupError to decide behavior.
+                    if (policy.FailClosedOnLookupError)
+                    {
+                        // Fail closed: treat as blocked
+                        await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                            sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                        return Results.Unauthorized();
+                    }
+                    // Otherwise, fail open: continue to password verification
+                }
+                else
+                {
+                    // Lookup succeeded - check if this country is in the blocked list
+                    var blockedCountries = policy.BlockedCountryCodes.Split(',').Select(c => c.Trim()).ToList();
+                    if (blockedCountries.Contains(countryCode, StringComparer.OrdinalIgnoreCase))
+                    {
+                        // Country is blocked
+                        await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                            sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                        return Results.Unauthorized();
+                    }
+                }
+            }
+
+            // Prepare password verification: if operator exists, use their hash; otherwise use dummy hash.
+            // This ensures consistent verification time regardless of whether the username exists,
+            // preventing username enumeration via timing attack.
             var passwordHasher = new PasswordHasher<Operator>();
-            PasswordVerificationResult verificationResult = passwordHasher.VerifyHashedPassword(op, op.PasswordHash, request.Password);
+            string hashToVerify = op?.PasswordHash ?? DummyPasswordHash;
+
+            // Use actual operator for verification if they exist, otherwise use the pre-built DummyOperator
+            Operator operatorForVerification = op ?? DummyOperator;
+            PasswordVerificationResult verificationResult = passwordHasher.VerifyHashedPassword(operatorForVerification, hashToVerify, request.Password);
 
             if (verificationResult == PasswordVerificationResult.Failed)
             {
-                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
-                    tierResolver.ResolveClientIp(context), "Invalid username or password", isUrgent: true, ct);
+                // Password verification failed. If operator exists, increment failed login attempts and check for lockout.
+                if (op != null)
+                {
+                    await operators.IncrementFailedLoginAttemptAsync(
+                        op.Id, policy.MaxFailedAttempts, policy.LockoutDurationMinutes, ct);
+                }
+
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op?.Id, null,
+                    sourceIpString, "Invalid username or password", isUrgent: true, ct);
                 return Results.Unauthorized();
             }
+
+            // If we get here, the password is correct. But if op is null, we shouldn't proceed.
+            if (op == null)
+            {
+                // This shouldn't happen (we verified against dummy hash and it passed, which is extremely unlikely).
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                    sourceIpString, "Invalid username or password", isUrgent: true, ct);
+                return Results.Unauthorized();
+            }
+
+            // Password verification succeeded - reset failed login attempts for this operator.
+            await operators.ResetFailedLoginAttemptsAsync(op.Id, ct);
 
             // Check approval and active status
             if (!op.IsApproved)
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
-                    tierResolver.ResolveClientIp(context), "Account pending admin approval", isUrgent: true, ct);
+                    sourceIpString, "Account pending admin approval", isUrgent: true, ct);
                 return Results.Json(new { error = "Your account is pending admin approval. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized);
             }
 
             if (!op.Active)
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
-                    tierResolver.ResolveClientIp(context), "Account deactivated", isUrgent: true, ct);
+                    sourceIpString, "Account deactivated", isUrgent: true, ct);
                 return Results.Json(new { error = "Your account has been deactivated. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized);
             }
+
+            // Check two-factor authentication requirement
+            bool requiresTwoFactor = await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, twoFactorRequirements, ct);
+
+            if (requiresTwoFactor)
+            {
+                // Operator requires 2FA - check if they have at least one approved passkey
+                IReadOnlyList<OperatorCredential> operatorCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
+                bool hasApprovedCredential = operatorCredentials.Any(c => c.IsApproved && !c.RevokedAtUtc.HasValue);
+
+                if (!hasApprovedCredential)
+                {
+                    // Bootstrap/grace path: operator with 2FA required but no passkey yet
+                    // Issue session token but set flag so UI forces passkey registration
+                    string token = sessionTokens.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp);
+
+                    await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
+                        sourceIpString, null, isUrgent: false, ct);
+
+                    // First-login-after-approval notification
+                    if (op.ApprovalFirstLoginNotifiedAtUtc == null)
+                    {
+                        try
+                        {
+                            if (notificationDispatcher != null)
+                            {
+                                await notificationDispatcher.DispatchAsync(new NotificationEvent(
+                                    EventType: "OperatorApprovalFirstLogin",
+                                    TimestampUtc: DateTime.UtcNow,
+                                    OperatorId: op.Id,
+                                    PairedDeviceId: null,
+                                    SourceIp: sourceIpString,
+                                    Details: $"Approved operator '{op.DisplayName}' successfully logged in for the first time",
+                                    Audience: NotificationAudience.AdminsOnly,
+                                    Severity: NoticeSeverity.Info), ct);
+                                await operators.SetApprovalFirstLoginNotifiedAsync(op.Id, ct);
+                            }
+                        }
+                        catch
+                        {
+                            // Non-critical - log but don't fail auth if notification dispatch fails
+                        }
+                    }
+
+                    return Results.Ok(new
+                    {
+                        sessionToken = token,
+                        operatorId = op.Id,
+                        role = op.Role.ToString(),
+                        mustChangePassword = op.MustChangePassword,
+                        requiresPasskeyRegistration = true
+                    });
+                }
+                else
+                {
+                    // Operator has approved credentials - require 2FA step-2 completion
+                    string correlationToken = twoFactorPendingAuthCache.Store(op.Id);
+                    await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
+                        sourceIpString, "Password verified, pending two-factor completion", isUrgent: false, ct);
+
+                    return Results.Ok(new
+                    {
+                        requiresTwoFactor = true,
+                        twoFactorCorrelationId = correlationToken
+                    });
+                }
+            }
+
+            // 2FA not required - proceed with normal login
+            string sessionToken = sessionTokens.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp);
+
+            await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
+                sourceIpString, null, isUrgent: false, ct);
 
             // First-login-after-approval notification
             if (op.ApprovalFirstLoginNotifiedAtUtc == null)
@@ -527,7 +751,7 @@ namespace VideoForensics.WebApp.Api
                             TimestampUtc: DateTime.UtcNow,
                             OperatorId: op.Id,
                             PairedDeviceId: null,
-                            SourceIp: tierResolver.ResolveClientIp(context),
+                            SourceIp: sourceIpString,
                             Details: $"Approved operator '{op.DisplayName}' successfully logged in for the first time",
                             Audience: NotificationAudience.AdminsOnly,
                             Severity: NoticeSeverity.Info), ct);
@@ -540,14 +764,9 @@ namespace VideoForensics.WebApp.Api
                 }
             }
 
-            string token = sessionTokens.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp);
-
-            await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
-                tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
-
             return Results.Ok(new
             {
-                sessionToken = token,
+                sessionToken = sessionToken,
                 operatorId = op.Id,
                 role = op.Role.ToString(),
                 mustChangePassword = op.MustChangePassword
@@ -675,7 +894,7 @@ namespace VideoForensics.WebApp.Api
 
     // Request/response DTOs
     public record UsernameAssertionOptionsRequest(string Username);
-    public record UsernameAssertionCompleteRequest(string Nonce, JsonElement AssertionResponse);
+    public record UsernameAssertionCompleteRequest(string Nonce, JsonElement AssertionResponse, string? TwoFactorCorrelationId = null);
     public record CredentialRegisterOptionsRequest(string Label);
     public record CredentialRegisterCompleteRequest(string Nonce, JsonElement AttestationResponse, string Label);
     public record RegisterRequest(string Username, string Password, string FirstName, string LastName, string Email, string? Phone = null, string? DisplayName = null);

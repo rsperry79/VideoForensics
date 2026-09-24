@@ -166,6 +166,15 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the push subscriptions (Web Push API credentials per browser/device).</summary>
         public DbSet<PushSubscription> PushSubscriptions { get; set; }
 
+        /// <summary>Gets or sets the lockout policy settings (Phase 0 security hardening).</summary>
+        public DbSet<LockoutPolicySettings> LockoutPolicySettings { get; set; }
+
+        /// <summary>Gets or sets the two-factor role requirements (Phase 0 security hardening).</summary>
+        public DbSet<TwoFactorRoleRequirement> TwoFactorRoleRequirements { get; set; }
+
+        /// <summary>Gets or sets the banned IP ranges (Phase 0 security hardening).</summary>
+        public DbSet<BannedIpRange> BannedIpRanges { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
