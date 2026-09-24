@@ -44,7 +44,7 @@ Workflow page is removed — the nav order is the workflow.
 - Events page and event dialog load media via ticketed URLs (previously a broken unversioned route).
 - New `VideoForensics.Ui.Shared.Tests` project (xUnit v3 + bUnit).
 
-### Phase 2 — Shared building blocks 🔄 In progress
+### Phase 2 — Shared building blocks ✅ Done
 
 - ✅ `DumpView` — LinqPad-style raw data viewer (tree, tabular arrays, embedded-JSON expansion,
   search with auto-expand, copy JSON).
@@ -52,9 +52,12 @@ Workflow page is removed — the nav order is the workflow.
 - ✅ `ForensicGrid<TItem>` — standard grid (paging, sort, checkbox filter, column chooser, search,
   CSV export); row select opens the inspector.
 - ✅ `ScopeState` + left `ScopeRail` (devices, date range, search, quick ranges), synced to the URL query string.
-- ⏳ Migrate Events and Query API pages onto ScopeRail + ForensicGrid + inspector.
+- ✅ Events migrated: reads the global scope (multi-device fan-out via `EventRowLoader`), ForensicGrid with
+  context menu, inspector shows event + media entities, raw provider JSON and provenance.
+- ✅ Query API migrated: ForensicGrid + inspector per result type, collapsible whole-response DumpView,
+  device-events window from the scope, row selection fills location/device ids, config shown via DumpView.
 
-### Phase 3 — Evidence Timeline / Gallery / media viewer ⏳
+### Phase 3 — Evidence Timeline / Gallery / media viewer 🔄 Next
 
 Timeline (grouped by day → device), Grid and Gallery views over the scope; full-pane media viewer
 (frame-step, speed, zoom/pan, prev/next, keyboard, grab still with hash) with inspector docked;
