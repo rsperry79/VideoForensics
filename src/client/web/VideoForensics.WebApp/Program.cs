@@ -79,6 +79,8 @@ builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enab
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddSyncfusionBlazor();
 
 // WebAuthn/passkey pairing (plan §5.1/M6). ServerDomain/Origins are dev defaults for the
