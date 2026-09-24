@@ -433,6 +433,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
+            _ = services.AddSingleton<IMediaAccessTicketService, MediaAccessTicketService>();
             _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
             _ = services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
             _ = services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
@@ -564,6 +565,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
