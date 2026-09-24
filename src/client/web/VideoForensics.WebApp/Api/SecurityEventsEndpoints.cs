@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api
@@ -28,7 +29,7 @@ namespace VideoForensics.WebApp.Api
             ISecurityAuditService auditService,
             INetworkTierResolver tierResolver,
             HttpContext context,
-            ILogger<SecurityEventsEndpoints> logger,
+            ILogger<Program> logger,
             CancellationToken ct)
         {
             // Extract caller's OperatorId from claims
