@@ -1,0 +1,138 @@
+@inherits LayoutComponentBase
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Resources
+@inject PairedSessionState SessionState
+@inject IAppLockPreferencesStore AppLockPreferences
+@inject NavigationManager Nav
+@inject ThemePreferenceService ThemeService
+@inject IStringLocalizer<SharedResources> L
+@inject IServerConnectivityState ConnectivityState
+@inject IJSRuntime JS
+@inject INoticeRepository NoticeRepository
+@inject INoticeDismissalRepository NoticeDismissalRepository
+
+<div class="mobile-app-layout">
+    @if (ConnectivityState.IsUnreachable)
+    {
+        <div class="alert alert-danger" role="alert" style="margin: 0; border-radius: 0; border: none; padding: 12px 16px;">
+            <strong>Server Not Reachable</strong> — Could not connect to the server. Please check your connection or pair a new device.
+        </div>
+    }
+
+    <div class="mobile-app-header">
+        <div class="mobile-app-bar">
+            <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="Toggle navigation" />
+
+            <div class="mobile-page-title">
+                @L[ActiveGroup.Text]
+            </div>
+
+            <div style="position: relative; margin-left: auto;">
+                <SfButton Content="🔔" CssClass="notices-button e-flat" OnClick="@ToggleNoticesAsync" title="Notices" />
+                @if (_undismissedCount > 0)
+                {
+                    <span class="notices-badge">@_undismissedCount</span>
+                }
+            </div>
+            <SfButton Content="⚙" CssClass="settings-button e-flat" OnClick="@ToggleSettingsSheetAsync" title="Toggle settings" />
+        </div>
+    </div>
+
+    @if (_noticesDropdownOpen)
+    {
+        <div class="mobile-notices-panel">
+            @if (_noticesList.Count > 0)
+            {
+                <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                    <SfButton Content="Clear all" OnClick="@DismissAllNoticesAsync" CssClass="e-outline e-small" />
+                </div>
+            }
+            <div style="max-height: 400px; overflow-y: auto;">
+                @if (_noticesList.Count == 0)
+                {
+                    <div style="padding: 16px; text-align: center; color: #666;">No notices</div>
+                }
+                else
+                {
+                    @foreach (var notice in _noticesList)
+                    {
+                        <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                    <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
+                                        @GetSeverityLabel(notice.Severity)
+                                    </span>
+                                    <strong style="font-size: 13px;">@notice.EventType</strong>
+                                </div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 4px;" title="@notice.Details">
+                                    @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
+                                </div>
+                                <div style="font-size: 11px; color: #999;">
+                                    @GetRelativeTime(notice.TimestampUtc)
+                                </div>
+                            </div>
+                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
+                        </div>
+                    }
+                }
+            </div>
+            <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
+                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">View All</a>
+            </div>
+        </div>
+    }
+
+    <div class="mobile-app-body">
+        @Body
+    </div>
+
+    @if (_navDrawerOpen)
+    {
+        <div class="nav-drawer-backdrop" @onclick="@(() => CloseNavDrawerAsync())"></div>
+        <div class="nav-drawer">
+            <div class="nav-drawer-header">
+                <div style="flex: 1; font-weight: 600; color: #333;">Navigation</div>
+                <SfButton Content="✕" CssClass="drawer-close-button e-flat" OnClick="@CloseNavDrawerAsync" title="Close navigation" />
+            </div>
+            <div class="nav-drawer-content">
+                @foreach (var group in VisibleGroups)
+                {
+                    <div class="nav-group-section">
+                        <div class="nav-group-header" @onclick="@(() => Nav.NavigateTo(group.Path))">
+                            @L[group.Text]
+                        </div>
+                        <div class="nav-group-items">
+                            @foreach (var item in group.Items)
+                            {
+                                if (item.IsVisible(BuildContext()))
+                                {
+                                    <SfButton Content="@L[item.Text]"
+                                              OnClick="@(async () => { await CloseNavDrawerAsync(); Nav.NavigateTo(item.Path); })"
+                                              CssClass="@("nav-drawer-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_settingsSheetOpen)
+    {
+        <div class="settings-sheet-backdrop" @onclick="@(() => CloseSettingsSheetAsync())"></div>
+        <div class="settings-sheet">
+            <div class="settings-sheet-header">
+                <div style="flex: 1; font-weight: 600; color: #333;">Settings</div>
+                <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="@CloseSettingsSheetAsync" title="Close settings" />
+            </div>
+            <div class="settings-sheet-content">
+                <RightPanelHost />
+            </div>
+        </div>
+    }
+</div>
