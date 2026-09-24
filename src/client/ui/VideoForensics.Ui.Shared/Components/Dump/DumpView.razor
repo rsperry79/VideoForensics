@@ -1,0 +1,142 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="dump-view">
+    @if (ShowSearch)
+    {
+        <div class="dump-search-bar">
+            <input type="text" class="form-control" placeholder="Search..." @bind="SearchTerm" @bind:event="oninput" />
+        </div>
+    }
+
+    @if (ShowCopy)
+    {
+        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="CopyToClipboard">
+            Copy JSON
+        </button>
+        @if (copyFailed)
+        {
+            <span class="text-danger ms-2" style="font-size: 0.875rem;">Copy failed</span>
+        }
+    }
+
+    @if (currentNode != null)
+    {
+        @if (currentNode.Kind == DumpNodeKind.Null ||
+             currentNode.Kind == DumpNodeKind.Number ||
+             currentNode.Kind == DumpNodeKind.String ||
+             currentNode.Kind == DumpNodeKind.Boolean)
+        {
+            <div class="@RootScalarCssClass">
+                @currentNode.Value
+            </div>
+        }
+        else
+        {
+            <DumpNodeView Node="currentNode" Depth="0" InitialExpandDepth="InitialExpandDepth" Search="@SearchTerm" ExpandState="expandState" />
+        }
+    }
+    else if (invalidJsonError != null)
+    {
+        <div class="alert alert-danger">
+            <strong>Invalid JSON:</strong> @invalidJsonError
+        </div>
+        <pre style="background-color: var(--bs-gray-100); padding: 10px; border-radius: 4px; max-height: 200px; overflow: auto;">@rawJsonInput</pre>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public object? Value { get; set; }
+
+    [Parameter]
+    public string? Json { get; set; }
+
+    [Parameter]
+    public int InitialExpandDepth { get; set; } = 2;
+
+    [Parameter]
+    public bool ShowSearch { get; set; } = true;
+
+    [Parameter]
+    public bool ShowCopy { get; set; } = true;
+
+    private DumpNode? currentNode;
+    private string? invalidJsonError;
+    private string? rawJsonInput;
+    private string? SearchTerm;
+    private bool copyFailed;
+    private readonly Dictionary<string, bool> expandState = new();
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            if (Json != null)
+            {
+                rawJsonInput = Json;
+                currentNode = DumpNodeBuilder.FromJson(Json);
+                invalidJsonError = null;
+            }
+            else if (Value != null)
+            {
+                currentNode = DumpNodeBuilder.FromObject(Value);
+                rawJsonInput = null;
+                invalidJsonError = null;
+            }
+            else
+            {
+                currentNode = null;
+                invalidJsonError = null;
+                rawJsonInput = null;
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            invalidJsonError = ex.Message;
+            currentNode = null;
+            rawJsonInput = Json;
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        copyFailed = false;
+        try
+        {
+            var jsonToCopy = Json ?? (currentNode != null ? SerializeNodeToJson(currentNode) : "");
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", jsonToCopy);
+        }
+        catch (JSException)
+        {
+            copyFailed = true;
+        }
+    }
+
+    private bool IsRootScalarMatch =>
+        !string.IsNullOrEmpty(SearchTerm) && currentNode != null && DumpNodeBuilder.Matches(currentNode, SearchTerm);
+
+    private string RootScalarCssClass =>
+        $"dump-scalar dump-{GetCssClass(currentNode!.Kind)}{(IsRootScalarMatch ? " dump-match" : "")}";
+
+    private string GetCssClass(DumpNodeKind kind) => kind switch
+    {
+        DumpNodeKind.String => "string",
+        DumpNodeKind.Number => "number",
+        DumpNodeKind.Boolean => "bool",
+        DumpNodeKind.Null => "null",
+        _ => ""
+    };
+
+    private string SerializeNodeToJson(DumpNode node)
+    {
+        // Simple JSON serialization for display purposes
+        return System.Text.Json.JsonSerializer.Serialize(node, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        // Cleanup if needed
+        await ValueTask.CompletedTask;
+    }
+}
