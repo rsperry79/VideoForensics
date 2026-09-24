@@ -224,7 +224,8 @@ _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRe
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
 
-// MCP Tool classes (Phases 1-4) - Milestone 8 HTTP hosting
+// MCP Tool classes (Phases 0.5-4) - Milestone 8 HTTP hosting
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.SecurityEventTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.IntegrityTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.CorrelationTools>();
