@@ -34,15 +34,13 @@ namespace VideoForensics.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
-            _ = group.MapGet("/media-items", async (Guid? deviceId, IMediaItemRepository mediaItems, CancellationToken ct) =>
-            {
-                IReadOnlyList<MediaItem> items = deviceId.HasValue
-                    ? await mediaItems.GetByDeviceIdAsync(deviceId.Value, ct)
-                    : await mediaItems.ListAsync(ct);
-                return Results.Ok(items.Select(x => x.ToDto()));
-            })
-            .RequireAuthorization()
-            .RequireRateLimiting("media");
+            _ = group.MapGet("/media-items", ListMediaItemsAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media-items/{id:guid}", GetMediaItemAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
 
             _ = group.MapGet("/integrity-records", async (string mediaItemIds, IIntegrityRecordRepository integrityRecords, CancellationToken ct) =>
             {
@@ -228,6 +226,67 @@ namespace VideoForensics.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Lists media items, optionally filtered by device ID and date range.
+        /// Semantics:
+        /// - deviceId + from + to → GetByDeviceAndDateRangeAsync
+        /// - deviceId only → GetByDeviceIdAsync
+        /// - no deviceId → ListAsync
+        /// - from/to given without deviceId → 400
+        /// - from > to → 400
+        /// </summary>
+        public static async Task<IResult> ListMediaItemsAsync(
+            Guid? deviceId,
+            DateTime? from,
+            DateTime? to,
+            IMediaItemRepository mediaItems,
+            CancellationToken ct)
+        {
+            // Validate: from/to require deviceId
+            if ((from.HasValue || to.HasValue) && !deviceId.HasValue)
+            {
+                return Results.BadRequest();
+            }
+
+            // Validate: from must be <= to
+            if (from.HasValue && to.HasValue && from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            IReadOnlyList<MediaItem> items = (deviceId, from, to) switch
+            {
+                // All three: date range query
+                (Guid id, DateTime fromUtc, DateTime toUtc) => await mediaItems.GetByDeviceAndDateRangeAsync(id, fromUtc, toUtc, ct),
+                // Device ID only
+                (Guid id, null, null) => await mediaItems.GetByDeviceIdAsync(id, ct),
+                // No filters: list all
+                (null, null, null) => await mediaItems.ListAsync(ct),
+                // Other combinations already caught by validation above
+                _ => await mediaItems.ListAsync(ct)
+            };
+
+            return Results.Ok(items.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Gets a single media item by ID.
+        /// Returns 404 if not found.
+        /// </summary>
+        public static async Task<IResult> GetMediaItemAsync(
+            Guid id,
+            IMediaItemRepository mediaItems,
+            CancellationToken ct)
+        {
+            MediaItem? item = await mediaItems.GetAsync(id, ct);
+            if (item == null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(item.ToDto());
         }
     }
 }

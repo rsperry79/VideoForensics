@@ -878,5 +878,206 @@ namespace VideoForensics.WebApp.Tests
         }
 
         #endregion
+
+        #region ListMediaItemsAsync Tests
+
+        [Fact]
+        public async Task ListMediaItemsAsync_DeviceIdAndDateRange_CallsRepositoryWithCorrectParameters()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            var items = new List<MediaItem>
+            {
+                new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    FileName = "test1.mp4",
+                    FilePath = "/path/test1.mp4",
+                    MediaFormat = "video/mp4",
+                    Sha256Hash = "hash1",
+                    RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                    DownloadedAtUtc = new DateTime(2024, 1, 15, 12, 5, 0, DateTimeKind.Utc)
+                }
+            };
+
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            mediaItemsRepo
+                .Setup(m => m.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(items);
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                deviceId, fromUtc, toUtc, mediaItemsRepo.Object, CancellationToken.None);
+
+            var okResult = Assert.IsType<Ok<IEnumerable<MediaItemDto>>>(result);
+            var dtos = okResult.Value?.ToList();
+            Assert.NotNull(dtos);
+            Assert.Single(dtos);
+            Assert.Equal(items[0].Id, dtos[0].Id);
+
+            mediaItemsRepo.Verify(
+                m => m.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ListMediaItemsAsync_DeviceIdOnly_CallsGetByDeviceIdAsync()
+        {
+            var deviceId = Guid.NewGuid();
+            var items = new List<MediaItem>
+            {
+                new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    FileName = "test.mp4",
+                    FilePath = "/path/test.mp4",
+                    MediaFormat = "video/mp4",
+                    Sha256Hash = "hash1",
+                    RecordedAtUtc = DateTime.UtcNow,
+                    DownloadedAtUtc = DateTime.UtcNow
+                }
+            };
+
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            mediaItemsRepo
+                .Setup(m => m.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(items);
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                deviceId, null, null, mediaItemsRepo.Object, CancellationToken.None);
+
+            var okResult = Assert.IsType<Ok<IEnumerable<MediaItemDto>>>(result);
+            Assert.NotNull(okResult.Value);
+
+            mediaItemsRepo.Verify(
+                m => m.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ListMediaItemsAsync_NoDeviceId_CallsListAsync()
+        {
+            var items = new List<MediaItem>
+            {
+                new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = Guid.NewGuid(),
+                    FileName = "test.mp4",
+                    FilePath = "/path/test.mp4",
+                    MediaFormat = "video/mp4",
+                    Sha256Hash = "hash1",
+                    RecordedAtUtc = DateTime.UtcNow,
+                    DownloadedAtUtc = DateTime.UtcNow
+                }
+            };
+
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            mediaItemsRepo
+                .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(items);
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                null, null, null, mediaItemsRepo.Object, CancellationToken.None);
+
+            var okResult = Assert.IsType<Ok<IEnumerable<MediaItemDto>>>(result);
+            Assert.NotNull(okResult.Value);
+
+            mediaItemsRepo.Verify(
+                m => m.ListAsync(It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ListMediaItemsAsync_FromWithoutDeviceId_ReturnsBadRequest()
+        {
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                null, fromUtc, null, mediaItemsRepo.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        [Fact]
+        public async Task ListMediaItemsAsync_ToWithoutDeviceId_ReturnsBadRequest()
+        {
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                null, null, toUtc, mediaItemsRepo.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        [Fact]
+        public async Task ListMediaItemsAsync_FromGreaterThanTo_ReturnsBadRequest()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+
+            IResult result = await MediaApiEndpoints.ListMediaItemsAsync(
+                deviceId, fromUtc, toUtc, mediaItemsRepo.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        #endregion
+
+        #region GetMediaItemAsync Tests
+
+        [Fact]
+        public async Task GetMediaItemAsync_MediaItemExists_ReturnsOkWithDto()
+        {
+            var mediaItemId = Guid.NewGuid();
+            var item = new MediaItem
+            {
+                Id = mediaItemId,
+                DeviceId = Guid.NewGuid(),
+                FileName = "test.mp4",
+                FilePath = "/path/test.mp4",
+                MediaFormat = "video/mp4",
+                Sha256Hash = "hash1",
+                RecordedAtUtc = DateTime.UtcNow,
+                DownloadedAtUtc = DateTime.UtcNow
+            };
+
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            mediaItemsRepo
+                .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(item);
+
+            IResult result = await MediaApiEndpoints.GetMediaItemAsync(
+                mediaItemId, mediaItemsRepo.Object, CancellationToken.None);
+
+            var okResult = Assert.IsType<Ok<MediaItemDto>>(result);
+            Assert.NotNull(okResult.Value);
+            Assert.Equal(mediaItemId, okResult.Value.Id);
+            Assert.Equal(item.FileName, okResult.Value.FileName);
+        }
+
+        [Fact]
+        public async Task GetMediaItemAsync_MediaItemNotFound_ReturnsNotFound()
+        {
+            var mediaItemId = Guid.NewGuid();
+            var mediaItemsRepo = new Mock<IMediaItemRepository>();
+            mediaItemsRepo
+                .Setup(m => m.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((MediaItem?)null);
+
+            IResult result = await MediaApiEndpoints.GetMediaItemAsync(
+                mediaItemId, mediaItemsRepo.Object, CancellationToken.None);
+
+            Assert.IsType<NotFound>(result);
+        }
+
+        #endregion
     }
 }

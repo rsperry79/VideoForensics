@@ -198,41 +198,6 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(cts.Token, capturedToken.Value);
         }
 
-        [Fact]
-        public async Task GetAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetAsync(Guid.NewGuid(), CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
-
-        [Fact]
-        public async Task GetByDeviceAndDateRangeAsync_Throws_NotSupportedException()
-        {
-            var handler = new FakeHttpMessageHandler(async _ =>
-            {
-                await Task.Yield();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            });
-
-            HttpClient httpClient = CreateHttpClientWithHandler(handler);
-            var repo = new RemoteMediaItemRepository(httpClient);
-
-            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
-                () => repo.GetByDeviceAndDateRangeAsync(Guid.NewGuid(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None));
-
-            Assert.Contains("Not supported on a remote", ex.Message);
-        }
 
         [Fact]
         public async Task GetByHashAsync_Throws_NotSupportedException()
@@ -466,6 +431,238 @@ namespace VideoForensics.Hosting.Tests
             Assert.Null(mediaItem.AudioCodec);
             Assert.Equal(mediaItemDto.Resolution, mediaItem.Resolution);
             Assert.Null(mediaItem.FrameRate);
+        }
+
+        [Fact]
+        public async Task GetByDeviceAndDateRangeAsync_CallsCorrectEndpointWithEscapedQuery_AndReturnsItems()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            MediaItemDto media1 = CreateMediaItemDto(deviceId: deviceId);
+            MediaItemDto media2 = CreateMediaItemDto(deviceId: deviceId);
+            var dtoList = new List<MediaItemDto> { media1, media2 };
+            string json = JsonSerializer.Serialize(dtoList, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            IReadOnlyList<MediaItem> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+
+            Assert.NotNull(handler.CapturedRequest);
+            Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
+            string? uri = handler.CapturedRequest.RequestUri?.PathAndQuery;
+            Assert.NotNull(uri);
+
+            // Check that the URI contains the escaped ISO values
+            string expectedFromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));
+            string expectedToEscaped = Uri.EscapeDataString(toUtc.ToString("O"));
+            string expectedQuery = $"/api/v1/media-items?deviceId={deviceId}&from={expectedFromEscaped}&to={expectedToEscaped}";
+            Assert.Equal(expectedQuery, uri);
+
+            Assert.Equal(2, result.Count);
+            Assert.Equal(media1.Id, result[0].Id);
+            Assert.Equal(media2.Id, result[1].Id);
+        }
+
+        [Fact]
+        public async Task GetByDeviceAndDateRangeAsync_WithCancellationToken_PassesToHttpClient()
+        {
+            var cts = new CancellationTokenSource();
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+            string json = JsonSerializer.Serialize(new List<MediaItemDto>(), JsonOptions);
+            CancellationToken? capturedToken = null;
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                capturedToken = cts.Token;
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            IReadOnlyList<MediaItem> result = await repo.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cts.Token);
+
+            _ = Assert.NotNull(capturedToken);
+            Assert.Equal(cts.Token, capturedToken.Value);
+        }
+
+        [Fact]
+        public async Task GetAsync_MediaItemExists_ReturnsItem()
+        {
+            var mediaItemId = Guid.NewGuid();
+            var dto = CreateMediaItemDto(mediaItemId);
+            string json = JsonSerializer.Serialize(dto, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal(mediaItemId, result.Id);
+            Assert.NotNull(handler.CapturedRequest);
+            Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
+            Assert.Equal($"/api/v1/media-items/{mediaItemId}", handler.CapturedRequest.RequestUri?.PathAndQuery);
+        }
+
+        [Fact]
+        public async Task GetAsync_MediaItemNotFound_ReturnsNull()
+        {
+            var mediaItemId = Guid.NewGuid();
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetAsync_ServerError_Throws()
+        {
+            var mediaItemId = Guid.NewGuid();
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => repo.GetAsync(mediaItemId, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetAsync_WithCancellationToken_PassesToHttpClient()
+        {
+            var cts = new CancellationTokenSource();
+            var mediaItemId = Guid.NewGuid();
+            var dto = CreateMediaItemDto(mediaItemId);
+            string json = JsonSerializer.Serialize(dto, JsonOptions);
+            CancellationToken? capturedToken = null;
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                capturedToken = cts.Token;
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            MediaItem? result = await repo.GetAsync(mediaItemId, cts.Token);
+
+            _ = Assert.NotNull(capturedToken);
+            Assert.Equal(cts.Token, capturedToken.Value);
+        }
+
+        [Fact]
+        public async Task GetAsync_DtoMappingCorrect_PropertiesMatchDomain()
+        {
+            var mediaItemId = Guid.NewGuid();
+            var mediaItemDto = new MediaItemDto(
+                Id: mediaItemId,
+                DeviceId: Guid.NewGuid(),
+                DownloadEventId: Guid.NewGuid(),
+                FileName: "2024-01-15_153000.mp4",
+                FilePath: "/archive/2024/01/15/153000.mp4",
+                MediaFormat: "mp4",
+                FileSizeBytes: 1024 * 1024 * 75,
+                RecordedAtUtc: new DateTime(2024, 1, 15, 15, 30, 0, DateTimeKind.Utc),
+                DownloadedAtUtc: new DateTime(2024, 1, 15, 15, 35, 0, DateTimeKind.Utc),
+                Sha256Hash: "hash1234567890abcdef",
+                VideoCodec: "h265",
+                AudioCodec: "aac",
+                Resolution: "2560x1440",
+                FrameRate: 60.0m,
+                IntegrityVerified: true,
+                LastVerifiedAtUtc: new DateTime(2024, 1, 15, 16, 0, 0, DateTimeKind.Utc),
+                IsPurged: false,
+                PurgedAtUtc: null,
+                PurgeReason: null,
+                MetadataJson: "{\"codec\":\"h265\"}",
+                ApiSourceHash: "api-hash-456"
+            );
+
+            string json = JsonSerializer.Serialize(mediaItemDto, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async _ =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteMediaItemRepository(httpClient);
+
+            MediaItem? result = await repo.GetAsync(mediaItemId, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal(mediaItemDto.Id, result.Id);
+            Assert.Equal(mediaItemDto.DeviceId, result.DeviceId);
+            Assert.Equal(mediaItemDto.DownloadEventId, result.DownloadEventId);
+            Assert.Equal(mediaItemDto.FileName, result.FileName);
+            Assert.Equal(mediaItemDto.FilePath, result.FilePath);
+            Assert.Equal(mediaItemDto.MediaFormat, result.MediaFormat);
+            Assert.Equal(mediaItemDto.FileSizeBytes, result.FileSizeBytes);
+            Assert.Equal(mediaItemDto.RecordedAtUtc, result.RecordedAtUtc);
+            Assert.Equal(mediaItemDto.DownloadedAtUtc, result.DownloadedAtUtc);
+            Assert.Equal(mediaItemDto.Sha256Hash, result.Sha256Hash);
+            Assert.Equal(mediaItemDto.VideoCodec, result.VideoCodec);
+            Assert.Equal(mediaItemDto.AudioCodec, result.AudioCodec);
+            Assert.Equal(mediaItemDto.Resolution, result.Resolution);
+            Assert.Equal(mediaItemDto.FrameRate, result.FrameRate);
+            Assert.Equal(mediaItemDto.IntegrityVerified, result.IntegrityVerified);
+            Assert.Equal(mediaItemDto.LastVerifiedAtUtc, result.LastVerifiedAtUtc);
+            Assert.Equal(mediaItemDto.IsPurged, result.IsPurged);
+            Assert.Equal(mediaItemDto.PurgedAtUtc, result.PurgedAtUtc);
+            Assert.Equal(mediaItemDto.PurgeReason, result.PurgeReason);
+            Assert.Equal(mediaItemDto.MetadataJson, result.MetadataJson);
+            Assert.Equal(mediaItemDto.ApiSourceHash, result.ApiSourceHash);
         }
     }
 }
