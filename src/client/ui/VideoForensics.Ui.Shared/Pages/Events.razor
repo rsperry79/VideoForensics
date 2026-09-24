@@ -4,9 +4,11 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Client.Common
+@using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @inject IProviderAuthService AuthService
+@inject IMediaContentUrlProvider MediaUrlProvider
 @inject IDeviceRepository DeviceRepository
 @inject IEventRepository EventRepository
 @inject IReportGenerationService ReportGenerationService
@@ -36,6 +38,7 @@
             Resolution="@(_currentEventRow.MediaItem?.Resolution)"
             IntegrityStatusText="@_currentEventDetailsIntegrityStatus"
             LegalHoldStatusText="@_currentEventDetailsLegalHoldStatus"
+            ContentUrl="@_currentContentUrl"
             OnClosed="OnEventDetailsDialogClosed" />
     }
 </SfDialog>
@@ -101,13 +104,17 @@ else
                         <Template>
                             @{
                                 var row = (EventRow)context;
-                                @if (row.MediaItem is not null && IsImageFormat(row.MediaItem.MediaFormat))
+                                @if (row.MediaItem is not null && MediaFormatHelper.IsImage(row.MediaItem.MediaFormat) && _mediaUrls.TryGetValue(row.MediaItem.Id, out var url))
                                 {
-                                    <img src="@MediaContentUrl(row.MediaItem.Id)" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                                    <img src="@url" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
                                 }
-                                else if (row.MediaItem is not null && IsVideoFormat(row.MediaItem.MediaFormat))
+                                else if (row.MediaItem is not null && MediaFormatHelper.IsVideo(row.MediaItem.MediaFormat))
                                 {
                                     <i class="material-icons">videocam</i>
+                                }
+                                else if (row.MediaItem is not null && MediaFormatHelper.IsImage(row.MediaItem.MediaFormat))
+                                {
+                                    <i class="material-icons">image</i>
                                 }
                                 else
                                 {
@@ -194,6 +201,9 @@ else
     private EventRow? _currentEventRow;
     private string _currentEventDetailsIntegrityStatus = string.Empty;
     private string _currentEventDetailsLegalHoldStatus = string.Empty;
+    private string? _currentContentUrl;
+
+    private Dictionary<Guid, string> _mediaUrls = new();
 
     private List<object>? ContextMenuItems => new List<object>
     {
@@ -291,6 +301,25 @@ else
 
             _rows = rows;
             _filteredRows = rows;
+
+            // Load media content URLs for thumbnails
+            var mediaItemIdsForUrls = rows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
+            if (mediaItemIdsForUrls.Count > 0)
+            {
+                try
+                {
+                    _mediaUrls = (await MediaUrlProvider.GetContentUrlsAsync(mediaItemIdsForUrls, CancellationToken.None)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                }
+                catch (Exception ex)
+                {
+                    _error = L["FailedToLoadEvents", ex.Message];
+                    _mediaUrls = new Dictionary<Guid, string>();
+                }
+            }
+            else
+            {
+                _mediaUrls = new Dictionary<Guid, string>();
+            }
         }
         catch (Exception ex)
         {
@@ -401,19 +430,8 @@ else
         CancelPendingHoldAction();
     }
 
-    private static string MediaContentUrl(Guid mediaItemId) => $"/api/media/{mediaItemId}/content";
 
-    private static bool IsImageFormat(string format) =>
-        format.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("png", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("image", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsVideoFormat(string format) =>
-        format.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("video", StringComparison.OrdinalIgnoreCase);
-
-    private Task OpenDetailsDialogAsync(EventRow row)
+    private async Task OpenDetailsDialogAsync(EventRow row)
     {
         var (statusText, _) = row.MediaItem is null ? (L["NotAvailable"].Value, "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
         var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"].Value : L["NotAvailable"].Value;
@@ -421,9 +439,24 @@ else
         _currentEventRow = row;
         _currentEventDetailsIntegrityStatus = statusText;
         _currentEventDetailsLegalHoldStatus = holdText;
-        _eventDetailsDialogVisible = true;
 
-        return Task.CompletedTask;
+        // Fetch a fresh URL for the dialog (tickets expire after 10 minutes)
+        _currentContentUrl = null;
+        if (row.MediaItem?.Id is { } mediaItemId)
+        {
+            try
+            {
+                var urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { mediaItemId }, CancellationToken.None);
+                urls.TryGetValue(mediaItemId, out _currentContentUrl);
+            }
+            catch
+            {
+                // If URL fetch fails, dialog will show "Media preview unavailable"
+                _currentContentUrl = null;
+            }
+        }
+
+        _eventDetailsDialogVisible = true;
     }
 
     private Task OnEventDetailsDialogClosed()
