@@ -222,4 +222,28 @@ public class ForensicGrid_Tests : BunitContext
         Assert.True(callbackInvoked);
     }
 
+    [Fact]
+    public async Task ContextMenuItems_ParameterReachesComponent()
+    {
+        // Arrange
+        var state = new InspectorState();
+        var item = new TestItem { Id = 1, Name = "Test Item", CreatedAt = DateTime.UtcNow };
+        var contextMenuItems = new List<object>
+        {
+            new { Text = "Option 1", Id = "opt1" },
+            new { Text = "Option 2", Id = "opt2" }
+        };
+
+        Services.AddScoped(_ => state);
+
+        var component = Render<ForensicGrid<TestItem>>(
+            parameters => parameters
+                .Add(p => p.DataSource, new[] { item })
+                .Add(p => p.ContextMenuItems, contextMenuItems));
+
+        // Act & Assert
+        Assert.NotNull(component.Instance.ContextMenuItems);
+        Assert.Equal(2, component.Instance.ContextMenuItems.Count);
+    }
+
 }

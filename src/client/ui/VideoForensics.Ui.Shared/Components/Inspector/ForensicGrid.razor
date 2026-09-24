@@ -14,10 +14,11 @@
         AllowResizing="true"
         AllowExcelExport="true"
         ShowColumnChooser="true"
-        Toolbar="@ToolbarItems">
+        Toolbar="@ToolbarItems"
+        ContextMenuItems="@ContextMenuItems">
     <GridPageSettings PageSize="@PageSize"></GridPageSettings>
     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
-    <GridEvents TValue="TItem" RowSelected="@OnGridRowSelected" OnToolbarClick="@OnToolbarClick"></GridEvents>
+    <GridEvents TValue="TItem" RowSelected="@OnGridRowSelected" OnToolbarClick="@OnToolbarClick" ContextMenuItemClicked="@OnContextMenuItemClicked"></GridEvents>
     <GridColumns>
         @Columns
     </GridColumns>
@@ -47,6 +48,12 @@
 
     [Parameter]
     public string? ExportFileName { get; set; }
+
+    [Parameter]
+    public List<object>? ContextMenuItems { get; set; }
+
+    [Parameter]
+    public EventCallback<ContextMenuClickEventArgs<TItem>> ContextMenuItemClicked { get; set; }
 
     private List<string> ToolbarItems => new()
     {
@@ -110,5 +117,13 @@
         {
             await HandleRowSelectedAsync(args.Data);
         }
+    }
+
+    /// <summary>
+    /// Handle context menu item clicks and invoke the callback.
+    /// </summary>
+    private async Task OnContextMenuItemClicked(ContextMenuClickEventArgs<TItem> args)
+    {
+        await ContextMenuItemClicked.InvokeAsync(args);
     }
 }
