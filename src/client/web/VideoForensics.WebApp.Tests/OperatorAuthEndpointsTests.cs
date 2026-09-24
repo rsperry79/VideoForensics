@@ -137,6 +137,7 @@ namespace VideoForensics.WebApp.Tests
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
 
             var context = CreateHttpContext(NetworkTier.Network);
             var request = CreateLoginRequest(op.Username, TestPassword);
@@ -151,7 +152,7 @@ namespace VideoForensics.WebApp.Tests
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                context, CancellationToken.None);
+                auditService.Object, context, CancellationToken.None);
 
             Assert.NotNull(result);
             sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
@@ -186,6 +187,7 @@ namespace VideoForensics.WebApp.Tests
                 .ReturnsAsync(false);
 
             var geoIpService = new Mock<IGeoIpLookupService>();
+            var auditService = new Mock<ISecurityAuditService>();
 
             var credentials = new Mock<IOperatorCredentialRepository>();
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
@@ -200,7 +202,7 @@ namespace VideoForensics.WebApp.Tests
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                context, CancellationToken.None);
+                auditService.Object, context, CancellationToken.None);
 
             Assert.NotNull(result);
             sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
@@ -249,6 +251,7 @@ namespace VideoForensics.WebApp.Tests
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
 
             var context = CreateHttpContext(NetworkTier.Network);
             var request = CreateLoginRequest(op.Username, TestPassword);
@@ -258,7 +261,7 @@ namespace VideoForensics.WebApp.Tests
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                context, CancellationToken.None);
+                auditService.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -297,6 +300,7 @@ namespace VideoForensics.WebApp.Tests
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
 
             var context = CreateHttpContext(NetworkTier.Network);
             var request = CreateLoginRequest(op.Username, TestPassword);
@@ -306,7 +310,7 @@ namespace VideoForensics.WebApp.Tests
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                context, CancellationToken.None);
+                auditService.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -341,6 +345,7 @@ namespace VideoForensics.WebApp.Tests
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
 
             var context = CreateHttpContext(NetworkTier.Network);
             var request = CreateLoginRequest(op.Username, TestPassword);
@@ -350,7 +355,7 @@ namespace VideoForensics.WebApp.Tests
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                context, CancellationToken.None);
+                auditService.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -375,6 +380,7 @@ namespace VideoForensics.WebApp.Tests
             IBannedIpMatchService bannedIpService,
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
             HttpContext context,
             CancellationToken ct)
         {
@@ -386,7 +392,7 @@ namespace VideoForensics.WebApp.Tests
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(HttpContext), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 
             if (method == null)
@@ -394,7 +400,7 @@ namespace VideoForensics.WebApp.Tests
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
             }
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, context, ct]);
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, ct]);
             return await (Task<IResult>)result!;
         }
     }
