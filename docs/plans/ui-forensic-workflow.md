@@ -57,13 +57,21 @@ Workflow page is removed — the nav order is the workflow.
 - ✅ Query API migrated: ForensicGrid + inspector per result type, collapsible whole-response DumpView,
   device-events window from the scope, row selection fills location/device ids, config shown via DumpView.
 
-### Phase 3 — Evidence Timeline / Gallery / media viewer 🔄 Next
+### Phase 3 — Evidence Timeline / Gallery / media viewer ✅ Done
 
-Timeline (grouped by day → device), Grid and Gallery views over the scope; full-pane media viewer
-(frame-step, speed, zoom/pan, prev/next, keyboard, grab still with hash) with inspector docked;
-replaces Dashboard, Events and `EventDetailsDialog`.
+- ✅ `GET /api/v1/media-items` accepts `from`/`to`; `GET /api/v1/media-items/{id}`;
+  `RemoteMediaItemRepository` implements date-range and by-id reads for MAUI.
+- ✅ `EvidenceLoader` merges events with every stored media file in scope (no duplicates, purged
+  skipped, per-device failures isolated); `EvidenceTimeline` groups by day → device, prev/next.
+- ✅ `MediaViewer`: image zoom (1–8×, wheel, keys) and drag-pan; video speed, frame-stepping from
+  the media's frame rate, play/pause; keyboard navigation; header shows device, UTC time, SHA-256.
+- ✅ `/evidence` page (first nav item): Timeline / Grid / Gallery views over the scope, viewer with
+  inspector docked, fresh ticket per opened item with stale-response guard, `view=`/`item=`
+  deep links.
+- Deferred: "grab still with hash" (needs a server write path — revisit with Cases in phase 4);
+  Dashboard/Events/`EventDetailsDialog` removal moves to phase 6 with the nav restructure.
 
-### Phase 4 — Cases ⏳
+### Phase 4 — Cases 🔄 Next (new branch after the phase 1–3 PR)
 
 Entities + migration, `/api/v1/cases` (`ToDto()`/`ToDomain()`), `Remote*` client classes, Cases
 pages; scope rail becomes case-scoped ("Save to case"); "Add to case" from the inspector/viewer.
