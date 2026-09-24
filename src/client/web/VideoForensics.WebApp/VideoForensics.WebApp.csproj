@@ -31,6 +31,8 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.12" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+    <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
+    <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
   </ItemGroup>
 
   <ItemGroup>

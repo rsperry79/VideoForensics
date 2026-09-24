@@ -11,6 +11,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
@@ -77,6 +78,8 @@ builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enab
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSyncfusionBlazor();
 
@@ -223,7 +226,8 @@ _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRe
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
 
-// MCP Tool classes (Phases 1-4) - Milestone 8 HTTP hosting
+// MCP Tool classes (Phases 0.5-4) - Milestone 8 HTTP hosting
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.SecurityEventTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.IntegrityTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.CorrelationTools>();
@@ -242,6 +246,17 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
+
+// Geo-IP and threat-intelligence blocking services for login pipeline
+// GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
+string geoLite2DbPath = Path.Combine(storageProvider.GetDefaultRoot(StorageCategory.Database), "GeoLite2-Country.mmdb");
+builder.Services.AddScoped<IGeoIpLookupService>(_ => new MaxMindGeoIpLookupService(geoLite2DbPath));
+
+// Threat intelligence blocklist service (null implementation for now; actual feed fetching is separate work)
+builder.Services.AddScoped<IThreatIntelBlocklistService, NullThreatIntelBlocklistService>();
+
+// Banned IP range matching service
+builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
 
 builder.Services.AddHealthChecks();
 
@@ -332,6 +347,7 @@ app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
 app.MapOperatorAuthEndpoints();
+app.MapSecurityEventsEndpoints();
 app.MapSetupEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceCodePairingEndpoints();
@@ -341,6 +357,8 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLockoutPolicyEndpoints();
+app.MapTwoFactorPolicyEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();

@@ -139,6 +139,68 @@ namespace VideoForensics.Data.Database.Repositories
             _logger.LogInformation("Operator approval first login marked as notified: {OperatorId}", operatorId);
         }
 
+        public async Task IncrementFailedLoginAttemptAsync(Guid operatorId, int maxFailedAttempts, int lockoutDurationMinutes, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.FailedLoginAttemptCount++;
+            if (op.FailedLoginAttemptCount >= maxFailedAttempts)
+            {
+                op.LockedOutUntilUtc = DateTime.UtcNow.AddMinutes(lockoutDurationMinutes);
+                _logger.LogWarning("Operator account locked due to failed login attempts: {OperatorId}", operatorId);
+            }
+
+            _ = await db.SaveChangesAsync(ct);
+        }
+
+        public async Task ResetFailedLoginAttemptsAsync(Guid operatorId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.FailedLoginAttemptCount = 0;
+            op.LockedOutUntilUtc = null;
+            _ = await db.SaveChangesAsync(ct);
+        }
+
+        public async Task UnlockAsync(Guid operatorId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.FailedLoginAttemptCount = 0;
+            op.LockedOutUntilUtc = null;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator account manually unlocked: {OperatorId}", operatorId);
+        }
+
+        public async Task SetTwoFactorRequirementOverrideAsync(Guid operatorId, TwoFactorRequirementOverride value, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.TwoFactorRequirementOverride = value;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Operator two-factor requirement override updated: {OperatorId} - {Override}", operatorId, value);
+        }
+
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
         private static string SanitizeForLog(string value) =>
             value.Replace('\r', '_').Replace('\n', '_');
