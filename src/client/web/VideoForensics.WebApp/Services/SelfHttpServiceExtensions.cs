@@ -45,29 +45,38 @@ namespace VideoForensics.WebApp.Services
             Func<HttpClient, TService> factory)
             where TService : class
         {
-            return services.AddScoped(sp =>
+            return services.AddScoped(sp => factory(CreateSelfHttpClient(sp)));
+        }
+
+        /// <summary>
+        /// Builds the shared self-HTTP handler chain and <see cref="HttpClient"/> - the outermost
+        /// <see cref="SessionTierHeaderHandler"/> (real network tier), then <see cref="PairedDeviceAuthHandler"/>
+        /// (bearer token), then <paramref name="innermostHandler"/> - used by both
+        /// <see cref="AddSelfHttpService{TService}"/> and <see cref="WebAppSelfApiHttpClientFactory"/>
+        /// so the two never drift apart. <paramref name="innermostHandler"/> defaults to a real
+        /// <see cref="HttpClientHandler"/>; tests substitute a recording/fake handler to observe what
+        /// the chain sends without a live network call.
+        /// </summary>
+        public static HttpClient CreateSelfHttpClient(IServiceProvider sp, HttpMessageHandler? innermostHandler = null)
+        {
+            PairedSessionState sessionState = sp.GetRequiredService<PairedSessionState>();
+            NavigationManager navigationManager = sp.GetRequiredService<NavigationManager>();
+            SessionNetworkContext networkContext = sp.GetRequiredService<SessionNetworkContext>();
+            ISessionTokenService tokenService = sp.GetRequiredService<ISessionTokenService>();
+            ISessionTierHeaderProtector headerProtector = sp.GetRequiredService<ISessionTierHeaderProtector>();
+
+            var authHandler = new PairedDeviceAuthHandler(sessionState)
             {
-                PairedSessionState sessionState = sp.GetRequiredService<PairedSessionState>();
-                NavigationManager navigationManager = sp.GetRequiredService<NavigationManager>();
-                SessionNetworkContext networkContext = sp.GetRequiredService<SessionNetworkContext>();
-                ISessionTokenService tokenService = sp.GetRequiredService<ISessionTokenService>();
-                ISessionTierHeaderProtector headerProtector = sp.GetRequiredService<ISessionTierHeaderProtector>();
-
-                var authHandler = new PairedDeviceAuthHandler(sessionState)
-                {
-                    InnerHandler = new HttpClientHandler()
-                };
-                // Outermost: attaches the circuit's real network tier (see
-                // SessionTierHeaderHandler's doc comment for why this can't just be resolved from
-                // the self-call's own connection) before the auth handler attaches the bearer token.
-                var tierHandler = new SessionTierHeaderHandler(networkContext, sessionState, tokenService, headerProtector)
-                {
-                    InnerHandler = authHandler
-                };
-                var httpClient = new HttpClient(tierHandler) { BaseAddress = new Uri(navigationManager.BaseUri) };
-
-                return factory(httpClient);
-            });
+                InnerHandler = innermostHandler ?? new HttpClientHandler()
+            };
+            // Outermost: attaches the circuit's real network tier (see
+            // SessionTierHeaderHandler's doc comment for why this can't just be resolved from
+            // the self-call's own connection) before the auth handler attaches the bearer token.
+            var tierHandler = new SessionTierHeaderHandler(networkContext, sessionState, tokenService, headerProtector)
+            {
+                InnerHandler = authHandler
+            };
+            return new HttpClient(tierHandler) { BaseAddress = new Uri(navigationManager.BaseUri) };
         }
     }
 }

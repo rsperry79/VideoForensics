@@ -295,6 +295,12 @@ builder.Services.AddScoped<SessionNetworkContext>();
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
 
+// Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
+// build their own self-HTTP clients through this factory instead of a raw `new HttpClient { ... }` -
+// same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
+// DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
+
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
 
