@@ -1,0 +1,122 @@
+@using VideoForensics.Ui.Shared.Services.Evidence
+
+<div class="snapshot-strip" data-testid="snapshot-strip" tabindex="0" @onkeydown="HandleKeydownAsync">
+    <div class="snapshot-strip-thumbs">
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            var index = i;
+            var item = Items[index];
+            <div class="snapshot-strip-thumb @(index == SelectedIndex ? "selected" : "")"
+                 data-testid="snapshot-strip-thumb"
+                 data-key="@item.Key"
+                 @onclick="@(() => SelectAsync(index))">
+                @if (item.Media is not null && ThumbnailUrls.TryGetValue(item.Media.Id, out var url))
+                {
+                    <img src="@url" alt="@item.Label" />
+                }
+                else
+                {
+                    <div class="snapshot-strip-thumb-placeholder"></div>
+                }
+                <div class="snapshot-strip-thumb-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
+            </div>
+        }
+    </div>
+
+    @if (Items.Count > 0)
+    {
+        <input type="range" class="snapshot-strip-scrubber" data-testid="snapshot-strip-scrubber"
+               min="0" max="@(Items.Count - 1)" value="@SelectedIndex"
+               @oninput="OnScrubAsync" />
+    }
+
+    <svg class="snapshot-strip-rssi" data-testid="snapshot-strip-rssi" viewBox="0 0 @PlotWidth @PlotHeight" preserveAspectRatio="none">
+        @if (!string.IsNullOrEmpty(_polylinePoints))
+        {
+            <polyline points="@_polylinePoints" fill="none" stroke="currentColor" stroke-width="1.5" />
+        }
+        @if (SelectedIndex >= 0 && SelectedIndex < Items.Count)
+        {
+            var markerX = RssiPlot.MarkerX(Items[SelectedIndex].OccurredAtUtc, RangeStartUtc, RangeEndUtc, PlotWidth);
+            <line class="snapshot-strip-rssi-marker" data-testid="snapshot-strip-rssi-marker"
+                  x1="@markerX" y1="0" x2="@markerX" y2="@PlotHeight" />
+        }
+    </svg>
+</div>
+
+@code {
+    private const double PlotWidth = 600;
+    private const double PlotHeight = 60;
+
+    /// <summary>The device's evidence items in scope, time-ordered.</summary>
+    [Parameter]
+    public required IReadOnlyList<EvidenceItem> Items { get; set; }
+
+    /// <summary>Ticketed content URLs, keyed by media item ID, for the visible thumbnails.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> ThumbnailUrls { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>WiFi RSSI history for the same device, across the same window as <see cref="Items"/>.</summary>
+    [Parameter]
+    public IReadOnlyList<RssiSample> RssiSamples { get; set; } = Array.Empty<RssiSample>();
+
+    /// <summary>Start of the plotted time window, in UTC (usually the scope's From).</summary>
+    [Parameter]
+    public DateTime RangeStartUtc { get; set; }
+
+    /// <summary>End of the plotted time window, in UTC (usually the scope's To).</summary>
+    [Parameter]
+    public DateTime RangeEndUtc { get; set; }
+
+    /// <summary>The currently-scrubbed item index into <see cref="Items"/>.</summary>
+    [Parameter]
+    public int SelectedIndex { get; set; }
+
+    /// <summary>Raised whenever the selection moves (click, scrubber, or arrow keys).</summary>
+    [Parameter]
+    public EventCallback<int> SelectedIndexChanged { get; set; }
+
+    /// <summary>Raised with the newly-selected item, for opening it in the media viewer/inspector.</summary>
+    [Parameter]
+    public EventCallback<EvidenceItem> OnSelect { get; set; }
+
+    private string _polylinePoints = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _polylinePoints = RssiPlot.BuildPolylinePoints(RssiSamples, RangeStartUtc, RangeEndUtc, PlotWidth, PlotHeight);
+    }
+
+    private async Task SelectAsync(int index)
+    {
+        if (index < 0 || index >= Items.Count || index == SelectedIndex)
+        {
+            return;
+        }
+
+        SelectedIndex = index;
+        await SelectedIndexChanged.InvokeAsync(index);
+        await OnSelect.InvokeAsync(Items[index]);
+    }
+
+    private async Task OnScrubAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var index))
+        {
+            await SelectAsync(index);
+        }
+    }
+
+    private async Task HandleKeydownAsync(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+                await SelectAsync(SelectedIndex - 1);
+                break;
+            case "ArrowRight":
+                await SelectAsync(SelectedIndex + 1);
+                break;
+        }
+    }
+}

@@ -127,3 +127,140 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+::deep .device-time-grid-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+::deep .device-time-grid table {
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+::deep .device-time-grid-corner {
+    position: sticky;
+    left: 0;
+    background: var(--surface, #fff);
+    z-index: 1;
+}
+
+::deep .device-time-grid-col-header {
+    padding: 0.25rem 0.4rem;
+    font-weight: 500;
+    color: var(--text-secondary, #666);
+    white-space: nowrap;
+    text-align: left;
+}
+
+::deep .device-time-grid-row-header {
+    position: sticky;
+    left: 0;
+    background: var(--surface, #fff);
+    padding: 0.25rem 0.75rem 0.25rem 0.25rem;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    z-index: 1;
+}
+
+::deep .device-time-grid-row-header:hover,
+::deep .device-time-grid-row-header.selected {
+    color: var(--primary, #1976d2);
+}
+
+::deep .device-time-cell {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    font-size: 0.65rem;
+}
+
+::deep .device-time-cell-empty {
+    background-color: var(--bg-muted, #f5f5f5);
+}
+
+::deep .device-time-cell-active {
+    background-color: var(--badge-bg, #e8eaf6);
+}
+
+::deep .device-time-cell-gap {
+    background-color: #fff3cd;
+}
+
+::deep .device-time-marker {
+    display: inline-block;
+    line-height: 1;
+}
+
+::deep .device-time-marker-event {
+    color: #1976d2;
+}
+
+::deep .device-time-marker-media {
+    color: #6a1b9a;
+    margin-left: 2px;
+}
+
+::deep .snapshot-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    outline: none;
+}
+
+::deep .snapshot-strip-thumbs {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+}
+
+::deep .snapshot-strip-thumb {
+    flex: 0 0 auto;
+    width: 96px;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 2px solid transparent;
+}
+
+::deep .snapshot-strip-thumb.selected {
+    border-color: var(--primary, #1976d2);
+}
+
+::deep .snapshot-strip-thumb img,
+::deep .snapshot-strip-thumb-placeholder {
+    width: 96px;
+    height: 64px;
+    object-fit: cover;
+    background-color: var(--bg-muted, #f5f5f5);
+    display: block;
+}
+
+::deep .snapshot-strip-thumb-time {
+    font-size: 0.7rem;
+    text-align: center;
+    color: var(--text-secondary, #666);
+}
+
+::deep .snapshot-strip-scrubber {
+    width: 100%;
+}
+
+::deep .snapshot-strip-rssi {
+    width: 100%;
+    height: 60px;
+    color: var(--primary, #1976d2);
+}
+
+::deep .snapshot-strip-rssi-marker {
+    stroke: #d32f2f;
+    stroke-width: 1;
+}

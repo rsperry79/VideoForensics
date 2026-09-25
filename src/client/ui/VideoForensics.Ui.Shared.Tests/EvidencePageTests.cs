@@ -50,6 +50,7 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
+    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected InspectorState InspectorState { get; } = new();
@@ -85,6 +86,7 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
 
         // Only exercised by Grid-view tests, but harmless to register unconditionally.
         ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<EvidenceItem>, TestSfGrid>();
@@ -176,6 +178,10 @@ public abstract class EvidencePageTestBase : BunitContext
             .Returns((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
                 Task.FromResult<IReadOnlyDictionary<Guid, string>>(ids.ToDictionary(id => id, TicketedUrl)));
 
+        DeviceHealthRepositoryMock
+            .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeviceHealth>());
+
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
 
@@ -186,6 +192,7 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         Services.AddScoped(_ => MediaUrlProviderMock.Object);
+        Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
@@ -473,5 +480,83 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
 
         var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"item=media:{VideoMediaId}", nav.Uri);
+    }
+}
+
+public class Evidence_DeviceTime_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public void ClickDeviceTimeButton_SwitchesToDeviceTimeView_RendersGrid()
+    {
+        var component = RenderEvidencePage();
+
+        component.Find("[data-testid='view-devicetime']").Click();
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("view=devicetime", nav.Uri);
+        Assert.NotEmpty(component.FindAll("[data-testid='device-time-grid']"));
+        Assert.Empty(component.FindAll(".evidence-timeline"));
+    }
+
+    [Fact]
+    public void ClickCell_NarrowsScopeToDeviceAndBucket_AndSwitchesToTimeline()
+    {
+        var component = RenderEvidencePage();
+        component.Find("[data-testid='view-devicetime']").Click();
+
+        var cell = component.Find($"tr[data-key='{DeviceId}'] td");
+        cell.Click();
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("view=timeline", nav.Uri);
+        Assert.Single(ScopeState.Current.DeviceIds);
+        Assert.Equal(DeviceId, ScopeState.Current.DeviceIds[0]);
+    }
+
+    [Fact]
+    public void ClickDeviceRowHeader_ShowsSnapshotStrip_ForThatDevicesViewableItems()
+    {
+        var component = RenderEvidencePage();
+        component.Find("[data-testid='view-devicetime']").Click();
+
+        component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
+
+        Assert.NotEmpty(component.FindAll("[data-testid='snapshot-strip']"));
+        var thumbs = component.FindAll("[data-testid='snapshot-strip-thumb']");
+        Assert.Equal(2, thumbs.Count); // ImageMedia (via event) + VideoMedia are both viewable
+    }
+
+    [Fact]
+    public void ClickDeviceRowHeader_FetchesRssiHistory_ForScopeRange()
+    {
+        DeviceHealthRepositoryMock
+            .Setup(m => m.GetHistoryAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DeviceHealth>
+            {
+                new() { Id = Guid.NewGuid(), DeviceId = DeviceId, WifiSignalRssi = -60, CapturedAtUtc = EventOccurredAtUtc }
+            });
+
+        var component = RenderEvidencePage();
+        component.Find("[data-testid='view-devicetime']").Click();
+        component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
+
+        DeviceHealthRepositoryMock.Verify(
+            m => m.GetHistoryAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+
+        var polyline = component.Find("[data-testid='snapshot-strip-rssi'] polyline");
+        Assert.False(string.IsNullOrWhiteSpace(polyline.GetAttribute("points")));
+    }
+
+    [Fact]
+    public void ClickSnapshotStripThumbnail_OpensMediaViewer()
+    {
+        var component = RenderEvidencePage();
+        component.Find("[data-testid='view-devicetime']").Click();
+        component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
+
+        component.Find($"[data-key='event:{EventId}']").Click();
+
+        Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
     }
 }

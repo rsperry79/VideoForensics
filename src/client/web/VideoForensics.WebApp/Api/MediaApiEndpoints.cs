@@ -42,6 +42,10 @@ namespace VideoForensics.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/devices/{id:guid}/health", GetDeviceHealthHistoryAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/integrity-records", async (string mediaItemIds, IIntegrityRecordRepository integrityRecords, CancellationToken ct) =>
             {
                 var ids = mediaItemIds
@@ -287,6 +291,34 @@ namespace VideoForensics.WebApp.Api
             }
 
             return Results.Ok(item.ToDto());
+        }
+
+        /// <summary>
+        /// Gets a device's WiFi RSSI/health history within a date range, oldest first - the data
+        /// path behind the Evidence "Device x Time" view's per-device RSSI plot. Both <paramref
+        /// name="from"/> and <paramref name="to"/> are required (unlike media-items, there's no
+        /// "list everything" fallback for a time-series metric) and <paramref name="from"/> must
+        /// not be after <paramref name="to"/>.
+        /// </summary>
+        public static async Task<IResult> GetDeviceHealthHistoryAsync(
+            Guid id,
+            DateTime? from,
+            DateTime? to,
+            IDeviceHealthRepository deviceHealth,
+            CancellationToken ct)
+        {
+            if (!from.HasValue || !to.HasValue)
+            {
+                return Results.BadRequest();
+            }
+
+            if (from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            IReadOnlyList<DeviceHealth> history = await deviceHealth.GetHistoryAsync(id, from.Value, to.Value, ct);
+            return Results.Ok(history.Select(x => x.ToDto()));
         }
     }
 }
