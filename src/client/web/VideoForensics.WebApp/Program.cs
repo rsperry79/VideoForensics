@@ -286,6 +286,7 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<ThemePreferenceService>();
+builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 

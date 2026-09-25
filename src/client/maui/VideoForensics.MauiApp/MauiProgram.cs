@@ -159,6 +159,7 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LayoutPreferencesState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IViewportService, VideoForensics.Ui.Shared.Services.DefaultViewportService>();
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 

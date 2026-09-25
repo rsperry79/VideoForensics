@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,8 +7,8 @@
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>VideoForensics.Hosting.Tests</AssemblyName>
-    <RootNamespace>VideoForensics.Hosting.Tests</RootNamespace>
+    <AssemblyName>VideoForensics.Ui.Shared.Tests</AssemblyName>
+    <RootNamespace>VideoForensics.Ui.Shared.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
@@ -19,17 +19,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
-    <ProjectReference Include="..\..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
-    <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
-    <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
-    <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
+    <ProjectReference Include="..\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />
   </ItemGroup>
 </Project>
-

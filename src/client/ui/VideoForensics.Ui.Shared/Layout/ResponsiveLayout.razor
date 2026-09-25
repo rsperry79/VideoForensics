@@ -1,0 +1,40 @@
+@using VideoForensics.Ui.Shared.Layout.Mobile
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.JSInterop
+
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IViewportService ViewportService
+@inject IJSRuntime JS
+
+@if (ViewportService.IsMobile)
+{
+    <MobileLayout Body="@Body" />
+}
+else
+{
+    <MainLayout Body="@Body" />
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        ViewportService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // IJSRuntime is unavailable during Blazor's static prerender pass, so viewport state
+            // can only be resolved once the circuit is connected.
+            await ViewportService.InitializeAsync();
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        ViewportService.OnChange -= StateHasChanged;
+    }
+}
