@@ -163,6 +163,7 @@ namespace VideoForensics.MauiApp
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IViewportService, VideoForensics.Ui.Shared.Services.DefaultViewportService>();
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 

@@ -219,8 +219,9 @@ public class ScopeState_ToQueryString_Tests
     public void ToQueryString_WithDefault_ReturnsEmpty()
     {
         // Arrange
-        var state = new ScopeState();
         var fixedTime = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
+        var timeProvider = new FakeTimeProvider(fixedTime);
+        var state = new ScopeState(timeProvider);
         state.Set(ForensicScope.Default(fixedTime));
 
         // Act

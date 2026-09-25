@@ -346,15 +346,3 @@ public class ScopeRail_Rendering_Tests : BunitContext
         Assert.Contains("Devices unavailable", markup);
     }
 }
-
-internal sealed class FakeTimeProvider : TimeProvider
-{
-    private readonly DateTime _fixedTime;
-
-    public FakeTimeProvider(DateTime fixedTime)
-    {
-        _fixedTime = fixedTime;
-    }
-
-    public override DateTimeOffset GetUtcNow() => new(_fixedTime, TimeSpan.Zero);
-}
