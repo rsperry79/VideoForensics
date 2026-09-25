@@ -29,7 +29,7 @@ jobs:
         run: dotnet workload install maui-ios
 
       - name: Restore
-        run: dotnet restore src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj -f net10.0-ios
+        run: dotnet restore src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj -f net10.0-ios -p:BuildIOS=true
 
       # Unsigned build for the iOS Simulator target - no Apple Developer certificate
       # or provisioning profile needed for this, unlike a real device or App Store
@@ -41,6 +41,7 @@ jobs:
           dotnet build src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj
           -f net10.0-ios
           -c Debug
+          -p:BuildIOS=true
           -p:RuntimeIdentifier=iossimulator-x64
           -p:CodesignKey=""
           -p:CodesignProvision=""
