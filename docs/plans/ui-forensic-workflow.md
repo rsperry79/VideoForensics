@@ -24,7 +24,7 @@ page reads, drill-down on every table row into its parsed fields, raw provider J
 | **Cases** | Case list, create case, case overview (scope, item counts, custody, exports) | — |
 | **Evidence** | Timeline / Grid / Gallery; media viewer; device-by-time view; Collect action | Dashboard, Events, CollectVideos, CollectSnapshots |
 | **Analyze** | Reports, anomalies, jamming, access control — one page, runs on case scope | ForensicReports, SignalAnomalies, JammingAnalysis, AccessControl |
-| **Sources** | Provider accounts: status/re-auth, sync, locations & devices, API Explorer (raw), error log | Accounts, AccountDetails, AddAccountWizard, AccountSyncSchedule, QueryApi, RingSelfTest, DeviceConfig |
+| **Sources** | Provider accounts: status/re-auth, sync, locations & devices, API tester (raw responses shown, never stored), error log | Accounts, AccountDetails, AddAccountWizard, AccountSyncSchedule, QueryApi, RingSelfTest, DeviceConfig |
 | **Admin ⚙** | Operators, paired client devices, security, network, storage, notifications, update, infrastructure | Security*/Settings* pages |
 
 Workflow page is removed — the nav order is the workflow.
@@ -86,11 +86,17 @@ Workflow page is removed — the nav order is the workflow.
   (details edit, pinned items with hash integrity Match/Mismatch/Missing, remove with reason,
   Admin close/reopen, "Work on this case" → Evidence). New "Cases" nav group.
 
-### Phase 5 — Raw API traffic capture 🔄 Next
+### Phase 5 — Raw API data in the tester 🔄 Next
 
-Persist `ApiRawLogger` traffic to an `ApiCallLog` table (redacted request/response bodies, status,
-duration, account, run id); `GET /api/v1/api-calls/{id}`; `ApiCallId` on self-test/query results;
-merge Query API + Ring Self-Test into a Sources → API Explorer with raw drill-down.
+Decision: raw provider API traffic is **displayed, never persisted** (storing payloads would bloat
+the database; parsed provider data is already stored in structured tables), and it is shown **only in
+the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
+
+- During a self-test run, capture the `ApiRawLogger` calls made by each tested endpoint (scoped to that
+  call) and return them on the result: `SelfTestCallDto.RawCalls` (method, redacted URL, status,
+  timestamp, response body truncated at 256 KB with original length + SHA-256; tokens/secrets redacted).
+- Ring Self-Test page: results in a ForensicGrid; selecting a call opens the inspector with the parsed
+  result in Fields and the raw responses in Raw (DumpView), plus schema issues.
 
 ### Phase 6 — Navigation restructure ⏳
 
