@@ -9,9 +9,15 @@
          evaluates ALL TargetFrameworks up front, so an unconditional ios entry would require
          the maui-ios workload just to build the Windows target, breaking every Windows-only
          dev machine. The iOS build is currently only exercised in CI on a macOS runner
-         (see .github/workflows/build-ios.yml), which passes -p:BuildIOS=true explicitly. -->
-    <TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(BuildIOS)' == 'true'">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+         (see .github/workflows/build-ios.yml), which passes -p:BuildIOS=true explicitly.
+         IMPORTANT: The two TargetFrameworks lines below are MUTUALLY EXCLUSIVE (either/or),
+         not additive. A prior approach appended both TFMs when BuildIOS=true, creating
+         "net10.0-windows10.0.19041.0;net10.0-ios" on the macOS runner. This failed with
+         NETSDK1100 because the build pipeline still touched the Windows slice even when
+         -f net10.0-ios was passed, requiring EnableWindowsTargeting (unavailable on macOS).
+         The fix: keep only one TFM active at a time via explicit Condition branches. -->
+    <TargetFrameworks Condition="'$(BuildIOS)' != 'true'">net10.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(BuildIOS)' == 'true'">net10.0-ios</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
     <RootNamespace>VideoForensics.MauiApp</RootNamespace>
