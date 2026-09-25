@@ -1,6 +1,6 @@
 # UI Forensic Workflow Plan
 
-Branch: `claude/ui-media-auth` · Status is updated at the end of every phase.
+Branches: phases 1–3 `claude/ui-media-auth` (PR #48); phase 4+ `claude/ui-cases`. Status is updated at the end of every phase.
 
 ## Goal
 
@@ -71,7 +71,7 @@ Workflow page is removed — the nav order is the workflow.
 - Deferred: "grab still with hash" (needs a server write path — revisit with Cases in phase 4);
   Dashboard/Events/`EventDetailsDialog` removal moves to phase 6 with the nav restructure.
 
-### Phase 4 — Cases 🔄 Next (new branch after the phase 1–3 PR)
+### Phase 4 — Cases 🔄 In progress (`claude/ui-cases`)
 
 Entities + migration, `/api/v1/cases` (`ToDto()`/`ToDomain()`), `Remote*` client classes, Cases
 pages; scope rail becomes case-scoped ("Save to case"); "Add to case" from the inspector/viewer.
@@ -91,6 +91,12 @@ menu for operator login, move Admin items, delete Workflow page.
 
 Device × hour grid of event/snapshot markers (gap spotting for jamming/anomaly work) and a
 per-device scrubbable snapshot strip alongside RSSI.
+
+## Follow-ups
+
+- Mobile layout (from #46) does not yet show the ScopeRail or the inspector; mobile pages fall back to
+  the default 7-day scope. Add a collapsible scope sheet + inspector drawer to `MobileLayout`.
+- Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
 
 ## Environment notes
 
