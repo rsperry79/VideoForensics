@@ -41,7 +41,14 @@ namespace VideoForensics.Ui.Shared.Layout
             new("dashboard", "Dashboard", "/",
             [
                 new("Dashboard", "/"),
+                new("Evidence", "/evidence"),
                 new("Full Workflow", "/workflow")
+            ]),
+
+            new("cases", "Cases", "/cases",
+            [
+                new("All Cases", "/cases"),
+                new("New Case", "/cases/new", ctx => ctx.HasRole(OperatorRole.Review))
             ]),
 
             new("collect", "Collect", "/collect/videos",

@@ -8,6 +8,9 @@
     <RootNamespace>VideoForensics.Providers.Ring.Core.Tests</RootNamespace>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
+    <!-- Strong names are not validated on .NET (Core); this assembly is signed for legacy reasons but
+         references unsigned assemblies (SIPSorcery, VideoForensics.* libraries), which is harmless. -->
+    <NoWarn>$(NoWarn);CS8002</NoWarn>
     <AssemblyOriginatorKeyFile>..\..\..\..\..\KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
     <Nullable>enable</Nullable>
   </PropertyGroup>

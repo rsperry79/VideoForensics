@@ -138,6 +138,7 @@ namespace VideoForensics.Ui.Shared.Layout
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             _currentPath = ToAppRelative(e.Location);
+            InspectorState.Clear();
             _ = InvokeAsync(StateHasChanged);
         }
 

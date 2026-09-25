@@ -185,4 +185,19 @@
   <data name="UnknownError" xml:space="preserve">
     <value>An unknown error occurred</value>
   </data>
+  <data name="ColHttpCalls" xml:space="preserve">
+    <value>HTTP Calls</value>
+  </data>
+  <data name="RawHttpCalls" xml:space="preserve">
+    <value>Raw HTTP Calls</value>
+  </data>
+  <data name="NoHttpCalls" xml:space="preserve">
+    <value>No HTTP calls recorded for this endpoint.</value>
+  </data>
+  <data name="TruncatedBody" xml:space="preserve">
+    <value>Truncated — showing first {0} KB of {1} bytes</value>
+  </data>
+  <data name="SelectEndpoints" xml:space="preserve">
+    <value>Select endpoints</value>
+  </data>
 </root>

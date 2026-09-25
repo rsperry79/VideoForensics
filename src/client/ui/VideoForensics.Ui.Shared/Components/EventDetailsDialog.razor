@@ -1,13 +1,20 @@
 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
     @if (MediaItemId.HasValue)
     {
-        @if (IsImage)
+        @if (!string.IsNullOrEmpty(ContentUrl))
         {
-            <img src="@ContentUrl" alt="Snapshot" style="max-width: 100%; max-height: 320px; object-fit: contain;" />
+            @if (IsImage)
+            {
+                <img src="@ContentUrl" alt="Snapshot" style="max-width: 100%; max-height: 320px; object-fit: contain;" />
+            }
+            else if (IsVideo)
+            {
+                <video controls src="@ContentUrl" preload="metadata" style="max-width: 100%; max-height: 320px;"></video>
+            }
         }
-        else if (IsVideo)
+        else
         {
-            <video controls src="@ContentUrl" style="max-width: 100%; max-height: 320px;"></video>
+            <div class="text-muted media-preview-unavailable">Media preview unavailable.</div>
         }
     }
 
@@ -58,18 +65,11 @@
     [Parameter] public string? Resolution { get; set; }
     [Parameter] public string IntegrityStatusText { get; set; } = "-";
     [Parameter] public string LegalHoldStatusText { get; set; } = "-";
+    [Parameter] public string? ContentUrl { get; set; }
 
-    private string ContentUrl => $"/api/media/{MediaItemId}/content";
+    private bool IsImage => MediaFormat is not null && VideoForensics.Ui.Shared.Services.MediaFormatHelper.IsImage(MediaFormat);
 
-    private bool IsImage => MediaFormat is not null &&
-        (MediaFormat.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
-         MediaFormat.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
-         MediaFormat.Contains("png", StringComparison.OrdinalIgnoreCase) ||
-         MediaFormat.Contains("image", StringComparison.OrdinalIgnoreCase));
-
-    private bool IsVideo => MediaFormat is not null &&
-        (MediaFormat.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
-         MediaFormat.Contains("video", StringComparison.OrdinalIgnoreCase));
+    private bool IsVideo => MediaFormat is not null && VideoForensics.Ui.Shared.Services.MediaFormatHelper.IsVideo(MediaFormat);
 
     private async Task OnCloseClicked()
     {

@@ -178,6 +178,15 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the security events (Phase 0.5 login/breach tracking).</summary>
         public DbSet<SecurityEvent> SecurityEvents { get; set; }
 
+        /// <summary>Gets or sets the forensic cases with pinned evidence and chain-of-custody tracking.</summary>
+        public DbSet<ForensicCase> Cases { get; set; }
+
+        /// <summary>Gets or sets the case device scope junctions.</summary>
+        public DbSet<CaseDevice> CaseDevices { get; set; }
+
+        /// <summary>Gets or sets the evidence items pinned to cases (events and media).</summary>
+        public DbSet<CaseItem> CaseItems { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

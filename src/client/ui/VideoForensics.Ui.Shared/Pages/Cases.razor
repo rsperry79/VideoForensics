@@ -1,0 +1,108 @@
+@page "/cases"
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Cases
+@using VideoForensics.Ui.Shared.Services.Inspector
+@implements IAsyncDisposable
+@inject ICaseRepository CaseRepository
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject InspectorState InspectorState
+
+<h4 class="mb-4">Cases</h4>
+
+<div class="mb-3 d-flex gap-2">
+    <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" style="max-width: 200px;" data-testid="case-status-filter">
+        <option value="">All</option>
+        <option value="Open">Open</option>
+        <option value="Closed">Closed</option>
+    </select>
+
+    @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Review)
+    {
+        <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">New Case</button>
+    }
+</div>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_cases is null || _cases.Count == 0)
+{
+    <p>No cases found.</p>
+}
+else
+{
+    <ForensicGrid TItem="ForensicCase"
+                  DataSource="@_cases"
+                  OnRowSelected="@OnCaseSelected"
+                  ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = c.CreatedAtUtc.ToString("u"), Updated = c.UpdatedAtUtc.ToString("u") }))">
+        <Columns>
+            <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="Case Number" Width="120"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="Title" Width="250"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="Status" Width="100"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="Created" Width="150" Format="@("u")"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="Updated" Width="150" Format="@("u")"></GridColumn>
+        </Columns>
+    </ForensicGrid>
+}
+
+@code {
+    private IReadOnlyList<ForensicCase>? _cases;
+    private string _statusFilter = "Open";
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCases();
+    }
+
+    private async Task LoadCases()
+    {
+        try
+        {
+            _isLoading = true;
+            _error = null;
+
+            CaseStatus? status = _statusFilter switch
+            {
+                "Open" => CaseStatus.Open,
+                "Closed" => CaseStatus.Closed,
+                _ => null
+            };
+
+            _cases = await CaseRepository.ListAsync(status, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load cases: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnCaseSelected(ForensicCase @case)
+    {
+        NavigationManager.NavigateTo($"/cases/{@case.Id}");
+    }
+
+    private void NavigateToNewCase()
+    {
+        NavigationManager.NavigateTo("/cases/new");
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+}

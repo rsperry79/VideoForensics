@@ -1,0 +1,86 @@
+/*
+    Full-height flex column layout: header, toolbar, then a media area that
+    fills remaining space. Header/toolbar/footer use Bootstrap theme variables
+    so they stay readable in both light and dark app themes; the media area
+    itself is always a dark neutral surface, matching how forensic imagery
+    is typically reviewed regardless of the surrounding app theme.
+*/
+.media-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bs-body-bg);
+}
+
+.viewer-header {
+    padding: 0.75rem;
+    background-color: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    font-size: 0.875rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.viewer-hash {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+}
+
+.viewer-toolbar {
+    padding: 0.5rem;
+    background-color: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.viewer-toolbar .speed-select {
+    width: auto;
+}
+
+.viewer-media {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: #111;
+}
+
+.viewer-media img {
+    max-width: 100%;
+    max-height: 100%;
+    transform-origin: center;
+    user-select: none;
+    cursor: default;
+}
+
+.viewer-media img.zoomed {
+    cursor: grab;
+}
+
+.viewer-media img.zoomed.dragging {
+    cursor: grabbing;
+}
+
+.viewer-media video {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.viewer-unavailable {
+    color: var(--bs-muted-color);
+    font-size: 1.125rem;
+}
+
+.viewer-footer {
+    padding: 0.75rem;
+    background-color: var(--bs-secondary-bg);
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+}
