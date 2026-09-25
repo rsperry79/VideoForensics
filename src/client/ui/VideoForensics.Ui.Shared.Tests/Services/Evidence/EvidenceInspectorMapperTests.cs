@@ -283,6 +283,117 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
     }
 
     [Fact]
+    public void ToInspector_EventItem_SetsPin_ToEventAndEventId()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:123",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = deviceId,
+            DeviceName = "Front Door",
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
+            Media = null
+        };
+        var holds = new Dictionary<Guid, LegalHold>();
+        var integrity = new List<IntegrityRecord>();
+
+        // Act
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+
+        // Assert
+        Assert.NotNull(result.Pin);
+        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(eventId, result.Pin.TargetId);
+    }
+
+    [Fact]
+    public void ToInspector_EventItemWithMedia_StillPinsToEventNotMedia()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            DownloadEventId = eventId,
+            FileName = "video.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:123",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = deviceId,
+            DeviceName = "Front Door",
+            Event = new Event { Id = eventId, EventType = "Motion Detected", ProviderEventId = "event:1" },
+            Media = media
+        };
+        var holds = new Dictionary<Guid, LegalHold>();
+        var integrity = new List<IntegrityRecord>();
+
+        // Act
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+
+        // Assert
+        Assert.NotNull(result.Pin);
+        Assert.Equal(CaseItemKind.Event, result.Pin!.Kind);
+        Assert.Equal(eventId, result.Pin.TargetId);
+    }
+
+    [Fact]
+    public void ToInspector_MediaOnlyItem_SetsPin_ToMediaAndMediaId()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "snapshot.jpg",
+            FilePath = "/path",
+            MediaFormat = "image/jpeg",
+            FileSizeBytes = 123456,
+            RecordedAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
+            DownloadedAtUtc = new DateTime(2024, 1, 15, 10, 35, 0, DateTimeKind.Utc),
+            Sha256Hash = "abc123",
+            IntegrityVerified = false
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Snapshot,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Doorbell",
+            Event = null,
+            Media = media
+        };
+        var holds = new Dictionary<Guid, LegalHold>();
+        var integrity = new List<IntegrityRecord>();
+
+        // Act
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+
+        // Assert
+        Assert.NotNull(result.Pin);
+        Assert.Equal(CaseItemKind.Media, result.Pin!.Kind);
+        Assert.Equal(mediaId, result.Pin.TargetId);
+    }
+
+    [Fact]
     public void ToInspector_SkipsNullProvenanceValues()
     {
         // Arrange

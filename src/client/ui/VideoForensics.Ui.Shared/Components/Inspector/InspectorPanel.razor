@@ -1,7 +1,12 @@
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Cases
 @using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Components.Dump
 @implements IDisposable
 @inject InspectorState InspectorState
+@inject CaseState CaseState
+@inject PairedSessionState SessionState
 
 @if (InspectorState.Current is not null)
 {
@@ -94,15 +99,56 @@
                 }
             }
         </div>
+
+        @if (InspectorState.Current.Pin is not null)
+        {
+            <div class="inspector-pin-section">
+                @if (CaseState.ActiveCase is null)
+                {
+                    <div class="muted-text">Select a case in the left panel to pin evidence.</div>
+                }
+                else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
+                {
+                    <textarea class="inspector-pin-reason"
+                              data-testid="pin-reason"
+                              placeholder="Reason for pinning to this case"
+                              @bind="_pinReason"
+                              @bind:event="oninput"></textarea>
+                    <button type="button"
+                            class="inspector-pin-button"
+                            data-testid="pin-to-case"
+                            disabled="@string.IsNullOrWhiteSpace(_pinReason)"
+                            @onclick="OnPinClicked">
+                        Pin to @CaseState.ActiveCase.CaseNumber
+                    </button>
+                    @if (_pinSuccessMessage is not null)
+                    {
+                        <div class="inspector-pin-success">@_pinSuccessMessage</div>
+                    }
+                    @if (_pinError is not null)
+                    {
+                        <div class="inspector-pin-error">@_pinError</div>
+                    }
+                }
+            </div>
+        }
     </div>
 }
 
 @code {
     private string _activeTab = "fields";
+    private string _pinReason = string.Empty;
+    private string? _pinError;
+    private string? _pinSuccessMessage;
+    private OperatorRole? _role;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         InspectorState.OnChange += OnInspectorChanged;
+        CaseState.OnChange += OnCaseStateChanged;
+
+        await SessionState.EnsureLoadedAsync();
+        _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
     }
 
     private void OnCloseClick()
@@ -117,16 +163,53 @@
 
     private void OnInspectorChanged()
     {
-        // Reset to fields tab when a new model is shown
+        // Reset to fields tab and clear the pin form when a new model is shown
         if (InspectorState.Current is not null)
         {
             _activeTab = "fields";
         }
+
+        _pinReason = string.Empty;
+        _pinError = null;
+        _pinSuccessMessage = null;
+
         StateHasChanged();
+    }
+
+    private void OnCaseStateChanged()
+    {
+        // CaseState can change from outside this component (e.g. another component sharing the
+        // same scoped CaseState instance), so marshal back onto the sync context.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPinClicked()
+    {
+        var pin = InspectorState.Current?.Pin;
+        if (pin is null || CaseState.ActiveCase is null || string.IsNullOrWhiteSpace(_pinReason))
+        {
+            return;
+        }
+
+        _pinError = null;
+        _pinSuccessMessage = null;
+        var caseNumber = CaseState.ActiveCase.CaseNumber;
+        var actor = SessionState.OperatorId?.ToString() ?? "unknown";
+
+        try
+        {
+            await CaseState.PinAsync(pin.Kind, pin.TargetId, _pinReason, actor, CancellationToken.None);
+            _pinSuccessMessage = $"Pinned to {caseNumber}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _pinError = ex.Message;
+        }
     }
 
     public void Dispose()
     {
         InspectorState.OnChange -= OnInspectorChanged;
+        CaseState.OnChange -= OnCaseStateChanged;
     }
 }

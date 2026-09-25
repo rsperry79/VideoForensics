@@ -338,4 +338,90 @@ public class EventInspectorMapper_ToInspector_Tests
         Assert.Contains("Sha256Hash", provenanceDict.Keys);
         Assert.Contains("IntegrityVerified", provenanceDict.Keys);
     }
+
+    [Fact]
+    public void ToInspector_SetsPin_ToEventAndEventId()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var @event = new Event
+        {
+            Id = eventId,
+            DeviceId = deviceId,
+            EventType = "Motion",
+            OccurredAtUtc = DateTime.UtcNow,
+            DiscoveredAtUtc = DateTime.UtcNow,
+            ProviderEventId = "provider-event-1",
+            MetadataJson = null
+        };
+
+        var row = new EventRow
+        {
+            Event = @event,
+            MediaItem = null,
+            DeviceId = deviceId
+        };
+
+        var holds = new Dictionary<Guid, LegalHold>();
+        var integrityRecords = new List<IntegrityRecord>();
+
+        // Act
+        var inspector = EventInspectorMapper.ToInspector(row, holds, integrityRecords);
+
+        // Assert - an event row always pins to its Event, even when media is attached.
+        Assert.NotNull(inspector.Pin);
+        Assert.Equal(CaseItemKind.Event, inspector.Pin!.Kind);
+        Assert.Equal(eventId, inspector.Pin.TargetId);
+    }
+
+    [Fact]
+    public void ToInspector_WithMediaItem_StillPinsToEventNotMedia()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var @event = new Event
+        {
+            Id = eventId,
+            DeviceId = deviceId,
+            EventType = "Motion",
+            OccurredAtUtc = DateTime.UtcNow,
+            DiscoveredAtUtc = DateTime.UtcNow,
+            ProviderEventId = "provider-event-1",
+            MetadataJson = null
+        };
+
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            DownloadEventId = eventId,
+            FileName = "test.mp4",
+            FilePath = "/media/test.mp4",
+            MediaFormat = "mp4",
+            FileSizeBytes = 1024,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc123"
+        };
+
+        var row = new EventRow
+        {
+            Event = @event,
+            MediaItem = media,
+            DeviceId = deviceId
+        };
+
+        var holds = new Dictionary<Guid, LegalHold>();
+        var integrityRecords = new List<IntegrityRecord>();
+
+        // Act
+        var inspector = EventInspectorMapper.ToInspector(row, holds, integrityRecords);
+
+        // Assert
+        Assert.NotNull(inspector.Pin);
+        Assert.Equal(CaseItemKind.Event, inspector.Pin!.Kind);
+        Assert.Equal(eventId, inspector.Pin.TargetId);
+    }
 }
