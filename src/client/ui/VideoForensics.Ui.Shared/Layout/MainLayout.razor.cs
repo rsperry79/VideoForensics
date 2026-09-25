@@ -11,6 +11,7 @@ namespace VideoForensics.Ui.Shared.Layout
     {
         private OperatorRole? _role;
         private string _currentPath = "/";
+        private string _currentQuery = "";
         private SfSplitter? _outerSplitter;
         private double _leftNavWidth = 220;
         private double _rightPanelWidth = 280;
@@ -58,7 +59,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
         protected override void OnInitialized()
         {
-            _currentPath = ToAppRelative(Nav.Uri);
+            SetCurrentLocation(Nav.Uri);
             Nav.LocationChanged += OnLocationChanged;
             ThemeService.OnChange += StateHasChanged;
             SessionState.AuthenticationExpired += OnAuthenticationExpired;
@@ -137,7 +138,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
-            _currentPath = ToAppRelative(e.Location);
+            SetCurrentLocation(e.Location);
             InspectorState.Clear();
             _ = InvokeAsync(StateHasChanged);
         }
@@ -151,19 +152,14 @@ namespace VideoForensics.Ui.Shared.Layout
             });
         }
 
-        private static string ToAppRelative(string uri)
+        private void SetCurrentLocation(string uri)
         {
-            string path = new Uri(uri).AbsolutePath;
-            return string.IsNullOrEmpty(path) ? "/" : path;
+            var parsed = new Uri(uri);
+            _currentPath = string.IsNullOrEmpty(parsed.AbsolutePath) ? "/" : parsed.AbsolutePath;
+            _currentQuery = parsed.Query;
         }
 
-        private bool PathMatches(string path)
-        {
-            return path == "/"
-                ? _currentPath == "/"
-                : _currentPath.Equals(path, StringComparison.OrdinalIgnoreCase)
-                || _currentPath.StartsWith(path + "/", StringComparison.OrdinalIgnoreCase);
-        }
+        private bool PathMatches(string path) => NavPathMatcher.Matches(_currentPath, _currentQuery, path);
 
         private NavContext BuildContext()
         {

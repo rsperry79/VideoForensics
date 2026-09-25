@@ -1,0 +1,61 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
+@inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
+
+@* The operator's OWN login (paired-device / WebAuthn session) - kept separate from provider
+   account logins, which are switched via AccountSwitcher in the right panel. *@
+<div class="user-menu" data-testid="user-menu" data-role-label="@ButtonLabel">
+    <SfButton Content="@ButtonLabel" CssClass="user-menu-toggle e-flat" OnClick="@Toggle" title="Account" data-testid="user-menu-toggle" />
+
+    @if (_open)
+    {
+        <div class="user-menu-dropdown" data-testid="user-menu-dropdown">
+            @foreach (var item in UserMenu.Items(BuildContext()))
+            {
+                @if (item.Path is not null)
+                {
+                    <button type="button" class="user-menu-item" data-testid="user-menu-item" data-path="@item.Path" @onclick="@(() => NavigateTo(item.Path))">@L[item.Text]</button>
+                }
+                else
+                {
+                    <button type="button" class="user-menu-item" data-testid="user-menu-signout" @onclick="SignOutAsync">@L[item.Text]</button>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool _open;
+
+    private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+
+    private string ButtonLabel => SessionState.IsSignedIn ? (Role?.ToString() ?? "Operator") : L["Device Sign-In"].Value;
+
+    private NavContext BuildContext() => new(SessionState.IsSignedIn, Role, AppLockSupported: false);
+
+    private void Toggle()
+    {
+        _open = !_open;
+    }
+
+    private void NavigateTo(string path)
+    {
+        _open = false;
+        Nav.NavigateTo(path);
+    }
+
+    // Reuses the app's existing operator sign-out: DeviceSignIn.razor's SignOutAsync clears the
+    // paired-device session the same way; MainLayout/MobileLayout's OnAuthenticationExpired sends
+    // the operator to the same /device-signin page on session expiry.
+    private async Task SignOutAsync()
+    {
+        _open = false;
+        await SessionState.ClearAsync();
+        Nav.NavigateTo("/device-signin");
+    }
+}

@@ -98,21 +98,33 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 - Ring Self-Test page: results in a ForensicGrid; selecting a call opens the inspector with the parsed
   result in Fields and the raw responses in Raw (DumpView), plus schema issues.
 
-### Phase 6 — Navigation restructure 🔄 Next
+### Phase 6 — Navigation restructure ✅ Done (`claude/ui-nav`)
 
-Rewrite `NavGroups.cs` to the five areas, merge Analyze pages, redirect old routes, top-bar user
-menu for operator login, move Admin items, delete Workflow page.
+- ✅ Nav is Evidence, Cases, Analyze, Sources, Admin (Lockout Policy added); a reflection test asserts
+  every nav/user-menu path is a real route.
+- ✅ Operator's own login (change password, passkeys, sign out, device sign-in) in a `UserMenuButton`
+  on desktop and mobile, separate from provider logins.
+- ✅ "/" lands on Evidence; Dashboard and Workflow pages removed (/workflow redirects). Events stays as
+  "Event Grid" (its hold/export/verify actions have no Evidence equivalent yet).
+- ✅ `/analyze` merges reports, signal anomalies, access control and jamming as tabs on the global
+  scope; old routes redirect; `NavPathMatcher` highlights query-string nav items.
+- ✅ Mobile layout: filters sheet with the ScopeRail (+ custom-scope indicator) and an inspector
+  drawer (resolves the phase 2 mobile follow-up).
+- ✅ Security Events page (from #45, previously in an uncompiled directory) rehomed and wired to
+  `ISecurityEventsService` (separate PR).
 
-### Phase 7 — Device-by-time view + snapshot stream ⏳
+### Phase 7 — Device-by-time view + snapshot stream 🔄 Next
 
 Device × hour grid of event/snapshot markers (gap spotting for jamming/anomaly work) and a
 per-device scrubbable snapshot strip alongside RSSI.
 
 ## Follow-ups
 
-- Mobile layout (from #46) does not yet show the ScopeRail or the inspector; mobile pages fall back to
-  the default 7-day scope. Add a collapsible scope sheet + inspector drawer to `MobileLayout`.
 - Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
+
+- Session network tier: WebApp's own UI reaches security endpoints via self-HTTP, so the Local-tier
+  check reflects the server's path to itself, not the user's. Follow-up: capture each circuit's real
+  tier at connection time and check against it.
 
 ## Environment notes
 
