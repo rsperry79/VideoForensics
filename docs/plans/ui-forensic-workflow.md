@@ -1,6 +1,6 @@
 # UI Forensic Workflow Plan
 
-Branches: phases 1–3 `claude/ui-media-auth` (PR #48); phase 4+ `claude/ui-cases`. Status is updated at the end of every phase.
+Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
 
 ## Goal
 
@@ -71,12 +71,22 @@ Workflow page is removed — the nav order is the workflow.
 - Deferred: "grab still with hash" (needs a server write path — revisit with Cases in phase 4);
   Dashboard/Events/`EventDetailsDialog` removal moves to phase 6 with the nav restructure.
 
-### Phase 4 — Cases 🔄 In progress (`claude/ui-cases`)
+### Phase 4 — Cases ✅ Done (`claude/ui-cases`)
 
-Entities + migration, `/api/v1/cases` (`ToDto()`/`ToDomain()`), `Remote*` client classes, Cases
-pages; scope rail becomes case-scoped ("Save to case"); "Add to case" from the inspector/viewer.
+- ✅ `ForensicCase` / `CaseDevice` / `CaseItem` schema (migration `AddForensicCases`, generated from the
+  model, drift check empty): unique case number, device-scope junction, soft-removed pins with a
+  SHA-256 snapshot, filtered unique indexes (one active pin per target) and a CHECK constraint.
+- ✅ `CaseRepository` with chain-of-custody ActionLog entries for every mutation; closed cases are
+  read-only.
+- ✅ `/api/v1/cases` (read: any operator; create/edit/scope/pin: Review; close/reopen: Admin; 400/401/
+  404/409 semantics) and `RemoteCaseRepository` for MAUI.
+- ✅ `CaseState` + `CaseUrl`: active case in the `case=` query key, applies/saves the case scope.
+- ✅ Scope rail case picker + "save scope to case"; inspector "Pin to {case}" with required reason.
+- ✅ Pages: `/cases` (status filter), `/cases/new` (optionally from current scope), `/cases/{id}`
+  (details edit, pinned items with hash integrity Match/Mismatch/Missing, remove with reason,
+  Admin close/reopen, "Work on this case" → Evidence). New "Cases" nav group.
 
-### Phase 5 — Raw API traffic capture ⏳
+### Phase 5 — Raw API traffic capture 🔄 Next
 
 Persist `ApiRawLogger` traffic to an `ApiCallLog` table (redacted request/response bodies, status,
 duration, account, run id); `GET /api/v1/api-calls/{id}`; `ApiCallId` on self-test/query results;

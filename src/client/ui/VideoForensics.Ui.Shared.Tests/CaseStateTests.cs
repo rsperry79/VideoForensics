@@ -159,7 +159,25 @@ public class CaseState_Tests
     }
 
     [Fact]
-    public void ScopeDiffersFromCase_WhenDevicesMatch_ReturnsFalse()
+    public void ScopeDiffersFromCase_WithNullWindow_ReturnsTrue()
+    {
+        // Arrange - case with no saved scope (both null)
+        var mockRepo = CreateMockCaseRepository();
+        var scopeState = CreateScopeState();
+        var testCase = CreateTestCase(scopeFromUtc: null, scopeToUtc: null);
+
+        var caseState = new CaseState(mockRepo.Object, scopeState);
+        caseState._setActiveCaseForTest(testCase);
+
+        // Act
+        var differs = caseState.ScopeDiffersFromCase;
+
+        // Assert
+        Assert.True(differs);
+    }
+
+    [Fact]
+    public void ScopeDiffersFromCase_WhenDevicesAndWindowMatch_ReturnsFalse()
     {
         // Arrange
         var device1Id = Guid.NewGuid();

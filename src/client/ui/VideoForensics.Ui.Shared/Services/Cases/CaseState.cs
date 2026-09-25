@@ -82,6 +82,7 @@ public class CaseState
 
     /// <summary>
     /// Returns true if the current scope (devices/window) differs from the active case's saved scope.
+    /// If the case has never had a scope saved (both ScopeFromUtc and ScopeToUtc are null), returns true.
     /// </summary>
     public bool ScopeDiffersFromCase
     {
@@ -90,6 +91,12 @@ public class CaseState
             if (ActiveCase is null)
             {
                 return false;
+            }
+
+            // If the case has never had a scope saved, it differs from the current scope
+            if (ActiveCase.ScopeFromUtc is null && ActiveCase.ScopeToUtc is null)
+            {
+                return true;
             }
 
             var caseFromUtc = ActiveCase.ScopeFromUtc ?? _scopeState.Current.FromUtc;
