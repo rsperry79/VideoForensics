@@ -38,23 +38,21 @@ namespace VideoForensics.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            new("dashboard", "Dashboard", "/",
+            new("evidence", "Evidence", "/evidence",
             [
-                new("Dashboard", "/"),
                 new("Evidence", "/evidence"),
-                new("Full Workflow", "/workflow")
+                new("Event Grid", "/events"),
+                new("Collect Videos", "/collect/videos"),
+                new("Collect Snapshots", "/collect/snapshots")
             ]),
 
             new("cases", "Cases", "/cases",
             [
                 new("All Cases", "/cases"),
-                new("New Case", "/cases/new", ctx => ctx.HasRole(OperatorRole.Review))
-            ]),
-
-            new("collect", "Collect", "/collect/videos",
-            [
-                new("Collect Videos", "/collect/videos"),
-                new("Collect Snapshots", "/collect/snapshots")
+                new("New Case", "/cases/new", ctx => ctx.HasRole(OperatorRole.Review)),
+                new("Chain of Custody", "/analyze/chain-of-custody"),
+                new("Validate Evidence", "/analyze/validate/integrity"),
+                new("Export Evidence", "/review/export")
             ]),
 
             new("analyze", "Analyze", "/analyze/reports",
@@ -62,43 +60,67 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Forensic Reports", "/analyze/reports"),
                 new("Signal Anomalies", "/analyze/signal-anomalies"),
                 new("Access Control", "/analyze/access-control"),
-                new("Chain of Custody", "/analyze/chain-of-custody"),
-                new("Validate Evidence", "/analyze/validate/integrity"),
                 new("Jamming Analysis", "/analyze/jamming")
             ]),
 
-            new("events", "Events", "/events",
+            new("sources", "Sources", "/accounts",
             [
-                new("Events", "/events")
-            ]),
-
-            new("devices", "Devices", "/devices/config",
-            [
+                new("Provider Accounts", "/accounts"),
                 new("Device Configuration", "/devices/config"),
-                new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
-                new("Device Sign-In", "/device-signin", ctx => !ctx.IsSignedIn)
-            ]),
-
-            new("tools", "Tools", "/query",
-            [
                 new("Query API", "/query"),
-                new("Import / Export", "/tools/import-export"),
-                new("Ring Self-Test", "/tools/ring-selftest"),
-                new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin))
+                new("API Tester", "/tools/ring-selftest"),
+                new("Import / Export", "/tools/import-export")
             ]),
 
-            new("settings", "Settings", "/settings",
+            new("admin", "Admin", "/settings",
             [
                 new("General", "/settings"),
-                new("Accounts", "/accounts"),
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
+                new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Network Access", "/settings/network", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Storage", "/settings/storage", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("App Update", "/settings/update-check", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
+                new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
+                // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
+                // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).
+                new("Lockout Policy", "/settings/lockout-policy", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported)
             ])
         ];
+    }
+
+    /// <summary>
+    /// Menu items for the operator's own login (displayed in top bar).
+    /// Separate from provider accounts - this is for changing the current user's password, passkeys, and signing out.
+    /// </summary>
+    public static class UserMenu
+    {
+        public sealed record UserMenuItem(string Text, string? Path = null, Func<NavContext, bool>? Visible = null)
+        {
+            public bool IsVisible(NavContext ctx)
+            {
+                return Visible is null || Visible(ctx);
+            }
+        }
+
+        public static IReadOnlyList<UserMenuItem> Items(NavContext ctx)
+        {
+            var items = new List<UserMenuItem>();
+
+            if (ctx.IsSignedIn)
+            {
+                items.Add(new("Change Password", "/change-password"));
+                items.Add(new("My Passkeys", "/settings/passkeys"));
+                items.Add(new("Sign Out", null)); // No path - handled by click handler
+            }
+            else
+            {
+                items.Add(new("Device Sign-In", "/device-signin"));
+            }
+
+            return items;
+        }
     }
 }
