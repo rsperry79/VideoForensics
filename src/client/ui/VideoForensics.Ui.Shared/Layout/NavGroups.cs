@@ -91,6 +91,7 @@ namespace VideoForensics.Ui.Shared.Layout
             [
                 new("General", "/settings"),
                 new("Accounts", "/accounts"),
+                new("Security Events", "/settings/security-events"),
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Network Access", "/settings/network", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),

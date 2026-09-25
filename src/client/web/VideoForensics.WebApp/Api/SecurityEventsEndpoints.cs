@@ -1,3 +1,4 @@
+using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -17,7 +18,7 @@ namespace VideoForensics.WebApp.Api
             _ = app.MapPost("/api/v1/security-events", GetSecurityEventsAsync)
                 .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
                 .WithSummary("Query operator security events (self-service or cross-account audit)")
-                .Produces<List<SecurityEventDto>>(StatusCodes.Status200OK)
+                .Produces<List<VideoForensics.Api.Contracts.SecurityEventDto>>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest)
                 .Produces(StatusCodes.Status401Unauthorized)
                 .Produces(StatusCodes.Status403Forbidden)
@@ -97,11 +98,19 @@ namespace VideoForensics.WebApp.Api
 
             try
             {
-                // Fetch events from the audit service
-                var events = new List<SecurityEventDto>();
-                await foreach (SecurityEventDto @event in auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, ct))
+                // Fetch events from the audit service and map to API DTOs
+                var events = new List<VideoForensics.Api.Contracts.SecurityEventDto>();
+                await foreach (var @event in auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, ct))
                 {
-                    events.Add(@event);
+                    events.Add(new VideoForensics.Api.Contracts.SecurityEventDto(
+                        Id: @event.Id,
+                        OperatorId: @event.OperatorId,
+                        EventType: @event.EventType,
+                        Success: @event.Success,
+                        IpAddress: @event.IpAddress,
+                        OccurredAtUtc: @event.OccurredAtUtc,
+                        Reason: @event.Reason
+                    ));
                 }
 
                 return Results.Ok(events);
@@ -113,10 +122,4 @@ namespace VideoForensics.WebApp.Api
             }
         }
     }
-
-    /// <summary>Request DTO for security events query.</summary>
-    public record SecurityEventsQueryRequest(
-        int? Limit = null,
-        int? Offset = null,
-        string? OperatorId = null);
 }
