@@ -122,15 +122,17 @@ things it does natively:
 - Debugging a real repro: `DebugStart`/`DebugAttach`, `BreakpointSet`/`BreakpointList`/`BreakpointRemove`, `DebugContinue`/`DebugStep`, `DebugGetCallstack`/`DebugGetLocals`/`DebugEvaluate` instead of asking the user to describe what happened.
 If the server isn't connected (tools not listed / calls fail), fall back to the usual Bash/Grep/Read tools and mention that `local-sdk` was unreachable rather than silently guessing at its state.
 
-## Default SuperAdmin Account
+## First-Run Admin Setup
 
-On first startup with an empty database, a default SuperAdmin operator is auto-created during `InitializeVideoForensicsDataAsync()` in `VideoForensicsHostingExtensions.cs`. The account is created with:
+On first startup with an empty database, the interactive `/setup` page (`Setup.razor` + `SetupEndpoints.cs`) is the default way to create the initial SuperAdmin account — the installing user picks their own username and password directly (no forced password change needed, since they chose it). `AuthGate.razor` redirects an unauthenticated visitor to `/setup` whenever `IOperatorRepository.IsEmptyAsync()` is true; the endpoint itself re-checks the same condition and returns 403 once any operator exists, so it can't be used to create a second SuperAdmin later.
+
+For headless/scripted deployments that can't drive a browser wizard, the legacy fixed-password seed is still available but off by default: set `VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN=true` before first startup to have `InitializeVideoForensicsDataAsync()` in `VideoForensicsHostingExtensions.cs` auto-create the account with:
 - Username: `admin`
 - Password: `ChangeMe123!` (the fixed `DefaultSuperAdminPassword` constant)
 - Role: `SuperAdmin`
 - MustChangePassword: `true` (forces password change on first login)
 
-This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created.
+This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
 
 ## Execution workflow
 

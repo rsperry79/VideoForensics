@@ -52,6 +52,10 @@ namespace VideoForensics.Data.Common.Entities
         public const string EvidenceExported = nameof(EvidenceExported);
         public const string BackupExported = nameof(BackupExported);
         public const string BackupImported = nameof(BackupImported);
+        public const string SetupAdminCreated = nameof(SetupAdminCreated);
+        public const string LockoutPolicyUpdated = nameof(LockoutPolicyUpdated);
+        public const string TwoFactorPolicyUpdated = nameof(TwoFactorPolicyUpdated);
+        public const string OperatorUnlocked = nameof(OperatorUnlocked);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -90,6 +94,10 @@ namespace VideoForensics.Data.Common.Entities
             [EvidenceExported] = true,
             [BackupExported] = true,
             [BackupImported] = true,
+            [SetupAdminCreated] = true,
+            [LockoutPolicyUpdated] = true,
+            [TwoFactorPolicyUpdated] = true,
+            [OperatorUnlocked] = true,
         };
     }
 }

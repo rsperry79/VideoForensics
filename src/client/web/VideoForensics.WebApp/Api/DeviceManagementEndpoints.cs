@@ -129,6 +129,8 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { temporaryPassword });
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
+            _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync);
+
             // Separate route group for operator credentials management. Base policy is the LOWEST
             // requirement any route here needs (ReadOnly, i.e. "just signed in") - RequireAuthorization
             // calls stack additively (AND-combined) rather than replacing each other, so a stricter
@@ -213,6 +215,26 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(await credentials.ListForOperatorAsync(operatorId, ct));
             })
             .RequireAuthorization(VideoForensicsPolicies.ReadOnly);
+        }
+
+        /// <summary>
+        /// Clears an operator's lockout state. Unlike approve/deactivate this restores existing
+        /// access rather than granting new access, so it deliberately carries no step-up requirement.
+        /// </summary>
+        private static async Task<IResult> UnlockAsync(
+            Guid id,
+            IOperatorRepository operators,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await operators.UnlockAsync(id, ct);
+            await auditLog.LogAsync(SecurityAuditEventTypes.OperatorUnlocked,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"Operator {id} unlocked", isUrgent: true, ct);
+            return Results.Ok();
         }
     }
 

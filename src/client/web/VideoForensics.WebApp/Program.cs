@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Syncfusion.Blazor;
 
@@ -8,10 +8,12 @@ using System.Threading.RateLimiting;
 
 using VideoForensics.Core.Logging.DependencyInjection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
@@ -27,7 +29,7 @@ using VideoForensics.WebApp.Services;
 // ADO.NET connection - not the full EF/DI stack - and tolerates a missing file/table (first run,
 // or a fresh install) by defaulting to Local, the safest "hasn't been configured yet" state (plan
 // §5.2's "Local-only by default").
-NetworkTier configuredNetworkTier = ReadConfiguredNetworkTierBeforeHostBuilds();
+NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocationProvider()).ReadConfiguredTier();
 
 string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
 if (File.Exists(syncfusionLicenseKeyPath))
@@ -78,6 +80,8 @@ builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enab
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSyncfusionBlazor();
 
@@ -145,7 +149,7 @@ builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>()
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
 // AddVideoForensicsServerCore() below), so a request over the Cloudflare Tunnel is bucketed by the
 // real client behind it, not Cloudflare's shared edge IP - the escalation-flagged mistake the plan
-// calls out explicitly. A separate, more generous policy covers /api/media/* so an already-paired
+// calls out explicitly. A separate, more generous policy covers /api/v1/media/* so an already-paired
 // device can't hammer it into a self-inflicted DoS.
 builder.Services.AddRateLimiter(options =>
 {
@@ -224,7 +228,8 @@ _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRe
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
 
-// MCP Tool classes (Phases 1-4) - Milestone 8 HTTP hosting
+// MCP Tool classes (Phases 0.5-4) - Milestone 8 HTTP hosting
+_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.SecurityEventTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.IntegrityTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.CorrelationTools>();
@@ -244,6 +249,17 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
 
+// Geo-IP and threat-intelligence blocking services for login pipeline
+// GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
+string geoLite2DbPath = Path.Combine(storageProvider.GetDefaultRoot(StorageCategory.Database), "GeoLite2-Country.mmdb");
+builder.Services.AddScoped<IGeoIpLookupService>(_ => new MaxMindGeoIpLookupService(geoLite2DbPath));
+
+// Threat intelligence blocklist service (null implementation for now; actual feed fetching is separate work)
+builder.Services.AddScoped<IThreatIntelBlocklistService, NullThreatIntelBlocklistService>();
+
+// Banned IP range matching service
+builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
+
 builder.Services.AddHealthChecks();
 
 // LAN discovery (plan §5.2) - advertises _videoforensics._tcp.local so a pairing client can find
@@ -262,6 +278,7 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // to the pairing/auth API in Api/PairingEndpoints.cs.
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
+builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
@@ -271,7 +288,11 @@ builder.Services.AddScoped<WebPushClient>();
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
 builder.Services.AddScoped<ThemePreferenceService>();
+builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 
@@ -289,7 +310,7 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadToken
 builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
-WebApplication app = builder.Build();
+    WebApplication app = builder.Build();
 
 // DB init + Events backfill + persisted-config load, in that order - see
 // VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
@@ -333,6 +354,8 @@ app.MapMediaApiEndpoints();
 app.MapReportEndpoints();
 app.MapAuthEndpoints();
 app.MapOperatorAuthEndpoints();
+app.MapSecurityEventsEndpoints();
+app.MapSetupEndpoints();
 app.MapPairingEndpoints();
 app.MapDeviceCodePairingEndpoints();
 app.MapDeviceManagementEndpoints();
@@ -341,6 +364,8 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLockoutPolicyEndpoints();
+app.MapTwoFactorPolicyEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
@@ -372,31 +397,6 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(VideoForensics.Ui.Shared.Routes).Assembly);
 
 app.Run();
-
-static NetworkTier ReadConfiguredNetworkTierBeforeHostBuilds()
-{
-    try
-    {
-        string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "videoforensics.db");
-        if (!File.Exists(dbPath))
-        {
-            return NetworkTier.Local;
-        }
-
-        using var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
-        connection.Open();
-        using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT Value FROM AppSettings WHERE Key = 'ConfiguredNetworkTier' LIMIT 1";
-        string? value = command.ExecuteScalar() as string;
-        return Enum.TryParse<NetworkTier>(value, out NetworkTier tier) ? tier : NetworkTier.Local;
-    }
-    catch
-    {
-        // Any failure here (DB locked by another process, table not created yet, corrupt row) falls
-        // back to the safest default rather than risking an unintended wide-open bind.
-        return NetworkTier.Local;
-    }
-}
 
 static int ResolveConfiguredPort(IConfiguration configuration)
 {

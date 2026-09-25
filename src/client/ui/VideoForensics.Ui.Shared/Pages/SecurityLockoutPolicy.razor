@@ -1,0 +1,421 @@
+@page "/settings/lockout-policy"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.DropDowns
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<SecurityLockoutPolicy> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <span>@L["AuthErrorDescription"]</span>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    <!-- Lockout Settings Section -->
+    <h5 class="mt-4 mb-2">@L["LockoutSettingsSection"]</h5>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">@L["MaxFailedAttempts"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_maxFailedAttempts" Min="1" Max="100" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["LockoutDurationMinutes"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_lockoutDurationMinutes" Min="1" Max="1440" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["BlockedCountryCodes"]</label>
+                <div class="d-flex gap-2">
+                    <SfTextBox @bind-Value="_blockedCountryCodes" Placeholder="@L["BlockedCountryCodesPlaceholder"].Value" Style="max-width: 400px;" />
+                </div>
+                <small class="d-block mt-2 text-muted">@L["BlockedCountryCodesHelp"]</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["FailClosedOnLookupError"]</label>
+                <div>
+                    <SfCheckBox TChecked="bool" @bind-Checked="_failClosedOnLookupError" Label="@L["FailClosedOnLookupErrorLabel"].Value" />
+                </div>
+                <small class="d-block mt-2 text-muted">@L["FailClosedOnLookupErrorHelp"]</small>
+            </div>
+
+            <div class="mt-4">
+                <SfButton Content="@(_isSavingLockoutPolicy ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveLockoutPolicyAsync" Disabled="@_isSavingLockoutPolicy" CssClass="e-primary" />
+            </div>
+
+            @if (_lockoutPolicySaveMessage is not null)
+            {
+                <span style="color: @(_lockoutPolicySaveSuccess ? "#4caf50" : "#f44336")" class="mt-3 d-block">@_lockoutPolicySaveMessage</span>
+            }
+        </div>
+    </div>
+
+    <!-- Two-Factor Policy Section -->
+    <h5 class="mt-4 mb-2">@L["TwoFactorPolicySection"]</h5>
+    <div class="card mb-4">
+        <div class="card-body">
+            @if (_isLoadingTwoFactor)
+            {
+                <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+            }
+            else if (_twoFactorLoadError is not null)
+            {
+                <div class="alert alert-danger">@_twoFactorLoadError</div>
+            }
+            else if (_twoFactorRequirements is null || _twoFactorRequirements.Count == 0)
+            {
+                <span>@L["NoTwoFactorRequirements"]</span>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>@L["RoleColumn"]</th>
+                            <th>@L["RequireTwoFactorColumn"]</th>
+                            <th>@L["ActionColumn"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var requirement in _twoFactorRequirements)
+                        {
+                            <tr>
+                                <td>@requirement.Role.ToString()</td>
+                                <td>
+                                    <SfCheckBox TChecked="bool" @bind-Checked="@_twoFactorStates[requirement.Role]" />
+                                </td>
+                                <td>
+                                    <SfButton Content="@(_savingTwoFactorRoles.Contains(requirement.Role) ? L["SavingButton"] : L["SaveButton"])"
+                                              OnClick="@(async () => await SaveTwoFactorRoleAsync(requirement.Role))"
+                                              Disabled="@_savingTwoFactorRoles.Contains(requirement.Role)"
+                                              CssClass="e-primary e-small" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (_twoFactorRoleSaveMessage is not null)
+                {
+                    <span style="color: @(_twoFactorRoleSaveSuccess ? "#4caf50" : "#f44336")" class="mt-3 d-block">@_twoFactorRoleSaveMessage</span>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSavingLockoutPolicy;
+    private string? _authError;
+    private string? _loadError;
+
+    // Lockout policy state
+    private int _maxFailedAttempts = 5;
+    private int _lockoutDurationMinutes = 30;
+    private string? _blockedCountryCodes;
+    private bool _failClosedOnLookupError;
+    private bool _lockoutPolicySaveSuccess;
+    private string? _lockoutPolicySaveMessage;
+
+    // Two-factor policy state
+    private bool _isLoadingTwoFactor = true;
+    private string? _twoFactorLoadError;
+    private List<TwoFactorRoleRequirement>? _twoFactorRequirements;
+    private Dictionary<OperatorRole, bool> _twoFactorStates = new();
+    private HashSet<OperatorRole> _savingTwoFactorRoles = new();
+    private bool _twoFactorRoleSaveSuccess;
+    private string? _twoFactorRoleSaveMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        _isLoadingTwoFactor = true;
+        _twoFactorLoadError = null;
+
+        try
+        {
+            if (!SessionState.IsSignedIn)
+            {
+                _isLoading = false;
+                _isLoadingTwoFactor = false;
+                return;
+            }
+
+            // Load lockout policy
+            try
+            {
+                var client = CreateClient();
+                var response = await client.GetAsync("/api/v1/lockout-policy");
+                if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                {
+                    _authError = L["AuthUnauthorized"];
+                    _isLoading = false;
+                    _isLoadingTwoFactor = false;
+                    return;
+                }
+
+                response.EnsureSuccessStatusCode();
+                var dto = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(JsonOptions);
+                _maxFailedAttempts = dto.GetProperty("maxFailedAttempts").GetInt32();
+                _lockoutDurationMinutes = dto.GetProperty("lockoutDurationMinutes").GetInt32();
+                _blockedCountryCodes = dto.GetProperty("blockedCountryCodes").ValueKind == System.Text.Json.JsonValueKind.Null ? null : dto.GetProperty("blockedCountryCodes").GetString();
+                _failClosedOnLookupError = dto.GetProperty("failClosedOnLookupError").GetBoolean();
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = L["AuthUnauthorized"];
+                _isLoading = false;
+                _isLoadingTwoFactor = false;
+                return;
+            }
+            catch (Exception ex)
+            {
+                _loadError = L["LockoutPolicyLoadFailed", ex.Message];
+            }
+
+            // Load two-factor requirements
+            try
+            {
+                var client = CreateClient();
+                var response = await client.GetAsync("/api/v1/two-factor-policy/roles");
+                if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                {
+                    if (_authError is null)
+                    {
+                        _authError = L["AuthUnauthorized"];
+                    }
+                    _isLoadingTwoFactor = false;
+                    return;
+                }
+
+                response.EnsureSuccessStatusCode();
+                var dtos = await response.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>(JsonOptions);
+                _twoFactorRequirements = new List<TwoFactorRoleRequirement>();
+
+                if (dtos != null)
+                {
+                    foreach (var dto in dtos)
+                    {
+                        var req = new TwoFactorRoleRequirement
+                        {
+                            Role = Enum.Parse<OperatorRole>(dto.GetProperty("role").GetString() ?? "ReadOnly"),
+                            RequireTwoFactor = dto.GetProperty("requireTwoFactor").GetBoolean()
+                        };
+                        _twoFactorRequirements.Add(req);
+                    }
+                }
+
+                // Initialize state dictionary
+                _twoFactorStates.Clear();
+                foreach (var req in _twoFactorRequirements)
+                {
+                    _twoFactorStates[req.Role] = req.RequireTwoFactor;
+                }
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                if (_authError is null)
+                {
+                    _authError = L["AuthUnauthorized"];
+                }
+                _isLoadingTwoFactor = false;
+                return;
+            }
+            catch (Exception ex)
+            {
+                _twoFactorLoadError = L["TwoFactorPolicyLoadFailed", ex.Message];
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            _isLoadingTwoFactor = false;
+        }
+    }
+
+    private async Task SaveLockoutPolicyAsync()
+    {
+        _isSavingLockoutPolicy = true;
+        _lockoutPolicySaveMessage = null;
+
+        try
+        {
+            var client = CreateClient();
+            var payload = new
+            {
+                maxFailedAttempts = _maxFailedAttempts,
+                lockoutDurationMinutes = _lockoutDurationMinutes,
+                blockedCountryCodes = _blockedCountryCodes,
+                failClosedOnLookupError = _failClosedOnLookupError
+            };
+
+            var response = await client.PutAsJsonAsync("/api/v1/lockout-policy", payload);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _lockoutPolicySaveSuccess = false;
+                _lockoutPolicySaveMessage = body ?? L["LockoutPolicySaveFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _lockoutPolicySaveSuccess = true;
+            _lockoutPolicySaveMessage = L["LockoutPolicySaved"];
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _lockoutPolicySaveSuccess = false;
+            _lockoutPolicySaveMessage = L["AuthUnauthorized"];
+        }
+        catch (Exception ex)
+        {
+            _lockoutPolicySaveSuccess = false;
+            _lockoutPolicySaveMessage = L["LockoutPolicySaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSavingLockoutPolicy = false;
+        }
+    }
+
+    private async Task SaveTwoFactorRoleAsync(OperatorRole role)
+    {
+        _savingTwoFactorRoles.Add(role);
+        _twoFactorRoleSaveMessage = null;
+
+        try
+        {
+            var client = CreateClient();
+            var payload = new { requireTwoFactor = _twoFactorStates[role] };
+
+            var response = await client.PutAsJsonAsync($"/api/v1/two-factor-policy/roles/{role}", payload);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _twoFactorRoleSaveSuccess = false;
+                _twoFactorRoleSaveMessage = body ?? L["TwoFactorRoleSaveFailed", role.ToString(), response.StatusCode.ToString()];
+                // Revert the UI state
+                if (_twoFactorRequirements != null)
+                {
+                    var req = _twoFactorRequirements.FirstOrDefault(r => r.Role == role);
+                    if (req != null)
+                    {
+                        _twoFactorStates[role] = req.RequireTwoFactor;
+                    }
+                }
+                return;
+            }
+
+            _twoFactorRoleSaveSuccess = true;
+            _twoFactorRoleSaveMessage = L["TwoFactorRoleSaved", role.ToString()];
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            _twoFactorRoleSaveSuccess = false;
+            _twoFactorRoleSaveMessage = L["AuthUnauthorized"];
+            // Revert the UI state
+            if (_twoFactorRequirements != null)
+            {
+                var req = _twoFactorRequirements.FirstOrDefault(r => r.Role == role);
+                if (req != null)
+                {
+                    _twoFactorStates[role] = req.RequireTwoFactor;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _twoFactorRoleSaveSuccess = false;
+            _twoFactorRoleSaveMessage = L["TwoFactorRoleSaveFailed", role.ToString(), ex.Message];
+            // Revert the UI state
+            if (_twoFactorRequirements != null)
+            {
+                var req = _twoFactorRequirements.FirstOrDefault(r => r.Role == role);
+                if (req != null)
+                {
+                    _twoFactorStates[role] = req.RequireTwoFactor;
+                }
+            }
+        }
+        finally
+        {
+            _savingTwoFactorRoles.Remove(role);
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        if (SessionState.SessionToken is not null)
+        {
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+        return client;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private class TwoFactorRoleRequirement
+    {
+        public OperatorRole Role { get; set; }
+        public bool RequireTwoFactor { get; set; }
+    }
+}

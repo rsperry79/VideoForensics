@@ -431,8 +431,10 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IPairingTokenService, PairingTokenService>();
             _ = services.AddSingleton<IDeviceCodePairingService, DeviceCodePairingService>();
             _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
+            _ = services.AddSingleton<ITwoFactorPendingAuthCache, TwoFactorPendingAuthCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
+            _ = services.AddSingleton<IMediaAccessTicketService, MediaAccessTicketService>();
             _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
             _ = services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
             _ = services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
@@ -564,6 +566,10 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<Contracts.IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
@@ -612,9 +618,17 @@ namespace VideoForensics.Hosting
                 ?? throw new InvalidOperationException("Configuration must be a ForensicsConfiguration instance");
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, logger, ct);
 
-            // Seed a default SuperAdmin account if the Operators table is empty
+            // Seed a default SuperAdmin account if the Operators table is empty - but only when
+            // explicitly opted into via VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN=true (headless/scripted
+            // deployments that can't drive a browser). By default this is left off: the interactive
+            // /setup wizard (SetupEndpoints.cs) handles first-run admin creation instead, letting the
+            // installing user pick their own username/password rather than getting the fixed
+            // admin/ChangeMe123! account.
             IOperatorRepository operatorRepo = sp.GetRequiredService<IOperatorRepository>();
-            if (await operatorRepo.IsEmptyAsync(ct))
+            bool enableDefaultAdmin = string.Equals(
+                Environment.GetEnvironmentVariable("VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN"),
+                "true", StringComparison.OrdinalIgnoreCase);
+            if (enableDefaultAdmin && await operatorRepo.IsEmptyAsync(ct))
             {
                 var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<VideoForensics.Data.Common.Entities.Operator>();
                 var defaultAdmin = new VideoForensics.Data.Common.Entities.Operator

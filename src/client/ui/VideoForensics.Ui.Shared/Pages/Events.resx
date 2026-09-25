@@ -56,6 +56,9 @@
   <data name="ShowOnlyUnansweredOrFlagged" xml:space="preserve">
     <value>Show only unanswered/flagged</value>
   </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
   <data name="LoadEvents" xml:space="preserve">
     <value>Load Events</value>
   </data>
