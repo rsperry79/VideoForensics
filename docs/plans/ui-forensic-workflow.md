@@ -86,7 +86,7 @@ Workflow page is removed — the nav order is the workflow.
   (details edit, pinned items with hash integrity Match/Mismatch/Missing, remove with reason,
   Admin close/reopen, "Work on this case" → Evidence). New "Cases" nav group.
 
-### Phase 5 — Raw API data in the tester 🔄 Next
+### Phase 5 — Raw API data in the tester ✅ Done (`claude/ui-api-tester`)
 
 Decision: raw provider API traffic is **displayed, never persisted** (storing payloads would bloat
 the database; parsed provider data is already stored in structured tables), and it is shown **only in
@@ -98,7 +98,7 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 - Ring Self-Test page: results in a ForensicGrid; selecting a call opens the inspector with the parsed
   result in Fields and the raw responses in Raw (DumpView), plus schema issues.
 
-### Phase 6 — Navigation restructure ⏳
+### Phase 6 — Navigation restructure 🔄 Next
 
 Rewrite `NavGroups.cs` to the five areas, merge Analyze pages, redirect old routes, top-bar user
 menu for operator login, move Admin items, delete Workflow page.
