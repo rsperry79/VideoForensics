@@ -5,6 +5,7 @@
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Layout.Mobile
 @inject PairedSessionState SessionState
 @inject IAppLockPreferencesStore AppLockPreferences
 @inject NavigationManager Nav
@@ -26,6 +27,11 @@
     <div class="mobile-app-header">
         <div class="mobile-app-bar">
             <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="Toggle navigation" />
+
+            @if (SessionState.IsSignedIn)
+            {
+                <MobileFiltersSheet />
+            }
 
             <div class="mobile-page-title">
                 @L[ActiveGroup.Text]
@@ -136,4 +142,6 @@
             </div>
         </div>
     }
+
+    <MobileInspectorDrawer />
 </div>
