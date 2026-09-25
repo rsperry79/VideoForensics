@@ -4,9 +4,16 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Client.Common
+@using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Events
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Services.Scope
+@using VideoForensics.Ui.Shared.Components.Inspector
+@implements IDisposable
 @inject IProviderAuthService AuthService
+@inject IMediaContentUrlProvider MediaUrlProvider
 @inject IDeviceRepository DeviceRepository
 @inject IEventRepository EventRepository
 @inject IReportGenerationService ReportGenerationService
@@ -14,6 +21,7 @@
 @inject IEvidenceValidationService EvidenceValidationService
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Events> L
+@inject ScopeState ScopeState
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -36,6 +44,7 @@
             Resolution="@(_currentEventRow.MediaItem?.Resolution)"
             IntegrityStatusText="@_currentEventDetailsIntegrityStatus"
             LegalHoldStatusText="@_currentEventDetailsLegalHoldStatus"
+            ContentUrl="@_currentContentUrl"
             OnClosed="OnEventDetailsDialogClosed" />
     }
 </SfDialog>
@@ -54,12 +63,6 @@ else
         <div class="right-panel-section">
             <h6>@L["Title"]</h6>
             <div class="d-flex flex-column" style="gap: 0.5rem;">
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceIdStr" DataSource="@DeviceOptions"
-                    ValueChange="LoadEventsAsync" Placeholder="@L["SelectADevice"]" Style="min-width: 220px;">
-                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-                </SfDropDownList>
-                <label>@L["FromLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="LoadEventsAsync" Disabled="@_onlyUnansweredOrFlagged" /></label>
-                <label>@L["ToLabel"] <SfDatePicker TValue="DateTime" @bind-Value="_toDate" ValueChange="LoadEventsAsync" Disabled="@_onlyUnansweredOrFlagged" /></label>
                 <SfCheckBox TChecked="bool" @bind-Checked="_onlyUnansweredOrFlagged" @bind-Checked:after="LoadEventsAsync" Label="@L["ShowOnlyUnansweredOrFlagged"].Value" />
             </div>
         </div>
@@ -67,12 +70,21 @@ else
 
     <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mb-4">
         <div style="display: flex; flex-direction: row; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <SfButton Content="@L["LoadEvents"]" OnClick="LoadEventsAsync" Disabled="@(_loadingEvents || string.IsNullOrEmpty(_selectedDeviceIdStr))" CssClass="e-primary" />
+            @if (!string.IsNullOrEmpty(_scopeSummary))
+            {
+                <small>@_scopeSummary</small>
+            }
+            <SfButton Content="@L["Refresh"]" OnClick="LoadEventsAsync" Disabled="@_loadingEvents" CssClass="e-primary" />
         </div>
 
         @if (!string.IsNullOrEmpty(_error))
         {
             <div style="color: #d32f2f; padding: 12px; background-color: #ffebee; border-radius: 4px;">@_error</div>
+        }
+
+        @if (!string.IsNullOrEmpty(_deviceErrorMessage))
+        {
+            <div style="color: #d32f2f; padding: 12px; background-color: #ffebee; border-radius: 4px;">@_deviceErrorMessage</div>
         }
 
         @if (_pendingHoldRow is not null || _pendingReleaseRow is not null)
@@ -93,81 +105,17 @@ else
         }
         else
         {
-            <SfGrid @ref="_grid" TValue="EventRow" DataSource="@_filteredRows" AllowPaging="true" AllowSorting="true" AllowFiltering="true" ContextMenuItems="@ContextMenuItems" ContextMenuItemClicked="OnGridContextMenuClicked" AllowResizing="true">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
-                <GridPageSettings PageSize="20"></GridPageSettings>
-                <GridColumns>
-                    <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                @if (row.MediaItem is not null && IsImageFormat(row.MediaItem.MediaFormat))
-                                {
-                                    <img src="@MediaContentUrl(row.MediaItem.Id)" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
-                                }
-                                else if (row.MediaItem is not null && IsVideoFormat(row.MediaItem.MediaFormat))
-                                {
-                                    <i class="material-icons">videocam</i>
-                                }
-                                else
-                                {
-                                    <i class="material-icons">event</i>
-                                }
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                <SfButton OnClick="@(() => OpenDetailsDialogAsync(row))"
-                                    Disabled="@(row.MediaItem is null)" CssClass="e-flat">
-                                    <span class="material-icons" style="font-size: 18px;">play_arrow</span>
-                                </SfButton>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(EventRow.EventType)" HeaderText="@L["ColEventType"]" Width="140px" />
-                    <GridColumn Field="@nameof(EventRow.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" Width="170px" />
-                    <GridColumn Field="@nameof(EventRow.DiscoveredAtUtc)" HeaderText="@L["ColDiscoveredAt"]" Width="170px" />
-                    <GridColumn HeaderText="@L["ColDownloadedAt"]" Width="170px">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                @(row.DownloadedAtUtc?.ToString() ?? L["NotAvailable"])
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="@L["ColMediaFormat"]" Width="110px">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                @(row.MediaItem?.MediaFormat ?? L["NotAvailable"])
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="@L["ColIntegrity"]" Width="120px">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                var (statusText, statusColor) = row.MediaItem is null
-                                    ? (L["NotAvailable"].Value, "inherit")
-                                    : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
-                                <span style="@($"color:{statusColor}")">@statusText</span>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn HeaderText="@L["ColLegalHold"]" Width="110px">
-                        <Template>
-                            @{
-                                var row = (EventRow)context;
-                                @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"] : L["NotAvailable"])
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(EventRow.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" Width="140px" />
-                </GridColumns>
-            </SfGrid>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <ForensicGrid TItem="EventRow"
+                    DataSource="@_rows"
+                    ToInspector="@ToEventInspector"
+                    OnRowSelected="@OnRowSelected"
+                    Columns="@GridColumns"
+                    ExportFileName="events.csv"
+                    PageSize="20"
+                    ContextMenuItems="@ContextMenuItems"
+                    ContextMenuItemClicked="@OnGridContextMenuClicked" />
+            </div>
         }
     }
 }
@@ -176,24 +124,105 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private string _selectedDeviceIdStr = string.Empty;
-
-    private DateTime _fromDate = DateTime.Today.AddDays(-90);
-    private DateTime _toDate = DateTime.Today;
     private bool _onlyUnansweredOrFlagged;
 
     private bool _loadingEvents;
     private string? _error;
+    private string? _deviceErrorMessage;
     private List<EventRow>? _rows;
-    private IEnumerable<EventRow> _filteredRows = new List<EventRow>();
     private IList<EventRow>? _selectedRows;
-    private SfGrid<EventRow>? _grid;
-
     private SfToast? _toastRef;
     private bool _eventDetailsDialogVisible;
     private EventRow? _currentEventRow;
     private string _currentEventDetailsIntegrityStatus = string.Empty;
     private string _currentEventDetailsLegalHoldStatus = string.Empty;
+    private string? _currentContentUrl;
+
+    private Dictionary<Guid, string> _mediaUrls = new();
+    private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
+    private IReadOnlyList<IntegrityRecord> _integrityRecords = new List<IntegrityRecord>();
+    private EventRow? _pendingHoldRow;
+    private EventRow? _pendingReleaseRow;
+    private string _holdReasonInput = string.Empty;
+    private string _scopeSummary = string.Empty;
+    private System.Action? _onScopeChangeHandler;
+
+    private RenderFragment? GridColumns => __builder =>
+    {
+        <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    @if (row.MediaItem is not null && MediaFormatHelper.IsImage(row.MediaItem.MediaFormat) && _mediaUrls.TryGetValue(row.MediaItem.Id, out var url))
+                    {
+                        <img src="@url" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                    }
+                    else if (row.MediaItem is not null && MediaFormatHelper.IsVideo(row.MediaItem.MediaFormat))
+                    {
+                        <i class="material-icons">videocam</i>
+                    }
+                    else if (row.MediaItem is not null && MediaFormatHelper.IsImage(row.MediaItem.MediaFormat))
+                    {
+                        <i class="material-icons">image</i>
+                    }
+                    else
+                    {
+                        <i class="material-icons">event</i>
+                    }
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    <SfButton OnClick="@(() => OpenDetailsDialogAsync(row))"
+                        Disabled="@(row.MediaItem is null)" CssClass="e-flat">
+                        <span class="material-icons" style="font-size: 18px;">play_arrow</span>
+                    </SfButton>
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(EventRow.EventType)" HeaderText="@L["ColEventType"]" Width="140px" />
+        <GridColumn Field="@nameof(EventRow.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" Width="170px" />
+        <GridColumn Field="@nameof(EventRow.DiscoveredAtUtc)" HeaderText="@L["ColDiscoveredAt"]" Width="170px" />
+        <GridColumn HeaderText="@L["ColDownloadedAt"]" Width="170px">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    @(row.DownloadedAtUtc?.ToString() ?? L["NotAvailable"])
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn HeaderText="@L["ColMediaFormat"]" Width="110px">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    @(row.MediaItem?.MediaFormat ?? L["NotAvailable"])
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn HeaderText="@L["ColIntegrity"]" Width="120px">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    var (statusText, statusColor) = row.MediaItem is null
+                        ? (L["NotAvailable"].Value, "inherit")
+                        : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
+                    <span style="@($"color:{statusColor}")">@statusText</span>
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn HeaderText="@L["ColLegalHold"]" Width="110px">
+            <Template>
+                @{
+                    var row = (EventRow)context;
+                    @(row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"] : L["NotAvailable"])
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(EventRow.ProviderEventId)" HeaderText="@L["ColProviderEventId"]" Width="140px" />
+    };
 
     private List<object>? ContextMenuItems => new List<object>
     {
@@ -204,27 +233,6 @@ else
         new { Text = L["VerifyIntegrityDevice"], Id = "verify" },
     };
 
-    private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
-    private IReadOnlyList<IntegrityRecord> _integrityRecords = new List<IntegrityRecord>();
-    private EventRow? _pendingHoldRow;
-    private EventRow? _pendingReleaseRow;
-    private string _holdReasonInput = string.Empty;
-
-    private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
-        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
-
-    private sealed class EventRow
-    {
-        public required Event Event { get; init; }
-        public MediaItem? MediaItem { get; set; }
-
-        public string EventType => Event.EventType;
-        public DateTime OccurredAtUtc => Event.OccurredAtUtc;
-        public DateTime DiscoveredAtUtc => Event.DiscoveredAtUtc;
-        public DateTime? DownloadedAtUtc => Event.DownloadedAtUtc;
-        public string ProviderEventId => Event.ProviderEventId;
-    }
-
     protected override async Task OnInitializedAsync()
     {
         try
@@ -234,6 +242,19 @@ else
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+
+                // Subscribe to scope changes
+                _onScopeChangeHandler = () =>
+                {
+                    _ = InvokeAsync(LoadEventsAsync);
+                };
+                ScopeState.OnChange += _onScopeChangeHandler;
+
+                // Load initial data if devices are available
+                if (_devices.Count > 0)
+                {
+                    await LoadEventsAsync();
+                }
             }
         }
         finally
@@ -242,55 +263,88 @@ else
         }
     }
 
+    private InspectorModel ToEventInspector(EventRow row)
+    {
+        return EventInspectorMapper.ToInspector(row, _activeHoldsByMediaItemId, _integrityRecords);
+    }
+
+    private Task OnRowSelected(EventRow row)
+    {
+        _selectedRows = new List<EventRow> { row };
+        return Task.CompletedTask;
+    }
+
+    private void UpdateScopeSummary()
+    {
+        var scope = ScopeState.Current;
+
+        if (scope.IncludesAllDevices)
+        {
+            _scopeSummary = $"All devices · {scope.FromUtc:yyyy-MM-dd} → {scope.ToUtc:yyyy-MM-dd}";
+        }
+        else
+        {
+            var deviceCount = scope.DeviceIds.Count;
+            _scopeSummary = $"{deviceCount} device{(deviceCount != 1 ? "s" : "")} · {scope.FromUtc:yyyy-MM-dd} → {scope.ToUtc:yyyy-MM-dd}";
+        }
+    }
+
     private async Task LoadEventsAsync()
     {
-        if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+        if (!_isAuthenticated)
         {
             return;
         }
 
         _loadingEvents = true;
         _error = null;
-        _selectedRows = null;
+        _deviceErrorMessage = null;
+        _rows = null;
+
         try
         {
-            var events = _onlyUnansweredOrFlagged
-                ? await EventRepository.ListUnansweredOrFlaggedAsync(deviceId, CancellationToken.None)
-                : await EventRepository.ListByDeviceAndDateRangeAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
+            UpdateScopeSummary();
 
-            var rows = events.Select(e => new EventRow { Event = e }).ToList();
+            var loader = new EventRowLoader(EventRepository, ReportGenerationService, LegalHoldRepository);
+            var result = await loader.LoadAsync(ScopeState.Current, _devices.Select(d => d.Id).ToList(), _onlyUnansweredOrFlagged, CancellationToken.None);
 
-            // The "unanswered/flagged" filter has no natural date range, so the evidence-review
-            // join (which requires one) is skipped there - those rows show media/hold columns as
-            // "-" until the operator switches to a date-range load.
-            if (!_onlyUnansweredOrFlagged)
+            _rows = result.Rows.ToList();
+            _activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
+            foreach (var kvp in result.ActiveHoldsByMediaItemId)
             {
-                var report = await ReportGenerationService.BuildEvidenceReviewAsync(deviceId, _fromDate, _toDate, CancellationToken.None);
-                var mediaByDownloadEventId = report.MediaItems
-                    .Where(m => m.DownloadEventId.HasValue)
-                    .ToDictionary(m => m.DownloadEventId!.Value);
+                _activeHoldsByMediaItemId[kvp.Key] = kvp.Value;
+            }
+            _integrityRecords = result.IntegrityRecords;
 
-                foreach (var row in rows)
+            // Build per-device error message
+            if (result.PerDeviceErrors.Count > 0)
+            {
+                var deviceNames = _devices
+                    .Where(d => result.PerDeviceErrors.ContainsKey(d.Id))
+                    .Select(d => d.Name)
+                    .ToList();
+
+                _deviceErrorMessage = $"Failed to load events for: {string.Join(", ", deviceNames)}";
+            }
+
+            // Load media content URLs for thumbnails
+            var mediaItemIdsForUrls = _rows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
+            if (mediaItemIdsForUrls.Count > 0)
+            {
+                try
                 {
-                    if (mediaByDownloadEventId.TryGetValue(row.Event.Id, out var mediaItem))
-                    {
-                        row.MediaItem = mediaItem;
-                    }
+                    _mediaUrls = (await MediaUrlProvider.GetContentUrlsAsync(mediaItemIdsForUrls, CancellationToken.None)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 }
-
-                var mediaItemIds = rows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
-                var activeHolds = await LegalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, CancellationToken.None);
-                _activeHoldsByMediaItemId = activeHolds.ToDictionary(h => h.MediaItemId);
-                _integrityRecords = report.IntegrityRecords;
+                catch (Exception ex)
+                {
+                    _error = L["FailedToLoadEvents", ex.Message];
+                    _mediaUrls = new Dictionary<Guid, string>();
+                }
             }
             else
             {
-                _activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
-                _integrityRecords = new List<IntegrityRecord>();
+                _mediaUrls = new Dictionary<Guid, string>();
             }
-
-            _rows = rows;
-            _filteredRows = rows;
         }
         catch (Exception ex)
         {
@@ -302,7 +356,7 @@ else
         }
     }
 
-    private async Task OnGridContextMenuClicked(Syncfusion.Blazor.Grids.ContextMenuClickEventArgs<EventRow> args)
+    private async Task OnGridContextMenuClicked(ContextMenuClickEventArgs<EventRow> args)
     {
         // Get the row from selected rows (grid should have the row selected when context menu is opened)
         if (_selectedRows is { Count: > 0 } && _selectedRows[0] is EventRow row)
@@ -332,7 +386,7 @@ else
 
     private async Task ExportRows(EventRow contextRow)
     {
-        var ids = (_selectedRows is { Count: > 0 } ? _selectedRows : new List<EventRow> { contextRow })
+        var ids = new List<EventRow> { contextRow }
             .Where(r => r.MediaItem is not null)
             .Select(r => r.MediaItem!.Id)
             .Distinct()
@@ -391,7 +445,7 @@ else
         else if (_pendingReleaseRow?.MediaItem is not null && _activeHoldsByMediaItemId.TryGetValue(_pendingReleaseRow.MediaItem.Id, out var activeHold))
         {
             await LegalHoldRepository.ReleaseAsync(activeHold.Id, Environment.UserName, _holdReasonInput, CancellationToken.None);
-            _activeHoldsByMediaItemId.Remove(_pendingReleaseRow.MediaItem.Id);
+            _activeHoldsByMediaItemId.Remove(_pendingReleaseRow.MediaItem.Id, out _);
             if (_toastRef is not null)
             {
                 await _toastRef.ShowAsync(new ToastModel { Title = L["LegalHoldReleased"], Icon = "e-success" });
@@ -401,19 +455,7 @@ else
         CancelPendingHoldAction();
     }
 
-    private static string MediaContentUrl(Guid mediaItemId) => $"/api/media/{mediaItemId}/content";
-
-    private static bool IsImageFormat(string format) =>
-        format.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("png", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("image", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsVideoFormat(string format) =>
-        format.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
-        format.Contains("video", StringComparison.OrdinalIgnoreCase);
-
-    private Task OpenDetailsDialogAsync(EventRow row)
+    private async Task OpenDetailsDialogAsync(EventRow row)
     {
         var (statusText, _) = row.MediaItem is null ? (L["NotAvailable"].Value, "inherit") : DetermineMediaStatus(row.MediaItem.Id, _integrityRecords);
         var holdText = row.MediaItem is not null && _activeHoldsByMediaItemId.ContainsKey(row.MediaItem.Id) ? L["OnHold"].Value : L["NotAvailable"].Value;
@@ -421,9 +463,24 @@ else
         _currentEventRow = row;
         _currentEventDetailsIntegrityStatus = statusText;
         _currentEventDetailsLegalHoldStatus = holdText;
-        _eventDetailsDialogVisible = true;
 
-        return Task.CompletedTask;
+        // Fetch a fresh URL for the dialog (tickets expire after 10 minutes)
+        _currentContentUrl = null;
+        if (row.MediaItem?.Id is { } mediaItemId)
+        {
+            try
+            {
+                var urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { mediaItemId }, CancellationToken.None);
+                urls.TryGetValue(mediaItemId, out _currentContentUrl);
+            }
+            catch
+            {
+                // If URL fetch fails, dialog will show "Media preview unavailable"
+                _currentContentUrl = null;
+            }
+        }
+
+        _eventDetailsDialogVisible = true;
     }
 
     private Task OnEventDetailsDialogClosed()
@@ -441,7 +498,7 @@ else
             return;
         }
 
-        var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(row.Event.DeviceId, CancellationToken.None);
+        var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(row.DeviceId, CancellationToken.None);
         var failed = results.Count(r => r.Status != "verified");
         if (_toastRef is not null)
         {
@@ -470,5 +527,13 @@ else
         }
 
         return (L["Verified"], "green");
+    }
+
+    void IDisposable.Dispose()
+    {
+        if (_isAuthenticated && _onScopeChangeHandler is not null)
+        {
+            ScopeState.OnChange -= _onScopeChangeHandler;
+        }
     }
 }

@@ -1,0 +1,57 @@
+@using Microsoft.AspNetCore.Components.Routing
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Services.Inspector
+@implements IDisposable
+@inject InspectorState InspectorState
+@inject NavigationManager Nav
+
+@if (_visible)
+{
+    <div class="mobile-inspector-backdrop" data-testid="mobile-inspector-backdrop" @onclick="Close"></div>
+    <div class="mobile-inspector-drawer" data-testid="mobile-inspector">
+        <InspectorPanel />
+    </div>
+}
+
+@code {
+    private bool _visible = false;
+
+    protected override void OnInitialized()
+    {
+        InspectorState.OnChange += OnInspectorChanged;
+        Nav.LocationChanged += OnLocationChanged;
+        UpdateVisibility();
+    }
+
+    private void OnInspectorChanged()
+    {
+        UpdateVisibility();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Close drawer when navigation occurs
+        if (_visible)
+        {
+            Close();
+        }
+    }
+
+    private void UpdateVisibility()
+    {
+        _visible = InspectorState.Current is not null;
+    }
+
+    private void Close()
+    {
+        InspectorState.Clear();
+        _visible = false;
+    }
+
+    public void Dispose()
+    {
+        InspectorState.OnChange -= OnInspectorChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

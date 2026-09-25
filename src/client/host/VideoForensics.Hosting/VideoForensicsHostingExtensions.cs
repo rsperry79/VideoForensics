@@ -434,6 +434,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<ITwoFactorPendingAuthCache, TwoFactorPendingAuthCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
+            _ = services.AddSingleton<IMediaAccessTicketService, MediaAccessTicketService>();
             _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
             _ = services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
             _ = services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
@@ -556,6 +557,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
@@ -565,6 +567,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);

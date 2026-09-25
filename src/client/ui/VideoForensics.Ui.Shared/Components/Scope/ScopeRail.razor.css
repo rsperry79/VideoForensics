@@ -1,0 +1,115 @@
+/* Compact panel for a ~220px-wide rail; colors are inherited/currentColor-based (rather than
+   hardcoded hex) so the rail follows the surrounding theme, including dark mode. */
+
+.scope-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    font-size: 12px;
+}
+
+.scope-rail-message {
+    padding: 8px;
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+.scope-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 8px;
+}
+
+.scope-section-label {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    opacity: 0.65;
+}
+
+.scope-hint {
+    font-size: 11px;
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.scope-device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.scope-device-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 0;
+}
+
+.scope-device-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.scope-date-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.scope-date-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.scope-date-input {
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid var(--rz-border-color, #e0e0e0);
+    border-radius: 3px;
+    background-color: transparent;
+    color: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.scope-quick-ranges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.scope-quick-range-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid var(--rz-border-color, #e0e0e0);
+    border-radius: 3px;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.scope-quick-range-btn:hover {
+    background-color: var(--rz-border-color, #e0e0e0);
+}
+
+.scope-search-input {
+    font-size: 12px;
+    padding: 4px 6px;
+    border: 1px solid var(--rz-border-color, #e0e0e0);
+    border-radius: 3px;
+    background-color: transparent;
+    color: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}

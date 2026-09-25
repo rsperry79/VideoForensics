@@ -1,0 +1,514 @@
+@page "/"
+@page "/evidence"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Core.Contracts
+@using Device = VideoForensics.Data.Common.Entities.Device
+@using VideoForensics.Client.Common
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Evidence
+@using VideoForensics.Ui.Shared.Services.Events
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Services.Scope
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Evidence
+@implements IDisposable
+@inject IProviderAuthService AuthService
+@inject IMediaContentUrlProvider MediaUrlProvider
+@inject IDeviceRepository DeviceRepository
+@inject IEventRepository EventRepository
+@inject IReportGenerationService ReportGenerationService
+@inject ILegalHoldRepository LegalHoldRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject NavigationManager NavigationManager
+@inject InspectorState InspectorState
+@inject ScopeState ScopeState
+
+<h4 class="mb-4">Evidence</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (!_isAuthenticated)
+{
+    <p>Not signed in. <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> to browse evidence.</p>
+}
+else if (_vm is null)
+{
+    <p>Loading evidence...</p>
+}
+else
+{
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <h6>Evidence</h6>
+        </div>
+    </PageRightPanelContent>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mb-4">
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            @if (_summaryText is not null)
+            {
+                <small>@_summaryText</small>
+            }
+            @if (_thumbnailsUnavailable)
+            {
+                <small class="text-muted" data-testid="thumbnails-unavailable">Thumbnails unavailable.</small>
+            }
+            <SfButton Content="Refresh" OnClick="LoadEvidenceAsync" Disabled="@_loadingEvidence" CssClass="e-primary" />
+        </div>
+
+        @if (_vm.LoadResult.Errors.Count > 0)
+        {
+            <div style="color: #d32f2f; padding: 12px; background-color: #ffebee; border-radius: 4px;">
+                Errors loading from devices:
+                @foreach (var kvp in _vm.LoadResult.Errors)
+                {
+                    var device = _devices?.FirstOrDefault(d => d.Id == kvp.Key);
+                    var deviceName = device?.Name ?? kvp.Key.ToString("D")[..8];
+                    <div>@deviceName: @kvp.Value</div>
+                }
+            </div>
+        }
+
+        <div style="display: flex; flex-direction: row; gap: 0.5rem;">
+            <SfButton Content="Timeline" OnClick="@(() => SetView(EvidenceView.Timeline))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Timeline ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-timeline" />
+            <SfButton Content="Grid" OnClick="@(() => SetView(EvidenceView.Grid))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Grid ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-grid" />
+            <SfButton Content="Gallery" OnClick="@(() => SetView(EvidenceView.Gallery))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Gallery ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-gallery" />
+        </div>
+    </div>
+
+    @if (_vm.IsViewerOpen && _vm.Selected is not null)
+    {
+        @if (_mediaLoadError is not null)
+        {
+            <div class="text-muted" data-testid="media-load-error">Unable to load media: @_mediaLoadError</div>
+        }
+        <MediaViewer
+            Item="@_vm.Selected"
+            ContentUrl="@_currentMediaUrl"
+            HasPrevious="@_vm.HasPrevious"
+            HasNext="@_vm.HasNext"
+            OnPrevious="@OnMediaViewerPrevious"
+            OnNext="@OnMediaViewerNext"
+            OnClose="@OnMediaViewerClose" />
+    }
+    else if (_currentView == EvidenceView.Timeline)
+    {
+        <div class="evidence-timeline">
+            @foreach (var dayGroup in _dayGroups)
+            {
+                <div class="timeline-day-group">
+                    <div class="timeline-day-header">
+                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @dayGroup.TotalCount item@(dayGroup.TotalCount == 1 ? "" : "s")
+                    </div>
+                    @foreach (var deviceGroup in dayGroup.Devices)
+                    {
+                        <div class="timeline-device-group">
+                            <div class="timeline-device-header">@deviceGroup.DeviceName</div>
+                            @foreach (var item in deviceGroup.Items)
+                            {
+                                <div class="timeline-row" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
+                                    <div class="timeline-row-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
+                                    <div class="timeline-row-kind">@item.Kind.ToString()</div>
+                                    <div class="timeline-row-label">@item.Label</div>
+                                    @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
+                                    {
+                                        <img src="@thumbUrl" alt="" class="timeline-row-thumb" />
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (_currentView == EvidenceView.Grid)
+    {
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <ForensicGrid TItem="EvidenceItem"
+                DataSource="@_vm.Items"
+                ToInspector="@ToEvidenceInspector"
+                OnRowSelected="@OnGridRowSelectedAsync"
+                Columns="@GridColumns"
+                ExportFileName="evidence.csv"
+                PageSize="20" />
+        </div>
+    }
+    else if (_currentView == EvidenceView.Gallery)
+    {
+        <div class="evidence-gallery">
+            @foreach (var item in _vm.GalleryItems)
+            {
+                <div class="gallery-tile" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
+                    @if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat) && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
+                    {
+                        <img src="@thumbUrl" alt="@item.Label" class="gallery-tile-image" />
+                    }
+                    else if (item.Media is not null && MediaFormatHelper.IsVideo(item.Media.MediaFormat))
+                    {
+                        <div class="gallery-tile-video">
+                            <span class="material-icons gallery-tile-play">play_circle</span>
+                        </div>
+                    }
+                    <div class="gallery-tile-label">@item.OccurredAtUtc.ToString("HH:mm:ss") · @item.DeviceName</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<Device> _devices = new();
+    private EvidenceViewModel? _vm;
+    private bool _loadingEvidence;
+    private string? _summaryText;
+    private EvidenceView _currentView = EvidenceView.Timeline;
+    private IReadOnlyList<EvidenceDayGroup> _dayGroups = new List<EvidenceDayGroup>();
+    private Dictionary<Guid, string> _thumbnailUrls = new();
+    private bool _thumbnailsUnavailable;
+    private string? _currentMediaUrl;
+    private string? _mediaLoadError;
+    private System.Action? _onScopeChangeHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+
+                // Subscribe to scope changes
+                _onScopeChangeHandler = () => InvokeAsync(LoadEvidenceAsync);
+                ScopeState.OnChange += _onScopeChangeHandler;
+
+                await LoadEvidenceAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadEvidenceAsync()
+    {
+        try
+        {
+            _loadingEvidence = true;
+            var eventRowLoader = new EventRowLoader(EventRepository, ReportGenerationService, LegalHoldRepository);
+            var evidenceLoader = new EvidenceLoader(eventRowLoader, MediaItemRepository);
+            var result = await evidenceLoader.LoadAsync(ScopeState.Current, _devices, CancellationToken.None);
+
+            _vm = new EvidenceViewModel(result);
+            _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
+
+            // Update summary
+            var counts = result.Counts;
+            _summaryText = $"{counts.Total} items · {counts.Events} events · {counts.Snapshots} snapshots · {counts.Videos} videos";
+
+            // Load thumbnails
+            _thumbnailsUnavailable = false;
+            var thumbIds = _vm.ThumbnailMediaIds(max: 500);
+            if (thumbIds.Count > 0)
+            {
+                try
+                {
+                    var urls = await MediaUrlProvider.GetContentUrlsAsync(thumbIds, CancellationToken.None);
+                    foreach (var kvp in urls)
+                    {
+                        _thumbnailUrls[kvp.Key] = kvp.Value;
+                    }
+                }
+                catch
+                {
+                    // Continue without thumbnails, but let the user know previews are degraded
+                    // rather than silently leaving every tile blank with no explanation.
+                    _thumbnailsUnavailable = true;
+                }
+            }
+
+            // Parse view from query string
+            var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+            var viewParam = ExtractQueryParam(uri.Query, "view");
+            if (!string.IsNullOrEmpty(viewParam))
+            {
+                _currentView = EvidenceViewModel.ParseView(viewParam);
+            }
+
+            // Parse item from query string (for direct viewer link)
+            var itemParam = ExtractQueryParam(uri.Query, "item");
+            if (!string.IsNullOrEmpty(itemParam))
+            {
+                await OpenItemViewerAsync(itemParam);
+            }
+        }
+        finally
+        {
+            _loadingEvidence = false;
+        }
+    }
+
+    private void SetView(EvidenceView view)
+    {
+        _currentView = view;
+        var query = ScopeState.ToQueryString();
+        var separator = string.IsNullOrEmpty(query) ? "" : "&";
+        NavigationManager.NavigateTo($"/evidence?{query}{separator}view={view.ToString().ToLowerInvariant()}", replace: true);
+    }
+
+    private async Task SelectItemAsync(string key)
+    {
+        _vm?.Open(key);
+        await OpenItemViewerAsync(key);
+    }
+
+    private async Task OpenItemViewerAsync(string key)
+    {
+        _vm?.Open(key);
+        var selected = _vm?.Selected;
+        if (selected is not null)
+        {
+            InspectorState.Show(EvidenceInspectorMapper.ToInspector(
+                selected,
+                _vm!.LoadResult.ActiveHoldsByMediaItemId,
+                _vm.LoadResult.IntegrityRecords));
+            await LoadMediaUrlAsync(key);
+        }
+
+        // Guard against out-of-order completion: only move the URL to this item if the
+        // user hasn't since selected a different one while the ticket fetch was in flight.
+        if (_vm?.Selected?.Key == key)
+        {
+            NavigateWithItem(key);
+        }
+    }
+
+    /// <summary>
+    /// Updates the URL's "item=" (and, when not Timeline, "view=") query params to reflect the
+    /// currently-open viewer item. Shared by every path that opens or moves the viewer
+    /// (initial selection and Next/Previous) so the URL always names the item actually shown.
+    /// </summary>
+    private void NavigateWithItem(string key)
+    {
+        var query = ScopeState.ToQueryString();
+        var separator = string.IsNullOrEmpty(query) ? "" : "&";
+        var viewParam = _currentView == EvidenceView.Timeline ? "" : $"&view={_currentView.ToString().ToLowerInvariant()}";
+        NavigationManager.NavigateTo($"/evidence?{query}{separator}item={key}{viewParam}", replace: true);
+    }
+
+    /// <summary>
+    /// Fetches the ticketed content URL for the item identified by <paramref name="key"/>
+    /// (the item that was selected when this call started). Because the fetch is awaited across
+    /// a real I/O call, the user can move to a different item before it completes; the key is
+    /// re-checked against the current selection after the await so a slow, stale response for a
+    /// previous item can never clobber the URL/error state of whatever is selected now.
+    /// </summary>
+    private async Task LoadMediaUrlAsync(string key)
+    {
+        var mediaId = _vm?.Selected?.Media?.Id;
+        if (mediaId is null)
+        {
+            if (_vm?.Selected?.Key == key)
+            {
+                _currentMediaUrl = null;
+                _mediaLoadError = null;
+            }
+            return;
+        }
+
+        try
+        {
+            var urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { mediaId.Value }, CancellationToken.None);
+
+            if (_vm?.Selected?.Key != key)
+            {
+                // Stale: the user has since moved on to a different item.
+                return;
+            }
+
+            if (urls.TryGetValue(mediaId.Value, out var url))
+            {
+                _currentMediaUrl = url;
+                _mediaLoadError = null;
+            }
+            else
+            {
+                _currentMediaUrl = null;
+                _mediaLoadError = "No content URL was returned for this item.";
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_vm?.Selected?.Key != key)
+            {
+                // Stale: the user has since moved on to a different item.
+                return;
+            }
+
+            _currentMediaUrl = null;
+            _mediaLoadError = ex.Message;
+        }
+    }
+
+    private async Task OnGridRowSelectedAsync(EvidenceItem item)
+    {
+        if (item.HasViewableMedia)
+        {
+            await SelectItemAsync(item.Key);
+        }
+    }
+
+    private async Task OnMediaViewerNext()
+    {
+        if (_vm is null)
+            return;
+
+        _vm.MoveNext();
+        var selected = _vm.Selected;
+        if (selected is not null)
+        {
+            await LoadMediaUrlAsync(selected.Key);
+
+            // Guard against out-of-order completion: only apply the inspector/URL update if
+            // the user hasn't since moved on to yet another item while this fetch was in flight.
+            if (_vm.Selected?.Key == selected.Key)
+            {
+                InspectorState.Show(EvidenceInspectorMapper.ToInspector(
+                    selected,
+                    _vm.LoadResult.ActiveHoldsByMediaItemId,
+                    _vm.LoadResult.IntegrityRecords));
+                NavigateWithItem(selected.Key);
+            }
+        }
+    }
+
+    private async Task OnMediaViewerPrevious()
+    {
+        if (_vm is null)
+            return;
+
+        _vm.MovePrevious();
+        var selected = _vm.Selected;
+        if (selected is not null)
+        {
+            await LoadMediaUrlAsync(selected.Key);
+
+            // Guard against out-of-order completion: only apply the inspector/URL update if
+            // the user hasn't since moved on to yet another item while this fetch was in flight.
+            if (_vm.Selected?.Key == selected.Key)
+            {
+                InspectorState.Show(EvidenceInspectorMapper.ToInspector(
+                    selected,
+                    _vm.LoadResult.ActiveHoldsByMediaItemId,
+                    _vm.LoadResult.IntegrityRecords));
+                NavigateWithItem(selected.Key);
+            }
+        }
+    }
+
+    private void OnMediaViewerClose()
+    {
+        _vm?.Close();
+        InspectorState.Clear();
+        var query = ScopeState.ToQueryString();
+        var viewPart = _currentView == EvidenceView.Timeline ? "" : $"view={_currentView.ToString().ToLowerInvariant()}";
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(query))
+        {
+            parts.Add(query);
+        }
+        if (!string.IsNullOrEmpty(viewPart))
+        {
+            parts.Add(viewPart);
+        }
+        var combined = string.Join("&", parts);
+        NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/evidence" : $"/evidence?{combined}", replace: true);
+    }
+
+    private InspectorModel ToEvidenceInspector(EvidenceItem item)
+    {
+        return EvidenceInspectorMapper.ToInspector(item, _vm?.LoadResult.ActiveHoldsByMediaItemId ?? new Dictionary<Guid, LegalHold>(), _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
+    }
+
+    private RenderFragment GridColumns => __builder =>
+    {
+        <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+            <Template>
+                @{
+                    var item = (EvidenceItem)context;
+                    if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat) && _thumbnailUrls.TryGetValue(item.Media.Id, out var url))
+                    {
+                        <img src="@url" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                    }
+                    else if (item.Media is not null && MediaFormatHelper.IsVideo(item.Media.MediaFormat))
+                    {
+                        <i class="material-icons">videocam</i>
+                    }
+                    else if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat))
+                    {
+                        <i class="material-icons">image</i>
+                    }
+                    else
+                    {
+                        <i class="material-icons">event</i>
+                    }
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="Time" Width="170px" />
+        <GridColumn Field="@nameof(EvidenceItem.Kind)" HeaderText="Kind" Width="120px" />
+        <GridColumn Field="@nameof(EvidenceItem.Label)" HeaderText="Label" Width="140px" />
+        <GridColumn Field="@nameof(EvidenceItem.DeviceName)" HeaderText="Device" Width="140px" />
+        <GridColumn HeaderText="File" Width="140px">
+            <Template>
+                @{
+                    var item = (EvidenceItem)context;
+                    @(item.Media?.FileName ?? "-")
+                }
+            </Template>
+        </GridColumn>
+        <GridColumn HeaderText="Hash" Width="140px">
+            <Template>
+                @{
+                    var item = (EvidenceItem)context;
+                    @(item.Media?.Sha256Hash ?? "-")
+                }
+            </Template>
+        </GridColumn>
+    };
+
+    private string? ExtractQueryParam(string query, string key)
+    {
+        if (string.IsNullOrEmpty(query))
+            return null;
+
+        var keyPrefix = $"{key}=";
+        var keyIndex = query.IndexOf(keyPrefix, StringComparison.OrdinalIgnoreCase);
+        if (keyIndex == -1)
+            return null;
+
+        var valueStart = keyIndex + keyPrefix.Length;
+        var ampIndex = query.IndexOf("&", valueStart);
+        var valueEnd = ampIndex == -1 ? query.Length : ampIndex;
+        return System.Net.WebUtility.UrlDecode(query.Substring(valueStart, valueEnd - valueStart));
+    }
+
+    public void Dispose()
+    {
+        if (_onScopeChangeHandler is not null)
+        {
+            ScopeState.OnChange -= _onScopeChangeHandler;
+        }
+    }
+}

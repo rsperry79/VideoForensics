@@ -1,0 +1,215 @@
+@using VideoForensics.Ui.Shared.Components.Dump
+
+<div class="dump-node" data-path="@Node.Path">
+    @if (Node.Kind == DumpNodeKind.Object)
+    {
+        <div class="dump-object">
+            <div class="dump-object-header" @onclick="ToggleExpanded" style="cursor: pointer;">
+                <span class="dump-caret" data-testid="expand-toggle">
+                    @if (IsOpen)
+                    {
+                        <span>▼</span>
+                    }
+                    else
+                    {
+                        <span>▶</span>
+                    }
+                </span>
+                <span class="dump-object-label">Object</span>
+            </div>
+            @if (IsOpen)
+            {
+                <table class="dump-object-table">
+                    <tbody>
+                        @foreach (var child in Node.Children)
+                        {
+                            var shouldRender = string.IsNullOrEmpty(Search) || DumpNodeBuilder.Matches(child, Search);
+                            if (shouldRender)
+                            {
+                                <tr>
+                                    <td class="dump-key">@child.Name</td>
+                                    <td class="dump-value">
+                                        @RenderChild(child)
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+    else if (Node.Kind == DumpNodeKind.Array)
+    {
+        @if (Node.IsTabular)
+        {
+            <div class="dump-tabular-array">
+                <div class="dump-array-header" @onclick="ToggleExpanded" style="cursor: pointer;">
+                    <span class="dump-caret" data-testid="expand-toggle">
+                        @if (IsOpen)
+                        {
+                            <span>▼</span>
+                        }
+                        else
+                        {
+                            <span>▶</span>
+                        }
+                    </span>
+                    <span class="dump-array-label">Array (@Node.Children.Count items)</span>
+                </div>
+                @if (IsOpen && Node.TableColumns.Count > 0)
+                {
+                    <table class="dump-table table table-sm">
+                        <thead>
+                            <tr>
+                                @foreach (var col in Node.TableColumns)
+                                {
+                                    <th>@col</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var child in Node.Children)
+                            {
+                                var shouldRender = string.IsNullOrEmpty(Search) || DumpNodeBuilder.Matches(child, Search);
+                                if (shouldRender)
+                                {
+                                    <tr>
+                                        @foreach (var col in Node.TableColumns)
+                                        {
+                                            <td>
+                                                @{
+                                                    var colChild = child.Children.FirstOrDefault(c => c.Name == col);
+                                                    if (colChild != null)
+                                                    {
+                                                        @RenderChild(colChild)
+                                                    }
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="dump-array">
+                <div class="dump-array-header" @onclick="ToggleExpanded" style="cursor: pointer;">
+                    <span class="dump-caret" data-testid="expand-toggle">
+                        @if (IsOpen)
+                        {
+                            <span>▼</span>
+                        }
+                        else
+                        {
+                            <span>▶</span>
+                        }
+                    </span>
+                    <span class="dump-array-label">Array (@Node.Children.Count items)</span>
+                </div>
+                @if (IsOpen)
+                {
+                    <ul class="dump-array-list">
+                        @foreach (var child in Node.Children)
+                        {
+                            var shouldRender = string.IsNullOrEmpty(Search) || DumpNodeBuilder.Matches(child, Search);
+                            if (shouldRender)
+                            {
+                                <li>
+                                    <span class="dump-index">@child.Name</span>
+                                    @RenderChild(child)
+                                </li>
+                            }
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        @RenderScalar(Node)
+    }
+</div>
+
+@code {
+    [Parameter]
+    public DumpNode Node { get; set; } = null!;
+
+    [Parameter]
+    public int Depth { get; set; }
+
+    [Parameter]
+    public int InitialExpandDepth { get; set; }
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    // Manual expand/collapse state, keyed by node path and shared (by reference) with every node
+    // in the tree via the root DumpView. A search filters non-matching rows out of the render tree
+    // entirely, which unmounts their DumpNodeView instances; keeping the manual choice in this
+    // shared, path-keyed store (instead of a plain instance field) lets it survive that unmount and
+    // still apply when the row reappears once the search is cleared.
+    [Parameter]
+    public Dictionary<string, bool> ExpandState { get; set; } = new();
+
+    private bool ManualExpanded
+    {
+        get => ExpandState.TryGetValue(Node.Path, out var expanded) ? expanded : Depth < InitialExpandDepth;
+        set => ExpandState[Node.Path] = value;
+    }
+
+    private bool IsOpen
+    {
+        get
+        {
+            // Auto-expand if search matches this node or any descendant
+            if (!string.IsNullOrEmpty(Search) && DumpNodeBuilder.Matches(Node, Search))
+            {
+                return true;
+            }
+            // Otherwise use manual state
+            return ManualExpanded;
+        }
+    }
+
+    private void ToggleExpanded()
+    {
+        ManualExpanded = !ManualExpanded;
+    }
+
+    private RenderFragment RenderChild(DumpNode child) => __builder =>
+    {
+        if (child.Kind == DumpNodeKind.Object || child.Kind == DumpNodeKind.Array)
+        {
+            <DumpNodeView Node="child" Depth="@(Depth + 1)" InitialExpandDepth="InitialExpandDepth" Search="@Search" ExpandState="ExpandState" />
+        }
+        else
+        {
+            @RenderScalar(child)
+        }
+    };
+
+    private RenderFragment RenderScalar(DumpNode node) => __builder =>
+    {
+        var cssClass = node.Kind switch
+        {
+            DumpNodeKind.String => "dump-string",
+            DumpNodeKind.Number => "dump-number",
+            DumpNodeKind.Boolean => "dump-bool",
+            DumpNodeKind.Null => "dump-null",
+            _ => ""
+        };
+
+        var isMatch = !string.IsNullOrEmpty(Search) && DumpNodeBuilder.Matches(node, Search);
+        var matchClass = isMatch ? "dump-match" : "";
+
+        var value = node.Kind == DumpNodeKind.Null ? "null" : node.Value;
+
+        <span class="@cssClass @matchClass">@value</span>
+    };
+}

@@ -1,0 +1,215 @@
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Cases
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Components.Dump
+@implements IDisposable
+@inject InspectorState InspectorState
+@inject CaseState CaseState
+@inject PairedSessionState SessionState
+
+@if (InspectorState.Current is not null)
+{
+    <div class="inspector-panel">
+        <div class="inspector-header">
+            <h3 class="inspector-title">@InspectorState.Current.Title</h3>
+            <button class="inspector-close-button" data-testid="inspector-close" @onclick="OnCloseClick">✕</button>
+        </div>
+
+        <div class="inspector-tabs">
+            <button class="inspector-tab @(_activeTab == "fields" ? "active" : "")"
+                    data-testid="inspector-tab-fields"
+                    @onclick="@(() => SelectTab("fields"))">
+                Fields
+            </button>
+            <button class="inspector-tab @(_activeTab == "raw" ? "active" : "")"
+                    data-testid="inspector-tab-raw"
+                    @onclick="@(() => SelectTab("raw"))">
+                Raw
+            </button>
+            <button class="inspector-tab @(_activeTab == "related" ? "active" : "")"
+                    data-testid="inspector-tab-related"
+                    @onclick="@(() => SelectTab("related"))">
+                Related
+            </button>
+            <button class="inspector-tab @(_activeTab == "provenance" ? "active" : "")"
+                    data-testid="inspector-tab-provenance"
+                    @onclick="@(() => SelectTab("provenance"))">
+                Provenance
+            </button>
+        </div>
+
+        <div class="inspector-content">
+            @if (_activeTab == "fields")
+            {
+                <DumpView Value="@InspectorState.Current.Fields" InitialExpandDepth="1" />
+            }
+            else if (_activeTab == "raw")
+            {
+                @if (!string.IsNullOrEmpty(InspectorState.Current.RawJson))
+                {
+                    <DumpView Json="@InspectorState.Current.RawJson" />
+                }
+                else
+                {
+                    <div class="muted-text">No raw provider data recorded for this item.</div>
+                }
+            }
+            else if (_activeTab == "related")
+            {
+                @if (InspectorState.Current.Related != null && InspectorState.Current.Related.Count > 0)
+                {
+                    <div class="related-links">
+                        @foreach (var link in InspectorState.Current.Related)
+                        {
+                            <a href="@link.Href">@link.Text</a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="muted-text">No related items.</div>
+                }
+            }
+            else if (_activeTab == "provenance")
+            {
+                @if (InspectorState.Current.Provenance != null && InspectorState.Current.Provenance.Count > 0)
+                {
+                    <table class="provenance-table">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in InspectorState.Current.Provenance)
+                            {
+                                <tr>
+                                    <td>@item.Key</td>
+                                    <td>@item.Value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="muted-text">No provenance recorded.</div>
+                }
+            }
+        </div>
+
+        @if (InspectorState.Current.Pin is not null)
+        {
+            <div class="inspector-pin-section">
+                @if (CaseState.ActiveCase is null)
+                {
+                    <div class="muted-text">Select a case in the left panel to pin evidence.</div>
+                }
+                else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
+                {
+                    <textarea class="inspector-pin-reason"
+                              data-testid="pin-reason"
+                              placeholder="Reason for pinning to this case"
+                              @bind="_pinReason"
+                              @bind:event="oninput"></textarea>
+                    <button type="button"
+                            class="inspector-pin-button"
+                            data-testid="pin-to-case"
+                            disabled="@string.IsNullOrWhiteSpace(_pinReason)"
+                            @onclick="OnPinClicked">
+                        Pin to @CaseState.ActiveCase.CaseNumber
+                    </button>
+                    @if (_pinSuccessMessage is not null)
+                    {
+                        <div class="inspector-pin-success">@_pinSuccessMessage</div>
+                    }
+                    @if (_pinError is not null)
+                    {
+                        <div class="inspector-pin-error">@_pinError</div>
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _activeTab = "fields";
+    private string _pinReason = string.Empty;
+    private string? _pinError;
+    private string? _pinSuccessMessage;
+    private OperatorRole? _role;
+
+    protected override async Task OnInitializedAsync()
+    {
+        InspectorState.OnChange += OnInspectorChanged;
+        CaseState.OnChange += OnCaseStateChanged;
+
+        await SessionState.EnsureLoadedAsync();
+        _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+    }
+
+    private void OnCloseClick()
+    {
+        InspectorState.Clear();
+    }
+
+    private void SelectTab(string tab)
+    {
+        _activeTab = tab;
+    }
+
+    private void OnInspectorChanged()
+    {
+        // Reset to fields tab and clear the pin form when a new model is shown
+        if (InspectorState.Current is not null)
+        {
+            _activeTab = "fields";
+        }
+
+        _pinReason = string.Empty;
+        _pinError = null;
+        _pinSuccessMessage = null;
+
+        StateHasChanged();
+    }
+
+    private void OnCaseStateChanged()
+    {
+        // CaseState can change from outside this component (e.g. another component sharing the
+        // same scoped CaseState instance), so marshal back onto the sync context.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPinClicked()
+    {
+        var pin = InspectorState.Current?.Pin;
+        if (pin is null || CaseState.ActiveCase is null || string.IsNullOrWhiteSpace(_pinReason))
+        {
+            return;
+        }
+
+        _pinError = null;
+        _pinSuccessMessage = null;
+        var caseNumber = CaseState.ActiveCase.CaseNumber;
+        var actor = SessionState.OperatorId?.ToString() ?? "unknown";
+
+        try
+        {
+            await CaseState.PinAsync(pin.Kind, pin.TargetId, _pinReason, actor, CancellationToken.None);
+            _pinSuccessMessage = $"Pinned to {caseNumber}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _pinError = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        InspectorState.OnChange -= OnInspectorChanged;
+        CaseState.OnChange -= OnCaseStateChanged;
+    }
+}
