@@ -18,6 +18,11 @@ namespace VideoForensics.Providers.Ring
         public string? BodyFile { get; set; }
         /// <summary>"test" for the mutating call itself, "restore" for the follow-up call that put the setting back.</summary>
         public string Phase { get; set; } = "test";
+        /// <summary>The raw response body text (in-memory only, not serialized to JSON).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string? Body { get; set; }
+        /// <summary>When this HTTP call was made.</summary>
+        public DateTime TimestampUtc { get; set; }
     }
 
     /// <summary>
