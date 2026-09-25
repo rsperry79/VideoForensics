@@ -571,6 +571,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
