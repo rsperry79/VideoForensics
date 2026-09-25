@@ -138,6 +138,8 @@ namespace VideoForensics.Client.Core.Tools
                 return Task.FromResult<SelfTestResultDto?>(null);
             }
 
+            const int MaxBodyBytes = 262144; // 262 KB
+
             ReadOnlyCollection<SelfTestCallDto> calls = indexDoc.Calls
                 .Select(callRecord => new SelfTestCallDto(
                     Endpoint: callRecord.Endpoint,
@@ -158,6 +160,28 @@ namespace VideoForensics.Client.Core.Tools
                     RestoreSkippedReason: callRecord.RestoreSkippedReason,
                     SchemaIssues: callRecord.SchemaIssues
                         .Select(issue => $"{issue.IssueType} at {issue.Path}: {issue.Severity}")
+                        .ToList()
+                        .AsReadOnly(),
+                    HttpCalls: callRecord.HttpCalls
+                        .Select(httpCall =>
+                        {
+                            string redactedUrl = RawApiRedactor.RedactUrl(httpCall.Url);
+                            string redactedBody = RawApiRedactor.RedactBody(httpCall.Body);
+
+                            bool truncated = redactedBody.Length > MaxBodyBytes;
+                            string truncatedBody = truncated ? redactedBody[..MaxBodyBytes] : redactedBody;
+
+                            return new SelfTestHttpCallDto(
+                                Method: httpCall.Method,
+                                Url: redactedUrl,
+                                StatusCode: httpCall.StatusCode,
+                                Phase: httpCall.Phase,
+                                TimestampUtc: httpCall.TimestampUtc,
+                                ResponseBodyBytes: httpCall.ResponseBodyBytes,
+                                Body: truncatedBody,
+                                BodyTruncated: truncated
+                            );
+                        })
                         .ToList()
                         .AsReadOnly()
                 ))

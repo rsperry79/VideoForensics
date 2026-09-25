@@ -581,5 +581,192 @@ namespace VideoForensics.Client.Core.Tests
             Assert.Contains("MissingField", result.Calls[0].SchemaIssues[0]);
             Assert.Contains("Warning", result.Calls[0].SchemaIssues[0]);
         }
+
+        [Fact]
+        public async Task GetResultAsync_MapsHttpCalls_WithRedaction()
+        {
+            var httpCall = new HttpCallRecord
+            {
+                Method = "GET",
+                Url = "https://example.com/api?access_token=secret123&data=value",
+                StatusCode = 200,
+                ResponseBodyBytes = 100,
+                BodyFile = "response.json",
+                Phase = "test",
+                Body = """{"password":"secret","user":"john"}""",
+                TimestampUtc = DateTime.UtcNow
+            };
+
+            var callRecord = new CallRecord
+            {
+                Endpoint = "devices",
+                DisplayName = "List devices",
+                SessionMethod = "GetRingDevices",
+                Destructive = false,
+                Physical = false,
+                Target = null,
+                StartedAtUtc = DateTime.UtcNow,
+                DurationMs = 1000,
+                Success = true,
+                Error = null,
+                RestoreAttempted = false,
+                RestoreSuccess = false,
+                RestoreError = null,
+                RestoreSkippedReason = null,
+                SchemaIssues = [],
+                HttpCalls = [httpCall]
+            };
+
+            var indexDoc = new IndexDocument
+            {
+                ToolVersion = "1.0.0",
+                GeneratedAtUtc = DateTime.UtcNow,
+                CredentialSource = "OAuth",
+                Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
+                Calls = [callRecord]
+            };
+            _ = _orchestratorMock.Setup(o => o.GetResult())
+                .Returns(indexDoc);
+
+            SelfTestResultDto? result = await _service.GetResultAsync();
+
+            Assert.NotNull(result);
+            _ = Assert.Single(result.Calls[0].HttpCalls);
+            var httpCallDto = result.Calls[0].HttpCalls[0];
+            Assert.Equal("GET", httpCallDto.Method);
+            Assert.Contains("access_token=REDACTED", httpCallDto.Url);
+            Assert.Contains("data=value", httpCallDto.Url);
+            Assert.DoesNotContain("secret123", httpCallDto.Url);
+            Assert.Equal(200, httpCallDto.StatusCode);
+            Assert.Equal("test", httpCallDto.Phase);
+            Assert.DoesNotContain("secret", httpCallDto.Body);
+            Assert.Contains("john", httpCallDto.Body);
+            Assert.False(httpCallDto.BodyTruncated);
+            Assert.Equal(100, httpCallDto.ResponseBodyBytes);
+        }
+
+        [Fact]
+        public async Task GetResultAsync_HttpCallsWithLongBody_Truncates()
+        {
+            string longBody = new string('x', 262145);
+            var httpCall = new HttpCallRecord
+            {
+                Method = "GET",
+                Url = "https://example.com/api",
+                StatusCode = 200,
+                ResponseBodyBytes = 262145,
+                BodyFile = "response.json",
+                Phase = "test",
+                Body = longBody,
+                TimestampUtc = DateTime.UtcNow
+            };
+
+            var callRecord = new CallRecord
+            {
+                Endpoint = "devices",
+                DisplayName = "List devices",
+                SessionMethod = "GetRingDevices",
+                Destructive = false,
+                Physical = false,
+                Target = null,
+                StartedAtUtc = DateTime.UtcNow,
+                DurationMs = 1000,
+                Success = true,
+                Error = null,
+                RestoreAttempted = false,
+                RestoreSuccess = false,
+                RestoreError = null,
+                RestoreSkippedReason = null,
+                SchemaIssues = [],
+                HttpCalls = [httpCall]
+            };
+
+            var indexDoc = new IndexDocument
+            {
+                ToolVersion = "1.0.0",
+                GeneratedAtUtc = DateTime.UtcNow,
+                CredentialSource = "OAuth",
+                Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
+                Calls = [callRecord]
+            };
+            _ = _orchestratorMock.Setup(o => o.GetResult())
+                .Returns(indexDoc);
+
+            SelfTestResultDto? result = await _service.GetResultAsync();
+
+            Assert.NotNull(result);
+            var httpCallDto = result.Calls[0].HttpCalls[0];
+            Assert.Equal(262144, httpCallDto.Body.Length);
+            Assert.True(httpCallDto.BodyTruncated);
+            Assert.Equal(262145, httpCallDto.ResponseBodyBytes);
+        }
+
+        [Fact]
+        public async Task GetResultAsync_HttpCallsInOrder()
+        {
+            var httpCall1 = new HttpCallRecord
+            {
+                Method = "GET",
+                Url = "https://example.com/api/1",
+                StatusCode = 200,
+                ResponseBodyBytes = 100,
+                BodyFile = "response1.json",
+                Phase = "test",
+                Body = "body1",
+                TimestampUtc = DateTime.UtcNow.AddSeconds(-2)
+            };
+
+            var httpCall2 = new HttpCallRecord
+            {
+                Method = "POST",
+                Url = "https://example.com/api/2",
+                StatusCode = 201,
+                ResponseBodyBytes = 200,
+                BodyFile = "response2.json",
+                Phase = "restore",
+                Body = "body2",
+                TimestampUtc = DateTime.UtcNow.AddSeconds(-1)
+            };
+
+            var callRecord = new CallRecord
+            {
+                Endpoint = "devices",
+                DisplayName = "List devices",
+                SessionMethod = "GetRingDevices",
+                Destructive = false,
+                Physical = false,
+                Target = null,
+                StartedAtUtc = DateTime.UtcNow,
+                DurationMs = 1000,
+                Success = true,
+                Error = null,
+                RestoreAttempted = false,
+                RestoreSuccess = false,
+                RestoreError = null,
+                RestoreSkippedReason = null,
+                SchemaIssues = [],
+                HttpCalls = [httpCall1, httpCall2]
+            };
+
+            var indexDoc = new IndexDocument
+            {
+                ToolVersion = "1.0.0",
+                GeneratedAtUtc = DateTime.UtcNow,
+                CredentialSource = "OAuth",
+                Summary = new SummaryRecord { TotalCalls = 1, Succeeded = 1, Failed = 0 },
+                Calls = [callRecord]
+            };
+            _ = _orchestratorMock.Setup(o => o.GetResult())
+                .Returns(indexDoc);
+
+            SelfTestResultDto? result = await _service.GetResultAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Calls[0].HttpCalls.Count);
+            Assert.Equal("GET", result.Calls[0].HttpCalls[0].Method);
+            Assert.Equal("test", result.Calls[0].HttpCalls[0].Phase);
+            Assert.Equal("POST", result.Calls[0].HttpCalls[1].Method);
+            Assert.Equal("restore", result.Calls[0].HttpCalls[1].Phase);
+        }
     }
 }
