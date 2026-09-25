@@ -370,6 +370,7 @@ app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapEventEndpoints();
+app.MapCaseEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
