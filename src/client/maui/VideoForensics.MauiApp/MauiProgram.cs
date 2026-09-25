@@ -148,7 +148,9 @@ namespace VideoForensics.MauiApp
             bool serverResolutionFailed = true;
 #endif
 
+#if !__IOS__
             builder.Services.AddVideoForensicsClientApi(serverUri);
+#endif
 
             // Override the default server location services with MAUI-specific implementations.
             // AddVideoForensicsClientApi registered the defaults above via AddServerLocationServices,
@@ -219,6 +221,7 @@ namespace VideoForensics.MauiApp
 
             Microsoft.Maui.Hosting.MauiApp app = builder.Build();
 
+#if !__IOS__
             // Start the live hub connection for real-time download progress and urgent security events.
             // Fire-and-forget: the hub starts asynchronously in the background and errors are logged
             // (not allowed to crash app startup).
@@ -261,6 +264,7 @@ namespace VideoForensics.MauiApp
                     }
                 }
             });
+#endif
 
             // Populate server location info and connectivity state based on whether resolution succeeded.
             // The IServerLocationInformationService and IServerConnectivityState singletons have already
