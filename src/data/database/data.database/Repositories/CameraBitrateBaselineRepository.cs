@@ -89,8 +89,8 @@ namespace VideoForensics.Data.Database.Repositories
                 var fractionLostValues = samples.Where(s => s.FractionLost.HasValue).Select(s => (double)s.FractionLost.Value).ToList();
                 var jitterValues = samples.Where(s => s.JitterTicks.HasValue).Select(s => (double)s.JitterTicks.Value).ToList();
 
-                long medianBitrate = bitrateValues.Count > 0 ? GetMedian(bitrateValues.Cast<long>().ToList()) : 0;
-                double stdDevBitrate = bitrateValues.Count > 0 ? GetStdDev(bitrateValues.Cast<double>().ToList()) : 0;
+                long medianBitrate = bitrateValues.Count > 0 ? GetMedian(bitrateValues) : 0;
+                double stdDevBitrate = bitrateValues.Count > 0 ? GetStdDev(bitrateValues.Select(v => (double)v).ToList()) : 0;
                 double medianFractionLost = fractionLostValues.Count > 0 ? GetMedian(fractionLostValues) : 0;
                 double medianJitter = jitterValues.Count > 0 ? GetMedian(jitterValues) : 0;
 
