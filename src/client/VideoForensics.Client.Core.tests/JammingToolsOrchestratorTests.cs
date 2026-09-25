@@ -252,5 +252,44 @@ namespace VideoForensics.Client.Core.Tests
             Assert.True(captured.AverageDegradationDb >= 15);
             _repositoryMock.Verify(r => r.RecomputeStatsAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_NewIncidentsDetected_SetsNewlyDetectedCount()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime t0 = DateTime.UtcNow;
+
+            // Create readings with a sustained drop to trigger incident detection
+            var readings = new List<DeviceHealth>();
+            for (int i = 0; i < 8; i++)
+            {
+                readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -40, CapturedAtUtc = t0.AddMinutes(i) });
+            }
+
+            // Degraded section: 3 readings with ~20 dB drop
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -60, CapturedAtUtc = t0.AddMinutes(8) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -62, CapturedAtUtc = t0.AddMinutes(9) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -59, CapturedAtUtc = t0.AddMinutes(10) });
+            readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -40, CapturedAtUtc = t0.AddMinutes(11) });
+
+            _ = _healthRepositoryMock
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(readings);
+            _ = _repositoryMock
+                .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = _repositoryMock
+                .Setup(r => r.GetStatsAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 1, HighConfidenceCount = 1 });
+
+            _ = _repositoryMock
+                .Setup(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((JammingIncidentRecord record, CancellationToken ct) => record);
+
+            JammingAnalysisReport report = await _orchestrator.AnalyzeJammingAsync(deviceId, t0.AddMinutes(-1), t0.AddMinutes(11));
+
+            Assert.True(report.Success);
+            Assert.Equal(1, report.NewlyDetectedCount);
+        }
     }
 }
