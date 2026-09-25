@@ -110,8 +110,8 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
   scope; old routes redirect; `NavPathMatcher` highlights query-string nav items.
 - ✅ Mobile layout: filters sheet with the ScopeRail (+ custom-scope indicator) and an inspector
   drawer (resolves the phase 2 mobile follow-up).
-- Found, not fixed: `src/client/web/VideoForensics.Ui.Shared/Pages/Settings/SecurityEvents.razor`
-  (from #45) sits in a directory no project compiles, so `/settings/security-events` does not exist.
+- ✅ Security Events page (from #45, previously in an uncompiled directory) rehomed and wired to
+  `ISecurityEventsService` (separate PR).
 
 ### Phase 7 — Device-by-time view + snapshot stream 🔄 Next
 
@@ -121,6 +121,10 @@ per-device scrubbable snapshot strip alongside RSSI.
 ## Follow-ups
 
 - Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
+
+- Session network tier: WebApp's own UI reaches security endpoints via self-HTTP, so the Local-tier
+  check reflects the server's path to itself, not the user's. Follow-up: capture each circuit's real
+  tier at connection time and check against it.
 
 ## Environment notes
 

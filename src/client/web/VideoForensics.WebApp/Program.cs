@@ -11,6 +11,7 @@ using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
@@ -279,6 +280,15 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
+
+// Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
+// the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
+// uses, calling back into this same process's own Minimal API instead of a remote server address -
+// see AddSelfHttpService's doc comment for why (SuperAdmin+Local network-tier authorization needs a
+// fresh, real HttpContext per call, which a Blazor circuit alone can't guarantee for UI-event-driven
+// code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
+builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
+builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();

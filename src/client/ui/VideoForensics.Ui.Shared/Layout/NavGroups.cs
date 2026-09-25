@@ -75,6 +75,7 @@ namespace VideoForensics.Ui.Shared.Layout
             new("admin", "Admin", "/settings",
             [
                 new("General", "/settings"),
+                new("Security Events", "/settings/security-events"),
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
