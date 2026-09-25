@@ -1,9 +1,16 @@
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Ui.Shared.Services.Inspector
 {
     /// <summary>
     /// Represents a hyperlink in the Inspector's Related tab.
     /// </summary>
     public sealed record InspectorLink(string Text, string Href);
+
+    /// <summary>
+    /// Represents a pinning target (event or media item) that can be pinned to a case.
+    /// </summary>
+    public sealed record PinTarget(CaseItemKind Kind, Guid TargetId);
 
     /// <summary>
     /// Data displayed in the Inspector panel for a selected item.
@@ -13,7 +20,8 @@ namespace VideoForensics.Ui.Shared.Services.Inspector
         object? Fields = null,
         string? RawJson = null,
         IReadOnlyList<InspectorLink>? Related = null,
-        IReadOnlyList<KeyValuePair<string, string>>? Provenance = null);
+        IReadOnlyList<KeyValuePair<string, string>>? Provenance = null,
+        PinTarget? Pin = null);
 
     /// <summary>
     /// Circuit-scoped state for the Inspector panel. Tracks the currently-inspected item
