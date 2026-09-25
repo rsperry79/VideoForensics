@@ -17,6 +17,7 @@ namespace VideoForensics.Hosting.Tests
         {
             private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _responseFactory;
             public HttpRequestMessage? CapturedRequest { get; private set; }
+            public CancellationToken? CapturedCancellationToken { get; private set; }
 
             public FakeHttpMessageHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> responseFactory)
             {
@@ -26,6 +27,7 @@ namespace VideoForensics.Hosting.Tests
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 CapturedRequest = request;
+                CapturedCancellationToken = cancellationToken;
                 return await _responseFactory(request);
             }
         }
@@ -204,12 +206,10 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var mediaIds = new[] { Guid.NewGuid() };
-            CancellationToken? capturedToken = null;
 
             FakeHttpMessageHandler handler = new(async request =>
             {
                 // The SendAsync method receives the cancellation token
-                // We'll verify it's not the default one
                 await Task.Yield();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -226,6 +226,10 @@ namespace VideoForensics.Hosting.Tests
 
             // Assert
             Assert.NotNull(result);
+            // Verify the cancellation token was captured and forwarded (non-default token was passed)
+            Assert.NotNull(handler.CapturedCancellationToken);
+            // Verify the handler received a non-default token (not CancellationToken.None)
+            Assert.True(handler.CapturedCancellationToken.Value != CancellationToken.None);
         }
 
         [Fact]

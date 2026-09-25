@@ -515,9 +515,9 @@ namespace VideoForensics.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
             {
-                User = CreatePrincipalWithOperatorId(operatorId),
-                Request = { Headers = { { "Range", "bytes=1000-2000" } } }
+                User = CreatePrincipalWithOperatorId(operatorId)
             };
+            context.Request.Headers.Append("Range", "bytes=1000-2000");
 
             var mediaItems = new Mock<IMediaItemRepository>();
             var item = CreateMediaItem(mediaItemId);
@@ -571,9 +571,9 @@ namespace VideoForensics.WebApp.Tests
             var operatorId = Guid.NewGuid();
             var context = new DefaultHttpContext
             {
-                User = CreatePrincipalWithOperatorId(operatorId),
-                Request = { Headers = { { "Range", "bytes=0-" } } }
+                User = CreatePrincipalWithOperatorId(operatorId)
             };
+            context.Request.Headers.Append("Range", "bytes=0-");
 
             var mediaItems = new Mock<IMediaItemRepository>();
             var item = CreateMediaItem(mediaItemId);
