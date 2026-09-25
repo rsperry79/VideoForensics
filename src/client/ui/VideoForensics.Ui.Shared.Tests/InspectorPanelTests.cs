@@ -464,7 +464,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         Assert.Contains($"Pinned to {testCase.CaseNumber}", component.Markup);
 
         // Act - a new item is shown in the inspector
-        component.InvokeAsync(() =>
+        await component.InvokeAsync(() =>
         {
             state.Show(new InspectorModel(Title: "Title2", Pin: new PinTarget(CaseItemKind.Event, eventId2)));
         });
