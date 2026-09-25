@@ -112,11 +112,23 @@ public static class EvidenceInspectorMapper
             : "No Hold";
         provenance.Add(new KeyValuePair<string, string>("LegalHoldStatus", holdStatus));
 
+        // Determine pin target: event if present, otherwise media
+        PinTarget? pinTarget = null;
+        if (item.Event is not null)
+        {
+            pinTarget = new PinTarget(CaseItemKind.Event, item.Event.Id);
+        }
+        else if (item.Media is not null)
+        {
+            pinTarget = new PinTarget(CaseItemKind.Media, item.Media.Id);
+        }
+
         return new InspectorModel(
             Title: title,
             Fields: fields,
             RawJson: rawJson,
             Related: new List<InspectorLink>(),
-            Provenance: provenance);
+            Provenance: provenance,
+            Pin: pinTarget);
     }
 }

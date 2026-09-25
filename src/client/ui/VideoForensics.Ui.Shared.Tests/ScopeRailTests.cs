@@ -10,6 +10,8 @@ using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Scope;
+using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Ui.Shared.Services.Cases;
 using VideoForensics.Ui.Shared.Services.Scope;
 
 public class ScopeRail_Rendering_Tests : BunitContext
@@ -21,6 +23,12 @@ public class ScopeRail_Rendering_Tests : BunitContext
         // Default TimeProvider for tests that don't need a fixed clock; RegisterFakeTime overrides
         // this (later registrations win resolution) for tests asserting exact quick-range dates.
         Services.AddSingleton(TimeProvider.System);
+
+        // Defaults: no open cases, no signed-in operator. Tests that care about case behavior
+        // override these with RegisterCaseRepository / RegisterRoleAsync (later registrations win).
+        RegisterCaseRepository();
+        Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     private static Device MakeDevice(string name) => new()
@@ -30,6 +38,23 @@ public class ScopeRail_Rendering_Tests : BunitContext
         ProviderDeviceId = Guid.NewGuid().ToString(),
         Name = name,
         Type = "camera",
+    };
+
+    private static ForensicCase MakeCase(
+        string caseNumber = "CASE-001",
+        string title = "Test Case",
+        CaseStatus status = CaseStatus.Open,
+        DateTime? scopeFromUtc = null,
+        DateTime? scopeToUtc = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        CaseNumber = caseNumber,
+        Title = title,
+        Status = status,
+        ScopeFromUtc = scopeFromUtc,
+        ScopeToUtc = scopeToUtc,
+        CreatedBy = "test",
+        CreatedAtUtc = DateTime.UtcNow
     };
 
     private Mock<IDeviceRepository> RegisterDeviceRepository(params Device[] devices)
@@ -48,6 +73,23 @@ public class ScopeRail_Rendering_Tests : BunitContext
         Services.AddSingleton<TimeProvider>(timeProvider);
         Services.AddScoped(_ => new ScopeState(timeProvider));
         return timeProvider;
+    }
+
+    private Mock<ICaseRepository> RegisterCaseRepository(params ForensicCase[] openCases)
+    {
+        var caseRepository = new Mock<ICaseRepository>();
+        caseRepository
+            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(openCases.ToList());
+        Services.AddScoped(_ => caseRepository.Object);
+        return caseRepository;
+    }
+
+    private async Task RegisterRoleAsync(OperatorRole role)
+    {
+        var session = new PairedSessionState(JSInterop.JSRuntime);
+        await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
+        Services.AddScoped(_ => session);
     }
 
     [Fact]
@@ -344,5 +386,220 @@ public class ScopeRail_Rendering_Tests : BunitContext
         // Assert
         var markup = component.Markup;
         Assert.Contains("Devices unavailable", markup);
+    }
+
+    [Fact]
+    public void CasePicker_ListsOpenCases_AndNoCaseOption()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var case1 = MakeCase(caseNumber: "CASE-100", title: "Alpha");
+        var case2 = MakeCase(caseNumber: "CASE-200", title: "Beta");
+        RegisterCaseRepository(case1, case2);
+
+        // Act
+        var component = Render<ScopeRail>();
+
+        // Assert
+        var picker = component.Find("[data-testid='case-picker']");
+        var optionTexts = picker.Children.Select(c => c.TextContent.Trim()).ToList();
+        Assert.Contains("(no case)", optionTexts);
+        Assert.Contains("CASE-100 · Alpha", optionTexts);
+        Assert.Contains("CASE-200 · Beta", optionTexts);
+    }
+
+    [Fact]
+    public async Task CasePicker_Selecting_ActivatesCase_AndUrlHasCaseAndScopeKeys()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var device1 = Guid.NewGuid();
+        var device2 = Guid.NewGuid();
+        var testCase = MakeCase();
+        var caseRepository = RegisterCaseRepository(testCase);
+        caseRepository
+            .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        caseRepository
+            .Setup(r => r.GetDeviceIdsAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { device1, device2 }.ToList());
+
+        var component = Render<ScopeRail>();
+
+        // Act
+        var picker = (IHtmlSelectElement)component.Find("[data-testid='case-picker']");
+        await component.InvokeAsync(() => picker.Change(testCase.Id.ToString("D")));
+
+        // Assert
+        var scopeState = Services.GetRequiredService<ScopeState>();
+        Assert.Equal(new[] { device1, device2 }, scopeState.Current.DeviceIds);
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.Contains($"case={testCase.Id:D}", nav.Uri);
+        Assert.Contains("devices=", nav.Uri);
+    }
+
+    [Fact]
+    public async Task InitialCaseQueryString_ActivatesCaseOnLoad()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var device1 = Guid.NewGuid();
+        var testCase = MakeCase();
+        var caseRepository = RegisterCaseRepository(testCase);
+        caseRepository
+            .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        caseRepository
+            .Setup(r => r.GetDeviceIdsAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { device1 }.ToList());
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"/?case={testCase.Id:D}", replace: true);
+
+        // Act
+        var component = Render<ScopeRail>();
+        await Task.Yield();
+
+        // Assert
+        var caseState = Services.GetRequiredService<CaseState>();
+        var scopeState = Services.GetRequiredService<ScopeState>();
+        Assert.NotNull(caseState.ActiveCase);
+        Assert.Equal(testCase.Id, caseState.ActiveCase!.Id);
+        Assert.Contains(device1, scopeState.Current.DeviceIds);
+    }
+
+    [Fact]
+    public async Task SaveScopeToCase_ShownForReview_HiddenForReadOnly_AndCallsSetScope()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var testCase = MakeCase(scopeFromUtc: new DateTime(2026, 1, 1), scopeToUtc: new DateTime(2026, 2, 1));
+        var caseRepository = RegisterCaseRepository(testCase);
+        caseRepository
+            .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        caseRepository
+            .Setup(r => r.GetDeviceIdsAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid>());
+        caseRepository
+            .Setup(r => r.SetScopeAsync(
+                testCase.Id,
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await RegisterRoleAsync(OperatorRole.Review);
+
+        var component = Render<ScopeRail>();
+        var picker = (IHtmlSelectElement)component.Find("[data-testid='case-picker']");
+        await component.InvokeAsync(() => picker.Change(testCase.Id.ToString("D")));
+
+        // Act - change a date so scope diverges from the case's saved (unset) scope
+        var fromInput = component.FindAll("input[type=date]")[0];
+        fromInput.Change("2026-09-01");
+
+        // Assert - save button appears for Review
+        var saveButton = component.Find("[data-testid='save-scope-to-case']");
+        Assert.NotNull(saveButton);
+
+        saveButton.Click();
+
+        caseRepository.Verify(r => r.SetScopeAsync(
+            testCase.Id,
+            It.IsAny<DateTime?>(),
+            It.IsAny<DateTime?>(),
+            It.IsAny<IReadOnlyCollection<Guid>>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveScopeToCase_NotShownForReadOnly()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var testCase = MakeCase();
+        var caseRepository = RegisterCaseRepository(testCase);
+        caseRepository
+            .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        caseRepository
+            .Setup(r => r.GetDeviceIdsAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid>());
+
+        await RegisterRoleAsync(OperatorRole.ReadOnly);
+
+        var component = Render<ScopeRail>();
+        var picker = (IHtmlSelectElement)component.Find("[data-testid='case-picker']");
+        await component.InvokeAsync(() => picker.Change(testCase.Id.ToString("D")));
+
+        // Act - change a date so scope diverges from the case
+        var fromInput = component.FindAll("input[type=date]")[0];
+        fromInput.Change("2026-09-01");
+
+        // Assert
+        Assert.Empty(component.FindAll("[data-testid='save-scope-to-case']"));
+    }
+
+    [Fact]
+    public async Task CasePicker_SelectingNoCase_RemovesCaseKey_KeepsOtherKeys()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var testCase = MakeCase();
+        var caseRepository = RegisterCaseRepository(testCase);
+        caseRepository
+            .Setup(r => r.GetAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        caseRepository
+            .Setup(r => r.GetDeviceIdsAsync(testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid>());
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"/?tab=raw&case={testCase.Id:D}", replace: true);
+
+        var component = Render<ScopeRail>();
+        await Task.Yield();
+
+        // Act
+        var picker = (IHtmlSelectElement)component.Find("[data-testid='case-picker']");
+        await component.InvokeAsync(() => picker.Change(string.Empty));
+
+        // Assert
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.DoesNotContain("case=", nav.Uri);
+        Assert.Contains("tab=raw", nav.Uri);
+
+        var caseState = Services.GetRequiredService<CaseState>();
+        Assert.Null(caseState.ActiveCase);
+    }
+
+    [Fact]
+    public void CaseRepositoryError_ShowsCasesUnavailable()
+    {
+        // Arrange
+        RegisterDeviceRepository();
+        Services.AddScoped(_ => new ScopeState());
+        var caseRepository = new Mock<ICaseRepository>();
+        caseRepository
+            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Test error"));
+        Services.AddScoped(_ => caseRepository.Object);
+
+        // Act
+        var component = Render<ScopeRail>();
+
+        // Assert
+        Assert.Contains("Cases unavailable", component.Markup);
     }
 }

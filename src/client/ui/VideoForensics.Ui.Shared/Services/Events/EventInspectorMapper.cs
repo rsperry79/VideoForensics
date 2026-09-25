@@ -85,6 +85,7 @@ public static class EventInspectorMapper
             Fields: fields,
             RawJson: rawJson,
             Related: new List<InspectorLink>(),
-            Provenance: provenance);
+            Provenance: provenance,
+            Pin: new PinTarget(CaseItemKind.Event, row.Event.Id));
     }
 }

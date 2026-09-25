@@ -1,0 +1,143 @@
+@page "/cases/new"
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Cases
+@using VideoForensics.Ui.Shared.Services.Scope
+@implements IAsyncDisposable
+@inject ICaseRepository CaseRepository
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject CaseState CaseState
+@inject ScopeState ScopeState
+@inject IDeviceRepository DeviceRepository
+
+<h4 class="mb-4">New Case</h4>
+
+@if (SessionState.OperatorId is null || !Enum.TryParse(SessionState.Role, out OperatorRole role) || role < OperatorRole.Review)
+{
+    <div class="alert alert-info">You do not have permission to create cases.</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <form @onsubmit="HandleSubmit">
+                <div class="mb-3">
+                    <label for="caseNumber" class="form-label">Case Number *</label>
+                    <input type="text" class="form-control" id="caseNumber" @bind="_caseNumber" placeholder="e.g., CASE-2026-001" />
+                    @if (!string.IsNullOrEmpty(_caseNumberError))
+                    {
+                        <div class="text-danger">@_caseNumberError</div>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title *</label>
+                    <input type="text" class="form-control" id="title" @bind="_title" placeholder="Brief case title" />
+                    @if (!string.IsNullOrEmpty(_titleError))
+                    {
+                        <div class="text-danger">@_titleError</div>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" @bind="_description" rows="4" placeholder="Optional case description"></textarea>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="useCurrentScope" @bind="_useCurrentScope" />
+                    <label class="form-check-label" for="useCurrentScope">Use current scope</label>
+                    @if (_useCurrentScope)
+                    {
+                        <div class="mt-2 p-2 bg-light border rounded">
+                            <p class="mb-1">
+                                <strong>Devices:</strong>
+                                @if (ScopeState.Current.DeviceIds.Count == 0)
+                                {
+                                    <span>All devices</span>
+                                }
+                                else
+                                {
+                                    <span>@ScopeState.Current.DeviceIds.Count device(s) selected</span>
+                                }
+                            </p>
+                            <p class="mb-0">
+                                <strong>Window:</strong> @ScopeState.Current.FromUtc:u - @ScopeState.Current.ToUtc:u
+                            </p>
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(_submitError))
+                {
+                    <div class="alert alert-danger">@_submitError</div>
+                }
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary" data-testid="create-case">Create Case</button>
+                    <a href="/cases" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    private string _caseNumber = "";
+    private string _title = "";
+    private string _description = "";
+    private bool _useCurrentScope = true;
+    private string? _caseNumberError;
+    private string? _titleError;
+    private string? _submitError;
+
+    private async Task HandleSubmit()
+    {
+        // Validate
+        _caseNumberError = string.IsNullOrWhiteSpace(_caseNumber) ? "Case number is required" : null;
+        _titleError = string.IsNullOrWhiteSpace(_title) ? "Title is required" : null;
+        _submitError = null;
+
+        if (_caseNumberError is not null || _titleError is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            var scopeFromUtc = _useCurrentScope ? ScopeState.Current.FromUtc : (DateTime?)null;
+            var scopeToUtc = _useCurrentScope ? ScopeState.Current.ToUtc : (DateTime?)null;
+            var deviceIds = _useCurrentScope ? ScopeState.Current.DeviceIds : new List<Guid>();
+
+            var createdCase = await CaseRepository.CreateAsync(
+                _caseNumber.Trim(),
+                _title.Trim(),
+                string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                SessionState.OperatorId,
+                scopeFromUtc,
+                scopeToUtc,
+                deviceIds,
+                SessionState.OperatorId.ToString(),
+                CancellationToken.None);
+
+            // Activate the case and navigate to details
+            await CaseState.ActivateAsync(createdCase.Id, CancellationToken.None);
+            NavigationManager.NavigateTo($"/cases/{createdCase.Id}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _submitError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _submitError = $"Failed to create case: {ex.Message}";
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+}

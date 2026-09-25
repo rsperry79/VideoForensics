@@ -1,6 +1,6 @@
 # UI Forensic Workflow Plan
 
-Branch: `claude/ui-media-auth` · Status is updated at the end of every phase.
+Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
 
 ## Goal
 
@@ -24,7 +24,7 @@ page reads, drill-down on every table row into its parsed fields, raw provider J
 | **Cases** | Case list, create case, case overview (scope, item counts, custody, exports) | — |
 | **Evidence** | Timeline / Grid / Gallery; media viewer; device-by-time view; Collect action | Dashboard, Events, CollectVideos, CollectSnapshots |
 | **Analyze** | Reports, anomalies, jamming, access control — one page, runs on case scope | ForensicReports, SignalAnomalies, JammingAnalysis, AccessControl |
-| **Sources** | Provider accounts: status/re-auth, sync, locations & devices, API Explorer (raw), error log | Accounts, AccountDetails, AddAccountWizard, AccountSyncSchedule, QueryApi, RingSelfTest, DeviceConfig |
+| **Sources** | Provider accounts: status/re-auth, sync, locations & devices, API tester (raw responses shown, never stored), error log | Accounts, AccountDetails, AddAccountWizard, AccountSyncSchedule, QueryApi, RingSelfTest, DeviceConfig |
 | **Admin ⚙** | Operators, paired client devices, security, network, storage, notifications, update, infrastructure | Security*/Settings* pages |
 
 Workflow page is removed — the nav order is the workflow.
@@ -71,16 +71,32 @@ Workflow page is removed — the nav order is the workflow.
 - Deferred: "grab still with hash" (needs a server write path — revisit with Cases in phase 4);
   Dashboard/Events/`EventDetailsDialog` removal moves to phase 6 with the nav restructure.
 
-### Phase 4 — Cases 🔄 Next (new branch after the phase 1–3 PR)
+### Phase 4 — Cases ✅ Done (`claude/ui-cases`)
 
-Entities + migration, `/api/v1/cases` (`ToDto()`/`ToDomain()`), `Remote*` client classes, Cases
-pages; scope rail becomes case-scoped ("Save to case"); "Add to case" from the inspector/viewer.
+- ✅ `ForensicCase` / `CaseDevice` / `CaseItem` schema (migration `AddForensicCases`, generated from the
+  model, drift check empty): unique case number, device-scope junction, soft-removed pins with a
+  SHA-256 snapshot, filtered unique indexes (one active pin per target) and a CHECK constraint.
+- ✅ `CaseRepository` with chain-of-custody ActionLog entries for every mutation; closed cases are
+  read-only.
+- ✅ `/api/v1/cases` (read: any operator; create/edit/scope/pin: Review; close/reopen: Admin; 400/401/
+  404/409 semantics) and `RemoteCaseRepository` for MAUI.
+- ✅ `CaseState` + `CaseUrl`: active case in the `case=` query key, applies/saves the case scope.
+- ✅ Scope rail case picker + "save scope to case"; inspector "Pin to {case}" with required reason.
+- ✅ Pages: `/cases` (status filter), `/cases/new` (optionally from current scope), `/cases/{id}`
+  (details edit, pinned items with hash integrity Match/Mismatch/Missing, remove with reason,
+  Admin close/reopen, "Work on this case" → Evidence). New "Cases" nav group.
 
-### Phase 5 — Raw API traffic capture ⏳
+### Phase 5 — Raw API data in the tester 🔄 Next
 
-Persist `ApiRawLogger` traffic to an `ApiCallLog` table (redacted request/response bodies, status,
-duration, account, run id); `GET /api/v1/api-calls/{id}`; `ApiCallId` on self-test/query results;
-merge Query API + Ring Self-Test into a Sources → API Explorer with raw drill-down.
+Decision: raw provider API traffic is **displayed, never persisted** (storing payloads would bloat
+the database; parsed provider data is already stored in structured tables), and it is shown **only in
+the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
+
+- During a self-test run, capture the `ApiRawLogger` calls made by each tested endpoint (scoped to that
+  call) and return them on the result: `SelfTestCallDto.RawCalls` (method, redacted URL, status,
+  timestamp, response body truncated at 256 KB with original length + SHA-256; tokens/secrets redacted).
+- Ring Self-Test page: results in a ForensicGrid; selecting a call opens the inspector with the parsed
+  result in Fields and the raw responses in Raw (DumpView), plus schema issues.
 
 ### Phase 6 — Navigation restructure ⏳
 
@@ -91,6 +107,12 @@ menu for operator login, move Admin items, delete Workflow page.
 
 Device × hour grid of event/snapshot markers (gap spotting for jamming/anomaly work) and a
 per-device scrubbable snapshot strip alongside RSSI.
+
+## Follow-ups
+
+- Mobile layout (from #46) does not yet show the ScopeRail or the inspector; mobile pages fall back to
+  the default 7-day scope. Add a collapsible scope sheet + inspector drawer to `MobileLayout`.
+- Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
 
 ## Environment notes
 

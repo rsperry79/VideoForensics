@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VideoForensics.Data.Database.DbContext;
 
@@ -10,9 +11,11 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    partial class VideoForensicsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925033511_AddForensicCases")]
+    partial class AddForensicCases
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
@@ -60,7 +63,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AccessAuditLogs", (string)null);
+                    b.ToTable("AccessAuditLogs");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ActionLogEntry", b =>
@@ -111,7 +114,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("ActionLogEntries", (string)null);
+                    b.ToTable("ActionLogEntries");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisMotionZone", b =>
@@ -144,7 +147,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("AiAnalysisSnapshotId", "ZoneId")
                         .IsUnique();
 
-                    b.ToTable("AiAnalysisMotionZones", (string)null);
+                    b.ToTable("AiAnalysisMotionZones");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>
@@ -170,7 +173,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DownloadEventId");
 
-                    b.ToTable("AiAnalysisSnapshots", (string)null);
+                    b.ToTable("AiAnalysisSnapshots");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisTag", b =>
@@ -194,7 +197,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("AiAnalysisSnapshotId", "TagName")
                         .IsUnique();
 
-                    b.ToTable("AiAnalysisTags", (string)null);
+                    b.ToTable("AiAnalysisTags");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AppSetting", b =>
@@ -223,7 +226,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("AppSettings", (string)null);
+                    b.ToTable("AppSettings");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.BannedIpRange", b =>
@@ -254,7 +257,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("CidrRange");
 
-                    b.ToTable("BannedIpRanges", (string)null);
+                    b.ToTable("BannedIpRanges");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseDevice", b =>
@@ -272,7 +275,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.ToTable("CaseDevices", (string)null);
+                    b.ToTable("CaseDevices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseItem", b =>
@@ -338,7 +341,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasDatabaseName("IX_CaseItems_CaseId_MediaItemId_Active")
                         .HasFilter("\"MediaItemId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
 
-                    b.ToTable("CaseItems", null, t =>
+                    b.ToTable("CaseItems", t =>
                         {
                             t.HasCheckConstraint("CK_CaseItems_ExactlyOneTarget", "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)");
                         });
@@ -380,7 +383,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderAccountId", "CredentialType")
                         .IsUnique();
 
-                    b.ToTable("Credentials", (string)null);
+                    b.ToTable("Credentials");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DetectedPerson", b =>
@@ -412,7 +415,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemId", "ProfileId");
 
-                    b.ToTable("DetectedPersons", (string)null);
+                    b.ToTable("DetectedPersons");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DetectionTypeOccurrence", b =>
@@ -436,7 +439,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemDetectionId");
 
-                    b.ToTable("DetectionTypeOccurrences", (string)null);
+                    b.ToTable("DetectionTypeOccurrences");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Device", b =>
@@ -504,7 +507,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("LocationId", "ProviderDeviceId")
                         .IsUnique();
 
-                    b.ToTable("Devices", (string)null);
+                    b.ToTable("Devices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAlerts", b =>
@@ -527,7 +530,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId", "AlertType");
 
-                    b.ToTable("DeviceAlerts", (string)null);
+                    b.ToTable("DeviceAlerts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceCapabilities", b =>
@@ -588,7 +591,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId")
                         .IsUnique();
 
-                    b.ToTable("DeviceCapabilities", (string)null);
+                    b.ToTable("DeviceCapabilities");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceConfigSnapshot", b =>
@@ -624,7 +627,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.ToTable("DeviceConfigSnapshots", (string)null);
+                    b.ToTable("DeviceConfigSnapshots");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatures", b =>
@@ -661,7 +664,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.ToTable("DeviceFeatures", (string)null);
+                    b.ToTable("DeviceFeatures");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>
@@ -710,7 +713,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId", "CapturedAtUtc");
 
-                    b.ToTable("DeviceHealths", (string)null);
+                    b.ToTable("DeviceHealths");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DownloadEvent", b =>
@@ -772,7 +775,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId", "ProviderEventId")
                         .IsUnique();
 
-                    b.ToTable("DownloadEvents", (string)null);
+                    b.ToTable("DownloadEvents");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Event", b =>
@@ -838,7 +841,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId", "ProviderEventId")
                         .IsUnique();
 
-                    b.ToTable("Events", (string)null);
+                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectedPerson", b =>
@@ -870,7 +873,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("EventDetectedPersons", (string)null);
+                    b.ToTable("EventDetectedPersons");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetection", b =>
@@ -917,7 +920,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("EventDetections", (string)null);
+                    b.ToTable("EventDetections");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectionTypeOccurrence", b =>
@@ -941,7 +944,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventDetectionId");
 
-                    b.ToTable("EventDetectionTypeOccurrences", (string)null);
+                    b.ToTable("EventDetectionTypeOccurrences");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventDetectionZone", b =>
@@ -969,7 +972,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventDetectionId", "ZoneId");
 
-                    b.ToTable("EventDetectionZones", (string)null);
+                    b.ToTable("EventDetectionZones");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.EventSecurityAlert", b =>
@@ -993,7 +996,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("EventSecurityAlerts", (string)null);
+                    b.ToTable("EventSecurityAlerts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ExportAuditRecordEntity", b =>
@@ -1032,7 +1035,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("LocationId");
 
-                    b.ToTable("ExportAuditRecords", (string)null);
+                    b.ToTable("ExportAuditRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ExportRecord", b =>
@@ -1082,7 +1085,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("ExportedAtUtc");
 
-                    b.ToTable("ExportRecords", (string)null);
+                    b.ToTable("ExportRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ExportRecordItem", b =>
@@ -1108,7 +1111,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemId");
 
-                    b.ToTable("ExportRecordItems", (string)null);
+                    b.ToTable("ExportRecordItems");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ForensicCase", b =>
@@ -1167,7 +1170,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("CaseNumber")
                         .IsUnique();
 
-                    b.ToTable("Cases", (string)null);
+                    b.ToTable("Cases");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.IntegrityRecord", b =>
@@ -1203,7 +1206,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemId");
 
-                    b.ToTable("IntegrityRecords", (string)null);
+                    b.ToTable("IntegrityRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.JammingIncidentRecord", b =>
@@ -1244,7 +1247,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.ToTable("JammingIncidentRecords", (string)null);
+                    b.ToTable("JammingIncidentRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.JammingScheduleWindow", b =>
@@ -1272,7 +1275,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("SyncScheduleId");
 
-                    b.ToTable("JammingScheduleWindows", (string)null);
+                    b.ToTable("JammingScheduleWindows");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.JammingStatsSummary", b =>
@@ -1322,7 +1325,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId")
                         .IsUnique();
 
-                    b.ToTable("JammingStatsSummaries", (string)null);
+                    b.ToTable("JammingStatsSummaries");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.LegalHold", b =>
@@ -1361,7 +1364,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemId");
 
-                    b.ToTable("LegalHolds", (string)null);
+                    b.ToTable("LegalHolds");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Location", b =>
@@ -1398,7 +1401,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderLocationId")
                         .IsUnique();
 
-                    b.ToTable("Locations", (string)null);
+                    b.ToTable("Locations");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.LocationMetadata", b =>
@@ -1461,7 +1464,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("LocationId")
                         .IsUnique();
 
-                    b.ToTable("LocationMetadata", (string)null);
+                    b.ToTable("LocationMetadata");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.LockoutPolicySettings", b =>
@@ -1491,7 +1494,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LockoutPolicySettings", (string)null);
+                    b.ToTable("LockoutPolicySettings");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaItem", b =>
@@ -1586,7 +1589,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId", "RecordedAtUtc")
                         .IsUnique();
 
-                    b.ToTable("MediaItems", (string)null);
+                    b.ToTable("MediaItems");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaItemDetection", b =>
@@ -1633,7 +1636,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("MediaItemId");
 
-                    b.ToTable("MediaItemDetections", (string)null);
+                    b.ToTable("MediaItemDetections");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Notice", b =>
@@ -1668,7 +1671,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Notices", (string)null);
+                    b.ToTable("Notices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.NoticeDismissal", b =>
@@ -1691,7 +1694,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("NoticeId", "OperatorId")
                         .IsUnique();
 
-                    b.ToTable("NoticeDismissals", (string)null);
+                    b.ToTable("NoticeDismissals");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>
@@ -1777,7 +1780,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Operators", (string)null);
+                    b.ToTable("Operators");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorCredential", b =>
@@ -1831,7 +1834,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("WebAuthnCredentialId");
 
-                    b.ToTable("OperatorCredentials", (string)null);
+                    b.ToTable("OperatorCredentials");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorNotificationPreference", b =>
@@ -1848,7 +1851,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasKey("OperatorId");
 
-                    b.ToTable("OperatorNotificationPreferences", (string)null);
+                    b.ToTable("OperatorNotificationPreferences");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorPreferences", b =>
@@ -1877,7 +1880,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("OperatorId")
                         .IsUnique();
 
-                    b.ToTable("OperatorPreferences", (string)null);
+                    b.ToTable("OperatorPreferences");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.PairedDevice", b =>
@@ -1943,7 +1946,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("WebAuthnCredentialId");
 
-                    b.ToTable("PairedDevices", (string)null);
+                    b.ToTable("PairedDevices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderAccount", b =>
@@ -1986,7 +1989,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("UserId", "ProviderName")
                         .IsUnique();
 
-                    b.ToTable("ProviderAccounts", (string)null);
+                    b.ToTable("ProviderAccounts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderApiCallRecord", b =>
@@ -2007,7 +2010,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("ProviderName", "TimestampUtc");
 
-                    b.ToTable("ProviderApiCallRecords", (string)null);
+                    b.ToTable("ProviderApiCallRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderApiErrorLog", b =>
@@ -2061,7 +2064,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId", "OccurredAtUtc");
 
-                    b.ToTable("ProviderApiErrorLogs", (string)null);
+                    b.ToTable("ProviderApiErrorLogs");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderReconciliationRecord", b =>
@@ -2104,7 +2107,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.ToTable("ProviderReconciliationRecords", (string)null);
+                    b.ToTable("ProviderReconciliationRecords");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.PushSubscription", b =>
@@ -2142,7 +2145,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("Endpoint")
                         .IsUnique();
 
-                    b.ToTable("PushSubscriptions", (string)null);
+                    b.ToTable("PushSubscriptions");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccount", b =>
@@ -2199,7 +2202,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("RingAccountFeaturesId");
 
-                    b.ToTable("RingAccounts", (string)null);
+                    b.ToTable("RingAccounts");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccountFeatures", b =>
@@ -2261,7 +2264,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("RingAccountId");
 
-                    b.ToTable("RingAccountFeatures", (string)null);
+                    b.ToTable("RingAccountFeatures");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityAuditLogEntry", b =>
@@ -2301,7 +2304,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("TimestampUtc");
 
-                    b.ToTable("SecurityAuditLogEntries", (string)null);
+                    b.ToTable("SecurityAuditLogEntries");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityEvent", b =>
@@ -2339,7 +2342,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("OperatorId", "OccurredAtUtc");
 
-                    b.ToTable("SecurityEvents", (string)null);
+                    b.ToTable("SecurityEvents");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>
@@ -2380,7 +2383,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderAccountId")
                         .IsUnique();
 
-                    b.ToTable("SyncSchedules", (string)null);
+                    b.ToTable("SyncSchedules");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.TwoFactorRoleRequirement", b =>
@@ -2406,7 +2409,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("Role")
                         .IsUnique();
 
-                    b.ToTable("TwoFactorRoleRequirements", (string)null);
+                    b.ToTable("TwoFactorRoleRequirements");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.User", b =>
@@ -2437,7 +2440,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("ProviderUserKey")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisMotionZone", b =>
