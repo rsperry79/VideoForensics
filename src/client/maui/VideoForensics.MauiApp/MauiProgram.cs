@@ -1,7 +1,9 @@
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Alerts;
 
+#if !__IOS__
 using Microsoft.AspNetCore.DataProtection;
+#endif
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -11,8 +13,10 @@ using Syncfusion.Blazor;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
+#if !__IOS__
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.ServerDiscovery;
+#endif
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
 using VideoForensics.Ui.Shared.Services;
@@ -79,6 +83,7 @@ namespace VideoForensics.MauiApp
             // IAppLockPreferencesStore below) so HostingApplicationDiscriminator reads our ContentRootPath
             // instead. Nothing else in this app depends on IHostEnvironment, so overriding it wholesale
             // is safe.
+#if !__IOS__
             builder.Services.AddSingleton<IHostEnvironment>(new FixedHostEnvironment(configDir));
 
             string dataProtectionKeyPath = Path.Combine(configDir, "keys");
@@ -110,7 +115,9 @@ namespace VideoForensics.MauiApp
                 IServerLocationSettingsStore settingsStore = sp.GetRequiredService<IServerLocationSettingsStore>();
                 return new ServerLocationResolver(settingsStore, logger);
             });
+#endif
 
+            #if !__IOS__
             // Resolve server address synchronously at app startup. Since IServerLocationResolver
             // internally times out after 3 seconds, blocking the synchronous CreateMauiApp() here is
             // acceptable - the resolver won't hang indefinitely.
@@ -135,6 +142,11 @@ namespace VideoForensics.MauiApp
                 serverUri = new Uri("https://localhost:7004");
                 serverResolutionFailed = true;
             }
+#else
+            // iOS: can't run local hosting, use placeholder URI and rely on paired mode
+            Uri serverUri = new Uri("https://localhost:7004");
+            bool serverResolutionFailed = true;
+#endif
 
             builder.Services.AddVideoForensicsClientApi(serverUri);
 
