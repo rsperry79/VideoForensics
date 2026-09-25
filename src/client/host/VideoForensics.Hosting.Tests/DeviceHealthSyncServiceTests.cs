@@ -37,6 +37,9 @@ namespace VideoForensics.Hosting.Tests
             var healthSource = new Mock<IProviderHealthSource>();
             var deviceRepo = new Mock<IDeviceRepository>();
             var dataClient = new Mock<IVideoForensicsDataClient>();
+            var healthRepository = new Mock<IDeviceHealthRepository>();
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
 
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -48,6 +51,7 @@ namespace VideoForensics.Hosting.Tests
             _ = services.AddSingleton(dataClient.Object);
             _ = services.AddSingleton(budgetGuard.Object);
             _ = services.AddSingleton(auditLog.Object);
+            _ = services.AddSingleton(healthRepository.Object);
             ServiceProvider provider = services.BuildServiceProvider();
 
             IServiceScopeFactory scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
@@ -287,14 +291,18 @@ namespace VideoForensics.Hosting.Tests
             var healthSource = new Mock<IProviderHealthSource>();
             var deviceRepo = new Mock<IDeviceRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
-            var jammingOrchestrator = new Mock<JammingToolsOrchestrator>();
+            var jammingOrchestrator = new JammingToolsOrchestrator(
+                Mock.Of<ILogger<JammingToolsOrchestrator>>(),
+                Mock.Of<IJammingRepository>(),
+                Mock.Of<IDeviceHealthRepository>(),
+                null);
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
 
             _ = services.AddSingleton(healthSource.Object);
             _ = services.AddSingleton(deviceRepo.Object);
             _ = services.AddSingleton(budgetGuard.Object);
-            _ = services.AddSingleton(jammingOrchestrator.Object);
+            _ = services.AddSingleton(jammingOrchestrator);
             _ = services.AddSingleton(liveViewService.Object);
             _ = services.AddSingleton(auditLog.Object);
 
@@ -328,15 +336,45 @@ namespace VideoForensics.Hosting.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            var jammingOrchestrator = new Mock<JammingToolsOrchestrator>();
+
+            // Create mocked dependencies for real JammingToolsOrchestrator
+            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var jammingRepository = new Mock<IJammingRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
+
+            // Set up mocks for the real orchestrator
+            // Return history with sustained degradation to trigger jamming detection
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
+                    new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
+                    new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },
+                    new() { WifiSignalRssi = -62, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-1) },
+                    new() { WifiSignalRssi = -72, CapturedAtUtc = DateTime.UtcNow.AddSeconds(-30) }, // 10+ dB below baseline
+                    new() { WifiSignalRssi = -71, CapturedAtUtc = DateTime.UtcNow } // sustained degradation
+                ]));
+
+            _ = jammingRepository.Setup(r => r.ListIncidentsAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]));
+            _ = jammingRepository.Setup(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
+                .Returns((JammingIncidentRecord r, CancellationToken _) => Task.FromResult(r));
+            _ = jammingRepository.Setup(r => r.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary());
+            _ = jammingRepository.Setup(r => r.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((JammingStatsSummary?)null));
+
+            // Create real orchestrator with mocked dependencies
+            var jammingOrchestrator = new JammingToolsOrchestrator(
+                Mock.Of<ILogger<JammingToolsOrchestrator>>(),
+                jammingRepository.Object,
+                healthRepository.Object,
+                null);
 
             _ = services.AddSingleton(healthSource.Object);
             _ = services.AddSingleton(deviceRepo.Object);
             _ = services.AddSingleton(dataClient.Object);
             _ = services.AddSingleton(budgetGuard.Object);
-            _ = services.AddSingleton(jammingOrchestrator.Object);
+            _ = services.AddSingleton(jammingOrchestrator);
             _ = services.AddSingleton(liveViewService.Object);
             _ = services.AddSingleton(auditLog.Object);
 
@@ -357,10 +395,6 @@ namespace VideoForensics.Hosting.Tests
                 .ReturnsAsync([
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -60, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
                 ]);
-
-            // Jamming analysis returns 1 newly detected incident
-            _ = jammingOrchestrator.Setup(j => j.AnalyzeJammingAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new JammingAnalysisReport { Success = true, NewlyDetectedCount = 1, DeviceId = device.Id });
 
             // No active session
             _ = liveViewService.Setup(l => l.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
@@ -391,15 +425,45 @@ namespace VideoForensics.Hosting.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            var jammingOrchestrator = new Mock<JammingToolsOrchestrator>();
+
+            // Create mocked dependencies for real JammingToolsOrchestrator
+            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var jammingRepository = new Mock<IJammingRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
+
+            // Set up mocks for the real orchestrator
+            // Return history with sustained degradation to trigger jamming detection
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
+                    new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
+                    new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },
+                    new() { WifiSignalRssi = -62, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-1) },
+                    new() { WifiSignalRssi = -72, CapturedAtUtc = DateTime.UtcNow.AddSeconds(-30) }, // 10+ dB below baseline
+                    new() { WifiSignalRssi = -71, CapturedAtUtc = DateTime.UtcNow } // sustained degradation
+                ]));
+
+            _ = jammingRepository.Setup(r => r.ListIncidentsAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]));
+            _ = jammingRepository.Setup(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
+                .Returns((JammingIncidentRecord r, CancellationToken _) => Task.FromResult(r));
+            _ = jammingRepository.Setup(r => r.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary());
+            _ = jammingRepository.Setup(r => r.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((JammingStatsSummary?)null));
+
+            // Create real orchestrator with mocked dependencies
+            var jammingOrchestrator = new JammingToolsOrchestrator(
+                Mock.Of<ILogger<JammingToolsOrchestrator>>(),
+                jammingRepository.Object,
+                healthRepository.Object,
+                null);
 
             _ = services.AddSingleton(healthSource.Object);
             _ = services.AddSingleton(deviceRepo.Object);
             _ = services.AddSingleton(dataClient.Object);
             _ = services.AddSingleton(budgetGuard.Object);
-            _ = services.AddSingleton(jammingOrchestrator.Object);
+            _ = services.AddSingleton(jammingOrchestrator);
             _ = services.AddSingleton(liveViewService.Object);
             _ = services.AddSingleton(auditLog.Object);
 
@@ -420,10 +484,6 @@ namespace VideoForensics.Hosting.Tests
                 .ReturnsAsync([
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -60, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
                 ]);
-
-            // Jamming analysis returns incidents detected
-            _ = jammingOrchestrator.Setup(j => j.AnalyzeJammingAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new JammingAnalysisReport { Success = true, NewlyDetectedCount = 2, DeviceId = device.Id });
 
             var activeSession = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = device.Id, TriggerReason = LiveViewTriggerReason.JammingSuspected };
             _ = liveViewService.Setup(l => l.GetActiveSessionAsync(device.Id, It.IsAny<CancellationToken>()))
@@ -454,15 +514,45 @@ namespace VideoForensics.Hosting.Tests
             var dataClient = new Mock<IVideoForensicsDataClient>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            var jammingOrchestrator = new Mock<JammingToolsOrchestrator>();
+
+            // Create mocked dependencies for real JammingToolsOrchestrator
+            var healthRepository = new Mock<IDeviceHealthRepository>();
+            var jammingRepository = new Mock<IJammingRepository>();
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
+
+            // Set up mocks for the real orchestrator
+            // Return history WITHOUT sustained degradation (no jamming detected)
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
+                    new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
+                    new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },
+                    new() { WifiSignalRssi = -62, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-1) },
+                    new() { WifiSignalRssi = -61, CapturedAtUtc = DateTime.UtcNow.AddSeconds(-30) }, // only 1 dB below baseline
+                    new() { WifiSignalRssi = -59, CapturedAtUtc = DateTime.UtcNow } // back to normal
+                ]));
+
+            _ = jammingRepository.Setup(r => r.ListIncidentsAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<IReadOnlyList<JammingIncidentRecord>>([]));
+            _ = jammingRepository.Setup(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
+                .Returns((JammingIncidentRecord r, CancellationToken _) => Task.FromResult(r));
+            _ = jammingRepository.Setup(r => r.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new JammingStatsSummary());
+            _ = jammingRepository.Setup(r => r.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((JammingStatsSummary?)null));
+
+            // Create real orchestrator with mocked dependencies
+            var jammingOrchestrator = new JammingToolsOrchestrator(
+                Mock.Of<ILogger<JammingToolsOrchestrator>>(),
+                jammingRepository.Object,
+                healthRepository.Object,
+                null);
 
             _ = services.AddSingleton(healthSource.Object);
             _ = services.AddSingleton(deviceRepo.Object);
             _ = services.AddSingleton(dataClient.Object);
             _ = services.AddSingleton(budgetGuard.Object);
-            _ = services.AddSingleton(jammingOrchestrator.Object);
+            _ = services.AddSingleton(jammingOrchestrator);
             _ = services.AddSingleton(liveViewService.Object);
             _ = services.AddSingleton(auditLog.Object);
 
@@ -484,10 +574,6 @@ namespace VideoForensics.Hosting.Tests
                     new("ring-123", Connected: true, BatteryPercentage: 87m, Rssi: -60, WifiName: "HomeWifi", FirmwareVersion: "1.2.3")
                 ]);
 
-            // Jamming analysis finds NO new incidents
-            _ = jammingOrchestrator.Setup(j => j.AnalyzeJammingAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new JammingAnalysisReport { Success = true, NewlyDetectedCount = 0, DeviceId = device.Id });
-
             await service.RunElevatedTickAsync(CancellationToken.None);
 
             // Should clear the window regardless of result
@@ -506,16 +592,22 @@ namespace VideoForensics.Hosting.Tests
             var deviceRepo = new Mock<IDeviceRepository>();
             var budgetGuard = new Mock<IProviderApiBudgetGuard>();
             _ = budgetGuard.Setup(g => g.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
-            var jammingOrchestrator = new Mock<JammingToolsOrchestrator>();
+            var jammingOrchestrator = new JammingToolsOrchestrator(
+                Mock.Of<ILogger<JammingToolsOrchestrator>>(),
+                Mock.Of<IJammingRepository>(),
+                Mock.Of<IDeviceHealthRepository>(),
+                null);
             var liveViewService = new Mock<ILiveViewSessionService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
+            var dataClient = new Mock<IVideoForensicsDataClient>();
 
             _ = services.AddSingleton(healthSource.Object);
             _ = services.AddSingleton(deviceRepo.Object);
             _ = services.AddSingleton(budgetGuard.Object);
-            _ = services.AddSingleton(jammingOrchestrator.Object);
+            _ = services.AddSingleton(jammingOrchestrator);
             _ = services.AddSingleton(liveViewService.Object);
             _ = services.AddSingleton(auditLog.Object);
+            _ = services.AddSingleton(dataClient.Object);
 
             ServiceProvider provider = services.BuildServiceProvider();
             IServiceScopeFactory scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();

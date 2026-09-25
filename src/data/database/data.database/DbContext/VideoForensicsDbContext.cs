@@ -178,6 +178,15 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the security events (Phase 0.5 login/breach tracking).</summary>
         public DbSet<SecurityEvent> SecurityEvents { get; set; }
 
+        /// <summary>Gets or sets the live-view sessions.</summary>
+        public DbSet<LiveViewSession> LiveViewSessions { get; set; }
+
+        /// <summary>Gets or sets the live-view telemetry samples.</summary>
+        public DbSet<LiveViewTelemetrySample> LiveViewTelemetrySamples { get; set; }
+
+        /// <summary>Gets or sets the camera bitrate baselines.</summary>
+        public DbSet<CameraBitrateBaseline> CameraBitrateBaselines { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

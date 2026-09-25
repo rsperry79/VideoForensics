@@ -51,6 +51,18 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.SmtpFromAddress = loadedConfig.SmtpFromAddress;
                 runtimeConfig.NotificationRecipientEmail = loadedConfig.NotificationRecipientEmail;
                 runtimeConfig.ConfiguredNetworkTier = loadedConfig.ConfiguredNetworkTier;
+                runtimeConfig.EnableLiveView = loadedConfig.EnableLiveView;
+                runtimeConfig.LiveViewIdleTimeoutMinutes = loadedConfig.LiveViewIdleTimeoutMinutes;
+                runtimeConfig.LiveViewTelemetrySampleIntervalSeconds = loadedConfig.LiveViewTelemetrySampleIntervalSeconds;
+                runtimeConfig.SustainedModeMaxDurationMinutes = loadedConfig.SustainedModeMaxDurationMinutes;
+                runtimeConfig.LiveViewTelemetryRetentionDays = loadedConfig.LiveViewTelemetryRetentionDays;
+                runtimeConfig.ElevatedPollingWindowMinutes = loadedConfig.ElevatedPollingWindowMinutes;
+                runtimeConfig.ElevatedPollingIntervalSeconds = loadedConfig.ElevatedPollingIntervalSeconds;
+                runtimeConfig.EnableBitrateCalibration = loadedConfig.EnableBitrateCalibration;
+                runtimeConfig.CalibrationCheckIntervalMinutes = loadedConfig.CalibrationCheckIntervalMinutes;
+                runtimeConfig.CalibrationSessionDurationSeconds = loadedConfig.CalibrationSessionDurationSeconds;
+                runtimeConfig.MinCalibrationSamplesPerBucket = loadedConfig.MinCalibrationSamplesPerBucket;
+                runtimeConfig.CalibrationStalenessDays = loadedConfig.CalibrationStalenessDays;
 
                 logger.LogInformation("Configuration loaded from database successfully");
             }

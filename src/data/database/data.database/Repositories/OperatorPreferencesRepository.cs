@@ -30,6 +30,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 existing.ThemeMode = preferences.ThemeMode;
                 existing.CultureName = preferences.CultureName;
+                existing.UiMode = preferences.UiMode;
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 _ = db.OperatorPreferences.Update(existing);
             }
