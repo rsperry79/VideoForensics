@@ -1,0 +1,46 @@
+name: Build MauiApp (iOS)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main, dev ]
+    paths:
+      - 'src/client/maui/VideoForensics.MauiApp/**'
+      - '.github/workflows/build-ios.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # The maui-ios workload pulls in the iOS build tooling that bridges to the
+      # runner's preinstalled Xcode - this is why this job needs macos-latest and
+      # can't run on the ubuntu runner the rest of CI uses. This is a compile-only
+      # check (no code signing, no simulator launch, no App Store distribution) -
+      # it validates the project actually targets and builds for iOS, nothing more.
+      - name: Install MAUI iOS workload
+        run: dotnet workload install maui-ios
+
+      - name: Restore
+        run: dotnet restore src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj -f net10.0-ios
+
+      # Unsigned build for the iOS Simulator target - no Apple Developer certificate
+      # or provisioning profile needed for this, unlike a real device or App Store
+      # build. This only proves the app compiles for iOS; it does not launch or run
+      # in a simulator (that would need a separate, slower step with a booted
+      # simulator instance).
+      - name: Build (iOS Simulator, unsigned)
+        run: >
+          dotnet build src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj
+          -f net10.0-ios
+          -c Debug
+          -p:RuntimeIdentifier=iossimulator-x64
+          -p:CodesignKey=""
+          -p:CodesignProvision=""
