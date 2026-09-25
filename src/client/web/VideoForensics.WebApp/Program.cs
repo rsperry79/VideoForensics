@@ -281,6 +281,11 @@ builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
 
+// This circuit's real network tier (plan §5.10/§5.12), captured once from the browser's actual
+// initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
+// comment for why this can't simply be re-resolved later from a self-HTTP call's own connection.
+builder.Services.AddScoped<SessionNetworkContext>();
+
 // Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
 // the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
 // uses, calling back into this same process's own Minimal API instead of a remote server address -

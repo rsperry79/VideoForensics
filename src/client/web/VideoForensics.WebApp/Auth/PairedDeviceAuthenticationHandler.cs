@@ -34,6 +34,7 @@ namespace VideoForensics.WebApp.Auth
         private readonly IOperatorCredentialRepository _operatorCredentialRepository;
         private readonly INetworkTierResolver _tierResolver;
         private readonly IOperatorRepository _operatorRepository;
+        private readonly ISessionTierHeaderProtector _headerProtector;
 
         public PairedDeviceAuthenticationHandler(
             IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -43,7 +44,8 @@ namespace VideoForensics.WebApp.Auth
             IPairedDeviceRepository pairedDeviceRepository,
             IOperatorCredentialRepository operatorCredentialRepository,
             INetworkTierResolver tierResolver,
-            IOperatorRepository operatorRepository)
+            IOperatorRepository operatorRepository,
+            ISessionTierHeaderProtector headerProtector)
             : base(options, logger, encoder)
         {
             _tokenService = tokenService;
@@ -51,6 +53,51 @@ namespace VideoForensics.WebApp.Auth
             _operatorCredentialRepository = operatorCredentialRepository;
             _tierResolver = tierResolver;
             _operatorRepository = operatorRepository;
+            _headerProtector = headerProtector;
+        }
+
+        /// <summary>
+        /// Resolves the effective network tier for this request, honoring the WebApp's own
+        /// self-HTTP session-tier header (see SelfHttpServiceExtensions/SessionTierHeaderProtector)
+        /// when - and only when - it is safe to trust:
+        /// - No header at all: unchanged behavior, resolve from the connection as before (loopback
+        ///   tools/MAUI on the same machine legitimately have no such header).
+        /// - Header present but the connection ISN'T loopback: a genuinely remote caller cannot use
+        ///   this header to claim a better tier than their real one - ignore it entirely and resolve
+        ///   by IP as today.
+        /// - Header present on a loopback connection (the case a self-HTTP call from this app's own
+        ///   Blazor circuit always produces, regardless of where the real browser is): unprotect it
+        ///   and, if it decrypts, is unexpired, AND names this exact operator, use its tier -
+        ///   otherwise fail safe to Internet (the most restrictive tier) rather than silently
+        ///   trusting the loopback connection.
+        /// </summary>
+        private NetworkTier ResolveEffectiveTier(Guid operatorId)
+        {
+            NetworkTier connectionTier = _tierResolver.ResolveTier(Context);
+
+            if (!Request.Headers.TryGetValue(SessionTierHeaderNames.HeaderName, out StringValues headerValues))
+            {
+                return connectionTier;
+            }
+
+            if (connectionTier != NetworkTier.Local)
+            {
+                Logger.LogWarning(
+                    "Session-tier header present on a non-loopback request (resolved tier {ConnectionTier}); ignoring it and resolving by IP.",
+                    connectionTier);
+                return connectionTier;
+            }
+
+            string headerValue = headerValues.ToString();
+            if (_headerProtector.TryUnprotect(headerValue, out NetworkTier headerTier, out Guid headerOperatorId) && headerOperatorId == operatorId)
+            {
+                return headerTier;
+            }
+
+            Logger.LogWarning(
+                "Session-tier header present on a loopback request but failed validation (expired, tampered, or operator mismatch) for operator {OperatorId}; failing safe to Internet tier.",
+                operatorId);
+            return NetworkTier.Internet;
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -89,7 +136,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Invalid or expired credential.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     claims = new[]
                     {
                         new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
@@ -107,7 +154,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Password change required.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     // Emit claims without PairedDeviceId since this is not a service/device credential.
                     claims = new[]
                     {
@@ -131,7 +178,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Password change required.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     // Emit claims with PairedDeviceId claim = OperatorCredential.Id (reuse same claim type for now).
                     claims = new[]
                     {
@@ -161,7 +208,7 @@ namespace VideoForensics.WebApp.Auth
                 return AuthenticateResult.Fail("Invalid or expired credential.");
             }
 
-            NetworkTier fallbackTier = _tierResolver.ResolveTier(Context);
+            NetworkTier fallbackTier = ResolveEffectiveTier(fallbackDevice.OperatorId);
             Claim[] fallbackClaims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, fallbackDevice.OperatorId.ToString()),

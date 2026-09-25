@@ -433,6 +433,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
             _ = services.AddSingleton<ITwoFactorPendingAuthCache, TwoFactorPendingAuthCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
+            _ = services.AddSingleton<ISessionTierHeaderProtector, SessionTierHeaderProtector>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
             _ = services.AddSingleton<IMediaAccessTicketService, MediaAccessTicketService>();
             _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();

@@ -4,6 +4,7 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Services;
 
@@ -28,6 +29,9 @@ namespace VideoForensics.WebApp.Tests
             var services = new ServiceCollection();
             services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
             services.AddScoped<NavigationManager>(_ => new TestNavigationManager(baseUri));
+            services.AddScoped(_ => new SessionNetworkContext());
+            services.AddSingleton(new Mock<ISessionTokenService>().Object);
+            services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
             return services;
         }
 
@@ -61,6 +65,9 @@ namespace VideoForensics.WebApp.Tests
             // must read it per-scope, not cache a value from the first resolution.
             var services = new ServiceCollection();
             services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
+            services.AddScoped(_ => new SessionNetworkContext());
+            services.AddSingleton(new Mock<ISessionTokenService>().Object);
+            services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
 
             var uris = new Queue<string>(new[] { "https://lan.example.com/", "https://tunnel.example.com/" });
             services.AddScoped<NavigationManager>(_ => new TestNavigationManager(uris.Dequeue()));

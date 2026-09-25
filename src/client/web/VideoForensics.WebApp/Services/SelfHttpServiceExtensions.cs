@@ -14,14 +14,16 @@ namespace VideoForensics.WebApp.Services
     /// remote server address.
     ///
     /// This matters for any endpoint gated on the caller's real network tier (SuperAdmin+Local, plan
-    /// §5.10/§5.12): a Blazor Server circuit's <c>HttpContext</c> is only reliably available during the
-    /// request that first established the circuit, not for later UI-event-driven code (button clicks,
-    /// etc.) - reusing it directly from a page for a later action would resolve a stale or missing
-    /// network tier. Issuing a genuine new HTTP request back into the same Minimal API pipeline (the
-    /// same pattern the existing SecurityLockoutPolicy/SecurityOperators pages use with an inline
-    /// HttpClient) gives every call a fresh, real <c>HttpContext</c> - so the endpoint's own tier check
-    /// stays the single, uniform source of truth for both MAUI and the WebApp's own UI, with zero
-    /// duplicated authorization logic.
+    /// §5.10/§5.12): a Blazor Server circuit's own <c>HttpContext</c> - and therefore the CONNECTION
+    /// this self-HTTP call itself travels over - is a loopback call from this process back into
+    /// itself, regardless of where the real browser physically is. Resolving tier from that
+    /// connection would always (incorrectly) yield Local. <see cref="SessionTierHeaderHandler"/>
+    /// fixes this: it attaches the circuit's REAL tier - captured once from the browser's actual
+    /// initial connection into <see cref="SessionNetworkContext"/> (see
+    /// Components/NetworkTierCapture.razor) - as a protected header, which
+    /// <c>PairedDeviceAuthenticationHandler</c> then recovers server-side instead of trusting the
+    /// loopback connection. The endpoint's own tier check (reading the resulting NetworkTier claim)
+    /// stays the single, uniform source of truth for both MAUI and the WebApp's own UI.
     ///
     /// The HttpClient's base address is resolved from the current circuit's <see cref="NavigationManager"/>
     /// (the same source the existing self-call pages already use) rather than a fixed configuration
@@ -47,12 +49,22 @@ namespace VideoForensics.WebApp.Services
             {
                 PairedSessionState sessionState = sp.GetRequiredService<PairedSessionState>();
                 NavigationManager navigationManager = sp.GetRequiredService<NavigationManager>();
+                SessionNetworkContext networkContext = sp.GetRequiredService<SessionNetworkContext>();
+                ISessionTokenService tokenService = sp.GetRequiredService<ISessionTokenService>();
+                ISessionTierHeaderProtector headerProtector = sp.GetRequiredService<ISessionTierHeaderProtector>();
 
                 var authHandler = new PairedDeviceAuthHandler(sessionState)
                 {
                     InnerHandler = new HttpClientHandler()
                 };
-                var httpClient = new HttpClient(authHandler) { BaseAddress = new Uri(navigationManager.BaseUri) };
+                // Outermost: attaches the circuit's real network tier (see
+                // SessionTierHeaderHandler's doc comment for why this can't just be resolved from
+                // the self-call's own connection) before the auth handler attaches the bearer token.
+                var tierHandler = new SessionTierHeaderHandler(networkContext, sessionState, tokenService, headerProtector)
+                {
+                    InnerHandler = authHandler
+                };
+                var httpClient = new HttpClient(tierHandler) { BaseAddress = new Uri(navigationManager.BaseUri) };
 
                 return factory(httpClient);
             });
