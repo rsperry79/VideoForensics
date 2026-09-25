@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -31,7 +32,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         private static (DeviceHealthSyncService Service, Mock<IProviderHealthSource> HealthSource, Mock<IDeviceRepository> DeviceRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<IProviderApiBudgetGuard> BudgetGuard)
-            CreateService(IForensicsConfiguration? config = null, IBatteryStatusProvider? batteryProvider = null)
+            CreateService(IForensicsConfiguration? config = null, IBatteryStatusProvider? batteryProvider = null, ElevatedPollingWindowTracker? elevatedTracker = null)
         {
             var healthSource = new Mock<IProviderHealthSource>();
             var deviceRepo = new Mock<IDeviceRepository>();
@@ -55,7 +56,8 @@ namespace VideoForensics.Hosting.Tests
                 scopeFactory,
                 config ?? new ForensicsConfiguration(),
                 batteryProvider ?? new AlwaysOnAcPower(),
-                Mock.Of<ILogger<DeviceHealthSyncService>>());
+                Mock.Of<ILogger<DeviceHealthSyncService>>(),
+                elevatedTracker ?? new ElevatedPollingWindowTracker());
 
             return (service, healthSource, deviceRepo, dataClient, budgetGuard);
         }
