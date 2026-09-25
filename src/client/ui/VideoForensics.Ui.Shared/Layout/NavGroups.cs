@@ -55,12 +55,12 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Export Evidence", "/review/export")
             ]),
 
-            new("analyze", "Analyze", "/analyze/reports",
+            new("analyze", "Analyze", "/analyze",
             [
-                new("Forensic Reports", "/analyze/reports"),
-                new("Signal Anomalies", "/analyze/signal-anomalies"),
-                new("Access Control", "/analyze/access-control"),
-                new("Jamming Analysis", "/analyze/jamming")
+                new("Forensic Reports", "/analyze?analysis=reports"),
+                new("Signal Anomalies", "/analyze?analysis=anomalies"),
+                new("Access Control", "/analyze?analysis=access"),
+                new("Jamming Analysis", "/analyze?analysis=jamming")
             ]),
 
             new("sources", "Sources", "/accounts",

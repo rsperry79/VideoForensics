@@ -54,13 +54,13 @@ public class NavGroups_Tests
     {
         var group = NavGroups.All.First(g => g.Key == "analyze");
         Assert.Equal("Analyze", group.Text);
-        Assert.Equal("/analyze/reports", group.Path);
+        Assert.Equal("/analyze", group.Path);
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/analyze/reports", itemPaths);
-        Assert.Contains("/analyze/signal-anomalies", itemPaths);
-        Assert.Contains("/analyze/access-control", itemPaths);
-        Assert.Contains("/analyze/jamming", itemPaths);
+        Assert.Contains("/analyze?analysis=reports", itemPaths);
+        Assert.Contains("/analyze?analysis=anomalies", itemPaths);
+        Assert.Contains("/analyze?analysis=access", itemPaths);
+        Assert.Contains("/analyze?analysis=jamming", itemPaths);
     }
 
     [Fact]
@@ -198,10 +198,14 @@ public class NavGroups_Tests
         var navPaths = new HashSet<string>();
         foreach (var group in NavGroups.All)
         {
-            navPaths.Add(group.Path);
+            // Extract path portion before query string
+            var groupPath = group.Path.Split('?')[0];
+            navPaths.Add(groupPath);
             foreach (var item in group.Items)
             {
-                navPaths.Add(item.Path);
+                // Extract path portion before query string
+                var itemPath = item.Path.Split('?')[0];
+                navPaths.Add(itemPath);
             }
         }
 
@@ -211,7 +215,9 @@ public class NavGroups_Tests
         {
             if (item.Path is not null)
             {
-                navPaths.Add(item.Path);
+                // Extract path portion before query string
+                var path = item.Path.Split('?')[0];
+                navPaths.Add(path);
             }
         }
 
