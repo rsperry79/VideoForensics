@@ -344,37 +344,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         });
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.BannedIpRange", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CidrRange")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CreatedByOperatorId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ExpiresAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CidrRange");
-
-                    b.ToTable("BannedIpRanges");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Credential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1525,36 +1494,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("LockoutPolicySettings", (string)null);
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.LockoutPolicySettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BlockedCountryCodes")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("FailClosedOnLookupError")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("LockoutDurationMinutes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("MaxFailedAttempts")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("UpdatedByOperatorId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("LockoutPolicySettings");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.MediaItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2403,44 +2342,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("SecurityEvents", (string)null);
                 });
 
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.SecurityEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("EventType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("OperatorId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Success")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OccurredAtUtc");
-
-                    b.HasIndex("OperatorId", "OccurredAtUtc");
-
-                    b.ToTable("SecurityEvents");
-                });
-
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2506,32 +2407,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("TwoFactorRoleRequirements", (string)null);
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.TwoFactorRoleRequirement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("RequireTwoFactor")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("UpdatedByOperatorId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Role")
-                        .IsUnique();
-
-                    b.ToTable("TwoFactorRoleRequirements");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.User", b =>
