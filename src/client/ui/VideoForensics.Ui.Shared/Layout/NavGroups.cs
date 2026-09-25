@@ -41,6 +41,7 @@ namespace VideoForensics.Ui.Shared.Layout
             new("dashboard", "Dashboard", "/",
             [
                 new("Dashboard", "/"),
+                new("Evidence", "/evidence"),
                 new("Full Workflow", "/workflow")
             ]),
 

@@ -2,6 +2,7 @@ using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Alerts;
 
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -158,6 +159,9 @@ namespace VideoForensics.MauiApp
             // circuit-scoped like PairedSessionState above.
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LayoutPreferencesState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+            builder.Services.TryAddSingleton(TimeProvider.System);
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IViewportService, VideoForensics.Ui.Shared.Services.DefaultViewportService>();
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();

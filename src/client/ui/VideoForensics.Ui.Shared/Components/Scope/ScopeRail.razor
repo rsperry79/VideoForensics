@@ -1,0 +1,255 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Routing
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Ui.Shared.Services.Scope
+@implements IAsyncDisposable
+@inject ScopeState ScopeState
+@inject IDeviceRepository DeviceRepository
+@inject NavigationManager Nav
+@inject TimeProvider TimeProvider
+
+<div class="scope-rail">
+    @if (_devicesLoaded)
+    {
+        @if (_deviceLoadError)
+        {
+            <div class="scope-rail-message">Devices unavailable</div>
+        }
+        else
+        {
+            <div class="scope-section">
+                <div class="scope-section-label">Devices</div>
+                @if (_devices.Count == 0)
+                {
+                    <div class="scope-hint">No devices</div>
+                }
+                else
+                {
+                    <div class="scope-device-list">
+                        @foreach (var device in _devices)
+                        {
+                            <label class="scope-device-item">
+                                <input type="checkbox"
+                                       data-device-id="@device.Id"
+                                       checked="@IsDeviceSelected(device.Id)"
+                                       @onchange="@(e => OnDeviceToggled(device.Id, e))" />
+                                <span>@device.Name</span>
+                            </label>
+                        }
+                    </div>
+                    @if (ScopeState.Current.IncludesAllDevices)
+                    {
+                        <div class="scope-hint">All devices</div>
+                    }
+                }
+            </div>
+
+            <div class="scope-section">
+                <div class="scope-section-label">Time range</div>
+                <div class="scope-date-row">
+                    <label class="scope-date-label">
+                        <span>From</span>
+                        <input type="date" class="scope-date-input" value="@FromDateValue" @onchange="OnFromChanged" />
+                    </label>
+                    <label class="scope-date-label">
+                        <span>To</span>
+                        <input type="date" class="scope-date-input" value="@ToDateValue" @onchange="OnToChanged" />
+                    </label>
+                </div>
+                <div class="scope-quick-ranges">
+                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange24HoursDaysBack))">24h</button>
+                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange7DaysDaysBack))">7d</button>
+                    <button type="button" class="scope-quick-range-btn" @onclick="@(() => OnQuickRangeClicked(QuickRange30DaysDaysBack))">30d</button>
+                    <button type="button" class="scope-quick-range-btn" @onclick="OnResetClicked">Reset</button>
+                </div>
+            </div>
+
+            <div class="scope-section">
+                <div class="scope-section-label">Search</div>
+                <input type="text"
+                       class="scope-search-input"
+                       value="@_searchDraft"
+                       placeholder="Search..."
+                       @oninput="OnSearchInput"
+                       @onchange="OnSearchChanged"
+                       @onkeydown="OnSearchKeyDown" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    // Quick-range button spans expressed in whole days back from "today" (date granularity, not a
+    // rolling 24h/7d/30h duration): "24h" == today-1..today+1 (exclusive) so it renders as a single
+    // full day either side of now, matching the other quick ranges' shape.
+    private const int QuickRange24HoursDaysBack = 1;
+    private const int QuickRange7DaysDaysBack = 7;
+    private const int QuickRange30DaysDaysBack = 30;
+
+    private const string DateInputFormat = "yyyy-MM-dd";
+
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private bool _devicesLoaded = false;
+    private bool _deviceLoadError = false;
+    private string _searchDraft = string.Empty;
+
+    private DateTime TodayUtc => TimeProvider.GetUtcNow().UtcDateTime.Date;
+
+    private string FromDateValue => ScopeState.Current.FromUtc.Date.ToString(DateInputFormat, CultureInfo.InvariantCulture);
+
+    // ToUtc is an exclusive upper bound; the picker shows the inclusive last day, so subtract one.
+    private string ToDateValue => ScopeState.Current.ToUtc.Date.AddDays(-1).ToString(DateInputFormat, CultureInfo.InvariantCulture);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _devices = (await DeviceRepository.ListAsync(CancellationToken.None)).ToList();
+            _devicesLoaded = true;
+        }
+        catch
+        {
+            _deviceLoadError = true;
+            _devicesLoaded = true;
+        }
+
+        // Subscribe to location changes to apply query string
+        Nav.LocationChanged += OnLocationChanged;
+
+        // Subscribe to scope changes to update URL
+        ScopeState.OnChange += OnScopeChanged;
+
+        // Apply initial query string from URL. No StateHasChanged here - this runs before the
+        // component's first render, which will already reflect the applied scope.
+        ApplyUrlQueryStringCore();
+        _searchDraft = ScopeState.Current.Search ?? string.Empty;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        ApplyUrlQueryStringCore();
+        _searchDraft = ScopeState.Current.Search ?? string.Empty;
+
+        // Raised outside the component's render/event sync context, so marshal back onto it.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyUrlQueryStringCore()
+    {
+        var uri = new Uri(Nav.Uri);
+        ScopeState.ApplyQueryString(uri.Query);
+    }
+
+    private void OnScopeChanged()
+    {
+        UpdateUrl();
+        _searchDraft = ScopeState.Current.Search ?? string.Empty;
+
+        // ScopeState can change from outside this component's own handlers (another component
+        // sharing the same scoped ScopeState instance), so marshal back onto the sync context.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateUrl()
+    {
+        var scopeQuery = ScopeState.ToQueryString();
+        var currentUri = Nav.Uri;
+        var newUri = ScopeUrl.Merge(currentUri, scopeQuery);
+
+        if (newUri != currentUri)
+        {
+            Nav.NavigateTo(newUri, new NavigationOptions { ReplaceHistoryEntry = true });
+        }
+    }
+
+    private bool IsDeviceSelected(Guid deviceId) => ScopeState.Current.DeviceIds.Contains(deviceId);
+
+    private void OnDeviceToggled(Guid deviceId, Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var isChecked = e.Value is bool value && value;
+        var current = ScopeState.Current.DeviceIds;
+
+        var updated = isChecked
+            ? (current.Contains(deviceId) ? current.ToList() : current.Append(deviceId).ToList())
+            : current.Where(id => id != deviceId).ToList();
+
+        ScopeState.Set(ScopeState.Current with { DeviceIds = updated });
+    }
+
+    private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (TryParseDateInput(e.Value, out var date))
+        {
+            ScopeState.Set(ScopeState.Current with { FromUtc = date });
+        }
+    }
+
+    private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (TryParseDateInput(e.Value, out var date))
+        {
+            // The picker shows the inclusive last day; ToUtc is stored as an exclusive upper bound.
+            ScopeState.Set(ScopeState.Current with { ToUtc = date.AddDays(1) });
+        }
+    }
+
+    private static bool TryParseDateInput(object? value, out DateTime date)
+    {
+        var text = value?.ToString();
+        if (!string.IsNullOrWhiteSpace(text) &&
+            DateTime.TryParseExact(text, DateInputFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+        {
+            date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+            return true;
+        }
+
+        date = default;
+        return false;
+    }
+
+    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _searchDraft = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnSearchChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _searchDraft = e.Value?.ToString() ?? string.Empty;
+        ApplySearch();
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            ApplySearch();
+        }
+    }
+
+    private void ApplySearch()
+    {
+        var normalized = string.IsNullOrWhiteSpace(_searchDraft) ? null : _searchDraft;
+        if (normalized != ScopeState.Current.Search)
+        {
+            ScopeState.Set(ScopeState.Current with { Search = normalized });
+        }
+    }
+
+    private void OnQuickRangeClicked(int daysBack)
+    {
+        var today = TodayUtc;
+        ScopeState.Set(ScopeState.Current with { FromUtc = today.AddDays(-daysBack), ToUtc = today.AddDays(1) });
+    }
+
+    private void OnResetClicked()
+    {
+        ScopeState.Set(ForensicScope.Default(TimeProvider.GetUtcNow().UtcDateTime));
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        ScopeState.OnChange -= OnScopeChanged;
+        await ValueTask.CompletedTask;
+    }
+}
