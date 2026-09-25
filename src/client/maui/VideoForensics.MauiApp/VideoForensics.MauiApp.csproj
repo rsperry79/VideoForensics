@@ -100,7 +100,8 @@
     <PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.110" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.110" />
+    <!-- Microsoft.AspNetCore.Components.WebView.Maui is Windows-only; iOS builds do not support Blazor WebView -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.110" Condition="'$(BuildIOS)' != 'true'" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
     <PackageReference Include="Plugin.Fingerprint.MAUI" Version="2.0.1" />
   </ItemGroup>
