@@ -108,8 +108,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
-    <ProjectReference Include="..\..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+    <!-- VideoForensics.Hosting references Microsoft.AspNetCore.App which is not available for iOS -->
+    <ProjectReference Include="..\..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" Condition="'$(BuildIOS)' != 'true'" />
     <ProjectReference Include="..\..\..\core\core\core.logging\VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 
 </Project>
+
+
