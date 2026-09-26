@@ -1,6 +1,6 @@
 # UI Forensic Workflow Plan
 
-Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
+Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`; later phases each on their own branch. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
 
 ## Goal
 
@@ -113,10 +113,17 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 - ✅ Security Events page (from #45, previously in an uncompiled directory) rehomed and wired to
   `ISecurityEventsService` (separate PR).
 
-### Phase 7 — Device-by-time view + snapshot stream 🔄 Next
+### Phase 7 — Device-by-time view + snapshot stream ✅ Done (`claude/ui-device-time`)
 
-Device × hour grid of event/snapshot markers (gap spotting for jamming/anomaly work) and a
-per-device scrubbable snapshot strip alongside RSSI.
+- ✅ Evidence `view=devicetime`: device × time grid (`DeviceTimeGrid`) — hourly buckets up to 7 days,
+  wider ranges use multi-hour buckets (≤168 columns); cells show event and media counts; empty runs
+  between a device's first and last activity are highlighted as gaps. Clicking a cell narrows the
+  scope to that device + bucket and switches to Timeline.
+- ✅ `SnapshotStrip`: per-device time-ordered ticketed thumbnails with a scrubber (range + arrow
+  keys) and an inline-SVG WiFi RSSI plot with the scrub position marked; selecting opens the viewer.
+- ✅ RSSI data path: `IDeviceHealthRepository.GetHistoryAsync(from, to)`,
+  `GET /api/v1/devices/{id}/health?from=&to=` (auth required), `DeviceHealthDto.ToDomain()`,
+  `RemoteDeviceHealthRepository` for MAUI.
 
 ## Follow-ups
 

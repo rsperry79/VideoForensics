@@ -546,6 +546,7 @@ namespace VideoForensics.Hosting
 
             _ = services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceHealthRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);

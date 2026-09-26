@@ -1,0 +1,87 @@
+@using VideoForensics.Ui.Shared.Services.Evidence
+
+<div class="device-time-grid" data-testid="device-time-grid">
+    <div class="device-time-grid-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th class="device-time-grid-corner"></th>
+                    @foreach (var bucketStart in Result.BucketStartsUtc)
+                    {
+                        <th class="device-time-grid-col-header" title="@bucketStart.ToString("yyyy-MM-dd HH:mm 'UTC'")">@FormatBucketHeader(bucketStart)</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Result.Rows)
+                {
+                    <tr data-key="@row.DeviceId">
+                        <th class="device-time-grid-row-header @(row.DeviceId == SelectedDeviceId ? "selected" : "")"
+                            @onclick="@(() => OnDeviceSelected.InvokeAsync(row.DeviceId))">
+                            @row.DeviceName
+                        </th>
+                        @foreach (var bucket in row.Buckets)
+                        {
+                            <td class="@CellCssClass(bucket)"
+                                title="@CellTitle(bucket)"
+                                @onclick="@(() => OnCellClick.InvokeAsync(new DeviceTimeCellClickArgs(row.DeviceId, bucket.StartUtc, bucket.EndUtc)))">
+                                @if (bucket.EventCount > 0)
+                                {
+                                    <span class="device-time-marker device-time-marker-event">@bucket.EventCount</span>
+                                }
+                                @if (bucket.SnapshotCount > 0)
+                                {
+                                    <span class="device-time-marker device-time-marker-media">@bucket.SnapshotCount</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    /// <summary>The grid to render: shared column headers plus one row per device.</summary>
+    [Parameter]
+    public required DeviceTimeGridResult Result { get; set; }
+
+    /// <summary>The device whose row header should render as selected (for the snapshot strip below).</summary>
+    [Parameter]
+    public Guid? SelectedDeviceId { get; set; }
+
+    /// <summary>Raised when a cell is clicked - the caller narrows scope to it and switches to Timeline.</summary>
+    [Parameter]
+    public EventCallback<DeviceTimeCellClickArgs> OnCellClick { get; set; }
+
+    /// <summary>Raised when a device's row header is clicked - the caller shows that device's snapshot strip.</summary>
+    [Parameter]
+    public EventCallback<Guid> OnDeviceSelected { get; set; }
+
+    private string FormatBucketHeader(DateTime bucketStartUtc) => Result.BucketSize <= TimeSpan.FromHours(1)
+        ? bucketStartUtc.ToString("MM-dd HH:mm")
+        : $"{bucketStartUtc:MM-dd HH:mm} (+{Result.BucketSize.TotalHours:0}h)";
+
+    /// <summary>
+    /// "active" (has events or media), "gap" (empty, but sandwiched between activity - the anomaly
+    /// this view exists to surface), or plain "empty" (leading/trailing silence, not a gap).
+    /// </summary>
+    private static string CellCssClass(DeviceTimeBucket bucket)
+    {
+        if (bucket.IsGap)
+        {
+            return "device-time-cell device-time-cell-gap";
+        }
+
+        return bucket.IsEmpty
+            ? "device-time-cell device-time-cell-empty"
+            : "device-time-cell device-time-cell-active";
+    }
+
+    private static string CellTitle(DeviceTimeBucket bucket)
+    {
+        var summary = $"{bucket.StartUtc:yyyy-MM-dd HH:mm} UTC – {bucket.EventCount} event(s), {bucket.SnapshotCount} media";
+        return bucket.IsGap ? $"{summary} (gap)" : summary;
+    }
+}
