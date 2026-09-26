@@ -49,15 +49,50 @@ namespace VideoForensics.WebApp.Services
         }
 
         /// <summary>
-        /// Builds the shared self-HTTP handler chain and <see cref="HttpClient"/> - the outermost
-        /// <see cref="SessionTierHeaderHandler"/> (real network tier), then <see cref="PairedDeviceAuthHandler"/>
-        /// (bearer token), then <paramref name="innermostHandler"/> - used by both
-        /// <see cref="AddSelfHttpService{TService}"/> and <see cref="WebAppSelfApiHttpClientFactory"/>
-        /// so the two never drift apart. <paramref name="innermostHandler"/> defaults to a real
-        /// <see cref="HttpClientHandler"/>; tests substitute a recording/fake handler to observe what
-        /// the chain sends without a live network call.
+        /// Builds the shared self-HTTP handler chain and <see cref="HttpClient"/> using the current
+        /// circuit's <see cref="PairedSessionState.SessionToken"/> for both the tier header (operator-
+        /// bound only; no session at all means no header, same as before this feature existed - see
+        /// <see cref="SessionTierHeaderHandler"/>) and the bearer credential. Used by
+        /// <see cref="AddSelfHttpService{TService}"/> and by <see cref="WebAppSelfApiHttpClientFactory.CreateClient()"/>.
+        /// See <see cref="CreateSelfHttpClientWithBearerToken"/> for the explicit-bearer-token variant.
         /// </summary>
         public static HttpClient CreateSelfHttpClient(IServiceProvider sp, HttpMessageHandler? innermostHandler = null)
+        {
+            PairedSessionState sessionState = sp.GetRequiredService<PairedSessionState>();
+            return CreateSelfHttpClientCore(sp, sessionState.SessionToken, attachPreAuthHeaderWhenNoToken: false, innermostHandler);
+        }
+
+        /// <summary>
+        /// Builds the shared self-HTTP handler chain and <see cref="HttpClient"/> for a caller (e.g.
+        /// <c>WebAuthnClient</c>) that already manages its own bearer token as an explicit value rather
+        /// than reading it from <see cref="PairedSessionState"/> directly - some of its calls happen
+        /// before any session/circuit-level token exists at all (login, first-run setup, device
+        /// pairing/registration). Unlike <see cref="CreateSelfHttpClient"/>, a null
+        /// <paramref name="bearerToken"/> here attaches a PRE-AUTH tier header (see
+        /// <see cref="ISessionTierHeaderProtector.ProtectPreAuth"/>) instead of no header at all, so a
+        /// PRE-AUTH endpoint like <c>OperatorAuthEndpoints.LoginPasswordAsync</c>'s primary-SuperAdmin
+        /// Local-only check can still recover the real tier (see <c>RequestTierResolver.ResolvePreAuth</c>).
+        /// Used by <see cref="WebAppSelfApiHttpClientFactory.CreateClient(string?)"/>.
+        /// </summary>
+        public static HttpClient CreateSelfHttpClientWithBearerToken(IServiceProvider sp, string? bearerToken, HttpMessageHandler? innermostHandler = null)
+        {
+            return CreateSelfHttpClientCore(sp, bearerToken, attachPreAuthHeaderWhenNoToken: true, innermostHandler);
+        }
+
+        /// <summary>
+        /// Builds the shared self-HTTP handler chain - the outermost <see cref="SessionTierHeaderHandler"/>
+        /// (real network tier), then <see cref="PairedDeviceAuthHandler"/> (bearer token, always read
+        /// from the circuit's <see cref="PairedSessionState"/> - which equals <paramref name="tierHeaderBearerToken"/>
+        /// in every real caller), then <paramref name="innermostHandler"/> - shared by both public
+        /// entry points above so they never drift apart. <paramref name="innermostHandler"/> defaults
+        /// to a real <see cref="HttpClientHandler"/>; tests substitute a recording/fake handler to
+        /// observe what the chain sends without a live network call.
+        /// </summary>
+        private static HttpClient CreateSelfHttpClientCore(
+            IServiceProvider sp,
+            string? tierHeaderBearerToken,
+            bool attachPreAuthHeaderWhenNoToken,
+            HttpMessageHandler? innermostHandler)
         {
             PairedSessionState sessionState = sp.GetRequiredService<PairedSessionState>();
             NavigationManager navigationManager = sp.GetRequiredService<NavigationManager>();
@@ -72,7 +107,7 @@ namespace VideoForensics.WebApp.Services
             // Outermost: attaches the circuit's real network tier (see
             // SessionTierHeaderHandler's doc comment for why this can't just be resolved from
             // the self-call's own connection) before the auth handler attaches the bearer token.
-            var tierHandler = new SessionTierHeaderHandler(networkContext, sessionState, tokenService, headerProtector)
+            var tierHandler = new SessionTierHeaderHandler(networkContext, tierHeaderBearerToken, attachPreAuthHeaderWhenNoToken, tokenService, headerProtector)
             {
                 InnerHandler = authHandler
             };

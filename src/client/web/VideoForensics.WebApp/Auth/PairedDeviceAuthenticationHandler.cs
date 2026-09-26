@@ -57,47 +57,16 @@ namespace VideoForensics.WebApp.Auth
         }
 
         /// <summary>
-        /// Resolves the effective network tier for this request, honoring the WebApp's own
-        /// self-HTTP session-tier header (see SelfHttpServiceExtensions/SessionTierHeaderProtector)
-        /// when - and only when - it is safe to trust:
-        /// - No header at all: unchanged behavior, resolve from the connection as before (loopback
-        ///   tools/MAUI on the same machine legitimately have no such header).
-        /// - Header present but the connection ISN'T loopback: a genuinely remote caller cannot use
-        ///   this header to claim a better tier than their real one - ignore it entirely and resolve
-        ///   by IP as today.
-        /// - Header present on a loopback connection (the case a self-HTTP call from this app's own
-        ///   Blazor circuit always produces, regardless of where the real browser is): unprotect it
-        ///   and, if it decrypts, is unexpired, AND names this exact operator, use its tier -
-        ///   otherwise fail safe to Internet (the most restrictive tier) rather than silently
-        ///   trusting the loopback connection.
+        /// Resolves the effective network tier for this ALREADY-authenticated request, honoring the
+        /// WebApp's own self-HTTP session-tier header - see <see cref="RequestTierResolver"/> for the
+        /// full rule (shared with the PRE-AUTH case, e.g. <c>OperatorAuthEndpoints.LoginPasswordAsync</c>'s
+        /// primary-SuperAdmin Local-only check). This request's own operator id is required to match
+        /// the header's, so a pre-auth header (no operator bound at all) or one bound to a different
+        /// operator is rejected the same way - never inheriting this operator's Local-tier trust.
         /// </summary>
         private NetworkTier ResolveEffectiveTier(Guid operatorId)
         {
-            NetworkTier connectionTier = _tierResolver.ResolveTier(Context);
-
-            if (!Request.Headers.TryGetValue(SessionTierHeaderNames.HeaderName, out StringValues headerValues))
-            {
-                return connectionTier;
-            }
-
-            if (connectionTier != NetworkTier.Local)
-            {
-                Logger.LogWarning(
-                    "Session-tier header present on a non-loopback request (resolved tier {ConnectionTier}); ignoring it and resolving by IP.",
-                    connectionTier);
-                return connectionTier;
-            }
-
-            string headerValue = headerValues.ToString();
-            if (_headerProtector.TryUnprotect(headerValue, out NetworkTier headerTier, out Guid headerOperatorId) && headerOperatorId == operatorId)
-            {
-                return headerTier;
-            }
-
-            Logger.LogWarning(
-                "Session-tier header present on a loopback request but failed validation (expired, tampered, or operator mismatch) for operator {OperatorId}; failing safe to Internet tier.",
-                operatorId);
-            return NetworkTier.Internet;
+            return RequestTierResolver.ResolveForOperator(Context, _tierResolver, _headerProtector, Logger, operatorId);
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()

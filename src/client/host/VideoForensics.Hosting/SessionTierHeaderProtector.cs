@@ -26,14 +26,34 @@ namespace VideoForensics.Hosting
     /// bounds how long a captured header could be replayed at all. Data Protection's own
     /// integrity/authenticity guarantee means a tampered or forged header fails to unprotect
     /// entirely, rather than silently decoding to attacker-chosen values.
+    ///
+    /// A PRE-AUTH payload (see <see cref="ProtectPreAuth"/>) is the same idea for a self-HTTP call
+    /// made before any session/operator exists yet - e.g. <c>OperatorAuthEndpoints.LoginPasswordAsync</c>
+    /// itself, first-run setup, or device pairing/registration. There is no operator identity yet to
+    /// bind the header to, so it carries an explicit "this is a pre-auth call" marker (a null
+    /// <c>operatorId</c>) instead - never silently reusing <see cref="Guid.Empty"/>, which could be
+    /// confused with a real (if invalid) operator id. <c>RequestTierResolver</c>
+    /// (VideoForensics.WebApp) is the caller-side rule for when a pre-auth vs. operator-bound payload
+    /// is acceptable for a given kind of request.
     /// </summary>
     public interface ISessionTierHeaderProtector
     {
         /// <summary>Produces the header value for this operator's session, valid for a short, fixed lifetime.</summary>
         string Protect(NetworkTier tier, Guid operatorId);
 
-        /// <summary>True if the header value unprotects to an unexpired payload; the recovered tier/operatorId are set only when this returns true.</summary>
-        bool TryUnprotect(string headerValue, out NetworkTier tier, out Guid operatorId);
+        /// <summary>
+        /// Produces the header value for a PRE-AUTH self-call - no session/operator exists yet - valid
+        /// for the same short, fixed lifetime as <see cref="Protect"/>.
+        /// </summary>
+        string ProtectPreAuth(NetworkTier tier);
+
+        /// <summary>
+        /// True if the header value unprotects to an unexpired payload; the recovered tier/operatorId
+        /// are set only when this returns true. <paramref name="operatorId"/> is null for a pre-auth
+        /// payload (see <see cref="ProtectPreAuth"/>) and non-null for an operator-bound one (see
+        /// <see cref="Protect"/>).
+        /// </summary>
+        bool TryUnprotect(string headerValue, out NetworkTier tier, out Guid? operatorId);
     }
 
     public class SessionTierHeaderProtector : ISessionTierHeaderProtector
@@ -42,7 +62,7 @@ namespace VideoForensics.Hosting
         private readonly IDataProtector _protector;
         private readonly TimeProvider _timeProvider;
 
-        private record SessionTierHeaderPayload(NetworkTier Tier, Guid OperatorId, DateTime ExpiresAtUtc);
+        private record SessionTierHeaderPayload(NetworkTier Tier, Guid? OperatorId, DateTime ExpiresAtUtc);
 
         public SessionTierHeaderProtector(IDataProtectionProvider provider, TimeProvider? timeProvider = null)
         {
@@ -52,15 +72,22 @@ namespace VideoForensics.Hosting
 
         public string Protect(NetworkTier tier, Guid operatorId)
         {
-            DateTime expiresAtUtc = _timeProvider.GetUtcNow().UtcDateTime + MaxLifetime;
-            var payload = new SessionTierHeaderPayload(tier, operatorId, expiresAtUtc);
-            return _protector.Protect(JsonSerializer.Serialize(payload));
+            return ProtectPayload(new SessionTierHeaderPayload(tier, operatorId, ExpiresAtUtc()));
         }
 
-        public bool TryUnprotect(string headerValue, out NetworkTier tier, out Guid operatorId)
+        public string ProtectPreAuth(NetworkTier tier)
+        {
+            return ProtectPayload(new SessionTierHeaderPayload(tier, null, ExpiresAtUtc()));
+        }
+
+        private DateTime ExpiresAtUtc() => _timeProvider.GetUtcNow().UtcDateTime + MaxLifetime;
+
+        private string ProtectPayload(SessionTierHeaderPayload payload) => _protector.Protect(JsonSerializer.Serialize(payload));
+
+        public bool TryUnprotect(string headerValue, out NetworkTier tier, out Guid? operatorId)
         {
             tier = default;
-            operatorId = default;
+            operatorId = null;
 
             if (string.IsNullOrEmpty(headerValue))
             {

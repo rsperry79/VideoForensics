@@ -481,7 +481,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Internet;
-            Guid outOperatorId = operatorId;
+            Guid? outOperatorId = operatorId;
             _ = headerProtector.Setup(p => p.TryUnprotect("protected-header", out outTier, out outOperatorId)).Returns(true);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
@@ -507,7 +507,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
-            Guid outOperatorId = operatorId;
+            Guid? outOperatorId = operatorId;
             _ = headerProtector.Setup(p => p.TryUnprotect("protected-header", out outTier, out outOperatorId)).Returns(true);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
@@ -532,7 +532,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = default;
-            Guid outOperatorId = default;
+            Guid? outOperatorId = null;
             // Expired header: the protector itself reports it as unrecoverable (see
             // SessionTierHeaderProtectorTests for the expiry check itself).
             _ = headerProtector.Setup(p => p.TryUnprotect("expired-header", out outTier, out outOperatorId)).Returns(false);
@@ -559,7 +559,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = default;
-            Guid outOperatorId = default;
+            Guid? outOperatorId = null;
             _ = headerProtector.Setup(p => p.TryUnprotect("tampered-header", out outTier, out outOperatorId)).Returns(false);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
@@ -584,7 +584,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
-            Guid outOperatorId = Guid.NewGuid(); // A DIFFERENT operator than the authenticated one.
+            Guid? outOperatorId = Guid.NewGuid(); // A DIFFERENT operator than the authenticated one.
             _ = headerProtector.Setup(p => p.TryUnprotect("mismatched-header", out outTier, out outOperatorId)).Returns(true);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
@@ -595,6 +595,34 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert - the header decrypted fine but names a DIFFERENT operator than the one this
             // request authenticated as; a header cannot be replayed across operators.
+            Assert.True(result.Succeeded);
+            Assert.Equal(NetworkTier.Internet, ClaimedTier(result));
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_PreAuthTierHeaderOnAuthenticatedRequest_FailsSafeToInternet()
+        {
+            // Arrange - a PRE-AUTH header (see SessionTierHeaderProtector.ProtectPreAuth - no operator
+            // bound at all, e.g. one captured for a LoginPasswordAsync self-call) decrypts fine but
+            // isn't bound to ANY operator, so it must never be honored on an ALREADY-authenticated
+            // request - same as one bound to a different operator.
+            const string token = "loopback-with-preauth-header-on-authenticated-request";
+            (Guid operatorId, _, Mock<ISessionTokenService> tokenService, Mock<IPairedDeviceRepository> repo, Mock<IOperatorRepository> operatorRepository) = SetUpValidServiceDeviceSession(token);
+            var tierResolver = new Mock<INetworkTierResolver>();
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+
+            var headerProtector = new Mock<ISessionTierHeaderProtector>();
+            NetworkTier outTier = NetworkTier.Local;
+            Guid? outOperatorId = null; // pre-auth payload: no operator bound
+            _ = headerProtector.Setup(p => p.TryUnprotect("preauth-header", out outTier, out outOperatorId)).Returns(true);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
+            HttpContext context = CreateHttpContextWithAuthorizationHeaderAndTierHeader(token, "preauth-header");
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
             Assert.True(result.Succeeded);
             Assert.Equal(NetworkTier.Internet, ClaimedTier(result));
         }
@@ -612,7 +640,7 @@ namespace VideoForensics.WebApp.Tests
 
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
-            Guid outOperatorId = operatorId;
+            Guid? outOperatorId = operatorId;
             _ = headerProtector.Setup(p => p.TryUnprotect(It.IsAny<string>(), out outTier, out outOperatorId)).Returns(true);
 
             PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, headerProtector: headerProtector);
@@ -648,7 +676,7 @@ namespace VideoForensics.WebApp.Tests
             // Assert
             Assert.True(result.Succeeded);
             Assert.Equal(NetworkTier.Local, ClaimedTier(result));
-            headerProtector.Verify(p => p.TryUnprotect(It.IsAny<string>(), out It.Ref<NetworkTier>.IsAny, out It.Ref<Guid>.IsAny), Times.Never);
+            headerProtector.Verify(p => p.TryUnprotect(It.IsAny<string>(), out It.Ref<NetworkTier>.IsAny, out It.Ref<Guid?>.IsAny), Times.Never);
         }
     }
 }

@@ -26,13 +26,16 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <inheritdoc/>
-        public HttpClient CreateClient()
+        public HttpClient CreateClient() => CreateClient(_sessionState.SessionToken);
+
+        /// <inheritdoc/>
+        public HttpClient CreateClient(string? bearerToken)
         {
             var client = new HttpClient { BaseAddress = new Uri(_navigationManager.BaseUri) };
-            if (_sessionState.SessionToken is not null)
+            if (bearerToken is not null)
             {
                 client.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _sessionState.SessionToken);
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
             }
 
             return client;

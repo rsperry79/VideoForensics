@@ -33,12 +33,30 @@ namespace VideoForensics.Hosting.Tests
 
             // Act
             string header = protector.Protect(NetworkTier.Local, operatorId);
-            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid resolvedOperatorId);
+            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid? resolvedOperatorId);
 
             // Assert
             Assert.True(ok);
             Assert.Equal(NetworkTier.Local, tier);
             Assert.Equal(operatorId, resolvedOperatorId);
+        }
+
+        [Fact]
+        public void ProtectPreAuth_ThenTryUnprotect_RoundTripsTierWithNullOperatorId()
+        {
+            // Arrange - a pre-auth self-call (e.g. LoginPasswordAsync itself) has no operator
+            // identity yet to bind the header to.
+            var provider = new EphemeralDataProtectionProvider();
+            var protector = new SessionTierHeaderProtector(provider);
+
+            // Act
+            string header = protector.ProtectPreAuth(NetworkTier.Internet);
+            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid? resolvedOperatorId);
+
+            // Assert
+            Assert.True(ok);
+            Assert.Equal(NetworkTier.Internet, tier);
+            Assert.Null(resolvedOperatorId);
         }
 
         [Fact]
@@ -53,12 +71,31 @@ namespace VideoForensics.Hosting.Tests
             char[] chars = header.ToCharArray();
             chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
             string tampered = new string(chars);
-            bool ok = protector.TryUnprotect(tampered, out NetworkTier tier, out Guid operatorId);
+            bool ok = protector.TryUnprotect(tampered, out NetworkTier tier, out Guid? operatorId);
 
             // Assert
             Assert.False(ok);
             Assert.Equal(default, tier);
-            Assert.Equal(default, operatorId);
+            Assert.Null(operatorId);
+        }
+
+        [Fact]
+        public void TryUnprotect_TamperedPreAuthHeader_ReturnsFalse()
+        {
+            // Arrange
+            var provider = new EphemeralDataProtectionProvider();
+            var protector = new SessionTierHeaderProtector(provider);
+            string header = protector.ProtectPreAuth(NetworkTier.Internet);
+
+            // Act - flip a character to simulate tampering with the protected payload.
+            char[] chars = header.ToCharArray();
+            chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
+            string tampered = new string(chars);
+            bool ok = protector.TryUnprotect(tampered, out _, out Guid? operatorId);
+
+            // Assert
+            Assert.False(ok);
+            Assert.Null(operatorId);
         }
 
         [Fact]
@@ -75,7 +112,26 @@ namespace VideoForensics.Hosting.Tests
 
             // Act - advance beyond the header's short (<=2 minute) lifetime.
             timeProvider.SetUtcNow(new DateTime(2026, 1, 1, 0, 5, 0, DateTimeKind.Utc));
-            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid resolvedOperatorId);
+            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid? resolvedOperatorId);
+
+            // Assert
+            Assert.False(ok);
+        }
+
+        [Fact]
+        public void TryUnprotect_ExpiredPreAuthHeader_ReturnsFalse()
+        {
+            // Arrange
+            var provider = new EphemeralDataProtectionProvider();
+            var timeProvider = new FakeTimeProvider();
+            timeProvider.SetUtcNow(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            var protector = new SessionTierHeaderProtector(provider, timeProvider);
+
+            string header = protector.ProtectPreAuth(NetworkTier.Internet);
+
+            // Act - advance beyond the header's short (<=2 minute) lifetime.
+            timeProvider.SetUtcNow(new DateTime(2026, 1, 1, 0, 5, 0, DateTimeKind.Utc));
+            bool ok = protector.TryUnprotect(header, out _, out _);
 
             // Assert
             Assert.False(ok);

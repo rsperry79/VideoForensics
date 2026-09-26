@@ -68,6 +68,50 @@ public class DefaultSelfApiHttpClientFactoryTests
     }
 
     [Fact]
+    public void CreateClientWithExplicitToken_UsesGivenTokenInsteadOfSessionState()
+    {
+        // WebAuthnClient manages its own bearer token as an explicit parameter (e.g. one passed by a
+        // caller like `WebAuthn.StepUpAsync(SessionState.SessionToken)`) rather than reading
+        // PairedSessionState itself - this overload must honor that explicit value, not fall back to
+        // whatever PairedSessionState happens to hold.
+        var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");
+        var factory = new DefaultSelfApiHttpClientFactory(navigationManager, MakeSessionState());
+
+        HttpClient client = factory.CreateClient("explicit-token");
+
+        Assert.NotNull(client.DefaultRequestHeaders.Authorization);
+        Assert.Equal("Bearer", client.DefaultRequestHeaders.Authorization!.Scheme);
+        Assert.Equal("explicit-token", client.DefaultRequestHeaders.Authorization!.Parameter);
+    }
+
+    [Fact]
+    public void CreateClientWithExplicitNullToken_AttachesNoAuthorizationHeader()
+    {
+        var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");
+        var factory = new DefaultSelfApiHttpClientFactory(navigationManager, MakeSessionState());
+
+        HttpClient client = factory.CreateClient(bearerToken: null);
+
+        Assert.Null(client.DefaultRequestHeaders.Authorization);
+        Assert.Equal(new Uri("https://videoforensics.example.com/"), client.BaseAddress);
+    }
+
+    [Fact]
+    public async Task CreateClient_NoArgOverload_DelegatesToSessionStatesToken()
+    {
+        // CreateClient() (no explicit token) must behave exactly as before this overload was added -
+        // driven by PairedSessionState, same as CreateClient(sessionState.SessionToken) would be.
+        var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");
+        var sessionState = MakeSessionState();
+        await sessionState.SetAsync("session-state-token", Guid.NewGuid(), "SuperAdmin");
+        var factory = new DefaultSelfApiHttpClientFactory(navigationManager, sessionState);
+
+        HttpClient client = factory.CreateClient();
+
+        Assert.Equal("session-state-token", client.DefaultRequestHeaders.Authorization!.Parameter);
+    }
+
+    [Fact]
     public void CreateClient_CalledTwice_ReturnsDistinctClientInstancesAndDisposingOneLeavesTheOtherUsable()
     {
         var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");

@@ -73,12 +73,14 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             _sessionState = sessionState;
         }
 
-        public HttpClient CreateClient()
+        public HttpClient CreateClient() => CreateClient(_sessionState.SessionToken);
+
+        public HttpClient CreateClient(string? bearerToken)
         {
             var client = new HttpClient(_handler) { BaseAddress = new Uri("http://videoforensics.example.com/") };
-            if (_sessionState.SessionToken is not null)
+            if (bearerToken is not null)
             {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _sessionState.SessionToken);
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
             }
 
             return client;

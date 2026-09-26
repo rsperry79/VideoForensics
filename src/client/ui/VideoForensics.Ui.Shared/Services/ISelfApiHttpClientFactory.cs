@@ -30,5 +30,14 @@ namespace VideoForensics.Ui.Shared.Services
         /// where applicable, any other required headers) already attached.
         /// </summary>
         HttpClient CreateClient();
+
+        /// <summary>
+        /// Builds an <see cref="HttpClient"/> the same way as <see cref="CreateClient()"/>, but using
+        /// <paramref name="bearerToken"/> as the bearer credential instead of the current session's
+        /// own token - for a caller (e.g. <c>WebAuthnClient</c>) that already manages its own token as
+        /// an explicit value, including a null token for a call made before any session exists yet
+        /// (login, first-run setup, device pairing/registration).
+        /// </summary>
+        HttpClient CreateClient(string? bearerToken);
     }
 }
