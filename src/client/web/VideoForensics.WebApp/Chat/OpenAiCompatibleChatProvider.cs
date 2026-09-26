@@ -127,7 +127,7 @@ namespace VideoForensics.WebApp.Chat
             var choice = response.Choices[0];
             var message = choice.Message;
 
-            if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+            if (message.ToolCalls != null && message.ToolCalls.Length > 0)
             {
                 var toolCall = message.ToolCalls[0];
                 return new LlmCompletionResult(
