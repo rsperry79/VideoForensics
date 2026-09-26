@@ -125,11 +125,13 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
   `GET /api/v1/devices/{id}/health?from=&to=` (auth required), `DeviceHealthDto.ToDomain()`,
   `RemoteDeviceHealthRepository` for MAUI.
 
-### Phase 8 — Evidence actions 🔄 In progress (`claude/ui-evidence-actions`)
+### Phase 8 — Evidence actions ✅ Done (`claude/ui-evidence-actions`)
 
-- Grab still with hash: capture the current video frame from the media viewer as derived evidence
-  (source media id, frame time, SHA-256 of both, operator, chain-of-custody entry; original untouched),
-  optionally pinned to the active case. Resolves the phase 3 deferral.
+- ✅ Grab still with hash: `POST /api/v1/media/{id}/stills` (Review role) extracts the frame from
+  the original file server-side with ffmpeg (timeout, kill on cancel, output cap; a validated client
+  PNG is a recorded fallback). The still is a new MediaItem plus a `MediaStillCapture` provenance row
+  (source item, frame offset, source SHA-256 at capture, operator, method), an ActionLog entry and an
+  optional case pin. Viewer button + `S` key, hidden below Review; refused without a signed-in operator.
 - ✅ Move the Event Grid's legal hold, export and integrity-verify actions into Evidence (grid context
   menu / inspector), then retire the Events page and `EventDetailsDialog` (old route redirects).
   `Services/Evidence/EvidenceActions.cs` holds the decision logic (can place/release hold, can

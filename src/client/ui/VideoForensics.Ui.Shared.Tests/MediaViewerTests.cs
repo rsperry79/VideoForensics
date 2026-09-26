@@ -700,6 +700,24 @@ public class MediaViewer_Video_Tests : BunitContext
         // Assert
         Assert.Equal(4200L, capturedOffsetMs);
     }
+
+    [Fact]
+    public void GrabStillButton_DoesNotRender_WhenCanGrabStillFalse()
+    {
+        // Arrange
+        var item = CreateVideoItem();
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.CanGrabStill, false));
+
+        // Assert
+        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+    }
 }
 
 public class MediaViewer_KeyboardNavigation_Tests : BunitContext

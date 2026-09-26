@@ -117,6 +117,7 @@ else
             OnNext="@OnMediaViewerNext"
             OnClose="@OnMediaViewerClose"
             OnGrabStill="@OnGrabStillAsync"
+            CanGrabStill="@CanGrabStill"
             StillCaptureStatus="@_stillCaptureStatus" />
     }
     else if (_currentView == EvidenceView.Timeline)
@@ -239,10 +240,21 @@ else
     private EvidenceItem? _pendingReleaseItem;
     private string _holdReasonInput = string.Empty;
 
+    // Paired-device operator role, used to gate "Grab still" (server-enforced Review role too -
+    // see MediaApiEndpoints' POST /api/v1/media/{id}/stills). Parsed once at init, the same way
+    // InspectorPanel resolves its own pin-to-case role gate from SessionState.Role.
+    private OperatorRole? _role;
+
+    /// <summary>True if the signed-in operator's role is at least Review - the same minimum the server enforces for POST /api/v1/media/{id}/stills.</summary>
+    private bool CanGrabStill => _role.HasValue && _role.Value >= OperatorRole.Review;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            await SessionState.EnsureLoadedAsync();
+            _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+
             _isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (_isAuthenticated)
             {
@@ -584,6 +596,13 @@ else
     /// Handles the media viewer's "grab still with hash" action: captures the current video frame
     /// as a new, independently-hashed evidence still via <see cref="IMediaStillCaptureService"/>,
     /// then shows the resulting hash and an open link (or the error) inline in the viewer.
+    ///
+    /// Never falls back to a machine-level identity if no operator is signed in - the same rule
+    /// (and the same helper) the hold place/release actions below use, so the two surfaces can't
+    /// diverge. Also refuses below-Review operators (defence in depth: MediaViewer already hides
+    /// the button for them via CanGrabStill, and the server's POST /api/v1/media/{id}/stills
+    /// endpoint enforces the Review role too - this guards a direct/stale invocation from
+    /// bypassing both).
     /// </summary>
     private async Task OnGrabStillAsync(long frameOffsetMs)
     {
@@ -593,10 +612,23 @@ else
             return;
         }
 
+        var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["SignInRequiredForAction"], Icon = "e-warning" });
+            }
+            return;
+        }
+
+        if (!CanGrabStill)
+        {
+            return;
+        }
+
         _stillCaptureStatus = new MediaStillCaptureStatus { InProgress = true };
         StateHasChanged();
-
-        var actor = SessionState.OperatorId?.ToString() ?? "unknown";
 
         try
         {

@@ -13,6 +13,7 @@ using Device = VideoForensics.Data.Common.Entities.Device;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Ui.Shared.Components.Evidence;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Evidence;
@@ -231,11 +232,12 @@ public abstract class EvidencePageTestBase : BunitContext
     /// into the rendered component) rather than re-registering, since SetRendererInfo() above
     /// locks the service provider against further registration.
     /// </summary>
-    protected async Task<Guid> SignInOperatorAsync()
+    /// <param name="role">The operator's role (default "Review", the minimum most evidence actions require).</param>
+    protected async Task<Guid> SignInOperatorAsync(string role = "Review")
     {
         var operatorId = Guid.NewGuid();
         var session = Services.GetRequiredService<PairedSessionState>();
-        await session.SetAsync("test-token", operatorId, "Review");
+        await session.SetAsync("test-token", operatorId, role);
         return operatorId;
     }
 
@@ -834,10 +836,11 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     }
 
     [Fact]
-    public void GrabStillButton_Click_CallsServiceWithSelectedMediaIdAndFrameOffset()
+    public async Task GrabStillButton_Click_CallsServiceWithSelectedMediaIdAndFrameOffset()
     {
+        var operatorId = await SignInOperatorAsync(); // defaults to "Review"
         MediaStillCaptureServiceMock
-            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaStillCaptureResult { Error = MediaStillCaptureError.None, Still = new MediaStillInfo
             {
                 Id = Guid.NewGuid(),
@@ -855,7 +858,7 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
         component.Find("[data-testid='grab-still']").Click();
 
         MediaStillCaptureServiceMock.Verify(
-            s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         var result = component.Find("[data-testid='grab-still-result']");
@@ -863,10 +866,11 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     }
 
     [Fact]
-    public void GrabStillButton_Click_ServiceFails_ShowsErrorMessage()
+    public async Task GrabStillButton_Click_ServiceFails_ShowsErrorMessage()
     {
+        var operatorId = await SignInOperatorAsync();
         MediaStillCaptureServiceMock
-            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "ffmpeg not available"));
 
         var component = OpenVideoViewer();
@@ -874,5 +878,39 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
 
         var error = component.Find("[data-testid='grab-still-error']");
         Assert.Contains("ffmpeg not available", error.TextContent);
+    }
+
+    [Fact]
+    public async Task NoOperatorSignedIn_GrabStillInvoked_DoesNotCallService_ShowsSignInMessage()
+    {
+        // No SignInOperatorAsync() call: PairedSessionState.OperatorId/Role stay null, so the
+        // role gate also hides the button - invoke the viewer's bound callback directly (the
+        // same thing a click would do) to exercise OnGrabStillAsync's own sign-in guard.
+        var component = OpenVideoViewer();
+        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+
+        var mediaViewer = component.FindComponent<MediaViewer>();
+        await component.InvokeAsync(() => mediaViewer.Instance.OnGrabStill.InvokeAsync(2500));
+
+        MediaStillCaptureServiceMock.Verify(
+            s => s.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task BelowReviewRole_GrabStillButtonAbsent_AndHandlerRefuses()
+    {
+        await SignInOperatorAsync(role: "ReadOnly");
+
+        var component = OpenVideoViewer();
+        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+
+        var mediaViewer = component.FindComponent<MediaViewer>();
+        await component.InvokeAsync(() => mediaViewer.Instance.OnGrabStill.InvokeAsync(2500));
+
+        MediaStillCaptureServiceMock.Verify(
+            s => s.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

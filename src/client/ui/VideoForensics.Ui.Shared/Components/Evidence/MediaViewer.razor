@@ -42,7 +42,10 @@
                 <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">◀ frame</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">frame ▶</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="grab-still" title="@L["GrabStillTitle"]" @onclick="GrabStillAsync" disabled="@(StillCaptureStatus?.InProgress == true)">@L["GrabStillLabel"]</button>
+                @if (CanGrabStill)
+                {
+                    <button class="btn btn-sm btn-outline-light" data-testid="grab-still" title="@L["GrabStillTitle"]" @onclick="GrabStillAsync" disabled="@(StillCaptureStatus?.InProgress == true)">@L["GrabStillLabel"]</button>
+                }
             }
         </div>
     }
@@ -134,6 +137,16 @@
     /// </summary>
     [Parameter]
     public EventCallback<long> OnGrabStill { get; set; }
+
+    /// <summary>
+    /// True if the current operator is allowed to grab a still (Review role or above - the same
+    /// minimum the server's POST /api/v1/media/{id}/stills endpoint enforces). The parent computes
+    /// this from its own session/role state; when false the "Grab still" button is not rendered at
+    /// all, matching how the case-pinning UI hides its own action for below-Review operators.
+    /// Defaults to true so a caller that hasn't been made role-aware still sees the button.
+    /// </summary>
+    [Parameter]
+    public bool CanGrabStill { get; set; } = true;
 
     /// <summary>Status of the most recent (or in-flight) still capture, shown inline in the viewer.</summary>
     [Parameter]
