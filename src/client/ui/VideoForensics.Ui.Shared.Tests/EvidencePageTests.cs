@@ -51,6 +51,7 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<IMediaStillCaptureService> MediaStillCaptureServiceMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected InspectorState InspectorState { get; } = new();
@@ -82,6 +83,7 @@ public abstract class EvidencePageTestBase : BunitContext
         mediaViewerModule.SetupVoid("setPlaybackRate", _ => true);
         mediaViewerModule.SetupVoid("stepFrame", _ => true);
         mediaViewerModule.SetupVoid("togglePlay", _ => true);
+        mediaViewerModule.Setup<double>("getCurrentTimeMs", _ => true).SetResult(2500.0);
 
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
@@ -193,6 +195,8 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         Services.AddScoped(_ => MediaUrlProviderMock.Object);
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
+        Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);
+        Services.AddScoped<PairedSessionState>();
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
@@ -558,5 +562,66 @@ public class Evidence_DeviceTime_Tests : EvidencePageTestBase
         component.Find($"[data-key='event:{EventId}']").Click();
 
         Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
+    }
+}
+
+/// <summary>
+/// Wiring tests for the media viewer's "grab still with hash" callback: Evidence.razor forwards
+/// the selected video's media ID and the viewer's reported frame offset to
+/// IMediaStillCaptureService, and reflects the result (hash + open link, or the error) back into
+/// the viewer via StillCaptureStatus.
+/// </summary>
+public class Evidence_GrabStill_Tests : EvidencePageTestBase
+{
+    private IRenderedComponent<Evidence> OpenVideoViewer()
+    {
+        var component = RenderEvidencePage();
+        component.Find("[data-testid='view-gallery']").Click();
+        component.Find($".gallery-tile[data-key='event:{EventId}']").Click();
+        component.Find("[data-testid='viewer-next']").Click(); // moves to the video item
+        return component;
+    }
+
+    [Fact]
+    public void GrabStillButton_Click_CallsServiceWithSelectedMediaIdAndFrameOffset()
+    {
+        MediaStillCaptureServiceMock
+            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaStillCaptureResult { Error = MediaStillCaptureError.None, Still = new MediaStillInfo
+            {
+                Id = Guid.NewGuid(),
+                SourceMediaItemId = VideoMediaId,
+                FrameOffsetMs = 2500,
+                Sha256Hash = "abc123still",
+                SourceSha256AtCapture = "sourcehash",
+                CapturedByOperator = "operator-1",
+                CaptureMethod = "Server",
+                CreatedAtUtc = DateTime.UtcNow,
+                PinnedToCase = false
+            } });
+
+        var component = OpenVideoViewer();
+        component.Find("[data-testid='grab-still']").Click();
+
+        MediaStillCaptureServiceMock.Verify(
+            s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        var result = component.Find("[data-testid='grab-still-result']");
+        Assert.Contains("abc123still", result.TextContent);
+    }
+
+    [Fact]
+    public void GrabStillButton_Click_ServiceFails_ShowsErrorMessage()
+    {
+        MediaStillCaptureServiceMock
+            .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "ffmpeg not available"));
+
+        var component = OpenVideoViewer();
+        component.Find("[data-testid='grab-still']").Click();
+
+        var error = component.Find("[data-testid='grab-still-error']");
+        Assert.Contains("ffmpeg not available", error.TextContent);
     }
 }
