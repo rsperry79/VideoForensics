@@ -67,7 +67,8 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`
 - Coverage: interfaces 100%, business logic >80%, integrations >70%
-- Run all tests: `dotnet test`
+- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `tests/` project.
+- Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
 
 ## Documentation
 
