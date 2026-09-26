@@ -3,6 +3,10 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Dump
+@using VideoForensics.Ui.Shared.Services.SelfTest
+@using VideoForensics.Ui.Shared.Services.Inspector
 @implements IAsyncDisposable
 @inject IRingSelfTestService SelfTestService
 @inject IStringLocalizer<RingSelfTest> L
@@ -200,10 +204,12 @@
         <!-- Calls Table -->
         @if (_result.Calls.Count > 0)
         {
-            <SfGrid TValue="SelfTestCallDto" DataSource="@_result.Calls" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
-                <GridPageSettings PageSize="20"></GridPageSettings>
-                <GridColumns>
+            <ForensicGrid TItem="SelfTestCallDto"
+                DataSource="@_result.Calls"
+                ToInspector="@(call => SelfTestInspectorMapper.ToInspector(call))"
+                ExportFileName="selftest-calls.csv"
+                OnRowSelected="@OnResultRowSelected">
+                <Columns>
                     <GridColumn Field="@nameof(SelfTestCallDto.DisplayName)" HeaderText="@L["ColEndpoint"]" MinWidth="100" />
                     <GridColumn Field="@nameof(SelfTestCallDto.Target)" HeaderText="@L["ColTarget"]" MinWidth="100" />
                     <GridColumn Field="@nameof(SelfTestCallDto.DurationMs)" HeaderText="@L["ColDuration"]" MinWidth="100" />
@@ -254,8 +260,63 @@
                             }
                         </Template>
                     </GridColumn>
-                </GridColumns>
-            </SfGrid>
+                    <GridColumn HeaderText="@L["ColHttpCalls"]" MinWidth="100">
+                        <Template>
+                            @{
+                                var call = (SelfTestCallDto)context;
+                                @if (call.HttpCalls.Count > 0)
+                                {
+                                    <span>@call.HttpCalls.Count</span>
+                                }
+                                else
+                                {
+                                    <span style="color: #999;">-</span>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                </Columns>
+            </ForensicGrid>
+
+            <!-- Raw HTTP Calls Section -->
+            @if (_selectedCall is not null && _selectedCall.HttpCalls.Count > 0)
+            {
+                <div data-testid="raw-calls" style="margin-top: 2rem; padding: 1rem; background-color: #f9f9f9; border-radius: 0.25rem; border: 1px solid #ddd;">
+                    <h6 style="margin-top: 0;">@L["RawHttpCalls"]</h6>
+                    @foreach (var httpCall in _selectedCall.HttpCalls)
+                    {
+                        <div style="margin-bottom: 1.5rem; border-left: 3px solid #0066cc; padding-left: 1rem;">
+                            <div style="font-family: monospace; font-size: 0.85rem; margin-bottom: 0.5rem; color: #333;">
+                                <strong>@httpCall.Phase.ToUpperInvariant() @httpCall.Method @httpCall.StatusCode</strong> @httpCall.Url · @httpCall.TimestampUtc.ToString("HH:mm:ss")
+                            </div>
+                            @if (!string.IsNullOrEmpty(httpCall.Body))
+                            {
+                                @if (SelfTestInspectorMapper.IsValidJson(httpCall.Body))
+                                {
+                                    <DumpView Json="@httpCall.Body" InitialExpandDepth="1" ShowSearch="false" ShowCopy="true" />
+                                }
+                                else
+                                {
+                                    <pre class="raw-text" style="background-color: #f5f5f5; padding: 0.75rem; border-radius: 0.25rem; overflow-x: auto; max-height: 300px; font-size: 0.85rem;">@httpCall.Body</pre>
+                                }
+                            }
+                            @if (httpCall.BodyTruncated)
+                            {
+                                <div style="color: #999; font-size: 0.85rem; margin-top: 0.5rem;">
+                                    <em>@string.Format(L["TruncatedBody"].Value, 256, httpCall.ResponseBodyBytes)</em>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else if (_selectedCall is not null)
+            {
+                <div data-testid="raw-calls" style="margin-top: 2rem; padding: 1rem; background-color: #f9f9f9; border-radius: 0.25rem; border: 1px solid #ddd;">
+                    <h6 style="margin-top: 0;">@L["RawHttpCalls"]</h6>
+                    <p style="color: #999; margin: 0;">@L["NoHttpCalls"]</p>
+                </div>
+            }
         }
     </div>
 }
@@ -302,6 +363,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 
     private SelfTestStatusDto? _runStatus;
     private SelfTestResultDto? _result;
+    private SelfTestCallDto? _selectedCall;
 
     protected override async Task OnInitializedAsync()
     {
@@ -489,6 +551,12 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         {
             // Continue polling even if status check fails
         }
+    }
+
+    private Task OnResultRowSelected(SelfTestCallDto call)
+    {
+        _selectedCall = call;
+        return Task.CompletedTask;
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()

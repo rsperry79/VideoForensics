@@ -367,7 +367,9 @@ namespace VideoForensics.Providers.Ring
                     StatusCode = call.StatusCode,
                     ResponseBodyBytes = call.Body?.Length ?? 0,
                     BodyFile = fileName,
-                    Phase = phase
+                    Phase = phase,
+                    Body = call.Body,
+                    TimestampUtc = call.Timestamp
                 });
 
                 primaryResultFile ??= fileName;

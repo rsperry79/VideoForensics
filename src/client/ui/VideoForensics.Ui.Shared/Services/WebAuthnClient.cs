@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 using System.Net.Http.Json;
@@ -13,16 +12,28 @@ namespace VideoForensics.Ui.Shared.Services
     /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/js/webauthn.js</c>,
     /// post the result back - factored once here rather than duplicated across Pair.razor,
     /// DeviceSignIn.razor, and every step-up-gated action.
+    ///
+    /// Every call goes through <see cref="ISelfApiHttpClientFactory"/> (plan §5.10/§5.12) rather than
+    /// building its own raw <see cref="HttpClient"/> - in the WebApp, several of these calls (login,
+    /// first-run setup, device pairing/registration) are PRE-AUTH: no <see cref="PairedSessionState"/>
+    /// session exists yet, so the factory must still attach a pre-auth network-tier header for
+    /// endpoints like <c>OperatorAuthEndpoints.LoginPasswordAsync</c>'s primary-SuperAdmin Local-only
+    /// check to recover the calling circuit's real tier - see
+    /// <c>WebAppSelfApiHttpClientFactory</c>/<c>SelfHttpServiceExtensions.CreateSelfHttpClientWithBearerToken</c>.
+    /// The explicit <c>bearerToken</c> parameter on <see cref="ISelfApiHttpClientFactory.CreateClient(string?)"/>
+    /// is used (rather than the factory's session-driven <see cref="ISelfApiHttpClientFactory.CreateClient()"/>)
+    /// because this class has no direct <see cref="PairedSessionState"/> dependency of its own - its
+    /// public methods already take the token as a parameter from whichever page calls them.
     /// </summary>
     public class WebAuthnClient
     {
         private readonly IJSRuntime _js;
-        private readonly NavigationManager _nav;
+        private readonly ISelfApiHttpClientFactory _clientFactory;
 
-        public WebAuthnClient(IJSRuntime js, NavigationManager nav)
+        public WebAuthnClient(IJSRuntime js, ISelfApiHttpClientFactory clientFactory)
         {
             _js = js;
-            _nav = nav;
+            _clientFactory = clientFactory;
         }
 
         public bool IsBrowserSupportRequired => true;
@@ -305,16 +316,7 @@ namespace VideoForensics.Ui.Shared.Services
             return result.GetProperty("stepUpToken").GetString()!;
         }
 
-        private HttpClient CreateClient(string? bearerToken)
-        {
-            var client = new HttpClient { BaseAddress = new Uri(_nav.BaseUri) };
-            if (bearerToken is not null)
-            {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
-            }
-
-            return client;
-        }
+        private HttpClient CreateClient(string? bearerToken) => _clientFactory.CreateClient(bearerToken);
 
         private static async Task<string> ExtractErrorAsync(HttpResponseMessage response)
         {

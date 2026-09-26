@@ -463,7 +463,7 @@ namespace VideoForensics.Hosting.Tests
             var calls = new List<SelfTestCallDto>
             {
                 new("endpoint1", "Test 1", "Session", false, false, "device1",
-                    generatedAt.AddMinutes(-1), 100, true, null, false, null, null, "Not destructive", [])
+                    generatedAt.AddMinutes(-1), 100, true, null, false, null, null, "Not destructive", [], [])
             };
             var summary = new SelfTestSummaryDto(10, 9, 1);
             var result = new SelfTestResultDto("1.0.0", generatedAt, "Database", summary, calls);
@@ -518,13 +518,15 @@ namespace VideoForensics.Hosting.Tests
             var call1 = new SelfTestCallDto(
                 "endpoint1", "Endpoint 1", "Session", false, false,
                 "device1", startTime, 150, true, null, false, null, null, "Not destructive",
+                [],
                 []
             );
             var call2 = new SelfTestCallDto(
                 "endpoint2", "Endpoint 2", "Session", true, true,
                 "device1", startTime.AddSeconds(200), 200, false, "Device offline",
                 true, false, "Failed to restore", null,
-                ["Invalid response schema"]
+                ["Invalid response schema"],
+                []
             );
 
             var summary = new SelfTestSummaryDto(2, 1, 1);
@@ -553,6 +555,55 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal("Device offline", retrieved.Calls[1].Error);
             Assert.True(retrieved.Calls[1].RestoreAttempted);
             Assert.False(retrieved.Calls[1].RestoreSuccess);
+        }
+
+        [Fact]
+        public async Task GetResultAsync_HttpCallsRoundTrip_JsonSerializationPreserves()
+        {
+            // Arrange
+            DateTime startTime = DateTime.UtcNow.AddMinutes(-10);
+            var httpCall = new SelfTestHttpCallDto(
+                "GET", "https://example.com/api?token=secret", 200, "test",
+                startTime, 512, """{"data":"value"}""", false
+            );
+
+            var call = new SelfTestCallDto(
+                "endpoint1", "Endpoint 1", "Session", false, false,
+                "device1", startTime, 150, true, null, false, null, null, null,
+                [],
+                [httpCall]
+            );
+
+            var summary = new SelfTestSummaryDto(1, 1, 0);
+            var result = new SelfTestResultDto("1.0.0", startTime.AddSeconds(200), "Database", summary, [call]);
+
+            HttpClient httpClient = CreateHttpClient(_ =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(result))
+                };
+                response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                return Task.FromResult(response);
+            });
+
+            var service = new RemoteRingSelfTestService(httpClient);
+
+            // Act
+            SelfTestResultDto? retrieved = await service.GetResultAsync();
+
+            // Assert
+            Assert.NotNull(retrieved);
+            Assert.Single(retrieved!.Calls);
+            Assert.Single(retrieved.Calls[0].HttpCalls);
+            var retrievedHttpCall = retrieved.Calls[0].HttpCalls[0];
+            Assert.Equal("GET", retrievedHttpCall.Method);
+            Assert.Equal("https://example.com/api?token=secret", retrievedHttpCall.Url);
+            Assert.Equal(200, retrievedHttpCall.StatusCode);
+            Assert.Equal("test", retrievedHttpCall.Phase);
+            Assert.Equal(512, retrievedHttpCall.ResponseBodyBytes);
+            Assert.Equal("""{"data":"value"}""", retrievedHttpCall.Body);
+            Assert.False(retrievedHttpCall.BodyTruncated);
         }
     }
 }

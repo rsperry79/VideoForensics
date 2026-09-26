@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Forensic Analysis Report</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToViewReports" xml:space="preserve">
+    <value>to view forensic reports.</value>
+  </data>
+  <data name="AllDevices" xml:space="preserve">
+    <value>(All devices)</value>
+  </data>
+  <data name="RunReport" xml:space="preserve">
+    <value>Run Report</value>
+  </data>
+  <data name="EvidenceItems" xml:space="preserve">
+    <value>Evidence Items</value>
+  </data>
+  <data name="NoEvidenceItems" xml:space="preserve">
+    <value>No evidence items found in this range.</value>
+  </data>
+  <data name="ColEvidenceId" xml:space="preserve">
+    <value>Evidence ID</value>
+  </data>
+  <data name="ColDeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="ColFileName" xml:space="preserve">
+    <value>File Name</value>
+  </data>
+  <data name="ColFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="AnomalousHealthSnapshots" xml:space="preserve">
+    <value>Anomalous Health Snapshots</value>
+  </data>
+  <data name="NoAnomalousHealthSnapshots" xml:space="preserve">
+    <value>No anomalous health snapshots found in this range.</value>
+  </data>
+  <data name="ColCapturedAt" xml:space="preserve">
+    <value>Captured At</value>
+  </data>
+  <data name="ColConnected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="ColBatteryPercent" xml:space="preserve">
+    <value>Battery %</value>
+  </data>
+  <data name="ColRssi" xml:space="preserve">
+    <value>RSSI</value>
+  </data>
+  <data name="ColWifi" xml:space="preserve">
+    <value>Wifi</value>
+  </data>
+  <data name="ColFirmware" xml:space="preserve">
+    <value>Firmware</value>
+  </data>
+  <data name="SignificantActions" xml:space="preserve">
+    <value>Significant Actions</value>
+  </data>
+  <data name="NoSignificantActions" xml:space="preserve">
+    <value>No significant actions found in this range.</value>
+  </data>
+  <data name="ColActor" xml:space="preserve">
+    <value>Actor</value>
+  </data>
+  <data name="ColAction" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="ColEntityType" xml:space="preserve">
+    <value>Entity Type</value>
+  </data>
+  <data name="ColTimestamp" xml:space="preserve">
+    <value>Timestamp</value>
+  </data>
+</root>

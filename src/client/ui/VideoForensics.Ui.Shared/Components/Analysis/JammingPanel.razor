@@ -1,0 +1,206 @@
+@using VideoForensics.Client.Core.Tools
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject JammingToolsOrchestrator JammingTools
+@inject IStringLocalizer<JammingPanel> L
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (!_readyForAnalysis)
+{
+    <div class="alert alert-info">
+        @L["SelectDevice"]
+    </div>
+}
+else if (_report is not null)
+{
+    <span><strong>@_report.Message</strong></span>
+
+    @if (_report.Incidents.Count > 0)
+    {
+        <SfGrid TValue="JammingIncidentRecord" DataSource="@_report.Incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColAvgDegradation"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var incident = (JammingIncidentRecord)context;
+                            @(incident.AverageDegradationDb.ToString("F1"))
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(JammingIncidentRecord.Confidence)" HeaderText="@L["ColConfidence"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentRecord.Source)" HeaderText="@L["ColSource"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentRecord.Notes)" HeaderText="@L["ColNotes"]" MinWidth="100" />
+            </GridColumns>
+        </SfGrid>
+    }
+
+    <h5 class="mt-4 mb-2">@L["RecordManualIncident"]</h5>
+    <div class="d-flex flex-column gap-2">
+        <div>
+            <label for="startUtc">@L["LabelStartUtc"]</label>
+            <SfDateTimePicker TValue="DateTime" @bind-Value="_manualStartUtc" />
+        </div>
+        <div>
+            <label for="endUtc">@L["LabelEndUtc"]</label>
+            <SfDateTimePicker TValue="DateTime" @bind-Value="_manualEndUtc" />
+        </div>
+        <div>
+            <label>@L["LabelAffectedEventCount"]</label>
+            <SfNumericTextBox TValue="int" @bind-Value="_manualAffectedEventCount" />
+        </div>
+        <div>
+            <label>@L["LabelAvgDegradation"]</label>
+            <SfNumericTextBox TValue="double" @bind-Value="_manualAverageDegradationDb" Step="0.1" Format="N1" />
+        </div>
+        <SfDropDownList TValue="JammingConfidenceLevel" TItem="JammingConfidenceLevel" @bind-Value="_manualConfidence" DataSource="@(Enum.GetValues<JammingConfidenceLevel>().ToList())" />
+        <SfTextBox @bind-Value="_manualNotes" Multiline="true" Placeholder="@L["ColNotes"]" />
+        <SfButton Content="@L["RecordIncident"]" OnClick="RecordIncidentAsync" CssClass="e-primary" Disabled="@_recording" />
+
+        @if (!string.IsNullOrEmpty(_recordMessage))
+        {
+            <div class="alert @(_recordSuccess == true ? "alert-success" : "alert-danger")">@_recordMessage</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ForensicScope Scope { get; set; } = new ForensicScope(new List<Guid>(), DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, null);
+
+    [Parameter]
+    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
+
+    private bool _isLoading = true;
+    private string? _error;
+    private bool _readyForAnalysis;
+    private JammingAnalysisReport? _report;
+    private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
+
+    private DateTime _manualStartUtc = DateTime.UtcNow.AddHours(-1);
+    private DateTime _manualEndUtc = DateTime.UtcNow;
+    private int _manualAffectedEventCount = 1;
+    private double _manualAverageDegradationDb = 10;
+    private JammingConfidenceLevel _manualConfidence = JammingConfidenceLevel.Low;
+    private string _manualNotes = string.Empty;
+    private bool _recording;
+    private string? _recordMessage;
+    private bool? _recordSuccess;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if scope actually changed
+        if (_lastLoadedScope.Equals(Scope))
+        {
+            return;
+        }
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        _readyForAnalysis = false;
+        _report = null;
+
+        try
+        {
+            // Jamming requires exactly one device
+            if (Scope.IncludesAllDevices || Scope.DeviceIds.Count == 0)
+            {
+                _error = "Select a single device for jamming analysis";
+                return;
+            }
+
+            if (Scope.DeviceIds.Count > 1)
+            {
+                _error = "Select a single device (not multiple) for jamming analysis";
+                return;
+            }
+
+            var deviceId = Scope.DeviceIds.First();
+            _readyForAnalysis = true;
+
+            _report = await JammingTools.AnalyzeJammingAsync(
+                deviceId,
+                Scope.FromUtc,
+                Scope.ToUtc,
+                CancellationToken.None);
+
+            if (!_report.Success)
+            {
+                _error = _report.ErrorMessage ?? "Analysis failed";
+            }
+
+            _lastLoadedScope = Scope;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load jamming analysis: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RecordIncidentAsync()
+    {
+        if (Scope.DeviceIds.Count != 1)
+        {
+            _recordMessage = "Invalid device selection";
+            _recordSuccess = false;
+            return;
+        }
+
+        var deviceId = Scope.DeviceIds.First();
+        _recording = true;
+        _recordMessage = null;
+        _recordSuccess = null;
+
+        try
+        {
+            var (success, message, _) = await JammingTools.RecordJammingIncidentAsync(
+                deviceId,
+                _manualStartUtc,
+                _manualEndUtc,
+                _manualAffectedEventCount,
+                _manualAverageDegradationDb,
+                _manualConfidence,
+                string.IsNullOrWhiteSpace(_manualNotes) ? null : _manualNotes,
+                CancellationToken.None);
+
+            _recordSuccess = success;
+            _recordMessage = message;
+
+            if (success)
+            {
+                // Reload the report
+                _report = await JammingTools.AnalyzeJammingAsync(
+                    deviceId,
+                    Scope.FromUtc,
+                    Scope.ToUtc,
+                    CancellationToken.None);
+            }
+        }
+        finally
+        {
+            _recording = false;
+        }
+    }
+}

@@ -94,5 +94,15 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderByDescending(dh => dh.CapturedAtUtc)
                 .ToListAsync(ct);
         }
+
+        /// <summary>Gets a device's health history within a date range (inclusive of both ends), oldest first.</summary>
+        public async Task<IReadOnlyList<DeviceHealth>> GetHistoryAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.DeviceHealths
+                .Where(dh => dh.DeviceId == deviceId && dh.CapturedAtUtc >= fromUtc && dh.CapturedAtUtc <= toUtc)
+                .OrderBy(dh => dh.CapturedAtUtc)
+                .ToListAsync(ct);
+        }
     }
 }

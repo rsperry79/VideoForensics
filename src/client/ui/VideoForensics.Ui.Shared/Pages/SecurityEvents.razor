@@ -1,0 +1,234 @@
+@page "/settings/security-events"
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@inject ISecurityEventsService SecurityEventsService
+@inject IAdminOperatorService AdminOperatorService
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<SecurityEvents> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+else if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_forbiddenMessage is not null)
+{
+    <div class="alert alert-danger" data-testid="security-events-forbidden">@_forbiddenMessage</div>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger" data-testid="security-events-error">@_loadError</div>
+}
+else
+{
+    <div class="mb-3 d-flex gap-2 align-items-end flex-wrap">
+        @if (_isSuperAdmin)
+        {
+            <div>
+                <label class="form-label d-block">@L["OperatorPickerLabel"]</label>
+                <select class="form-select" style="max-width: 280px;" data-testid="security-events-operator-picker"
+                        @bind="_selectedOperatorIdText" @bind:after="OnOperatorPickerChangedAsync">
+                    <option value="">@L["MyEventsOption"]</option>
+                    @if (_operators is not null)
+                    {
+                        @foreach (OperatorSummary op in _operators)
+                        {
+                            <option value="@op.Id">@op.DisplayName</option>
+                        }
+                    }
+                </select>
+            </div>
+        }
+
+        <SfButton Content="@L["RefreshButton"]" OnClick="@(() => LoadEventsAsync(_currentOperatorId, _offset))" Disabled="@_isLoadingEvents" CssClass="e-flat" />
+    </div>
+
+    @if (_isLoadingEvents)
+    {
+        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+    }
+    else if (_events is null || _events.Count == 0)
+    {
+        <div class="alert alert-info">@L["NoEventsFound"]</div>
+    }
+    else
+    {
+        <table class="table" data-testid="security-events-table">
+            <thead>
+                <tr>
+                    @if (_isSuperAdmin)
+                    {
+                        <th>@L["OperatorColumn"]</th>
+                    }
+                    <th>@L["EventTypeColumn"]</th>
+                    <th>@L["StatusColumn"]</th>
+                    <th>@L["IpAddressColumn"]</th>
+                    <th>@L["DateTimeColumn"]</th>
+                    <th>@L["ReasonColumn"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (SecurityEventSummary evt in _events)
+                {
+                    <tr data-testid="security-event-row">
+                        @if (_isSuperAdmin)
+                        {
+                            <td>@evt.OperatorId</td>
+                        }
+                        <td>@evt.EventType</td>
+                        <td>
+                            @if (evt.Success)
+                            {
+                                <span style="color: var(--bs-success);">@L["StatusSuccess"]</span>
+                            }
+                            else
+                            {
+                                <span style="color: var(--bs-danger);">@L["StatusFailure"]</span>
+                            }
+                        </td>
+                        <td>@evt.IpAddress</td>
+                        <td>@evt.OccurredAtUtc.ToString("u")</td>
+                        <td>@evt.Reason</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" data-testid="security-events-prev-page"
+                    disabled="@(_offset <= 0)"
+                    @onclick="@(() => LoadEventsAsync(_currentOperatorId, Math.Max(0, _offset - PageSize)))">
+                @L["PreviousPageButton"]
+            </button>
+            <button class="btn btn-outline-secondary" data-testid="security-events-next-page"
+                    disabled="@(_events.Count < PageSize)"
+                    @onclick="@(() => LoadEventsAsync(_currentOperatorId, _offset + PageSize))">
+                @L["NextPageButton"]
+            </button>
+        </div>
+    }
+}
+
+@code {
+    private const int PageSize = 25;
+
+    private bool _isLoading = true;
+    private bool _isLoadingEvents;
+    private bool _isSuperAdmin;
+
+    private List<SecurityEventSummary>? _events;
+    private List<OperatorSummary>? _operators;
+
+    private Guid? _currentOperatorId;
+    private int _offset;
+    private string _selectedOperatorIdText = string.Empty;
+
+    private string? _forbiddenMessage;
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _forbiddenMessage = null;
+        _loadError = null;
+
+        try
+        {
+            if (!SessionState.IsSignedIn)
+            {
+                return;
+            }
+
+            _isSuperAdmin = Enum.TryParse(SessionState.Role, out OperatorRole role) && role == OperatorRole.SuperAdmin;
+
+            if (_isSuperAdmin)
+            {
+                await LoadOperatorsAsync();
+            }
+
+            await LoadEventsAsync(operatorId: null, offset: 0);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadOperatorsAsync()
+    {
+        try
+        {
+            IReadOnlyList<OperatorSummary> operators = await AdminOperatorService.ListOperatorsAsync(CancellationToken.None);
+            _operators = operators.ToList();
+        }
+        catch (HttpRequestException)
+        {
+            // The operator picker is a convenience for SuperAdmins - if listing operators fails
+            // (e.g. not on the Local network tier), the page still works for self-service events;
+            // simply don't show the picker's options.
+            _operators = new List<OperatorSummary>();
+        }
+    }
+
+    private async Task LoadEventsAsync(Guid? operatorId, int offset)
+    {
+        _isLoadingEvents = true;
+        _forbiddenMessage = null;
+        _loadError = null;
+
+        try
+        {
+            IReadOnlyList<SecurityEventSummary> events = await SecurityEventsService.GetEventsAsync(operatorId, offset, PageSize, CancellationToken.None);
+            _events = events.ToList();
+            _currentOperatorId = operatorId;
+            _offset = offset;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.Unauthorized)
+        {
+            _forbiddenMessage = L["AuthUnauthorized"];
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"{L["LoadError"]}: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingEvents = false;
+        }
+    }
+
+    private async Task OnOperatorPickerChangedAsync()
+    {
+        Guid? operatorId = string.IsNullOrEmpty(_selectedOperatorIdText)
+            ? null
+            : Guid.TryParse(_selectedOperatorIdText, out Guid parsed) ? parsed : null;
+
+        await LoadEventsAsync(operatorId, offset: 0);
+    }
+}

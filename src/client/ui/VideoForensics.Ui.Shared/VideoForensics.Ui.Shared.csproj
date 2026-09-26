@@ -22,7 +22,7 @@
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.12" />
-        <PackageReference Include="Radzen.Blazor" Version="11.4.2" />
+        <PackageReference Include="Radzen.Blazor" Version="11.4.3" />
         <PackageReference Include="Syncfusion.Blazor.Core" Version="34.2.9" />
         <PackageReference Include="Syncfusion.Blazor.Buttons" Version="34.2.9" />
         <PackageReference Include="Syncfusion.Blazor.Calendars" Version="34.2.9" />

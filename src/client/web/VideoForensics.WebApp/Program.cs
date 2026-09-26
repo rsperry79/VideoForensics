@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Syncfusion.Blazor;
 
@@ -7,8 +8,10 @@ using System.Threading.RateLimiting;
 
 using VideoForensics.Core.Logging.DependencyInjection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
@@ -147,7 +150,7 @@ builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>()
 // IP resolution used everywhere else (INetworkTierResolver.ResolveClientIp, registered by
 // AddVideoForensicsServerCore() below), so a request over the Cloudflare Tunnel is bucketed by the
 // real client behind it, not Cloudflare's shared edge IP - the escalation-flagged mistake the plan
-// calls out explicitly. A separate, more generous policy covers /api/media/* so an already-paired
+// calls out explicitly. A separate, more generous policy covers /api/v1/media/* so an already-paired
 // device can't hammer it into a self-inflicted DoS.
 builder.Services.AddRateLimiter(options =>
 {
@@ -276,6 +279,27 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // to the pairing/auth API in Api/PairingEndpoints.cs.
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
+builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
+
+// This circuit's real network tier (plan §5.10/§5.12), captured once from the browser's actual
+// initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
+// comment for why this can't simply be re-resolved later from a self-HTTP call's own connection.
+builder.Services.AddScoped<SessionNetworkContext>();
+
+// Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
+// the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
+// uses, calling back into this same process's own Minimal API instead of a remote server address -
+// see AddSelfHttpService's doc comment for why (SuperAdmin+Local network-tier authorization needs a
+// fresh, real HttpContext per call, which a Blazor circuit alone can't guarantee for UI-event-driven
+// code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
+builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
+builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
+
+// Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
+// build their own self-HTTP clients through this factory instead of a raw `new HttpClient { ... }` -
+// same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
+// DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
@@ -285,7 +309,12 @@ builder.Services.AddScoped<WebPushClient>();
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
+builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 
@@ -363,6 +392,7 @@ app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapEventEndpoints();
+app.MapCaseEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();

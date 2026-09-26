@@ -112,6 +112,28 @@ namespace VideoForensics.Api.Contracts
     );
 
     /// <summary>
+    /// Details of a single HTTP call made during an endpoint test.
+    /// </summary>
+    /// <param name="Method">HTTP method used (GET, POST, etc.).</param>
+    /// <param name="Url">The URL that was called (with sensitive parameters redacted).</param>
+    /// <param name="StatusCode">HTTP status code returned.</param>
+    /// <param name="Phase">The phase of the test: "test" for the initial call, "restore" for cleanup calls.</param>
+    /// <param name="TimestampUtc">When this HTTP call was made.</param>
+    /// <param name="ResponseBodyBytes">Size of the response body in bytes.</param>
+    /// <param name="Body">The response body text (with sensitive fields redacted), truncated to 262,144 bytes.</param>
+    /// <param name="BodyTruncated">True if the body was truncated to fit the 262,144-byte limit.</param>
+    public record SelfTestHttpCallDto(
+        string Method,
+        string Url,
+        int StatusCode,
+        string Phase,
+        DateTime TimestampUtc,
+        int ResponseBodyBytes,
+        string Body,
+        bool BodyTruncated
+    );
+
+    /// <summary>
     /// Details of a single endpoint call within a self-test run.
     /// </summary>
     /// <param name="Endpoint">The endpoint key that was called.</param>
@@ -129,6 +151,7 @@ namespace VideoForensics.Api.Contracts
     /// <param name="RestoreError">Error message from the restore attempt, null if not attempted or successful.</param>
     /// <param name="RestoreSkippedReason">Reason why restore was skipped (e.g., "endpoint not destructive"), null if attempted.</param>
     /// <param name="SchemaIssues">List of schema validation issues detected during the call.</param>
+    /// <param name="HttpCalls">List of raw HTTP calls made during this endpoint invocation.</param>
     public record SelfTestCallDto(
         string Endpoint,
         string DisplayName,
@@ -144,7 +167,8 @@ namespace VideoForensics.Api.Contracts
         bool? RestoreSuccess,
         string? RestoreError,
         string? RestoreSkippedReason,
-        IReadOnlyList<string> SchemaIssues
+        IReadOnlyList<string> SchemaIssues,
+        IReadOnlyList<SelfTestHttpCallDto> HttpCalls
     );
 
     /// <summary>

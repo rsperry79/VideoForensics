@@ -1,0 +1,176 @@
+@page "/analyze"
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components.Analysis
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject IProviderAuthService AuthService
+@inject IDeviceRepository DeviceRepository
+@inject NavigationManager NavigationManager
+@inject ScopeState ScopeState
+@inject IStringLocalizer<ForensicReports> L
+@implements IAsyncDisposable
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (!_isAuthenticated)
+{
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewReports"]
+    </div>
+}
+else
+{
+    <div class="mb-3">
+        <button class="btn @(_activeAnalysis == "reports" ? "btn-primary active" : "btn-outline-primary")"
+                @onclick="@(() => SelectAnalysis("reports"))" data-testid="analysis-reports">
+            Reports
+        </button>
+        <button class="btn @(_activeAnalysis == "anomalies" ? "btn-primary active" : "btn-outline-primary")"
+                @onclick="@(() => SelectAnalysis("anomalies"))" data-testid="analysis-anomalies">
+            Signal Anomalies
+        </button>
+        <button class="btn @(_activeAnalysis == "access" ? "btn-primary active" : "btn-outline-primary")"
+                @onclick="@(() => SelectAnalysis("access"))" data-testid="analysis-access">
+            Access Control
+        </button>
+        <button class="btn @(_activeAnalysis == "jamming" ? "btn-primary active" : "btn-outline-primary")"
+                @onclick="@(() => SelectAnalysis("jamming"))" data-testid="analysis-jamming">
+            Jamming Analysis
+        </button>
+    </div>
+
+    <div class="mb-3 p-3 bg-light">
+        <small class="text-muted">
+            Scope: @ScopeState.Current.DeviceIds.Count device(s) selected |
+            @ScopeState.Current.FromUtc.ToShortDateString() to @ScopeState.Current.ToUtc.ToShortDateString()
+        </small>
+    </div>
+
+    @if (_activeAnalysis == "reports")
+    {
+        <ForensicReportPanel Scope="ScopeState.Current" Devices="_devices" />
+    }
+    else if (_activeAnalysis == "anomalies")
+    {
+        <SignalAnomalyPanel Scope="ScopeState.Current" Devices="_devices" />
+    }
+    else if (_activeAnalysis == "access")
+    {
+        <AccessControlPanel Scope="ScopeState.Current" Devices="_devices" />
+    }
+    else if (_activeAnalysis == "jamming")
+    {
+        <JammingPanel Scope="ScopeState.Current" Devices="_devices" />
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private string _activeAnalysis = "reports";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                _devices = devices.ToList();
+
+                // Load the analysis type from URL query string
+                var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+                if (uri.Query.Length > 0)
+                {
+                    var query = uri.Query.TrimStart('?');
+                    var analysisParam = query
+                        .Split('&')
+                        .FirstOrDefault(x => x.StartsWith("analysis="))?
+                        .Substring("analysis=".Length);
+
+                    if (!string.IsNullOrEmpty(analysisParam) && IsValidAnalysis(analysisParam))
+                    {
+                        _activeAnalysis = analysisParam;
+                    }
+                }
+
+                // Subscribe to scope changes
+                ScopeState.OnChange += OnScopeChanged;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnScopeChanged()
+    {
+        // Trigger re-render when scope changes
+        StateHasChanged();
+    }
+
+    private void SelectAnalysis(string analysis)
+    {
+        if (!IsValidAnalysis(analysis))
+        {
+            return;
+        }
+
+        _activeAnalysis = analysis;
+
+        // Update URL with new analysis type, preserving other query parameters. UpdateQueryString
+        // already returns the FULL query string (all untouched keys plus the new "analysis"
+        // value) - it must be applied directly rather than re-run through ScopeUrl.Merge.
+        // ScopeUrl.Merge is designed to combine a scope-only query (ScopeState.ToQueryString(),
+        // containing only devices/from/to/q) with whatever "unrelated" keys are left in the
+        // current URL. Handing it our already-complete query as if it were that scope-only
+        // fragment made it treat every key we'd already preserved (including "analysis" itself
+        // and any non-scope key like "case") as "unrelated" and re-append a second, stale copy of
+        // it - e.g. clicking a tab turned "...&analysis=reports" into
+        // "...&analysis=anomalies&case=...&analysis=reports", duplicating "case" and leaving a
+        // wrong trailing "analysis=reports" after the correct value.
+        var newQuery = UpdateQueryString("analysis", analysis);
+        var path = NavigationManager.ToAbsoluteUri(NavigationManager.Uri).AbsolutePath;
+        var newUri = string.IsNullOrEmpty(newQuery) ? path : $"{path}?{newQuery}";
+        NavigationManager.NavigateTo(newUri, replace: true);
+    }
+
+    private string UpdateQueryString(string key, string value)
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = uri.Query.TrimStart('?');
+        var pairs = string.IsNullOrEmpty(query) ? new List<string>() : query.Split('&').ToList();
+
+        // Remove existing analysis key
+        pairs.RemoveAll(x => x.StartsWith("analysis="));
+
+        // Add new analysis key
+        pairs.Add($"analysis={value}");
+
+        return string.Join("&", pairs);
+    }
+
+    private bool IsValidAnalysis(string analysis)
+    {
+        return analysis switch
+        {
+            "reports" or "anomalies" or "access" or "jamming" => true,
+            _ => false
+        };
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        ScopeState.OnChange -= OnScopeChanged;
+        await Task.CompletedTask;
+    }
+}

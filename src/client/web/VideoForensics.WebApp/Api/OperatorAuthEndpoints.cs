@@ -521,6 +521,7 @@ namespace VideoForensics.WebApp.Api
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
             ILockoutPolicySettingsRepository lockoutPolicy,
             ITwoFactorRoleRequirementRepository twoFactorRequirements,
             ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
@@ -530,6 +531,7 @@ namespace VideoForensics.WebApp.Api
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
             HttpContext context,
+            ILogger<Program> logger,
             CancellationToken ct)
         {
             // Resolve the caller's source IP address early for all subsequent checks
@@ -563,9 +565,16 @@ namespace VideoForensics.WebApp.Api
             // Check: if operator is primary SuperAdmin, they may only log in from Local tier.
             // We do this check BEFORE password verification to avoid timing leaks on which accounts are primary.
             // If the operator exists but is not local-tier, reject with generic error (don't reveal the reason).
+            //
+            // This is itself a PRE-AUTH self-call target when reached through the WebApp's own
+            // DeviceSignIn.razor page (WebAuthnClient.SignInWithPasswordAsync posts here with no
+            // session token yet) - that self-call's own connection is always loopback regardless of
+            // where the real browser is, so RequestTierResolver.ResolvePreAuth (not a bare
+            // tierResolver.ResolveTier(context)) recovers the real tier from the pre-auth
+            // X-VF-Session-Tier header the same way an already-authenticated self-call's is.
             if (op != null && op.IsPrimarySuperAdmin)
             {
-                NetworkTier currentTier = tierResolver.ResolveTier(context);
+                NetworkTier currentTier = RequestTierResolver.ResolvePreAuth(context, tierResolver, headerProtector, logger);
                 if (currentTier != NetworkTier.Local)
                 {
                     // Primary SuperAdmin attempting login from non-local tier - reject with generic failure.
