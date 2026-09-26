@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Moq;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -53,9 +54,9 @@ namespace VideoForensics.WebApp.Tests.Api
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -92,9 +93,9 @@ namespace VideoForensics.WebApp.Tests.Api
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -138,9 +139,9 @@ namespace VideoForensics.WebApp.Tests.Api
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -206,6 +207,8 @@ namespace VideoForensics.WebApp.Tests.Api
             return mock;
         }
 
+        private static ISessionTierHeaderProtector NoOpHeaderProtector() => new Mock<ISessionTierHeaderProtector>().Object;
+
         private static Mock<ILockoutPolicySettingsRepository> MockLockoutPolicyRepository(
             int maxFailedAttempts = 5,
             int lockoutDurationMinutes = 15)
@@ -257,6 +260,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
             ILockoutPolicySettingsRepository lockoutPolicy,
             ITwoFactorRoleRequirementRepository twoFactorRequirements,
             ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
@@ -266,6 +270,7 @@ namespace VideoForensics.WebApp.Tests.Api
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
             HttpContext context,
+            ILogger<Program> logger,
             CancellationToken ct)
         {
             var method = typeof(VideoForensics.WebApp.Api.OperatorAuthEndpoints)
@@ -273,16 +278,16 @@ namespace VideoForensics.WebApp.Tests.Api
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
                     [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
-                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ILockoutPolicySettingsRepository),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
                     null);
 
             if (method == null)
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, ct]);
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

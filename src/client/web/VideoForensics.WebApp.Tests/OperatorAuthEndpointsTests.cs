@@ -1,7 +1,9 @@
 using System.Net;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -88,6 +90,10 @@ namespace VideoForensics.WebApp.Tests
             return mock;
         }
 
+        /// <summary>A protector that never validates a header - fine for tests that don't attach
+        /// X-VF-Session-Tier at all, where RequestTierResolver.ResolvePreAuth never even calls it.</summary>
+        private static ISessionTierHeaderProtector NoOpHeaderProtector() => new Mock<ISessionTierHeaderProtector>().Object;
+
         private static Mock<ILockoutPolicySettingsRepository> MockLockoutPolicyRepository(
             int maxFailedAttempts = 5,
             int lockoutDurationMinutes = 15)
@@ -150,9 +156,229 @@ namespace VideoForensics.WebApp.Tests
 
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        // --- Primary-SuperAdmin Local-only check via the WebApp's own self-call (plan §5.10/§5.12):
+        // when reached through DeviceSignIn.razor's WebAuthnClient.SignInWithPasswordAsync self-call,
+        // this request's own connection is ALWAYS loopback (the WebApp calling itself), regardless of
+        // where the real browser physically is - RequestTierResolver.ResolvePreAuth must recover the
+        // real tier from the X-VF-Session-Tier pre-auth header instead of trusting that connection. ---
+
+        private static HttpContext CreateLoopbackHttpContext() => CreateHttpContext(NetworkTier.Local);
+
+        [Fact]
+        public async Task LoginPassword_PrimarySuperAdmin_RemoteBrowsersInternetHeaderOverLoopback_IsRejected()
+        {
+            // A remote browser's own real tier (Internet) travels as a pre-auth header on the
+            // self-call's own loopback connection - the primary SuperAdmin must still be rejected.
+            var op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = new Mock<INetworkTierResolver>();
+            tierResolver.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+
+            var realProtector = new SessionTierHeaderProtector(new EphemeralDataProtectionProvider());
+            string preAuthHeader = realProtector.ProtectPreAuth(NetworkTier.Internet);
+
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            HttpContext context = CreateLoopbackHttpContext();
+            context.Request.Headers[SessionTierHeaderNames.HeaderName] = preAuthHeader;
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, realProtector, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginPassword_PrimarySuperAdmin_GenuineLocalHeaderOverLoopback_IsAllowed()
+        {
+            var op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = new Mock<INetworkTierResolver>();
+            tierResolver.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+
+            var realProtector = new SessionTierHeaderProtector(new EphemeralDataProtectionProvider());
+            string preAuthHeader = realProtector.ProtectPreAuth(NetworkTier.Local);
+
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            HttpContext context = CreateLoopbackHttpContext();
+            context.Request.Headers[SessionTierHeaderNames.HeaderName] = preAuthHeader;
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, realProtector, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPassword_PrimarySuperAdmin_NoHeaderOverLoopback_UnchangedBehaviorAllowed()
+        {
+            // No X-VF-Session-Tier header at all: behavior must be identical to before this feature
+            // existed - a genuinely local caller (e.g. a direct localhost request, not a self-call)
+            // resolves from the connection alone.
+            var op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = new Mock<INetworkTierResolver>();
+            tierResolver.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            HttpContext context = CreateLoopbackHttpContext(); // no tier header attached at all
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPassword_PrimarySuperAdmin_TamperedHeaderOverLoopback_IsRejected()
+        {
+            var op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = new Mock<INetworkTierResolver>();
+            tierResolver.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+
+            var realProtector = new SessionTierHeaderProtector(new EphemeralDataProtectionProvider());
+            string validHeader = realProtector.ProtectPreAuth(NetworkTier.Local);
+            char[] chars = validHeader.ToCharArray();
+            chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
+            string tamperedHeader = new string(chars);
+
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            HttpContext context = CreateLoopbackHttpContext();
+            context.Request.Headers[SessionTierHeaderNames.HeaderName] = tamperedHeader;
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, realProtector, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginPassword_PrimarySuperAdmin_LocalHeaderOnNonLoopbackConnection_IsIgnoredAndRejected()
+        {
+            // A genuinely remote caller (connection itself isn't loopback) cannot use the header to
+            // claim Local - it must be ignored entirely and the real (non-Local) connection tier used.
+            var op = CreateOperator(isPrimarySuperAdmin: true, role: OperatorRole.SuperAdmin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = new Mock<INetworkTierResolver>();
+            tierResolver.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Network);
+            tierResolver.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("192.168.1.1");
+
+            var realProtector = new SessionTierHeaderProtector(new EphemeralDataProtectionProvider());
+            string claimsLocalHeader = realProtector.ProtectPreAuth(NetworkTier.Local);
+
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            HttpContext context = CreateHttpContext(NetworkTier.Network);
+            context.Request.Headers[SessionTierHeaderNames.HeaderName] = claimsLocalHeader;
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, realProtector, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             Assert.NotNull(result);
             sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
@@ -200,9 +426,9 @@ namespace VideoForensics.WebApp.Tests
 
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             Assert.NotNull(result);
             sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
@@ -259,9 +485,9 @@ namespace VideoForensics.WebApp.Tests
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -308,9 +534,9 @@ namespace VideoForensics.WebApp.Tests
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -353,9 +579,9 @@ namespace VideoForensics.WebApp.Tests
             // Act
             var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
-                tierResolver.Object, lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
-                auditService.Object, context, CancellationToken.None);
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -373,6 +599,7 @@ namespace VideoForensics.WebApp.Tests
             ISessionTokenService sessionTokens,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
             ILockoutPolicySettingsRepository lockoutPolicy,
             ITwoFactorRoleRequirementRepository twoFactorRequirements,
             ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
@@ -382,6 +609,7 @@ namespace VideoForensics.WebApp.Tests
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
             HttpContext context,
+            ILogger<Program> logger,
             CancellationToken ct)
         {
             var method = typeof(OperatorAuthEndpoints)
@@ -389,10 +617,10 @@ namespace VideoForensics.WebApp.Tests
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
                     [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
-                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ILockoutPolicySettingsRepository),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
                     null);
 
             if (method == null)
@@ -400,7 +628,7 @@ namespace VideoForensics.WebApp.Tests
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
             }
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, ct]);
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

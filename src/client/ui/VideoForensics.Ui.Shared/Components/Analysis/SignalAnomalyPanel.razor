@@ -1,0 +1,151 @@
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject IReportGenerationService ReportGenerationService
+@inject IStringLocalizer<SignalAnomalyPanel> L
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_report is not null)
+{
+    <h5 class="mt-4 mb-2">@L["AnomaliesByDeviceHeading"]</h5>
+    @if (_report.AnomaliesByDevice.Count == 0)
+    {
+        <span>@L["NoAnomaliesFound"]</span>
+    }
+    else
+    {
+        @foreach (var deviceFindings in _report.AnomaliesByDevice)
+        {
+            <h6>@deviceFindings.DeviceName</h6>
+            <SfGrid TValue="SignalAnomalyReport.SignalAnomaly" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true" AllowResizing="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" HeaderText="@L["ColAnomalyType"]" MinWidth="100" />
+                    <GridColumn HeaderText="@L["ColDescription"]" MinWidth="100">
+                        <Template>
+                            @{
+                                var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
+                                @(anomaly.Description ?? L["NotAvailable"].Value)
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
+                        <Template>
+                            @{
+                                var anomaly = (SignalAnomalyReport.SignalAnomaly)context;
+                                @(anomaly.RssiValue?.ToString() ?? L["NotAvailable"].Value)
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    }
+
+    <h5 class="mt-4 mb-2">@L["JammingSummaryHeading"]</h5>
+    @if (_report.JammingByDevice.Count == 0)
+    {
+        <span>@L["NoJammingFound"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="SignalAnomalyReport.JammingSummaryEntry" DataSource="@_report.JammingByDevice" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
+                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.IncidentCount)" HeaderText="@L["ColIncidentCount"]" MinWidth="100" />
+                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.TotalJammedDurationMinutes)" HeaderText="@L["ColTotalJammedMin"]" MinWidth="100" />
+                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.AverageDegradationDb)" HeaderText="@L["ColAvgDegradation"]" MinWidth="100" />
+                <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColFirstIncident"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
+                            @(jamming.FirstIncidentUtc?.ToString() ?? L["NotAvailable"].Value)
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColLastIncident"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
+                            @(jamming.LastIncidentUtc?.ToString() ?? L["NotAvailable"].Value)
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+}
+
+@code {
+    [Parameter]
+    public ForensicScope Scope { get; set; } = new ForensicScope(new List<Guid>(), DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, null);
+
+    [Parameter]
+    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
+
+    private bool _isLoading = true;
+    private string? _error;
+    private SignalAnomalyReport? _report;
+    private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if scope actually changed
+        if (_lastLoadedScope.Equals(Scope))
+        {
+            return;
+        }
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            Guid? deviceId = Scope.IncludesAllDevices
+                ? null
+                : Scope.DeviceIds.Count == 1 ? Scope.DeviceIds.First() : null;
+
+            // SignalAnomalyPanel handles single device or all devices
+            // Multiple devices would need merging logic
+            if (Scope.DeviceIds.Count > 1)
+            {
+                _error = "Select a single device (or all) for this analysis";
+                return;
+            }
+
+            _report = await ReportGenerationService.BuildSignalAnomalyReportAsync(
+                deviceId,
+                Scope.FromUtc,
+                Scope.ToUtc,
+                CancellationToken.None);
+
+            _lastLoadedScope = Scope;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load report: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

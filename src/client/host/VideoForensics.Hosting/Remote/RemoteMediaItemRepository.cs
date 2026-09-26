@@ -11,10 +11,10 @@ namespace VideoForensics.Hosting.Remote
     /// HTTP-backed, read-only <see cref="IMediaItemRepository"/> that calls the server's Minimal API
     /// (see VideoForensics.WebApp/Api/MediaApiEndpoints.cs) instead of a local database - the MAUI
     /// client's implementation of the "thin client talks to a server API" half of the plan's client/
-    /// server split (§4/M5). Only <see cref="ListAsync"/> and <see cref="GetByDeviceIdAsync"/> are
-    /// backed by real endpoints. Every write method throws <see cref="NotSupportedException"/>
-    /// because MAUI has no write path to server-owned evidence data - new media only ever
-    /// originates server-side, from a download the server itself executed (a deliberate
+    /// server split (§4/M5). Backed endpoints: <see cref="ListAsync"/>, <see cref="GetByDeviceIdAsync"/>,
+    /// <see cref="GetByDeviceAndDateRangeAsync"/>, and <see cref="GetAsync"/>. Every write method throws
+    /// <see cref="NotSupportedException"/> because MAUI has no write path to server-owned evidence data -
+    /// new media only ever originates server-side, from a download the server itself executed (a deliberate
     /// architectural rule from the plan, not a missing feature). Every other read with no matching
     /// endpoint also throws.
     /// </summary>
@@ -54,15 +54,27 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
+        public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            throw new NotSupportedException(NotSupportedMessage);
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items/{mediaItemId}", ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+            _ = response.EnsureSuccessStatusCode();
+            MediaItemDto? dto = await response.Content.ReadFromJsonAsync<MediaItemDto>(JsonOptions, ct);
+            return dto?.ToDomain();
         }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            throw new NotSupportedException(NotSupportedMessage);
+            string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));
+            string toEscaped = Uri.EscapeDataString(toUtc.ToString("O"));
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}&from={fromEscaped}&to={toEscaped}", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<MediaItemDto>? dtos = await response.Content.ReadFromJsonAsync<List<MediaItemDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
         /// <inheritdoc />

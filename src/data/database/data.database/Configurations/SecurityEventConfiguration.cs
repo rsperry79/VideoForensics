@@ -21,8 +21,7 @@ namespace VideoForensics.Data.Database.Configurations
 
             // Default EF Core naming convention already produces
             // IX_SecurityEvents_OperatorId_OccurredAtUtc and IX_SecurityEvents_OccurredAtUtc,
-            // matching the migration; explicit naming would need Microsoft.EntityFrameworkCore.Relational,
-            // which this project doesn't reference.
+            // matching the migration.
             _ = builder.HasIndex(e => new { e.OperatorId, e.OccurredAtUtc });
             _ = builder.HasIndex(e => e.OccurredAtUtc);
         }

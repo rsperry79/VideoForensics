@@ -1,0 +1,9 @@
+@page "/workflow"
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/evidence", replace: true);
+    }
+}

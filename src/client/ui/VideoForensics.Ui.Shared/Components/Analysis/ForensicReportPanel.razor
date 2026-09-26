@@ -1,0 +1,197 @@
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject IReportGenerationService ReportGenerationService
+@inject IStringLocalizer<ForensicReportPanel> L
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_report is not null)
+{
+    <h5 class="mt-4 mb-2">@L["EvidenceItems"]</h5>
+    @if (_report.EvidenceItems.Count == 0)
+    {
+        <span>@L["NoEvidenceItems"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="MediaItem" DataSource="@_report.EvidenceItems" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn HeaderText="@L["ColEvidenceId"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var item = (MediaItem)context;
+                            @(item.Id.ToString("N")[..8])
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var item = (MediaItem)context;
+                            var deviceName = Devices.FirstOrDefault(d => d.Id == item.DeviceId)?.Name ?? item.DeviceId.ToString("N")[..8];
+                            @deviceName
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(MediaItem.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
+                <GridColumn Field="@nameof(MediaItem.MediaFormat)" HeaderText="@L["ColFormat"]" MinWidth="100" />
+            </GridColumns>
+        </SfGrid>
+    }
+
+    <h5 class="mt-4 mb-2">@L["AnomalousHealthSnapshots"]</h5>
+    @if (_report.AnomalousHealthSnapshots.Count == 0)
+    {
+        <span>@L["NoAnomalousHealthSnapshots"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="DeviceHealth" DataSource="@_report.AnomalousHealthSnapshots" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            var deviceName = Devices.FirstOrDefault(d => d.Id == snapshot.DeviceId)?.Name ?? snapshot.DeviceId.ToString("N")[..8];
+                            @deviceName
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColConnected"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            @(snapshot.IsOnline?.ToString() ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColBatteryPercent"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            @(snapshot.BatteryPercentage?.ToString() ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColRssi"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            @(snapshot.WifiSignalRssi?.ToString() ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColWifi"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            @(snapshot.WifiName ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColFirmware"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var snapshot = (DeviceHealth)context;
+                            @(snapshot.FirmwareVersion ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+
+    <h5 class="mt-4 mb-2">@L["SignificantActions"]</h5>
+    @if (_report.SignificantActions.Count == 0)
+    {
+        <span>@L["NoSignificantActions"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="ActionLogEntry" DataSource="@_report.SignificantActions" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+            </GridColumns>
+        </SfGrid>
+    }
+}
+
+@code {
+    [Parameter]
+    public ForensicScope Scope { get; set; } = new ForensicScope(new List<Guid>(), DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, null);
+
+    [Parameter]
+    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
+
+    private bool _isLoading = true;
+    private string? _error;
+    private ForensicAnalysisReport? _report;
+    private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if scope actually changed
+        if (_lastLoadedScope.Equals(Scope))
+        {
+            return;
+        }
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            Guid? deviceId = Scope.IncludesAllDevices
+                ? null
+                : Scope.DeviceIds.Count == 1 ? Scope.DeviceIds.First() : null;
+
+            // ForensicReportPanel handles single device or all devices
+            // Multiple devices would need merging logic (not implemented for this report)
+            if (Scope.DeviceIds.Count > 1)
+            {
+                _error = "Select a single device (or all) for this analysis";
+                return;
+            }
+
+            _report = await ReportGenerationService.BuildForensicAnalysisReportAsync(
+                deviceId,
+                Scope.FromUtc,
+                Scope.ToUtc,
+                CancellationToken.None);
+
+            _lastLoadedScope = Scope;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load report: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

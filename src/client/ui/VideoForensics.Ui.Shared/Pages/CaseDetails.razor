@@ -1,0 +1,403 @@
+@page "/cases/{CaseId:guid}"
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Cases
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Services.Scope
+@implements IAsyncDisposable
+@inject ICaseRepository CaseRepository
+@inject IDeviceRepository DeviceRepository
+@inject IEventRepository EventRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject CaseState CaseState
+@inject InspectorState InspectorState
+
+<h4 class="mb-4">
+    @if (_case is not null)
+    {
+        <span>@_case.CaseNumber · @_case.Title</span>
+        <span class="badge" style="background-color: @(_case.Status == CaseStatus.Closed ? "#6c757d" : "#198754")">
+            @_case.Status.ToString()
+        </span>
+    }
+    else
+    {
+        <span>Case Details</span>
+    }
+</h4>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_case is null)
+{
+    <div class="alert alert-warning">Case not found.</div>
+}
+else
+{
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Case Information</div>
+                <div class="card-body">
+                    <p><strong>Case Number:</strong> @_case.CaseNumber</p>
+                    <p><strong>Title:</strong> @_case.Title</p>
+                    <p><strong>Status:</strong> @_case.Status.ToString()</p>
+                    <p><strong>Created:</strong> @_case.CreatedAtUtc:u</p>
+                    <p><strong>Updated:</strong> @_case.UpdatedAtUtc:u</p>
+                    @if (!string.IsNullOrEmpty(_case.Description))
+                    {
+                        <p><strong>Description:</strong> @_case.Description</p>
+                    }
+                </div>
+            </div>
+
+            @if (_case.Status == CaseStatus.Open)
+            {
+                <div class="mt-3">
+                    @if (CanClose)
+                    {
+                        <button class="btn btn-danger" @onclick="CloseCase" data-testid="close-case">Close Case</button>
+                    }
+                    <button class="btn btn-primary" @onclick="ActivateCase" data-testid="activate-case">Work on this case</button>
+                </div>
+            }
+            else if (_case.Status == CaseStatus.Closed && CanClose)
+            {
+                <div class="mt-3">
+                    <button class="btn btn-success" @onclick="ReopenCase" data-testid="reopen-case">Reopen Case</button>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Scope</div>
+                <div class="card-body">
+                    <p><strong>Devices:</strong></p>
+                    <ul class="list-unstyled">
+                        @if (_case.ScopeFromUtc is null && _case.ScopeToUtc is null)
+                        {
+                            <li>No saved scope</li>
+                        }
+                        else
+                        {
+                            <li>Window: @_case.ScopeFromUtc:u - @_case.ScopeToUtc:u</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Pinned Items</span>
+            <div>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" @onchange="OnShowRemovedChanged" data-testid="show-removed" />
+                    Show removed
+                </label>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (_caseItems is null)
+            {
+                <p>Loading items...</p>
+            }
+            else if (_caseItems.Count == 0)
+            {
+                <p>No pinned items.</p>
+            }
+            else
+            {
+                <ForensicGrid TItem="CaseItemRow"
+                              DataSource="@_caseItems"
+                              OnRowSelected="@OnItemSelected"
+                              ToInspector="@(row => InspectorModelFromItem(row))">
+                    <Columns>
+                        <GridColumn Field="@nameof(CaseItemRow.Kind)" HeaderText="Kind" Width="100"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Label)" HeaderText="Label" Width="250"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Reason)" HeaderText="Reason" Width="200"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.AddedBy)" HeaderText="Added By" Width="120"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.AddedAtUtc)" HeaderText="Added At" Width="150" Format="@("u")"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Integrity)" HeaderText="Integrity" Width="100"></GridColumn>
+                    </Columns>
+                </ForensicGrid>
+
+                @if (CanEdit && _selectedItem is not null && _case.Status != CaseStatus.Closed)
+                {
+                    <div class="mt-3">
+                        <input type="text" class="form-control mb-2" placeholder="Removal reason" @bind="_removalReason" data-testid="remove-reason" />
+                        <button class="btn btn-danger" @onclick="RemoveItem" data-testid="remove-pin">Remove Pin</button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid CaseId { get; set; }
+
+    private ForensicCase? _case;
+    private IReadOnlyList<CaseItemRow>? _caseItems;
+    private CaseItemRow? _selectedItem;
+    private bool _showRemoved = false;
+    private string? _error;
+    private string _removalReason = "";
+
+    private bool CanEdit =>
+        SessionState.OperatorId.HasValue &&
+        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
+        role >= OperatorRole.Review;
+
+    /// <summary>
+    /// Closing/reopening a case is an evidence-lifecycle action (see <see cref="OperatorRole"/>),
+    /// which requires Admin or above - Review may pin/annotate but may not close or reopen a case.
+    /// </summary>
+    private bool CanClose =>
+        SessionState.OperatorId.HasValue &&
+        Enum.TryParse(SessionState.Role, out OperatorRole role) &&
+        role >= OperatorRole.Admin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCaseDetails();
+    }
+
+    private async Task LoadCaseDetails()
+    {
+        try
+        {
+            _case = await CaseRepository.GetAsync(CaseId, CancellationToken.None);
+            if (_case is null)
+            {
+                _error = null;
+                return;
+            }
+
+            await LoadCaseItems();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load case: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCaseItems()
+    {
+        try
+        {
+            var items = await CaseRepository.ListItemsAsync(CaseId, _showRemoved, CancellationToken.None);
+            var rows = new List<CaseItemRow>();
+
+            foreach (var item in items)
+            {
+                var label = await GetItemLabel(item);
+                var integrity = await GetItemIntegrity(item);
+
+                rows.Add(new CaseItemRow
+                {
+                    Id = item.Id,
+                    Kind = item.Kind,
+                    Label = label,
+                    Reason = item.Reason,
+                    AddedBy = item.AddedBy,
+                    AddedAtUtc = item.AddedAtUtc,
+                    Integrity = integrity,
+                    Item = item
+                });
+            }
+
+            _caseItems = rows;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load case items: {ex.Message}";
+        }
+    }
+
+    private async Task<string> GetItemLabel(CaseItem item)
+    {
+        try
+        {
+            if (item.Kind == CaseItemKind.Event && item.EventId.HasValue)
+            {
+                var @event = await EventRepository.GetAsync(item.EventId.Value, CancellationToken.None);
+                if (@event is not null)
+                {
+                    return $"{@event.EventType} · {@event.OccurredAtUtc:u}";
+                }
+            }
+            else if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
+            {
+                var media = await MediaItemRepository.GetAsync(item.MediaItemId.Value, CancellationToken.None);
+                if (media is not null)
+                {
+                    return media.FileName;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors, return "Unavailable" below
+        }
+
+        return "Unavailable";
+    }
+
+    private async Task<PinIntegrity> GetItemIntegrity(CaseItem item)
+    {
+        try
+        {
+            if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
+            {
+                var media = await MediaItemRepository.GetAsync(item.MediaItemId.Value, CancellationToken.None);
+                return CaseItemIntegrity.Compare(item, media);
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+
+        return CaseItemIntegrity.Compare(item, null);
+    }
+
+    private void OnItemSelected(CaseItemRow row)
+    {
+        _selectedItem = row;
+        InspectorState.Show(InspectorModelFromItem(row));
+    }
+
+    private InspectorModel InspectorModelFromItem(CaseItemRow row)
+    {
+        var provenance = new List<KeyValuePair<string, string>>
+        {
+            new("Reason", row.Reason),
+            new("Added By", row.AddedBy),
+            new("Added At", row.AddedAtUtc.ToString("u")),
+            new("Integrity", row.Integrity.ToString())
+        };
+
+        return new InspectorModel(
+            row.Label,
+            new { Kind = row.Kind.ToString(), Label = row.Label, Integrity = row.Integrity.ToString() },
+            Provenance: provenance);
+    }
+
+    private async Task RemoveItem()
+    {
+        if (_selectedItem is null || string.IsNullOrWhiteSpace(_removalReason))
+        {
+            return;
+        }
+
+        try
+        {
+            await CaseRepository.RemoveItemAsync(
+                _selectedItem.Id,
+                SessionState.OperatorId.ToString(),
+                _removalReason.Trim(),
+                CancellationToken.None);
+
+            _removalReason = "";
+            _selectedItem = null;
+            await LoadCaseItems();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to remove item: {ex.Message}";
+        }
+    }
+
+    private async Task ActivateCase()
+    {
+        if (_case is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await CaseState.ActivateAsync(_case.Id, CancellationToken.None);
+            var evidenceUrl = NavigationManager.ToAbsoluteUri("/evidence").ToString();
+            var url = CaseUrl.Merge(evidenceUrl, _case.Id);
+            NavigationManager.NavigateTo(url);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to activate case: {ex.Message}";
+        }
+    }
+
+    private async Task CloseCase()
+    {
+        if (_case is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await CaseRepository.CloseAsync(_case.Id, SessionState.OperatorId.ToString(), CancellationToken.None);
+            await LoadCaseDetails();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to close case: {ex.Message}";
+        }
+    }
+
+    private async Task ReopenCase()
+    {
+        if (_case is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await CaseRepository.ReopenAsync(_case.Id, SessionState.OperatorId.ToString(), CancellationToken.None);
+            await LoadCaseDetails();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to reopen case: {ex.Message}";
+        }
+    }
+
+    private async Task OnShowRemovedChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        _showRemoved = (bool?)args.Value ?? false;
+        await LoadCaseItems();
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    // Internal (not private) so bUnit tests in VideoForensics.Ui.Shared.Tests can reference
+    // ForensicGrid<CaseItemRow> directly via InternalsVisibleTo.
+    internal record CaseItemRow
+    {
+        public Guid Id { get; set; }
+        public CaseItemKind Kind { get; set; }
+        public string Label { get; set; } = "";
+        public string Reason { get; set; } = "";
+        public string AddedBy { get; set; } = "";
+        public DateTime AddedAtUtc { get; set; }
+        public PinIntegrity Integrity { get; set; }
+        public CaseItem Item { get; set; } = null!;
+    }
+}

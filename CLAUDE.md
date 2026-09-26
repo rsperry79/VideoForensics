@@ -67,7 +67,8 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`
 - Coverage: interfaces 100%, business logic >80%, integrations >70%
-- Run all tests: `dotnet test`
+- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `tests/` project.
+- Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
 
 ## Documentation
 
@@ -133,6 +134,11 @@ For headless/scripted deployments that can't drive a browser wizard, the legacy 
 - MustChangePassword: `true` (forces password change on first login)
 
 This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
+
+## Branching and pull requests
+
+- **`main` only accepts pull requests from `dev`.** All work branches (feature, fix, `claude/*`) open their PRs against `dev`; `main` is updated solely by a `dev` → `main` promotion PR. The `main-source-guard` workflow (`.github/workflows/main-source-guard.yml`) fails any PR into `main` whose head is not this repo's `dev` — it must be a required status check on `main`.
+- Never open a PR from a work branch directly into `main`, and never push directly to `dev` or `main`.
 
 ## Execution workflow
 

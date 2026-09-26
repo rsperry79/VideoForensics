@@ -9,6 +9,8 @@ using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Telemetry.Configuration;
+using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -228,7 +230,8 @@ namespace VideoForensics.Hosting
         /// </summary>
         /// <param name="services">The service collection to register into.</param>
         /// <param name="activeProviderName">Name of the active provider ("Ring" or "Uniview"); defaults to "Ring" for backward compatibility.</param>
-        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring")
+        /// <param name="telemetryOptions">Optional telemetry configuration; defaults to a disabled (no-op) <see cref="TelemetryOptions"/> instance when null, keeping telemetry opt-in and every existing caller unaffected.</param>
+        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // MainLayout.razor (rendered by every host sharing Ui.Shared, WebApp included) @injects
             // IServerConnectivityState/IServerLocationInformationService - these were only ever
@@ -239,6 +242,11 @@ namespace VideoForensics.Hosting
             // conflict if a client host's own registrations also call this.
             _ = services.AddServerLocationServices();
             _ = services.AddSingleton<IStorageLocationProvider, StorageLocationProvider>();
+
+            // Provider-agnostic telemetry abstraction (ITelemetryProvider). Opt-in: a null/disabled
+            // TelemetryOptions registers the no-op NullTelemetryProvider and wires up nothing else,
+            // so existing callers that don't pass telemetryOptions see no behavior change.
+            _ = services.AddVideoForensicsTelemetry(telemetryOptions ?? new TelemetryOptions());
 
             // Shared session providers (must be singleton so all services/scopes observe the same
             // keyed session map - see ISessionProvider's per-account redesign). ICredentialStore is
@@ -447,7 +455,9 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IWebAuthnCeremonyCache, WebAuthnCeremonyCache>();
             _ = services.AddSingleton<ITwoFactorPendingAuthCache, TwoFactorPendingAuthCache>();
             _ = services.AddSingleton<ISessionTokenService, SessionTokenService>();
+            _ = services.AddSingleton<ISessionTierHeaderProtector, SessionTierHeaderProtector>();
             _ = services.AddSingleton<IStepUpAuthService, StepUpAuthService>();
+            _ = services.AddSingleton<IMediaAccessTicketService, MediaAccessTicketService>();
             _ = services.AddSingleton<INetworkTierResolver, NetworkTierResolver>();
             _ = services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
             _ = services.AddScoped<IProviderApiBudgetGuard, ProviderApiBudgetGuard>();
@@ -559,6 +569,7 @@ namespace VideoForensics.Hosting
 
             _ = services.AddHttpClient<IDeviceRepository, RemoteDeviceRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaItemRepository, RemoteMediaItemRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceHealthRepository, RemoteDeviceHealthRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IIntegrityRecordRepository, RemoteIntegrityRecordRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAuthService, RemoteProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
@@ -570,6 +581,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
@@ -579,9 +591,16 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<Contracts.IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
+            // IAdminOperatorService/ISecurityEventsService live in VideoForensics.Client.Common.Contracts,
+            // not VideoForensics.Hosting.Contracts (the "Contracts." shorthand above) - unlike the lockout/
+            // two-factor policy services, these are also injected directly by Ui.Shared Razor pages (the
+            // SuperAdmin operator picker, the Security Events page), and Ui.Shared cannot reference this
+            // Hosting project (Hosting already depends on Ui.Shared for PairedSessionState) without a cycle.
+            _ = services.AddHttpClient<IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
