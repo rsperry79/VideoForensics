@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Common.Contracts
 {
@@ -67,5 +68,14 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="ct">Cancellation token.</param>
         /// <returns>The active session, or null.</returns>
         Task<LiveViewSession?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>
+        /// Gets the live provider connection for an active session without re-establishing it.
+        /// Used by browser bridges to attach media processors or forward packets to other peers.
+        /// </summary>
+        /// <param name="sessionId">The session ID to look up.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>The active connection, or null if the session does not exist or is not in memory.</returns>
+        Task<ILiveViewConnection?> GetConnectionForSessionAsync(Guid sessionId, CancellationToken ct);
     }
 }

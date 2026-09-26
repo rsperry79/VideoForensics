@@ -23,6 +23,7 @@ using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
@@ -409,6 +410,19 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
+
+            // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
+            // orchestrator, and background services for idle timeouts and bitrate calibration.
+            // Multiple registrations of the same interface (ILiveViewCapableProvider) with different
+            // implementations is fine - IEnumerable<ILiveViewCapableProvider> resolves all three.
+            _ = services.AddScoped<ILiveViewCapableProvider, RingLiveViewProvider>();
+            _ = services.AddScoped<ILiveViewCapableProvider, WyzeLiveViewProvider>();
+            _ = services.AddScoped<ILiveViewCapableProvider, UniviewLiveViewProvider>();
+            _ = services.AddSingleton<ILiveViewSessionService, LiveViewSessionOrchestrator>();
+            _ = services.AddSingleton<ElevatedPollingWindowTracker>();
+            _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.ILiveViewInterferenceScorer, LiveViewInterferenceScorer>();
+            _ = services.AddHostedService<LiveViewIdleTimeoutService>();
+            _ = services.AddHostedService<CameraBitrateCalibrationService>();
 
             // Update-check background service (plan §3). Periodically polls GitHub for a newer release
             // and either notifies or auto-downloads/launches the installer based on configuration.

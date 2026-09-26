@@ -1,5 +1,7 @@
 using SIPSorcery.Net;
 
+using SIPSorceryMedia.Abstractions;
+
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Streaming;
 
@@ -17,6 +19,7 @@ namespace VideoForensics.Providers.Ring.Services
         public event Action<RTCPReceiverReportSampleDto>? OnReceiverReport;
         public event Action<long>? OnBitrateSampleBps;
         public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange;
+        public event Action<byte[], uint, int>? OnVideoRtpPayload;
 
         public RingLiveViewConnection(RingLiveViewSession session)
         {
@@ -26,6 +29,7 @@ namespace VideoForensics.Providers.Ring.Services
             _session.OnReceiverReport += HandleReceiverReport;
             _session.OnBitrateSampleBps += bitrateBps => OnBitrateSampleBps?.Invoke(bitrateBps);
             _session.OnConnectionStateChange += HandleConnectionStateChange;
+            _session.OnRtpPacketReceived += HandleRtpPacket;
         }
 
         private void HandleReceiverReport(RingLiveViewSession.RTCPReceiverReportSample sample)
@@ -59,6 +63,15 @@ namespace VideoForensics.Providers.Ring.Services
                 // Fallback for any unexpected states (shouldn't happen in normal operation)
                 _ => LiveViewConnectionStateDto.Disconnected
             };
+        }
+
+        private void HandleRtpPacket(System.Net.IPEndPoint ep, SDPMediaTypesEnum mediaType, RTPPacket packet)
+        {
+            // Filter to video-only packets and re-raise via the provider-agnostic event
+            if (mediaType == SDPMediaTypesEnum.video && packet?.Payload != null)
+            {
+                OnVideoRtpPayload?.Invoke(packet.Payload, packet.Header.Timestamp, packet.Header.MarkerBit);
+            }
         }
 
         public async Task CloseAsync(CancellationToken ct)

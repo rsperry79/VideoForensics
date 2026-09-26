@@ -138,6 +138,7 @@ if (OperatingSystem.IsWindows())
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
+builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
 builder.Services.AddScoped<VapidKeyProvider>();
@@ -381,6 +382,7 @@ _ = app.MapMcp("/mcp")
     .RequireRateLimiting("mcp");
 
 app.MapHub<LiveHub>("/hubs/live");
+app.MapHub<LiveViewSignalingHub>("/hubs/liveview-signaling");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

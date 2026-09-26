@@ -299,5 +299,22 @@ namespace VideoForensics.Client.Core.Tools
         {
             return await _sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
         }
+
+        /// <summary>
+        /// Gets the live provider connection for an active session without re-establishing it.
+        /// Used by browser bridges to attach media processors or forward packets to other peers.
+        /// </summary>
+        /// <param name="sessionId">The session ID to look up.</param>
+        /// <param name="ct">Cancellation token (unused for this in-memory lookup).</param>
+        /// <returns>The active connection, or null if the session does not exist or is not in memory.</returns>
+        public async Task<ILiveViewConnection?> GetConnectionForSessionAsync(Guid sessionId, CancellationToken ct)
+        {
+            if (_activeSessions.TryGetValue(sessionId, out var handle))
+            {
+                return handle.Connection;
+            }
+
+            return await Task.FromResult<ILiveViewConnection?>(null);
+        }
     }
 }

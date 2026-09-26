@@ -49,6 +49,13 @@ namespace VideoForensics.Providers.Common.Contracts
         event Action<LiveViewConnectionStateDto>? OnConnectionStateChange;
 
         /// <summary>
+        /// Raised for every raw video RTP packet received, containing the encoded payload, RTP timestamp,
+        /// and marker bit. Used by browser bridges to re-transmit video packets to other WebRTC peers
+        /// without re-encoding. Payload type is negotiated per-peer and not included in this signature.
+        /// </summary>
+        event Action<byte[], uint, int>? OnVideoRtpPayload;
+
+        /// <summary>
         /// Closes the live view connection cleanly, stopping media flow and releasing underlying resources.
         /// Safe to call multiple times; subsequent calls are no-ops.
         /// </summary>
