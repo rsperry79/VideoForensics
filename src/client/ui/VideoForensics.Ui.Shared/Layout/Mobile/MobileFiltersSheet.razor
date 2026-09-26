@@ -1,0 +1,67 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services.Scope
+@using VideoForensics.Ui.Shared.Components.Scope
+@implements IDisposable
+@inject ScopeState ScopeState
+@inject IStringLocalizer<SharedResources> L
+@inject TimeProvider TimeProvider
+
+@if (_open)
+{
+    <div class="mobile-filters-backdrop" data-testid="mobile-filters-backdrop" @onclick="Close"></div>
+    <div class="mobile-filters-sheet" data-testid="mobile-filters-sheet">
+        <div class="mobile-filters-sheet-header">
+            <div class="mobile-filters-sheet-title">@L["Filters"]</div>
+            <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="Close" data-testid="mobile-filters-close" title="Close filters" />
+        </div>
+        <div class="mobile-filters-sheet-content">
+            <ScopeRail />
+        </div>
+    </div>
+}
+
+<button type="button" class="mobile-filters-button" data-testid="mobile-filters-toggle" @onclick="Toggle" title="Open filters">
+    @L["Filters"]
+    @if (_hasCustomScope)
+    {
+        <span class="mobile-filters-indicator" data-testid="mobile-filters-indicator"></span>
+    }
+</button>
+
+@code {
+    private bool _open = false;
+    private bool _hasCustomScope = false;
+
+    protected override void OnInitialized()
+    {
+        ScopeState.OnChange += OnScopeChanged;
+        UpdateIndicator();
+    }
+
+    private void OnScopeChanged()
+    {
+        UpdateIndicator();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateIndicator()
+    {
+        _hasCustomScope = ScopeIndicator.IsCustom(ScopeState.Current, TimeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    private void Toggle()
+    {
+        _open = !_open;
+    }
+
+    private void Close()
+    {
+        _open = false;
+    }
+
+    public void Dispose()
+    {
+        ScopeState.OnChange -= OnScopeChanged;
+    }
+}

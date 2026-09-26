@@ -1,6 +1,6 @@
 # UI Forensic Workflow Plan
 
-Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
+Branches: phases 1–3 `claude/ui-media-auth` (PR #48, merged to dev); phase 4 `claude/ui-cases`; later phases each on their own branch. All PRs target `dev`; `main` only takes PRs from `dev` (#49). Status is updated at the end of every phase.
 
 ## Goal
 
@@ -98,21 +98,43 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 - Ring Self-Test page: results in a ForensicGrid; selecting a call opens the inspector with the parsed
   result in Fields and the raw responses in Raw (DumpView), plus schema issues.
 
-### Phase 6 — Navigation restructure 🔄 Next
+### Phase 6 — Navigation restructure ✅ Done (`claude/ui-nav`)
 
-Rewrite `NavGroups.cs` to the five areas, merge Analyze pages, redirect old routes, top-bar user
-menu for operator login, move Admin items, delete Workflow page.
+- ✅ Nav is Evidence, Cases, Analyze, Sources, Admin (Lockout Policy added); a reflection test asserts
+  every nav/user-menu path is a real route.
+- ✅ Operator's own login (change password, passkeys, sign out, device sign-in) in a `UserMenuButton`
+  on desktop and mobile, separate from provider logins.
+- ✅ "/" lands on Evidence; Dashboard and Workflow pages removed (/workflow redirects). Events stays as
+  "Event Grid" (its hold/export/verify actions have no Evidence equivalent yet).
+- ✅ `/analyze` merges reports, signal anomalies, access control and jamming as tabs on the global
+  scope; old routes redirect; `NavPathMatcher` highlights query-string nav items.
+- ✅ Mobile layout: filters sheet with the ScopeRail (+ custom-scope indicator) and an inspector
+  drawer (resolves the phase 2 mobile follow-up).
+- ✅ Security Events page (from #45, previously in an uncompiled directory) rehomed and wired to
+  `ISecurityEventsService` (separate PR).
 
-### Phase 7 — Device-by-time view + snapshot stream ⏳
+### Phase 7 — Device-by-time view + snapshot stream ✅ Done (`claude/ui-device-time`)
 
-Device × hour grid of event/snapshot markers (gap spotting for jamming/anomaly work) and a
-per-device scrubbable snapshot strip alongside RSSI.
+- ✅ Evidence `view=devicetime`: device × time grid (`DeviceTimeGrid`) — hourly buckets up to 7 days,
+  wider ranges use multi-hour buckets (≤168 columns); cells show event and media counts; empty runs
+  between a device's first and last activity are highlighted as gaps. Clicking a cell narrows the
+  scope to that device + bucket and switches to Timeline.
+- ✅ `SnapshotStrip`: per-device time-ordered ticketed thumbnails with a scrubber (range + arrow
+  keys) and an inline-SVG WiFi RSSI plot with the scrub position marked; selecting opens the viewer.
+- ✅ RSSI data path: `IDeviceHealthRepository.GetHistoryAsync(from, to)`,
+  `GET /api/v1/devices/{id}/health?from=&to=` (auth required), `DeviceHealthDto.ToDomain()`,
+  `RemoteDeviceHealthRepository` for MAUI.
 
 ## Follow-ups
 
-- Mobile layout (from #46) does not yet show the ScopeRail or the inspector; mobile pages fall back to
-  the default 7-day scope. Add a collapsible scope sheet + inspector drawer to `MobileLayout`.
 - Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
+
+- ✅ Session network tier (`claude/session-network-tier`): each web session records its real tier from
+  the browser's initial request (prerender → persisted state; unknown → Internet; never loosens).
+  Self-HTTP calls (security services, Security* pages via `ISelfApiHttpClientFactory`, WebAuthnClient
+  login) carry a signed 2-minute `X-VF-Session-Tier` header, honoured only on loopback; the auth
+  handler requires it bound to the operator, pre-auth login accepts an unbound one
+  (`RequestTierResolver`).
 
 ## Environment notes
 

@@ -1079,5 +1079,87 @@ namespace VideoForensics.WebApp.Tests
         }
 
         #endregion
+
+        #region GetDeviceHealthHistoryAsync Tests
+
+        [Fact]
+        public async Task GetDeviceHealthHistoryAsync_MissingFrom_ReturnsBadRequest()
+        {
+            var deviceId = Guid.NewGuid();
+            var toUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+            var deviceHealth = new Mock<IDeviceHealthRepository>();
+
+            IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
+                deviceId, null, toUtc, deviceHealth.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        [Fact]
+        public async Task GetDeviceHealthHistoryAsync_MissingTo_ReturnsBadRequest()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var deviceHealth = new Mock<IDeviceHealthRepository>();
+
+            IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
+                deviceId, fromUtc, null, deviceHealth.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        [Fact]
+        public async Task GetDeviceHealthHistoryAsync_FromGreaterThanTo_ReturnsBadRequest()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var deviceHealth = new Mock<IDeviceHealthRepository>();
+
+            IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
+                deviceId, fromUtc, toUtc, deviceHealth.Object, CancellationToken.None);
+
+            Assert.IsType<BadRequest>(result);
+        }
+
+        [Fact]
+        public async Task GetDeviceHealthHistoryAsync_ValidRange_CallsRepositoryAndReturnsOkWithDtos()
+        {
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+
+            var history = new List<DeviceHealth>
+            {
+                new DeviceHealth
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = deviceId,
+                    WifiSignalRssi = -55,
+                    CapturedAtUtc = fromUtc.AddDays(1)
+                }
+            };
+
+            var deviceHealth = new Mock<IDeviceHealthRepository>();
+            deviceHealth
+                .Setup(d => d.GetHistoryAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(history);
+
+            IResult result = await MediaApiEndpoints.GetDeviceHealthHistoryAsync(
+                deviceId, fromUtc, toUtc, deviceHealth.Object, CancellationToken.None);
+
+            var okResult = Assert.IsType<Ok<IEnumerable<DeviceHealthDto>>>(result);
+            var dtos = okResult.Value?.ToList();
+            Assert.NotNull(dtos);
+            Assert.Single(dtos);
+            Assert.Equal(history[0].Id, dtos[0].Id);
+            Assert.Equal(history[0].WifiSignalRssi, dtos[0].WifiSignalRssi);
+
+            deviceHealth.Verify(
+                d => d.GetHistoryAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        #endregion
     }
 }

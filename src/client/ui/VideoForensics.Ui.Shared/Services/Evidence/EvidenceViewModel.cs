@@ -12,7 +12,10 @@ public enum EvidenceView
     Grid,
 
     /// <summary>Gallery view with image/video tiles.</summary>
-    Gallery
+    Gallery,
+
+    /// <summary>Device x hour grid of event/snapshot markers, for gap-spotting across devices.</summary>
+    DeviceTime
 }
 
 /// <summary>
@@ -35,6 +38,7 @@ public class EvidenceViewModel
             "timeline" => EvidenceView.Timeline,
             "grid" => EvidenceView.Grid,
             "gallery" => EvidenceView.Gallery,
+            "devicetime" => EvidenceView.DeviceTime,
             _ => EvidenceView.Timeline
         };
     }

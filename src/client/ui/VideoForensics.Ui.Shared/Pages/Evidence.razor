@@ -1,3 +1,4 @@
+@page "/"
 @page "/evidence"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
@@ -25,6 +26,8 @@
 @inject NavigationManager NavigationManager
 @inject InspectorState InspectorState
 @inject ScopeState ScopeState
+@inject IDeviceHealthRepository DeviceHealthRepository
+@inject IStringLocalizer<Evidence> L
 
 <h4 class="mb-4">Evidence</h4>
 
@@ -78,6 +81,7 @@ else
             <SfButton Content="Timeline" OnClick="@(() => SetView(EvidenceView.Timeline))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Timeline ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-timeline" />
             <SfButton Content="Grid" OnClick="@(() => SetView(EvidenceView.Grid))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Grid ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-grid" />
             <SfButton Content="Gallery" OnClick="@(() => SetView(EvidenceView.Gallery))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Gallery ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-gallery" />
+            <SfButton Content="@L["DeviceTimeViewLabel"]" OnClick="@(() => SetView(EvidenceView.DeviceTime))" CssClass="@(_currentView == EvidenceView.DeviceTime ? "e-primary" : "e-outline")" data-testid="view-devicetime" />
         </div>
     </div>
 
@@ -160,6 +164,29 @@ else
             }
         </div>
     }
+    else if (_currentView == EvidenceView.DeviceTime)
+    {
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <DeviceTimeGridView
+                Result="@_deviceTimeGrid"
+                SelectedDeviceId="@_stripDeviceId"
+                OnCellClick="@OnDeviceTimeCellClickAsync"
+                OnDeviceSelected="@OnDeviceSelectedForStripAsync" />
+
+            @if (_stripDeviceId is not null)
+            {
+                <SnapshotStrip
+                    Items="@_stripItems"
+                    ThumbnailUrls="@_thumbnailUrls"
+                    RssiSamples="@_stripRssi"
+                    RangeStartUtc="@ScopeState.Current.FromUtc"
+                    RangeEndUtc="@ScopeState.Current.ToUtc"
+                    SelectedIndex="@_stripSelectedIndex"
+                    SelectedIndexChanged="@((int i) => _stripSelectedIndex = i)"
+                    OnSelect="@OnStripItemSelectedAsync" />
+            }
+        </div>
+    }
 }
 
 @code {
@@ -176,6 +203,11 @@ else
     private string? _currentMediaUrl;
     private string? _mediaLoadError;
     private System.Action? _onScopeChangeHandler;
+    private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
+    private Guid? _stripDeviceId;
+    private List<EvidenceItem> _stripItems = new();
+    private List<RssiSample> _stripRssi = new();
+    private int _stripSelectedIndex;
 
     protected override async Task OnInitializedAsync()
     {
@@ -211,6 +243,7 @@ else
 
             _vm = new EvidenceViewModel(result);
             _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
+            _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);
 
             // Update summary
             var counts = result.Counts;
@@ -235,6 +268,13 @@ else
                     // rather than silently leaving every tile blank with no explanation.
                     _thumbnailsUnavailable = true;
                 }
+            }
+
+            // Keep the snapshot strip's items/RSSI in step with the scope if a device is selected
+            // (e.g. the scope's date range changed while the strip for a device was open).
+            if (_stripDeviceId is Guid stripDeviceId)
+            {
+                await RefreshSnapshotStripAsync(stripDeviceId);
             }
 
             // Parse view from query string
@@ -366,6 +406,85 @@ else
         {
             await SelectItemAsync(item.Key);
         }
+    }
+
+    /// <summary>
+    /// Narrows the global scope to the clicked device and time bucket, and switches to Timeline -
+    /// the drill-down the device-by-time grid exists to enable.
+    /// </summary>
+    private Task OnDeviceTimeCellClickAsync(DeviceTimeCellClickArgs args)
+    {
+        var narrowedScope = ScopeState.Current with
+        {
+            DeviceIds = new List<Guid> { args.DeviceId },
+            FromUtc = args.BucketStartUtc,
+            ToUtc = args.BucketEndUtc
+        };
+        ScopeState.Set(narrowedScope);
+        SetView(EvidenceView.Timeline);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Selects a device for the snapshot strip below the device-by-time grid.</summary>
+    private async Task OnDeviceSelectedForStripAsync(Guid deviceId)
+    {
+        _stripDeviceId = deviceId;
+        _stripSelectedIndex = 0;
+        await RefreshSnapshotStripAsync(deviceId);
+    }
+
+    /// <summary>
+    /// Rebuilds the snapshot strip's items (this device's viewable media, time-ordered), fetches
+    /// any thumbnails the timeline view hasn't already loaded, and fetches WiFi RSSI history for
+    /// the same window from <see cref="IDeviceHealthRepository"/>.
+    /// </summary>
+    private async Task RefreshSnapshotStripAsync(Guid deviceId)
+    {
+        _stripItems = (_vm?.Items ?? Enumerable.Empty<EvidenceItem>())
+            .Where(i => i.DeviceId == deviceId && i.HasViewableMedia)
+            .OrderBy(i => i.OccurredAtUtc)
+            .ToList();
+
+        var missingThumbIds = _stripItems
+            .Where(i => i.Media is not null && !_thumbnailUrls.ContainsKey(i.Media.Id))
+            .Select(i => i.Media!.Id)
+            .Distinct()
+            .ToList();
+        if (missingThumbIds.Count > 0)
+        {
+            try
+            {
+                var urls = await MediaUrlProvider.GetContentUrlsAsync(missingThumbIds, CancellationToken.None);
+                foreach (var kvp in urls)
+                {
+                    _thumbnailUrls[kvp.Key] = kvp.Value;
+                }
+            }
+            catch
+            {
+                // Thumbnails degrade gracefully elsewhere too; the strip just shows placeholders.
+            }
+        }
+
+        try
+        {
+            var history = await DeviceHealthRepository.GetHistoryAsync(
+                deviceId, ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, CancellationToken.None);
+            _stripRssi = history
+                .Where(h => h.WifiSignalRssi.HasValue)
+                .Select(h => new RssiSample(h.CapturedAtUtc, h.WifiSignalRssi!.Value))
+                .ToList();
+        }
+        catch
+        {
+            // RSSI is a supplementary signal for the strip; its absence shouldn't block the view.
+            _stripRssi = new List<RssiSample>();
+        }
+    }
+
+    private async Task OnStripItemSelectedAsync(EvidenceItem item)
+    {
+        await SelectItemAsync(item.Key);
     }
 
     private async Task OnMediaViewerNext()

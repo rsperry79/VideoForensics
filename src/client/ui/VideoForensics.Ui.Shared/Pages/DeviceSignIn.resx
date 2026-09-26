@@ -42,7 +42,7 @@
     <value>Sign out</value>
   </data>
   <data name="GoToDashboard" xml:space="preserve">
-    <value>Go to Dashboard</value>
+    <value>Go to Evidence</value>
   </data>
   <data name="SignInDescription" xml:space="preserve">
     <value>Sign in with your username and password, or use a passkey if you have one registered.</value>
