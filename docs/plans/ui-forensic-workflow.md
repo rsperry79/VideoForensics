@@ -125,9 +125,15 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
   `GET /api/v1/devices/{id}/health?from=&to=` (auth required), `DeviceHealthDto.ToDomain()`,
   `RemoteDeviceHealthRepository` for MAUI.
 
-## Follow-ups
+### Phase 8 — Evidence actions 🔄 In progress (`claude/ui-evidence-actions`)
 
-- Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
+- Grab still with hash: capture the current video frame from the media viewer as derived evidence
+  (source media id, frame time, SHA-256 of both, operator, chain-of-custody entry; original untouched),
+  optionally pinned to the active case. Resolves the phase 3 deferral.
+- Move the Event Grid's legal hold, export and integrity-verify actions into Evidence (grid context
+  menu / inspector), then retire the Events page and `EventDetailsDialog` (old route redirects).
+
+## Follow-ups
 
 - ✅ Session network tier (`claude/session-network-tier`): each web session records its real tier from
   the browser's initial request (prerender → persisted state; unknown → Internet; never loosens).
