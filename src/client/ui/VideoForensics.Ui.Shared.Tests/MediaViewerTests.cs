@@ -4,6 +4,7 @@ using System;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Xunit;
 using VideoForensics.Ui.Shared.Components.Evidence;
@@ -16,6 +17,7 @@ public class MediaViewer_Image_Tests : BunitContext
     public MediaViewer_Image_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
     }
 
     private EvidenceItem CreateImageItem()
@@ -337,6 +339,23 @@ public class MediaViewer_Image_Tests : BunitContext
         var nextBtn = component.Find("[data-testid='viewer-next']");
         Assert.NotNull(nextBtn.GetAttribute("disabled"));
     }
+
+    [Fact]
+    public void GrabStillButton_DoesNotRenderForImage()
+    {
+        // Arrange
+        var item = CreateImageItem();
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/image.jpg")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false));
+
+        // Assert
+        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+    }
 }
 
 public class MediaViewer_NoUrl_Tests : BunitContext
@@ -344,6 +363,7 @@ public class MediaViewer_NoUrl_Tests : BunitContext
     public MediaViewer_NoUrl_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
     }
 
     [Fact]
@@ -425,6 +445,7 @@ public class MediaViewer_Video_Tests : BunitContext
     public MediaViewer_Video_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
         _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
         _module.SetupVoid("setPlaybackRate", _ => true);
         _module.SetupVoid("stepFrame", _ => true);
@@ -640,6 +661,63 @@ public class MediaViewer_Video_Tests : BunitContext
         // Assert
         _module.VerifyInvoke("togglePlay");
     }
+
+    [Fact]
+    public void GrabStillButton_RendersForVideo()
+    {
+        // Arrange
+        var item = CreateVideoItem();
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false));
+
+        // Assert
+        var button = component.Find("[data-testid='grab-still']");
+        Assert.NotNull(button);
+    }
+
+    [Fact]
+    public void GrabStillButton_Click_InvokesOnGrabStillWithCurrentTimeMs()
+    {
+        // Arrange
+        _ = _module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(4200.0);
+        var item = CreateVideoItem();
+        long? capturedOffsetMs = null;
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.OnGrabStill, EventCallback.Factory.Create<long>(this, ms => { capturedOffsetMs = ms; })));
+
+        // Act
+        component.Find("[data-testid='grab-still']").Click();
+
+        // Assert
+        Assert.Equal(4200L, capturedOffsetMs);
+    }
+
+    [Fact]
+    public void GrabStillButton_DoesNotRender_WhenCanGrabStillFalse()
+    {
+        // Arrange
+        var item = CreateVideoItem();
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.CanGrabStill, false));
+
+        // Assert
+        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+    }
 }
 
 public class MediaViewer_KeyboardNavigation_Tests : BunitContext
@@ -649,6 +727,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     public MediaViewer_KeyboardNavigation_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
         _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
         _module.SetupVoid("setPlaybackRate", _ => true);
         _module.SetupVoid("stepFrame", _ => true);
@@ -900,6 +979,122 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         Assert.True(seconds < 0);
         Assert.Equal(-1.0 / 25, seconds, precision: 6);
     }
+
+    [Fact]
+    public void SKey_OnVideo_InvokesOnGrabStillWithCurrentTimeMs()
+    {
+        // Arrange
+        _ = _module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(9000.0);
+        var item = CreateVideoItemForKeyboard();
+        long? capturedOffsetMs = null;
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.OnGrabStill, EventCallback.Factory.Create<long>(this, ms => { capturedOffsetMs = ms; })));
+
+        // Act
+        component.Find("[data-testid='media-viewer']").KeyDown("s");
+
+        // Assert
+        Assert.Equal(9000L, capturedOffsetMs);
+    }
+}
+
+public class MediaViewer_StillCaptureStatus_Tests : BunitContext
+{
+    private readonly Bunit.BunitJSModuleInterop _module;
+
+    public MediaViewer_StillCaptureStatus_Tests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
+        _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        _module.SetupVoid("focusElement", _ => true);
+    }
+
+    private static EvidenceItem CreateVideoItem()
+    {
+        var deviceId = Guid.NewGuid();
+        return new EvidenceItem
+        {
+            Key = "media:1",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = deviceId,
+            DeviceName = "Camera",
+            Media = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                FileName = "video.mp4",
+                MediaFormat = "video/mp4",
+                FilePath = "/media/video.mp4",
+                Sha256Hash = "test",
+                DeviceId = deviceId,
+                RecordedAtUtc = DateTime.UtcNow,
+                DownloadedAtUtc = DateTime.UtcNow
+            }
+        };
+    }
+
+    [Fact]
+    public void StillCaptureStatus_Success_ShowsHashAndOpenLink()
+    {
+        // Arrange
+        var status = new MediaStillCaptureStatus { Sha256Hash = "abcdef1234567890", OpenUrl = "https://example.com/still.png" };
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, CreateVideoItem())
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.StillCaptureStatus, status));
+
+        // Assert
+        var result = component.Find("[data-testid='grab-still-result']");
+        Assert.Contains("abcdef1234567890", result.TextContent);
+        var link = component.Find("[data-testid='grab-still-open']");
+        Assert.Equal("https://example.com/still.png", link.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void StillCaptureStatus_Error_ShowsErrorMessage()
+    {
+        // Arrange
+        var status = new MediaStillCaptureStatus { ErrorMessage = "ffmpeg not available" };
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, CreateVideoItem())
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.StillCaptureStatus, status));
+
+        // Assert
+        var error = component.Find("[data-testid='grab-still-error']");
+        Assert.Contains("ffmpeg not available", error.TextContent);
+    }
+
+    [Fact]
+    public void StillCaptureStatus_InProgress_ShowsProgressIndicator()
+    {
+        // Arrange
+        var status = new MediaStillCaptureStatus { InProgress = true };
+
+        // Act
+        var component = Render<MediaViewer>(parameters => parameters
+            .Add(p => p.Item, CreateVideoItem())
+            .Add(p => p.ContentUrl, "https://example.com/video.mp4")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false)
+            .Add(p => p.StillCaptureStatus, status));
+
+        // Assert
+        Assert.NotEmpty(component.FindAll("[data-testid='grab-still-progress']"));
+    }
 }
 
 public class MediaViewer_ItemChange_Tests : BunitContext
@@ -907,6 +1102,7 @@ public class MediaViewer_ItemChange_Tests : BunitContext
     public MediaViewer_ItemChange_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
     }
 
     [Fact]

@@ -1,12 +1,18 @@
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Cases
+@using VideoForensics.Ui.Shared.Services.Evidence
 @using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Components.Dump
 @implements IDisposable
 @inject InspectorState InspectorState
 @inject CaseState CaseState
 @inject PairedSessionState SessionState
+@inject ILegalHoldRepository LegalHoldRepository
+@inject IEvidenceValidationService EvidenceValidationService
+@inject NavigationManager NavigationManager
 
 @if (InspectorState.Current is not null)
 {
@@ -132,15 +138,109 @@
                 }
             </div>
         }
+
+        @if (EffectiveActions is not null)
+        {
+            <div class="inspector-actions-section">
+                @if (EvidenceActions.CanPlaceHold(EffectiveActions) && _pendingAction != PendingEvidenceAction.Release)
+                {
+                    @if (_pendingAction == PendingEvidenceAction.Hold)
+                    {
+                        <textarea class="inspector-action-reason"
+                                  data-testid="hold-reason"
+                                  placeholder="Reason for hold"
+                                  @bind="_actionReasonInput"
+                                  @bind:event="oninput"></textarea>
+                        <button type="button" data-testid="confirm-place-hold"
+                                disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
+                                @onclick="OnConfirmPlaceHoldClicked">
+                            Confirm
+                        </button>
+                        <button type="button" data-testid="cancel-evidence-action" @onclick="OnCancelActionClicked">
+                            Cancel
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" data-testid="place-legal-hold" @onclick="@(() => BeginAction(PendingEvidenceAction.Hold))">
+                            Place Legal Hold
+                        </button>
+                    }
+                }
+
+                @if (EvidenceActions.CanReleaseHold(EffectiveActions) && _pendingAction != PendingEvidenceAction.Hold)
+                {
+                    @if (_pendingAction == PendingEvidenceAction.Release)
+                    {
+                        <textarea class="inspector-action-reason"
+                                  data-testid="hold-reason"
+                                  placeholder="Reason for release"
+                                  @bind="_actionReasonInput"
+                                  @bind:event="oninput"></textarea>
+                        <button type="button" data-testid="confirm-release-hold"
+                                disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
+                                @onclick="OnConfirmReleaseClicked">
+                            Confirm
+                        </button>
+                        <button type="button" data-testid="cancel-evidence-action" @onclick="OnCancelActionClicked">
+                            Cancel
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" data-testid="release-legal-hold" @onclick="@(() => BeginAction(PendingEvidenceAction.Release))">
+                            Release Legal Hold
+                        </button>
+                    }
+                }
+
+                @if (EvidenceActions.CanVerifyIntegrity(EffectiveActions))
+                {
+                    <button type="button" data-testid="verify-integrity" @onclick="OnVerifyIntegrityClicked">
+                        Verify Integrity (device)
+                    </button>
+                }
+
+                @if (EvidenceActions.CanExport(EffectiveActions))
+                {
+                    <button type="button" data-testid="export-evidence" @onclick="OnExportClicked">
+                        Export
+                    </button>
+                }
+
+                @if (_actionSuccessMessage is not null)
+                {
+                    <div class="inspector-action-success">@_actionSuccessMessage</div>
+                }
+                @if (_actionError is not null)
+                {
+                    <div class="inspector-action-error">@_actionError</div>
+                }
+            </div>
+        }
     </div>
 }
 
 @code {
+    private enum PendingEvidenceAction { None, Hold, Release }
+
     private string _activeTab = "fields";
     private string _pinReason = string.Empty;
     private string? _pinError;
     private string? _pinSuccessMessage;
     private OperatorRole? _role;
+
+    private PendingEvidenceAction _pendingAction = PendingEvidenceAction.None;
+    private string _actionReasonInput = string.Empty;
+    private string? _actionSuccessMessage;
+    private string? _actionError;
+
+    // Local override of the on-hold state shown to the operator immediately after placing/releasing
+    // a hold, without needing to re-fetch or re-map the inspected item. Reset whenever a different
+    // item is shown (see OnInspectorChanged); until then it takes precedence over the model's own
+    // InspectorState.Current.Actions.ActiveHoldId.
+    private bool _hasHoldOverride;
+    private Guid? _holdOverrideActiveHoldId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -172,6 +272,13 @@
         _pinReason = string.Empty;
         _pinError = null;
         _pinSuccessMessage = null;
+
+        _pendingAction = PendingEvidenceAction.None;
+        _actionReasonInput = string.Empty;
+        _actionSuccessMessage = null;
+        _actionError = null;
+        _hasHoldOverride = false;
+        _holdOverrideActiveHoldId = null;
 
         StateHasChanged();
     }
@@ -205,6 +312,151 @@
         {
             _pinError = ex.Message;
         }
+    }
+
+    /// <summary>
+    /// The inspected item's Actions with the local hold-placed/released override applied (set right
+    /// after a successful action, see <see cref="OnConfirmPlaceHoldClicked"/>/
+    /// <see cref="OnConfirmReleaseClicked"/>), so the button set flips immediately without needing
+    /// the host page to re-map and re-show a fresh InspectorModel. Null when the inspected item
+    /// carries no evidence actions at all (e.g. Query API/Self-Test inspector uses).
+    /// </summary>
+    private EvidenceActionState? EffectiveActions
+    {
+        get
+        {
+            var actions = InspectorState.Current?.Actions;
+            if (actions is null)
+            {
+                return null;
+            }
+
+            return _hasHoldOverride ? actions with { ActiveHoldId = _holdOverrideActiveHoldId } : actions;
+        }
+    }
+
+    private void BeginAction(PendingEvidenceAction action)
+    {
+        _pendingAction = action;
+        _actionReasonInput = string.Empty;
+        _actionSuccessMessage = null;
+        _actionError = null;
+    }
+
+    private void OnCancelActionClicked()
+    {
+        _pendingAction = PendingEvidenceAction.None;
+        _actionReasonInput = string.Empty;
+    }
+
+    private async Task OnConfirmPlaceHoldClicked()
+    {
+        var actions = InspectorState.Current?.Actions;
+        if (actions?.MediaItemId is not { } mediaItemId || string.IsNullOrWhiteSpace(_actionReasonInput))
+        {
+            return;
+        }
+
+        _actionError = null;
+
+        // Never fall back to a machine-level identity (e.g. Environment.UserName) if no operator
+        // is signed in - that would misattribute the action in the chain of custody. Refuse instead.
+        var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            _actionError = "You must be signed in to perform this action.";
+            _pendingAction = PendingEvidenceAction.None;
+            _actionReasonInput = string.Empty;
+            return;
+        }
+
+        try
+        {
+            var hold = await LegalHoldRepository.PlaceAsync(mediaItemId, _actionReasonInput, actor, CancellationToken.None);
+            _hasHoldOverride = true;
+            _holdOverrideActiveHoldId = hold.Id;
+            _actionSuccessMessage = "Legal hold placed";
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _pendingAction = PendingEvidenceAction.None;
+            _actionReasonInput = string.Empty;
+        }
+    }
+
+    private async Task OnConfirmReleaseClicked()
+    {
+        var activeHoldId = EffectiveActions?.ActiveHoldId;
+        if (activeHoldId is not { } holdId || string.IsNullOrWhiteSpace(_actionReasonInput))
+        {
+            return;
+        }
+
+        _actionError = null;
+
+        // Never fall back to a machine-level identity (e.g. Environment.UserName) if no operator
+        // is signed in - that would misattribute the action in the chain of custody. Refuse instead.
+        var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            _actionError = "You must be signed in to perform this action.";
+            _pendingAction = PendingEvidenceAction.None;
+            _actionReasonInput = string.Empty;
+            return;
+        }
+
+        try
+        {
+            await LegalHoldRepository.ReleaseAsync(holdId, actor, _actionReasonInput, CancellationToken.None);
+            _hasHoldOverride = true;
+            _holdOverrideActiveHoldId = null;
+            _actionSuccessMessage = "Legal hold released";
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _pendingAction = PendingEvidenceAction.None;
+            _actionReasonInput = string.Empty;
+        }
+    }
+
+    private async Task OnVerifyIntegrityClicked()
+    {
+        var actions = InspectorState.Current?.Actions;
+        if (actions is null)
+        {
+            return;
+        }
+
+        _actionError = null;
+        try
+        {
+            var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(actions.DeviceId, CancellationToken.None);
+            var failed = results.Count(r => r.Status != "verified");
+            _actionSuccessMessage = $"{results.Count - failed} of {results.Count} file(s) verified for this device.";
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+    }
+
+    private void OnExportClicked()
+    {
+        var actions = InspectorState.Current?.Actions;
+        if (actions?.MediaItemId is not { } mediaItemId)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo(EvidenceActions.BuildExportUrl(new[] { mediaItemId }));
     }
 
     public void Dispose()

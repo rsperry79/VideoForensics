@@ -56,9 +56,9 @@ else
     }
 
     // Every "You are not signed in" prompt across the app links here with a returnUrl pointing back
-    // at itself (e.g. Events.razor -> "/signin?returnUrl=%2Fevents") so signing in doesn't strand the
-    // user on the dashboard - only trust a same-app relative path, never an absolute/external URL a
-    // crafted link could smuggle in via the query string.
+    // at itself (e.g. Evidence.razor -> "/signin?returnUrl=%2Fevidence") so signing in doesn't strand
+    // the user on the dashboard - only trust a same-app relative path, never an absolute/external URL
+    // a crafted link could smuggle in via the query string.
     private string GetReturnUrl()
     {
         if (ReturnUrl is not null && Uri.TryCreate(ReturnUrl, UriKind.Relative, out _))
