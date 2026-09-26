@@ -18,6 +18,9 @@ using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Evidence;
 using VideoForensics.Ui.Shared.Services.Inspector;
 using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Ui.Shared.Components.Inspector;
+using Syncfusion.Blazor.Grids;
+using Syncfusion.Blazor.Navigations;
 
 /// <summary>
 /// Shared scenario setup for Evidence page tests: one device, one event with a linked image
@@ -51,6 +54,7 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+    protected Mock<IEvidenceValidationService> EvidenceValidationServiceMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected InspectorState InspectorState { get; } = new();
@@ -72,6 +76,12 @@ public abstract class EvidencePageTestBase : BunitContext
         protected override Task OnParametersSetAsync() => Task.CompletedTask;
 
         protected override Task OnAfterRenderAsync(bool firstRender) => Task.CompletedTask;
+
+        // The real SfGrid<T>.ShouldRender() touches internal Syncfusion state this double never
+        // initializes (we skip its real lifecycle above), and throws once a sibling's state change
+        // (e.g. the evidence-actions reason textbox) triggers a second SetParametersAsync pass on
+        // this component. Only exercised once actions were added to the Grid view.
+        protected override bool ShouldRender() => true;
     }
 
     protected EvidencePageTestBase()
@@ -193,14 +203,38 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         Services.AddScoped(_ => MediaUrlProviderMock.Object);
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
+        Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
+
+        // No operator signed in by default (PairedSessionState.OperatorId stays null); tests that
+        // need one call SignInOperatorAsync(), which re-registers with a signed-in session
+        // (later registration wins, same pattern InspectorPanelTests uses).
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+
+        // SfToast (added for the evidence-actions toasts) checks RendererInfo during render; must
+        // be set after all service registrations above, since setting it locks the provider.
+        SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
     }
 
     /// <summary>Deterministic stand-in for the provider's short-lived, per-media access ticket.</summary>
     protected static string TicketedUrl(Guid mediaId) =>
         $"https://cdn.example.test/media/{mediaId:N}?ticket=tkt-{mediaId:N}";
+
+    /// <summary>
+    /// Signs in an operator for this test. Mutates the PairedSessionState already registered in
+    /// the constructor (resolving it caches the single scoped instance bUnit will later inject
+    /// into the rendered component) rather than re-registering, since SetRendererInfo() above
+    /// locks the service provider against further registration.
+    /// </summary>
+    protected async Task<Guid> SignInOperatorAsync()
+    {
+        var operatorId = Guid.NewGuid();
+        var session = Services.GetRequiredService<PairedSessionState>();
+        await session.SetAsync("test-token", operatorId, "Review");
+        return operatorId;
+    }
 
     protected IRenderedComponent<Evidence> RenderEvidencePage() => Render<Evidence>();
 }
@@ -556,6 +590,224 @@ public class Evidence_DeviceTime_Tests : EvidencePageTestBase
         component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
 
         component.Find($"[data-key='event:{EventId}']").Click();
+
+        Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
+    }
+}
+
+/// <summary>
+/// The Grid view's context menu (legal hold place/release, export, device integrity verification,
+/// view details) moved over from the retired Events page. The Syncfusion grid is stubbed (see
+/// EvidencePageTestBase), so selection and context-menu clicks are driven directly through
+/// ForensicGrid's public HandleRowSelectedAsync/ContextMenuItemClicked members, the same way
+/// ForensicGridTests exercises them.
+/// </summary>
+public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
+{
+    /// <summary>
+    /// Renders the Evidence page on the Grid view. The item to target is passed via the context
+    /// menu event's own RowInfo.RowData (mirroring Syncfusion's real behavior: a right-click
+    /// targets the row under the cursor without changing selection), not via a prior row-selection
+    /// step - selecting a viewable item would open the media viewer and remove the grid from the
+    /// render tree before the context menu could even be considered.
+    /// </summary>
+    private IRenderedComponent<Evidence> RenderGrid()
+    {
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("/evidence?view=grid", replace: true);
+        return RenderEvidencePage();
+    }
+
+    /// <summary>
+    /// Builds a ContextMenuClickEventArgs carrying the given row via RowInfo.RowData, the way
+    /// Syncfusion's real grid populates it for a right-click on that row (independent of any
+    /// left-click "selection" state). RowInfo/RowData's setters are internal to Syncfusion's
+    /// assembly, so this uses reflection purely to construct the args - it does not touch
+    /// production code.
+    /// </summary>
+    private static Task ClickContextMenuAsync(IRenderedComponent<Evidence> component, string menuId, EvidenceItem? item) =>
+        component.InvokeAsync(() =>
+        {
+            var args = new ContextMenuClickEventArgs<EvidenceItem> { Item = new MenuItemModel { Id = menuId } };
+            if (item is not null)
+            {
+                var rowInfo = new RowInfo<EvidenceItem>();
+                typeof(RowInfo<EvidenceItem>).GetProperty(nameof(RowInfo<EvidenceItem>.RowData))!.SetValue(rowInfo, item);
+                typeof(ContextMenuClickEventArgs<EvidenceItem>).GetProperty(nameof(ContextMenuClickEventArgs<EvidenceItem>.RowInfo))!.SetValue(args, rowInfo);
+            }
+
+            var grid = component.FindComponent<ForensicGrid<EvidenceItem>>();
+            return grid.Instance.ContextMenuItemClicked.InvokeAsync(args);
+        });
+
+    private static EvidenceItem FindItem(IRenderedComponent<Evidence> component, string key) =>
+        component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.DataSource!.First(i => i.Key == key);
+
+    [Fact]
+    public async Task Export_SelectedEventWithMedia_NavigatesToReviewExportWithMediaId()
+    {
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+
+        await ClickContextMenuAsync(component, "export", item);
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.Contains($"/review/export?ids={ImageMediaId}", nav.Uri);
+    }
+
+    [Fact]
+    public async Task ContextMenuClicked_NoRowInfo_DoesNothing_DoesNotThrow()
+    {
+        // Defensive guard: no RowInfo means the click didn't target a row (or the RowInfo shape
+        // changed upstream) - nothing should blow up or navigate.
+        var component = RenderGrid();
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var beforeUri = nav.Uri;
+
+        await ClickContextMenuAsync(component, "export", item: null);
+
+        Assert.Equal(beforeUri, nav.Uri);
+    }
+
+    [Fact]
+    public async Task PlaceHold_Click_RevealsReasonPrompt()
+    {
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+
+        await ClickContextMenuAsync(component, "hold", item);
+
+        Assert.NotEmpty(component.FindAll("[data-testid='grid-action-reason']"));
+    }
+
+    [Fact]
+    public async Task PlaceHold_ConfirmWithReason_CallsPlaceAsync_WithSignedInOperatorIdentity_ShowsToast()
+    {
+        var operatorId = await SignInOperatorAsync();
+        LegalHoldRepositoryMock
+            .Setup(r => r.PlaceAsync(ImageMediaId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "Active investigation", CreatedBy = "op" });
+
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "hold", item);
+
+        component.Find("[data-testid='grid-action-reason']").Change("Active investigation");
+        await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
+
+        LegalHoldRepositoryMock.Verify(
+            r => r.PlaceAsync(ImageMediaId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.Contains("Legal hold placed", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='grid-action-reason']"));
+    }
+
+    [Fact]
+    public async Task PlaceHold_NoSignedInOperator_DoesNotCallPlaceAsync_ShowsError()
+    {
+        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "hold", item);
+
+        component.Find("[data-testid='grid-action-reason']").Change("Active investigation");
+        await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
+
+        LegalHoldRepositoryMock.Verify(
+            r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ReleaseHold_ConfirmWithReason_CallsReleaseAsync_WithSignedInOperatorIdentity_ShowsToast()
+    {
+        var operatorId = await SignInOperatorAsync();
+        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "r", CreatedBy = "op" };
+        LegalHoldRepositoryMock
+            .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold> { activeHold });
+        LegalHoldRepositoryMock
+            .Setup(r => r.ReleaseAsync(activeHold.Id, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "release", item);
+
+        component.Find("[data-testid='grid-action-reason']").Change("No longer needed");
+        await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
+
+        LegalHoldRepositoryMock.Verify(
+            r => r.ReleaseAsync(activeHold.Id, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.Contains("Legal hold released", component.Markup);
+    }
+
+    [Fact]
+    public async Task ReleaseHold_NoSignedInOperator_DoesNotCallReleaseAsync_ShowsError()
+    {
+        var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "r", CreatedBy = "op" };
+        LegalHoldRepositoryMock
+            .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold> { activeHold });
+
+        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "release", item);
+
+        component.Find("[data-testid='grid-action-reason']").Change("No longer needed");
+        await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
+
+        LegalHoldRepositoryMock.Verify(
+            r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CancelPendingHold_HidesReasonPrompt_DoesNotCallRepository()
+    {
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "hold", item);
+
+        component.Find("[data-testid='grid-action-reason']").Change("Some reason");
+        await component.InvokeAsync(() => component.Find("[data-testid='grid-cancel-action']").Click());
+
+        Assert.Empty(component.FindAll("[data-testid='grid-action-reason']"));
+        LegalHoldRepositoryMock.Verify(
+            r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task VerifyIntegrity_CallsServiceScopedToDevice_ShowsToastWithCounts()
+    {
+        EvidenceValidationServiceMock
+            .Setup(s => s.VerifyLocalIntegrityAsync(DeviceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<MediaVerificationResult>
+            {
+                new() { MediaItemId = ImageMediaId, FileName = "motion.jpg", Status = "verified" },
+                new() { MediaItemId = VideoMediaId, FileName = "clip.mp4", Status = "failed", FailureReason = "hash mismatch" }
+            });
+
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+        await ClickContextMenuAsync(component, "verify", item);
+
+        EvidenceValidationServiceMock.Verify(s => s.VerifyLocalIntegrityAsync(DeviceId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Contains("1 of 2 file(s) verified for this device.", component.Markup);
+    }
+
+    [Fact]
+    public async Task ViewDetails_ViewableItem_OpensMediaViewer()
+    {
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
+
+        await ClickContextMenuAsync(component, "details", item);
 
         Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
     }

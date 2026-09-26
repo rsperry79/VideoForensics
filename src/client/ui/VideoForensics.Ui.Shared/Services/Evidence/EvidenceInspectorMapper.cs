@@ -93,6 +93,12 @@ public static class EvidenceInspectorMapper
                 "IntegrityVerified",
                 item.Media.IntegrityVerified.ToString()));
 
+            // Computed status (from the freshest IntegrityRecord for this media item), same as the
+            // Events grid's "Integrity" column used to show - distinct from the raw
+            // IntegrityVerified/LastVerifiedAtUtc entity fields above.
+            var (integrityStatusText, _) = EvidenceActions.DetermineIntegrityStatus(item.Media.Id, integrity);
+            provenance.Add(new KeyValuePair<string, string>("IntegrityStatus", integrityStatusText));
+
             if (item.Media.LastVerifiedAtUtc.HasValue)
             {
                 provenance.Add(new KeyValuePair<string, string>(
@@ -123,12 +129,23 @@ public static class EvidenceInspectorMapper
             pinTarget = new PinTarget(CaseItemKind.Media, item.Media.Id);
         }
 
+        // Evidence actions: legal hold place/release, device integrity verification, export - all
+        // gated on this item having a linked, downloaded media item (see EvidenceActions).
+        var activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out var activeHold)
+            ? activeHold.Id
+            : (Guid?)null;
+        var actions = new EvidenceActionState(
+            MediaItemId: item.Media?.Id,
+            DeviceId: item.DeviceId,
+            ActiveHoldId: activeHoldId);
+
         return new InspectorModel(
             Title: title,
             Fields: fields,
             RawJson: rawJson,
             Related: new List<InspectorLink>(),
             Provenance: provenance,
-            Pin: pinTarget);
+            Pin: pinTarget,
+            Actions: actions);
     }
 }

@@ -41,7 +41,6 @@ namespace VideoForensics.Ui.Shared.Layout
             new("evidence", "Evidence", "/evidence",
             [
                 new("Evidence", "/evidence"),
-                new("Event Grid", "/events"),
                 new("Collect Videos", "/collect/videos"),
                 new("Collect Snapshots", "/collect/snapshots")
             ]),

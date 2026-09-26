@@ -130,8 +130,16 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 - Grab still with hash: capture the current video frame from the media viewer as derived evidence
   (source media id, frame time, SHA-256 of both, operator, chain-of-custody entry; original untouched),
   optionally pinned to the active case. Resolves the phase 3 deferral.
-- Move the Event Grid's legal hold, export and integrity-verify actions into Evidence (grid context
+- ✅ Move the Event Grid's legal hold, export and integrity-verify actions into Evidence (grid context
   menu / inspector), then retire the Events page and `EventDetailsDialog` (old route redirects).
+  `Services/Evidence/EvidenceActions.cs` holds the decision logic (can place/release hold, can
+  verify, can export, integrity status text); `EvidenceInspectorMapper` now also populates
+  `InspectorModel.Actions` and an `IntegrityStatus` provenance entry. Evidence's Grid view gained a
+  context menu (view details/export/place hold/release hold/verify) driven by the row under the
+  cursor (`ContextMenuClickEventArgs.RowInfo.RowData`, not selection - selecting a viewable item
+  opens the media viewer), plus a matching action section in the Inspector panel gated on
+  `Actions` (no role check, matching the old Events page). `/events` now redirects to
+  `/evidence?view=grid`, preserving the scope query keys (`devices`/`from`/`to`/`q`).
 
 ## Follow-ups
 

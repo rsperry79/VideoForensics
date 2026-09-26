@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
 using Xunit;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Inspector;
@@ -16,6 +17,9 @@ using VideoForensics.Ui.Shared.Services.Scope;
 
 public class InspectorPanel_Rendering_Tests : BunitContext
 {
+    protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
+    protected Mock<IEvidenceValidationService> EvidenceValidationServiceMock { get; } = new();
+
     public InspectorPanel_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -24,6 +28,11 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // RegisterCaseState / RegisterRoleAsync (later registrations win).
         RegisterCaseState(activeCase: null);
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+
+        // Defaults for the evidence-actions section (hold/release/verify); most tests never touch
+        // these but InspectorPanel now injects them unconditionally.
+        Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
+        Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
     }
 
     private static ForensicCase MakeCase(
@@ -473,5 +482,263 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         Assert.DoesNotContain($"Pinned to {testCase.CaseNumber}", component.Markup);
         var reasonBox = (AngleSharp.Html.Dom.IHtmlTextAreaElement)component.Find("[data-testid='pin-reason']");
         Assert.Equal(string.Empty, reasonBox.Value);
+    }
+}
+
+/// <summary>
+/// Evidence-management actions (legal hold place/release, device integrity verification, export)
+/// moved from the retired Events page's grid context menu into the Inspector as a second surface
+/// for the same capabilities, gated on <see cref="InspectorModel.Actions"/> rather than role
+/// (Events applied no role check to these actions, unlike Pin-to-case).
+/// </summary>
+public class InspectorPanel_EvidenceActions_Tests : BunitContext
+{
+    private readonly Mock<ILegalHoldRepository> _legalHoldRepository = new();
+    private readonly Mock<IEvidenceValidationService> _evidenceValidationService = new();
+    private readonly InspectorState _state = new();
+
+    public InspectorPanel_EvidenceActions_Tests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddScoped(_ => new CaseState(new Mock<ICaseRepository>().Object, new ScopeState()));
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(_ => _legalHoldRepository.Object);
+        Services.AddScoped(_ => _evidenceValidationService.Object);
+        Services.AddScoped(_ => _state);
+    }
+
+    private void Show(EvidenceActionState? actions) =>
+        _state.Show(new InspectorModel(Title: "TestTitle", Actions: actions));
+
+    /// <summary>
+    /// Signs in an operator for this test (later registration wins, same pattern as
+    /// InspectorPanel_Rendering_Tests.RegisterRoleAsync). Must be called before Render&lt;InspectorPanel&gt;().
+    /// </summary>
+    private async Task<Guid> SignInOperatorAsync()
+    {
+        var operatorId = Guid.NewGuid();
+        var session = new PairedSessionState(JSInterop.JSRuntime);
+        await session.SetAsync("test-token", operatorId, "Review");
+        Services.AddScoped(_ => session);
+        return operatorId;
+    }
+
+    [Fact]
+    public void NoActions_NoActionButtonsRendered()
+    {
+        Show(null);
+
+        var component = Render<InspectorPanel>();
+
+        Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
+        Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
+        Assert.Empty(component.FindAll("[data-testid='verify-integrity']"));
+        Assert.Empty(component.FindAll("[data-testid='export-evidence']"));
+    }
+
+    [Fact]
+    public void EventOnly_NoMedia_NoActionButtonsRendered()
+    {
+        // Mirrors EvidenceActions.CanPlaceHold/CanVerifyIntegrity/CanExport: no linked media item
+        // means none of the actions apply, even though DeviceId is set.
+        Show(new EvidenceActionState(MediaItemId: null, DeviceId: Guid.NewGuid(), ActiveHoldId: null));
+
+        var component = Render<InspectorPanel>();
+
+        Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
+        Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
+        Assert.Empty(component.FindAll("[data-testid='verify-integrity']"));
+        Assert.Empty(component.FindAll("[data-testid='export-evidence']"));
+    }
+
+    [Fact]
+    public void MediaPresent_NotOnHold_ShowsPlaceHoldButton_NotRelease()
+    {
+        Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: null));
+
+        var component = Render<InspectorPanel>();
+
+        Assert.NotEmpty(component.FindAll("[data-testid='place-legal-hold']"));
+        Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='verify-integrity']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='export-evidence']"));
+    }
+
+    [Fact]
+    public void MediaOnHold_ShowsReleaseButton_NotPlaceHold()
+    {
+        Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: Guid.NewGuid()));
+
+        var component = Render<InspectorPanel>();
+
+        Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='release-legal-hold']"));
+    }
+
+    [Fact]
+    public void PlaceHoldButton_Click_RevealsReasonAndConfirmDisabledWhenBlank()
+    {
+        Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='place-legal-hold']").Click();
+
+        var confirmButton = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='confirm-place-hold']");
+        Assert.True(confirmButton.IsDisabled);
+    }
+
+    [Fact]
+    public async Task ConfirmPlaceHold_Click_CallsPlaceAsync_WithSignedInOperatorIdentity_ShowsSuccess_SwapsToReleaseButton()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        var operatorId = await SignInOperatorAsync();
+        var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Active investigation", CreatedBy = "op" };
+        _legalHoldRepository
+            .Setup(r => r.PlaceAsync(mediaItemId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placedHold);
+
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='place-legal-hold']").Click();
+        component.Find("[data-testid='hold-reason']").Input("Active investigation");
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
+
+        _legalHoldRepository.Verify(
+            r => r.PlaceAsync(mediaItemId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.Contains("Legal hold placed", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='release-legal-hold']"));
+    }
+
+    [Fact]
+    public async Task ConfirmPlaceHold_NoSignedInOperator_DoesNotCallPlaceAsync_ShowsError()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+
+        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='place-legal-hold']").Click();
+        component.Find("[data-testid='hold-reason']").Input("Active investigation");
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
+
+        _legalHoldRepository.Verify(
+            r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ConfirmRelease_Click_CallsReleaseAsync_WithSignedInOperatorIdentity_ShowsSuccess_SwapsToPlaceHoldButton()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        var activeHoldId = Guid.NewGuid();
+        var operatorId = await SignInOperatorAsync();
+        _legalHoldRepository
+            .Setup(r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: activeHoldId));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='release-legal-hold']").Click();
+        component.Find("[data-testid='hold-reason']").Input("No longer needed");
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
+
+        _legalHoldRepository.Verify(
+            r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.Contains("Legal hold released", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='place-legal-hold']"));
+    }
+
+    [Fact]
+    public async Task ConfirmRelease_NoSignedInOperator_DoesNotCallReleaseAsync_ShowsError()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        var activeHoldId = Guid.NewGuid();
+
+        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: activeHoldId));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='release-legal-hold']").Click();
+        component.Find("[data-testid='hold-reason']").Input("No longer needed");
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-release-hold']").Click());
+
+        _legalHoldRepository.Verify(
+            r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyIntegrityButton_Click_CallsServiceScopedToDevice_ShowsResultMessage()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        _evidenceValidationService
+            .Setup(s => s.VerifyLocalIntegrityAsync(deviceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<MediaVerificationResult>
+            {
+                new() { MediaItemId = mediaItemId, FileName = "a.jpg", Status = "verified" },
+                new() { MediaItemId = Guid.NewGuid(), FileName = "b.jpg", Status = "failed", FailureReason = "hash mismatch" }
+            });
+
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        await component.InvokeAsync(() => component.Find("[data-testid='verify-integrity']").Click());
+
+        _evidenceValidationService.Verify(s => s.VerifyLocalIntegrityAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Contains("1 of 2 file(s) verified for this device.", component.Markup);
+    }
+
+    [Fact]
+    public void ExportButton_Click_NavigatesToReviewExportWithMediaItemId()
+    {
+        var mediaItemId = Guid.NewGuid();
+        Show(new EvidenceActionState(mediaItemId, Guid.NewGuid(), ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='export-evidence']").Click();
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        Assert.Contains($"/review/export?ids={mediaItemId}", nav.Uri);
+    }
+
+    [Fact]
+    public async Task NewInspectedItem_ClearsPendingActionAndMessages()
+    {
+        var mediaItemId = Guid.NewGuid();
+        var deviceId = Guid.NewGuid();
+        await SignInOperatorAsync();
+        _legalHoldRepository
+            .Setup(r => r.PlaceAsync(mediaItemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "r", CreatedBy = "op" });
+
+        Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
+        var component = Render<InspectorPanel>();
+
+        component.Find("[data-testid='place-legal-hold']").Click();
+        component.Find("[data-testid='hold-reason']").Input("reason");
+        await component.InvokeAsync(() => component.Find("[data-testid='confirm-place-hold']").Click());
+        Assert.Contains("Legal hold placed", component.Markup);
+
+        await component.InvokeAsync(() => _state.Show(new InspectorModel(
+            Title: "Different item",
+            Actions: new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: null))));
+
+        Assert.DoesNotContain("Legal hold placed", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='confirm-place-hold']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='place-legal-hold']"));
     }
 }
