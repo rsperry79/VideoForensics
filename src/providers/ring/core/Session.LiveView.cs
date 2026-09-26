@@ -38,7 +38,8 @@ namespace VideoForensics.Providers.Ring
         /// transport instead of opening a real websocket, and available to consumers who want to
         /// supply their own transport (e.g. for logging or a proxied connection).
         /// </summary>
-        public async Task<RingLiveViewSession> StartLiveView(long doorbotId, IWebSocketTransport transport, CancellationToken cancellationToken = default)
+        /// <param name="bitrateTimerIntervalMs">Optional internal timer interval for bitrate sampling (defaults to 1000ms). Used for testing.</param>
+        public async Task<RingLiveViewSession> StartLiveView(long doorbotId, IWebSocketTransport transport, CancellationToken cancellationToken = default, int? bitrateTimerIntervalMs = null)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -63,7 +64,7 @@ namespace VideoForensics.Providers.Ring
             var signalingClient = new RingSignalingClient(transport, dialogId);
             await signalingClient.ConnectAsync(signalingUri);
 
-            var session = new RingLiveViewSession(signalingClient, doorbotId);
+            var session = new RingLiveViewSession(signalingClient, doorbotId, bitrateTimerIntervalMs);
             await session.StartAsync();
             return session;
         }

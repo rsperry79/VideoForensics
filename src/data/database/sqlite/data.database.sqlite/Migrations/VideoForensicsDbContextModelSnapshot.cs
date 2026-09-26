@@ -344,6 +344,47 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CameraBitrateBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HourOfDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsWeekend")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastRecomputedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("MedianBitrateBps")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("MedianFractionLost")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("MedianJitterTicks")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("StdDevBitrateBps")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "HourOfDay", "IsWeekend")
+                        .IsUnique();
+
+                    b.ToTable("CameraBitrateBaselines");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Credential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1364,6 +1405,94 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("LegalHolds", (string)null);
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.LiveViewSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EndedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSustained")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastExtendedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OperatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PromotionReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderSessionRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StopReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SustainedSinceUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TriggerReason")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("State");
+
+                    b.ToTable("LiveViewSessions");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.LiveViewTelemetrySample", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("BitrateBps")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CapturedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CumulativePacketsLost")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte?>("FractionLost")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("InterferenceScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<uint?>("JitterTicks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId", "CapturedAtUtc");
+
+                    b.ToTable("LiveViewTelemetrySamples");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Location", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1865,6 +1994,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ThemeMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UiMode")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
@@ -2501,6 +2635,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.SyncSchedule", null)
                         .WithMany("JammingWindows")
                         .HasForeignKey("SyncScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.LiveViewTelemetrySample", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.LiveViewSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

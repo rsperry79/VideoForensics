@@ -134,12 +134,23 @@ namespace VideoForensics.Ui.Shared.Services
                 return;
             }
 
-            await _repository.UpsertAsync(new OperatorPreferences
+            // Read the existing row first (if present) to avoid clobbering other fields like UiMode
+            // that UiModeService might have set. If no row exists yet, this returns null and we create
+            // one fresh with just the theme/culture set.
+            OperatorPreferences? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            // Merge: keep existing UiMode, but update ThemeMode and CultureName.
+            var prefs = new OperatorPreferences
             {
+                Id = existing?.Id ?? Guid.NewGuid(),
                 OperatorId = operatorId,
                 ThemeMode = Mode.ToString(),
-                CultureName = CultureName
-            }, CancellationToken.None);
+                CultureName = CultureName,
+                UiMode = existing?.UiMode ?? "Standard",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(prefs, CancellationToken.None);
         }
 
         private async Task ApplyStylesheetAsync()

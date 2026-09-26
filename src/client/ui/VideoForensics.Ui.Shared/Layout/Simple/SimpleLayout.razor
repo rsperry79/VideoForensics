@@ -1,0 +1,26 @@
+@namespace VideoForensics.Ui.Shared.Layout.Simple
+@inherits LayoutComponentBase
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
+@inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
+
+<div class="simple-layout">
+    <header class="simple-layout-header">
+        <span class="simple-layout-title">VideoForensics</span>
+        <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="simple-layout-signout e-flat" />
+    </header>
+    <main class="simple-layout-body">
+        @Body
+    </main>
+</div>
+
+@code {
+    private async Task SignOutAsync()
+    {
+        await SessionState.ClearAsync();
+        Nav.NavigateTo("/device-signin");
+    }
+}

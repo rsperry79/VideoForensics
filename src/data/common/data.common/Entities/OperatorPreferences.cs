@@ -18,6 +18,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>BCP-47 culture name (e.g. "en-US"), or null if not yet set.</summary>
         public string? CultureName { get; set; }
 
+        /// <summary>"Standard" (default) or "Simple" UI mode preference.</summary>
+        public string UiMode { get; set; } = "Standard";
+
         public DateTime UpdatedAtUtc { get; set; }
     }
 }

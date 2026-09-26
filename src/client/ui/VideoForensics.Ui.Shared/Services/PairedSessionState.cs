@@ -22,17 +22,17 @@ namespace VideoForensics.Ui.Shared.Services
             _js = js;
         }
 
-        public string? SessionToken { get; private set; }
-        public Guid? OperatorId { get; private set; }
-        public string? Role { get; private set; }
-        public bool MustChangePassword { get; private set; }
+        public virtual string? SessionToken { get; private set; }
+        public virtual Guid? OperatorId { get; private set; }
+        public virtual string? Role { get; private set; }
+        public virtual bool MustChangePassword { get; private set; }
 
-        public bool IsSignedIn => SessionToken is not null;
+        public virtual bool IsSignedIn => SessionToken is not null;
 
         /// <summary>Fired when the server rejects the session token as invalid or expired.</summary>
         public event Action? AuthenticationExpired;
 
-        public async Task EnsureLoadedAsync()
+        public virtual async Task EnsureLoadedAsync()
         {
             if (_loaded)
             {

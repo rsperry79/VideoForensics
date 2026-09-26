@@ -25,6 +25,7 @@ using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
 using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
@@ -418,6 +419,19 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
 
+            // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
+            // orchestrator, and background services for idle timeouts and bitrate calibration.
+            // Multiple registrations of the same interface (ILiveViewCapableProvider) with different
+            // implementations is fine - IEnumerable<ILiveViewCapableProvider> resolves all three.
+            _ = services.AddScoped<ILiveViewCapableProvider, RingLiveViewProvider>();
+            _ = services.AddScoped<ILiveViewCapableProvider, WyzeLiveViewProvider>();
+            _ = services.AddScoped<ILiveViewCapableProvider, UniviewLiveViewProvider>();
+            _ = services.AddSingleton<ILiveViewSessionService, LiveViewSessionOrchestrator>();
+            _ = services.AddSingleton<ElevatedPollingWindowTracker>();
+            _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.ILiveViewInterferenceScorer, LiveViewInterferenceScorer>();
+            _ = services.AddHostedService<LiveViewIdleTimeoutService>();
+            _ = services.AddHostedService<CameraBitrateCalibrationService>();
+
             // Update-check background service (plan §3). Periodically polls GitHub for a newer release
             // and either notifies or auto-downloads/launches the installer based on configuration.
             _ = services.AddHttpClient<IGitHubReleaseClient, GitHubReleaseClient>(client =>
@@ -587,6 +601,7 @@ namespace VideoForensics.Hosting
             // Hosting project (Hosting already depends on Ui.Shared for PairedSessionState) without a cycle.
             _ = services.AddHttpClient<IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session

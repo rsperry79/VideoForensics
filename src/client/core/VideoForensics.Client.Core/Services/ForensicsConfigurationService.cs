@@ -78,6 +78,18 @@ namespace VideoForensics.Client.Core.Services
                 config.InternetServerUrl = await GetStringSetting("InternetServerUrl", config.InternetServerUrl, cancellationToken);
                 config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
                 config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
+                config.EnableLiveView = await GetBoolSetting("EnableLiveView", config.EnableLiveView, cancellationToken);
+                config.LiveViewIdleTimeoutMinutes = await GetIntSetting("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes, cancellationToken);
+                config.LiveViewTelemetrySampleIntervalSeconds = await GetIntSetting("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds, cancellationToken);
+                config.SustainedModeMaxDurationMinutes = await GetIntSetting("SustainedModeMaxDurationMinutes", config.SustainedModeMaxDurationMinutes, cancellationToken);
+                config.LiveViewTelemetryRetentionDays = await GetIntSetting("LiveViewTelemetryRetentionDays", config.LiveViewTelemetryRetentionDays, cancellationToken);
+                config.ElevatedPollingWindowMinutes = await GetIntSetting("ElevatedPollingWindowMinutes", config.ElevatedPollingWindowMinutes, cancellationToken);
+                config.ElevatedPollingIntervalSeconds = await GetIntSetting("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds, cancellationToken);
+                config.EnableBitrateCalibration = await GetBoolSetting("EnableBitrateCalibration", config.EnableBitrateCalibration, cancellationToken);
+                config.CalibrationCheckIntervalMinutes = await GetIntSetting("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes, cancellationToken);
+                config.CalibrationSessionDurationSeconds = await GetIntSetting("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds, cancellationToken);
+                config.MinCalibrationSamplesPerBucket = await GetIntSetting("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket, cancellationToken);
+                config.CalibrationStalenessDays = await GetIntSetting("CalibrationStalenessDays", config.CalibrationStalenessDays, cancellationToken);
 
                 _logger.LogInformation("Configuration loaded from database");
             }
@@ -129,6 +141,18 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("EnableLiveView", config.EnableLiveView.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("SustainedModeMaxDurationMinutes", config.SustainedModeMaxDurationMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("LiveViewTelemetryRetentionDays", config.LiveViewTelemetryRetentionDays.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ElevatedPollingWindowMinutes", config.ElevatedPollingWindowMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableBitrateCalibration", config.EnableBitrateCalibration.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("CalibrationStalenessDays", config.CalibrationStalenessDays.ToString(), cancellationToken);
 
                 _logger.LogInformation("Configuration saved to database");
             }

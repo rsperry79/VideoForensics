@@ -212,6 +212,7 @@ namespace VideoForensics.Client.Core.Tools
                     Summary = stats ?? new JammingStatsSummary { DeviceId = deviceId, IncidentCount = 0 },
                     Incidents = incidents ?? [],
                     AnalyzedAtUtc = DateTime.UtcNow,
+                    NewlyDetectedCount = detectedCount,
                     Message = stats?.IncidentCount > 0
                         ? $"Found {stats.IncidentCount} incident(s) ({detectedCount} newly detected this run): " +
                           $"{stats.TotalJammedDurationMinutes:F1} min total, avg degradation {stats.AverageDegradationDb:F1} dB. " +
@@ -368,6 +369,8 @@ namespace VideoForensics.Client.Core.Tools
         public IReadOnlyList<JammingIncidentRecord> Incidents { get; set; } = [];
         public DateTime AnalyzedAtUtc { get; set; }
         public string Message { get; set; } = string.Empty;
+        /// <summary>Number of jamming incidents newly detected in this analysis run.</summary>
+        public int NewlyDetectedCount { get; set; }
 
         /// <summary>Summary of findings for quick reference.</summary>
         public override string ToString()

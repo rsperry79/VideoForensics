@@ -291,5 +291,70 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotEqual(firstTimestamp, retrieved2.UpdatedAtUtc);
             Assert.True(retrieved2.UpdatedAtUtc >= firstTimestamp);
         }
+
+        [Fact]
+        public void OperatorPreferences_Constructor_UiModeDefaultsToStandard()
+        {
+            var preferences = new OperatorPreferences();
+
+            Assert.Equal("Standard", preferences.UiMode);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_Insert_UiModeRoundTrips()
+        {
+            var operatorId = Guid.NewGuid();
+            var preferences = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "Dark",
+                CultureName = "en-US",
+                UiMode = "Simple",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(preferences, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("Simple", retrieved.UiMode);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_Update_UiModeRoundTrips()
+        {
+            var operatorId = Guid.NewGuid();
+            var preferences = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "Light",
+                CultureName = "en-GB",
+                UiMode = "Standard",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(preferences, CancellationToken.None);
+
+            // Update the UiMode
+            var updatedPreferences = new OperatorPreferences
+            {
+                Id = preferences.Id,
+                OperatorId = operatorId,
+                ThemeMode = "Dark",
+                CultureName = "fr-FR",
+                UiMode = "Simple",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(updatedPreferences, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("Simple", retrieved.UiMode);
+        }
     }
 }

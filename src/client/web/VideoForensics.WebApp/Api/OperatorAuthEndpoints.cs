@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using System.Net;
 using System.Text.Json;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
