@@ -1,8 +1,10 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject IStringLocalizer<MediaViewer> L
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Evidence
 @using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Localization
 
 <div class="media-viewer" data-testid="media-viewer" tabindex="0" @onkeydown="HandleKeydown" @ref="_rootElement">
     <!-- Header -->
@@ -40,6 +42,31 @@
                 <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">◀ frame</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">frame ▶</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="grab-still" title="@L["GrabStillTitle"]" @onclick="GrabStillAsync" disabled="@(StillCaptureStatus?.InProgress == true)">@L["GrabStillLabel"]</button>
+            }
+        </div>
+    }
+
+    @if (StillCaptureStatus is not null)
+    {
+        <div class="viewer-still-capture">
+            @if (StillCaptureStatus.InProgress)
+            {
+                <span data-testid="grab-still-progress">@L["GrabStillInProgress"]</span>
+            }
+            else if (StillCaptureStatus.ErrorMessage is not null)
+            {
+                <span class="text-danger" data-testid="grab-still-error">@L["GrabStillErrorPrefix"] @StillCaptureStatus.ErrorMessage</span>
+            }
+            else if (StillCaptureStatus.Sha256Hash is not null)
+            {
+                <span data-testid="grab-still-result">
+                    @L["GrabStillResultPrefix"] @StillCaptureStatus.Sha256Hash
+                    @if (StillCaptureStatus.OpenUrl is not null)
+                    {
+                        <a href="@StillCaptureStatus.OpenUrl" target="_blank" rel="noopener" data-testid="grab-still-open">@L["GrabStillOpenLabel"]</a>
+                    }
+                </span>
             }
         </div>
     }
@@ -98,6 +125,19 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    /// <summary>
+    /// Invoked when the operator grabs the current video frame as a new evidence still, with the
+    /// current playback position (milliseconds into the source video). Only wired up for video
+    /// items; the parent (e.g. Evidence.razor) is responsible for calling the capture service and
+    /// updating <see cref="StillCaptureStatus"/> with the result.
+    /// </summary>
+    [Parameter]
+    public EventCallback<long> OnGrabStill { get; set; }
+
+    /// <summary>Status of the most recent (or in-flight) still capture, shown inline in the viewer.</summary>
+    [Parameter]
+    public MediaStillCaptureStatus? StillCaptureStatus { get; set; }
 
     private ElementReference _rootElement;
     private ElementReference? _video;
@@ -216,6 +256,29 @@
         }
     }
 
+    /// <summary>
+    /// Reads the video's current playback position via JS interop and invokes
+    /// <see cref="OnGrabStill"/> with it as a millisecond offset into the source video.
+    /// </summary>
+    private async Task GrabStillAsync()
+    {
+        long offsetMs = 0;
+        if (_jsModule != null)
+        {
+            try
+            {
+                double currentTimeMs = await _jsModule.InvokeAsync<double>("getCurrentTimeMs", _video);
+                offsetMs = (long)Math.Round(currentTimeMs);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Ignore JS disconnection
+            }
+        }
+
+        await OnGrabStill.InvokeAsync(offsetMs);
+    }
+
     private async Task PlayToggle()
     {
         if (_jsModule != null)
@@ -263,6 +326,9 @@
                 break;
             case MediaViewerAction.FrameForward:
                 await FrameForward();
+                break;
+            case MediaViewerAction.GrabStill:
+                await GrabStillAsync();
                 break;
         }
     }

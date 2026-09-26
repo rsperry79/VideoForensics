@@ -1,4 +1,5 @@
 using VideoForensics.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -67,6 +68,10 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/media/{id:guid}/content", GetContentAsync)
                 .AllowAnonymous()
+                .RequireRateLimiting("media");
+
+            _ = group.MapPost("/media/{id:guid}/stills", CreateMediaStillAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Review)
                 .RequireRateLimiting("media");
         }
 
@@ -319,6 +324,48 @@ namespace VideoForensics.WebApp.Api
 
             IReadOnlyList<DeviceHealth> history = await deviceHealth.GetHistoryAsync(id, from.Value, to.Value, ct);
             return Results.Ok(history.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Handler for POST /media/{id}/stills: the Evidence "grab still with hash" write path.
+        /// Captures a frame from the source video at the given offset as a new, independently-hashed
+        /// derived media item (never modifying the original), optionally pinning it to a case.
+        /// 404 if the source media item doesn't exist; 400 for invalid input (negative offset,
+        /// a case pin without a reason, or invalid pngBase64).
+        /// </summary>
+        public static async Task<IResult> CreateMediaStillAsync(
+            Guid id,
+            CaptureStillRequestDto request,
+            IMediaStillCaptureService stillCaptureService,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (request.FrameOffsetMs < 0)
+            {
+                return Results.BadRequest("FrameOffsetMs must be >= 0");
+            }
+
+            if (request.CaseId.HasValue && string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return Results.BadRequest("Reason is required when pinning the still to a case");
+            }
+
+            string? capturedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            if (string.IsNullOrWhiteSpace(capturedBy))
+            {
+                return Results.Unauthorized();
+            }
+
+            MediaStillCaptureResult result = await stillCaptureService.CaptureStillAsync(
+                id, request.FrameOffsetMs, request.PngBase64, request.CaseId, request.Reason, capturedBy, ct);
+
+            return result.Error switch
+            {
+                MediaStillCaptureError.None => Results.Created($"/api/v1/media/{result.Still!.Id}/content", result.Still.ToDto()),
+                MediaStillCaptureError.MediaNotFound => Results.NotFound(),
+                MediaStillCaptureError.InvalidInput => Results.BadRequest(result.ErrorMessage),
+                _ => Results.Problem(detail: result.ErrorMessage, statusCode: StatusCodes.Status500InternalServerError)
+            };
         }
     }
 }

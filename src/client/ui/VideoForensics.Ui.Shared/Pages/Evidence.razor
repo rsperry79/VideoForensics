@@ -28,6 +28,7 @@
 @inject InspectorState InspectorState
 @inject ScopeState ScopeState
 @inject IDeviceHealthRepository DeviceHealthRepository
+@inject IMediaStillCaptureService MediaStillCaptureService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
 
@@ -114,7 +115,9 @@ else
             HasNext="@_vm.HasNext"
             OnPrevious="@OnMediaViewerPrevious"
             OnNext="@OnMediaViewerNext"
-            OnClose="@OnMediaViewerClose" />
+            OnClose="@OnMediaViewerClose"
+            OnGrabStill="@OnGrabStillAsync"
+            StillCaptureStatus="@_stillCaptureStatus" />
     }
     else if (_currentView == EvidenceView.Timeline)
     {
@@ -220,6 +223,7 @@ else
     private bool _thumbnailsUnavailable;
     private string? _currentMediaUrl;
     private string? _mediaLoadError;
+    private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
@@ -574,6 +578,59 @@ else
         }
         var combined = string.Join("&", parts);
         NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/evidence" : $"/evidence?{combined}", replace: true);
+    }
+
+    /// <summary>
+    /// Handles the media viewer's "grab still with hash" action: captures the current video frame
+    /// as a new, independently-hashed evidence still via <see cref="IMediaStillCaptureService"/>,
+    /// then shows the resulting hash and an open link (or the error) inline in the viewer.
+    /// </summary>
+    private async Task OnGrabStillAsync(long frameOffsetMs)
+    {
+        var mediaId = _vm?.Selected?.Media?.Id;
+        if (mediaId is null)
+        {
+            return;
+        }
+
+        _stillCaptureStatus = new MediaStillCaptureStatus { InProgress = true };
+        StateHasChanged();
+
+        var actor = SessionState.OperatorId?.ToString() ?? "unknown";
+
+        try
+        {
+            var result = await MediaStillCaptureService.CaptureStillAsync(
+                mediaId.Value, frameOffsetMs, clientPngBase64: null, caseId: null, pinReason: null, actor, CancellationToken.None);
+
+            if (!result.Success || result.Still is null)
+            {
+                _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = result.ErrorMessage ?? "Unknown error" };
+                return;
+            }
+
+            string? openUrl = null;
+            try
+            {
+                var urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { result.Still.Id }, CancellationToken.None);
+                urls.TryGetValue(result.Still.Id, out openUrl);
+            }
+            catch
+            {
+                // The still was captured successfully regardless of whether we could fetch a
+                // viewing URL for it right away; leave OpenUrl null rather than failing the capture.
+            }
+
+            _stillCaptureStatus = new MediaStillCaptureStatus
+            {
+                Sha256Hash = result.Still.Sha256Hash,
+                OpenUrl = openUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = ex.Message };
+        }
     }
 
     private InspectorModel ToEvidenceInspector(EvidenceItem item)

@@ -424,6 +424,23 @@ namespace VideoForensics.Hosting
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
             _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
 
+            // Evidence "grab still with hash" (plan §8a): server-side ffmpeg frame extraction plus
+            // the orchestrator that persists the derived still, its chain-of-custody entry, and an
+            // optional case pin.
+            _ = services.AddScoped<VideoForensics.Providers.Core.IMediaFrameExtractor>(serviceProvider =>
+                new VideoForensics.Providers.Core.FfmpegMediaFrameExtractor(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Providers.Core.FfmpegMediaFrameExtractor>>()));
+
+            _ = services.AddScoped<IMediaStillCaptureService>(serviceProvider =>
+                new MediaStillCaptureOrchestrator(
+                    serviceProvider.GetRequiredService<ILogger<MediaStillCaptureOrchestrator>>(),
+                    serviceProvider.GetRequiredService<IMediaItemRepository>(),
+                    serviceProvider.GetRequiredService<IMediaStillRepository>(),
+                    serviceProvider.GetRequiredService<IMediaStorageProvider>(),
+                    serviceProvider.GetRequiredService<VideoForensics.Providers.Core.IMediaFrameExtractor>(),
+                    serviceProvider.GetRequiredService<IActionLogRepository>(),
+                    serviceProvider.GetRequiredService<ICaseRepository>()));
+
             // Pairing/RBAC/security-audit backbone (plan §5, M6). IPairingTokenService is
             // per-process in-memory state (short-lived tokens), so it must be Singleton.
             // ISessionTokenService only needs the already-registered IDataProtectionProvider.
@@ -570,6 +587,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IMediaContentUrlProvider, Remote.RemoteMediaContentUrlProvider>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IMediaStillCaptureService, Remote.RemoteMediaStillCaptureService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
             // IAdminOperatorService/ISecurityEventsService live in VideoForensics.Client.Common.Contracts,
