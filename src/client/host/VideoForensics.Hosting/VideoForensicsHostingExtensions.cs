@@ -9,6 +9,8 @@ using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Telemetry.Configuration;
+using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
@@ -227,7 +229,8 @@ namespace VideoForensics.Hosting
         /// </summary>
         /// <param name="services">The service collection to register into.</param>
         /// <param name="activeProviderName">Name of the active provider ("Ring" or "Uniview"); defaults to "Ring" for backward compatibility.</param>
-        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring")
+        /// <param name="telemetryOptions">Optional telemetry configuration; defaults to a disabled (no-op) <see cref="TelemetryOptions"/> instance when null, keeping telemetry opt-in and every existing caller unaffected.</param>
+        public static IServiceCollection AddVideoForensicsServerCore(this IServiceCollection services, string activeProviderName = "Ring", TelemetryOptions? telemetryOptions = null)
         {
             // MainLayout.razor (rendered by every host sharing Ui.Shared, WebApp included) @injects
             // IServerConnectivityState/IServerLocationInformationService - these were only ever
@@ -238,6 +241,11 @@ namespace VideoForensics.Hosting
             // conflict if a client host's own registrations also call this.
             _ = services.AddServerLocationServices();
             _ = services.AddSingleton<IStorageLocationProvider, StorageLocationProvider>();
+
+            // Provider-agnostic telemetry abstraction (ITelemetryProvider). Opt-in: a null/disabled
+            // TelemetryOptions registers the no-op NullTelemetryProvider and wires up nothing else,
+            // so existing callers that don't pass telemetryOptions see no behavior change.
+            _ = services.AddVideoForensicsTelemetry(telemetryOptions ?? new TelemetryOptions());
 
             // Shared session providers (must be singleton so all services/scopes observe the same
             // keyed session map - see ISessionProvider's per-account redesign). ICredentialStore is
