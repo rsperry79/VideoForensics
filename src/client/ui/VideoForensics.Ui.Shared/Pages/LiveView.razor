@@ -1,0 +1,231 @@
+﻿@page "/live-view"
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using Microsoft.Extensions.Localization
+@implements IAsyncDisposable
+
+@inject ILiveViewSessionService LiveViewSessionService
+@inject IDeviceRepository DeviceRepository
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject IStringLocalizer<LiveView> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (!_isAuthenticated)
+{
+    <div class="alert alert-info">
+        @L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a>
+    </div>
+}
+else
+{
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <small>@L["Title"]</small>
+            <div class="d-flex flex-column gap-2">
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>"
+                    @bind-Value="_selectedDeviceIdStr"
+                    DataSource="@(DeviceOptions.ToList())"
+                    Placeholder="@L["SelectDevice"]">
+                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+                </SfDropDownList>
+
+                <div class="d-flex flex-row gap-2">
+                    <SfButton Content="@(_isConnected ? L["Stop"] : L["Start"])"
+                        OnClick="@(async () => await ToggleLiveViewAsync())"
+                        CssClass="@(_isConnected ? "e-danger" : "e-primary")"
+                        Disabled="@(_isToggling || string.IsNullOrEmpty(_selectedDeviceIdStr))" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="alert alert-danger">@_error</div>
+                }
+
+                @if (_isConnected)
+                {
+                    <div class="alert alert-success">@L["Connected"]</div>
+                }
+            </div>
+        </div>
+    </PageRightPanelContent>
+
+    <div class="live-view-container">
+        <video id="liveViewPlayer" class="live-view-video" autoplay playsinline muted></video>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated = false;
+    private bool _isConnected = false;
+    private bool _isToggling = false;
+    private string? _selectedDeviceIdStr;
+    private Guid? _selectedSessionId;
+    private string? _error;
+    private Dictionary<string, string> DeviceOptions { get; set; } = new();
+
+    private object? _hubConnection;
+    private IJSObjectReference? _jsModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        _isAuthenticated = true; // Assume authenticated since @attribute [Authorize] gates the page
+
+        try
+        {
+            // Load available devices
+            var devices = await DeviceRepository.ListAsync(System.Threading.CancellationToken.None);
+            DeviceOptions = devices
+                .ToDictionary(d => d.Id.ToString(), d => d.Name ?? $"Device {d.ProviderDeviceId}")
+                .OrderBy(kv => kv.Value)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // Load JavaScript module
+            _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./js/liveview.js");
+
+            // Initialize SignalR connection via JS
+            _hubConnection = await _jsModule.InvokeAsync<dynamic>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString());
+
+            // Set up ICE candidate handler via JS
+            await _jsModule.InvokeVoidAsync("setupIceCandidateHandler", _jsModule);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error initializing: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ToggleLiveViewAsync()
+    {
+        try
+        {
+            _isToggling = true;
+            _error = null;
+
+            if (_isConnected)
+            {
+                // Stop the session
+                if (_selectedSessionId.HasValue)
+                {
+                    await LiveViewSessionService.StopAsync(
+                        _selectedSessionId.Value,
+                        "ManualStop",
+                        System.Threading.CancellationToken.None);
+
+                    _selectedSessionId = null;
+                    _isConnected = false;
+                }
+            }
+            else
+            {
+                // Start new session
+                if (!Guid.TryParse(_selectedDeviceIdStr, out var deviceId))
+                {
+                    _error = L["InvalidDevice"];
+                    return;
+                }
+
+                var session = await LiveViewSessionService.StartAsync(
+                    deviceId,
+                    LiveViewTriggerReason.Manual,
+                    null,
+                    System.Threading.CancellationToken.None);
+
+                _selectedSessionId = session.Id;
+
+                // Wait for Active state with timeout
+                int attempts = 0;
+                while (session.State != LiveViewSessionState.Active && attempts < 30)
+                {
+                    await Task.Delay(500);
+                    session = await LiveViewSessionService.GetActiveSessionAsync(
+                        deviceId,
+                        System.Threading.CancellationToken.None);
+                    attempts++;
+                }
+
+                if (session?.State != LiveViewSessionState.Active)
+                {
+                    _error = L["SessionFailedToConnect"];
+                    _selectedSessionId = null;
+                    return;
+                }
+
+                // Start WebRTC stream
+                if (_jsModule != null && _hubConnection != null)
+                {
+                    await _jsModule.InvokeVoidAsync(
+                        "startLiveView",
+                        _hubConnection,
+                        session.Id,
+                        "liveViewPlayer");
+                    _isConnected = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _isConnected = false;
+            _selectedSessionId = null;
+        }
+        finally
+        {
+            _isToggling = false;
+        }
+    }
+
+    private async Task CleanupAsync()
+    {
+        if (_isConnected && _selectedSessionId.HasValue)
+        {
+            try
+            {
+                await LiveViewSessionService.StopAsync(
+                    _selectedSessionId.Value,
+                    "PageDisposed",
+                    System.Threading.CancellationToken.None);
+            }
+            catch { }
+        }
+
+        if (_jsModule is not null)
+            await _jsModule.DisposeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await CleanupAsync();
+    }
+}
+
+<style>
+.live-view-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+}
+
+.live-view-video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+</style>

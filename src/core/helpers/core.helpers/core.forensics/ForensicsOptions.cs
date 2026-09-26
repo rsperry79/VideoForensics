@@ -87,5 +87,17 @@ namespace VideoForensics.Forensics
         /// Client respects this preference.
         /// </summary>
         public bool CompressReports { get; set; } = false;
+
+        /// <summary>
+        /// Composite interference score (0-1, from ILiveViewInterferenceScorer) threshold above which a live
+        /// view session auto-promotes to sustained mode.
+        /// </summary>
+        public double LiveViewAutoPromoteInterferenceScoreThreshold { get; set; } = 0.6;
+
+        /// <summary>
+        /// Number of consecutive telemetry samples that must cross LiveViewAutoPromoteInterferenceScoreThreshold
+        /// before auto-promoting - avoids promoting on one transient bad sample.
+        /// </summary>
+        public int LiveViewAutoPromoteConsecutiveSamples { get; set; } = 3;
     }
 }

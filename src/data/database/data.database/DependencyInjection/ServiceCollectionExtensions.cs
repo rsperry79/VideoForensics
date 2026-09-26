@@ -41,6 +41,9 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IActionLogRepository, ActionLogRepository>();
             services.TryAddScoped<IAppSettingRepository, AppSettingRepository>();
             services.TryAddScoped<IJammingRepository, JammingRepository>();
+            services.TryAddScoped<ILiveViewSessionRepository, LiveViewSessionRepository>();
+            services.TryAddScoped<ILiveViewTelemetryRepository, LiveViewTelemetryRepository>();
+            services.TryAddScoped<ICameraBitrateBaselineRepository, CameraBitrateBaselineRepository>();
             services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
             services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
             services.TryAddScoped<ICaseRepository, CaseRepository>();

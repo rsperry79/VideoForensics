@@ -1,38 +1,11 @@
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
 {
-    /// <summary>
-    /// Self-imposed, cross-host-shared ceiling on provider (Ring) API call volume, so this
-    /// application is never the reason a Ring account gets rate-limited or locked out - motivated by
-    /// a specific threat (plan §5.12): an attacker could flood the Ring API to blind
-    /// DeviceHealthSyncService/jamming detection at the same moment they're physically jamming a
-    /// camera's signal. Deliberately conservative, well below Ring's actual limit.
-    /// </summary>
-    public interface IProviderApiBudgetGuard
-    {
-        /// <summary>
-        /// Checks whether a call is currently within budget, WITHOUT recording it - callers that
-        /// end up not actually making the call (e.g. because a different provider/health source in
-        /// the same tick already used the budget) should not call RecordCallAsync for it.
-        /// </summary>
-        Task<bool> TryConsumeAsync(string providerName, CancellationToken ct);
-
-        /// <summary>Records that an outbound provider API call actually happened, for future budget checks.</summary>
-        Task RecordCallAsync(string providerName, CancellationToken ct);
-
-        /// <summary>
-        /// Escalates a real rate-limit rejection from the provider (reusing existing
-        /// IsRateLimitError detection, e.g. in RingMediaDownloadService) as an urgent security
-        /// event - "Ring just rejected us" is exactly the "your monitoring may currently be blind"
-        /// signal the whole notification pipeline exists for (plan §5.12).
-        /// </summary>
-        Task RecordRateLimitHitAsync(string providerName, ISecurityAuditLogger auditLog, CancellationToken ct);
-    }
-
     public class ProviderApiBudgetGuard : IProviderApiBudgetGuard
     {
         // Deliberately conservative - well below any known Ring per-account rate limit, so this

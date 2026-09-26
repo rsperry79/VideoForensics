@@ -26,6 +26,18 @@ namespace VideoForensics.Api.Contracts
     /// <param name="EnableEmailNotifications">Toggles the email notification channel for urgent security events.</param>
     /// <param name="ConfiguredNetworkTier">Which network tier the server is configured to be reachable at (Local, Network, or Internet).</param>
     /// <param name="InternetServerUrl">Internet-reachable URL (scheme + host + port) for paired clients to connect over the Internet, or null if not configured.</param>
+    /// <param name="EnableLiveView">Toggles on-demand live view sessions for cameras.</param>
+    /// <param name="LiveViewIdleTimeoutMinutes">Idle timeout for active (non-sustained) live view sessions in minutes.</param>
+    /// <param name="LiveViewTelemetrySampleIntervalSeconds">Interval in seconds for capturing live view telemetry samples (RTCP, bitrate).</param>
+    /// <param name="SustainedModeMaxDurationMinutes">Maximum duration in minutes for sustained-mode live view sessions; 0 = unlimited.</param>
+    /// <param name="LiveViewTelemetryRetentionDays">Retention period in days for live view telemetry samples before automated pruning.</param>
+    /// <param name="ElevatedPollingWindowMinutes">Duration in minutes of elevated-polling window when RSSI degradation is detected.</param>
+    /// <param name="ElevatedPollingIntervalSeconds">Polling interval in seconds during elevated-polling windows for tiered device health checks.</param>
+    /// <param name="EnableBitrateCalibration">Toggles automated bitrate calibration sessions to establish time-bucketed baselines.</param>
+    /// <param name="CalibrationCheckIntervalMinutes">Check interval in minutes for launching calibration sessions for under-sampled or stale buckets.</param>
+    /// <param name="CalibrationSessionDurationSeconds">Duration in seconds of a single bitrate calibration session.</param>
+    /// <param name="MinCalibrationSamplesPerBucket">Minimum telemetry samples per time bucket to consider calibration complete for that bucket.</param>
+    /// <param name="CalibrationStalenessDays">Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold.</param>
     public record ClientConfigDto(
         bool EnableForensicAnalysisReports,
         bool EnableSignalAnomalyReports,
@@ -44,7 +56,19 @@ namespace VideoForensics.Api.Contracts
         bool EnableMdnsAdvertisement,
         bool EnableEmailNotifications,
         NetworkTier ConfiguredNetworkTier,
-        string? InternetServerUrl
+        string? InternetServerUrl,
+        bool EnableLiveView,
+        int LiveViewIdleTimeoutMinutes,
+        int LiveViewTelemetrySampleIntervalSeconds,
+        int SustainedModeMaxDurationMinutes,
+        int LiveViewTelemetryRetentionDays,
+        int ElevatedPollingWindowMinutes,
+        int ElevatedPollingIntervalSeconds,
+        bool EnableBitrateCalibration,
+        int CalibrationCheckIntervalMinutes,
+        int CalibrationSessionDurationSeconds,
+        int MinCalibrationSamplesPerBucket,
+        int CalibrationStalenessDays
     );
 
     /// <summary>Extension methods for mapping configuration objects to/from ClientConfigDtos.</summary>
@@ -73,7 +97,19 @@ namespace VideoForensics.Api.Contracts
                 EnableMdnsAdvertisement: config.EnableMdnsAdvertisement,
                 EnableEmailNotifications: config.EnableEmailNotifications,
                 ConfiguredNetworkTier: config.ConfiguredNetworkTier,
-                InternetServerUrl: config.InternetServerUrl
+                InternetServerUrl: config.InternetServerUrl,
+                EnableLiveView: config.EnableLiveView,
+                LiveViewIdleTimeoutMinutes: config.LiveViewIdleTimeoutMinutes,
+                LiveViewTelemetrySampleIntervalSeconds: config.LiveViewTelemetrySampleIntervalSeconds,
+                SustainedModeMaxDurationMinutes: config.SustainedModeMaxDurationMinutes,
+                LiveViewTelemetryRetentionDays: config.LiveViewTelemetryRetentionDays,
+                ElevatedPollingWindowMinutes: config.ElevatedPollingWindowMinutes,
+                ElevatedPollingIntervalSeconds: config.ElevatedPollingIntervalSeconds,
+                EnableBitrateCalibration: config.EnableBitrateCalibration,
+                CalibrationCheckIntervalMinutes: config.CalibrationCheckIntervalMinutes,
+                CalibrationSessionDurationSeconds: config.CalibrationSessionDurationSeconds,
+                MinCalibrationSamplesPerBucket: config.MinCalibrationSamplesPerBucket,
+                CalibrationStalenessDays: config.CalibrationStalenessDays
             );
         }
     }

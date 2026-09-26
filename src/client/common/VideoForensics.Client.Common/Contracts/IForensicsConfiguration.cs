@@ -79,6 +79,31 @@ namespace VideoForensics.Client.Common.Contracts
         /// Defaults to "ffmpeg" (assumes it's in PATH). Can be an absolute path to a specific ffmpeg binary.
         /// </summary>
         string? UniviewFfmpegPath { get; set; }
+
+        /// <summary>Toggles on-demand live view sessions for cameras. Default on.</summary>
+        bool EnableLiveView { get; set; }
+        /// <summary>Idle timeout for active (non-sustained) live view sessions in minutes. Default 5.</summary>
+        int LiveViewIdleTimeoutMinutes { get; set; }
+        /// <summary>Interval in seconds for capturing live view telemetry samples (RTCP, bitrate). Default 2.</summary>
+        int LiveViewTelemetrySampleIntervalSeconds { get; set; }
+        /// <summary>Maximum duration in minutes for sustained-mode live view sessions; 0 = unlimited. Default 240 (4 hours).</summary>
+        int SustainedModeMaxDurationMinutes { get; set; }
+        /// <summary>Retention period in days for live view telemetry samples before automated pruning. Default 30.</summary>
+        int LiveViewTelemetryRetentionDays { get; set; }
+        /// <summary>Duration in minutes of elevated-polling window when RSSI degradation is detected. Default 10.</summary>
+        int ElevatedPollingWindowMinutes { get; set; }
+        /// <summary>Polling interval in seconds during elevated-polling windows for tiered device health checks. Default 45.</summary>
+        int ElevatedPollingIntervalSeconds { get; set; }
+        /// <summary>Toggles automated bitrate calibration sessions to establish time-bucketed baselines. Default on.</summary>
+        bool EnableBitrateCalibration { get; set; }
+        /// <summary>Check interval in minutes for launching calibration sessions for under-sampled or stale buckets. Default 15.</summary>
+        int CalibrationCheckIntervalMinutes { get; set; }
+        /// <summary>Duration in seconds of a single bitrate calibration session. Default 12.</summary>
+        int CalibrationSessionDurationSeconds { get; set; }
+        /// <summary>Minimum telemetry samples per time bucket to consider calibration complete for that bucket. Default 5.</summary>
+        int MinCalibrationSamplesPerBucket { get; set; }
+        /// <summary>Staleness threshold in days; calibration buckets older than this are re-sampled even if at minimum threshold. Default 14.</summary>
+        int CalibrationStalenessDays { get; set; }
     }
 
     public enum RedactionLevel
@@ -148,5 +173,17 @@ namespace VideoForensics.Client.Common.Contracts
         public string? InternetServerUrl { get; set; }
         public string? UniviewNvrHost { get; set; }
         public string? UniviewFfmpegPath { get; set; }
+        public bool EnableLiveView { get; set; } = true;
+        public int LiveViewIdleTimeoutMinutes { get; set; } = 5;
+        public int LiveViewTelemetrySampleIntervalSeconds { get; set; } = 2;
+        public int SustainedModeMaxDurationMinutes { get; set; } = 240;
+        public int LiveViewTelemetryRetentionDays { get; set; } = 30;
+        public int ElevatedPollingWindowMinutes { get; set; } = 10;
+        public int ElevatedPollingIntervalSeconds { get; set; } = 45;
+        public bool EnableBitrateCalibration { get; set; } = true;
+        public int CalibrationCheckIntervalMinutes { get; set; } = 15;
+        public int CalibrationSessionDurationSeconds { get; set; } = 12;
+        public int MinCalibrationSamplesPerBucket { get; set; } = 5;
+        public int CalibrationStalenessDays { get; set; } = 14;
     }
 }

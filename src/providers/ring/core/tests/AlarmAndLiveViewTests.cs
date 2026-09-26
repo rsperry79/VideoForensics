@@ -230,6 +230,72 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
             catch (Exceptions.SessionNotAuthenticatedException) { }
         }
+
+        [Fact]
+        public async Task BitrateTracking_RtpPacketsReceived_RaisesOnBitrateSampleBpsPeriodically()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
+
+            var bitrateSamples = new List<long>();
+            liveView.OnBitrateSampleBps += bitrate => bitrateSamples.Add(bitrate);
+
+            // Simulate receiving RTP packets with ~1000 bytes each
+            for (int i = 0; i < 10; i++)
+            {
+                liveView.SimulateRtpPacket(1000);
+            }
+
+            // Wait for timer to fire a couple of times
+            await Task.Delay(250);
+
+            // Should have received bitrate samples
+            Assert.NotEmpty(bitrateSamples);
+            Assert.All(bitrateSamples, bitrate => Assert.True(bitrate >= 0, "Bitrate should be non-negative"));
+
+            await liveView.CloseAsync();
+        }
+
+        [Fact]
+        public async Task Dispose_StopsInternalBitrateTimer()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
+            mockHandler.SetupResponse(
+                "api.ring.com/api/v1/clap/ticket/request/signalsocket",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""ticket"": ""signal-ticket-abc"" }");
+            _ = await _mockSession.Authenticate();
+
+            var transport = new FakeWebSocketTransport();
+            RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
+
+            var bitrateSamples = new List<long>();
+            liveView.OnBitrateSampleBps += bitrate => bitrateSamples.Add(bitrate);
+
+            // Simulate some RTP packets
+            liveView.SimulateRtpPacket(1000);
+            await Task.Delay(150);
+
+            int countBeforeDispose = bitrateSamples.Count;
+            Assert.True(countBeforeDispose > 0, "Should have received at least one bitrate sample");
+
+            // Dispose and wait
+            liveView.Dispose();
+            bitrateSamples.Clear();
+
+            // Simulate more packets (they won't go through after dispose, but this tests timer stops)
+            await Task.Delay(150);
+
+            // No more bitrate samples should arrive after dispose
+            Assert.Empty(bitrateSamples);
+        }
     }
 }
 

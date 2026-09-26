@@ -5,6 +5,9 @@
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
         <SignAssembly>true</SignAssembly>
+        <!-- Strong names are not validated on .NET (Core); this assembly is signed for legacy reasons but
+             references unsigned assemblies (VideoForensics.Data.Common), which is harmless. -->
+        <NoWarn>$(NoWarn);CS8002</NoWarn>
         <AssemblyOriginatorKeyFile>../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
         <AssemblyName>VideoForensics.Providers.Ring.Forensics</AssemblyName>
         <Company>Koen Zomers</Company>
@@ -29,6 +32,7 @@
     <ItemGroup>
         <ProjectReference Include="../../providers/ring/common/VideoForensics.Providers.Ring.Common.csproj" />
         <ProjectReference Include="../helpers/core.helpers/core.forensics/VideoForensics.Forensics.csproj" />
+        <ProjectReference Include="../../data/common/data.common/VideoForensics.Data.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>
