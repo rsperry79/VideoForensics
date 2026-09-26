@@ -7,6 +7,7 @@ using Moq;
 using System.Security.Claims;
 
 using VideoForensics.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -1158,6 +1159,155 @@ namespace VideoForensics.WebApp.Tests
             deviceHealth.Verify(
                 d => d.GetHistoryAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        #endregion
+
+        #region CreateMediaStillAsync Tests
+
+        [Fact]
+        public async Task CreateMediaStillAsync_NegativeOffset_ReturnsBadRequest()
+        {
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(Guid.NewGuid()) };
+            var request = new CaptureStillRequestDto(-1, null, null, null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                Guid.NewGuid(), request, stillService.Object, context, CancellationToken.None);
+
+            Assert.IsType<BadRequest<string>>(result);
+            stillService.Verify(s => s.CaptureStillAsync(
+                It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_CaseIdWithoutReason_ReturnsBadRequest()
+        {
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(Guid.NewGuid()) };
+            var request = new CaptureStillRequestDto(1000, null, Guid.NewGuid(), null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                Guid.NewGuid(), request, stillService.Object, context, CancellationToken.None);
+
+            Assert.IsType<BadRequest<string>>(result);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_NoOperatorClaim_ReturnsUnauthorized()
+        {
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var context = new DefaultHttpContext();
+            var request = new CaptureStillRequestDto(1000, null, null, null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                Guid.NewGuid(), request, stillService.Object, context, CancellationToken.None);
+
+            Assert.IsType<UnauthorizedHttpResult>(result);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_UnknownMedia_ReturnsNotFound()
+        {
+            var operatorId = Guid.NewGuid();
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var mediaId = Guid.NewGuid();
+            stillService
+                .Setup(s => s.CaptureStillAsync(mediaId, 1000, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(MediaStillCaptureResult.Fail(MediaStillCaptureError.MediaNotFound, "not found"));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+            var request = new CaptureStillRequestDto(1000, null, null, null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                mediaId, request, stillService.Object, context, CancellationToken.None);
+
+            Assert.IsType<NotFound>(result);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_ServiceReturnsInvalidInput_ReturnsBadRequest()
+        {
+            var operatorId = Guid.NewGuid();
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var mediaId = Guid.NewGuid();
+            stillService
+                .Setup(s => s.CaptureStillAsync(mediaId, 1000, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "ffmpeg missing"));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+            var request = new CaptureStillRequestDto(1000, null, null, null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                mediaId, request, stillService.Object, context, CancellationToken.None);
+
+            _ = Assert.IsAssignableFrom<ProblemHttpResult>(result);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_Success_ReturnsCreatedWithDto()
+        {
+            var operatorId = Guid.NewGuid();
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var mediaId = Guid.NewGuid();
+            var stillId = Guid.NewGuid();
+            var info = new MediaStillInfo
+            {
+                Id = stillId,
+                SourceMediaItemId = mediaId,
+                FrameOffsetMs = 1000,
+                Sha256Hash = "still-hash",
+                SourceSha256AtCapture = "source-hash",
+                CapturedByOperator = operatorId.ToString(),
+                CaptureMethod = "Server",
+                CreatedAtUtc = DateTime.UtcNow,
+                PinnedToCase = false
+            };
+            stillService
+                .Setup(s => s.CaptureStillAsync(mediaId, 1000, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(MediaStillCaptureResult.Ok(info));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+            var request = new CaptureStillRequestDto(1000, null, null, null);
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                mediaId, request, stillService.Object, context, CancellationToken.None);
+
+            var created = Assert.IsType<Created<MediaStillDto>>(result);
+            Assert.NotNull(created.Value);
+            Assert.Equal(stillId, created.Value!.Id);
+            Assert.Equal("still-hash", created.Value.Sha256Hash);
+        }
+
+        [Fact]
+        public async Task CreateMediaStillAsync_WithCaseIdAndReason_ForwardsToService()
+        {
+            var operatorId = Guid.NewGuid();
+            var stillService = new Mock<IMediaStillCaptureService>();
+            var mediaId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
+            var info = new MediaStillInfo
+            {
+                Id = Guid.NewGuid(),
+                SourceMediaItemId = mediaId,
+                FrameOffsetMs = 500,
+                Sha256Hash = "hash",
+                SourceSha256AtCapture = "source-hash",
+                CapturedByOperator = operatorId.ToString(),
+                CaptureMethod = "Server",
+                CreatedAtUtc = DateTime.UtcNow,
+                PinnedToCase = true
+            };
+            stillService
+                .Setup(s => s.CaptureStillAsync(mediaId, 500, null, caseId, "reason", operatorId.ToString(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(MediaStillCaptureResult.Ok(info));
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+            var request = new CaptureStillRequestDto(500, null, caseId, "reason");
+
+            IResult result = await MediaApiEndpoints.CreateMediaStillAsync(
+                mediaId, request, stillService.Object, context, CancellationToken.None);
+
+            var created = Assert.IsType<Created<MediaStillDto>>(result);
+            Assert.True(created.Value!.PinnedToCase);
+            stillService.Verify(s => s.CaptureStillAsync(mediaId, 500, null, caseId, "reason", operatorId.ToString(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         #endregion

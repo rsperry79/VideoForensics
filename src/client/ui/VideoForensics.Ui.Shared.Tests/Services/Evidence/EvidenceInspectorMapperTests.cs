@@ -438,4 +438,230 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         Assert.DoesNotContain("LastVerifiedAtUtc", provenanceDict.Keys);
         Assert.DoesNotContain("ApiSourceHash", provenanceDict.Keys);
     }
+
+    [Fact]
+    public void ToInspector_EventOnly_NoMedia_ActionsHasNullMediaItemId()
+    {
+        var deviceId = Guid.NewGuid();
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:123",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = deviceId,
+            DeviceName = "Front Door",
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Media = null
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
+
+        Assert.NotNull(result.Actions);
+        Assert.Null(result.Actions!.MediaItemId);
+        Assert.Equal(deviceId, result.Actions.DeviceId);
+        Assert.Null(result.Actions.ActiveHoldId);
+    }
+
+    [Fact]
+    public void ToInspector_MediaPresent_NotOnHold_ActionsHasMediaIdAndNullActiveHold()
+    {
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Garage",
+            Event = null,
+            Media = media
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
+
+        Assert.NotNull(result.Actions);
+        Assert.Equal(mediaId, result.Actions!.MediaItemId);
+        Assert.Equal(deviceId, result.Actions.DeviceId);
+        Assert.Null(result.Actions.ActiveHoldId);
+    }
+
+    [Fact]
+    public void ToInspector_MediaOnHold_ActionsHasActiveHoldId()
+    {
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Garage",
+            Event = null,
+            Media = media
+        };
+        var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "r", CreatedBy = "admin" };
+        var holds = new Dictionary<Guid, LegalHold> { { mediaId, hold } };
+
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, new List<IntegrityRecord>());
+
+        Assert.NotNull(result.Actions);
+        Assert.Equal(hold.Id, result.Actions!.ActiveHoldId);
+    }
+
+    [Fact]
+    public void ToInspector_MediaWithPassingIntegrityRecord_ProvenanceShowsVerified()
+    {
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Garage",
+            Event = null,
+            Media = media
+        };
+        var integrity = new List<IntegrityRecord>
+        {
+            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+
+        var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
+        Assert.Equal("Verified", provenanceDict["IntegrityStatus"]);
+    }
+
+    [Fact]
+    public void ToInspector_MediaWithFailingIntegrityRecord_ProvenanceShowsIntegrityFailed()
+    {
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Garage",
+            Event = null,
+            Media = media
+        };
+        var integrity = new List<IntegrityRecord>
+        {
+            new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+
+        var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
+        Assert.Equal("Integrity failed", provenanceDict["IntegrityStatus"]);
+    }
+
+    [Fact]
+    public void ToInspector_MediaWithNoIntegrityRecord_ProvenanceShowsNotVerified()
+    {
+        var deviceId = Guid.NewGuid();
+        var mediaId = Guid.NewGuid();
+        var media = new MediaItem
+        {
+            Id = mediaId,
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "/path",
+            MediaFormat = "video/mp4",
+            FileSizeBytes = 1000,
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+            Sha256Hash = "abc"
+        };
+        var mediaItem = new EvidenceItem
+        {
+            Key = $"media:{mediaId}",
+            Kind = EvidenceKind.Video,
+            OccurredAtUtc = media.RecordedAtUtc,
+            DeviceId = deviceId,
+            DeviceName = "Garage",
+            Event = null,
+            Media = media
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
+
+        var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
+        Assert.Equal("Not verified", provenanceDict["IntegrityStatus"]);
+    }
+
+    [Fact]
+    public void ToInspector_EventOnly_NoMedia_ProvenanceHasNoIntegrityStatus()
+    {
+        var deviceId = Guid.NewGuid();
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:123",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = DateTime.UtcNow,
+            DeviceId = deviceId,
+            DeviceName = "Front Door",
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion", ProviderEventId = "event:1" },
+            Media = null
+        };
+
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
+
+        var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
+        Assert.DoesNotContain("IntegrityStatus", provenanceDict.Keys);
+    }
 }

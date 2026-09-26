@@ -50,6 +50,7 @@
         <ProjectReference Include="..\..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
         <ProjectReference Include="..\..\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
         <ProjectReference Include="..\..\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
+        <ProjectReference Include="..\..\..\core\core\core.telemetry\VideoForensics.Core.Telemetry.csproj" />
         <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
         <ProjectReference Include="..\..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
         <ProjectReference Include="..\..\..\providers\ring\provider\VideoForensics.Providers.Ring.csproj" />

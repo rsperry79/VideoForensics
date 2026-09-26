@@ -1,17 +1,12 @@
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting
 {
-    /// <summary>Thin convenience wrapper over ISecurityAuditLogRepository so call sites don't hand-build a SecurityAuditLogEntry every time (plan §5.5).</summary>
-    public interface ISecurityAuditLogger
-    {
-        Task LogAsync(string eventType, Guid? operatorId, Guid? pairedDeviceId, string? sourceIp, string? details, bool isUrgent, CancellationToken ct);
-    }
-
     /// <summary>
     /// Persists the entry, then fans it out to <see cref="INotificationDispatcher"/> if urgent
     /// (plan §5.6) - the one choke point every security event already passes through, so a new

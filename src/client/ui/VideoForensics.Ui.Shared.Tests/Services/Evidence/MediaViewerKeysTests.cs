@@ -122,6 +122,28 @@ public class MediaViewerKeys_VideoActions_Tests
         // Assert
         Assert.Equal(MediaViewerAction.None, action);
     }
+
+    [Theory]
+    [InlineData("s")]
+    [InlineData("S")]
+    public void Map_S_ReturnsGrabStillForVideo(string key)
+    {
+        // Act
+        var action = MediaViewerKeys.Map(key, isVideo: true);
+
+        // Assert
+        Assert.Equal(MediaViewerAction.GrabStill, action);
+    }
+
+    [Fact]
+    public void Map_S_ReturnsNoneForImage()
+    {
+        // Act
+        var action = MediaViewerKeys.Map("s", isVideo: false);
+
+        // Assert
+        Assert.Equal(MediaViewerAction.None, action);
+    }
 }
 
 public class MediaViewerKeys_UnknownKeys_Tests

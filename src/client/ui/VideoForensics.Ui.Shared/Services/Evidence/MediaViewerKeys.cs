@@ -44,6 +44,8 @@ public static class MediaViewerKeys
                 return MediaViewerAction.FrameBack;
             if (key == ".")
                 return MediaViewerAction.FrameForward;
+            if (key == "s" || key == "S")
+                return MediaViewerAction.GrabStill;
         }
 
         return MediaViewerAction.None;

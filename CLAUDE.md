@@ -67,7 +67,8 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`
 - Coverage: interfaces 100%, business logic >80%, integrations >70%
-- Run all tests: `dotnet test`
+- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `tests/` project.
+- Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
 
 ## Documentation
 
@@ -141,6 +142,8 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 ## Execution workflow
 
+- **Branching model:** `dev` is the integration branch — all plan/feature branches fork from it, and PRs from those branches target it. `main` is the release branch and must never be ahead of `dev`; it only ever moves forward by merging from `dev` (a release), never receives direct commits or feature branches of its own.
+- **When a plan is approved, create a new branch for it before any implementation work starts**, off of `dev` (or off the current branch if there's a clear reason to stack, but default to `dev`). Never implement a new plan's work directly on whatever branch happens to be checked out — that branch may hold unrelated in-progress work (uncommitted or committed), and mixing the two makes it impossible to review, revert, or PR either one cleanly. Name the branch for the plan's feature, not the session. If the working tree already has unrelated uncommitted changes when a plan is approved, stop and ask how to handle them before branching (don't silently carry them onto the new branch, and don't discard them).
 - **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.
 - **Lite gate:** the default verification step after a Haiku subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their sibling `tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
 - **Committing and pushing a branch (no PR yet) only requires the lite gate** to have already passed for every change being committed/pushed — do not run the full gate just to commit or push a branch.

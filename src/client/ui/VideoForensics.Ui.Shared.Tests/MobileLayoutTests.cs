@@ -233,6 +233,11 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         var caseRepoMock = new Mock<ICaseRepository>();
         Services.AddScoped(_ => caseRepoMock.Object);
 
+        // InspectorPanel's evidence-actions section (hold/release/verify) needs these too, even
+        // though none of these tests exercise them.
+        Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
+
         var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
         localizerMock
             .Setup(l => l[It.IsAny<string>()])
