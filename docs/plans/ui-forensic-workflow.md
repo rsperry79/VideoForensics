@@ -129,9 +129,12 @@ the API tester** (Ring Self-Test) — no app-wide buffer or explorer.
 
 - Ring.Core.Tests has 8 live-network auth tests that fail wherever outbound Ring access is blocked.
 
-- Session network tier: WebApp's own UI reaches security endpoints via self-HTTP, so the Local-tier
-  check reflects the server's path to itself, not the user's. Follow-up: capture each circuit's real
-  tier at connection time and check against it.
+- ✅ Session network tier (`claude/session-network-tier`): each web session records its real tier from
+  the browser's initial request (prerender → persisted state; unknown → Internet; never loosens).
+  Self-HTTP calls (security services, Security* pages via `ISelfApiHttpClientFactory`, WebAuthnClient
+  login) carry a signed 2-minute `X-VF-Session-Tier` header, honoured only on loopback; the auth
+  handler requires it bound to the operator, pre-auth login accepts an unbound one
+  (`RequestTierResolver`).
 
 ## Environment notes
 

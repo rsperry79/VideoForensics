@@ -34,6 +34,7 @@ namespace VideoForensics.WebApp.Auth
         private readonly IOperatorCredentialRepository _operatorCredentialRepository;
         private readonly INetworkTierResolver _tierResolver;
         private readonly IOperatorRepository _operatorRepository;
+        private readonly ISessionTierHeaderProtector _headerProtector;
 
         public PairedDeviceAuthenticationHandler(
             IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -43,7 +44,8 @@ namespace VideoForensics.WebApp.Auth
             IPairedDeviceRepository pairedDeviceRepository,
             IOperatorCredentialRepository operatorCredentialRepository,
             INetworkTierResolver tierResolver,
-            IOperatorRepository operatorRepository)
+            IOperatorRepository operatorRepository,
+            ISessionTierHeaderProtector headerProtector)
             : base(options, logger, encoder)
         {
             _tokenService = tokenService;
@@ -51,6 +53,20 @@ namespace VideoForensics.WebApp.Auth
             _operatorCredentialRepository = operatorCredentialRepository;
             _tierResolver = tierResolver;
             _operatorRepository = operatorRepository;
+            _headerProtector = headerProtector;
+        }
+
+        /// <summary>
+        /// Resolves the effective network tier for this ALREADY-authenticated request, honoring the
+        /// WebApp's own self-HTTP session-tier header - see <see cref="RequestTierResolver"/> for the
+        /// full rule (shared with the PRE-AUTH case, e.g. <c>OperatorAuthEndpoints.LoginPasswordAsync</c>'s
+        /// primary-SuperAdmin Local-only check). This request's own operator id is required to match
+        /// the header's, so a pre-auth header (no operator bound at all) or one bound to a different
+        /// operator is rejected the same way - never inheriting this operator's Local-tier trust.
+        /// </summary>
+        private NetworkTier ResolveEffectiveTier(Guid operatorId)
+        {
+            return RequestTierResolver.ResolveForOperator(Context, _tierResolver, _headerProtector, Logger, operatorId);
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -89,7 +105,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Invalid or expired credential.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     claims = new[]
                     {
                         new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
@@ -107,7 +123,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Password change required.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     // Emit claims without PairedDeviceId since this is not a service/device credential.
                     claims = new[]
                     {
@@ -131,7 +147,7 @@ namespace VideoForensics.WebApp.Auth
                         return AuthenticateResult.Fail("Password change required.");
                     }
 
-                    NetworkTier tier = _tierResolver.ResolveTier(Context);
+                    NetworkTier tier = ResolveEffectiveTier(principal.OperatorId);
                     // Emit claims with PairedDeviceId claim = OperatorCredential.Id (reuse same claim type for now).
                     claims = new[]
                     {
@@ -161,7 +177,7 @@ namespace VideoForensics.WebApp.Auth
                 return AuthenticateResult.Fail("Invalid or expired credential.");
             }
 
-            NetworkTier fallbackTier = _tierResolver.ResolveTier(Context);
+            NetworkTier fallbackTier = ResolveEffectiveTier(fallbackDevice.OperatorId);
             Claim[] fallbackClaims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, fallbackDevice.OperatorId.ToString()),

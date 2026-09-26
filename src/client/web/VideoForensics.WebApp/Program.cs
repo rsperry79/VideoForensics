@@ -281,6 +281,11 @@ builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
 builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
 
+// This circuit's real network tier (plan §5.10/§5.12), captured once from the browser's actual
+// initial connection - see Components/NetworkTierCapture.razor and SessionNetworkContext's own doc
+// comment for why this can't simply be re-resolved later from a self-HTTP call's own connection.
+builder.Services.AddScoped<SessionNetworkContext>();
+
 // Security Events page + SuperAdmin operator picker (plan §5.5): the WebApp's own Blazor UI reuses
 // the same HTTP-backed RemoteSecurityEventsService/RemoteAdminOperatorService that a MAUI client
 // uses, calling back into this same process's own Minimal API instead of a remote server address -
@@ -289,6 +294,12 @@ builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvide
 // code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
+
+// Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
+// build their own self-HTTP clients through this factory instead of a raw `new HttpClient { ... }` -
+// same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
+// DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();

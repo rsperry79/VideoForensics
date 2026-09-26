@@ -7,6 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SecurityOperators> L
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -390,16 +391,11 @@ else
         }
     }
 
-    private HttpClient CreateClient()
-    {
-        var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
-        if (SessionState.SessionToken is not null)
-        {
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-        }
-
-        return client;
-    }
+    // Delegates to ISelfApiHttpClientFactory (plan §5.10/§5.12) instead of building a raw
+    // HttpClient directly - in the WebApp, this self-call must carry the calling circuit's real
+    // network tier (see WebAppSelfApiHttpClientFactory's doc comment) so SuperAdminLocal-gated
+    // endpoints aren't fooled by the self-call's own loopback connection.
+    private HttpClient CreateClient() => ClientFactory.CreateClient();
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 

@@ -1,0 +1,57 @@
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Components
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Hosting
+@using VideoForensics.WebApp.Services
+@inject INetworkTierResolver TierResolver
+@inject PersistentComponentState PersistedState
+@inject SessionNetworkContext NetworkContext
+@implements IDisposable
+
+@* Renders nothing - purely captures this circuit's real network tier (see SessionNetworkContext's
+   doc comment) so self-HTTP calls (SelfHttpServiceExtensions/SessionTierHeaderHandler) can carry it
+   back into the server's own auth handler. Rendered alongside <Routes> in App.razor. *@
+
+@code {
+    private const string PersistenceKey = "vf-session-network-tier";
+
+    /// <summary>
+    /// Cascaded automatically by the Razor Components endpoint during the request that renders this
+    /// page - populated ONLY during the non-interactive prerendering pass (the actual HTTP request
+    /// the browser made), and null once the interactive Blazor Server circuit takes over.
+    /// </summary>
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    private PersistingComponentStateSubscription? _subscription;
+
+    protected override void OnInitialized()
+    {
+        if (HttpContext != null)
+        {
+            // Prerender pass: the only point in this circuit's lifetime with a real, per-request
+            // connection to resolve a tier from.
+            NetworkContext.CaptureFromInitialConnection(HttpContext, TierResolver);
+            NetworkTier resolvedTier = NetworkContext.Tier;
+
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson(PersistenceKey, resolvedTier);
+                return Task.CompletedTask;
+            });
+        }
+        else if (PersistedState.TryTakeFromJson(PersistenceKey, out NetworkTier persistedTier))
+        {
+            // Interactive circuit: HttpContext is gone - recover what the prerender pass above
+            // resolved and persisted into the page for exactly this purpose.
+            NetworkContext.SetTier(persistedTier);
+        }
+        // Else: no HttpContext and nothing persisted (e.g. a render mode with no prerender at all)
+        // - SessionNetworkContext's own Internet default stands, which is the correct fail-safe.
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+    }
+}

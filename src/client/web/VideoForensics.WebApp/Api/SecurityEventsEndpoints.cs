@@ -28,7 +28,6 @@ namespace VideoForensics.WebApp.Api
         private static async Task<IResult> GetSecurityEventsAsync(
             SecurityEventsQueryRequest request,
             ISecurityAuditService auditService,
-            INetworkTierResolver tierResolver,
             HttpContext context,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -84,8 +83,13 @@ namespace VideoForensics.WebApp.Api
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }
 
-                NetworkTier tier = tierResolver.ResolveTier(context);
-                if (tier != NetworkTier.Local)
+                // Read the NetworkTier claim set once by PairedDeviceAuthenticationHandler, rather
+                // than re-resolving the connection's own tier here - for a self-HTTP call from the
+                // WebApp's own Blazor UI, the connection is always loopback regardless of where the
+                // real browser is, so re-resolving it here would silently grant Local tier to a
+                // caller whose real session tier is Internet/Network.
+                string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+                if (!Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) || tier != NetworkTier.Local)
                 {
                     logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not on Local tier (tier={Tier})", callerId, tier);
                     return Results.StatusCode(StatusCodes.Status403Forbidden);

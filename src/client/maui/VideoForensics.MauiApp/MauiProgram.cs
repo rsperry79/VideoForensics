@@ -168,6 +168,12 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.PairedSessionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
 
+            // Pages/Security*.razor's self-API calls (plan §5.10/§5.12) - MAUI has no self-call
+            // network-tier concern (it always talks to a remote/LAN server, never itself), so it gets
+            // the plain default factory. TryAddScoped so a host that needs a different behavior could
+            // still override it.
+            builder.Services.TryAddScoped<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory, VideoForensics.Ui.Shared.Services.DefaultSelfApiHttpClientFactory>();
+
             // Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state
             // (device-local), right-panel page-context slot, and per-operator theme/culture, all
             // circuit-scoped like PairedSessionState above.
