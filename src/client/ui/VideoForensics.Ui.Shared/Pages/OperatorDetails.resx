@@ -116,4 +116,31 @@
   <data name="ResetPasswordFailed" xml:space="preserve">
     <value>Password reset failed: {0}</value>
   </data>
+  <data name="LockoutStatus" xml:space="preserve">
+    <value>Lockout Status</value>
+  </data>
+  <data name="StatusLockedOut" xml:space="preserve">
+    <value>Locked out until {0}</value>
+  </data>
+  <data name="StatusNotLockedOut" xml:space="preserve">
+    <value>Not locked out</value>
+  </data>
+  <data name="TwoFactorOverride" xml:space="preserve">
+    <value>Two-Factor Authentication Override</value>
+  </data>
+  <data name="UnlockButton" xml:space="preserve">
+    <value>Unlock Account</value>
+  </data>
+  <data name="UnlockingButton" xml:space="preserve">
+    <value>Unlocking...</value>
+  </data>
+  <data name="UnlockFailed" xml:space="preserve">
+    <value>Unlock failed: {0}</value>
+  </data>
+  <data name="NotAuthorizedToUpdate" xml:space="preserve">
+    <value>Not authorized to update this operator.</value>
+  </data>
+  <data name="TwoFactorOverrideSaveFailed" xml:space="preserve">
+    <value>Two-factor override save failed: {0}</value>
+  </data>
 </root>

@@ -1,3 +1,35 @@
-Copyright (c) 2026 VideoForensics. All rights reserved.
+MIT License
 
-This software is proprietary and confidential. No license is granted to copy, modify, distribute, or use this software without explicit written permission from the copyright holder.
+Copyright (c) 2026 VideoForensics contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Third-party components (not covered by this license)
+
+This MIT license applies only to this repository's own source code. It does
+NOT extend to third-party dependencies, which remain under their own license
+terms — most notably Syncfusion Essential Studio (Syncfusion Blazor and MAUI
+components used by `VideoForensics.WebApp` and `VideoForensics.MauiApp`),
+which is proprietary, commercially licensed software. Syncfusion's components
+are consumed only via NuGet package reference at build time and are never
+vendored, copied, or redistributed as part of this repository's own source.
+Building or running this software requires a valid Syncfusion license
+(commercial or Community License) obtained separately from Syncfusion; none
+is granted or implied by this license. See [`CREDITS.md`](CREDITS.md) for
+this and all other third-party components and their license terms.

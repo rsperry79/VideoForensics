@@ -237,6 +237,100 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task DeviceHealthRepository_GetHistoryAsync_WithDateRange_ReturnsOnlyRecordsInRangeOldestFirst()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime now = DateTime.UtcNow;
+
+            DeviceHealth beforeRange = TestDataBuilder.BuildDeviceHealth(deviceId);
+            beforeRange.CapturedAtUtc = now.AddHours(-10);
+            beforeRange.WifiSignalRssi = -80;
+            _ = await _repository.AddAsync(beforeRange, CancellationToken.None);
+
+            DeviceHealth inRange1 = TestDataBuilder.BuildDeviceHealth(deviceId);
+            inRange1.CapturedAtUtc = now.AddHours(-5);
+            inRange1.WifiSignalRssi = -60;
+            _ = await _repository.AddAsync(inRange1, CancellationToken.None);
+
+            DeviceHealth inRange2 = TestDataBuilder.BuildDeviceHealth(deviceId);
+            inRange2.CapturedAtUtc = now.AddHours(-2);
+            inRange2.WifiSignalRssi = -55;
+            _ = await _repository.AddAsync(inRange2, CancellationToken.None);
+
+            DeviceHealth afterRange = TestDataBuilder.BuildDeviceHealth(deviceId);
+            afterRange.CapturedAtUtc = now.AddHours(1);
+            afterRange.WifiSignalRssi = -50;
+            _ = await _repository.AddAsync(afterRange, CancellationToken.None);
+
+            IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(
+                deviceId, now.AddHours(-6), now, CancellationToken.None);
+
+            Assert.Equal(2, history.Count);
+            Assert.Equal(inRange1.Id, history[0].Id);
+            Assert.Equal(inRange2.Id, history[1].Id);
+        }
+
+        [Fact]
+        public async Task DeviceHealthRepository_GetHistoryAsync_WithDateRange_IsInclusiveOfBothEnds()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime to = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
+
+            DeviceHealth atFrom = TestDataBuilder.BuildDeviceHealth(deviceId);
+            atFrom.CapturedAtUtc = from;
+            _ = await _repository.AddAsync(atFrom, CancellationToken.None);
+
+            DeviceHealth atTo = TestDataBuilder.BuildDeviceHealth(deviceId);
+            atTo.CapturedAtUtc = to;
+            _ = await _repository.AddAsync(atTo, CancellationToken.None);
+
+            IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(deviceId, from, to, CancellationToken.None);
+
+            Assert.Equal(2, history.Count);
+            Assert.Contains(history, h => h.Id == atFrom.Id);
+            Assert.Contains(history, h => h.Id == atTo.Id);
+        }
+
+        [Fact]
+        public async Task DeviceHealthRepository_GetHistoryAsync_WithDateRange_FiltersOnlyByDeviceId()
+        {
+            var deviceId1 = Guid.NewGuid();
+            var deviceId2 = Guid.NewGuid();
+            DateTime now = DateTime.UtcNow;
+
+            DeviceHealth h1 = TestDataBuilder.BuildDeviceHealth(deviceId1);
+            h1.CapturedAtUtc = now.AddHours(-1);
+            _ = await _repository.AddAsync(h1, CancellationToken.None);
+
+            DeviceHealth h2 = TestDataBuilder.BuildDeviceHealth(deviceId2);
+            h2.CapturedAtUtc = now.AddHours(-1);
+            _ = await _repository.AddAsync(h2, CancellationToken.None);
+
+            IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(
+                deviceId1, now.AddHours(-2), now, CancellationToken.None);
+
+            Assert.Single(history);
+            Assert.Equal(deviceId1, history[0].DeviceId);
+        }
+
+        [Fact]
+        public async Task DeviceHealthRepository_GetHistoryAsync_WithDateRange_NoRecordsInRange_ReturnsEmpty()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime now = DateTime.UtcNow;
+
+            DeviceHealth outsideRange = TestDataBuilder.BuildDeviceHealth(deviceId);
+            outsideRange.CapturedAtUtc = now.AddDays(-30);
+            _ = await _repository.AddAsync(outsideRange, CancellationToken.None);
+
+            IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(
+                deviceId, now.AddHours(-1), now, CancellationToken.None);
+
+            Assert.Empty(history);
+        }
+
+        [Fact]
         public async Task DeviceHealthRepository_GetHistoryAsync_HandlesMultipleDevices()
         {
             var deviceId1 = Guid.NewGuid();

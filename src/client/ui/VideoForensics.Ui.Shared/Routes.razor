@@ -3,12 +3,12 @@
 <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
     <Found Context="routeData">
         <AuthGate>
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.ResponsiveLayout)" />
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </AuthGate>
     </Found>
     <NotFound>
-        <LayoutView Layout="typeof(Layout.MainLayout)">
+        <LayoutView Layout="typeof(Layout.ResponsiveLayout)">
             <p role="alert">Sorry, there's nothing at this address.</p>
         </LayoutView>
     </NotFound>

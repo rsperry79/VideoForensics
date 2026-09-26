@@ -32,5 +32,31 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Marks that the operator's first successful login after approval has been notified (sets ApprovalFirstLoginNotifiedAtUtc to now).</summary>
         Task SetApprovalFirstLoginNotifiedAsync(Guid operatorId, CancellationToken ct);
+
+        /// <summary>
+        /// Increments FailedLoginAttemptCount for an operator; if the new count reaches or exceeds maxFailedAttempts,
+        /// sets LockedOutUntilUtc to DateTime.UtcNow.AddMinutes(lockoutDurationMinutes) to trigger account lockout.
+        /// Called on every failed login attempt (password or LDAP) to enforce the lockout policy.
+        /// </summary>
+        Task IncrementFailedLoginAttemptAsync(Guid operatorId, int maxFailedAttempts, int lockoutDurationMinutes, CancellationToken ct);
+
+        /// <summary>
+        /// Resets FailedLoginAttemptCount to 0 and clears LockedOutUntilUtc (sets to null).
+        /// Called on successful login to clear the account lockout state.
+        /// </summary>
+        Task ResetFailedLoginAttemptsAsync(Guid operatorId, CancellationToken ct);
+
+        /// <summary>
+        /// Manually unlocks an account by clearing FailedLoginAttemptCount and LockedOutUntilUtc (sets to null).
+        /// This is a SuperAdmin-initiated manual-unlock operation; semantically equivalent to ResetFailedLoginAttemptsAsync
+        /// but separated as a distinct method name so call sites read clearly as an administrative action.
+        /// </summary>
+        Task UnlockAsync(Guid operatorId, CancellationToken ct);
+
+        /// <summary>
+        /// Sets the two-factor authentication requirement override for a specific operator.
+        /// This allows a SuperAdmin to force two-factor on/off for one person regardless of their role's default policy.
+        /// </summary>
+        Task SetTwoFactorRequirementOverrideAsync(Guid operatorId, TwoFactorRequirementOverride value, CancellationToken ct);
     }
 }

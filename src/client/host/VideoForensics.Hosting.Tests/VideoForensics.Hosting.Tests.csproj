@@ -18,11 +18,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\core\core\core.telemetry\VideoForensics.Core.Telemetry.csproj" />
     <ProjectReference Include="..\..\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
     <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
     <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />

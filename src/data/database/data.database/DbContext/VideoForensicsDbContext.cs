@@ -166,6 +166,27 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the push subscriptions (Web Push API credentials per browser/device).</summary>
         public DbSet<PushSubscription> PushSubscriptions { get; set; }
 
+        /// <summary>Gets or sets the lockout policy settings (Phase 0 security hardening).</summary>
+        public DbSet<LockoutPolicySettings> LockoutPolicySettings { get; set; }
+
+        /// <summary>Gets or sets the two-factor role requirements (Phase 0 security hardening).</summary>
+        public DbSet<TwoFactorRoleRequirement> TwoFactorRoleRequirements { get; set; }
+
+        /// <summary>Gets or sets the banned IP ranges (Phase 0 security hardening).</summary>
+        public DbSet<BannedIpRange> BannedIpRanges { get; set; }
+
+        /// <summary>Gets or sets the security events (Phase 0.5 login/breach tracking).</summary>
+        public DbSet<SecurityEvent> SecurityEvents { get; set; }
+
+        /// <summary>Gets or sets the forensic cases with pinned evidence and chain-of-custody tracking.</summary>
+        public DbSet<ForensicCase> Cases { get; set; }
+
+        /// <summary>Gets or sets the case device scope junctions.</summary>
+        public DbSet<CaseDevice> CaseDevices { get; set; }
+
+        /// <summary>Gets or sets the evidence items pinned to cases (events and media).</summary>
+        public DbSet<CaseItem> CaseItems { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

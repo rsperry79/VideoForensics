@@ -242,6 +242,26 @@
             );
         }
 
+        /// <summary>Converts a DeviceHealthDto back to a DeviceHealth entity.</summary>
+        public static VideoForensics.Data.Common.Entities.DeviceHealth ToDomain(this DeviceHealthDto dto)
+        {
+            return new VideoForensics.Data.Common.Entities.DeviceHealth
+            {
+                Id = dto.Id,
+                DeviceId = dto.DeviceId,
+                BatteryPercentage = dto.BatteryPercentage,
+                BatteryVoltageValue = dto.BatteryVoltageValue,
+                WifiSignalRssi = dto.WifiSignalRssi,
+                WifiName = dto.WifiName,
+                IsExternalPowerConnected = dto.IsExternalPowerConnected,
+                OtaStatus = dto.OtaStatus,
+                IsOnline = dto.IsOnline,
+                LastHeartbeatUtc = dto.LastHeartbeatUtc,
+                FirmwareVersion = dto.FirmwareVersion,
+                CapturedAtUtc = dto.CapturedAtUtc
+            };
+        }
+
         /// <summary>Converts an ActionLogEntry entity to an ActionLogEntryDto.</summary>
         public static ActionLogEntryDto ToDto(this VideoForensics.Data.Common.Entities.ActionLogEntry entity)
         {

@@ -22,19 +22,19 @@
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.12" />
-        <PackageReference Include="Radzen.Blazor" Version="11.4.1" />
-        <PackageReference Include="Syncfusion.Blazor.Core" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Buttons" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Calendars" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Grid" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Inputs" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Notifications" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Popups" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.ProgressBar" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.QueryBuilder" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Layouts" Version="34.2.8" />
-        <PackageReference Include="Syncfusion.Blazor.Themes" Version="34.2.8" />
+        <PackageReference Include="Radzen.Blazor" Version="11.4.3" />
+        <PackageReference Include="Syncfusion.Blazor.Core" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Buttons" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Calendars" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Grid" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Inputs" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Notifications" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Popups" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.ProgressBar" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.QueryBuilder" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Layouts" Version="34.2.9" />
+        <PackageReference Include="Syncfusion.Blazor.Themes" Version="34.2.9" />
     </ItemGroup>
 
     <ItemGroup>

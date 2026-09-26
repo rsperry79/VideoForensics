@@ -42,8 +42,8 @@ namespace VideoForensics.Hosting.Tests
                 {
                     new
                     {
-                        name = "VideoForensicsBootstrapper.exe",
-                        browser_download_url = $"https://github.com/rsperry79/VideoForensics/releases/download/{tagName}/VideoForensicsBootstrapper.exe",
+                        name = "VideoForensicsSetup.exe",
+                        browser_download_url = $"https://github.com/rsperry79/VideoForensics/releases/download/{tagName}/VideoForensicsSetup.exe",
                         size = 5242880L
                     },
                     new
@@ -79,8 +79,8 @@ namespace VideoForensics.Hosting.Tests
             Assert.False(result.Draft);
             Assert.False(result.Prerelease);
             Assert.Equal(2, result.Assets.Count);
-            Assert.Equal("VideoForensicsBootstrapper.exe", result.Assets[0].Name);
-            Assert.Equal("https://github.com/rsperry79/VideoForensics/releases/download/v1.5.0/VideoForensicsBootstrapper.exe", result.Assets[0].BrowserDownloadUrl);
+            Assert.Equal("VideoForensicsSetup.exe", result.Assets[0].Name);
+            Assert.Equal("https://github.com/rsperry79/VideoForensics/releases/download/v1.5.0/VideoForensicsSetup.exe", result.Assets[0].BrowserDownloadUrl);
             Assert.Equal(5242880L, result.Assets[0].Size);
         }
 

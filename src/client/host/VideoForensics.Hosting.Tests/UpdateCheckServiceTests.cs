@@ -30,8 +30,8 @@ namespace VideoForensics.Hosting.Tests
                 config ?? new ForensicsConfiguration(),
                 gitHubClient.Object,
                 installer.Object,
-                currentVersionProvider ?? (() => "1.0.0"),
-                Mock.Of<ILogger<UpdateCheckService>>());
+                Mock.Of<ILogger<UpdateCheckService>>(),
+                currentVersionProvider ?? (() => "1.0.0"));
 
             return (service, gitHubClient, installer);
         }
@@ -251,6 +251,23 @@ namespace VideoForensics.Hosting.Tests
             UpdateCheckState state = service.GetState();
             Assert.True(state.UpdateAvailable);
             Assert.Equal("99.0.0", state.LatestVersion);
+        }
+
+        [Fact]
+        public void UpdateCheckService_ResolvedViaContainer_DoesNotThrowWhenCurrentVersionProviderNotRegistered()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton(Mock.Of<IForensicsConfiguration>());
+            services.AddSingleton(Mock.Of<IGitHubReleaseClient>());
+            services.AddSingleton(Mock.Of<IUpdateInstaller>());
+            services.AddSingleton<UpdateCheckService>();
+
+            using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
+
+            UpdateCheckService service = provider.GetRequiredService<UpdateCheckService>();
+
+            Assert.NotNull(service);
         }
     }
 }

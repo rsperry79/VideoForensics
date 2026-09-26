@@ -18,6 +18,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(o => o.LastName).HasMaxLength(256);
             _ = builder.Property(o => o.Phone).HasMaxLength(64);
             _ = builder.Property(o => o.PasswordHash).HasMaxLength(512);
+            _ = builder.Property(o => o.IsPrimarySuperAdmin).IsRequired();
+            _ = builder.Property(o => o.FailedLoginAttemptCount).IsRequired();
+            _ = builder.Property(o => o.TwoFactorRequirementOverride).IsRequired();
 
             _ = builder.HasIndex(o => o.Username).IsUnique();
             _ = builder.HasIndex(o => o.Email).IsUnique();

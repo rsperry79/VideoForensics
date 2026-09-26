@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <AssemblyName>VideoForensics.DbDiagnostics</AssemblyName>
+    <RootNamespace>VideoForensics.DbDiagnostics</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +20,7 @@
     <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
     <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
     <ProjectReference Include="..\..\client\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="..\VideoForensics.Diagnostics\VideoForensics.Diagnostics.csproj" />
   </ItemGroup>
 
 </Project>

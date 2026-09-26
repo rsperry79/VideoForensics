@@ -1,6 +1,6 @@
 # Third-Party Credits
 
-This repository depends on and/or bundles the following third-party components. The licenses listed here do NOT extend to this repository's own proprietary code—see the LICENSE file for the terms governing this project.
+This repository depends on and/or bundles the following third-party components. The licenses listed here do NOT extend to this repository's own code, which is MIT licensed—see the LICENSE file for the terms governing this project.
 
 ## Syncfusion Essential Studio
 
@@ -20,11 +20,11 @@ A prebuilt ffmpeg/ffprobe binary is bundled into the Windows and Debian installe
 
 A prebuilt cloudflared binary is bundled into the installers for optional remote-access tunneling. See `src/client/host/VideoForensics.Hosting/CloudflaredTunnelService.cs` for integration details.
 
-## WiX Toolset
+## Inno Setup
 
-**License:** MS-RL (Microsoft Reciprocal License)
+**License:** ISPL (Inno Setup License, free for any use including closed-source commercial software)
 
-Used at build time (not bundled or distributed with the final software) to produce the Windows MSI installer and Burn bootstrapper. See `deploy/windows/` for build configuration.
+Used at build time (not bundled or distributed with the final software) to produce the Windows installer. See `deploy/windows/VideoForensics.iss` for build configuration.
 
 ## Ring.Api
 

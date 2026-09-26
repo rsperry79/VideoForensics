@@ -43,6 +43,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IJammingRepository, JammingRepository>();
             services.TryAddScoped<IIntegrityRecordRepository, IntegrityRecordRepository>();
             services.TryAddScoped<ILegalHoldRepository, LegalHoldRepository>();
+            services.TryAddScoped<ICaseRepository, CaseRepository>();
             services.TryAddScoped<IOperatorRepository, OperatorRepository>();
             services.TryAddScoped<IPairedDeviceRepository, PairedDeviceRepository>();
             services.TryAddScoped<IOperatorCredentialRepository, OperatorCredentialRepository>();
@@ -56,6 +57,12 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<INoticeDismissalRepository, NoticeDismissalRepository>();
             services.TryAddScoped<IOperatorNotificationPreferenceRepository, OperatorNotificationPreferenceRepository>();
             services.TryAddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+            services.TryAddScoped<IBannedIpRangeRepository, BannedIpRangeRepository>();
+            services.TryAddScoped<ILockoutPolicySettingsRepository, LockoutPolicySettingsRepository>();
+            services.TryAddScoped<ITwoFactorRoleRequirementRepository, TwoFactorRoleRequirementRepository>();
+
+            // Register security audit service (Phase 0.5)
+            services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
             // Register unit of work
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();

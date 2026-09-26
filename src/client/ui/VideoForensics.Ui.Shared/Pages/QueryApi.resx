@@ -149,4 +149,10 @@
   <data name="ApplyFilter" xml:space="preserve">
     <value>Apply Filter</value>
   </data>
+  <data name="RawResponse" xml:space="preserve">
+    <value>Raw response</value>
+  </data>
+  <data name="ColLocationId" xml:space="preserve">
+    <value>Location Id</value>
+  </data>
 </root>

@@ -12,11 +12,17 @@ The recommended way to install VideoForensics is via one of the thin bootstrap s
 # Windows
 irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex
 
+# Windows (Testing channel — rolling prerelease from the dev branch)
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Channel Testing
+
 # Debian/Ubuntu
 curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash
+
+# Debian/Ubuntu (Testing channel)
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel testing
 ```
 
-Alternatively, direct installer downloads (Windows MSI + Burn bootstrapper, or Debian `.deb` package) are available from the [GitHub Releases](https://github.com/rsperry79/VideoForensics/releases) page for air-gapped environments or manual deployment. See [`deploy/README.md`](deploy/README.md) for detailed installation documentation and configuration options.
+Alternatively, direct installer downloads (`VideoForensicsSetup.exe` for Windows, or a Debian `.deb` package) are available from the [GitHub Releases](https://github.com/rsperry79/VideoForensics/releases) page for air-gapped environments or manual deployment. See [`deploy/README.md`](deploy/README.md) for detailed installation documentation and configuration options.
 
 ## Release Channels
 
@@ -37,7 +43,7 @@ Both channels are configurable per-installation via the built-in update-check fe
 
 ## License
 
-This software is proprietary and all rights are reserved. See the [`LICENSE`](LICENSE) file for details. Third-party component licenses are listed in [`CREDITS.md`](CREDITS.md).
+This software is licensed under the [MIT License](LICENSE). Third-party dependencies — including Syncfusion Essential Studio, which is proprietary and commercially licensed — are not covered by this license; see the [`LICENSE`](LICENSE) file and [`CREDITS.md`](CREDITS.md) for details.
 
 ## Changelog
 

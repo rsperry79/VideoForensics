@@ -1,0 +1,140 @@
+@using VideoForensics.Data.Core.Contracts
+@using VideoForensics.Data.Core.Models
+@using VideoForensics.Data.Common.Entities
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject IReportGenerationService ReportGenerationService
+@inject IStringLocalizer<AccessControlPanel> L
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_report is not null)
+{
+    <h5 class="mt-4 mb-2">@L["AccessEventsTitle"]</h5>
+    @if (_report.AccessEvents.Count == 0)
+    {
+        <span>@L["NoAccessEventsFound"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="AccessControlReport.AccessEvent" DataSource="@_report.AccessEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColDetails"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var row = (AccessControlReport.AccessEvent)context;
+                            @(row.Details ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+
+    <h5 class="mt-4 mb-2">@L["ExportEventsTitle"]</h5>
+    @if (_report.ExportEvents.Count == 0)
+    {
+        <span>@L["NoExportEventsFound"]</span>
+    }
+    else
+    {
+        <SfGrid TValue="AccessControlReport.ExportEvent" DataSource="@_report.ExportEvents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColCaseReference"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var row = (AccessControlReport.ExportEvent)context;
+                            @(row.CaseReference ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn HeaderText="@L["ColRecipient"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var row = (AccessControlReport.ExportEvent)context;
+                            @(row.RecipientDescription ?? "-")
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ItemCount)" HeaderText="@L["ColItemCount"]" MinWidth="100" />
+            </GridColumns>
+        </SfGrid>
+    }
+}
+
+@code {
+    [Parameter]
+    public ForensicScope Scope { get; set; } = new ForensicScope(new List<Guid>(), DateTime.UtcNow.AddDays(-90), DateTime.UtcNow, null);
+
+    [Parameter]
+    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
+
+    private bool _isLoading = true;
+    private string? _error;
+    private AccessControlReport? _report;
+    private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if scope actually changed
+        if (_lastLoadedScope.Equals(Scope))
+        {
+            return;
+        }
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            Guid? deviceId = Scope.IncludesAllDevices
+                ? null
+                : Scope.DeviceIds.Count == 1 ? Scope.DeviceIds.First() : null;
+
+            // AccessControlPanel handles single device or all devices
+            // Multiple devices would need merging logic
+            if (Scope.DeviceIds.Count > 1)
+            {
+                _error = "Select a single device (or all) for this analysis";
+                return;
+            }
+
+            _report = await ReportGenerationService.BuildAccessControlReportAsync(
+                deviceId,
+                Scope.FromUtc,
+                Scope.ToUtc,
+                CancellationToken.None);
+
+            _lastLoadedScope = Scope;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load report: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -32,12 +32,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="Dashboard" xml:space="preserve">
-    <value>Dashboard</value>
-  </data>
-  <data name="Full Workflow" xml:space="preserve">
-    <value>Full Workflow</value>
-  </data>
   <data name="Collect" xml:space="preserve">
     <value>Collect</value>
   </data>
@@ -154,5 +148,56 @@
   </data>
   <data name="System" xml:space="preserve">
     <value>System</value>
+  </data>
+  <data name="Evidence" xml:space="preserve">
+    <value>Evidence</value>
+  </data>
+  <data name="Cases" xml:space="preserve">
+    <value>Cases</value>
+  </data>
+  <data name="Sources" xml:space="preserve">
+    <value>Sources</value>
+  </data>
+  <data name="Admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Event Grid" xml:space="preserve">
+    <value>Event Grid</value>
+  </data>
+  <data name="All Cases" xml:space="preserve">
+    <value>All Cases</value>
+  </data>
+  <data name="New Case" xml:space="preserve">
+    <value>New Case</value>
+  </data>
+  <data name="Export Evidence" xml:space="preserve">
+    <value>Export Evidence</value>
+  </data>
+  <data name="Provider Accounts" xml:space="preserve">
+    <value>Provider Accounts</value>
+  </data>
+  <data name="API Tester" xml:space="preserve">
+    <value>API Tester</value>
+  </data>
+  <data name="Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="App Update" xml:space="preserve">
+    <value>App Update</value>
+  </data>
+  <data name="Lockout Policy" xml:space="preserve">
+    <value>Lockout Policy</value>
+  </data>
+  <data name="Change Password" xml:space="preserve">
+    <value>Change Password</value>
+  </data>
+  <data name="My Passkeys" xml:space="preserve">
+    <value>My Passkeys</value>
+  </data>
+  <data name="Sign Out" xml:space="preserve">
+    <value>Sign Out</value>
+  </data>
+  <data name="Filters" xml:space="preserve">
+    <value>Filters</value>
   </data>
 </root>
