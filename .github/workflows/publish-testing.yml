@@ -69,7 +69,7 @@ jobs:
           cat "videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256"
 
       - name: Upload Debian package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debian-package-testing
           path: |
@@ -210,7 +210,7 @@ jobs:
           Get-Content $exeOut
 
       - name: Upload Windows installer artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer-testing
           path: |
