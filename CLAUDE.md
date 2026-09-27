@@ -139,6 +139,7 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 - **`main` only accepts pull requests from `dev`.** All work branches (feature, fix, `claude/*`) open their PRs against `dev`; `main` is updated solely by a `dev` → `main` promotion PR. The `main-source-guard` workflow (`.github/workflows/main-source-guard.yml`) fails any PR into `main` whose head is not this repo's `dev` — it must be a required status check on `main`.
 - Never open a PR from a work branch directly into `main`, and never push directly to `dev` or `main`.
+- **When the user says "PR to main"**, this is shorthand for the full two-step promotion, not a literal PR from the current branch into `main`: (1) land the current work branch into `dev` first via a PR, squash-merging it, then (2) open the `dev` → `main` promotion PR and squash-merge that too. Both merges are squash merges — never a merge commit — so `dev`'s and `main`'s history stay a single flattened commit per promotion.
 
 ## Execution workflow
 
