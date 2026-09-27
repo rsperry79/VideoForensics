@@ -266,8 +266,9 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            var badRequestResult = result as BadRequest;
-            Assert.NotNull(badRequestResult);
+            var statusResult = result as IStatusCodeHttpResult;
+            Assert.NotNull(statusResult);
+            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
         }
 
         [Fact]
@@ -289,8 +290,9 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            var badRequestResult = result as BadRequest;
-            Assert.NotNull(badRequestResult);
+            var statusResult = result as IStatusCodeHttpResult;
+            Assert.NotNull(statusResult);
+            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
         }
 
         [Fact]
@@ -312,8 +314,9 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            var badRequestResult = result as BadRequest;
-            Assert.NotNull(badRequestResult);
+            var statusResult = result as IStatusCodeHttpResult;
+            Assert.NotNull(statusResult);
+            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
         }
     }
 

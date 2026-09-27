@@ -76,6 +76,11 @@ namespace VideoForensics.WebApp.Api
                 return Results.BadRequest(new { error = "Provider cannot be empty." });
             }
 
+            if (request.Provider != "Anthropic" && request.Provider != "OpenAiCompatible")
+            {
+                return Results.BadRequest(new { error = "Provider must be 'Anthropic' or 'OpenAiCompatible'." });
+            }
+
             if (string.IsNullOrWhiteSpace(request.Model))
             {
                 return Results.BadRequest(new { error = "Model cannot be empty." });
