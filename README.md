@@ -38,7 +38,7 @@ Both channels are configurable per-installation via the built-in update-check fe
 ## Components
 
 - **VideoForensics.WebApp** — ASP.NET Core Blazor Server UI and REST API backend. Runs as a Windows Service (Windows) or systemd service (Debian/Ubuntu). Manages all forensic data, evidence chain-of-custody, device connectivity, and multi-user access control.
-- **VideoForensics.MauiApp** — .NET MAUI desktop client for Windows. Connects to the WebApp server over the network.
+- **VideoForensics.MauiApp** — .NET MAUI desktop client for Windows, with iOS support via local developer sideload (see [`deploy/ios/README.md`](deploy/ios/README.md) for details). Connects to the WebApp server over the network.
 - **VideoForensics.Mcp** — Model Context Protocol (MCP) server for AI-assistant integration with Claude and other MCP-compatible tools.
 
 ## License
