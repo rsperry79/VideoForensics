@@ -1,0 +1,27 @@
+@page "/events"
+@inject NavigationManager Nav
+
+@code {
+    /// <summary>Query keys that make up the global forensic scope - see ScopeState.ToQueryString.</summary>
+    private static readonly string[] ScopeQueryKeys = { "devices", "from", "to", "q" };
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        var parts = new List<string>();
+        foreach (var key in ScopeQueryKeys)
+        {
+            var value = query[key];
+            if (!string.IsNullOrEmpty(value))
+            {
+                parts.Add($"{key}={Uri.EscapeDataString(value)}");
+            }
+        }
+
+        parts.Add("view=grid");
+
+        Nav.NavigateTo($"/evidence?{string.Join("&", parts)}", replace: true);
+    }
+}

@@ -30,5 +30,8 @@ public enum MediaViewerAction
     FrameBack,
 
     /// <summary>Step video forward one frame.</summary>
-    FrameForward
+    FrameForward,
+
+    /// <summary>Grab the current video frame as a new evidence still (video only).</summary>
+    GrabStill
 }

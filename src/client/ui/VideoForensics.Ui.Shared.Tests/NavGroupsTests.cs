@@ -29,9 +29,20 @@ public class NavGroups_Tests
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/evidence", itemPaths);
-        Assert.Contains("/events", itemPaths);
         Assert.Contains("/collect/videos", itemPaths);
         Assert.Contains("/collect/snapshots", itemPaths);
+    }
+
+    [Fact]
+    public void Evidence_GroupNoLongerHasEventGrid()
+    {
+        // The Events page ("Event Grid") was retired in phase 8: its actions moved to Evidence's
+        // Grid context menu and Inspector (see EvidenceActions/EvidenceInspectorMapper), and the
+        // old /events route now just redirects (see EventsRedirect).
+        var group = NavGroups.All.First(g => g.Key == "evidence");
+        var itemPaths = group.Items.Select(i => i.Path).ToList();
+        Assert.DoesNotContain("/events", itemPaths);
+        Assert.DoesNotContain(group.Items, i => i.Text == "Event Grid");
     }
 
     [Fact]

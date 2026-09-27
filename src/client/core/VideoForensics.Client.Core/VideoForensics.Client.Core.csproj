@@ -39,6 +39,7 @@
         <ProjectReference Include="..\..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
         <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
         <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
+        <ProjectReference Include="..\..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
         <ProjectReference Include="..\..\..\providers\ring\provider\VideoForensics.Providers.Ring.csproj" />
         <ProjectReference Include="..\..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
         <ProjectReference Include="..\..\..\providers\ring\utils\VideoForensics.Providers.Ring.Utils.csproj" />
