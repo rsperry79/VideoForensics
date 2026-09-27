@@ -2,6 +2,7 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Cases
 @using VideoForensics.Ui.Shared.Services.Inspector
@@ -11,7 +12,9 @@
 @inject PairedSessionState SessionState
 @inject InspectorState InspectorState
 
-<h4 class="mb-4">Cases</h4>
+<div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
+    <div style="overflow: auto;">
+        <h4 class="mb-4">Cases</h4>
 
 <div class="mb-3 d-flex gap-2">
     <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" style="max-width: 200px;" data-testid="case-status-filter">
@@ -53,6 +56,11 @@ else
         </Columns>
     </ForensicGrid>
 }
+    </div>
+    <div style="overflow: auto;">
+        <ScopeRail />
+    </div>
+</div>
 
 @code {
     private IReadOnlyList<ForensicCase>? _cases;
