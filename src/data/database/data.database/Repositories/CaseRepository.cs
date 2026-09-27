@@ -25,6 +25,64 @@ namespace VideoForensics.Data.Database.Repositories
             _logger = logger;
         }
 
+        /// <summary>
+        /// Generates a unique case number with the pattern {prefix}-yyyy-mm-dd-hh-mm-{index}.
+        /// The index is the count of cases created in the same minute.
+        /// </summary>
+        /// <param name="prefix">Case number prefix (e.g., "detected", "suspected", "manual")</param>
+        /// <returns>Generated case number string</returns>
+        internal async Task<string> GenerateCaseNumber(string prefix, CancellationToken ct)
+        {
+            DateTime now = DateTime.UtcNow;
+            DateTime startOfMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+            DateTime endOfMinute = startOfMinute.AddMinutes(1);
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            int count = await db.Cases
+                .Where(c => c.CreatedAtUtc >= startOfMinute && c.CreatedAtUtc < endOfMinute)
+                .CountAsync(ct);
+
+            return $"{prefix}-{now:yyyy-MM-dd-HH-mm}-{count}";
+        }
+
+        /// <summary>
+        /// Creates a forensic case auto-triggered by jamming detection.
+        /// Prefix is determined by confidence level: "detected" if High/Definite, else "suspected".
+        /// Scope is set from jamming event time window.
+        /// </summary>
+        /// <param name="jammingEvent">The jamming incident record that triggered case creation</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <returns>The created forensic case</returns>
+        public async Task<ForensicCase> CreateFromJammingDetectionAsync(
+            JammingIncidentRecord jammingEvent,
+            CancellationToken ct)
+        {
+            // Determine prefix based on confidence level
+            string prefix = jammingEvent.Confidence >= JammingConfidenceLevel.High ? "detected" : "suspected";
+            string caseNumber = await GenerateCaseNumber(prefix, ct);
+            string title = jammingEvent.Confidence >= JammingConfidenceLevel.High
+                ? "Jamming Detected"
+                : "Jamming Suspected";
+
+            string description = $"Jamming incident detected on device {jammingEvent.DeviceId} " +
+                $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
+                $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
+                $"Affected events: {jammingEvent.AffectedEventCount}. " +
+                $"Confidence: {jammingEvent.Confidence}. " +
+                (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
+
+            return await CreateAsync(
+                caseNumber,
+                title,
+                description,
+                leadOperatorId: null,
+                jammingEvent.StartUtc,
+                jammingEvent.EndUtc,
+                new[] { jammingEvent.DeviceId },
+                "System",
+                ct);
+        }
+
         public async Task<ForensicCase> CreateAsync(
             string caseNumber,
             string title,
