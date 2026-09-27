@@ -1,0 +1,203 @@
+@page "/settings/llm"
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<LlmSettings> L
+@inject HttpClient HttpClient
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="/device-signin">@L["SignInWithPasskey"]</a> @L["SignInRequired"]
+    </div>
+}
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+    <p>
+        @L["NotAuthorizedMessage"] <a href="/device-signin">@L["SignInWithPasskey"]</a> @L["SignInRequired"]
+    </p>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    <h6 class="mt-4 mb-2">@L["ConfigurationSection"]</h6>
+    <div class="card border p-4 mb-4">
+        <div class="d-flex flex-column gap-3">
+            <p>
+                @L["ConfigurationDescription"]
+            </p>
+
+            <div class="d-flex flex-row gap-2 align-items-end">
+                <div>
+                    <label>@L["ProviderLabel"]</label>
+                    <SfDropDownList TValue="string" TItem="string" @bind-Value="_provider" DataSource="@(new[] { "Anthropic", "OpenAiCompatible" })" Style="max-width: 260px;" />
+                </div>
+            </div>
+
+            <div class="d-flex flex-row gap-2 align-items-end">
+                <div>
+                    <label>@L["ModelLabel"]</label>
+                    <SfTextBox @bind-Value="_model" Placeholder="@L["ModelPlaceholder"]" Style="max-width: 350px;" />
+                </div>
+            </div>
+
+            <div class="d-flex flex-row gap-2 align-items-end">
+                <div>
+                    <label>@L["ApiKeyLabel"]</label>
+                    <SfTextBox @bind-Value="_apiKey" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["ApiKeyPlaceholder"]" Style="max-width: 350px;" />
+                </div>
+                <small class="text-muted">@L["ApiKeyNote"]</small>
+            </div>
+
+            @if (_provider == "OpenAiCompatible")
+            {
+                <div class="d-flex flex-row gap-2 align-items-end">
+                    <div>
+                        <label>@L["BaseUrlLabel"]</label>
+                        <SfTextBox @bind-Value="_baseUrl" Placeholder="@L["BaseUrlPlaceholder"]" Style="max-width: 350px;" />
+                    </div>
+                    <small class="text-muted">@L["BaseUrlNote"]</small>
+                </div>
+            }
+
+            <div class="d-flex flex-row gap-2">
+                <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveSettingsAsync" CssClass="e-primary" Disabled="@_isSaving" />
+            </div>
+
+            @if (_settingsMessage is not null)
+            {
+                <span style="color: @(_settingsSuccess ? "#4caf50" : "#f44336")">@_settingsMessage</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _authError;
+    private string? _loadError;
+    private string? _settingsMessage;
+    private bool _settingsSuccess;
+
+    private string _provider = "Anthropic";
+    private string _model = "";
+    private string _apiKey = "";
+    private string _baseUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            var response = await HttpClient.GetAsync("api/v1/llm/settings");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = L["NotAuthorizedToView"];
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _loadError = L["FailedToLoadSettings", response.StatusCode.ToString()];
+                return;
+            }
+
+            var settings = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _provider = settings.GetProperty("provider").GetString() ?? "Anthropic";
+            _model = settings.GetProperty("model").GetString() ?? "";
+            _baseUrl = settings.GetProperty("baseUrl").GetString() ?? "";
+            _apiKey = "";
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToLoadSettings", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _isSaving = true;
+        _settingsMessage = null;
+        try
+        {
+            var requestBody = new
+            {
+                provider = _provider,
+                model = _model,
+                apiKey = string.IsNullOrEmpty(_apiKey) ? null : _apiKey,
+                baseUrl = string.IsNullOrEmpty(_baseUrl) ? null : _baseUrl
+            };
+
+            var response = await HttpClient.PostAsJsonAsync("api/v1/llm/settings", requestBody);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _settingsSuccess = false;
+                var errorBody = await SafeReadErrorAsync(response);
+                _settingsMessage = errorBody ?? L["SaveFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _apiKey = "";
+            _settingsSuccess = true;
+            _settingsMessage = L["Saved"];
+        }
+        catch (Exception ex)
+        {
+            _settingsSuccess = false;
+            _settingsMessage = L["SaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}

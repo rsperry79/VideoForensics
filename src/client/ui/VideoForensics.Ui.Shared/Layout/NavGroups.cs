@@ -67,6 +67,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Provider Accounts", "/accounts"),
                 new("Device Configuration", "/devices/config"),
                 new("Query API", "/query"),
+                new("Chat Assistant", "/chat", ctx => ctx.HasRole(OperatorRole.ReadOnly)),
                 new("API Tester", "/tools/ring-selftest"),
                 new("Import / Export", "/tools/import-export")
             ]),
@@ -83,6 +84,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("App Update", "/settings/update-check", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
+                new("LLM API", "/settings/llm", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
                 // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).
                 new("Lockout Policy", "/settings/lockout-policy", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),

@@ -21,6 +21,7 @@ using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
+using VideoForensics.WebApp.Infrastructure;
 using VideoForensics.WebApp.Services;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
@@ -49,7 +50,7 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
 
-int listenPort = ResolveConfiguredPort(builder.Configuration);
+int listenPort = ServerAddressResolver.ResolveConfiguredPort(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
     if (configuredNetworkTier == NetworkTier.Local)
@@ -230,6 +231,10 @@ _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRe
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
 
+// LLM API key store for the embedded MCP chat assistant - stores LLM provider config
+// (API key, model, base URL) encrypted via the existing ICredentialEncryptionProvider abstraction.
+_ = builder.Services.AddScoped<VideoForensics.Hosting.ILlmApiKeyStore, VideoForensics.Hosting.LlmApiKeyStore>();
+
 // MCP Tool classes (Phases 0.5-4) - Milestone 8 HTTP hosting
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.SecurityEventTools>();
 _ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
@@ -250,6 +255,10 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
+
+// Embedded MCP-backed chat assistant: server-side implementation of IChatService that drives
+// an LLM tool-use loop against this app's own forensic analysis tools.
+builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IChatService, VideoForensics.WebApp.Chat.ChatOrchestrator>();
 
 // Geo-IP and threat-intelligence blocking services for login pipeline
 // GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
@@ -403,6 +412,8 @@ app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
 app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
+app.MapChatEndpoints();
+app.MapLlmSettingsEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
 // Gated with paired-device authorization (matching other API endpoints)
@@ -423,15 +434,3 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(VideoForensics.Ui.Shared.Routes).Assembly);
 
 app.Run();
-
-static int ResolveConfiguredPort(IConfiguration configuration)
-{
-    string? urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
-    string? first = urls?.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-    if (first is not null && Uri.TryCreate(first, UriKind.Absolute, out Uri? uri))
-    {
-        return uri.Port;
-    }
-
-    return 5162; // Matches Properties/launchSettings.json's applicationUrl.
-}
