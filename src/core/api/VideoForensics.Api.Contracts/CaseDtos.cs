@@ -65,7 +65,7 @@ namespace VideoForensics.Api.Contracts
     /// <summary>
     /// Request DTO for creating a forensic case.
     /// </summary>
-    /// <param name="CaseNumber">Unique case number (required, max 64 chars).</param>
+    /// <param name="CaseNumber">Optional unique case number (max 64 chars). If not provided, the server generates one automatically.</param>
     /// <param name="Title">Case title (required, max 256 chars).</param>
     /// <param name="Description">Optional case description (max 4000 chars).</param>
     /// <param name="LeadOperatorId">Optional ID of the lead operator.</param>
@@ -73,7 +73,7 @@ namespace VideoForensics.Api.Contracts
     /// <param name="ScopeToUtc">Optional end of the time window (exclusive, UTC).</param>
     /// <param name="DeviceIds">IDs of devices in the case scope.</param>
     public record CreateCaseRequestDto(
-        string CaseNumber,
+        string? CaseNumber,
         string Title,
         string? Description,
         Guid? LeadOperatorId,

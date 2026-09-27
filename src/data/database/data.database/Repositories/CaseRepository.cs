@@ -31,7 +31,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         /// <param name="prefix">Case number prefix (e.g., "detected", "suspected", "manual")</param>
         /// <returns>Generated case number string</returns>
-        internal async Task<string> GenerateCaseNumber(string prefix, CancellationToken ct)
+        public async Task<string> GenerateCaseNumber(string prefix, CancellationToken ct)
         {
             DateTime now = DateTime.UtcNow;
             DateTime startOfMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
