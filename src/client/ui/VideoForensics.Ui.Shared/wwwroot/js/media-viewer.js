@@ -53,3 +53,16 @@ export function focusElement(element) {
         element.focus();
     }
 }
+
+/**
+ * Get a video element's current playback position, in milliseconds. Used by "grab still with
+ * hash" to know which frame offset into the source video the operator is looking at.
+ * @param {HTMLVideoElement} element - The video element
+ * @returns {number} Current time in milliseconds (0 if the element is missing or not a video).
+ */
+export function getCurrentTimeMs(element) {
+    if (element && element.tagName === 'VIDEO') {
+        return Math.round(element.currentTime * 1000);
+    }
+    return 0;
+}

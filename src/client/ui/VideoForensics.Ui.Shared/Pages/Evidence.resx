@@ -35,4 +35,52 @@
   <data name="DeviceTimeViewLabel" xml:space="preserve">
     <value>Device x Time</value>
   </data>
+  <data name="ViewDetails" xml:space="preserve">
+    <value>View Details</value>
+  </data>
+  <data name="ExportSelected" xml:space="preserve">
+    <value>Export Selected</value>
+  </data>
+  <data name="PlaceLegalHold" xml:space="preserve">
+    <value>Place Legal Hold</value>
+  </data>
+  <data name="ReleaseLegalHold" xml:space="preserve">
+    <value>Release Legal Hold</value>
+  </data>
+  <data name="VerifyIntegrityDevice" xml:space="preserve">
+    <value>Verify Integrity (device)</value>
+  </data>
+  <data name="ReasonForHold" xml:space="preserve">
+    <value>Reason for hold</value>
+  </data>
+  <data name="ReasonForRelease" xml:space="preserve">
+    <value>Reason for release</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="NothingToExport" xml:space="preserve">
+    <value>Nothing to export</value>
+  </data>
+  <data name="NoSelectedRowsHaveMedia" xml:space="preserve">
+    <value>None of the selected rows have downloaded media.</value>
+  </data>
+  <data name="SignInRequiredForAction" xml:space="preserve">
+    <value>You must be signed in to perform this action.</value>
+  </data>
+  <data name="LegalHoldPlaced" xml:space="preserve">
+    <value>Legal hold placed</value>
+  </data>
+  <data name="LegalHoldReleased" xml:space="preserve">
+    <value>Legal hold released</value>
+  </data>
+  <data name="IntegrityVerificationComplete" xml:space="preserve">
+    <value>Integrity verification complete</value>
+  </data>
+  <data name="FilesVerifiedForDevice" xml:space="preserve">
+    <value>{0} of {1} file(s) verified for this device.</value>
+  </data>
 </root>

@@ -21,15 +21,17 @@
     <ItemGroup>
         <!-- FrameworkReference, not PackageReference: this project isn't Microsoft.NET.Sdk.Web, but
              it's always consumed by a host that already carries the ASP.NET Core shared framework
-             (WebApp directly; MauiApp/console indirectly since they reference this project). A
-             PackageReference to the standalone Microsoft.AspNetCore.Http.Abstractions NuGet package
-             (the old netstandard2.0-era compat package, last published at 2.3.x) gets copy-local'd
-             into the publish output and overwrites the real v10.0.0.0 shared-framework assembly of
-             the same filename, causing "Could not load file or assembly
+             (WebApp directly; console/MCP indirectly since they reference this project). On MAUI iOS/Android,
+             the shared framework is not available, so this reference is conditional - the needed
+             Microsoft.AspNetCore.DataProtection and Microsoft.Extensions.Http packages are provided
+             separately for mobile builds. A PackageReference to the standalone Microsoft.AspNetCore.Http.Abstractions
+             NuGet package (the old netstandard2.0-era compat package, last published at 2.3.x) gets
+             copy-local'd into the publish output and overwrites the real v10.0.0.0 shared-framework
+             assembly of the same filename, causing "Could not load file or assembly
              'Microsoft.AspNetCore.Http.Abstractions, Version=10.0.0.0...'" at runtime in a
              self-contained publish. FrameworkReference compiles against the shared framework's types
              without copy-locating a conflicting file. -->
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App" Condition="'$(BuildIOS)' != 'true' AND '$(BuildAndroid)' != 'true'" />
     </ItemGroup>
 
     <ItemGroup>
@@ -37,11 +39,21 @@
              Microsoft.Extensions.Http, Microsoft.AspNetCore.DataProtection.Abstractions, and
              Microsoft.Extensions.Identity.Core are all part of the Microsoft.AspNetCore.App shared
              framework brought in by the FrameworkReference above - an explicit PackageReference to
-             them is redundant now (NU1510) and removed. -->
+             them is redundant now (NU1510) and removed. For MAUI iOS/Android builds where the
+             shared framework is not available, Microsoft.AspNetCore.DataProtection, Microsoft.Extensions.Http,
+             Microsoft.AspNetCore.Http.Abstractions (for HttpContext, used by NetworkTierResolver.cs),
+             and Microsoft.Extensions.Identity.Core (for PasswordHasher<T>, used by
+             VideoForensicsHostingExtensions.cs) are provided as standalone packages. The
+             version-conflict concern documented on the FrameworkReference does not apply here since that
+             FrameworkReference is conditioned off whenever these packages are on. -->
         <PackageReference Include="CliWrap" Version="3.10.5" />
         <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
         <PackageReference Include="MailKit" Version="4.18.0" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.13" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
+        <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     </ItemGroup>
 

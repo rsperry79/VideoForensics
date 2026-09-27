@@ -23,13 +23,18 @@
 @inject IReportGenerationService ReportGenerationService
 @inject ILegalHoldRepository LegalHoldRepository
 @inject IMediaItemRepository MediaItemRepository
+@inject IEvidenceValidationService EvidenceValidationService
 @inject NavigationManager NavigationManager
 @inject InspectorState InspectorState
 @inject ScopeState ScopeState
 @inject IDeviceHealthRepository DeviceHealthRepository
+@inject IMediaStillCaptureService MediaStillCaptureService
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
 
 <h4 class="mb-4">Evidence</h4>
+
+<SfToast @ref="_toastRef" />
 
 @if (_isLoading)
 {
@@ -83,6 +88,18 @@ else
             <SfButton Content="Gallery" OnClick="@(() => SetView(EvidenceView.Gallery))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Gallery ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-gallery" />
             <SfButton Content="@L["DeviceTimeViewLabel"]" OnClick="@(() => SetView(EvidenceView.DeviceTime))" CssClass="@(_currentView == EvidenceView.DeviceTime ? "e-primary" : "e-outline")" data-testid="view-devicetime" />
         </div>
+
+        @if (_pendingHoldItem is not null || _pendingReleaseItem is not null)
+        {
+            <div style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
+                <SfTextBox @bind-Value="_holdReasonInput"
+                    data-testid="grid-action-reason"
+                    Placeholder="@(_pendingHoldItem is not null ? L["ReasonForHold"].Value : L["ReasonForRelease"].Value)"
+                    Style="max-width: 260px;" />
+                <SfButton Content="@L["Confirm"]" data-testid="grid-confirm-action" OnClick="ConfirmPendingHoldActionAsync" CssClass="e-primary e-small" />
+                <SfButton Content="@L["Cancel"]" data-testid="grid-cancel-action" OnClick="CancelPendingHoldAction" CssClass="e-flat e-small" />
+            </div>
+        }
     </div>
 
     @if (_vm.IsViewerOpen && _vm.Selected is not null)
@@ -98,7 +115,10 @@ else
             HasNext="@_vm.HasNext"
             OnPrevious="@OnMediaViewerPrevious"
             OnNext="@OnMediaViewerNext"
-            OnClose="@OnMediaViewerClose" />
+            OnClose="@OnMediaViewerClose"
+            OnGrabStill="@OnGrabStillAsync"
+            CanGrabStill="@CanGrabStill"
+            StillCaptureStatus="@_stillCaptureStatus" />
     }
     else if (_currentView == EvidenceView.Timeline)
     {
@@ -140,7 +160,9 @@ else
                 OnRowSelected="@OnGridRowSelectedAsync"
                 Columns="@GridColumns"
                 ExportFileName="evidence.csv"
-                PageSize="20" />
+                PageSize="20"
+                ContextMenuItems="@ContextMenuItems"
+                ContextMenuItemClicked="@OnGridContextMenuClicked" />
         </div>
     }
     else if (_currentView == EvidenceView.Gallery)
@@ -202,6 +224,7 @@ else
     private bool _thumbnailsUnavailable;
     private string? _currentMediaUrl;
     private string? _mediaLoadError;
+    private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
@@ -209,10 +232,29 @@ else
     private List<RssiSample> _stripRssi = new();
     private int _stripSelectedIndex;
 
+    // Evidence actions (moved from the retired Events page): legal hold place/release, device
+    // integrity verification, export - all reachable from the Grid view's context menu.
+    private SfToast? _toastRef;
+    private Dictionary<Guid, LegalHold> _activeHoldsByMediaItemId = new();
+    private EvidenceItem? _pendingHoldItem;
+    private EvidenceItem? _pendingReleaseItem;
+    private string _holdReasonInput = string.Empty;
+
+    // Paired-device operator role, used to gate "Grab still" (server-enforced Review role too -
+    // see MediaApiEndpoints' POST /api/v1/media/{id}/stills). Parsed once at init, the same way
+    // InspectorPanel resolves its own pin-to-case role gate from SessionState.Role.
+    private OperatorRole? _role;
+
+    /// <summary>True if the signed-in operator's role is at least Review - the same minimum the server enforces for POST /api/v1/media/{id}/stills.</summary>
+    private bool CanGrabStill => _role.HasValue && _role.Value >= OperatorRole.Review;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            await SessionState.EnsureLoadedAsync();
+            _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
+
             _isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (_isAuthenticated)
             {
@@ -244,6 +286,11 @@ else
             _vm = new EvidenceViewModel(result);
             _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
             _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);
+
+            // Kept as a local, mutable copy (rather than reading _vm.LoadResult.ActiveHoldsByMediaItemId
+            // directly) so the Grid context menu's hold/release actions can update it in place and have
+            // that reflected immediately (e.g. next time an item's inspector is shown), without a full reload.
+            _activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>(result.ActiveHoldsByMediaItemId);
 
             // Update summary
             var counts = result.Counts;
@@ -318,10 +365,7 @@ else
         var selected = _vm?.Selected;
         if (selected is not null)
         {
-            InspectorState.Show(EvidenceInspectorMapper.ToInspector(
-                selected,
-                _vm!.LoadResult.ActiveHoldsByMediaItemId,
-                _vm.LoadResult.IntegrityRecords));
+            InspectorState.Show(ToEvidenceInspector(selected));
             await LoadMediaUrlAsync(key);
         }
 
@@ -502,10 +546,7 @@ else
             // the user hasn't since moved on to yet another item while this fetch was in flight.
             if (_vm.Selected?.Key == selected.Key)
             {
-                InspectorState.Show(EvidenceInspectorMapper.ToInspector(
-                    selected,
-                    _vm.LoadResult.ActiveHoldsByMediaItemId,
-                    _vm.LoadResult.IntegrityRecords));
+                InspectorState.Show(ToEvidenceInspector(selected));
                 NavigateWithItem(selected.Key);
             }
         }
@@ -526,10 +567,7 @@ else
             // the user hasn't since moved on to yet another item while this fetch was in flight.
             if (_vm.Selected?.Key == selected.Key)
             {
-                InspectorState.Show(EvidenceInspectorMapper.ToInspector(
-                    selected,
-                    _vm.LoadResult.ActiveHoldsByMediaItemId,
-                    _vm.LoadResult.IntegrityRecords));
+                InspectorState.Show(ToEvidenceInspector(selected));
                 NavigateWithItem(selected.Key);
             }
         }
@@ -554,9 +592,249 @@ else
         NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/evidence" : $"/evidence?{combined}", replace: true);
     }
 
+    /// <summary>
+    /// Handles the media viewer's "grab still with hash" action: captures the current video frame
+    /// as a new, independently-hashed evidence still via <see cref="IMediaStillCaptureService"/>,
+    /// then shows the resulting hash and an open link (or the error) inline in the viewer.
+    ///
+    /// Never falls back to a machine-level identity if no operator is signed in - the same rule
+    /// (and the same helper) the hold place/release actions below use, so the two surfaces can't
+    /// diverge. Also refuses below-Review operators (defence in depth: MediaViewer already hides
+    /// the button for them via CanGrabStill, and the server's POST /api/v1/media/{id}/stills
+    /// endpoint enforces the Review role too - this guards a direct/stale invocation from
+    /// bypassing both).
+    /// </summary>
+    private async Task OnGrabStillAsync(long frameOffsetMs)
+    {
+        var mediaId = _vm?.Selected?.Media?.Id;
+        if (mediaId is null)
+        {
+            return;
+        }
+
+        var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["SignInRequiredForAction"], Icon = "e-warning" });
+            }
+            return;
+        }
+
+        if (!CanGrabStill)
+        {
+            return;
+        }
+
+        _stillCaptureStatus = new MediaStillCaptureStatus { InProgress = true };
+        StateHasChanged();
+
+        try
+        {
+            var result = await MediaStillCaptureService.CaptureStillAsync(
+                mediaId.Value, frameOffsetMs, clientPngBase64: null, caseId: null, pinReason: null, actor, CancellationToken.None);
+
+            if (!result.Success || result.Still is null)
+            {
+                _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = result.ErrorMessage ?? "Unknown error" };
+                return;
+            }
+
+            string? openUrl = null;
+            try
+            {
+                var urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { result.Still.Id }, CancellationToken.None);
+                urls.TryGetValue(result.Still.Id, out openUrl);
+            }
+            catch
+            {
+                // The still was captured successfully regardless of whether we could fetch a
+                // viewing URL for it right away; leave OpenUrl null rather than failing the capture.
+            }
+
+            _stillCaptureStatus = new MediaStillCaptureStatus
+            {
+                Sha256Hash = result.Still.Sha256Hash,
+                OpenUrl = openUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = ex.Message };
+        }
+    }
+
     private InspectorModel ToEvidenceInspector(EvidenceItem item)
     {
-        return EvidenceInspectorMapper.ToInspector(item, _vm?.LoadResult.ActiveHoldsByMediaItemId ?? new Dictionary<Guid, LegalHold>(), _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
+        return EvidenceInspectorMapper.ToInspector(item, _activeHoldsByMediaItemId, _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
+    }
+
+    private List<object>? ContextMenuItems => new List<object>
+    {
+        new { Text = L["ViewDetails"], Id = "details" },
+        new { Text = L["ExportSelected"], Id = "export" },
+        new { Text = L["PlaceLegalHold"], Id = "hold" },
+        new { Text = L["ReleaseLegalHold"], Id = "release" },
+        new { Text = L["VerifyIntegrityDevice"], Id = "verify" },
+    };
+
+    /// <summary>
+    /// Handles a Grid context menu click. The target row is read from the event's own
+    /// RowInfo.RowData (populated by Syncfusion for the row under the cursor), independent of any
+    /// left-click "selection" state - selecting a viewable item opens the media viewer and would
+    /// otherwise remove the grid (and its context menu) from view.
+    /// </summary>
+    private async Task OnGridContextMenuClicked(Syncfusion.Blazor.Grids.ContextMenuClickEventArgs<EvidenceItem> args)
+    {
+        if (args.RowInfo?.RowData is not { } item)
+        {
+            return;
+        }
+
+        var actions = ToActionState(item);
+
+        switch (args.Item?.Id)
+        {
+            case "details":
+                if (item.HasViewableMedia)
+                {
+                    await SelectItemAsync(item.Key);
+                }
+                else
+                {
+                    InspectorState.Show(ToEvidenceInspector(item));
+                }
+                break;
+            case "export":
+                await ExportItemAsync(item, actions);
+                break;
+            case "hold":
+                if (EvidenceActions.CanPlaceHold(actions))
+                {
+                    BeginPlaceHold(item);
+                }
+                break;
+            case "release":
+                if (EvidenceActions.CanReleaseHold(actions))
+                {
+                    BeginRelease(item);
+                }
+                break;
+            case "verify":
+                if (EvidenceActions.CanVerifyIntegrity(actions))
+                {
+                    await VerifyIntegrityForDeviceAsync(item);
+                }
+                break;
+        }
+    }
+
+    /// <summary>Builds the EvidenceActionState for an item, from its current legal-hold status.</summary>
+    private EvidenceActionState ToActionState(EvidenceItem item) =>
+        new(
+            MediaItemId: item.Media?.Id,
+            DeviceId: item.DeviceId,
+            ActiveHoldId: item.Media is not null && _activeHoldsByMediaItemId.TryGetValue(item.Media.Id, out var hold) ? hold.Id : (Guid?)null);
+
+    private async Task ExportItemAsync(EvidenceItem contextItem, EvidenceActionState actions)
+    {
+        if (!EvidenceActions.CanExport(actions))
+        {
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["NothingToExport"], Content = L["NoSelectedRowsHaveMedia"], Icon = "e-warning" });
+            }
+            return;
+        }
+
+        var ids = EvidenceActions.GetExportMediaItemIds(new[] { contextItem });
+        NavigationManager.NavigateTo(EvidenceActions.BuildExportUrl(ids));
+    }
+
+    private void BeginPlaceHold(EvidenceItem item)
+    {
+        _pendingHoldItem = item;
+        _pendingReleaseItem = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void BeginRelease(EvidenceItem item)
+    {
+        _pendingReleaseItem = item;
+        _pendingHoldItem = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private void CancelPendingHoldAction()
+    {
+        _pendingHoldItem = null;
+        _pendingReleaseItem = null;
+        _holdReasonInput = string.Empty;
+    }
+
+    private async Task ConfirmPendingHoldActionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_holdReasonInput))
+        {
+            return;
+        }
+
+        // Never fall back to a machine-level identity (e.g. Environment.UserName) if no operator
+        // is signed in - that would misattribute the action in the chain of custody. Refuse instead.
+        // Shared with the Inspector panel's own hold/release actions (EvidenceActions.ResolveOperatorActor)
+        // so the two surfaces can't diverge.
+        var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
+        if (actor is null)
+        {
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["SignInRequiredForAction"], Icon = "e-warning" });
+            }
+            CancelPendingHoldAction();
+            return;
+        }
+
+        if (_pendingHoldItem?.Media is not null)
+        {
+            var hold = await LegalHoldRepository.PlaceAsync(_pendingHoldItem.Media.Id, _holdReasonInput, actor, CancellationToken.None);
+            _activeHoldsByMediaItemId[_pendingHoldItem.Media.Id] = hold;
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["LegalHoldPlaced"], Icon = "e-success" });
+            }
+        }
+        else if (_pendingReleaseItem?.Media is not null && _activeHoldsByMediaItemId.TryGetValue(_pendingReleaseItem.Media.Id, out var activeHold))
+        {
+            await LegalHoldRepository.ReleaseAsync(activeHold.Id, actor, _holdReasonInput, CancellationToken.None);
+            _activeHoldsByMediaItemId.Remove(_pendingReleaseItem.Media.Id, out _);
+            if (_toastRef is not null)
+            {
+                await _toastRef.ShowAsync(new ToastModel { Title = L["LegalHoldReleased"], Icon = "e-success" });
+            }
+        }
+
+        CancelPendingHoldAction();
+    }
+
+    private async Task VerifyIntegrityForDeviceAsync(EvidenceItem item)
+    {
+        if (item.Media is null)
+        {
+            return;
+        }
+
+        var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(item.DeviceId, CancellationToken.None);
+        var failed = results.Count(r => r.Status != "verified");
+        if (_toastRef is not null)
+        {
+            await _toastRef.ShowAsync(new ToastModel
+            {
+                Title = L["IntegrityVerificationComplete"],
+                Content = L["FilesVerifiedForDevice", results.Count - failed, results.Count],
+                Icon = failed == 0 ? "e-success" : "e-warning"
+            });
+        }
     }
 
     private RenderFragment GridColumns => __builder =>
