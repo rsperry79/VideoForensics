@@ -138,6 +138,32 @@ namespace VideoForensics.Client.Core.Utilities
             return null;
         }
 
+        /// <summary>Validates and normalizes a user-provided output path so it stays under the service media root.</summary>
+        public static string ValidateAndNormalizeOutputPath(string outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+            {
+                throw new ArgumentException("Output path cannot be empty.", nameof(outputPath));
+            }
+
+            string safeRoot = Path.GetFullPath(GetDefaultDownloadLocation())
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string candidate = Path.GetFullPath(outputPath);
+
+            bool withinRoot =
+                string.Equals(candidate, safeRoot, StringComparison.OrdinalIgnoreCase) ||
+                candidate.StartsWith(safeRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+
+            if (!withinRoot)
+            {
+                throw new InvalidOperationException(
+                    $"Output path '{candidate}' must be within '{safeRoot}'.");
+            }
+
+            Directory.CreateDirectory(candidate);
+            return candidate;
+        }
+
         /// <summary>Builds the full save path with location and camera name structure.</summary>
         public static string BuildSavePath(string basePath, string locationName, string cameraName)
         {
