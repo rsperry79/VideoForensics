@@ -26,6 +26,8 @@ namespace VideoForensics.Ui.Shared.Services
         public virtual Guid? OperatorId { get; private set; }
         public virtual string? Role { get; private set; }
         public virtual bool MustChangePassword { get; private set; }
+        public virtual string? AuthReturnUrl { get; set; }
+        public virtual string? AuthContext { get; set; }
 
         public virtual bool IsSignedIn => SessionToken is not null;
 
