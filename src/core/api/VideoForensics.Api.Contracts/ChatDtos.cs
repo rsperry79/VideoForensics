@@ -30,6 +30,33 @@ namespace VideoForensics.Api.Contracts
         IReadOnlyList<string> ToolsInvoked
     );
 
+    /// <summary>
+    /// Request to update LLM settings (provider, model, API key, base URL).
+    /// Only non-null/non-empty apiKey fields update the stored API key; null/empty leaves it unchanged.
+    /// </summary>
+    /// <param name="Provider">The LLM provider name (e.g., "Anthropic" or "OpenAiCompatible").</param>
+    /// <param name="Model">The LLM model name (e.g., "claude-3-sonnet-20240229").</param>
+    /// <param name="ApiKey">The API key (plain text on request); null/empty skips the update. Required on first set.</param>
+    /// <param name="BaseUrl">The base URL for OpenAI-compatible endpoints (nullable).</param>
+    public record LlmSettingsRequestDto(
+        string Provider,
+        string Model,
+        string? ApiKey,
+        string? BaseUrl
+    );
+
+    /// <summary>
+    /// Current LLM configuration (provider, model, base URL). Does NOT include the API key.
+    /// </summary>
+    /// <param name="Provider">The LLM provider name (e.g., "Anthropic" or "OpenAiCompatible").</param>
+    /// <param name="Model">The LLM model name (e.g., "claude-3-sonnet-20240229").</param>
+    /// <param name="BaseUrl">The base URL for OpenAI-compatible endpoints, or empty if not set.</param>
+    public record LlmSettingsResponseDto(
+        string Provider,
+        string Model,
+        string BaseUrl
+    );
+
     /// <summary>Extension methods for mapping chat entities to/from ChatDtos.</summary>
     public static class ChatDtoMapping
     {

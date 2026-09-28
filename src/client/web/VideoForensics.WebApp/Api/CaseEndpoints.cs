@@ -1,6 +1,7 @@
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.Repositories;
 using VideoForensics.WebApp.Auth;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -191,8 +192,8 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             // Validate input
-            if (string.IsNullOrWhiteSpace(request.CaseNumber) || request.CaseNumber.Length > 64)
-                return Results.BadRequest("CaseNumber is required and must not exceed 64 characters");
+            if (request.CaseNumber != null && request.CaseNumber.Length > 64)
+                return Results.BadRequest("CaseNumber must not exceed 64 characters");
 
             if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length > 256)
                 return Results.BadRequest("Title is required and must not exceed 256 characters");
@@ -209,8 +210,23 @@ namespace VideoForensics.WebApp.Api
 
             try
             {
+                // Generate case number if not provided
+                string caseNumber = request.CaseNumber ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(caseNumber))
+                {
+                    // Cast to concrete type to access GenerateCaseNumber
+                    if (cases is VideoForensics.Data.Database.Repositories.CaseRepository concreteRepo)
+                    {
+                        caseNumber = await concreteRepo.GenerateCaseNumber("manual", ct);
+                    }
+                    else
+                    {
+                        return Results.BadRequest("Unable to generate case number");
+                    }
+                }
+
                 ForensicCase @case = await cases.CreateAsync(
-                    request.CaseNumber,
+                    caseNumber,
                     request.Title,
                     request.Description,
                     request.LeadOperatorId,

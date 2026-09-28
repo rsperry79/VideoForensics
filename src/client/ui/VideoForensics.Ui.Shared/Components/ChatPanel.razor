@@ -1,0 +1,229 @@
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Ui.Shared.Formatting
+@inject IChatService ChatService
+
+<div class="chat-panel">
+    <div class="chat-messages">
+        @foreach (var turn in _messageHistory)
+        {
+            <div class="@("chat-message " + (turn.Role == "user" ? "user-message" : "assistant-message"))">
+                <div class="chat-message-content">
+                    @turn.Content
+                </div>
+            </div>
+
+            @if (turn.Role == "assistant" && !string.IsNullOrEmpty(_lastToolsInvokedNote))
+            {
+                <div class="chat-tools-note">
+                    @_lastToolsInvokedNote
+                </div>
+            }
+        }
+
+        @if (_isLoading)
+        {
+            <div class="chat-message assistant-message">
+                <div class="chat-message-content">
+                    <span class="chat-thinking">Thinking...</span>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="chat-error">
+                @_errorMessage
+            </div>
+        }
+
+        <div @ref="_messagesEndRef"></div>
+    </div>
+
+    <div class="chat-input-area">
+        <textarea
+            class="chat-input"
+            @bind="_inputText"
+            @onkeydown="@OnInputKeyDownAsync"
+            @onkeydown:preventDefault="true"
+            placeholder="Ask a question about the investigation..."
+            disabled="@_isLoading" />
+        <SfButton
+            Content="Send"
+            OnClick="@SendMessageAsync"
+            CssClass="e-primary"
+            Disabled="@(_isLoading || string.IsNullOrWhiteSpace(_inputText))" />
+    </div>
+</div>
+
+<style>
+    .chat-panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .chat-message {
+        display: flex;
+        margin-bottom: 4px;
+    }
+
+    .user-message .chat-message-content {
+        background: #007bff;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 70%;
+        word-wrap: break-word;
+        margin-left: auto;
+    }
+
+    .assistant-message .chat-message-content {
+        background: white;
+        color: #333;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 70%;
+        word-wrap: break-word;
+        border: 1px solid #ddd;
+    }
+
+    .chat-thinking {
+        font-style: italic;
+        color: #666;
+    }
+
+    .chat-tools-note {
+        font-size: 11px;
+        color: #999;
+        padding: 4px 12px;
+        margin-top: 2px;
+        font-style: italic;
+    }
+
+    .chat-error {
+        background: #fee;
+        color: #c33;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid #fcc;
+        margin: 4px 0;
+    }
+
+    .chat-input-area {
+        display: flex;
+        gap: 8px;
+        padding: 12px;
+        border-top: 1px solid #ddd;
+        background: white;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 14px;
+        resize: none;
+        max-height: 100px;
+    }
+
+    .chat-input:disabled {
+        background: #f9f9f9;
+        color: #999;
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+    }
+</style>
+
+@code {
+    private List<ChatTurn> _messageHistory = [];
+    private string _inputText = string.Empty;
+    private bool _isLoading = false;
+    private string? _errorMessage;
+    private string? _lastToolsInvokedNote;
+    private ElementReference _messagesEndRef;
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_inputText) || _isLoading)
+        {
+            return;
+        }
+
+        try
+        {
+            _errorMessage = null;
+            string userMessage = _inputText.Trim();
+            _inputText = string.Empty;
+
+            // Add user message to history
+            _messageHistory.Add(new ChatTurn { Role = "user", Content = userMessage });
+            _isLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            // Send to service
+            ChatTurnResult result = await ChatService.SendMessageAsync(_messageHistory, userMessage, CancellationToken.None);
+
+            // Add assistant reply
+            _messageHistory.Add(new ChatTurn { Role = "assistant", Content = result.Reply });
+
+            // Format tools invoked if any
+            _lastToolsInvokedNote = ChatToolsFormatter.FormatToolsInvoked(result.ToolsInvoked);
+
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+            await ScrollToBottomAsync();
+        }
+        catch (HttpRequestException)
+        {
+            _errorMessage = "Failed to connect to the server. Please check your connection.";
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnInputKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private async Task ScrollToBottomAsync()
+    {
+        try
+        {
+            // Attempt to scroll to the bottom, but don't fail if JS interop isn't available
+            await _messagesEndRef.FocusAsync();
+        }
+        catch
+        {
+            // Best-effort scroll - continue even if JS interop fails
+        }
+    }
+}

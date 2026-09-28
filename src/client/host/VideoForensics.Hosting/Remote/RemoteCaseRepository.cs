@@ -50,6 +50,17 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<ForensicCase> CreateFromJammingDetectionAsync(
+            JammingIncidentRecord jammingIncident,
+            CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/cases/from-jamming-detection", jammingIncident, cancellationToken: ct);
+            _ = response.EnsureSuccessStatusCode();
+            ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
+            return (dto ?? throw new InvalidOperationException("Server returned null response")).ToDomain();
+        }
+
+        /// <inheritdoc />
         public async Task<ForensicCase?> GetAsync(Guid id, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/{id}", ct);

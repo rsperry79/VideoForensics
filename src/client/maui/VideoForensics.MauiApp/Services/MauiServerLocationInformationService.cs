@@ -1,6 +1,4 @@
-#if !__IOS__
 using VideoForensics.Hosting.ServerDiscovery;
-#endif
 using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.MauiApp.Services
@@ -12,18 +10,12 @@ namespace VideoForensics.MauiApp.Services
     /// </summary>
     public class MauiServerLocationInformationService : IServerLocationInformationService
     {
-#if !__IOS__
         private readonly IServerLocationSettingsStore _settingsStore;
 
         public MauiServerLocationInformationService(IServerLocationSettingsStore settingsStore)
         {
             _settingsStore = settingsStore;
         }
-#else
-        public MauiServerLocationInformationService(object? unused = null)
-        {
-        }
-#endif
 
         /// <inheritdoc/>
         public Uri? CurrentServerAddress { get; set; }

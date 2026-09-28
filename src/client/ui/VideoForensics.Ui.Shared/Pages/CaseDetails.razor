@@ -4,6 +4,7 @@
 @using VideoForensics.Data.Core.Contracts
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Cases
 @using VideoForensics.Ui.Shared.Services.Inspector
@@ -18,7 +19,9 @@
 @inject CaseState CaseState
 @inject InspectorState InspectorState
 
-<h4 class="mb-4">
+<div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
+    <div style="overflow: auto;">
+        <h4 class="mb-4">
     @if (_case is not null)
     {
         <span>@_case.CaseNumber · @_case.Title</span>
@@ -143,6 +146,11 @@ else
         </div>
     </div>
 }
+    </div>
+    <div style="overflow: auto;">
+        <ScopeRail />
+    </div>
+</div>
 
 @code {
     [Parameter]
