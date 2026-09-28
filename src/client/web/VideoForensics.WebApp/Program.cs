@@ -280,6 +280,17 @@ builder.Services.AddHostedService<MdnsAdvertisementService>();
 // per-circuit concern.
 builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelService>();
 
+// Windows Firewall rule management (plan §5.2) - when the configured network tier is widened
+// beyond Local at runtime via Settings > Network Access, this ensures the corresponding inbound
+// firewall rule exists (or removes it if narrowing back). The installer only creates the rule at
+// fresh-install time if "local network" was chosen then; this closes the gap where changing the
+// tier later still leaves the socket listening but firewalled (the exact bug being fixed).
+builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
+    OperatingSystem.IsWindows()
+        ? new WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<WindowsFirewallRuleManager>>())
+        : new NullFirewallRuleManager());
+
+
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
 // to the pairing/auth API in Api/PairingEndpoints.cs.
