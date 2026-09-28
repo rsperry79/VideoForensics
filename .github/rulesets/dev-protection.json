@@ -1,0 +1,38 @@
+{
+  "name": "dev-branch-protection",
+  "description": "Enforce CI passing on dev branch before merging",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/heads/dev"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "pull_request",
+      "parameters": {
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_review_from_code_owners": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
+        "required_review_thread_resolution": false
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "required_status_checks": [
+          {
+            "context": "build-and-test",
+            "integration_id": null
+          }
+        ],
+        "strict_required_status_checks_policy": false
+      }
+    }
+  ]
+}
