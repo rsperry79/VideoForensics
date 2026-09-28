@@ -1,0 +1,45 @@
+@page "/chat"
+@using VideoForensics.Ui.Shared.Components
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="chat-page">
+    <h1>@L["Chat"]</h1>
+    <p class="chat-subtitle">Ask questions about the investigation. The assistant can search events, analyze patterns, and provide insights.</p>
+
+    <div class="chat-container">
+        <ChatPanel />
+    </div>
+</div>
+
+<style>
+    .chat-page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 16px;
+        background: #fafafa;
+    }
+
+    .chat-page h1 {
+        margin: 0 0 4px 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .chat-subtitle {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+</style>

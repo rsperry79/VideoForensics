@@ -24,12 +24,9 @@ else
         <div class="card-body">
             <form @onsubmit="HandleSubmit">
                 <div class="mb-3">
-                    <label for="caseNumber" class="form-label">Case Number *</label>
-                    <input type="text" class="form-control" id="caseNumber" @bind="_caseNumber" placeholder="e.g., CASE-2026-001" />
-                    @if (!string.IsNullOrEmpty(_caseNumberError))
-                    {
-                        <div class="text-danger">@_caseNumberError</div>
-                    }
+                    <label for="caseNumber" class="form-label">Case Number</label>
+                    <input type="text" class="form-control" id="caseNumber" disabled value="@_caseNumberPreview" />
+                    <small class="form-text text-muted">Auto-generated on creation</small>
                 </div>
 
                 <div class="mb-3">
@@ -85,22 +82,27 @@ else
 }
 
 @code {
-    private string _caseNumber = "";
     private string _title = "";
     private string _description = "";
     private bool _useCurrentScope = true;
-    private string? _caseNumberError;
     private string? _titleError;
     private string? _submitError;
+
+    private string _caseNumberPreview => GenerateCaseNumberPreview();
+
+    private string GenerateCaseNumberPreview()
+    {
+        DateTime now = DateTime.UtcNow;
+        return $"manual-{now:yyyy-MM-dd-HH-mm}-0";
+    }
 
     private async Task HandleSubmit()
     {
         // Validate
-        _caseNumberError = string.IsNullOrWhiteSpace(_caseNumber) ? "Case number is required" : null;
         _titleError = string.IsNullOrWhiteSpace(_title) ? "Title is required" : null;
         _submitError = null;
 
-        if (_caseNumberError is not null || _titleError is not null)
+        if (_titleError is not null)
         {
             return;
         }
@@ -112,7 +114,7 @@ else
             var deviceIds = _useCurrentScope ? ScopeState.Current.DeviceIds : new List<Guid>();
 
             var createdCase = await CaseRepository.CreateAsync(
-                _caseNumber.Trim(),
+                null,
                 _title.Trim(),
                 string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
                 SessionState.OperatorId,

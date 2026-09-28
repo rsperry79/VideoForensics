@@ -139,6 +139,9 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 - **`main` only accepts pull requests from `dev`.** All work branches (feature, fix, `claude/*`) open their PRs against `dev`; `main` is updated solely by a `dev` → `main` promotion PR. The `main-source-guard` workflow (`.github/workflows/main-source-guard.yml`) fails any PR into `main` whose head is not this repo's `dev` — it must be a required status check on `main`.
 - Never open a PR from a work branch directly into `main`, and never push directly to `dev` or `main`.
+- **When the user says "PR to main"**, this is shorthand for the full two-step promotion, not a literal PR from the current branch into `main`: (1) land the current work branch into `dev` first via a PR, squash-merging it, then (2) open the `dev` → `main` promotion PR and squash-merge that too.
+- **Squash-merge every ordinary PR** (a work branch into `dev`, or the `dev` → `main` promotion) — never a merge commit, so `dev`'s and `main`'s history stay a single flattened commit per change.
+- **Exception: a `main` → `dev` reconciliation PR must use a real merge commit, never squash.** This only comes up if `main` and `dev` have genuinely diverged (e.g. `main` picked up an interim version of something `dev` later replaced) and a promotion PR shows real conflicts. Squashing a `main`-into-`dev` fix discards parent history, so git never records `main` as an ancestor of `dev` — the identical conflict then reappears on every future promotion attempt regardless of what `dev`'s content actually is, since git still diffs against the old pre-divergence merge-base. A real two-parent merge commit is the only way to permanently fix this. (Discovered when PR #82, a squashed fix for this exact scenario, didn't stop PR #72 from recomputing the same conflict — PR #84 redid it as a real merge and confirmed via `git log --format=%P` that both tips became parents.)
 
 ## Execution workflow
 

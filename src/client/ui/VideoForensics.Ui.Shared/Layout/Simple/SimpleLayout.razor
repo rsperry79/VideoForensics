@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Components
 @inject PairedSessionState SessionState
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
@@ -13,7 +14,12 @@
         <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="simple-layout-signout e-flat" />
     </header>
     <main class="simple-layout-body">
-        @Body
+        <div class="simple-layout-content">
+            @Body
+        </div>
+        <div class="simple-layout-chat">
+            <ChatPanel />
+        </div>
     </main>
 </div>
 

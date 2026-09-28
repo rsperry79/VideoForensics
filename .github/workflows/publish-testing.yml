@@ -32,15 +32,30 @@ jobs:
       # not via static property evaluation - `dotnet msbuild -getProperty:Version` only evaluates
       # properties without running targets, so it silently returns the .NET SDK's own default
       # "1.0.0" instead of the real computed version. The `nbgv` CLI tool computes it directly.
+      #
+      # For the Testing channel, prefer the merged PR number over git-height for version
+      # traceability (e.g., 1.0.68 is easier to trace than 1.0.9.44078). Squash-merged PRs
+      # have a commit message ending in (#NNN). Falls back to NBGV's height-based version
+      # if no PR number can be extracted (e.g., direct push to dev without a PR).
       - name: Get NBGV-computed version
         id: get-version
         shell: bash
         run: |
           dotnet tool update --global nbgv
           export PATH="$PATH:$HOME/.dotnet/tools"
-          VERSION=$(nbgv get-version -v Version)
+          MAJOR_MINOR=$(nbgv get-version -v MajorMinorVersion)
+          COMMIT_MSG=$(git log -1 --format=%s)
+          PR_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '\(#\K[0-9]+(?=\)\s*$)' || true)
+
+          if [ -n "$PR_NUMBER" ]; then
+            VERSION="$MAJOR_MINOR.$PR_NUMBER"
+            echo "Detected version from PR #$PR_NUMBER: $VERSION"
+          else
+            VERSION=$(nbgv get-version -v Version)
+            echo "No PR number found in commit message, falling back to NBGV height-based version: $VERSION"
+          fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
 
       - name: Publish WebApp (linux-x64, self-contained)
         run: |
@@ -92,16 +107,26 @@ jobs:
           dotnet-version: 10.0.x
 
       # See the bash variant of this step (build-debian-dev job) for why nbgv replaces
-      # `dotnet msbuild -getProperty:Version` here.
+      # `dotnet msbuild -getProperty:Version` here, and why the Testing channel uses PR numbers.
       - name: Get NBGV-computed version (PowerShell)
         id: get-version
         shell: pwsh
         run: |
           dotnet tool update --global nbgv
           $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
-          $version = nbgv get-version -v Version
+          $majorMinor = nbgv get-version -v MajorMinorVersion
+          $commitMsg = git log -1 --format=%s
+
+          if ($commitMsg -match '\(#(\d+)\)\s*$') {
+            $prNumber = $matches[1]
+            $version = "$majorMinor.$prNumber"
+            Write-Host "Detected version from PR #$prNumber`: $version"
+          } else {
+            $version = nbgv get-version -v Version
+            Write-Host "No PR number found in commit message, falling back to NBGV height-based version: $version"
+          }
+
           Add-Content $env:GITHUB_OUTPUT "version=$version"
-          Write-Host "Detected version: $version"
 
       - name: Publish WebApp (win-x64, self-contained)
         run: |
