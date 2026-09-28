@@ -1,3 +1,6 @@
+using System.Linq;
+using System.Reflection;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,6 +50,31 @@ namespace VideoForensics.Hosting
         /// so an operator can find it without reading source: **ChangeMe123!**
         /// </summary>
         public const string DefaultSuperAdminPassword = "ChangeMe123!";
+
+        /// <summary>
+        /// Registers the Syncfusion Blazor license key if present. Priority order:
+        /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
+        /// 2. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
+        /// Falls back to unlicensed/dev-mode behavior if neither source provides a key.
+        /// </summary>
+        public static void RegisterSyncfusionLicenseIfPresent()
+        {
+            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
+            if (File.Exists(syncfusionLicenseKeyPath))
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
+                return;
+            }
+
+            string? bakedInKey = Assembly.GetExecutingAssembly()
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value;
+            if (!string.IsNullOrWhiteSpace(bakedInKey))
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(bakedInKey.Trim());
+            }
+        }
+
         /// <summary>
         /// Builds a Ring authentication service for use by multiple registration paths (unkeyed,
         /// multi-provider auth factories, and keyed per-provider services). Centralizes the
