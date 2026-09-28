@@ -4,6 +4,7 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
+using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
@@ -182,7 +183,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            bool result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
+            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -201,7 +203,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            bool result = await _adapter.DownloadVideosAsync("C:\\Downloads", DateTime.Today, DateTime.Today);
+            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -216,7 +219,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            await _adapter.PreScanAsync("C:\\Downloads", DateTime.Today, DateTime.Today.AddDays(1));
+            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            await _adapter.PreScanAsync(testPath, DateTime.Today, DateTime.Today.AddDays(1));
 
             IReadOnlyDictionary<string, int> counts = _adapter.GetPreScanCounts();
             Assert.Empty(counts);
@@ -320,7 +324,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
             // Act: Call DownloadVideosAsync with a path containing CRLF (log injection attempt)
-            string injectedPath = "C:\\Downloads\r\nFAKE ADMIN LOG: Unauthorized access granted";
+            string basePath = PathUtilities.GetDefaultDownloadLocation();
+            string injectedPath = basePath + "\r\nFAKE ADMIN LOG: Unauthorized access granted";
             bool result = await _adapter.DownloadVideosAsync(injectedPath, DateTime.Today, DateTime.Today);
 
             // Assert: Verify the method completed and didn't throw, and sets error about no devices
