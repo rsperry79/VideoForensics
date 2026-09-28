@@ -61,6 +61,7 @@ jobs:
         run: |
           dotnet publish src/client/web/VideoForensics.WebApp \
             -c Release -r linux-x64 --self-contained true \
+            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" \
             -o /tmp/publish-linux
 
       - name: Download and bundle cloudflared binary
@@ -126,12 +127,14 @@ jobs:
         run: |
           dotnet publish src/client/web/VideoForensics.WebApp `
             -c Release -r win-x64 --self-contained true `
+            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-win
 
       - name: Publish MauiApp (win-x64, self-contained)
         run: |
           dotnet publish src/client/maui/VideoForensics.MauiApp `
             -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
+            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-desktop
 
       - name: Publish DbSetup (win-x64, self-contained)

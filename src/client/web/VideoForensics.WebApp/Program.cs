@@ -33,11 +33,7 @@ using VideoForensics.WebApp.Services;
 // §5.2's "Local-only by default").
 NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocationProvider()).ReadConfiguredTier();
 
-string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
-if (File.Exists(syncfusionLicenseKeyPath))
-{
-    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
-}
+VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -283,6 +279,16 @@ builder.Services.AddHostedService<MdnsAdvertisementService>();
 // wraps at most one managed cloudflared child process for the whole app, not a per-request or
 // per-circuit concern.
 builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelService>();
+
+// Windows Firewall rule management (plan §5.2) - when the configured network tier is widened
+// beyond Local at runtime via Settings > Network Access, this ensures the corresponding inbound
+// firewall rule exists (or removes it if narrowing back). The installer only creates the rule at
+// fresh-install time if "local network" was chosen then; this closes the gap where changing the
+// tier later still leaves the socket listening but firewalled (the exact bug being fixed).
+builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
+    OperatingSystem.IsWindows()
+        ? new WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<WindowsFirewallRuleManager>>())
+        : new NullFirewallRuleManager());
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk

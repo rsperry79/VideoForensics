@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Infrastructure;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -33,46 +35,7 @@ namespace VideoForensics.WebApp.Api
                 requiresRestartToTakeEffect = true
             }));
 
-            _ = group.MapPost("/", async (
-                SetNetworkTierRequest request,
-                IForensicsConfiguration config,
-                IForensicsConfigurationService configService,
-                IStepUpAuthService stepUpAuth,
-                ISecurityAuditLogger auditLog,
-                INetworkTierResolver tierResolver,
-                HttpContext context,
-                CancellationToken ct) =>
-            {
-                NetworkTier currentTier = config.ConfiguredNetworkTier;
-                bool isWidening = request.Tier > currentTier;
-
-                if (isWidening)
-                {
-                    string? deviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
-                    if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
-                    {
-                        return Results.Unauthorized();
-                    }
-
-                    if (!context.Request.Headers.TryGetValue("X-StepUp-Token", out StringValues stepUpToken)
-                        || !stepUpAuth.Validate(stepUpToken.ToString(), pairedDeviceId))
-                    {
-                        return Results.Json(
-                            new { error = "Widening the network tier requires step-up re-authentication (X-StepUp-Token header missing or invalid)." },
-                            statusCode: StatusCodes.Status403Forbidden);
-                    }
-                }
-
-                config.ConfiguredNetworkTier = request.Tier;
-                await configService.SaveConfigurationAsync(config, ct);
-
-                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-                await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
-                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
-                    null, tierResolver.ResolveClientIp(context), $"{currentTier} -> {request.Tier}", isUrgent: true, ct);
-
-                return Results.Ok(new { requiresRestartToTakeEffect = true });
-            });
+            _ = group.MapPost("/", SetNetworkTierAsync);
 
             _ = group.MapGet("/internet-url", (IForensicsConfiguration config) => Results.Ok(new
             {
@@ -104,6 +67,68 @@ namespace VideoForensics.WebApp.Api
 
                 return Results.Ok(new { internetServerUrl = config.InternetServerUrl });
             });
+        }
+
+        /// <summary>
+        /// Extracted from the MapPost lambda so it's directly unit-testable (see
+        /// NetworkSettingsEndpointsTests.cs) without spinning up a full WebApplicationFactory host.
+        /// </summary>
+        public static async Task<IResult> SetNetworkTierAsync(
+            SetNetworkTierRequest request,
+            IForensicsConfiguration config,
+            IForensicsConfigurationService configService,
+            IStepUpAuthService stepUpAuth,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            IFirewallRuleManager firewallRuleManager,
+            IConfiguration configuration,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            NetworkTier currentTier = config.ConfiguredNetworkTier;
+            bool isWidening = request.Tier > currentTier;
+
+            if (isWidening)
+            {
+                string? deviceIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value;
+                if (!Guid.TryParse(deviceIdClaim, out Guid pairedDeviceId))
+                {
+                    return Results.Unauthorized();
+                }
+
+                if (!context.Request.Headers.TryGetValue("X-StepUp-Token", out StringValues stepUpToken)
+                    || !stepUpAuth.Validate(stepUpToken.ToString(), pairedDeviceId))
+                {
+                    return Results.Json(
+                        new { error = "Widening the network tier requires step-up re-authentication (X-StepUp-Token header missing or invalid)." },
+                        statusCode: StatusCodes.Status403Forbidden);
+                }
+            }
+
+            config.ConfiguredNetworkTier = request.Tier;
+            await configService.SaveConfigurationAsync(config, ct);
+
+            // Kestrel's own bind (Program.cs) only controls whether the socket listens on every interface -
+            // it doesn't open the Windows Firewall to let inbound traffic actually reach it. The installer
+            // only creates this rule at fresh-install time if "local network" was chosen then, so widening
+            // the tier here at runtime must also open it (or removing it when narrowing back), or remote
+            // devices see a socket that's listening but firewalled.
+            int listenPort = ServerAddressResolver.ResolveConfiguredPort(configuration);
+            if (request.Tier == NetworkTier.Local)
+            {
+                await firewallRuleManager.RemoveRuleAsync("VideoForensics", ct);
+            }
+            else
+            {
+                await firewallRuleManager.EnsureRuleExistsAsync("VideoForensics", listenPort, ct);
+            }
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await auditLog.LogAsync(SecurityAuditEventTypes.NetworkTierChanged,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"{currentTier} -> {request.Tier}", isUrgent: true, ct);
+
+            return Results.Ok(new { requiresRestartToTakeEffect = true });
         }
     }
 

@@ -228,6 +228,22 @@ namespace VideoForensics.Ui.Shared.Services
             return (true, null, isApproved);
         }
 
+        /// <summary>Checks whether first-run setup is available: whether the Operators table is empty, and whether THIS caller is connecting from the local machine (required to actually complete setup - see SetupEndpoints.GetStatusAsync/CreateAdminAsync).</summary>
+        public async Task<(bool IsEmpty, bool IsLocal)> GetSetupStatusAsync()
+        {
+            using HttpClient client = CreateClient(null);
+            HttpResponseMessage response = await client.GetAsync("api/v1/setup/status");
+            if (!response.IsSuccessStatusCode)
+            {
+                // Fail safe: if the check itself fails, behave as if setup is unavailable and the caller
+                // is not local, so AuthGate falls back to /welcome rather than risk exposing /setup.
+                return (false, false);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return (result.GetProperty("isEmpty").GetBoolean(), result.GetProperty("isLocal").GetBoolean());
+        }
+
         /// <summary>First-run setup: create the initial SuperAdmin account. Only succeeds while the
         /// operators table is empty - see SetupEndpoints.cs.</summary>
         public async Task<(bool Success, string? ErrorMessage)> CreateSetupAdminAsync(string username, string password)
