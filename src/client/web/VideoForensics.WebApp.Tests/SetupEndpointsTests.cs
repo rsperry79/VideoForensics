@@ -48,7 +48,7 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public async Task CreateAdminAsync_OperatorAlreadyExists_ReturnsForbid()
+        public async Task CreateAdminAsync_OperatorAlreadyExists_ReturnsForbidWithErrorMessage()
         {
             (Mock<IOperatorRepository> operators, Mock<ISecurityAuditLogger> auditLog, Mock<INetworkTierResolver> tierResolver) = CreateMocks(operatorsEmpty: false);
             var request = new CreateSetupAdminRequest("admin", "a-very-long-password-123");
@@ -56,7 +56,13 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await SetupEndpoints.CreateAdminAsync(
                 request, operators.Object, auditLog.Object, tierResolver.Object, new DefaultHttpContext(), CancellationToken.None);
 
-            _ = Assert.IsType<ForbidHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
+
+            dynamic jsonResult = result;
+            Assert.NotNull(jsonResult.Value);
+            Assert.Equal("An administrator account already exists. Sign in instead, or contact whoever installed VideoForensics.", (string)jsonResult.Value.error);
+
             operators.Verify(o => o.AddAsync(It.IsAny<Operator>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 

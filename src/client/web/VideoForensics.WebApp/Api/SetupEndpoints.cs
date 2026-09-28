@@ -37,7 +37,7 @@ namespace VideoForensics.WebApp.Api
         {
             if (!await operators.IsEmptyAsync(ct))
             {
-                return Results.Forbid();
+                return Results.Json(new { error = "An administrator account already exists. Sign in instead, or contact whoever installed VideoForensics." }, statusCode: StatusCodes.Status403Forbidden);
             }
 
             if (string.IsNullOrWhiteSpace(request.Username))
