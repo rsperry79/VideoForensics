@@ -63,10 +63,17 @@ jobs:
             -c Release -r linux-x64 --self-contained true \
             -o /tmp/publish-linux
 
+      # Pinned to a specific cloudflared release (not `latest`) with a hardcoded SHA256, so a
+      # compromised or altered upstream binary fails the build loudly instead of shipping
+      # silently. Bump CLOUDFLARED_VERSION and recompute the hash deliberately to upgrade.
       - name: Download and bundle cloudflared binary
+        env:
+          CLOUDFLARED_VERSION: "2026.9.3"
+          CLOUDFLARED_SHA256: "77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2"
         run: |
           curl -fsSL -o /tmp/publish-linux/cloudflared \
-            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+            "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64"
+          echo "${CLOUDFLARED_SHA256}  /tmp/publish-linux/cloudflared" | sha256sum -c -
           chmod +x /tmp/publish-linux/cloudflared
 
       - name: Build Debian package
@@ -191,13 +198,23 @@ jobs:
           Write-Host "Cleaning up temporary directory"
           Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
+      # Pinned to a specific cloudflared release (not `latest`) with a hardcoded SHA256, so a
+      # compromised or altered upstream binary fails the build loudly instead of shipping
+      # silently. Bump the version and recompute the hash deliberately to upgrade.
       - name: Download and bundle cloudflared binary
         shell: pwsh
         run: |
-          $cloudflaredUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-          Write-Host "Downloading cloudflared from $cloudflaredUrl"
+          $cloudflaredVersion = "2026.9.3"
+          $expectedHash = "F096265EC2FCBE9BB6E2D64268DB167CED3FCBB83D894BDB9E2FCDB26F2EA7E2"
+          $cloudflaredUrl = "https://github.com/cloudflare/cloudflared/releases/download/$cloudflaredVersion/cloudflared-windows-amd64.exe"
+          Write-Host "Downloading cloudflared $cloudflaredVersion from $cloudflaredUrl"
           Invoke-WebRequest -Uri $cloudflaredUrl -OutFile "publish-win\cloudflared.exe" -ErrorAction Stop
-          Write-Host "Bundled cloudflared.exe successfully"
+          $actualHash = (Get-FileHash -Path "publish-win\cloudflared.exe" -Algorithm SHA256).Hash
+          if ($actualHash -ne $expectedHash) {
+            Write-Host "ERROR: cloudflared.exe hash mismatch. Expected $expectedHash, got $actualHash"
+            exit 1
+          }
+          Write-Host "Bundled cloudflared.exe successfully (hash verified)"
 
       - name: Compile Inno Setup installer
         shell: pwsh
@@ -223,6 +240,46 @@ jobs:
             exit 1
           }
           Write-Host "Found: $exePath"
+
+      # Self-signed code signing cert (see deploy/windows/codesign/README.md). This does NOT
+      # give the installer OS-level trust/SmartScreen reputation - only a cert chained to a
+      # public root CA does that. What it gives: tamper-evidence. Anyone can verify the
+      # installer's signing certificate matches the public cert/thumbprint checked into this
+      # repo (deploy/windows/codesign/VideoForensics-CodeSigning.cer), so a modified installer
+      # (wrong signer, or unsigned) is detectable rather than silently trusted.
+      - name: Sign installer with self-signed certificate
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_PFX_BASE64))
+
+          $signtool = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" -ErrorAction Stop |
+            Where-Object { $_.FullName -match "x64" } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) {
+            Write-Host "ERROR: signtool.exe not found"
+            exit 1
+          }
+
+          & $signtool sign /f $pfxPath /p $env:WINDOWS_CODESIGN_PFX_PASSWORD /fd sha256 `
+            /tr http://timestamp.digicert.com /td sha256 `
+            "deploy/windows/bin/VideoForensicsSetup.exe"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: signtool sign failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          Remove-Item $pfxPath -Force
+
+          $sig = Get-AuthenticodeSignature -FilePath "deploy/windows/bin/VideoForensicsSetup.exe"
+          Write-Host "Signature status: $($sig.Status)"
+          Write-Host "Signer thumbprint: $($sig.SignerCertificate.Thumbprint)"
+          if (-not $sig.SignerCertificate) {
+            Write-Host "ERROR: no signer certificate found on signed exe"
+            exit 1
+          }
+        env:
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+          WINDOWS_CODESIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
 
       - name: Compute SHA256 checksum (Windows)
         shell: pwsh
@@ -322,6 +379,22 @@ jobs:
             - `videoforensics_*.deb` — Debian/Ubuntu package (self-contained .NET 10 linux-x64)
             - `VideoForensicsSetup.exe` — Windows Inno Setup installer (self-contained .NET 10 win-x64, Server + Desktop Client)
 
-            **Status:** Unsigned, prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/dev
+            **Status:** Prerelease, continuously updated. For latest changes see https://github.com/rsperry79/VideoForensics/commits/dev
 
             All files are accompanied by `.sha256` checksum files for integrity verification.
+
+            **Windows installer signing:** `VideoForensicsSetup.exe` is signed with a self-signed
+            certificate (not a public CA, so Windows SmartScreen will still show an
+            "Unknown Publisher" prompt on first run - self-signing provides tamper-evidence, not
+            OS-level trust). Verify the signer matches this project before running it:
+
+            ```powershell
+            (Get-AuthenticodeSignature .\VideoForensicsSetup.exe).SignerCertificate.Thumbprint
+            # Expected (SHA1 thumbprint): 102E1E3120A226AB239B3677348CD33675106D3D
+            ```
+
+            (The `.cer` file's own SHA256 fingerprint is `E7:90:DB:39:E5:E8:43:7F:5D:07:FF:7C:4B:46:A6:26:FD:3D:05:43:D6:EE:F0:39:B6:0D:01:CC:4D:9E:B9:16` -
+            check that instead if comparing the certificate file directly, e.g. via `openssl x509 -in VideoForensics-CodeSigning.cer -inform DER -noout -fingerprint -sha256`.)
+
+            The public certificate is checked into the repo at
+            `deploy/windows/codesign/VideoForensics-CodeSigning.cer`.
