@@ -118,4 +118,42 @@ public class WebAuthnClientTests
         Assert.EndsWith("api/v1/auth/change-password", handler.Requests[0].RequestUri!.AbsolutePath);
         Assert.Equal("current-session-token", factory.LastRequestedBearerToken);
     }
+
+    [Fact]
+    public async Task GetSetupStatusAsync_SuccessfulResponse_ParsesJsonCorrectly()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new { isEmpty = true, isLocal = false })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        (bool isEmpty, bool isLocal) = await client.GetSetupStatusAsync();
+
+        Assert.True(isEmpty);
+        Assert.False(isLocal);
+        Assert.Single(handler.Requests);
+        Assert.EndsWith("api/v1/setup/status", handler.Requests[0].RequestUri!.AbsolutePath);
+        Assert.Null(factory.LastRequestedBearerToken);
+    }
+
+    [Fact]
+    public async Task GetSetupStatusAsync_FailedResponse_FailsSafeToNotEmptyNotLocal()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        (bool isEmpty, bool isLocal) = await client.GetSetupStatusAsync();
+
+        Assert.False(isEmpty);
+        Assert.False(isLocal);
+    }
 }
