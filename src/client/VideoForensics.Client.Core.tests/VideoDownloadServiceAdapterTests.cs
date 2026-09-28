@@ -183,7 +183,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
             bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
@@ -203,7 +203,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
             bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
@@ -219,7 +219,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test");
+            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
             await _adapter.PreScanAsync(testPath, DateTime.Today, DateTime.Today.AddDays(1));
 
             IReadOnlyDictionary<string, int> counts = _adapter.GetPreScanCounts();
@@ -324,7 +324,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
             // Act: Call DownloadVideosAsync with a valid path (log injection would appear in logging output)
-            string basePath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test-injection");
+            string basePath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
             bool result = await _adapter.DownloadVideosAsync(basePath, DateTime.Today, DateTime.Today);
 
             // Assert: Verify the method completed and didn't throw, and sets error about no devices
