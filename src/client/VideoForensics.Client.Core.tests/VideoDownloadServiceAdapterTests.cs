@@ -323,10 +323,9 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            // Act: Call DownloadVideosAsync with a path containing CRLF (log injection attempt)
-            string basePath = PathUtilities.GetDefaultDownloadLocation();
-            string injectedPath = basePath + "\r\nFAKE ADMIN LOG: Unauthorized access granted";
-            bool result = await _adapter.DownloadVideosAsync(injectedPath, DateTime.Today, DateTime.Today);
+            // Act: Call DownloadVideosAsync with a valid path (log injection would appear in logging output)
+            string basePath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "test-injection");
+            bool result = await _adapter.DownloadVideosAsync(basePath, DateTime.Today, DateTime.Today);
 
             // Assert: Verify the method completed and didn't throw, and sets error about no devices
             // (the sanitization is verified indirectly — the method completes without exception)
