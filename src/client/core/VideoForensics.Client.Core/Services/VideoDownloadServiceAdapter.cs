@@ -339,6 +339,8 @@ namespace VideoForensics.Client.Core.Services
 
         public async Task<bool> DownloadVideosAsync(string outputPath, DateTime startDate, DateTime endDate, bool force = false)
         {
+            outputPath = PathUtilities.ValidateAndNormalizeOutputPath(outputPath);
+
             _lastRemainingCount = 0;
             _lastRemainingReason = null;
             _currentDeviceIndex = 0;
