@@ -197,6 +197,58 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("AiAnalysisTags");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.Alert", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlertType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelatedCaseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertType");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("RelatedCaseId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Alerts");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AppSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -255,6 +307,47 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("CidrRange");
 
                     b.ToTable("BannedIpRanges");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CameraBitrateBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HourOfDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsWeekend")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastRecomputedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("MedianBitrateBps")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("MedianFractionLost")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("MedianJitterTicks")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("StdDevBitrateBps")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "HourOfDay", "IsWeekend")
+                        .IsUnique();
+
+                    b.ToTable("CameraBitrateBaselines");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.CaseDevice", b =>
@@ -342,47 +435,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         {
                             t.HasCheckConstraint("CK_CaseItems_ExactlyOneTarget", "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)");
                         });
-                });
-
-            modelBuilder.Entity("VideoForensics.Data.Common.Entities.CameraBitrateBaseline", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DeviceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("HourOfDay")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsWeekend")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("LastRecomputedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("MedianBitrateBps")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<double>("MedianFractionLost")
-                        .HasColumnType("REAL");
-
-                    b.Property<double>("MedianJitterTicks")
-                        .HasColumnType("REAL");
-
-                    b.Property<int>("SampleCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<double>("StdDevBitrateBps")
-                        .HasColumnType("REAL");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeviceId", "HourOfDay", "IsWeekend")
-                        .IsUnique();
-
-                    b.ToTable("CameraBitrateBaselines");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Credential", b =>
@@ -2139,6 +2191,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("LinkedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OperatorId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderName")

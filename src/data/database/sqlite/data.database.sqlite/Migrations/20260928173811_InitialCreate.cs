@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "AccessAuditLogs",
                 columns: table => new
                 {
@@ -25,10 +26,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
+                    table.PrimaryKey("PK_AccessAuditLogs", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ActionLogEntries",
                 columns: table => new
                 {
@@ -45,10 +46,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ActionLogEntries", x => x.Id);
+                    table.PrimaryKey("PK_ActionLogEntries", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "AiAnalysisSnapshots",
                 columns: table => new
                 {
@@ -60,10 +61,29 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_AiAnalysisSnapshots", x => x.Id);
+                    table.PrimaryKey("PK_AiAnalysisSnapshots", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "Alerts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Description = table.Column<string>(type: "TEXT", maxLength: 4000, nullable: true),
+                    RelatedCaseId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    Status = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    CreatedBy = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    AlertType = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Alerts", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AppSettings",
                 columns: table => new
                 {
@@ -75,10 +95,69 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_AppSettings", x => x.Id);
+                    table.PrimaryKey("PK_AppSettings", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "BannedIpRanges",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CidrRange = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    Reason = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CreatedByOperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BannedIpRanges", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CameraBitrateBaselines",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DeviceId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    HourOfDay = table.Column<int>(type: "INTEGER", nullable: false),
+                    IsWeekend = table.Column<bool>(type: "INTEGER", nullable: false),
+                    SampleCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    MedianBitrateBps = table.Column<long>(type: "INTEGER", nullable: false),
+                    StdDevBitrateBps = table.Column<double>(type: "REAL", nullable: false),
+                    MedianFractionLost = table.Column<double>(type: "REAL", nullable: false),
+                    MedianJitterTicks = table.Column<double>(type: "REAL", nullable: false),
+                    LastRecomputedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CameraBitrateBaselines", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Cases",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CaseNumber = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Description = table.Column<string>(type: "TEXT", maxLength: 4000, nullable: true),
+                    Status = table.Column<string>(type: "TEXT", nullable: false),
+                    LeadOperatorId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    CreatedBy = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    ClosedBy = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    ClosedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    ScopeFromUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    ScopeToUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cases", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Credentials",
                 columns: table => new
                 {
@@ -92,10 +171,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Credentials", x => x.Id);
+                    table.PrimaryKey("PK_Credentials", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DetectedPersons",
                 columns: table => new
                 {
@@ -108,10 +187,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DetectedPersons", x => x.Id);
+                    table.PrimaryKey("PK_DetectedPersons", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DetectionTypeOccurrences",
                 columns: table => new
                 {
@@ -122,10 +201,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DetectionTypeOccurrences", x => x.Id);
+                    table.PrimaryKey("PK_DetectionTypeOccurrences", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceAlerts",
                 columns: table => new
                 {
@@ -136,10 +215,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceAlerts", x => x.Id);
+                    table.PrimaryKey("PK_DeviceAlerts", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceCapabilities",
                 columns: table => new
                 {
@@ -161,10 +240,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceCapabilities", x => x.Id);
+                    table.PrimaryKey("PK_DeviceCapabilities", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceConfigSnapshots",
                 columns: table => new
                 {
@@ -179,10 +258,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceConfigSnapshots", x => x.Id);
+                    table.PrimaryKey("PK_DeviceConfigSnapshots", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceFeatures",
                 columns: table => new
                 {
@@ -198,10 +277,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceFeatures", x => x.Id);
+                    table.PrimaryKey("PK_DeviceFeatures", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceHealths",
                 columns: table => new
                 {
@@ -220,29 +299,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceHealths", x => x.Id);
+                    table.PrimaryKey("PK_DeviceHealths", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
-                name: "DeviceHealthSnapshots",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    DeviceId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    DownloadEventId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Connected = table.Column<bool>(type: "INTEGER", nullable: true),
-                    BatteryPercentage = table.Column<decimal>(type: "TEXT", nullable: true),
-                    Rssi = table.Column<int>(type: "INTEGER", nullable: true),
-                    WifiName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    FirmwareVersion = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    CapturedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    _ = table.PrimaryKey("PK_DeviceHealthSnapshots", x => x.Id);
-                });
-
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "Devices",
                 columns: table => new
                 {
@@ -265,10 +325,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Devices", x => x.Id);
+                    table.PrimaryKey("PK_Devices", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DownloadEvents",
                 columns: table => new
                 {
@@ -289,10 +349,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DownloadEvents", x => x.Id);
+                    table.PrimaryKey("PK_DownloadEvents", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "EventDetectedPersons",
                 columns: table => new
                 {
@@ -305,10 +365,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_EventDetectedPersons", x => x.Id);
+                    table.PrimaryKey("PK_EventDetectedPersons", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "EventDetections",
                 columns: table => new
                 {
@@ -326,10 +386,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_EventDetections", x => x.Id);
+                    table.PrimaryKey("PK_EventDetections", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "EventDetectionTypeOccurrences",
                 columns: table => new
                 {
@@ -340,10 +400,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_EventDetectionTypeOccurrences", x => x.Id);
+                    table.PrimaryKey("PK_EventDetectionTypeOccurrences", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "EventDetectionZones",
                 columns: table => new
                 {
@@ -355,10 +415,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_EventDetectionZones", x => x.Id);
+                    table.PrimaryKey("PK_EventDetectionZones", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "Events",
                 columns: table => new
                 {
@@ -380,10 +440,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Events", x => x.Id);
+                    table.PrimaryKey("PK_Events", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "EventSecurityAlerts",
                 columns: table => new
                 {
@@ -394,10 +454,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_EventSecurityAlerts", x => x.Id);
+                    table.PrimaryKey("PK_EventSecurityAlerts", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ExportAuditRecords",
                 columns: table => new
                 {
@@ -411,10 +471,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
+                    table.PrimaryKey("PK_ExportAuditRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ExportRecordItems",
                 columns: table => new
                 {
@@ -425,10 +485,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ExportRecordItems", x => x.Id);
+                    table.PrimaryKey("PK_ExportRecordItems", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ExportRecords",
                 columns: table => new
                 {
@@ -445,10 +505,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ExportRecords", x => x.Id);
+                    table.PrimaryKey("PK_ExportRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "IntegrityRecords",
                 columns: table => new
                 {
@@ -462,10 +522,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_IntegrityRecords", x => x.Id);
+                    table.PrimaryKey("PK_IntegrityRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "JammingIncidentRecords",
                 columns: table => new
                 {
@@ -482,10 +542,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_JammingIncidentRecords", x => x.Id);
+                    table.PrimaryKey("PK_JammingIncidentRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "JammingStatsSummaries",
                 columns: table => new
                 {
@@ -505,10 +565,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_JammingStatsSummaries", x => x.Id);
+                    table.PrimaryKey("PK_JammingStatsSummaries", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "LegalHolds",
                 columns: table => new
                 {
@@ -523,10 +583,33 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_LegalHolds", x => x.Id);
+                    table.PrimaryKey("PK_LegalHolds", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "LiveViewSessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DeviceId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    TriggerReason = table.Column<int>(type: "INTEGER", nullable: false),
+                    State = table.Column<int>(type: "INTEGER", nullable: false),
+                    StartedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    EndedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastExtendedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    IsSustained = table.Column<bool>(type: "INTEGER", nullable: false),
+                    SustainedSinceUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    PromotionReason = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    StopReason = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
+                    ProviderSessionRef = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LiveViewSessions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "LocationMetadata",
                 columns: table => new
                 {
@@ -548,10 +631,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_LocationMetadata", x => x.Id);
+                    table.PrimaryKey("PK_LocationMetadata", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "Locations",
                 columns: table => new
                 {
@@ -565,10 +648,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Locations", x => x.Id);
+                    table.PrimaryKey("PK_Locations", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "LockoutPolicySettings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    MaxFailedAttempts = table.Column<int>(type: "INTEGER", nullable: false),
+                    LockoutDurationMinutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    BlockedCountryCodes = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    FailClosedOnLookupError = table.Column<bool>(type: "INTEGER", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedByOperatorId = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LockoutPolicySettings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "MediaItemDetections",
                 columns: table => new
                 {
@@ -586,10 +686,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_MediaItemDetections", x => x.Id);
+                    table.PrimaryKey("PK_MediaItemDetections", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "MediaItems",
                 columns: table => new
                 {
@@ -618,10 +718,77 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_MediaItems", x => x.Id);
+                    table.PrimaryKey("PK_MediaItems", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "NoticeDismissals",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    NoticeId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DismissedUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NoticeDismissals", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notices",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    EventType = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Severity = table.Column<int>(type: "INTEGER", nullable: false),
+                    Details = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
+                    Audience = table.Column<int>(type: "INTEGER", nullable: false),
+                    TimestampUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    ProviderAccountId = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notices", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OperatorCredentials",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Label = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    WebAuthnCredentialId = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
+                    WebAuthnPublicKey = table.Column<byte[]>(type: "BLOB", nullable: false),
+                    WebAuthnSignCount = table.Column<uint>(type: "INTEGER", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastUsedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    IsApproved = table.Column<bool>(type: "INTEGER", nullable: false),
+                    RevokedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    RevokedReason = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
+                    FirstLoginNotifiedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OperatorCredentials", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OperatorNotificationPreferences",
+                columns: table => new
+                {
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    PushEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    MinimumSeverity = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OperatorNotificationPreferences", x => x.OperatorId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "OperatorPreferences",
                 columns: table => new
                 {
@@ -629,28 +796,45 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
                     ThemeMode = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     CultureName = table.Column<string>(type: "TEXT", maxLength: 16, nullable: true),
+                    UiMode = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_OperatorPreferences", x => x.Id);
+                    table.PrimaryKey("PK_OperatorPreferences", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "Operators",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     DisplayName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
                     CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Active = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Active = table.Column<bool>(type: "INTEGER", nullable: false),
+                    IsApproved = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Username = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Role = table.Column<int>(type: "INTEGER", nullable: false),
+                    PasswordHash = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
+                    MustChangePassword = table.Column<bool>(type: "INTEGER", nullable: false),
+                    PasswordUpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    FirstName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    LastName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    Phone = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
+                    SecurityStamp = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ApprovalFirstLoginNotifiedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    IsPrimarySuperAdmin = table.Column<bool>(type: "INTEGER", nullable: false),
+                    FailedLoginAttemptCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    LockedOutUntilUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    TwoFactorRequirementOverride = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Operators", x => x.Id);
+                    table.PrimaryKey("PK_Operators", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "PairedDevices",
                 columns: table => new
                 {
@@ -672,27 +856,30 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_PairedDevices", x => x.Id);
+                    table.PrimaryKey("PK_PairedDevices", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ProviderAccounts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     UserId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: true),
                     ProviderName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
                     LinkedUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
                     LastSuccessfulAuthUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
                     IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LastDownloadTimeUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    LastDownloadTimeUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastErrorUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastErrorMessage = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true)
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ProviderAccounts", x => x.Id);
+                    table.PrimaryKey("PK_ProviderAccounts", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ProviderApiCallRecords",
                 columns: table => new
                 {
@@ -702,10 +889,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ProviderApiCallRecords", x => x.Id);
+                    table.PrimaryKey("PK_ProviderApiCallRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ProviderApiErrorLogs",
                 columns: table => new
                 {
@@ -724,10 +911,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ProviderApiErrorLogs", x => x.Id);
+                    table.PrimaryKey("PK_ProviderApiErrorLogs", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ProviderReconciliationRecords",
                 columns: table => new
                 {
@@ -743,10 +930,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ProviderReconciliationRecords", x => x.Id);
+                    table.PrimaryKey("PK_ProviderReconciliationRecords", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "PushSubscriptions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Endpoint = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    P256dhKey = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    AuthKey = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    CreatedUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastUsedUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PushSubscriptions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RingAccountFeatures",
                 columns: table => new
                 {
@@ -769,10 +973,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountFeatures", x => x.Id);
+                    table.PrimaryKey("PK_RingAccountFeatures", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccounts",
                 columns: table => new
                 {
@@ -792,10 +996,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccounts", x => x.Id);
+                    table.PrimaryKey("PK_RingAccounts", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "SecurityAuditLogEntries",
                 columns: table => new
                 {
@@ -810,10 +1014,63 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_SecurityAuditLogEntries", x => x.Id);
+                    table.PrimaryKey("PK_SecurityAuditLogEntries", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
+                name: "SecurityEvents",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    EventType = table.Column<int>(type: "INTEGER", nullable: false),
+                    Success = table.Column<bool>(type: "INTEGER", nullable: false),
+                    IpAddress = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
+                    OccurredAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Reason = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SecurityEvents", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SyncSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ProviderAccountId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    EventPollIntervalMinutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    SnapshotRssiIntervalMinutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    IsEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    UseAdvancedJammingSchedule = table.Column<bool>(type: "INTEGER", nullable: false),
+                    EventNextRunUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    EventLastRunUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    SnapshotNextRunUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    SnapshotLastRunUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SyncSchedules", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TwoFactorRoleRequirements",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Role = table.Column<int>(type: "INTEGER", nullable: false),
+                    RequireTwoFactor = table.Column<bool>(type: "INTEGER", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedByOperatorId = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TwoFactorRoleRequirements", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -825,10 +1082,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_Users", x => x.Id);
+                    table.PrimaryKey("PK_Users", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "AiAnalysisMotionZones",
                 columns: table => new
                 {
@@ -840,8 +1097,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_AiAnalysisMotionZones", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_AiAnalysisMotionZones", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_AiAnalysisMotionZones_AiAnalysisSnapshots_AiAnalysisSnapshotId",
                         column: x => x.AiAnalysisSnapshotId,
                         principalTable: "AiAnalysisSnapshots",
@@ -849,7 +1106,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "AiAnalysisTags",
                 columns: table => new
                 {
@@ -859,8 +1116,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_AiAnalysisTags", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_AiAnalysisTags", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_AiAnalysisTags_AiAnalysisSnapshots_AiAnalysisSnapshotId",
                         column: x => x.AiAnalysisSnapshotId,
                         principalTable: "AiAnalysisSnapshots",
@@ -868,347 +1125,625 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateTable(
+                name: "CaseDevices",
+                columns: table => new
+                {
+                    CaseId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DeviceId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    AddedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CaseDevices", x => new { x.CaseId, x.DeviceId });
+                    table.ForeignKey(
+                        name: "FK_CaseDevices_Cases_CaseId",
+                        column: x => x.CaseId,
+                        principalTable: "Cases",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CaseDevices_Devices_DeviceId",
+                        column: x => x.DeviceId,
+                        principalTable: "Devices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "LiveViewTelemetrySamples",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SessionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CapturedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    FractionLost = table.Column<byte>(type: "INTEGER", nullable: true),
+                    CumulativePacketsLost = table.Column<int>(type: "INTEGER", nullable: true),
+                    JitterTicks = table.Column<uint>(type: "INTEGER", nullable: true),
+                    BitrateBps = table.Column<long>(type: "INTEGER", nullable: true),
+                    InterferenceScore = table.Column<double>(type: "REAL", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LiveViewTelemetrySamples", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_LiveViewTelemetrySamples_LiveViewSessions_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "LiveViewSessions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CaseItems",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CaseId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Kind = table.Column<string>(type: "TEXT", nullable: false),
+                    EventId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    MediaItemId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    Reason = table.Column<string>(type: "TEXT", maxLength: 1024, nullable: false),
+                    AddedBy = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    AddedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    MediaSha256AtAdd = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
+                    RemovedBy = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    RemovedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    RemovalReason = table.Column<string>(type: "TEXT", maxLength: 1024, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CaseItems", x => x.Id);
+                    table.CheckConstraint("CK_CaseItems_ExactlyOneTarget", "(\"Kind\" = 'Event' AND \"EventId\" IS NOT NULL AND \"MediaItemId\" IS NULL) OR (\"Kind\" = 'Media' AND \"MediaItemId\" IS NOT NULL AND \"EventId\" IS NULL)");
+                    table.ForeignKey(
+                        name: "FK_CaseItems_Cases_CaseId",
+                        column: x => x.CaseId,
+                        principalTable: "Cases",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CaseItems_Events_EventId",
+                        column: x => x.EventId,
+                        principalTable: "Events",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CaseItems_MediaItems_MediaItemId",
+                        column: x => x.MediaItemId,
+                        principalTable: "MediaItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MediaStillCaptures",
+                columns: table => new
+                {
+                    MediaItemId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SourceMediaItemId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    FrameOffsetMs = table.Column<long>(type: "INTEGER", nullable: false),
+                    SourceSha256AtCapture = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    CapturedByOperator = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    CaptureMethod = table.Column<string>(type: "TEXT", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MediaStillCaptures", x => x.MediaItemId);
+                    table.ForeignKey(
+                        name: "FK_MediaStillCaptures_MediaItems_MediaItemId",
+                        column: x => x.MediaItemId,
+                        principalTable: "MediaItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_MediaStillCaptures_MediaItems_SourceMediaItemId",
+                        column: x => x.SourceMediaItemId,
+                        principalTable: "MediaItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "JammingScheduleWindows",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SyncScheduleId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DayOfWeek = table.Column<int>(type: "INTEGER", nullable: false),
+                    StartMinuteOfDay = table.Column<int>(type: "INTEGER", nullable: false),
+                    EndMinuteOfDay = table.Column<int>(type: "INTEGER", nullable: false),
+                    SnapshotRssiIntervalMinutes = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_JammingScheduleWindows", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_JammingScheduleWindows_SyncSchedules_SyncScheduleId",
+                        column: x => x.SyncScheduleId,
+                        principalTable: "SyncSchedules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_AccessedAtUtc",
                 table: "AccessAuditLogs",
                 column: "AccessedAtUtc");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_EvidenceId",
                 table: "AccessAuditLogs",
                 column: "EvidenceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AccessAuditLogs_UserId",
                 table: "AccessAuditLogs",
                 column: "UserId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ActionLogEntries_EntityType_EntityId",
                 table: "ActionLogEntries",
                 columns: new[] { "EntityType", "EntityId" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ActionLogEntries_TimestampUtc",
                 table: "ActionLogEntries",
                 column: "TimestampUtc");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AiAnalysisMotionZones_AiAnalysisSnapshotId",
                 table: "AiAnalysisMotionZones",
                 column: "AiAnalysisSnapshotId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AiAnalysisMotionZones_AiAnalysisSnapshotId_ZoneId",
                 table: "AiAnalysisMotionZones",
                 columns: new[] { "AiAnalysisSnapshotId", "ZoneId" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AiAnalysisSnapshots_DownloadEventId",
                 table: "AiAnalysisSnapshots",
                 column: "DownloadEventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AiAnalysisTags_AiAnalysisSnapshotId",
                 table: "AiAnalysisTags",
                 column: "AiAnalysisSnapshotId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_AiAnalysisTags_AiAnalysisSnapshotId_TagName",
                 table: "AiAnalysisTags",
                 columns: new[] { "AiAnalysisSnapshotId", "TagName" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_Alerts_AlertType",
+                table: "Alerts",
+                column: "AlertType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Alerts_CreatedAtUtc",
+                table: "Alerts",
+                column: "CreatedAtUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Alerts_RelatedCaseId",
+                table: "Alerts",
+                column: "RelatedCaseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Alerts_Status",
+                table: "Alerts",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AppSettings_Key",
                 table: "AppSettings",
                 column: "Key",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_BannedIpRanges_CidrRange",
+                table: "BannedIpRanges",
+                column: "CidrRange");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CameraBitrateBaselines_DeviceId_HourOfDay_IsWeekend",
+                table: "CameraBitrateBaselines",
+                columns: new[] { "DeviceId", "HourOfDay", "IsWeekend" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CaseDevices_DeviceId",
+                table: "CaseDevices",
+                column: "DeviceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CaseItems_CaseId_EventId_Active",
+                table: "CaseItems",
+                columns: new[] { "CaseId", "EventId" },
+                unique: true,
+                filter: "\"EventId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CaseItems_CaseId_MediaItemId_Active",
+                table: "CaseItems",
+                columns: new[] { "CaseId", "MediaItemId" },
+                unique: true,
+                filter: "\"MediaItemId\" IS NOT NULL AND \"RemovedAtUtc\" IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CaseItems_EventId",
+                table: "CaseItems",
+                column: "EventId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CaseItems_MediaItemId",
+                table: "CaseItems",
+                column: "MediaItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cases_CaseNumber",
+                table: "Cases",
+                column: "CaseNumber",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Credentials_ProviderAccountId",
                 table: "Credentials",
                 column: "ProviderAccountId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Credentials_ProviderAccountId_CredentialType",
                 table: "Credentials",
                 columns: new[] { "ProviderAccountId", "CredentialType" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DetectedPersons_MediaItemId_ProfileId",
                 table: "DetectedPersons",
                 columns: new[] { "MediaItemId", "ProfileId" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DetectionTypeOccurrences_MediaItemDetectionId",
                 table: "DetectionTypeOccurrences",
                 column: "MediaItemDetectionId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceAlerts_DeviceId_AlertType",
                 table: "DeviceAlerts",
                 columns: new[] { "DeviceId", "AlertType" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceCapabilities_DeviceId",
                 table: "DeviceCapabilities",
                 column: "DeviceId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceConfigSnapshots_DeviceId",
                 table: "DeviceConfigSnapshots",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceFeatures_DeviceId",
                 table: "DeviceFeatures",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceHealths_DeviceId_CapturedAtUtc",
                 table: "DeviceHealths",
                 columns: new[] { "DeviceId", "CapturedAtUtc" });
 
-            _ = migrationBuilder.CreateIndex(
-                name: "IX_DeviceHealthSnapshots_DeviceId_CapturedAtUtc",
-                table: "DeviceHealthSnapshots",
-                columns: new[] { "DeviceId", "CapturedAtUtc" });
-
-            _ = migrationBuilder.CreateIndex(
-                name: "IX_DeviceHealthSnapshots_DownloadEventId",
-                table: "DeviceHealthSnapshots",
-                column: "DownloadEventId");
-
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Devices_LocationId",
                 table: "Devices",
                 column: "LocationId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Devices_LocationId_ProviderDeviceId",
                 table: "Devices",
                 columns: new[] { "LocationId", "ProviderDeviceId" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DownloadEvents_DeviceId",
                 table: "DownloadEvents",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DownloadEvents_DeviceId_ProviderEventId",
                 table: "DownloadEvents",
                 columns: new[] { "DeviceId", "ProviderEventId" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_EventDetectedPersons_EventId",
                 table: "EventDetectedPersons",
                 column: "EventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_EventDetections_EventId",
                 table: "EventDetections",
                 column: "EventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_EventDetectionTypeOccurrences_EventDetectionId",
                 table: "EventDetectionTypeOccurrences",
                 column: "EventDetectionId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_EventDetectionZones_EventDetectionId_ZoneId",
                 table: "EventDetectionZones",
                 columns: new[] { "EventDetectionId", "ZoneId" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Events_DeviceId",
                 table: "Events",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Events_DeviceId_ProviderEventId",
                 table: "Events",
                 columns: new[] { "DeviceId", "ProviderEventId" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Events_EventDetectionId",
                 table: "Events",
                 column: "EventDetectionId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_EventSecurityAlerts_EventId",
                 table: "EventSecurityAlerts",
                 column: "EventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_ExportedAtUtc",
                 table: "ExportAuditRecords",
                 column: "ExportedAtUtc");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ExportAuditRecords_LocationId",
                 table: "ExportAuditRecords",
                 column: "LocationId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ExportRecordItems_ExportRecordId",
                 table: "ExportRecordItems",
                 column: "ExportRecordId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ExportRecordItems_MediaItemId",
                 table: "ExportRecordItems",
                 column: "MediaItemId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ExportRecords_ExportedAtUtc",
                 table: "ExportRecords",
                 column: "ExportedAtUtc");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_IntegrityRecords_MediaItemId",
                 table: "IntegrityRecords",
                 column: "MediaItemId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_JammingIncidentRecords_DeviceId",
                 table: "JammingIncidentRecords",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_JammingScheduleWindows_SyncScheduleId",
+                table: "JammingScheduleWindows",
+                column: "SyncScheduleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_JammingStatsSummaries_DeviceId",
                 table: "JammingStatsSummaries",
                 column: "DeviceId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_LegalHolds_MediaItemId",
                 table: "LegalHolds",
                 column: "MediaItemId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_LiveViewSessions_DeviceId",
+                table: "LiveViewSessions",
+                column: "DeviceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LiveViewSessions_State",
+                table: "LiveViewSessions",
+                column: "State");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LiveViewTelemetrySamples_SessionId_CapturedAtUtc",
+                table: "LiveViewTelemetrySamples",
+                columns: new[] { "SessionId", "CapturedAtUtc" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_LocationMetadata_LocationId",
                 table: "LocationMetadata",
                 column: "LocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Locations_ProviderLocationId",
                 table: "Locations",
                 column: "ProviderLocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_MediaItemDetections_MediaItemId",
                 table: "MediaItemDetections",
                 column: "MediaItemId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_MediaItems_DeviceId",
                 table: "MediaItems",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_MediaItems_DeviceId_RecordedAtUtc",
                 table: "MediaItems",
                 columns: new[] { "DeviceId", "RecordedAtUtc" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_MediaItems_DownloadEventId",
                 table: "MediaItems",
                 column: "DownloadEventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_MediaItems_Sha256Hash",
                 table: "MediaItems",
                 column: "Sha256Hash");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_MediaStillCaptures_SourceMediaItemId",
+                table: "MediaStillCaptures",
+                column: "SourceMediaItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NoticeDismissals_NoticeId_OperatorId",
+                table: "NoticeDismissals",
+                columns: new[] { "NoticeId", "OperatorId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OperatorCredentials_OperatorId",
+                table: "OperatorCredentials",
+                column: "OperatorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OperatorCredentials_WebAuthnCredentialId",
+                table: "OperatorCredentials",
+                column: "WebAuthnCredentialId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_OperatorPreferences_OperatorId",
                 table: "OperatorPreferences",
                 column: "OperatorId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_Operators_Email",
+                table: "Operators",
+                column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Operators_Username",
+                table: "Operators",
+                column: "Username",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_FallbackApiKeyHash",
                 table: "PairedDevices",
                 column: "FallbackApiKeyHash");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_OperatorId",
                 table: "PairedDevices",
                 column: "OperatorId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_PairedDevices_WebAuthnCredentialId",
                 table: "PairedDevices",
                 column: "WebAuthnCredentialId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderAccounts_UserId",
                 table: "ProviderAccounts",
                 column: "UserId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderAccounts_UserId_ProviderName",
                 table: "ProviderAccounts",
                 columns: new[] { "UserId", "ProviderName" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiCallRecords_ProviderName_TimestampUtc",
                 table: "ProviderApiCallRecords",
                 columns: new[] { "ProviderName", "TimestampUtc" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiErrorLogs_DeviceId_OccurredAtUtc",
                 table: "ProviderApiErrorLogs",
                 columns: new[] { "DeviceId", "OccurredAtUtc" });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderApiErrorLogs_EventId",
                 table: "ProviderApiErrorLogs",
                 column: "EventId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_ProviderReconciliationRecords_DeviceId",
                 table: "ProviderReconciliationRecords",
                 column: "DeviceId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_PushSubscriptions_Endpoint",
+                table: "PushSubscriptions",
+                column: "Endpoint",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountFeatures_RingAccountId",
                 table: "RingAccountFeatures",
                 column: "RingAccountId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccounts_ProviderAccountId",
                 table: "RingAccounts",
                 column: "ProviderAccountId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccounts_RingAccountFeaturesId",
                 table: "RingAccounts",
                 column: "RingAccountFeaturesId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_SecurityAuditLogEntries_OperatorId",
                 table: "SecurityAuditLogEntries",
                 column: "OperatorId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_SecurityAuditLogEntries_TimestampUtc",
                 table: "SecurityAuditLogEntries",
                 column: "TimestampUtc");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
+                name: "IX_SecurityEvents_OccurredAtUtc",
+                table: "SecurityEvents",
+                column: "OccurredAtUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SecurityEvents_OperatorId_OccurredAtUtc",
+                table: "SecurityEvents",
+                columns: new[] { "OperatorId", "OccurredAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncSchedules_ProviderAccountId",
+                table: "SyncSchedules",
+                column: "ProviderAccountId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TwoFactorRoleRequirements_Role",
+                table: "TwoFactorRoleRequirements",
+                column: "Role",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_ProviderUserKey",
                 table: "Users",
                 column: "ProviderUserKey",
@@ -1218,140 +1753,194 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "AccessAuditLogs");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ActionLogEntries");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "AiAnalysisMotionZones");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "AiAnalysisTags");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "Alerts");
+
+            migrationBuilder.DropTable(
                 name: "AppSettings");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "BannedIpRanges");
+
+            migrationBuilder.DropTable(
+                name: "CameraBitrateBaselines");
+
+            migrationBuilder.DropTable(
+                name: "CaseDevices");
+
+            migrationBuilder.DropTable(
+                name: "CaseItems");
+
+            migrationBuilder.DropTable(
                 name: "Credentials");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DetectedPersons");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DetectionTypeOccurrences");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceAlerts");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceCapabilities");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceConfigSnapshots");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceFeatures");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceHealths");
 
-            _ = migrationBuilder.DropTable(
-                name: "DeviceHealthSnapshots");
-
-            _ = migrationBuilder.DropTable(
-                name: "Devices");
-
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DownloadEvents");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "EventDetectedPersons");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "EventDetections");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "EventDetectionTypeOccurrences");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "EventDetectionZones");
 
-            _ = migrationBuilder.DropTable(
-                name: "Events");
-
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "EventSecurityAlerts");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ExportAuditRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ExportRecordItems");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ExportRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "IntegrityRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "JammingIncidentRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "JammingScheduleWindows");
+
+            migrationBuilder.DropTable(
                 name: "JammingStatsSummaries");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "LegalHolds");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "LiveViewTelemetrySamples");
+
+            migrationBuilder.DropTable(
                 name: "LocationMetadata");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "Locations");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "LockoutPolicySettings");
+
+            migrationBuilder.DropTable(
                 name: "MediaItemDetections");
 
-            _ = migrationBuilder.DropTable(
-                name: "MediaItems");
+            migrationBuilder.DropTable(
+                name: "MediaStillCaptures");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "NoticeDismissals");
+
+            migrationBuilder.DropTable(
+                name: "Notices");
+
+            migrationBuilder.DropTable(
+                name: "OperatorCredentials");
+
+            migrationBuilder.DropTable(
+                name: "OperatorNotificationPreferences");
+
+            migrationBuilder.DropTable(
                 name: "OperatorPreferences");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "Operators");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "PairedDevices");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ProviderAccounts");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ProviderApiCallRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ProviderApiErrorLogs");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ProviderReconciliationRecords");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "PushSubscriptions");
+
+            migrationBuilder.DropTable(
                 name: "RingAccountFeatures");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccounts");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "SecurityAuditLogEntries");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
+                name: "SecurityEvents");
+
+            migrationBuilder.DropTable(
+                name: "TwoFactorRoleRequirements");
+
+            migrationBuilder.DropTable(
                 name: "Users");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "AiAnalysisSnapshots");
+
+            migrationBuilder.DropTable(
+                name: "Devices");
+
+            migrationBuilder.DropTable(
+                name: "Cases");
+
+            migrationBuilder.DropTable(
+                name: "Events");
+
+            migrationBuilder.DropTable(
+                name: "SyncSchedules");
+
+            migrationBuilder.DropTable(
+                name: "LiveViewSessions");
+
+            migrationBuilder.DropTable(
+                name: "MediaItems");
         }
     }
 }
