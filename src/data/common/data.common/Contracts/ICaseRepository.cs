@@ -104,5 +104,14 @@ namespace VideoForensics.Data.Common.Contracts
         /// Returns only cases with RemovedAtUtc == null items matching the criteria.
         /// </summary>
         Task<IReadOnlyList<ForensicCase>> ListCasesContainingAsync(CaseItemKind kind, Guid targetId, CancellationToken ct);
+
+        /// <summary>
+        /// Auto-creates a forensic case from a jamming incident detection or suspicion.
+        /// Generates case number with "detected" or "suspected" prefix and auto-populates title, description, and scope from the incident.
+        /// Appends a chain-of-custody ActionLog entry ("CreateCase") in the same operation.
+        /// </summary>
+        Task<ForensicCase> CreateFromJammingDetectionAsync(
+            JammingIncidentRecord jammingIncident,
+            CancellationToken ct);
     }
 }
