@@ -50,12 +50,14 @@ namespace VideoForensics.Hosting
 
         public async Task<GitHubReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct)
         {
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/latest", ct);
+            // Fetch the release tagged with "Release" (main branch latest)
+            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Release", ct);
         }
 
         public async Task<GitHubReleaseInfo?> GetLatestTestingReleaseAsync(CancellationToken ct)
         {
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/testing", ct);
+            // Fetch the release tagged with "Testing" (dev branch latest)
+            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Testing", ct);
         }
 
         private async Task<GitHubReleaseInfo?> FetchReleaseAsync(string endpoint, CancellationToken ct)
