@@ -284,7 +284,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            bool result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
+            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "snapshots");
+            bool result = await _adapter.DownloadSnapshotsAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -303,7 +304,8 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            bool result = await _adapter.DownloadSnapshotsAsync("C:\\Snapshots", DateTime.Today, DateTime.Today);
+            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "snapshots");
+            bool result = await _adapter.DownloadSnapshotsAsync(testPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
