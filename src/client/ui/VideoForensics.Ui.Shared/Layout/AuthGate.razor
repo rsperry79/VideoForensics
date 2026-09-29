@@ -1,8 +1,7 @@
 @using VideoForensics.Ui.Shared.Services
-@using VideoForensics.Data.Common.Contracts
 @inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
-@inject IOperatorRepository OperatorRepository
+@inject WebAuthnClient WebAuthn
 @implements IDisposable
 
 @if (_loading)
@@ -46,7 +45,8 @@ else
         "/device-signin",
         "/register",
         "/welcome",
-        "/setup"
+        "/setup",
+        "/awaiting-setup"
     };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -113,20 +113,8 @@ else
                 _loading = false;
                 _redirecting = true;
 
-                bool isBootstrap = await OperatorRepository.IsEmptyAsync(CancellationToken.None);
-
-                if (isBootstrap)
-                {
-                    // No operators exist - go to /setup for first-run admin account creation.
-                    // /pair's own WebAuthn-based bootstrap path still exists for QR/mobile pairing
-                    // flows reached by direct URL, but /setup is now the default UI entry point.
-                    NavigationManager.NavigateTo("/setup", replace: true);
-                }
-                else
-                {
-                    // Operators exist - go to welcome page
-                    NavigationManager.NavigateTo("/welcome", replace: true);
-                }
+                (bool isEmpty, bool isLocal) = await WebAuthn.GetSetupStatusAsync();
+                NavigationManager.NavigateTo(ResolveBootstrapRedirectTarget(isEmpty, isLocal), replace: true);
             }
 
             StateHasChanged();
@@ -144,5 +132,23 @@ else
     public void Dispose()
     {
         NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+
+    /// <summary>
+    /// Where an unauthenticated visitor on a non-allow-listed route should land, given the current
+    /// bootstrap state. Public static (not private) so AuthGateTests.cs can exercise this exact
+    /// logic directly rather than duplicating it in the test file.
+    /// - No operators exist and this visitor is on the local machine: /setup, for first-run admin
+    ///   account creation.
+    /// - No operators exist but this visitor is NOT local: /awaiting-setup - don't let a remote
+    ///   device win the race to claim the SuperAdmin account (see SetupEndpoints.CreateAdminAsync's
+    ///   matching server-side enforcement, and the installer's own warning about this exact race).
+    /// - Operators already exist: /welcome, the normal sign-in entry point.
+    /// </summary>
+    public static string ResolveBootstrapRedirectTarget(bool isEmpty, bool isLocal)
+    {
+        return isEmpty && isLocal ? "/setup"
+             : isEmpty ? "/awaiting-setup"
+             : "/welcome";
     }
 }

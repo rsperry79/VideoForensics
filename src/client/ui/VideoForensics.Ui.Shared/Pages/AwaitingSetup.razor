@@ -1,0 +1,43 @@
+@page "/awaiting-setup"
+@layout MinimalLayout
+@using VideoForensics.Ui.Shared.Services
+@inject NavigationManager NavigationManager
+@inject WebAuthnClient WebAuthn
+
+<h4 class="mb-4">Waiting for setup</h4>
+<p class="card-text text-center text-muted mb-4">
+    This VideoForensics installation hasn't been set up yet. Ask whoever installed it to open
+    it from the local machine and create the administrator account.
+</p>
+
+<div class="d-flex justify-content-center">
+    <SfButton CssClass="btn-primary btn-lg" OnClick="CheckAgainAsync" Disabled="@_checking">
+        @(_checking ? "Checking..." : "Check again")
+    </SfButton>
+</div>
+
+@code {
+    private bool _checking;
+
+    private async Task CheckAgainAsync()
+    {
+        _checking = true;
+        try
+        {
+            (bool isEmpty, bool isLocal) = await WebAuthn.GetSetupStatusAsync();
+            if (isEmpty && isLocal)
+            {
+                NavigationManager.NavigateTo("/setup", replace: true);
+            }
+            else if (!isEmpty)
+            {
+                NavigationManager.NavigateTo("/welcome", replace: true);
+            }
+            // else: still empty and still not local - stay on this page.
+        }
+        finally
+        {
+            _checking = false;
+        }
+    }
+}

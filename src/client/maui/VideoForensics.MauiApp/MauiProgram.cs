@@ -36,11 +36,7 @@ namespace VideoForensics.MauiApp
                 .GetResult();
 #endif
 
-            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
-            if (File.Exists(syncfusionLicenseKeyPath))
-            {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
-            }
+            VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 
             MauiAppBuilder builder = Microsoft.Maui.Hosting.MauiApp.CreateBuilder();
             builder

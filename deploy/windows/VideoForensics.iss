@@ -253,8 +253,6 @@ Filename: "sc.exe"; Parameters: "start VideoForensics"; Components: server; Flag
 Filename: "{code:GetBrowserLauncherExe}"; Parameters: """http://localhost:5162"""; Components: server; Check: IsFreshInstall; Flags: postinstall skipifsilent nowait; Description: "Open VideoForensics in your browser"
 
 [UninstallRun]
-Filename: "sc.exe"; Parameters: "stop VideoForensics"; Flags: runhidden; RunOnceId: "StopVideoForensicsSvc"
-Filename: "sc.exe"; Parameters: "delete VideoForensics"; Flags: runhidden; RunOnceId: "DeleteVideoForensicsSvc"
 ; Harmless no-op if the rule was never added (server not installed, or "local network" never chosen).
 Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""VideoForensics"""; Flags: runhidden; RunOnceId: "DeleteFirewallRule"
 ; Harmless no-ops if the shares were never created (networkshare task never selected). The
@@ -307,6 +305,69 @@ begin
   begin
     Exec('sc.exe', 'stop ' + ServiceName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
+end;
+
+function GetServiceQueryOutput(const Name: string): String;
+var
+  TempFile: String;
+  ResultCode: Integer;
+  Output: AnsiString;
+begin
+  Result := '';
+  TempFile := ExpandConstant('{tmp}') + '\vf_svc_query.txt';
+  if Exec(ExpandConstant('{cmd}'), '/C sc.exe query ' + Name + ' > "' + TempFile + '" 2>&1', '',
+          SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    if FileExists(TempFile) then
+    begin
+      if LoadStringFromFile(TempFile, Output) then
+        Result := Output;
+      DeleteFile(TempFile);
+    end;
+  end;
+end;
+
+{ Polls sc query output for STOPPED, up to TimeoutSeconds, sleeping 1s between attempts. The
+  sc stop command only sends the stop signal and returns immediately - it does not wait for the
+  actual service process to exit and release its file handles (e.g. SQLite database, still
+  mid-shutdown). This function waits for that to happen. Returns True if the service reached
+  STOPPED status (or isn't installed/running at all) within the timeout, False if still running
+  after the timeout elapses. Used before touching %ProgramData%\VideoForensics during uninstall -
+  ensures the service's file locks are released before we try to delete or move the data
+  directory. }
+function WaitForServiceStopped(const Name: string; TimeoutSeconds: Integer): Boolean;
+var
+  Elapsed: Integer;
+begin
+  Elapsed := 0;
+  while Elapsed < TimeoutSeconds do
+  begin
+    if Pos('STOPPED', GetServiceQueryOutput(Name)) > 0 then
+    begin
+      Result := True;
+      exit;
+    end;
+    Sleep(1000);
+    Elapsed := Elapsed + 1;
+  end;
+  Result := False;
+end;
+
+{ Stops the service and waits for it to actually exit before deleting its registration. The
+  sc delete command on a still-running/still-stopping service silently succeeds (the registration
+  is removed immediately) while the process may still be alive holding file handles. This closes
+  that race by ensuring stop, wait, and delete happen strictly in that order. Called at usUninstall
+  instead of independent [UninstallRun] entries so the synchronization is guaranteed. }
+procedure StopAndDeleteService(const Name: string);
+var
+  ResultCode: Integer;
+begin
+  if not IsServiceInstalled(Name) then
+    exit;
+
+  Exec('sc.exe', 'stop ' + Name, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  WaitForServiceStopped(Name, 30);
+  Exec('sc.exe', 'delete ' + Name, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 { True only for a genuinely fresh install (no prior service registration found). Used to skip
@@ -958,11 +1019,28 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  DataPath, BackupPath: String;
+  DataPath, Timestamp, StagingPath, PreviousRoot, FinalPreviousPath: String;
   ResultCode: Integer;
+  MovedOut: Boolean;
 begin
-  if CurUninstallStep = usPostUninstall then
+  if CurUninstallStep = usUninstall then
   begin
+    { Stop the service and wait for it to actually exit before deleting the service registration.
+      This must happen before file removal, since sc delete on a still-stopping process will
+      succeed (registration removed) while the process is still alive holding file handles on
+      %ProgramData%\VideoForensics. The wait ensures the process has released all locks before
+      we proceed to file deletion in usPostUninstall. }
+    StopAndDeleteService(ServiceName);
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    { Wait for the VideoForensics service to actually stop and release its file handles (e.g.
+      SQLite database). sc stop only sends the signal and returns immediately, leaving the
+      process to exit asynchronously. Without this wait, the subsequent DelTree or RenameFile
+      may run while the database is still locked, silently skipping the database file and
+      leaving data behind. See bug #1 in the uninstaller comments for details. }
+    WaitForServiceStopped(ServiceName, 30);
+
     RegDeleteKeyIncludingSubkeys(HKLM, EventLogKey);
 
     { Unconditional and harmless if never added - RemoveDirFromPath is a no-op when the entry
@@ -975,22 +1053,63 @@ begin
 
     if (UninstallDataChoice = 1) and DirExists(DataPath) then
     begin
-      BackupPath := DataPath + '.backup-' + GetDateTimeString('yyyymmdd-hhnnss', #0, #0);
-      if Exec('robocopy.exe',
-              '"' + DataPath + '" "' + BackupPath + '" /E /COPYALL /R:2 /W:5 /MT:16',
-              '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+      Timestamp := GetDateTimeString('yyyymmdd-hhnnss', #0, #0);
+      StagingPath := DataPath + '.staging-' + Timestamp;
+      MovedOut := False;
+
+      { Hop 1: get the old data out of the way fast (atomic rename, same volume) so the fresh
+        install below has a clear DataPath to recreate. Falls back to robocopy+delete only if
+        the atomic rename itself fails. }
+      if RenameFile(DataPath, StagingPath) then
+        MovedOut := True
+      else
       begin
-        { robocopy exit codes 0-7 mean success/informational; 8+ means a real failure. Only
-          delete the original once the backup is confirmed to have actually succeeded. }
-        if ResultCode < 8 then
+        if Exec('robocopy.exe',
+                '"' + DataPath + '" "' + StagingPath + '" /E /COPYALL /R:2 /W:5 /MT:16',
+                '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
         begin
-          DelTree(DataPath, True, True, True);
-        end
-        else
+          if ResultCode < 8 then
+          begin
+            DelTree(DataPath, True, True, True);
+            MovedOut := True;
+          end
+          else
+          begin
+            MsgBox('The backup may have failed (robocopy exit code ' + IntToStr(ResultCode) +
+                   '). Your original data was left in place at ' + DataPath +
+                   ' to be safe - nothing was deleted.', mbError, MB_OK);
+          end;
+        end;
+      end;
+
+      { Hop 2: relocate the staged copy under %ProgramData%\VideoForensics\Previous\<timestamp> -
+        inside the same root a fresh install will recreate, instead of cluttering ProgramData's
+        root as a sibling folder. This can only happen as a SECOND hop: a folder can never be
+        renamed into its own subfolder, so it only works once the old data is already safely out
+        at StagingPath (hop 1, above). }
+      if MovedOut then
+      begin
+        if not DirExists(DataPath) then
+          ForceDirectories(DataPath);
+
+        PreviousRoot := DataPath + '\Previous';
+        if not DirExists(PreviousRoot) then
+          ForceDirectories(PreviousRoot);
+
+        FinalPreviousPath := PreviousRoot + '\' + Timestamp;
+        if not RenameFile(StagingPath, FinalPreviousPath) then
         begin
-          MsgBox('The backup to ' + BackupPath + ' may have failed (robocopy exit code ' +
-                 IntToStr(ResultCode) + '). Your original data was left in place at ' + DataPath +
-                 ' to be safe - nothing was deleted.', mbError, MB_OK);
+          if Exec('robocopy.exe',
+                  '"' + StagingPath + '" "' + FinalPreviousPath + '" /E /COPYALL /R:2 /W:5 /MT:16',
+                  '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+          begin
+            if ResultCode < 8 then
+              DelTree(StagingPath, True, True, True)
+            else
+              MsgBox('Your previous data is safely preserved at ' + StagingPath +
+                     ', but could not be moved into ' + FinalPreviousPath +
+                     ' (robocopy exit code ' + IntToStr(ResultCode) + ').', mbError, MB_OK);
+          end;
         end;
       end;
     end

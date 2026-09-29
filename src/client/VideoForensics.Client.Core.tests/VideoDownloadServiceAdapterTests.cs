@@ -22,6 +22,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IVideoForensicsDataClient> _dataClientMock;
         private readonly Mock<IForensicsConfiguration> _configMock;
         private readonly VideoDownloadServiceAdapter _adapter;
+        private readonly string _testTempPath;
 
         public VideoDownloadServiceAdapterTests()
         {
@@ -36,6 +37,10 @@ namespace VideoForensics.Client.Core.Tests
             _ = _videoProviderMock.Setup(p => p.ProviderName).Returns("Ring");
             _ = _configMock.Setup(c => c.MaxConcurrentDownloads).Returns(10);
             _ = _configMock.Setup(c => c.ActiveProviderAccountId).Returns(Guid.NewGuid());
+
+            // Create a unique temp directory for this test run
+            _testTempPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
+            Directory.CreateDirectory(_testTempPath);
 
             _adapter = new VideoDownloadServiceAdapter(
                 _loggerMock.Object,
@@ -183,8 +188,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
-            bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadVideosAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -203,8 +207,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
-            bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadVideosAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -219,8 +222,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            string testPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
-            await _adapter.PreScanAsync(testPath, DateTime.Today, DateTime.Today.AddDays(1));
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
 
             IReadOnlyDictionary<string, int> counts = _adapter.GetPreScanCounts();
             Assert.Empty(counts);
@@ -284,8 +286,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
 
-            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "snapshots");
-            bool result = await _adapter.DownloadSnapshotsAsync(testPath, DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadSnapshotsAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -304,8 +305,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            string testPath = Path.Combine(PathUtilities.GetDefaultDownloadLocation(), "snapshots");
-            bool result = await _adapter.DownloadSnapshotsAsync(testPath, DateTime.Today, DateTime.Today);
+            bool result = await _adapter.DownloadSnapshotsAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
             Assert.False(result);
             string? error = _adapter.GetLastError();
@@ -325,9 +325,10 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
 
-            // Act: Call DownloadVideosAsync with a valid path (log injection would appear in logging output)
-            string basePath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
-            bool result = await _adapter.DownloadVideosAsync(basePath, DateTime.Today, DateTime.Today);
+            // Act: Call DownloadVideosAsync with a path that would be used to test log output sanitization.
+            // Use a valid temp path that still exercises the logging and error-setting paths.
+            string testPath = Path.Combine(_testTempPath, "subdir");
+            bool result = await _adapter.DownloadVideosAsync(testPath, DateTime.Today, DateTime.Today);
 
             // Assert: Verify the method completed and didn't throw, and sets error about no devices
             // (the sanitization is verified indirectly — the method completes without exception)
