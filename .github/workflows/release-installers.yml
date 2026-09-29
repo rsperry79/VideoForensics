@@ -270,17 +270,29 @@ jobs:
           export PATH="$PATH:$HOME/.dotnet/tools"
           VERSION=$(nbgv get-version -v Version)
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          LABEL_SUFFIX=""
+
+          # Create version-specific tag (e.g., v1.0-dev.123 or v1.0-main.456)
+          VERSION_TAG="v${VERSION%.*}-${BRANCH_NAME}.${GITHUB_RUN_NUMBER}"
+          git tag "$VERSION_TAG" || echo "Version tag $VERSION_TAG already exists"
+          git push origin "$VERSION_TAG" || echo "Failed to push version tag"
+          echo "RELEASE_TAG=$VERSION_TAG" >> $GITHUB_ENV
+
+          # Create/update label tags (Testing, Release) and version tags (v1.0-dev, v1.0-release)
           if [ "$BRANCH_NAME" == "dev" ]; then
-            LABEL_SUFFIX="-testing"
+            LABEL_TAG="Testing"
+            VERSION_LABEL_TAG="v${VERSION%.*}-dev"
           elif [ "$BRANCH_NAME" == "main" ]; then
-            LABEL_SUFFIX="-release"
+            LABEL_TAG="Release"
+            VERSION_LABEL_TAG="v${VERSION%.*}-release"
           fi
-          TAG_NAME="v${VERSION%.*}-${BRANCH_NAME}${LABEL_SUFFIX}.${GITHUB_RUN_NUMBER}"
-          git tag "$TAG_NAME" || echo "Tag $TAG_NAME already exists"
-          git push origin "$TAG_NAME" || echo "Failed to push tag (may already exist)"
-          echo "RELEASE_TAG=$TAG_NAME" >> $GITHUB_ENV
-          echo "Tagged as: $TAG_NAME"
+
+          # Force update label tags to point to latest
+          git tag -f "$LABEL_TAG" || true
+          git tag -f "$VERSION_LABEL_TAG" || true
+          git push origin -f "$LABEL_TAG" || echo "Failed to push label tag"
+          git push origin -f "$VERSION_LABEL_TAG" || echo "Failed to push version label tag"
+
+          echo "Tagged as: $VERSION_TAG, $LABEL_TAG, $VERSION_LABEL_TAG"
 
       - name: Set release tag for tag-based releases
         if: startsWith(github.ref, 'refs/tags/v')
@@ -290,9 +302,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            echo "RELEASE_LABEL=[Testing]" >> $GITHUB_ENV
+            echo "RELEASE_LABEL=Testing" >> $GITHUB_ENV
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "RELEASE_LABEL=[Release]" >> $GITHUB_ENV
+            echo "RELEASE_LABEL=Release" >> $GITHUB_ENV
           else
             echo "RELEASE_LABEL=" >> $GITHUB_ENV
           fi
