@@ -280,6 +280,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
+      - name: Set release label (Testing for dev, Release for main)
+        shell: bash
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
+            echo "RELEASE_LABEL=[Testing]" >> $GITHUB_ENV
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "RELEASE_LABEL=[Release]" >> $GITHUB_ENV
+          else
+            echo "RELEASE_LABEL=" >> $GITHUB_ENV
+          fi
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -327,6 +338,7 @@ jobs:
         with:
           files: release-files/*
           tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }} ${{ env.RELEASE_LABEL }}
           draft: true
           prerelease: ${{ github.ref == 'refs/heads/dev' }}
           # Draft releases are not auto-published. Review the unsigned installers and
