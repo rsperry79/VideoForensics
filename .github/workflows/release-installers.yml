@@ -270,7 +270,13 @@ jobs:
           export PATH="$PATH:$HOME/.dotnet/tools"
           VERSION=$(nbgv get-version -v Version)
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          TAG_NAME="v${VERSION%.*}-${BRANCH_NAME}.${GITHUB_RUN_NUMBER}"
+          LABEL_SUFFIX=""
+          if [ "$BRANCH_NAME" == "dev" ]; then
+            LABEL_SUFFIX="-testing"
+          elif [ "$BRANCH_NAME" == "main" ]; then
+            LABEL_SUFFIX="-release"
+          fi
+          TAG_NAME="v${VERSION%.*}-${BRANCH_NAME}${LABEL_SUFFIX}.${GITHUB_RUN_NUMBER}"
           git tag "$TAG_NAME" || echo "Tag $TAG_NAME already exists"
           git push origin "$TAG_NAME" || echo "Failed to push tag (may already exist)"
           echo "RELEASE_TAG=$TAG_NAME" >> $GITHUB_ENV
