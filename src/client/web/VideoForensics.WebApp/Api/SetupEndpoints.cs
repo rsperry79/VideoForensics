@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -21,8 +23,25 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapSetupEndpoints(this WebApplication app)
         {
+            _ = app.MapGet("/api/v1/setup/status", GetStatusAsync)
+                .RequireRateLimiting("auth");
+
             _ = app.MapPost("/api/v1/setup/create-admin", CreateAdminAsync)
                 .RequireRateLimiting("auth");
+        }
+
+        /// <summary>Extracted from the MapGet lambda so it's directly unit-testable, matching CreateAdminAsync's pattern.</summary>
+        public static async Task<IResult> GetStatusAsync(
+            IOperatorRepository operators,
+            INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
+            HttpContext context,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            bool isEmpty = await operators.IsEmptyAsync(ct);
+            NetworkTier tier = RequestTierResolver.ResolvePreAuth(context, tierResolver, headerProtector, logger);
+            return Results.Ok(new { isEmpty, isLocal = tier == NetworkTier.Local });
         }
 
         /// <summary>Extracted from the MapPost lambda so it's directly unit-testable (see
@@ -32,12 +51,20 @@ namespace VideoForensics.WebApp.Api
             IOperatorRepository operators,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
             HttpContext context,
+            ILogger<Program> logger,
             CancellationToken ct)
         {
             if (!await operators.IsEmptyAsync(ct))
             {
-                return Results.Forbid();
+                return Results.Json(new { error = "An administrator account already exists. Sign in instead, or contact whoever installed VideoForensics." }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            NetworkTier tier = RequestTierResolver.ResolvePreAuth(context, tierResolver, headerProtector, logger);
+            if (tier != NetworkTier.Local)
+            {
+                return Results.Json(new { error = "First-run setup can only be completed from the local machine. Ask whoever has physical access to this server to open it directly." }, statusCode: StatusCodes.Status403Forbidden);
             }
 
             if (string.IsNullOrWhiteSpace(request.Username))

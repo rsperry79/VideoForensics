@@ -135,6 +135,10 @@ For headless/scripted deployments that can't drive a browser wizard, the legacy 
 
 This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
 
+## Syncfusion License (CI-baked-in)
+
+Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
+
 ## Branching and pull requests
 
 - **`main` only accepts pull requests from `dev`.** All work branches (feature, fix, `claude/*`) open their PRs against `dev`; `main` is updated solely by a `dev` → `main` promotion PR. The `main-source-guard` workflow (`.github/workflows/main-source-guard.yml`) fails any PR into `main` whose head is not this repo's `dev` — it must be a required status check on `main`.

@@ -1,5 +1,8 @@
+using System.IO;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.WebApp.Api
@@ -32,11 +35,19 @@ namespace VideoForensics.WebApp.Api
             {
                 // Fire-and-forget: queue the download to run in the background while the HTTP response
                 // returns immediately. The client polls GetProgress() and listens to the hub for updates.
+                if (!TryResolveSafeOutputPath(request.OutputPath, out string resolvedOutputPath))
+                {
+                    return Results.BadRequest(new DownloadOperationResponseDto(
+                        Success: false,
+                        Message: "Invalid output path."
+                    ));
+                }
+
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        _ = await downloadService.DownloadVideosAsync(request.OutputPath, request.StartDate, request.EndDate, request.Force);
+                        _ = await downloadService.DownloadVideosAsync(resolvedOutputPath, request.StartDate, request.EndDate, request.Force);
                     }
                     catch
                     {
@@ -59,11 +70,19 @@ namespace VideoForensics.WebApp.Api
                 IVideoDownloadService downloadService,
                 CancellationToken ct) =>
             {
+                if (!TryResolveSafeOutputPath(request.OutputPath, out string resolvedOutputPath))
+                {
+                    return Results.BadRequest(new DownloadOperationResponseDto(
+                        Success: false,
+                        Message: "Invalid output path."
+                    ));
+                }
+
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        _ = await downloadService.DownloadSnapshotsAsync(request.OutputPath, request.StartDate, request.EndDate);
+                        _ = await downloadService.DownloadSnapshotsAsync(resolvedOutputPath, request.StartDate, request.EndDate);
                     }
                     catch
                     {
@@ -169,6 +188,27 @@ namespace VideoForensics.WebApp.Api
             .RequireRateLimiting("media")
             .WithSummary("Get current device")
             .WithDescription("Returns information about which device is currently being processed: 1-based index, total device count, and device name/identifier. Helps explain why per-device counts reset during multi-device downloads.");
+        }
+
+        private static bool TryResolveSafeOutputPath(string? requestedOutputPath, out string resolvedOutputPath)
+        {
+            resolvedOutputPath = string.Empty;
+
+            string safeRoot = Path.GetFullPath(PathUtilities.GetDefaultDownloadLocation())
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            string requested = string.IsNullOrWhiteSpace(requestedOutputPath) ? "." : requestedOutputPath.Trim();
+            string combined = Path.Combine(safeRoot, requested);
+            string fullCandidate = Path.GetFullPath(combined);
+
+            if (!fullCandidate.StartsWith(safeRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, safeRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            resolvedOutputPath = fullCandidate;
+            return true;
         }
     }
 }

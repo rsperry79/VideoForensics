@@ -12,10 +12,20 @@
         <Description>Shared dependency-injection registration and background services for every VideoForensics host (console, MCP, MAUI, Web)</Description>
         <Copyright>2026</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+
+        <!-- Syncfusion license key sourced from the SYNCFUSION_LICENSE_KEY GitHub Actions secret at CI build/publish time
+             (see release-installers.yml, publish-dev.yml, publish-testing.yml) via -p:SyncfusionLicenseKey=...
+             Never committed to git - empty by default for local/dev builds, which fall back to today's
+             existing unlicensed-dev-mode behavior. -->
+        <SyncfusionLicenseKey Condition="'$(SyncfusionLicenseKey)' == ''"></SyncfusionLicenseKey>
     </PropertyGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="VideoForensics.Hosting.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyMetadata Include="SyncfusionLicenseKey" Value="$(SyncfusionLicenseKey)" />
     </ItemGroup>
 
     <ItemGroup>
