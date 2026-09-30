@@ -417,10 +417,10 @@ jobs:
 
             ```powershell
             (Get-AuthenticodeSignature .\VideoForensicsSetup.exe).SignerCertificate.Thumbprint
-            # Expected (SHA1 thumbprint): 102E1E3120A226AB239B3677348CD33675106D3D
+            # Expected (SHA1 thumbprint): 8B4907F1FFA309878A3CFED8ACD09D478FDB568C
             ```
 
-            (The `.cer` file's own SHA256 fingerprint is `E7:90:DB:39:E5:E8:43:7F:5D:07:FF:7C:4B:46:A6:26:FD:3D:05:43:D6:EE:F0:39:B6:0D:01:CC:4D:9E:B9:16` -
+            (The `.cer` file's own SHA256 fingerprint is `90:C9:7B:36:3A:F4:3B:EB:08:B1:8D:77:61:9A:7F:2B:03:56:19:9F:6F:6F:06:3D:69:B9:95:23:3E:E0:AC:BD` -
             check that instead if comparing the certificate file directly, e.g. via `openssl x509 -in VideoForensics-CodeSigning.cer -inform DER -noout -fingerprint -sha256`.)
 
             The public certificate is checked into the repo at
