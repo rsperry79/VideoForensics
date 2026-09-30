@@ -2,6 +2,7 @@ using ICSharpCode.SharpZipLib.Zip;
 
 using Microsoft.Extensions.Logging;
 
+using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -42,6 +43,7 @@ namespace VideoForensics.Client.Core.Services
             string? passphrase,
             CancellationToken ct)
         {
+            string resolvedOutputDirectory = ResolveSafeOutputDirectory(outputDirectory);
             var result = new ExportResult();
 
             try
@@ -151,7 +153,7 @@ namespace VideoForensics.Client.Core.Services
 
                 // Step 4: Create ZIP archive
                 string archiveFileName = $"Evidence_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.zip";
-                string archivePath = EnsureWithinRoot(outputDirectory, Path.Combine(outputDirectory, archiveFileName));
+                string archivePath = EnsureWithinRoot(resolvedOutputDirectory, Path.Combine(resolvedOutputDirectory, archiveFileName));
 
                 using (var zipStream = new ZipOutputStream(File.Create(archivePath)))
                 {
@@ -257,6 +259,34 @@ namespace VideoForensics.Client.Core.Services
             using FileStream fileStream = File.OpenRead(filePath);
             byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        private static string ResolveSafeOutputDirectory(string requestedOutputDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(requestedOutputDirectory))
+            {
+                throw new InvalidOperationException("Output directory must be provided.");
+            }
+
+            if (Path.IsPathRooted(requestedOutputDirectory))
+            {
+                throw new InvalidOperationException("Absolute output paths are not allowed.");
+            }
+
+            string normalizedRelative = Path.GetFullPath(Path.Combine(".", requestedOutputDirectory));
+            string currentDir = Path.GetFullPath(".");
+            if (!normalizedRelative.StartsWith(currentDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(normalizedRelative, currentDir, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Output directory contains invalid parent directory traversal.");
+            }
+
+            string baseExportRoot = Path.Combine(AppContext.BaseDirectory, "exports");
+            _ = Directory.CreateDirectory(baseExportRoot);
+            string combined = Path.Combine(baseExportRoot, requestedOutputDirectory);
+            string safeOutputDirectory = EnsureWithinRoot(baseExportRoot, combined);
+            _ = Directory.CreateDirectory(safeOutputDirectory);
+            return safeOutputDirectory;
         }
 
         /// <summary>
