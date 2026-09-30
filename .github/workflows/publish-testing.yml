@@ -365,6 +365,11 @@ jobs:
             --source https://nuget.pkg.github.com/rsperry79/index.json \
             --skip-duplicate
 
+      - name: Create/force git tag for testing release
+        run: |
+          git tag -f testing
+          git push -f origin testing
+
       - name: Create/Update testing release
         uses: softprops/action-gh-release@v2
         with:
