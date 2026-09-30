@@ -365,16 +365,35 @@ jobs:
             --source https://nuget.pkg.github.com/rsperry79/index.json \
             --skip-duplicate
 
-      - name: Create/force git tag for testing release
+      - name: Compute and tag testing release
+        shell: bash
         run: |
-          git tag -f testing
-          git push -f origin testing
+          dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          MAJOR_MINOR=$(nbgv get-version -v MajorMinorVersion)
+
+          # Force-move two tags to current commit: Testing and v<MAJOR.MINOR>-dev
+          git tag -f "Testing" "${{ github.sha }}"
+          git tag -f "v${MAJOR_MINOR}-dev" "${{ github.sha }}"
+          git push origin -f "Testing"
+          git push origin -f "v${MAJOR_MINOR}-dev"
+
+          echo "Tagged as: Testing, v${MAJOR_MINOR}-dev"
+
+      - name: Delete stale testing release (keep tag)
+        shell: bash
+        run: |
+          gh release delete "Testing" --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create/Update testing release
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          tag_name: testing
+          tag_name: Testing
+          name: Testing
+          target_commitish: ${{ github.sha }}
           prerelease: true
           draft: false
           body: |
