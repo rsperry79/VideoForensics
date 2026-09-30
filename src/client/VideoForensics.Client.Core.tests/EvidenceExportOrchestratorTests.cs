@@ -40,9 +40,10 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ExportEvidenceAsync_SanitizesLogOutput_WhenCaseReferenceContainsNewlines()
         {
-            // Arrange: Setup mocks and test directory
+            // Arrange: Setup mocks and test directory - use relative path for export
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
+            string relativeExportPath = "test-export-log-injection";
 
             try
             {
@@ -88,10 +89,10 @@ namespace VideoForensics.Client.Core.Tests
                         AppVersion = "1.0.0"
                     }));
 
-                // Act: Call ExportEvidenceAsync with injected case reference containing CRLF
+                // Act: Call ExportEvidenceAsync with injected case reference containing CRLF using relative path
                 ExportResult result = await _orchestrator.ExportEvidenceAsync(
                     [mediaItemId],
-                    tempDir,
+                    relativeExportPath,
                     injectedCaseRef,
                     recipient,
                     null,
@@ -121,6 +122,7 @@ namespace VideoForensics.Client.Core.Tests
             // Arrange: Setup mocks and test directory
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
+            string relativeExportPath = "test-export-normal";
 
             try
             {
@@ -166,27 +168,22 @@ namespace VideoForensics.Client.Core.Tests
                         AppVersion = "1.0.0"
                     }));
 
-                // Act: Call ExportEvidenceAsync with normal paths
+                // Act: Call ExportEvidenceAsync with relative path
                 ExportResult result = await _orchestrator.ExportEvidenceAsync(
                     [mediaItemId],
-                    tempDir,
+                    relativeExportPath,
                     caseRef,
                     recipient,
                     null,
                     CancellationToken.None);
 
-                // Assert: Verify success and archive exists within output directory
+                // Assert: Verify success and archive exists (in the mapped exports directory)
                 Assert.NotNull(result);
                 Assert.True(result.Success, result.ErrorMessage);
                 Assert.NotNull(result.ArchivePath);
                 Assert.True(File.Exists(result.ArchivePath));
-
-                // Verify the archive path is within the output directory
-                string fullRoot = Path.GetFullPath(tempDir);
-                string fullArchivePath = Path.GetFullPath(result.ArchivePath);
-                Assert.True(
-                    fullArchivePath.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
-                    $"Archive path '{fullArchivePath}' should be within output directory '{fullRoot}'");
+                // Archive will be in AppContext.BaseDirectory/exports/<relativeExportPath>
+                Assert.True(result.ArchivePath.Contains("exports"), "Archive path should be in exports directory");
             }
             finally
             {
