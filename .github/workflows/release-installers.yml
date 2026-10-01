@@ -261,22 +261,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Auto-tag main branch releases
+      - name: Tag main branch release
         if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
-          dotnet tool update --global nbgv
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          MAJOR_MINOR=$(nbgv get-version -v MajorMinorVersion)
-
-          # Force-move two tags to current commit: Release and v<MAJOR.MINOR>-release
+          # Force-move Release tag to current commit
           git tag -f "Release" "${{ github.sha }}"
-          git tag -f "v${MAJOR_MINOR}-release" "${{ github.sha }}"
           git push origin -f "Release"
-          git push origin -f "v${MAJOR_MINOR}-release"
 
           echo "RELEASE_TAG=Release" >> $GITHUB_ENV
-          echo "Tagged as: Release, v${MAJOR_MINOR}-release"
+          echo "Tagged as: Release"
 
       - name: Set release tag for tag-based releases
         if: startsWith(github.ref, 'refs/tags/v')
