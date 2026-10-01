@@ -1,7 +1,12 @@
 name: Publish - Testing
 
+# PR runs build Debian and Windows installers as downloadable artifacts (debian-package-testing,
+# windows-installer-testing) but do not publish releases or push NuGet packages. Push to dev
+# behaves as before: publishes Testing release and tags.
 on:
   push:
+    branches: [ dev ]
+  pull_request:
     branches: [ dev ]
 
 permissions:
@@ -9,7 +14,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: publish-testing
+  group: publish-testing-${{ github.event.pull_request.number || 'dev' }}
   cancel-in-progress: true
 
 jobs:
@@ -251,6 +256,7 @@ jobs:
       # repo (deploy/windows/codesign/VideoForensics-CodeSigning.cer), so a modified installer
       # (wrong signer, or unsigned) is detectable rather than silently trusted.
       - name: Sign installer with self-signed certificate
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         shell: pwsh
         run: |
           $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
@@ -303,6 +309,7 @@ jobs:
             deploy/windows/bin/VideoForensicsSetup.exe.sha256
 
   publish-dev-release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [build-debian-dev, build-windows-dev]
 
