@@ -1,5 +1,6 @@
 @page "/collect/videos"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Core.Utilities
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 @inject NavigationManager NavigationManager
@@ -58,7 +59,7 @@ else
     private bool _downloadSucceeded;
     private string? _errorMessage;
 
-    private string _outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "VideoForensics", "Downloads");
+    private string _outputPath = PathUtilities.GetDefaultDownloadLocation();
     private DateTime _startDate = DateTime.Today.AddDays(-90);
     private DateTime _endDate = DateTime.Today;
     private bool _force;
