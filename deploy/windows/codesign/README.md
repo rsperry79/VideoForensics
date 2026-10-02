@@ -19,14 +19,14 @@ Check the signer's certificate matches this repo's published certificate before 
 
 ```powershell
 (Get-AuthenticodeSignature .\VideoForensicsSetup.exe).SignerCertificate.Thumbprint
-# Expected: 102E1E3120A226AB239B3677348CD33675106D3D
+# Expected: 8B4907F1FFA309878A3CFED8ACD09D478FDB568C
 ```
 
 Or compare the checked-in public certificate file's fingerprint directly:
 
 ```
 openssl x509 -in VideoForensics-CodeSigning.cer -inform DER -noout -fingerprint -sha256
-# sha256 Fingerprint=E7:90:DB:39:E5:E8:43:7F:5D:07:FF:7C:4B:46:A6:26:FD:3D:05:43:D6:EE:F0:39:B6:0D:01:CC:4D:9E:B9:16
+# sha256 Fingerprint=90:C9:7B:36:3A:F4:3B:EB:08:B1:8D:77:61:9A:7F:2B:03:56:19:9F:6F:6F:06:3D:69:B9:95:23:3E:E0:AC:BD
 ```
 
 If either value doesn't match, do not run the installer - it wasn't produced by this project's
@@ -36,7 +36,7 @@ release pipeline.
 
 - Subject / Issuer: `O=DV Victim Protection Team, CN=VideoForensics`
 - Key: RSA 4096, SHA256
-- Validity: 2026-09-28 to 2036-09-28 (10 years)
+- Validity: 2026-09-29 to 2036-09-29 (10 years)
 - File: `VideoForensics-CodeSigning.cer` (public certificate only, DER format, no private key)
 
 ## Rotating the certificate
