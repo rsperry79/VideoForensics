@@ -51,9 +51,9 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         public async Task<RegistrationResult> CompleteRegistrationAsync(
-            string pairingToken, string operatorDisplayName, string deviceName)
+            string pairingToken, string operatorDisplayName, string deviceName, string? sessionToken = null)
         {
-            using HttpClient client = CreateClient(null);
+            using HttpClient client = CreateClient(sessionToken);
 
             HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
                 $"api/v1/pairing/{pairingToken}/register/options",
@@ -332,6 +332,31 @@ namespace VideoForensics.Ui.Shared.Services
             return result.GetProperty("stepUpToken").GetString()!;
         }
 
+        /// <summary>Fetches the currently-enabled authentication methods. Fails open (all methods assumed enabled) on error to prevent lockout during connection issues.</summary>
+        public async Task<AuthMethodsInfo> GetAuthMethodsAsync()
+        {
+            try
+            {
+                using HttpClient client = CreateClient(null);
+                HttpResponseMessage response = await client.GetAsync("api/v1/auth/methods");
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Fail open: assume all methods are enabled if we can't check
+                    return new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: true);
+                }
+
+                JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return new AuthMethodsInfo(
+                    PasswordEnabled: result.TryGetProperty("password", out var p) ? p.GetBoolean() : true,
+                    PasskeyEnabled: result.TryGetProperty("passkey", out var pk) ? pk.GetBoolean() : true);
+            }
+            catch
+            {
+                // Fail open: assume all methods are enabled if an exception occurs
+                return new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: true);
+            }
+        }
+
         private HttpClient CreateClient(string? bearerToken) => _clientFactory.CreateClient(bearerToken);
 
         private static async Task<string> ExtractErrorAsync(HttpResponseMessage response)
@@ -353,4 +378,8 @@ namespace VideoForensics.Ui.Shared.Services
     }
 
     public record RegistrationResult(Guid OperatorId, Guid PairedDeviceId, string Role, bool IsApproved);
+
+    public record AuthMethodsInfo(
+        bool PasswordEnabled,
+        bool PasskeyEnabled);
 }

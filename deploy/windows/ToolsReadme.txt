@@ -103,3 +103,39 @@ leaving the database half-fixed.
 Recommended flow:
   VideoForensics.DbRepair.exe                    (dry run - review first)
   VideoForensics.DbRepair.exe --apply             (applies, asks to confirm)
+
+
+SuperAdmin Password Recovery (--reset-superadmin-password)
+-----------------------------------------------------------
+Recovers SuperAdmin access when the passkey is lost. Prompts interactively
+for a new password (minimum 12 characters) with confirmation, then resets it,
+unlocks the account, re-activates it, and invalidates all existing sessions.
+
+  DbRepair\VideoForensics.DbRepair.exe --reset-superadmin-password
+                                       [--username <name>]
+                                       [--db-path <file>]
+                                       [--data-root <dir>]
+                                       [--yes]
+
+  --reset-superadmin-password  Enable recovery mode.
+  --username <name>            Target operator username. If omitted, uses the
+                               primary SuperAdmin (or the single SuperAdmin
+                               if there's only one).
+  --db-path <file>             Exact path to the SQLite database file.
+  --data-root <dir>            Directory containing videoforensics.db.
+  --yes                        Skip confirmation prompt. Use only if you've
+                               already reviewed and accepted the action.
+
+IMPORTANT NOTES:
+  - Must run on the server machine with administrator privileges (database
+    is under ProgramData).
+  - Stop the VideoForensics Windows service before running this tool to avoid
+    SQLite WAL (Write-Ahead Logging) conflicts if concurrent writes occur.
+  - The password prompt is ALWAYS interactive - it cannot be passed via
+    command-line argument or environment variable for security reasons.
+  - Password is never logged or echoed to the terminal.
+  - Existing sessions for the recovered account are immediately invalidated.
+
+Example:
+  VideoForensics.DbRepair.exe --reset-superadmin-password
+  VideoForensics.DbRepair.exe --reset-superadmin-password --username admin
