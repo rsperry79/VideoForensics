@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
+using System.IO;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -40,8 +42,26 @@ namespace VideoForensics.WebApp.Api
                 HttpContext context,
                 CancellationToken ct) =>
             {
+                if (string.IsNullOrWhiteSpace(request.OutputDirectory))
+                {
+                    return Results.BadRequest("OutputDirectory is required.");
+                }
+
+                string requestedDirectoryName = request.OutputDirectory.Trim();
+
+                if (Path.IsPathRooted(requestedDirectoryName)
+                    || requestedDirectoryName.Contains("..", StringComparison.Ordinal)
+                    || requestedDirectoryName.Contains(Path.DirectorySeparatorChar)
+                    || requestedDirectoryName.Contains(Path.AltDirectorySeparatorChar))
+                {
+                    return Results.BadRequest("Invalid OutputDirectory.");
+                }
+
+                string exportRoot = Path.Combine(Path.GetTempPath(), "VideoForensics", "Backups");
+                string safeOutputDirectory = Path.Combine(exportRoot, requestedDirectoryName);
+
                 BackupExportResult result = await exportService.ExportBackupAsync(
-                    request.OutputDirectory,
+                    safeOutputDirectory,
                     ct);
 
                 string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
