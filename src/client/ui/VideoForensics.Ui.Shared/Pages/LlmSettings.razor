@@ -5,7 +5,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<LlmSettings> L
-@inject HttpClient HttpClient
+@inject ISelfApiHttpClientFactory ClientFactory
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -113,6 +113,8 @@ else
         }
     }
 
+    private HttpClient CreateClient() => ClientFactory.CreateClient();
+
     private async Task LoadAsync()
     {
         _isLoading = true;
@@ -120,7 +122,8 @@ else
         _loadError = null;
         try
         {
-            var response = await HttpClient.GetAsync("api/v1/llm/settings");
+            using var client = CreateClient();
+            var response = await client.GetAsync("api/v1/llm/settings");
             if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
                 _authError = L["NotAuthorizedToView"];
@@ -163,7 +166,8 @@ else
                 baseUrl = string.IsNullOrEmpty(_baseUrl) ? null : _baseUrl
             };
 
-            var response = await HttpClient.PostAsJsonAsync("api/v1/llm/settings", requestBody);
+            using var client = CreateClient();
+            var response = await client.PostAsJsonAsync("api/v1/llm/settings", requestBody);
 
             if (!response.IsSuccessStatusCode)
             {
