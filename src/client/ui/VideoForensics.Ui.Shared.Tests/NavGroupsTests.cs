@@ -107,6 +107,7 @@ public class NavGroups_Tests
         Assert.Contains("/settings/notifications", itemPaths);
         Assert.Contains("/settings/security-log", itemPaths);
         Assert.Contains("/settings/lockout-policy", itemPaths);
+        Assert.Contains("/settings/auth-methods", itemPaths);
         Assert.Contains("/settings/app-lock", itemPaths);
     }
 
@@ -168,6 +169,21 @@ public class NavGroups_Tests
         // Should be visible to SuperAdmin
         var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
         Assert.True(lockoutPolicyItem.IsVisible(superAdminCtx));
+    }
+
+    [Fact]
+    public void LoginMethods_RequiresSuperAdminRole()
+    {
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var loginMethodsItem = group.Items.First(i => i.Path == "/settings/auth-methods");
+
+        // Should NOT be visible to Admin
+        var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
+        Assert.False(loginMethodsItem.IsVisible(adminCtx));
+
+        // Should be visible to SuperAdmin
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        Assert.True(loginMethodsItem.IsVisible(superAdminCtx));
     }
 
     [Fact]

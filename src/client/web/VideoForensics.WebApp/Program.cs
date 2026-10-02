@@ -405,6 +405,7 @@ app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();
+app.MapAuthMethodEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();

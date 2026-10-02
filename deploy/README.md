@@ -80,7 +80,7 @@ irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/insta
 Testing channel:
 
 ```powershell
-&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Channel Testing
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/dev/deploy/install.ps1))) -Channel Testing
 ```
 
 Silent installation (unattended, Stable channel):
@@ -100,7 +100,7 @@ curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deplo
 Testing channel:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel testing
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/dev/deploy/install.sh | sudo bash -- --channel testing
 ```
 
 ## Uninstallation

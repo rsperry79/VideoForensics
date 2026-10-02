@@ -88,6 +88,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
                 // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).
                 new("Lockout Policy", "/settings/lockout-policy", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
+                new("Login Methods", "/settings/auth-methods", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported),
                 new("Import / Export", "/tools/import-export")
             ])

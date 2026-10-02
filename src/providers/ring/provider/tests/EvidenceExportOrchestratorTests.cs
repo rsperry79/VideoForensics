@@ -36,6 +36,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-no-items";
             try
             {
                 _ = _mockExportRecordService.Setup(s => s.RecordExportAsync(
@@ -66,7 +67,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     [],
-                    tempDir,
+                    relativeExportPath,
                     null,
                     null,
                     null,
@@ -90,6 +91,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-failed-integrity";
             var failedItemId = Guid.NewGuid();
             var validItemId = Guid.NewGuid();
             string failedFilePath = Path.Combine(tempDir, "failed.mp4");
@@ -169,7 +171,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { failedItemId, validItemId },
-                    tempDir,
+                    relativeExportPath,
                     null,
                     null,
                     null,
@@ -195,6 +197,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-valid-item";
             var mediaItemId = Guid.NewGuid();
             string filePath = Path.Combine(tempDir, "test.mp4");
             File.WriteAllText(filePath, "dummy content");
@@ -254,7 +257,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId },
-                    tempDir,
+                    relativeExportPath,
                     "Case-2026-001",
                     "Law Enforcement",
                     null, // No password
@@ -283,6 +286,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-encryption";
             var mediaItemId = Guid.NewGuid();
             string filePath = Path.Combine(tempDir, "test.mp4");
             File.WriteAllText(filePath, "dummy content");
@@ -342,7 +346,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId },
-                    tempDir,
+                    relativeExportPath,
                     "Case-2026-001",
                     "Law Enforcement",
                     "SecurePassword123", // With password
@@ -375,6 +379,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-multiple";
             var mediaItemId1 = Guid.NewGuid();
             var mediaItemId2 = Guid.NewGuid();
             string filePath1 = Path.Combine(tempDir, "test1.mp4");
@@ -452,7 +457,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { mediaItemId1, mediaItemId2 },
-                    tempDir,
+                    relativeExportPath,
                     "Case-2026-001",
                     "Law Enforcement",
                     null,
@@ -478,6 +483,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             string tempDir = CreateTempDirectory();
+            string relativeExportPath = "test-export-mixed";
             var validItemId = Guid.NewGuid();
             var invalidItemId = Guid.NewGuid();
             string validFilePath = Path.Combine(tempDir, "valid.mp4");
@@ -555,7 +561,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 // Act
                 ExportResult result = await orchestrator.ExportEvidenceAsync(
                     new[] { validItemId, invalidItemId },
-                    tempDir,
+                    relativeExportPath,
                     "Case-2026-001",
                     "Law Enforcement",
                     null,
