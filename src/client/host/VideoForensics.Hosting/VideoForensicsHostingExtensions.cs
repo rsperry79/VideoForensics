@@ -520,6 +520,9 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<EmailNotificationProvider>();
             _ = services.AddScoped<INotificationDispatcher>(BuildNotificationDispatcher);
 
+            // Event pull service for background sync of provider account events (Phase 2).
+            _ = services.AddScoped<IEventPullService, EventPullService>();
+
             return services;
         }
 
