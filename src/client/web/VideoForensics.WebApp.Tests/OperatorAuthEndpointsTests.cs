@@ -11,6 +11,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Services;
@@ -589,6 +590,103 @@ namespace VideoForensics.WebApp.Tests
             // Should issue session token immediately
             sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Once);
         }
+
+        [Fact]
+        public async Task LoginPassword_PasswordDisabledNonSetupPhase_Returns403Forbidden()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+            operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);  // Not setup phase
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            var context = CreateHttpContext(NetworkTier.Network);
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            // Create custom invoker that returns password disabled
+            var authMethodsService = new Mock<IAuthMethodSettingsService>();
+            authMethodsService.Setup(s => s.IsEnabledAsync("password", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsyncWithCustomAuthMethods(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, authMethodsService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            // Must not issue a session token
+            sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+            // Must log audit failure
+            auditLog.Verify(a => a.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                It.IsAny<string>(), "Password sign-in is disabled", true, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPassword_PasswordDisabledSetupPhase_AllowsLogin()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+            operators.Setup(r => r.IsEmptyAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);  // Setup phase - should allow login even if password disabled
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Local);
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            var context = CreateHttpContext(NetworkTier.Local);
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            // Create custom invoker that returns password disabled
+            var authMethodsService = new Mock<IAuthMethodSettingsService>();
+            authMethodsService.Setup(s => s.IsEnabledAsync("password", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsyncWithCustomAuthMethods(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, authMethodsService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            // Must issue a session token (setup phase bypasses the disabled check)
+            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Once);
+        }
     }
 
     internal static class OperatorAuthEndpointsInvoker
@@ -621,7 +719,7 @@ namespace VideoForensics.WebApp.Tests
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(IAuthMethodSettingsService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
                     null);
 
             if (method == null)
@@ -629,7 +727,51 @@ namespace VideoForensics.WebApp.Tests
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
             }
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, logger, ct]);
+            var authMethodSettings = new Mock<IAuthMethodSettingsService>();
+            authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, context, logger, ct]);
+            return await (Task<IResult>)result!;
+        }
+
+        public static async Task<IResult> LoginPasswordAsyncWithCustomAuthMethods(
+            LoginPasswordRequest request,
+            IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
+            ISessionTokenService sessionTokens,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
+            ILockoutPolicySettingsRepository lockoutPolicy,
+            ITwoFactorRoleRequirementRepository twoFactorRequirements,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
+            INotificationDispatcher? notificationDispatcher,
+            IBannedIpMatchService bannedIpService,
+            IThreatIntelBlocklistService threatIntelService,
+            IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
+            IAuthMethodSettingsService authMethodSettings,
+            HttpContext context,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            var method = typeof(OperatorAuthEndpoints)
+                .GetMethod("LoginPasswordAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null,
+                    [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
+                     typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
+                     typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(IAuthMethodSettingsService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
+                    null);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException("Could not find LoginPasswordAsync method");
+            }
+
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

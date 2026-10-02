@@ -1,0 +1,334 @@
+@page "/collect"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using Device = VideoForensics.Data.Common.Entities.Device
+@using VideoForensics.Providers.Common.Contracts
+@inject IProviderAuthService AuthService
+@inject IVideoDownloadService DownloadService
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject IDeviceRepository DeviceRepository
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Collect> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (!_isAuthenticated)
+{
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToCollect"]</p>
+}
+else
+{
+    <div class="d-flex flex-column gap-2 mb-4" style="gap: 0.5rem !important;">
+        <div>
+            <label for="accountSelect">@L["SelectAccount"]</label>
+            <SfDropDownList TValue="Guid" TItem="ProviderAccount" DataSource="@_accounts" ValueChanged="@(async (Guid v) => await OnAccountChanged(v))" Enabled="@(!_isDownloading)">
+                <DropDownListFieldSettings Text="ProviderName" Value="Id"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+
+        @if (_selectedAccount is not null)
+        {
+            <div class="mb-3">
+                <button class="btn @(_activeTab == "videos" ? "btn-primary active" : "btn-outline-primary")"
+                        @onclick="@(() => SelectTab("videos"))" Disabled="@_isDownloading">
+                    @L["VideosTab"]
+                </button>
+                <button class="btn @(_activeTab == "snapshots" ? "btn-primary active" : "btn-outline-primary")"
+                        @onclick="@(() => SelectTab("snapshots"))" Disabled="@_isDownloading">
+                    @L["SnapshotsTab"]
+                </button>
+            </div>
+
+            <div>
+                <label for="outputPath">@L["OutputPathLabel"]</label>
+                <SfTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
+            </div>
+
+            @if (_activeTab == "videos")
+            {
+                <div>
+                    <label for="startDate">@L["StartDateLabel"]</label>
+                    <SfDatePicker TValue="DateTime" @bind-Value="_startDate" Enabled="@(!_isDownloading)" />
+                </div>
+                <div>
+                    <label for="endDate">@L["EndDateLabel"]</label>
+                    <SfDatePicker TValue="DateTime" @bind-Value="_endDate" Enabled="@(!_isDownloading)" />
+                </div>
+                <div>
+                    <SfCheckBox TChecked="bool" @bind-Checked="_force" Label="@L["ForceFullRescan"].Value" />
+                </div>
+            }
+
+            <div class="mb-3">
+                <label>@L["DevicesLabel"]</label>
+                <div style="border: 1px solid #ccc; padding: 8px; max-height: 200px; overflow-y: auto;">
+                    @if (_filteredDevices.Count == 0)
+                    {
+                        <p>@L["NoDevicesAvailable"]</p>
+                    }
+                    else
+                    {
+                        @foreach (var device in _filteredDevices)
+                        {
+                            <div>
+                                <input type="checkbox" id="device_@device.Id"
+                                       @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleDevice(device.Id, (bool)(e.Value ?? false)))"
+                                       Disabled="@_isDownloading" />
+                                <label for="device_@device.Id">@device.Name</label>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div>
+                <SfButton Content="@L["CollectAll"]" OnClick="StartDownloadAsync" Disabled="@(_isDownloading || _selectedDeviceIds.Count == 0)" CssClass="e-primary" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            @if (_downloadCompleted)
+            {
+                <p>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</p>
+            }
+        }
+        else
+        {
+            <p>@L["SelectAccountFirst"]</p>
+        }
+    </div>
+
+    <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private bool _isDownloading;
+    private bool _downloadCompleted;
+    private bool _downloadSucceeded;
+    private string? _errorMessage;
+
+    private string _outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "VideoForensics", "Downloads");
+    private DateTime _startDate = DateTime.Today.AddDays(-7);
+    private DateTime _endDate = DateTime.Today;
+    private bool _force;
+
+    private List<ProviderAccount> _accounts = new();
+    private Guid _selectedAccountId = Guid.Empty;
+    private ProviderAccount? _selectedAccount;
+    private List<Device> _filteredDevices = new();
+    private HashSet<Guid> _selectedDeviceIds = new();
+    private string _activeTab = "videos";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (_isAuthenticated)
+            {
+                await LoadAccountsAsync();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        try
+        {
+            var accounts = await ProviderAccountRepository.ListActiveAsync(CancellationToken.None);
+            _accounts = accounts.ToList();
+            if (_accounts.Count > 0)
+            {
+                _selectedAccountId = _accounts[0].Id;
+                await OnAccountChanged(_selectedAccountId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["FailedToLoadAccounts", ex.Message].Value;
+        }
+    }
+
+    private async Task OnAccountChanged(Guid selectedAccountId)
+    {
+        _selectedAccountId = selectedAccountId;
+        _selectedAccount = _accounts.FirstOrDefault(a => a.Id == _selectedAccountId);
+        _selectedDeviceIds.Clear();
+
+        if (_selectedAccount is not null)
+        {
+            // Reset dates based on account's LastDownloadTimeUtc
+            if (_selectedAccount.LastDownloadTimeUtc.HasValue)
+            {
+                _startDate = _selectedAccount.LastDownloadTimeUtc.Value;
+            }
+            else
+            {
+                _startDate = DateTime.Today.AddDays(-7);
+            }
+            _endDate = DateTime.Today;
+
+            await LoadDevicesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        try
+        {
+            var allDevices = await DeviceRepository.ListAsync(CancellationToken.None);
+            _filteredDevices = allDevices.ToList();
+            UpdateFilteredDevices();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["FailedToLoadDevices", ex.Message].Value;
+        }
+    }
+
+    private void SelectTab(string tab)
+    {
+        if (!new[] { "videos", "snapshots" }.Contains(tab))
+        {
+            return;
+        }
+
+        _activeTab = tab;
+        _selectedDeviceIds.Clear();
+        UpdateFilteredDevices();
+    }
+
+    private void UpdateFilteredDevices()
+    {
+        if (_selectedAccount is null)
+        {
+            _filteredDevices = new();
+            return;
+        }
+
+        var devices = _selectedAccount.Id == Guid.Empty
+            ? new List<Device>()
+            : (List<Device>)_filteredDevices;
+
+        // For snapshots, filter to camera and doorbell devices only
+        if (_activeTab == "snapshots")
+        {
+            devices = devices
+                .Where(d => d.Type?.ToLower().Contains("camera") == true ||
+                           d.Type?.ToLower().Contains("doorbell") == true)
+                .ToList();
+        }
+
+        _filteredDevices = devices;
+    }
+
+    private void ToggleDevice(Guid deviceId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _selectedDeviceIds.Add(deviceId);
+        }
+        else
+        {
+            _selectedDeviceIds.Remove(deviceId);
+        }
+    }
+
+    private async Task StartDownloadAsync()
+    {
+        if (_selectedAccount is null || _selectedDeviceIds.Count == 0)
+        {
+            _errorMessage = L["SelectDevicesFirst"].Value;
+            return;
+        }
+
+        _errorMessage = null;
+        _downloadCompleted = false;
+        _isDownloading = true;
+
+        var outputPath = _outputPath;
+        var selectedAccountId = _selectedAccount.Id;
+        var activeTab = _activeTab;
+        var startDate = _startDate;
+        var endDate = _endDate;
+        var force = _force;
+        var selectedDeviceIds = _selectedDeviceIds.ToList();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                bool success = false;
+
+                if (activeTab == "videos")
+                {
+                    await DownloadService.PreScanAsync(outputPath, startDate, endDate, force, CancellationToken.None);
+                    success = await DownloadService.DownloadVideosAsync(outputPath, startDate, endDate, force);
+                }
+                else if (activeTab == "snapshots")
+                {
+                    // Snapshots use DateTime.Now for both bounds
+                    success = await DownloadService.DownloadSnapshotsAsync(outputPath, DateTime.Now, DateTime.Now);
+                }
+
+                await InvokeAsync(async () =>
+                {
+                    _downloadSucceeded = success;
+                    _downloadCompleted = true;
+
+                    if (success)
+                    {
+                        // Update LastDownloadTimeUtc on the account
+                        var account = _selectedAccount;
+                        if (account is not null)
+                        {
+                            account.LastDownloadTimeUtc = DateTime.UtcNow;
+                            try
+                            {
+                                await ProviderAccountRepository.UpdateAsync(account, CancellationToken.None);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log but don't fail the download - the data collection succeeded
+                                _errorMessage = L["DownloadSuccessButUpdateFailed", ex.Message].Value;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _errorMessage = DownloadService.GetLastError() ?? L["DownloadFailedGeneric"].Value;
+                    }
+
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() =>
+                {
+                    _errorMessage = L["DownloadFailedWithException", ex.Message].Value;
+                    _downloadCompleted = true;
+                    _downloadSucceeded = false;
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+        });
+    }
+}

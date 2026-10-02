@@ -61,6 +61,10 @@
         <PackageReference Include="MailKit" Version="4.18.1" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
         <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.13" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />

@@ -23,6 +23,7 @@ using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Common.Contracts;
@@ -513,6 +514,7 @@ namespace VideoForensics.Hosting
             // is now also implemented - MAUI toast remains deliberately not yet implemented (see
             // INotificationProvider's doc comment for why the extensibility point exists regardless).
             _ = services.AddScoped<ISmtpPasswordStore, SmtpPasswordStore>();
+            _ = services.AddScoped<IAuthMethodSettingsService, AuthMethodSettingsService>();
             _ = services.AddScoped<IUrgencyOverrideStore, UrgencyOverrideStore>();
             _ = services.AddScoped<INotificationProvider, EmailNotificationProvider>();
             _ = services.AddScoped<EmailNotificationProvider>();

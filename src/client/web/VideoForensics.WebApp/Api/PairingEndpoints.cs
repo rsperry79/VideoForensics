@@ -9,6 +9,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 
@@ -269,10 +270,21 @@ namespace VideoForensics.WebApp.Api
 
             _ = app.MapPost("/api/v1/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
+                IOperatorRepository operators,
+                IAuthMethodSettingsService authMethodsService,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IFido2 fido2,
+                HttpContext context,
                 CancellationToken ct) =>
             {
+                IResult? passkeyGateResult = await CheckPasskeyEnabledAsync(operators, authMethodsService, auditLog, tierResolver, context, ct);
+                if (passkeyGateResult != null)
+                {
+                    return passkeyGateResult;
+                }
+
                 IReadOnlyList<PairedDevice> allDevices = await pairedDevices.ListAsync(ct);
                 // Every credential registration forces AuthenticatorAttachment.Platform above, so every
                 // stored credential is guaranteed to be a platform/internal authenticator; hinting that
@@ -308,10 +320,17 @@ namespace VideoForensics.WebApp.Api
                 ISessionTokenService sessionTokens,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
+                IAuthMethodSettingsService authMethodsService,
                 HttpContext context,
                 IFido2 fido2,
                 CancellationToken ct) =>
             {
+                IResult? passkeyGateResult = await CheckPasskeyEnabledAsync(operators, authMethodsService, auditLog, tierResolver, context, ct);
+                if (passkeyGateResult != null)
+                {
+                    return passkeyGateResult;
+                }
+
                 string? cachedOptionsJson = ceremonyCache.TryTake(request.Nonce);
                 if (cachedOptionsJson == null)
                 {
@@ -465,6 +484,30 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { stepUpToken });
             }).RequireAuthorization(VideoForensicsPolicies.ReadOnly)
               .RequireRateLimiting("auth");
+        }
+
+        /// <summary>
+        /// Checks if passkey authentication is enabled. Returns a 403 Forbidden IResult if passkey is
+        /// disabled outside the setup phase, or null if passkey is allowed. Preserves the exact audit
+        /// logging and error response behavior of the inline checks it replaces.
+        /// </summary>
+        public static async Task<IResult?> CheckPasskeyEnabledAsync(
+            IOperatorRepository operators,
+            IAuthMethodSettingsService authMethods,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            bool isSetupPhase = await operators.IsEmptyAsync(ct);
+            if (!isSetupPhase && !await authMethods.IsEnabledAsync("passkey", ct))
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                    tierResolver.ResolveClientIp(context), "Passkey sign-in is disabled", isUrgent: true, ct);
+                return Results.Json(new { error = "Passkey sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            return null;
         }
     }
 

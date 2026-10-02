@@ -1,0 +1,122 @@
+@page "/evidence/dates-filter"
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject NavigationManager NavigationManager
+@inject ScopeState ScopeState
+
+<div style="display: flex; flex-direction: row; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+    <SfButton IconCss="e-icons e-arrow-left" CssClass="e-outline" OnClick="GoBack" Title="Back to Evidence" />
+    <h4 style="margin: 0;">Filter by Date</h4>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1rem;">
+    <!-- Preset buttons -->
+    <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap;">
+        <SfButton
+            Content="Last 24h"
+            CssClass="@(_selectedPreset == "24h" ? "e-primary" : "e-outline")"
+            OnClick="@(() => ApplyPreset(PresetType.Last24h))" />
+        <SfButton
+            Content="Last 3 days"
+            CssClass="@(_selectedPreset == "3d" ? "e-primary" : "e-outline")"
+            OnClick="@(() => ApplyPreset(PresetType.Last3Days))" />
+        <SfButton
+            Content="Last 7 days"
+            CssClass="@(_selectedPreset == "7d" ? "e-primary" : "e-outline")"
+            OnClick="@(() => ApplyPreset(PresetType.Last7Days))" />
+        <SfButton
+            Content="Last month"
+            CssClass="@(_selectedPreset == "30d" ? "e-primary" : "e-outline")"
+            OnClick="@(() => ApplyPreset(PresetType.LastMonth))" />
+        <SfButton
+            Content="Custom"
+            CssClass="@(_selectedPreset == "custom" ? "e-primary" : "e-outline")"
+            OnClick="@(() => _selectedPreset = "custom")" />
+    </div>
+
+    <!-- Custom date range section -->
+    @if (_selectedPreset == "custom")
+    {
+        <div style="display: flex; flex-direction: column; gap: 1rem; border: 1px solid #e0e0e0; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 500;">Start Date</label>
+                <SfDatePicker TValue="DateTime" @bind-Value="_customStartDate" />
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="font-weight: 500;">End Date</label>
+                <SfDatePicker TValue="DateTime" @bind-Value="_customEndDate" />
+            </div>
+
+            <SfButton
+                Content="Apply"
+                CssClass="e-primary"
+                OnClick="ApplyCustomRange" />
+        </div>
+    }
+</div>
+
+@code {
+    private string _selectedPreset = "";
+    private DateTime _customStartDate = DateTime.Today;
+    private DateTime _customEndDate = DateTime.Today.AddDays(1);
+
+    private enum PresetType
+    {
+        Last24h,
+        Last3Days,
+        Last7Days,
+        LastMonth
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize custom dates from current scope for consistency
+        _customStartDate = ScopeState.Current.FromUtc;
+        _customEndDate = ScopeState.Current.ToUtc;
+    }
+
+    private void ApplyPreset(PresetType preset)
+    {
+        var now = DateTime.UtcNow;
+        var (fromUtc, toUtc) = preset switch
+        {
+            PresetType.Last24h => (now.AddDays(-1), now),
+            PresetType.Last3Days => (now.AddDays(-3), now),
+            PresetType.Last7Days => (now.AddDays(-7), now),
+            PresetType.LastMonth => (now.AddDays(-30), now),
+            _ => (now.AddDays(-7), now)
+        };
+
+        _selectedPreset = preset switch
+        {
+            PresetType.Last24h => "24h",
+            PresetType.Last3Days => "3d",
+            PresetType.Last7Days => "7d",
+            PresetType.LastMonth => "30d",
+            _ => ""
+        };
+
+        UpdateScopeAndNavigateBack(fromUtc, toUtc);
+    }
+
+    private void ApplyCustomRange()
+    {
+        UpdateScopeAndNavigateBack(_customStartDate, _customEndDate);
+    }
+
+    private void UpdateScopeAndNavigateBack(DateTime fromUtc, DateTime toUtc)
+    {
+        var newScope = ScopeState.Current with
+        {
+            FromUtc = fromUtc,
+            ToUtc = toUtc
+        };
+        ScopeState.Set(newScope);
+        GoBack();
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/evidence");
+    }
+}

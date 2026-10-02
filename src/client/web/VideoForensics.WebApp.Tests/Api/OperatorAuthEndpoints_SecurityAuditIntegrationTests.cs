@@ -7,6 +7,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Services;
@@ -282,13 +283,16 @@ namespace VideoForensics.WebApp.Tests.Api
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(IAuthMethodSettingsService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
                     null);
 
             if (method == null)
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, context, logger, ct]);
+            var authMethodSettings = new Mock<IAuthMethodSettingsService>();
+            authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

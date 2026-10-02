@@ -71,8 +71,6 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                     ErrorMessage: $"Invalid device id: {deviceId}");
             }
 
-            _ = Directory.CreateDirectory(outputPath);
-
             // Split date range into month-sized chunks and query each
             var allSegments = new List<RecordSegment>();
             List<(DateTimeOffset Start, DateTimeOffset End)> monthChunks = GetMonthChunks(startDate, endDate);
