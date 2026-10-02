@@ -13,13 +13,13 @@ The recommended way to install VideoForensics is via one of the thin bootstrap s
 irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1 | iex
 
 # Windows (Testing channel — rolling prerelease from the dev branch)
-&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.ps1))) -Channel Testing
+&([scriptblock]::Create((irm https://raw.githubusercontent.com/rsperry79/VideoForensics/dev/deploy/install.ps1))) -Channel Testing
 
 # Debian/Ubuntu
 curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash
 
 # Debian/Ubuntu (Testing channel)
-curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/main/deploy/install.sh | sudo bash -- --channel testing
+curl -fsSL https://raw.githubusercontent.com/rsperry79/VideoForensics/dev/deploy/install.sh | sudo bash -- --channel testing
 ```
 
 Alternatively, direct installer downloads (`VideoForensicsSetup.exe` for Windows, or a Debian `.deb` package) are available from the [GitHub Releases](https://github.com/rsperry79/VideoForensics/releases) page for air-gapped environments or manual deployment. See [`deploy/README.md`](deploy/README.md) for detailed installation documentation and configuration options.
