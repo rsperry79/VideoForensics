@@ -48,7 +48,14 @@ else
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(Operator.DisplayName)" HeaderText="@L["ColDisplayName"]" MinWidth="100" />
+            <GridColumn HeaderText="@L["ColDisplayName"]" MinWidth="100">
+                <Template>
+                    @{
+                        var op = (Operator)context;
+                        <a href="/settings/operators/@op.Id">@op.DisplayName</a>
+                    }
+                </Template>
+            </GridColumn>
             <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100" />
             <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
                 <Template>
@@ -73,9 +80,9 @@ else
                 <Template>
                     @{
                         var op = (Operator)context;
+                        <SfButton Content="@L["DetailsButton"]" OnClick="() => GoToOperatorDetails(op.Id)" CssClass="e-flat" />
                         @if (op.Active)
                         {
-                            <SfButton Content="@L["DetailsButton"]" OnClick="() => GoToOperatorDetails(op.Id)" CssClass="e-flat" />
                             <SfButton Content="@L["DeactivateButton"]" OnClick="() => BeginDeactivate(op.Id)" CssClass="e-flat e-danger" />
                             @if (_pendingDeactivateOperatorId == op.Id)
                             {
