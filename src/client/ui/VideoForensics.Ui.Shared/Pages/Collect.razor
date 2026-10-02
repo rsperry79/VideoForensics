@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
+@using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Providers.Common.Contracts
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
@@ -25,7 +26,9 @@ else
     <div class="d-flex flex-column gap-2 mb-4" style="gap: 0.5rem !important;">
         <div>
             <label for="accountSelect">@L["SelectAccount"]</label>
-            <SfDropDownList TValue="Guid" TItem="ProviderAccount" DataSource="@_accounts" Fields="@_dropdownFields" @bind-Value="_selectedAccountId" Change="OnAccountChanged" Enabled="@(!_isDownloading)" />
+            <SfDropDownList TValue="Guid" TItem="ProviderAccount" DataSource="@_accounts" ValueChanged="@(async (Guid v) => await OnAccountChanged(v))" Enabled="@(!_isDownloading)">
+                <DropDownListFieldSettings Text="ProviderName" Value="Id"></DropDownListFieldSettings>
+            </SfDropDownList>
         </div>
 
         @if (_selectedAccount is not null)
@@ -74,7 +77,7 @@ else
                         {
                             <div>
                                 <input type="checkbox" id="device_@device.Id"
-                                       @onchange="@((ChangeEventArgs e) => ToggleDevice(device.Id, (bool)e.Value))"
+                                       @onchange="@((Microsoft.AspNetCore.Components.ChangeEventArgs e) => ToggleDevice(device.Id, (bool)(e.Value ?? false)))"
                                        Disabled="@_isDownloading" />
                                 <label for="device_@device.Id">@device.Name</label>
                             </div>
@@ -126,12 +129,6 @@ else
     private HashSet<Guid> _selectedDeviceIds = new();
     private string _activeTab = "videos";
 
-    private DropDownListFieldSettings _dropdownFields = new DropDownListFieldSettings
-    {
-        Text = new List<string> { "ProviderName" },
-        Value = "Id"
-    };
-
     protected override async Task OnInitializedAsync()
     {
         try
@@ -157,7 +154,7 @@ else
             if (_accounts.Count > 0)
             {
                 _selectedAccountId = _accounts[0].Id;
-                await OnAccountChanged(new Syncfusion.Blazor.DropDowns.ChangeEventArgs { Value = _selectedAccountId });
+                await OnAccountChanged(_selectedAccountId);
             }
         }
         catch (Exception ex)
@@ -166,9 +163,9 @@ else
         }
     }
 
-    private async Task OnAccountChanged(Syncfusion.Blazor.DropDowns.ChangeEventArgs args)
+    private async Task OnAccountChanged(Guid selectedAccountId)
     {
-        _selectedAccountId = (Guid)args.Value;
+        _selectedAccountId = selectedAccountId;
         _selectedAccount = _accounts.FirstOrDefault(a => a.Id == _selectedAccountId);
         _selectedDeviceIds.Clear();
 
