@@ -412,7 +412,7 @@ app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
-app.MapAccountEndpoints();
+app.MapAccountEndpoints(app.Services.GetRequiredService<VideoForensics.Hosting.Services.IEventPullService>());
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();
