@@ -3,7 +3,7 @@
 @if (IsActive || _hasEverStarted)
 {
     <div class="download-progress-panel">
-        <h3>Download Progress</h3>
+        <h3>Collection Progress (@CollectionType)</h3>
 
         @{
             var progress = _progress;
@@ -16,31 +16,11 @@
                 Files: @progress.FilesCompleted / @progress.FilesTotal
                 (@FormatBytes(progress.BytesDownloaded) downloaded)
             </p>
-            @if (!string.IsNullOrEmpty(progress.CurrentFile))
-            {
-                <p>Current file: @progress.CurrentFile</p>
-            }
         }
 
         @if (currentDevice.Total > 0)
         {
             <p>Device: @currentDevice.Name (@currentDevice.Index / @currentDevice.Total)</p>
-        }
-
-        @if (_preScanCounts.Count > 0)
-        {
-            <p>Pre-scan matched items: @_preScanCounts.Values.Sum()</p>
-        }
-
-        @if (_remainingCount > 0)
-        {
-            <p>
-                Remaining: @_remainingCount item(s)
-                @if (!string.IsNullOrEmpty(_remainingReason))
-                {
-                    <text> (@_remainingReason)</text>
-                }
-            </p>
         }
 
         @if (!string.IsNullOrEmpty(_lastError))
@@ -63,6 +43,7 @@
 
     [Parameter] public bool IsActive { get; set; }
     [Parameter] public IVideoDownloadService? DownloadService { get; set; }
+    [Parameter] public string CollectionType { get; set; } = "Videos";
 
     private PeriodicTimer? _timer;
     private Task? _pollLoopTask;
@@ -70,9 +51,6 @@
 
     private DownloadStatus? _progress;
     private (int Index, int Total, string Name) _currentDevice;
-    private IReadOnlyDictionary<string, int> _preScanCounts = new Dictionary<string, int>();
-    private int _remainingCount;
-    private string? _remainingReason;
     private string? _lastError;
     private readonly List<string> _activityLog = new();
 
@@ -122,9 +100,6 @@
 
         _progress = DownloadService.GetProgress();
         _currentDevice = DownloadService.GetCurrentDevice();
-        _preScanCounts = DownloadService.GetPreScanCounts();
-        _remainingCount = DownloadService.GetRemainingCount();
-        _remainingReason = DownloadService.GetRemainingReason();
         _lastError = DownloadService.GetLastError();
 
         var drained = DownloadService.DrainActivityLog();

@@ -55,7 +55,9 @@ namespace VideoForensics.Data.Common.Entities
         public const string SetupAdminCreated = nameof(SetupAdminCreated);
         public const string LockoutPolicyUpdated = nameof(LockoutPolicyUpdated);
         public const string TwoFactorPolicyUpdated = nameof(TwoFactorPolicyUpdated);
+        public const string AuthMethodsUpdated = nameof(AuthMethodsUpdated);
         public const string OperatorUnlocked = nameof(OperatorUnlocked);
+        public const string SuperAdminPasswordReset = nameof(SuperAdminPasswordReset);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -97,7 +99,9 @@ namespace VideoForensics.Data.Common.Entities
             [SetupAdminCreated] = true,
             [LockoutPolicyUpdated] = true,
             [TwoFactorPolicyUpdated] = true,
+            [AuthMethodsUpdated] = true,
             [OperatorUnlocked] = true,
+            [SuperAdminPasswordReset] = true,
         };
     }
 }

@@ -15,6 +15,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Marks an Operator inactive. Does NOT cascade-revoke their paired devices - callers should do that explicitly (see IPairedDeviceRepository.RevokeAllForOperatorAsync) so the two effects stay separately auditable.</summary>
         Task DeactivateAsync(Guid operatorId, CancellationToken ct);
 
+        /// <summary>Marks an Operator as active.</summary>
+        Task ReactivateAsync(Guid operatorId, CancellationToken ct);
+
         /// <summary>Marks an Operator as approved, granting access to the system.</summary>
         Task ApproveAsync(Guid operatorId, CancellationToken ct);
 

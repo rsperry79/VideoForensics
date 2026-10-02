@@ -221,5 +221,39 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Equal(@operator.Id, result.Id);
             Assert.Equal("unique_test_user", result.Username);
         }
+
+        [Fact]
+        public async Task ReactivateAsync_SetsActiveToTrue()
+        {
+            // Arrange: Create a deactivated operator
+            var operatorId = Guid.NewGuid();
+            var @operator = new Operator
+            {
+                Id = operatorId,
+                Username = "test_" + Guid.NewGuid().ToString("N")[..8],
+                DisplayName = "Test User",
+                FirstName = "Test",
+                LastName = "User",
+                Email = "test@example.com",
+                PasswordHash = "hashed",
+                Role = OperatorRole.Admin,
+                IsApproved = true,
+                Active = false  // Deactivated
+            };
+
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                db.Operators.Add(@operator);
+                await db.SaveChangesAsync(CancellationToken.None);
+            }
+
+            // Act
+            await _repository.ReactivateAsync(operatorId, CancellationToken.None);
+
+            // Assert
+            var result = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(result);
+            Assert.True(result.Active);
+        }
     }
 }

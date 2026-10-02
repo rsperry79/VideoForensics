@@ -1,41 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-    <AssemblyName>VideoForensics.Providers.Ring.Video.Metadata.Tests</AssemblyName>
-    <RootNamespace>VideoForensics.Providers.Ring.Video.Metadata.Tests</RootNamespace>
-    <SignAssembly>False</SignAssembly>
-    <DelaySign>False</DelaySign>
-    <OutputType>Exe</OutputType>
-    <IsTestProject>true</IsTestProject>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <AssemblyName>VideoForensics.DbRepair.Tests</AssemblyName>
+    <RootNamespace>VideoForensics.DbRepair.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Moq" Version="4.21.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.13" />
     <PackageReference Include="coverlet.collector" Version="10.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Moq" Version="4.21.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../VideoForensics.Providers.Ring.Video.Metadata.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
+    <ProjectReference Include="../DbRepair/DbRepair.csproj" />
+    <ProjectReference Include="../../data/common/data.common/VideoForensics.Data.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />
