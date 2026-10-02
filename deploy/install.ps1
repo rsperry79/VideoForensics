@@ -33,22 +33,28 @@ function Write-Error {
 }
 
 try {
-    # Determine the API endpoint based on channel
-    if ($Channel -eq "Testing") {
-        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/tags/testing"
-        Write-Progress "Fetching latest Testing release from GitHub"
-    }
-    else {
-        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/latest"
-        Write-Progress "Fetching latest Stable release from GitHub"
-    }
-
     # Call GitHub Releases API with User-Agent (required by GitHub)
     $headers = @{
         "User-Agent" = "VideoForensics-Installer"
     }
 
-    $release = Invoke-RestMethod -Uri $ApiUrl -Headers $headers -UseBasicParsing
+    # Determine the release based on channel
+    if ($Channel -eq "Testing") {
+        Write-Progress "Fetching latest Testing release from GitHub"
+        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases"
+        $releases = Invoke-RestMethod -Uri $ApiUrl -Headers $headers -UseBasicParsing
+        $release = $releases | Where-Object { $_.tag_name -eq "testing" } | Select-Object -First 1
+
+        if ($null -eq $release) {
+            Write-Error "Testing release with tag 'testing' not found on GitHub"
+            exit 1
+        }
+    }
+    else {
+        Write-Progress "Fetching latest Stable release from GitHub"
+        $ApiUrl = "https://api.github.com/repos/rsperry79/VideoForensics/releases/latest"
+        $release = Invoke-RestMethod -Uri $ApiUrl -Headers $headers -UseBasicParsing
+    }
 
     # Extract version from tag
     $version = $release.tag_name

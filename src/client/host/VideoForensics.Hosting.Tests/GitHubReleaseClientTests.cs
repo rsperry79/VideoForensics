@@ -136,11 +136,11 @@ namespace VideoForensics.Hosting.Tests
         {
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                // Verify it's calling the testing endpoint
-                Assert.EndsWith("releases/tags/testing", request.RequestUri?.ToString() ?? "");
+                // Verify it's calling the Testing endpoint
+                Assert.EndsWith("releases/tags/Testing", request.RequestUri?.ToString() ?? "");
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new StringContent(GetRealisticReleaseJson("testing", draft: false, prerelease: true))
+                    Content = new StringContent(GetRealisticReleaseJson("Testing", draft: false, prerelease: true))
                 };
                 response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 return Task.FromResult(response);
@@ -150,7 +150,7 @@ namespace VideoForensics.Hosting.Tests
             var result = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("testing", result!.TagName);
+            Assert.Equal("Testing", result!.TagName);
             Assert.True(result.Prerelease);
             Assert.Equal(2, result.Assets.Count);
         }

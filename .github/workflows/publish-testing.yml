@@ -1,7 +1,12 @@
 name: Publish - Testing
 
+# PR runs build Debian and Windows installers as downloadable artifacts (debian-package-testing,
+# windows-installer-testing) but do not publish releases or push NuGet packages. Push to dev
+# behaves as before: publishes Testing release and tags.
 on:
   push:
+    branches: [ dev ]
+  pull_request:
     branches: [ dev ]
 
 permissions:
@@ -9,7 +14,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: publish-testing
+  group: publish-testing-${{ github.event.pull_request.number || 'dev' }}
   cancel-in-progress: true
 
 jobs:
@@ -251,6 +256,7 @@ jobs:
       # repo (deploy/windows/codesign/VideoForensics-CodeSigning.cer), so a modified installer
       # (wrong signer, or unsigned) is detectable rather than silently trusted.
       - name: Sign installer with self-signed certificate
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         shell: pwsh
         run: |
           $pfxPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
@@ -303,6 +309,7 @@ jobs:
             deploy/windows/bin/VideoForensicsSetup.exe.sha256
 
   publish-dev-release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [build-debian-dev, build-windows-dev]
 
@@ -365,11 +372,29 @@ jobs:
             --source https://nuget.pkg.github.com/rsperry79/index.json \
             --skip-duplicate
 
+      - name: Tag testing release
+        shell: bash
+        run: |
+          # Force-move Testing tag to current commit
+          git tag -f "Testing" "${{ github.sha }}"
+          git push origin -f "Testing"
+
+          echo "Tagged as: Testing"
+
+      - name: Delete stale testing release (keep tag)
+        shell: bash
+        run: |
+          gh release delete "Testing" --yes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Create/Update testing release
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          tag_name: testing
+          tag_name: Testing
+          name: Testing
+          target_commitish: ${{ github.sha }}
           prerelease: true
           draft: false
           body: |
@@ -393,10 +418,10 @@ jobs:
 
             ```powershell
             (Get-AuthenticodeSignature .\VideoForensicsSetup.exe).SignerCertificate.Thumbprint
-            # Expected (SHA1 thumbprint): 102E1E3120A226AB239B3677348CD33675106D3D
+            # Expected (SHA1 thumbprint): 8B4907F1FFA309878A3CFED8ACD09D478FDB568C
             ```
 
-            (The `.cer` file's own SHA256 fingerprint is `E7:90:DB:39:E5:E8:43:7F:5D:07:FF:7C:4B:46:A6:26:FD:3D:05:43:D6:EE:F0:39:B6:0D:01:CC:4D:9E:B9:16` -
+            (The `.cer` file's own SHA256 fingerprint is `90:C9:7B:36:3A:F4:3B:EB:08:B1:8D:77:61:9A:7F:2B:03:56:19:9F:6F:6F:06:3D:69:B9:95:23:3E:E0:AC:BD` -
             check that instead if comparing the certificate file directly, e.g. via `openssl x509 -in VideoForensics-CodeSigning.cer -inform DER -noout -fingerprint -sha256`.)
 
             The public certificate is checked into the repo at
