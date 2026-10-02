@@ -105,11 +105,19 @@ namespace VideoForensics.WebApp.Api
                 IVideoDownloadService downloadService,
                 CancellationToken ct) =>
             {
+                if (!TryResolveSafeOutputPath(request.OutputPath, out string resolvedOutputPath))
+                {
+                    return Results.BadRequest(new DownloadOperationResponseDto(
+                        Success: false,
+                        Message: "Invalid output path."
+                    ));
+                }
+
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await downloadService.PreScanAsync(request.OutputPath, request.StartDate, request.EndDate, request.Force, ct);
+                        await downloadService.PreScanAsync(resolvedOutputPath, request.StartDate, request.EndDate, request.Force, ct);
                     }
                     catch
                     {

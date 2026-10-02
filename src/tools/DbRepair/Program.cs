@@ -2,45 +2,63 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Diagnostics;
 using VideoForensics.Diagnostics.Contracts;
+using VideoForensics.DbRepair;
+using VideoForensics.DbRepair.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Helpers.Platform;
 
 // VideoForensics.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
-// and orphaned records that have dangling foreign keys. Operates in dry-run mode by default,
-// requiring --apply to make changes. Designed to be safe with no automated fixes for ambiguous cases.
+// and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost
+// SuperAdmin passkeys. Operates in dry-run mode by default, requiring --apply to make changes
+// for repair operations.
 //
 // Usage:
 //   VideoForensics.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
+//   VideoForensics.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
 //
-// --db-path takes priority over --data-root; --data-root takes priority over the platform default
-// (StorageLocationProvider.GetDefaultRoot). Without --apply, only reports issues without modifying
-// the database. With --apply, fixes:
-//   1. Orphaned records (Events/MediaItems/Detections/Devices/DownloadEvents with dangling FK)
-//   2. Exact duplicates:
-//      - Device: keep earliest by Id (Guid comparison)
-//      - Event: keep earliest by DiscoveredAtUtc
-// Other categories (redundancy, feature overlap) are reported informally only.
+// Repair mode:
+//   --db-path takes priority over --data-root; --data-root takes priority over the platform default
+//   (StorageLocationProvider.GetDefaultRoot). Without --apply, only reports issues without modifying
+//   the database. With --apply, fixes:
+//     1. Orphaned records (Events/MediaItems/Detections/Devices/DownloadEvents with dangling FK)
+//     2. Exact duplicates:
+//        - Device: keep earliest by Id (Guid comparison)
+//        - Event: keep earliest by DiscoveredAtUtc
+//   Other categories (redundancy, feature overlap) are reported informally only.
+//   All deletions are wrapped in a transaction, and requires a confirmation prompt before executing
+//   (unless --yes is also passed to skip it).
 //
-// All deletions are wrapped in a transaction, and requires a confirmation prompt before executing
-// (unless --yes is also passed to skip it).
+// Recovery mode:
+//   --reset-superadmin-password enables SuperAdmin password recovery when the passkey is lost.
+//   Prompts interactively for a new password with confirmation. Requires typed confirmation unless --yes.
+//   Resets the password, unlocks the account, re-activates, and invalidates existing sessions.
 
 string? dbPathArg = null;
 string? dataRootArg = null;
+string? usernameArg = null;
 bool apply = false;
 bool skipConfirmation = false;
+bool resetSuperAdminPassword = false;
 
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i])
     {
+        case "--reset-superadmin-password":
+            resetSuperAdminPassword = true;
+            break;
         case "--db-path" when i + 1 < args.Length:
             dbPathArg = args[++i];
             break;
         case "--data-root" when i + 1 < args.Length:
             dataRootArg = args[++i];
+            break;
+        case "--username" when i + 1 < args.Length:
+            usernameArg = args[++i];
             break;
         case "--apply":
             apply = true;
@@ -78,6 +96,12 @@ IDatabaseHealthChecker checker = provider.GetRequiredService<IDatabaseHealthChec
 
 string effectivePath = resolvedDbPath ?? Path.Combine(new StorageLocationProvider().GetDefaultRoot(StorageCategory.Database), "videoforensics.db");
 Console.WriteLine($"Database: {effectivePath}");
+
+// Handle SuperAdmin password recovery if requested
+if (resetSuperAdminPassword)
+{
+    return await HandleSuperAdminRecoveryAsync(provider, usernameArg, skipConfirmation);
+}
 
 try
 {
@@ -388,24 +412,62 @@ catch (Exception ex)
     return 1;
 }
 
+static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, string? username, bool skipConfirmation)
+{
+    try
+    {
+        using IServiceScope scope = provider.CreateScope();
+        var operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
+        var appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
+        var auditRepo = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogRepository>();
+
+        var passwordPrompt = new TerminalPasswordPrompt();
+        var recovery = new SuperAdminRecovery(operatorRepo, appSettingRepo, passwordPrompt, auditRepo);
+
+        Console.WriteLine("\n=== SuperAdmin Password Recovery ===");
+        await recovery.ExecuteAsync(username, skipConfirmation, CancellationToken.None);
+
+        return 0;
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message}");
+        return 1;
+    }
+    catch (OperationCanceledException)
+    {
+        Console.WriteLine("Recovery cancelled.");
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+        return 1;
+    }
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("""
-        VideoForensics.DbRepair - repair the VideoForensics database by removing duplicates and orphaned records.
+        VideoForensics.DbRepair - repair the VideoForensics database or recover SuperAdmin access.
 
-        Usage:
+        Usage (repair mode):
           VideoForensics.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
+
+        Usage (recovery mode):
+          VideoForensics.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
 
         Options:
           --db-path <file>              Exact path to the SQLite database file. Takes priority over --data-root.
           --data-root <dir>             Directory containing videoforensics.db. Ignored if --db-path is set.
           --apply                       Execute the repair. Without this flag, runs in dry-run mode and only reports issues.
-          --yes, -y                     Skips the confirmation prompt before applying changes. Only meaningful with --apply.
-                                        Use only in scripted/automated contexts where you've already reviewed a prior dry run.
+          --reset-superadmin-password   Enable SuperAdmin password recovery (lost passkey recovery mode).
+          --username <name>             Target operator username for recovery. If omitted, uses the primary SuperAdmin.
+          --yes, -y                     Skips confirmation prompts. Use only in scripted contexts.
 
         With no arguments, uses the same default path the server itself would use.
 
-        Behavior:
+        Repair mode:
           Dry-run (default): Calls database health checks and reports what WOULD be deleted, without modifying the database.
 
           Apply (--apply): Fixes two categories with unambiguous safe actions:
@@ -419,5 +481,13 @@ static void PrintUsage()
 
           All deletions are wrapped in a single database transaction. A confirmation prompt is required before execution
           unless --yes is also passed. Each deleted row is logged individually.
+
+        Recovery mode (--reset-superadmin-password):
+          Recovers SuperAdmin access when the passkey is lost.
+          Prompts interactively for a new password (min 12 characters, with confirmation).
+          Resets the password, unlocks the account, re-activates it, and invalidates existing sessions.
+          Requires a confirmation prompt unless --yes is passed.
+          Must be run on the server machine with administrator privileges (database is under ProgramData).
+          Stop the Windows service before running, or be aware of SQLite WAL implications if concurrent writes occur.
         """);
 }

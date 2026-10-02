@@ -531,6 +531,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
+            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             HttpContext context,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -541,6 +542,15 @@ namespace VideoForensics.WebApp.Api
             if (IPAddress.TryParse(sourceIpString, out var parsedIp))
             {
                 sourceIp = parsedIp;
+            }
+
+            // Check: if password authentication is disabled, reject immediately (unless first-run setup is pending)
+            bool isSetupPhase = await operators.IsEmptyAsync(ct);
+            if (!isSetupPhase && !await authMethodsService.IsEnabledAsync("password", ct))
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                    sourceIpString, "Password sign-in is disabled", isUrgent: true, ct);
+                return Results.Json(new { error = "Password sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden);
             }
 
             // Check: if IP is in banned ranges, reject immediately.

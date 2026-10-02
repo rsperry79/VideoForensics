@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
 @inject IOperatorRepository OperatorRepository
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<Pair> L
 
 <h4 class="mb-4">@L["Title"]</h4>
@@ -30,10 +31,19 @@ else if (_result is not null)
 {
     @if (_result.IsApproved)
     {
-        <div class="alert alert-success">
-            @L["SuccessAlert", _result.Role]
-            You can now <a href="/device-signin">@L["SignInLink"]</a>.
-        </div>
+        @if (_isSignedIn)
+        {
+            <div class="alert alert-success">
+                Device paired successfully! Go to <a href="/settings/devices">@L["DevicesLink"]</a> to manage your devices.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success">
+                @L["SuccessAlert", _result.Role]
+                You can now <a href="/device-signin">@L["SignInLink"]</a>.
+            </div>
+        }
     }
     else
     {
@@ -46,15 +56,18 @@ else
 {
     <div class="d-flex flex-column gap-2">
         <span>@L["Instructions"]</span>
-        <div>
-            <label>@L["OperatorNameLabel"]</label>
-            <SfTextBox @bind-Value="_operatorDisplayName" Placeholder="@L["OperatorNamePlaceholder"]" />
-        </div>
+        @if (!_isSignedIn)
+        {
+            <div>
+                <label>@L["OperatorNameLabel"]</label>
+                <SfTextBox @bind-Value="_operatorDisplayName" Placeholder="@L["OperatorNamePlaceholder"]" />
+            </div>
+        }
         <div>
             <label>@L["DeviceNameLabel"]</label>
             <SfTextBox @bind-Value="_deviceName" Placeholder="@L["DeviceNamePlaceholder"]" />
         </div>
-        <SfButton Content="@(_isPairing ? L["PairWaiting"] : L["PairButton"])" OnClick="PairAsync" CssClass="e-primary" Disabled="@(_isPairing || string.IsNullOrWhiteSpace(_operatorDisplayName) || string.IsNullOrWhiteSpace(_deviceName))" />
+        <SfButton Content="@(_isPairing ? L["PairWaiting"] : L["PairButton"])" OnClick="PairAsync" CssClass="e-primary" Disabled="@(_isPairing || (!_isSignedIn && string.IsNullOrWhiteSpace(_operatorDisplayName)) || string.IsNullOrWhiteSpace(_deviceName))" />
 
         @if (_error is not null)
         {
@@ -72,9 +85,13 @@ else
     private string? _error;
     private RegistrationResult? _result;
     private bool _isBootstrap;
+    private bool _isSignedIn;
 
     protected override async Task OnInitializedAsync()
     {
+        await SessionState.EnsureLoadedAsync();
+        _isSignedIn = !string.IsNullOrEmpty(SessionState.SessionToken);
+
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
         _token = query["token"];
@@ -86,6 +103,16 @@ else
         if (_token is null)
         {
             await InitiatePairingAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            _isSignedIn = !string.IsNullOrEmpty(SessionState.SessionToken);
+            StateHasChanged();
         }
     }
 
@@ -141,7 +168,26 @@ else
                 return;
             }
 
-            _result = await WebAuthn.CompleteRegistrationAsync(_token, _operatorDisplayName.Trim(), _deviceName.Trim());
+            // Use placeholder for display name if signed in (not needed for existing operator)
+            string displayName = _isSignedIn ? "(existing operator)" : _operatorDisplayName.Trim();
+            _result = await WebAuthn.CompleteRegistrationAsync(_token, displayName, _deviceName.Trim(), SessionState.SessionToken);
+
+            // Auto sign-in if approved and not already signed in
+            if (_result.IsApproved && !_isSignedIn)
+            {
+                try
+                {
+                    var signInResult = await WebAuthn.SignInAsync();
+                    await SessionState.SetAsync(signInResult.SessionToken, signInResult.OperatorId, signInResult.Role);
+                    NavigationManager.NavigateTo("/");
+                    return;
+                }
+                catch
+                {
+                    // Fallback: show success alert with sign-in link if auto sign-in fails
+                    _error = null;
+                }
+            }
         }
         catch (Exception ex)
         {
