@@ -56,7 +56,7 @@ namespace VideoForensics.Client.Core.Services
                     !string.IsNullOrEmpty(passphrase));
 
                 // Ensure output directory exists
-                _ = Directory.CreateDirectory(outputDirectory);
+                _ = Directory.CreateDirectory(resolvedOutputDirectory);
 
                 // Step 1: Fetch all media items and verify integrity
                 var itemsToExport = new List<(MediaItem Item, string Sha256AtExport)>();
