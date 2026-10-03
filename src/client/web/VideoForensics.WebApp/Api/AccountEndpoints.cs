@@ -1,6 +1,7 @@
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Services;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api
@@ -12,7 +13,7 @@ namespace VideoForensics.WebApp.Api
     /// </summary>
     public static class AccountEndpoints
     {
-        public static void MapAccountEndpoints(this WebApplication app)
+        public static void MapAccountEndpoints(this WebApplication app, IEventPullService eventPullService)
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
@@ -156,6 +157,21 @@ namespace VideoForensics.WebApp.Api
                     LastDownloadTimeUtc = null
                 };
                 await accounts.AddAsync(account, ct);
+
+                // Queue background pull after successful account creation
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Pull from null timestamp (first-time = pull all available data)
+                        await eventPullService.PullAccountEventsAsync(account.Id, null, ct);
+                    }
+                    catch
+                    {
+                        // Error captured in ProviderAccount.LastErrorMessage by EventPullService
+                    }
+                }, ct);
+
                 return Results.Created($"/api/v1/accounts/provider-accounts/{account.Id}", account.ToDto());
             })
                 .AddEndpointFilter<StepUpEndpointFilter>()
@@ -209,6 +225,52 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("media")
                 .WithSummary("Delete a provider account")
                 .WithDescription("Deletes a provider account link.");
+
+            _ = group.MapPost("/provider-accounts/{id:guid}/sync-now", async (
+                Guid id,
+                IProviderAccountRepository accounts,
+                CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                if (!account.IsActive)
+                {
+                    return Results.Conflict("Account is no longer active");
+                }
+
+                // Queue background pull using fire-and-forget
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await eventPullService.PullAccountEventsAsync(
+                            id,
+                            account.LastSuccessfulAuthUtc, // Pull since last auth
+                            ct
+                        );
+                    }
+                    catch
+                    {
+                        // Error captured in ProviderAccount.LastErrorMessage by EventPullService
+                    }
+                }, ct);
+
+                return Results.Accepted(
+                    null,
+                    new SyncNowResponseDto(
+                        Success: true,
+                        Message: "Sync queued as background task",
+                        SyncStartedAtUtc: DateTime.UtcNow
+                    )
+                );
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Queue manual sync of events and device configuration")
+                .WithDescription("Initiates background pull of events and config for all devices in the account");
         }
     }
 

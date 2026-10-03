@@ -7,6 +7,7 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -77,7 +78,12 @@ else
         </div>
 
         <div class="mb-4">
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 align-items-center">
+                <SfButton CssClass="e-primary" Content="Sync Now" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
+                @if (_isSyncing)
+                {
+                    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
+                }
                 <SfButton CssClass="e-primary" Content="Sync Schedule" OnClick="GoToSyncSchedule" />
                 @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
                 {
@@ -108,6 +114,8 @@ else
                           InitialEmail="@_displayName"
                           OnAuthenticated="HandleReAuthenticatedAsync" />
         }
+
+        <SfToast @ref="_toastRef" />
     }
 }
 
@@ -122,7 +130,9 @@ else
     private bool _isBusy;
     private bool _confirmingRemove;
     private bool _reAuthDialogVisible;
+    private bool _isSyncing;
     private string? _statusMessage;
+    private SfToast _toastRef = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -220,6 +230,53 @@ else
         if (result.Success)
         {
             await LoadAccountAsync();
+        }
+    }
+
+    private async Task SyncNowAsync()
+    {
+        _isSyncing = true;
+        try
+        {
+            var response = await HttpClient.PostAsJsonAsync(
+                $"api/v1/accounts/{Id}/sync-now",
+                new { },
+                CancellationToken.None
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = "Sync started",
+                    Icon = "e-success"
+                });
+
+                // Reload account details after a delay to show updated timestamp
+                await Task.Delay(2000);
+                await LoadAccountAsync();
+            }
+            else
+            {
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = "Sync failed",
+                    Icon = "e-danger"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+            {
+                Title = "Error",
+                Content = ex.Message,
+                Icon = "e-danger"
+            });
+        }
+        finally
+        {
+            _isSyncing = false;
         }
     }
 }

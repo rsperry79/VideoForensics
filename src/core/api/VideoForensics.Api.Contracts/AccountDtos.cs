@@ -184,4 +184,17 @@ namespace VideoForensics.Api.Contracts
             };
         }
     }
+
+    /// <summary>
+    /// Response from POST /api/v1/accounts/{accountId}/sync-now endpoint.
+    /// Indicates sync operation was queued as a background task.
+    /// </summary>
+    /// <param name="Success">True if sync was successfully queued.</param>
+    /// <param name="Message">Human-readable message (e.g., "Sync started" or error description).</param>
+    /// <param name="SyncStartedAtUtc">UTC timestamp when sync operation started.</param>
+    public record SyncNowResponseDto(
+        bool Success,
+        string Message,
+        DateTime SyncStartedAtUtc
+    );
 }
