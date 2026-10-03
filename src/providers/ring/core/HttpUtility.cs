@@ -15,9 +15,9 @@ using VideoForensics.Providers.Common.Helpers.Platform;
 namespace VideoForensics.Providers.Ring
 {
     /// <summary>
-    /// Internal utility class for Http communication with the Ring API
+    /// Utility class for Http communication with the Ring API
     /// </summary>
-    internal class HttpUtility
+    public class HttpUtility
     {
         #region Fields
 
@@ -106,6 +106,18 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         public static DateTime? GetHardBanUntilUtc()
         {
+            // If the hard-ban state file no longer exists, reset the cached state
+            // (This supports test cleanup without requiring test-specific methods)
+            lock (_throttleLock)
+            {
+                if (_hardBanStateLoaded && !File.Exists(HardBanStateFilePath))
+                {
+                    _hardBanStateLoaded = false;
+                    _hardBanUntilUtc = null;
+                    _consecutiveThrottles = 0;
+                }
+            }
+
             EnsureHardBanStateLoaded();
 
             lock (_throttleLock)
@@ -113,6 +125,20 @@ namespace VideoForensics.Providers.Ring
                 return _hardBanUntilUtc.HasValue && _hardBanUntilUtc.Value > DateTime.UtcNow
                     ? _hardBanUntilUtc
                     : null;
+            }
+        }
+
+        /// <summary>
+        /// Resets the hard-ban state cache to force reloading from disk. Intended for testing purposes only.
+        /// </summary>
+        public static void ResetHardBanStateForTesting()
+        {
+            lock (_throttleLock)
+            {
+                _hardBanStateLoaded = false;
+                _hardBanUntilUtc = null;
+                _consecutiveThrottles = 0;
+                _throttledUntilUtc = null;
             }
         }
 

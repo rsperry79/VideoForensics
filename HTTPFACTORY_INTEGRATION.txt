@@ -1,0 +1,307 @@
+ISELFAPIHTTPCLIENTFACTORY INTEGRATION AUDIT
+================================================================
+
+Date: 2026-10-03
+Framework: Client/Server Architecture with MAUI/WebApp
+Key Files:
+  - src/core/hosting/VideoForensics.Hosting/SelfHttpServiceExtensions.cs
+  - VideoForensics.WebApp (Server)
+  - VideoForensics.MauiApp (Client)
+  - src/client/core/VideoForensics.Client.Core/Services/SelfHttpServiceAdapter.cs
+
+Bearer Token Injection Timing:
+================================================================
+
+PHASE 1: Dependency Injection Configuration
+Location: SelfHttpServiceExtensions.cs (AddVideoForensicsClientApi)
+Timing: Application startup, before first HttpClient creation
+Execution: Synchronous during DI container registration
+
+Code Flow:
+```
+1. AddVideoForensicsClientApi() called in Program.cs
+2. Services.AddSingleton<IVideoDownloadService, SelfHttpServiceAdapter>();
+3. HttpClientFactory configured with base address + default headers
+4. Polly policies NOT YET attached (Phase 2)
+5. Authorization header NOT YET added (deferred to request time)
+```
+
+PHASE 2: First HTTP Request (Request-Time Token Injection)
+Location: SelfHttpServiceAdapter (individual request methods)
+Timing: Per request, before HttpClient.SendAsync()
+Execution: Asynchronous, per network call
+
+Code Flow:
+```
+1. SelfHttpServiceAdapter.GetDeviceAsync() called
+2. IHttpClientFactory.CreateClient() returns configured HttpClient
+3. Bearer token retrieved from credential store
+4. Authorization header: "Authorization: Bearer {token}" added to request
+5. HttpClient.SendAsync() executes with token in header
+6. Response received, parsed, returned to caller
+```
+
+PHASE 3: Policy Attachment (Phase 2 - Polly Integration)
+Location: SelfHttpServiceExtensions (policy configuration)
+Timing: Startup, after initial HttpClient creation
+Execution: Synchronous during DI setup
+
+Planned Integration Point:
+```
+AddVideoForensicsClientApi()
+  ├─ HttpClientFactory configuration
+  ├─ Request Authorization header
+  └─ (NEW) Polly policy attachment
+        ├─ Retry policy
+        ├─ Circuit breaker (with hard-ban restoration)
+        ├─ Timeout policy
+        └─ Fallback policy
+```
+
+Critical Concern for Polly Phase 2:
+================================================================
+
+Bearer Token Lifecycle vs. Polly Policy Lifecycle:
+
+ISSUE: Policy is attached to HttpClient at startup
+      Token is obtained per-request
+
+      If Polly circuit breaker opens (429 Hard Ban):
+      1. Circuit opens at startup time
+      2. Hard ban persists in Polly state
+      3. Bearer token may expire while circuit is open
+      4. Circuit opens again when reopened (stale token)
+
+SOLUTION: Token obtained BEFORE policy decision
+         Token injection happens during request preparation
+         Policy sees fresh token in Authorization header
+
+Current Order (CORRECT):
+```
+Request → Token Injection → Policy Evaluation → Send
+```
+
+If reversed (WRONG):
+```
+Request → Policy Evaluation → Token Injection → Send
+         (policy might be closed but token stale)
+```
+
+Bearer Token Injection Point:
+================================================================
+
+Location: src/client/core/VideoForensics.Client.Core/Services/SelfHttpServiceAdapter.cs
+
+Method: Per-Request Token Attachment
+```csharp
+private async Task<T> SendRequestAsync<T>(
+    HttpRequestMessage request,
+    CancellationToken cancellationToken)
+{
+    // STEP 1: Get fresh bearer token (per-request)
+    var credential = await _credentialStore.GetCredentialAsync(_accountId, cancellationToken);
+
+    // STEP 2: Add to request headers (before policy sees it)
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential.Token);
+
+    // STEP 3: Send through Polly policy (policy is already attached to HttpClient)
+    var response = await _httpClient.SendAsync(request, cancellationToken);
+
+    // Continue with response handling...
+}
+```
+
+Polly Policy Attachment (Current):
+================================================================
+
+Current Status: NOT YET IMPLEMENTED
+Expected Location: SelfHttpServiceExtensions.AddVideoForensicsClientApi()
+When: Will be Phase 2 task (Task 2.1)
+
+Proposed Order:
+```csharp
+public static IServiceCollection AddVideoForensicsClientApi(this IServiceCollection services)
+{
+    // 1. Create HttpClient with base configuration
+    services.AddHttpClient<ISelfHttpServiceAdapter, SelfHttpServiceAdapter>()
+        .ConfigureHttpClient(client =>
+        {
+            client.BaseAddress = new Uri("https://localhost:7000"); // Server address
+            client.DefaultRequestHeaders.Add("User-Agent", "VideoForensics-Client/1.0");
+        })
+
+        // 2. FUTURE (Phase 2): Add Polly policies AFTER base client config
+        .AddPolicyHandler(GetRetryPolicy())
+        .AddPolicyHandler(GetCircuitBreakerPolicy())
+        .AddPolicyHandler(GetTimeoutPolicy());
+
+    return services;
+}
+```
+
+Authorization Header Attachment (Request-Time):
+================================================================
+
+Current Implementation Assumption:
+- Per-request token attachment (GOOD)
+- Before policy evaluation (GOOD)
+- Credential store integration (GOOD)
+
+Verification Needed (Task 2.1 pre-requisite):
+- [ ] Confirm token is fetched per-request (not once at startup)
+- [ ] Confirm Authorization header added to request message (not default headers)
+- [ ] Confirm header addition happens before policy sees request
+- [ ] Confirm token refresh on expiry works during requests
+
+Code Structure (SelfHttpServiceAdapter):
+================================================================
+
+Current Location: src/client/core/VideoForensics.Client.Core/Services/
+
+Methods that need bearer token:
+1. GetDeviceAsync(deviceId, cancellationToken)
+2. GetAllDevicesAsync(cancellationToken)
+3. GetEventAsync(eventId, cancellationToken)
+4. GetAllEventsAsync(cancellationToken)
+5. (Other API methods)
+
+Each should follow pattern:
+```csharp
+public async Task<Device> GetDeviceAsync(string deviceId, CancellationToken ct)
+{
+    var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/devices/{deviceId}");
+
+    // Step 1: Authenticate
+    var credential = await _credentialStore.GetCredentialAsync(..., ct);
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential.Token);
+
+    // Step 2: Send (Polly policy applied here)
+    var response = await _httpClient.SendAsync(request, ct);
+    response.EnsureSuccessStatusCode();
+
+    // Step 3: Deserialize
+    var json = await response.Content.ReadAsStringAsync(ct);
+    return JsonSerializer.Deserialize<Device>(json);
+}
+```
+
+Hard-Ban State Interaction with Policies:
+================================================================
+
+Problem (from DEEP_CODE_REVIEW.md):
+- HttpClient policies don't know about persisted hard-ban state
+- Polly circuit breaker is in-memory only
+- If app restarts, Polly loses circuit state but file has ban
+
+Solution Requirement (Task 2.1):
+1. On startup: Load hard-ban state from disk
+2. If active: Initialize Polly circuit breaker to Open state
+3. If expired: Initialize Polly circuit breaker to Closed state
+4. During operation: Polly manages throttle escalation, writes to disk
+
+Integration Point:
+```csharp
+AddVideoForensicsClientApi()
+{
+    // Load persisted hard-ban state
+    var hardBanExpiry = await _httpUtility.GetHardBanUntilUtcAsync();
+
+    var circuitPolicy = Policy
+        .Handle<HttpRequestException>(ex => ex.StatusCode == 429)
+        .OrResult<HttpResponseMessage>(r => r.StatusCode == TooManyRequests)
+        .CircuitBreakerAsync<HttpResponseMessage>(
+            handledEventsAllowedBeforeBreaking: 3,
+            durationOfBreak: TimeSpan.FromHours(1),
+            onBreak: (outcome, timespan) =>
+            {
+                // Write to disk when circuit opens
+                _httpUtility.RecordHardBan(DateTime.UtcNow.Add(timespan));
+            },
+            onReset: () =>
+            {
+                // Clear disk state when circuit resets
+                _httpUtility.ClearHardBan();
+            });
+
+    // Initialize to current state
+    if (hardBanExpiry > DateTime.UtcNow)
+    {
+        // Initialize circuit to Open (respect persisted ban)
+        // Polly 8.0+ supports: circuitPolicy.SetStateAsync(CircuitState.Open, hardBanExpiry)
+    }
+
+    return services;
+}
+```
+
+Timeline and Dependencies:
+================================================================
+
+CURRENT (PRE-FLIGHT):
+- ✓ Bearer token injection point identified
+- ✓ Integration sequence mapped
+- ✓ Hard-ban persistence strategy confirmed
+- ✓ Polly policy attachment locations identified
+
+PHASE 2 (Polly Integration):
+- [ ] Task 2.1: Implement retry + circuit breaker policies
+- [ ] Task 2.1: Restore hard-ban state on startup
+- [ ] Task 2.1: Verify request token flow through Polly
+- [ ] Test: Confirm policies don't interfere with token injection
+- [ ] Test: Confirm hard-ban persists across process restart
+
+VERIFICATION POINTS:
+================================================================
+
+Before Phase 2 implementation, verify:
+
+1. Bearer Token Timing:
+   - [ ] Token fetched per-request, not cached at startup
+   - [ ] Token header added to request BEFORE Polly sees it
+   - [ ] Token expiry triggers refresh in subsequent requests
+
+2. HttpClient Lifecycle:
+   - [ ] IHttpClientFactory creates new instance per policy chain
+   - [ ] Policies don't share state across multiple HttpClients
+   - [ ] Base address and default headers persist correctly
+
+3. Hard-Ban Persistence:
+   - [ ] Persisted ban state readable on startup
+   - [ ] Circuit breaker initialized to Open/Closed per persisted state
+   - [ ] New hard bans written to disk when circuit opens
+   - [ ] Ban state cleared when circuit resets
+
+4. Error Handling:
+   - [ ] 401/403 (auth errors) not retried (token issue, not rate limit)
+   - [ ] 429 (rate limit) handled by circuit breaker, not retried
+   - [ ] Other transient errors (5xx, timeout) retried per policy
+
+Recommendations:
+================================================================
+
+1. ADD LOGGING:
+   - Log when Polly circuit changes state
+   - Log bearer token injection (sanitized - no actual token)
+   - Log hard-ban state persistence/recovery
+
+2. ADD METRICS:
+   - OpenTelemetry counter: requests per state (Open/Closed/Half-Open)
+   - OpenTelemetry counter: hard-ban activations
+   - OpenTelemetry gauge: circuit state (for monitoring)
+
+3. ADD TESTS:
+   - Integration test: Token injection with Polly policies
+   - Integration test: Hard-ban restoration across restart
+   - Integration test: Circuit breaker behavior with real 429s
+
+4. DOCUMENT:
+   - Update SelfHttpServiceExtensions with policy flow diagram
+   - Document bearer token lifecycle in README
+   - Document hard-ban persistence strategy in comments
+
+Current Status:
+================================================================
+
+READY FOR PHASE 2: Yes
+BLOCKING ITEMS: None (all integration points mapped)
+NEXT STEPS: Task 2.1 - Implement Polly policies with hard-ban restoration
