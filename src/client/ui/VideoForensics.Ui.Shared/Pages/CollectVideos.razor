@@ -1,0 +1,122 @@
+@page "/collect/videos"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Core.Utilities
+@inject IProviderAuthService AuthService
+@inject IVideoDownloadService DownloadService
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<CollectVideos> L
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (!_isAuthenticated)
+{
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToCollect"]</p>
+}
+else
+{
+    <div class="d-flex flex-column gap-2 mb-4" style="gap: 0.5rem !important;">
+        <div>
+            <SfTextBox @bind-Value="_outputPath" Placeholder="@L["OutputPathPlaceholder"]" Disabled="@_isDownloading" />
+        </div>
+        <div>
+            <label for="startDate">@L["StartDateLabel"]</label>
+            <SfDatePicker TValue="DateTime" @bind-Value="_startDate" Enabled="@(!_isDownloading)" />
+        </div>
+        <div>
+            <label for="endDate">@L["EndDateLabel"]</label>
+            <SfDatePicker TValue="DateTime" @bind-Value="_endDate" Enabled="@(!_isDownloading)" />
+        </div>
+        <div>
+            <SfCheckBox TChecked="bool" @bind-Checked="_force" Label="@L["ForceFullRescan"].Value" />
+        </div>
+        <div>
+            <SfButton Content="@L["StartDownload"]" OnClick="StartDownloadAsync" Disabled="@_isDownloading" CssClass="e-primary" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+
+        @if (_downloadCompleted)
+        {
+            <p>@(_downloadSucceeded ? L["DownloadCompleted"] : L["DownloadFinishedWithErrors"])</p>
+        }
+    </div>
+
+    <DownloadProgressPanel IsActive="_isDownloading" DownloadService="DownloadService" />
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+    private bool _isDownloading;
+    private bool _downloadCompleted;
+    private bool _downloadSucceeded;
+    private string? _errorMessage;
+
+    private string _outputPath = PathUtilities.GetDefaultDownloadLocation();
+    private DateTime _startDate = DateTime.Today.AddDays(-90);
+    private DateTime _endDate = DateTime.Today;
+    private bool _force;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task StartDownloadAsync()
+    {
+        _errorMessage = null;
+        _downloadCompleted = false;
+        _isDownloading = true;
+
+        var outputPath = _outputPath;
+        var startDate = _startDate;
+        var endDate = _endDate;
+        var force = _force;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await DownloadService.PreScanAsync(outputPath, startDate, endDate, force, CancellationToken.None);
+                var success = await DownloadService.DownloadVideosAsync(outputPath, startDate, endDate, force);
+
+                await InvokeAsync(() =>
+                {
+                    _downloadSucceeded = success;
+                    _downloadCompleted = true;
+                    if (!success)
+                    {
+                        _errorMessage = DownloadService.GetLastError() ?? L["DownloadFailedGeneric"].Value;
+                    }
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() =>
+                {
+                    _errorMessage = L["DownloadFailedWithException", ex.Message].Value;
+                    _downloadCompleted = true;
+                    _downloadSucceeded = false;
+                    _isDownloading = false;
+                    StateHasChanged();
+                });
+            }
+        });
+    }
+}

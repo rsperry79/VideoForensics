@@ -9,6 +9,7 @@ using System.Runtime.Versioning;
 using VideoForensics.Core.Logging.Contracts;
 using VideoForensics.Core.Logging.Providers;
 using VideoForensics.Core.Logging.Services;
+using VideoForensics.Core.Logging.Serilog.Extensions;
 
 namespace VideoForensics.Core.Logging.DependencyInjection
 {
@@ -34,7 +35,8 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             LogLevel minimumLevel = LogLevel.Information,
             bool enableEventLog = false,
             bool enableSyslog = false,
-            bool enableNamedPipeLogger = false)
+            bool enableNamedPipeLogger = false,
+            bool enableUnixSocketLogger = false)
         {
             _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
 
@@ -45,7 +47,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableSyslog && OperatingSystem.IsLinux())
             {
-                Serilog.Core.Logger syslogLogger = new LoggerConfiguration()
+                var syslogLogger = new LoggerConfiguration()
                     .WriteTo.LocalSyslog(appName: "VideoForensics")
                     .CreateLogger();
                 _ = logging.AddSerilog(syslogLogger, dispose: true);
@@ -53,21 +55,40 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableNamedPipeLogger && OperatingSystem.IsWindows())
             {
-                _ = logging.AddProvider(new NamedPipeLoggerProvider());
+                _ = logging.AddProvider(new SerilogNamedPipeLoggerProvider());
+            }
+
+            if (enableUnixSocketLogger && OperatingSystem.IsLinux())
+            {
+                _ = logging.AddProvider(new SerilogUnixSocketLoggerProvider());
             }
 
             return logging;
         }
 
         /// <summary>
-        /// Adds the NamedPipeLoggerProvider for Logger Viewer client consumption.
+        /// Adds the Serilog-based NamedPipeLoggerProvider for Logger Viewer client consumption.
         /// Windows-only; no-op on other platforms.
         /// </summary>
         public static ILoggingBuilder AddNamedPipeLogger(this ILoggingBuilder logging)
         {
             if (OperatingSystem.IsWindows())
             {
-                _ = logging.AddProvider(new NamedPipeLoggerProvider());
+                _ = logging.AddProvider(new SerilogNamedPipeLoggerProvider());
+            }
+
+            return logging;
+        }
+
+        /// <summary>
+        /// Adds the Serilog-based UnixSocketLoggerProvider for Logger Viewer client consumption.
+        /// Linux-only; no-op on other platforms.
+        /// </summary>
+        public static ILoggingBuilder AddUnixSocketLogger(this ILoggingBuilder logging)
+        {
+            if (OperatingSystem.IsLinux())
+            {
+                _ = logging.AddProvider(new SerilogUnixSocketLoggerProvider());
             }
 
             return logging;
