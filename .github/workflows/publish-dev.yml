@@ -82,6 +82,7 @@ jobs:
 
   build-windows-dev:
     runs-on: windows-latest
+    if: github.ref == 'refs/heads/wip'
     outputs:
       version: ${{ steps.get-version.outputs.version }}
 
