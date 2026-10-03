@@ -77,7 +77,7 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Delegate>()),
                 Times.Once);
 
             // Cleanup
@@ -111,7 +111,7 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Delegate>()),
                 Times.Never);
 
             // Cleanup
@@ -145,7 +145,7 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Could not determine the server's listening port")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Delegate>()),
                 Times.AtLeastOnce);
 
             // Cleanup
@@ -191,7 +191,7 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Delegate>()),
                 Times.Once);
 
             // Cleanup
@@ -228,7 +228,7 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement stopped")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Delegate>()),
                 Times.Once);
         }
 
