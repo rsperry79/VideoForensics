@@ -42,6 +42,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          config: .github/codeql-config.yml
 
       # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj - see
       # ci.yml for why; CodeQL doesn't need the MAUI Windows target analyzed
