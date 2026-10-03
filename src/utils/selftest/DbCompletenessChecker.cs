@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.SelfTester
+namespace VideoForensics.Utils.SelfTest
 {
     /// <summary>One Ring-reported item (device or location) and whether it exists in the local DB.</summary>
     internal sealed class DbCompletenessRecord

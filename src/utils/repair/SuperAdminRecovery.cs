@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.DbRepair.Contracts;
+using VideoForensics.Utils.DbRepair.Contracts;
 
-namespace VideoForensics.DbRepair;
+namespace VideoForensics.Utils.DbRepair;
 
 /// <summary>
 /// Recovers SuperAdmin access when a passkey is lost.

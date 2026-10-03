@@ -6,6 +6,8 @@
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <AssemblyName>VideoForensics.Utils.Diagnostics.Tests</AssemblyName>
+    <RootNamespace>VideoForensics.Utils.Diagnostics.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
@@ -19,8 +21,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../VideoForensics.Diagnostics/VideoForensics.Diagnostics.csproj" />
-    <ProjectReference Include="../../data/database/data.database/VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../VideoForensics.Utils.Diagnostics.csproj" />
+    <ProjectReference Include="../../../data/database/data.database/VideoForensics.Data.Database.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />

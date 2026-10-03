@@ -8,10 +8,12 @@ using System.Text.Json.Serialization;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
+using Session = VideoForensics.Providers.Ring.Session;
 
-namespace VideoForensics.Providers.Ring.SelfTester
+namespace VideoForensics.Utils.SelfTest
 {
     internal static class Program
     {

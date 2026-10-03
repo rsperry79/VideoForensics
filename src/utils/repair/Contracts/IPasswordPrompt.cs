@@ -1,4 +1,4 @@
-namespace VideoForensics.DbRepair.Contracts;
+namespace VideoForensics.Utils.DbRepair.Contracts;
 
 /// <summary>
 /// Abstraction for password input prompts, allowing interactive terminal input during recovery.

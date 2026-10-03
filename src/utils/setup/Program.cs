@@ -10,12 +10,12 @@ using VideoForensics.Data.Database.Sqlite.Migrations;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Helpers.Platform;
 
-// VideoForensics.DbSetup: creates/migrates the VideoForensics SQLite database at a specified path,
+// VideoForensics.Utils.DbSetup: creates/migrates the VideoForensics SQLite database at a specified path,
 // without needing to start the full server. Intended for provisioning a database ahead of first
 // service start (e.g. with a custom data directory) or for scripted/CI database maintenance.
 //
 // Usage:
-//   VideoForensics.DbSetup [--db-path <file>] [--data-root <dir>] [--set-network-tier <Local|Network>]
+//   VideoForensics.Utils.DbSetup [--db-path <file>] [--data-root <dir>] [--set-network-tier <Local|Network>]
 //
 // --db-path takes priority over --data-root; --data-root takes priority over the platform default
 // (StorageLocationProvider.GetDefaultRoot, itself overridable via the registry/env mechanism the
@@ -180,10 +180,10 @@ static async Task<int> CreateAdminIfEmptyAsync(IServiceProvider provider, string
 static void PrintUsage()
 {
     Console.WriteLine("""
-        VideoForensics.DbSetup - create/migrate the VideoForensics database without starting the server.
+        VideoForensics.Utils.DbSetup - create/migrate the VideoForensics database without starting the server.
 
         Usage:
-          VideoForensics.DbSetup [--db-path <file>] [--data-root <dir>] [--set-network-tier <Local|Network>]
+          VideoForensics.Utils.DbSetup [--db-path <file>] [--data-root <dir>] [--set-network-tier <Local|Network>]
 
         Options:
           --db-path <file>              Exact path to the SQLite database file. Takes priority over --data-root.

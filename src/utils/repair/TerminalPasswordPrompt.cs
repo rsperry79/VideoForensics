@@ -1,6 +1,6 @@
-using VideoForensics.DbRepair.Contracts;
+using VideoForensics.Utils.DbRepair.Contracts;
 
-namespace VideoForensics.DbRepair;
+namespace VideoForensics.Utils.DbRepair;
 
 /// <summary>
 /// Implements password prompting via the terminal with hidden input (no echo).
