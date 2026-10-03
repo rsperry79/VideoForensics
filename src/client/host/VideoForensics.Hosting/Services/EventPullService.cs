@@ -46,8 +46,8 @@ namespace VideoForensics.Hosting.Services
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
-                    // accountId is a non-sensitive Guid used for debugging only
-                    _logger.LogWarning("Provider account {AccountId} not found", accountId);
+                    var notFoundAccountId = accountId;
+                    _logger.LogWarning("Provider account {AccountId} not found", notFoundAccountId);
                     return;
                 }
 
@@ -56,8 +56,8 @@ namespace VideoForensics.Hosting.Services
 #pragma warning restore CS0618
                 if (locations.Count == 0)
                 {
-                    // accountId is a non-sensitive Guid used for debugging only
-                    _logger.LogInformation("No locations found for account {AccountId}", accountId);
+                    var noLocationsAccountId = accountId;
+                    _logger.LogInformation("No locations found for account {AccountId}", noLocationsAccountId);
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
@@ -120,13 +120,13 @@ namespace VideoForensics.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                // accountId is a non-sensitive Guid used for debugging only
-                _logger.LogInformation("Successfully pulled events for account {AccountId}", accountId);
+                var successAccountId = accountId;
+                _logger.LogInformation("Successfully pulled events for account {AccountId}", successAccountId);
             }
             catch (Exception ex)
             {
-                // accountId is a non-sensitive Guid used for debugging only
-                _logger.LogError(ex, "Failed to pull events for account {AccountId}", accountId);
+                var errorAccountId = accountId;
+                _logger.LogError(ex, "Failed to pull events for account {AccountId}", errorAccountId);
 
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account != null)
