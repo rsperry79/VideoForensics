@@ -35,7 +35,8 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             LogLevel minimumLevel = LogLevel.Information,
             bool enableEventLog = false,
             bool enableSyslog = false,
-            bool enableNamedPipeLogger = false)
+            bool enableNamedPipeLogger = false,
+            bool enableUnixSocketLogger = false)
         {
             _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
 
@@ -57,6 +58,11 @@ namespace VideoForensics.Core.Logging.DependencyInjection
                 _ = logging.AddProvider(new SerilogNamedPipeLoggerProvider());
             }
 
+            if (enableUnixSocketLogger && OperatingSystem.IsLinux())
+            {
+                _ = logging.AddProvider(new SerilogUnixSocketLoggerProvider());
+            }
+
             return logging;
         }
 
@@ -69,6 +75,20 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             if (OperatingSystem.IsWindows())
             {
                 _ = logging.AddProvider(new SerilogNamedPipeLoggerProvider());
+            }
+
+            return logging;
+        }
+
+        /// <summary>
+        /// Adds the Serilog-based UnixSocketLoggerProvider for Logger Viewer client consumption.
+        /// Linux-only; no-op on other platforms.
+        /// </summary>
+        public static ILoggingBuilder AddUnixSocketLogger(this ILoggingBuilder logging)
+        {
+            if (OperatingSystem.IsLinux())
+            {
+                _ = logging.AddProvider(new SerilogUnixSocketLoggerProvider());
             }
 
             return logging;
