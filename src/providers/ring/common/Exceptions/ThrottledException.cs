@@ -14,7 +14,7 @@ namespace VideoForensics.Providers.Ring.Exceptions
         /// long cooldown elapses, so retrying just wastes time re-running the same short backoff loop
         /// once per device for no chance of success.
         /// </summary>
-        public bool IsHardBan { get; }
+        public bool IsHardBan { get; set; }
 
         /// <summary>The HTTP status code Ring returned, when available (set via object initializer at the throw site, not every caller populates it).</summary>
         public System.Net.HttpStatusCode? StatusCode { get; init; }

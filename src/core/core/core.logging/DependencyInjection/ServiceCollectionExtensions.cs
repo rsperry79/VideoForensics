@@ -22,11 +22,13 @@ namespace VideoForensics.Core.Logging.DependencyInjection
         }
 
         /// <summary>
-        /// Registers the shared file logger, and optionally Windows Event Log and/or Linux syslog, for
-        /// hosts that need durable logging without (or in addition to) console output. WebApp enables
-        /// Event Log (Windows) / syslog (Linux) for unattended-service visibility; MAUI and the legacy
-        /// console app only need the file provider (their own UI - Blazor MAUI, Spectre.Console - is
-        /// why they can't rely on console logging).
+        /// Registers Serilog-based structured logging with rolling file sinks (text and JSON formats).
+        /// When Serilog is configured via Log.Logger before host creation, this method integrates it
+        /// with the logging pipeline. Optionally enables Windows Event Log and/or Linux syslog for
+        /// unattended-service visibility.
+        ///
+        /// NOTE: For Serilog configuration, configure Log.Logger BEFORE calling this method.
+        /// This method assumes Serilog's static Log.Logger is already set up with file sinks.
         /// </summary>
         public static ILoggingBuilder AddVideoForensicsLogging(
             this ILoggingBuilder logging,
@@ -36,7 +38,18 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             bool enableSyslog = false,
             bool enableNamedPipeLogger = false)
         {
-            _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
+            // Serilog integration: if Serilog is configured globally via Log.Logger, wire it into the logging pipeline.
+            // The logFilePath parameter is kept for backward compatibility but is now superseded by
+            // Serilog's configuration (which should be done before host creation in Program.cs).
+            if (Serilog.Log.Logger != null)
+            {
+                _ = logging.AddSerilog(dispose: true);
+            }
+            else
+            {
+                // Fallback for hosts that don't pre-configure Serilog: use legacy file provider.
+                _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
+            }
 
             if (enableEventLog && OperatingSystem.IsWindows())
             {
@@ -45,6 +58,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             if (enableSyslog && OperatingSystem.IsLinux())
             {
+                // Additional syslog configuration (independent of file sinks).
                 Serilog.Core.Logger syslogLogger = new LoggerConfiguration()
                     .WriteTo.LocalSyslog(appName: "VideoForensics")
                     .CreateLogger();
