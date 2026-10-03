@@ -1,4 +1,6 @@
-using Makaretu.Dns;
+using System.Net;
+
+using Zeroconf;
 
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -29,8 +31,7 @@ namespace VideoForensics.WebApp.Discovery
         private readonly IHostApplicationLifetime _lifetime;
         private readonly ILogger<MdnsAdvertisementService> _logger;
 
-        private MulticastService? _mdns;
-        private ServiceDiscovery? _serviceDiscovery;
+        private ServiceRegistration? _serviceRegistration;
 
         public MdnsAdvertisementService(
             IForensicsConfiguration config,
@@ -53,13 +54,13 @@ namespace VideoForensics.WebApp.Discovery
             {
                 try
                 {
-                    if (_config.EnableMdnsAdvertisement && _serviceDiscovery is null)
+                    if (_config.EnableMdnsAdvertisement && _serviceRegistration is null)
                     {
-                        StartAdvertising();
+                        await StartAdvertisingAsync();
                     }
-                    else if (!_config.EnableMdnsAdvertisement && _serviceDiscovery is not null)
+                    else if (!_config.EnableMdnsAdvertisement && _serviceRegistration is not null)
                     {
-                        StopAdvertising();
+                        await StopAdvertisingAsync();
                     }
                 }
                 catch (Exception ex)
@@ -69,10 +70,10 @@ namespace VideoForensics.WebApp.Discovery
             } while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            StopAdvertising();
-            return base.StopAsync(cancellationToken);
+            await StopAdvertisingAsync();
+            await base.StopAsync(cancellationToken);
         }
 
         private async Task WaitForApplicationStartedAsync(CancellationToken ct)
@@ -87,7 +88,7 @@ namespace VideoForensics.WebApp.Discovery
             await startedSource.Task.WaitAsync(ct);
         }
 
-        private void StartAdvertising()
+        private async Task StartAdvertisingAsync()
         {
             int? port = ResolveListeningPort();
             if (port is null)
@@ -96,35 +97,51 @@ namespace VideoForensics.WebApp.Discovery
                 return;
             }
 
-            _mdns = new MulticastService();
-            _serviceDiscovery = new ServiceDiscovery(_mdns);
+            try
+            {
+                var properties = new Dictionary<string, string>();
 
-            var profile = new ServiceProfile(Environment.MachineName, "_videoforensics._tcp", (ushort)port.Value);
-            _serviceDiscovery.Advertise(profile);
-            _mdns.Start();
+                _serviceRegistration = new ServiceRegistration
+                {
+                    Name = Environment.MachineName,
+                    RegType = "_videoforensics._tcp",
+                    ReplyDomain = "local",
+                    Port = (ushort)port.Value,
+                    Ttl = TimeSpan.FromHours(2),
+                    Properties = properties,
+                    Addresses = new[] { IPAddress.Loopback }
+                };
 
-            _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
-                Environment.MachineName, "_videoforensics._tcp.local", port.Value);
+                await ServiceRegistrar.RegisterServiceAsync(_serviceRegistration);
+
+                _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
+                    Environment.MachineName, "_videoforensics._tcp.local", port.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start mDNS advertisement");
+                _serviceRegistration = null;
+            }
         }
 
-        private void StopAdvertising()
+        private async Task StopAdvertisingAsync()
         {
-            if (_serviceDiscovery is null)
+            if (_serviceRegistration is null)
             {
                 return;
             }
 
             try
             {
-                _serviceDiscovery.Unadvertise();
+                await ServiceRegistrar.UnregisterServiceAsync(_serviceRegistration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while unadvertising mDNS service");
             }
             finally
             {
-                _serviceDiscovery.Dispose();
-                _mdns?.Stop();
-                _mdns?.Dispose();
-                _serviceDiscovery = null;
-                _mdns = null;
+                _serviceRegistration = null;
                 _logger.LogInformation("mDNS advertisement stopped");
             }
         }
@@ -150,7 +167,25 @@ namespace VideoForensics.WebApp.Discovery
 
         public override void Dispose()
         {
-            StopAdvertising();
+            // Synchronously stop advertising since Dispose is not async
+            // StopAsync is called by the framework, but we also ensure cleanup here
+            if (_serviceRegistration is not null)
+            {
+                try
+                {
+                    // Best-effort unregister
+                    ServiceRegistrar.UnregisterServiceAsync(_serviceRegistration).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during Dispose while unadvertising");
+                }
+                finally
+                {
+                    _serviceRegistration = null;
+                }
+            }
+
             base.Dispose();
             GC.SuppressFinalize(this);
         }

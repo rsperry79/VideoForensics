@@ -41,8 +41,16 @@ namespace VideoForensics.Providers.Ring.Services
         {
             // Build a Polly policy that retries on rate-limit errors with exponential backoff.
             // Hard bans (ThrottledException.IsHardBan = true) are not retried - they fail immediately.
+
+            // Define the filter function for which exceptions to retry
+            bool ShouldRetry(Exception ex)
+            {
+                return IsRateLimitError(ex) && (ex as Exceptions.ThrottledException)?.IsHardBan != true;
+            }
+
             var retryPolicy = Policy
-                .Handle<Exception>(ex => IsRateLimitError(ex) && (ex as Exceptions.ThrottledException)?.IsHardBan != true)
+                .Handle<Exceptions.ThrottledException>(ex => ShouldRetry(ex))
+                .Or<HttpRequestException>(ex => ShouldRetry(ex))
                 .WaitAndRetryAsync(
                     retryCount: MaxRetries,
                     sleepDurationProvider: attempt =>
@@ -61,9 +69,17 @@ namespace VideoForensics.Providers.Ring.Services
                             (int)timespan.TotalMilliseconds);
                     });
 
-            // ExecuteAsync with Context and CancellationToken
-            var context = new Polly.Context();
-            await retryPolicy.ExecuteAsync(async (ctx, ct) => await operation(), context, cancellationToken);
+            // ExecuteAsync with CancellationToken support
+            // Wrap operation to support cancellation token parameter that Polly provides
+            await retryPolicy.ExecuteAsync(async (ct) =>
+            {
+                // Check if cancellation was already requested before this attempt
+                if (ct.IsCancellationRequested)
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+                await operation();
+            }, cancellationToken);
         }
 
         public bool IsRateLimitError(Exception ex)

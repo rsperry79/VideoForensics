@@ -1,9 +1,11 @@
+using System.CommandLine;
+using System.CommandLine.Parsing;
+
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     /// <summary>
-    /// Parsed command-line options. Kept as a plain hand-rolled parser (no external CLI
-    /// dependency) so this tool stays trivially invokable from a shell script or an AI agent's
-    /// tool-call layer without pulling in System.CommandLine.
+    /// Parsed command-line options using System.CommandLine for modern, standardized CLI argument parsing.
+    /// Provides type validation, built-in help text generation, and reduced boilerplate compared to manual parsing.
     /// </summary>
     internal sealed class CliOptions
     {
@@ -36,285 +38,246 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
-            var o = new CliOptions();
+            var rootCommand = new RootCommand("Ring API SelfTester - API validation and smoke testing");
 
-            for (int i = 0; i < args.Length; i++)
-            {
-                string arg = args[i];
-                switch (arg.ToLowerInvariant())
+            // Flags (boolean options)
+            var helpOption = new Option<bool>(new[] { "-h", "--help" }, "Show help text");
+            var listOption = new Option<bool>(new[] { "--list", "--list-endpoints" }, "List available endpoints and exit");
+            var listJsonOption = new Option<bool>("--list-endpoints-json", "List endpoints as JSON and exit");
+            var authOption = new Option<bool>("--auth", "Interactive one-time login");
+            var allOption = new Option<bool>("--all", "Run all non-destructive endpoints");
+            var destructiveOption = new Option<bool>("--destructive", "Include destructive endpoints");
+            var noPhysicalOption = new Option<bool>("--no-physical", "Exclude physical endpoints when --destructive is set");
+            var quietOption = new Option<bool>("--quiet", "Suppress narration output");
+            var verifyDbOption = new Option<bool>("--verify-db", "Verify database completeness after run");
+
+            // Options with values
+            var endpointsOption = new Option<string?>("--endpoints", "Comma-separated endpoint keys to run");
+            var outputDirOption = new Option<string?>("--output-dir", "Output directory for results");
+            var locationIdOption = new Option<string?>("--location-id", "Location ID (GUID) for location-scoped endpoints");
+            var doorbotIdOption = new Option<string?>("--doorbot-id", "Doorbot ID for doorbot-scoped endpoints");
+            var chimeIdOption = new Option<string?>("--chime-id", "Chime ID for chime-scoped endpoints");
+            var historyLimitOption = new Option<string?>("--history-limit", "Max history items to request (default: 5)");
+            var sirenDurationOption = new Option<string?>("--siren-duration-seconds", "Siren duration in seconds (default: 2)");
+            var volumeLevelOption = new Option<string?>("--volume-level", "Volume level (0-11)");
+            var chimeTypeOption = new Option<string?>("--chime-type-value", "Chime type value (0=Mechanical, 1=Digital, 2=Not Present)");
+            var dndSecondsOption = new Option<string?>("--dnd-seconds", "Do-not-disturb duration in seconds (default: 60)");
+            var locationModeOption = new Option<string?>("--location-mode-value", "Location mode: home, away, or disarmed");
+            var dingIdOption = new Option<string?>("--ding-id", "Ding ID for recording sharing");
+            var assetUuidOption = new Option<string?>("--asset-uuid", "Asset UUID for alarm triggering");
+            var pushTokenOption = new Option<string?>("--push-token", "Push notification token");
+            var usernameOption = new Option<string?>("--username", "Ring username/email");
+            var passwordOption = new Option<string?>("--password", "Ring password");
+            var refreshTokenOption = new Option<string?>("--refresh-token", "OAuth refresh token");
+            var dbPathOption = new Option<string?>("--db-path", "SQLite database path");
+
+            rootCommand.AddOption(helpOption);
+            rootCommand.AddOption(listOption);
+            rootCommand.AddOption(listJsonOption);
+            rootCommand.AddOption(authOption);
+            rootCommand.AddOption(allOption);
+            rootCommand.AddOption(endpointsOption);
+            rootCommand.AddOption(outputDirOption);
+            rootCommand.AddOption(locationIdOption);
+            rootCommand.AddOption(doorbotIdOption);
+            rootCommand.AddOption(chimeIdOption);
+            rootCommand.AddOption(historyLimitOption);
+            rootCommand.AddOption(destructiveOption);
+            rootCommand.AddOption(noPhysicalOption);
+            rootCommand.AddOption(sirenDurationOption);
+            rootCommand.AddOption(volumeLevelOption);
+            rootCommand.AddOption(chimeTypeOption);
+            rootCommand.AddOption(dndSecondsOption);
+            rootCommand.AddOption(locationModeOption);
+            rootCommand.AddOption(dingIdOption);
+            rootCommand.AddOption(assetUuidOption);
+            rootCommand.AddOption(pushTokenOption);
+            rootCommand.AddOption(usernameOption);
+            rootCommand.AddOption(passwordOption);
+            rootCommand.AddOption(refreshTokenOption);
+            rootCommand.AddOption(quietOption);
+            rootCommand.AddOption(verifyDbOption);
+            rootCommand.AddOption(dbPathOption);
+
+            CliOptions? parsedOptions = null;
+            string? parseError = null;
+
+            rootCommand.SetHandler(
+                (help, list, listJson, auth, all, endpoints, outputDir, locationId, doorbotId, chimeId,
+                 historyLimit, destructive, noPhysical, sirenDuration, volumeLevel, chimeType, dndSeconds,
+                 locationMode, dingId, assetUuid, pushToken, username, password, refreshToken, quiet, verifyDb, dbPath) =>
                 {
-                    case "-h":
-                    case "--help":
-                        o.ShowHelp = true;
-                        break;
+                    var o = new CliOptions();
+                    o.ShowHelp = help;
+                    o.ListEndpoints = list;
+                    o.ListEndpointsJson = listJson;
+                    o.InteractiveAuth = auth;
 
-                    case "--list":
-                    case "--list-endpoints":
-                        o.ListEndpoints = true;
-                        break;
-
-                    case "--list-endpoints-json":
-                        o.ListEndpoints = true;
-                        o.ListEndpointsJson = true;
-                        break;
-
-                    case "--auth":
-                        o.InteractiveAuth = true;
-                        break;
-
-                    case "--endpoints":
-                        if (!TryTakeValue(args, ref i, arg, out string? epValue, out string? epErr))
-                        {
-                            return (null, epErr);
-                        }
-
-                        o.Endpoints.AddRange(epValue!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                        break;
-
-                    case "--all":
+                    // Parse endpoints
+                    if (all)
+                    {
                         o.Endpoints.Add("all");
-                        break;
+                    }
+                    else if (!string.IsNullOrEmpty(endpoints))
+                    {
+                        o.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    }
 
-                    case "--output-dir":
-                        if (!TryTakeValue(args, ref i, arg, out string? outValue, out string? outErr))
+                    o.OutputDir = outputDir;
+
+                    // Parse LocationId
+                    if (!string.IsNullOrEmpty(locationId))
+                    {
+                        if (!Guid.TryParse(locationId, out Guid locGuid))
                         {
-                            return (null, outErr);
+                            parseError = $"--location-id value '{locationId}' is not a valid GUID";
+                            return;
                         }
-
-                        o.OutputDir = outValue;
-                        break;
-
-                    case "--location-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? locValue, out string? locErr))
-                        {
-                            return (null, locErr);
-                        }
-
-                        if (!Guid.TryParse(locValue, out Guid locGuid))
-                        {
-                            return (null, $"--location-id value '{locValue}' is not a valid GUID");
-                        }
-
                         o.LocationId = locGuid;
-                        break;
+                    }
 
-                    case "--doorbot-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? dbValue, out string? dbErr))
+                    // Parse DoorbotId
+                    if (!string.IsNullOrEmpty(doorbotId))
+                    {
+                        if (!long.TryParse(doorbotId, out long dbId))
                         {
-                            return (null, dbErr);
+                            parseError = $"--doorbot-id value '{doorbotId}' is not a valid integer";
+                            return;
                         }
-
-                        if (!long.TryParse(dbValue, out long dbId))
-                        {
-                            return (null, $"--doorbot-id value '{dbValue}' is not a valid integer");
-                        }
-
                         o.DoorbotId = dbId;
-                        break;
+                    }
 
-                    case "--chime-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? chValue, out string? chErr))
+                    // Parse ChimeId
+                    if (!string.IsNullOrEmpty(chimeId))
+                    {
+                        if (!long.TryParse(chimeId, out long chId))
                         {
-                            return (null, chErr);
+                            parseError = $"--chime-id value '{chimeId}' is not a valid integer";
+                            return;
                         }
-
-                        if (!long.TryParse(chValue, out long chId))
-                        {
-                            return (null, $"--chime-id value '{chValue}' is not a valid integer");
-                        }
-
                         o.ChimeId = chId;
-                        break;
+                    }
 
-                    case "--history-limit":
-                        if (!TryTakeValue(args, ref i, arg, out string? hlValue, out string? hlErr))
+                    // Parse HistoryLimit
+                    if (!string.IsNullOrEmpty(historyLimit))
+                    {
+                        if (!int.TryParse(historyLimit, out int hl) || hl <= 0)
                         {
-                            return (null, hlErr);
+                            parseError = $"--history-limit value '{historyLimit}' must be a positive integer";
+                            return;
                         }
-
-                        if (!int.TryParse(hlValue, out int hl) || hl <= 0)
-                        {
-                            return (null, $"--history-limit value '{hlValue}' must be a positive integer");
-                        }
-
                         o.HistoryLimit = hl;
-                        break;
+                    }
 
-                    case "--destructive":
-                        o.Destructive = true;
-                        break;
+                    o.Destructive = destructive;
+                    o.NoPhysical = noPhysical;
 
-                    case "--no-physical":
-                        o.NoPhysical = true;
-                        break;
-
-                    case "--siren-duration-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out string? sdValue, out string? sdErr))
+                    // Parse SirenDurationSeconds
+                    if (!string.IsNullOrEmpty(sirenDuration))
+                    {
+                        if (!int.TryParse(sirenDuration, out int sd) || sd <= 0)
                         {
-                            return (null, sdErr);
+                            parseError = $"--siren-duration-seconds value '{sirenDuration}' must be a positive integer";
+                            return;
                         }
-
-                        if (!int.TryParse(sdValue, out int sd) || sd <= 0)
-                        {
-                            return (null, $"--siren-duration-seconds value '{sdValue}' must be a positive integer");
-                        }
-
                         o.SirenDurationSeconds = sd;
-                        break;
+                    }
 
-                    case "--volume-level":
-                        if (!TryTakeValue(args, ref i, arg, out string? volValue, out string? volErr))
+                    // Parse VolumeLevel
+                    if (!string.IsNullOrEmpty(volumeLevel))
+                    {
+                        if (!int.TryParse(volumeLevel, out int vol) || vol < 0)
                         {
-                            return (null, volErr);
+                            parseError = $"--volume-level value '{volumeLevel}' must be a non-negative integer";
+                            return;
                         }
-
-                        if (!int.TryParse(volValue, out int vol) || vol < 0)
-                        {
-                            return (null, $"--volume-level value '{volValue}' must be a non-negative integer");
-                        }
-
                         o.VolumeLevel = vol;
-                        break;
+                    }
 
-                    case "--chime-type-value":
-                        if (!TryTakeValue(args, ref i, arg, out string? ctValue, out string? ctErr))
+                    // Parse ChimeTypeValue
+                    if (!string.IsNullOrEmpty(chimeType))
+                    {
+                        if (!int.TryParse(chimeType, out int ct) || ct is < 0 or > 2)
                         {
-                            return (null, ctErr);
+                            parseError = $"--chime-type-value value '{chimeType}' must be 0, 1 or 2";
+                            return;
                         }
-
-                        if (!int.TryParse(ctValue, out int ct) || ct is < 0 or > 2)
-                        {
-                            return (null, $"--chime-type-value value '{ctValue}' must be 0, 1 or 2");
-                        }
-
                         o.ChimeTypeValue = ct;
-                        break;
+                    }
 
-                    case "--dnd-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out string? dndValue, out string? dndErr))
+                    // Parse DndSeconds
+                    if (!string.IsNullOrEmpty(dndSeconds))
+                    {
+                        if (!int.TryParse(dndSeconds, out int dnd) || dnd <= 0)
                         {
-                            return (null, dndErr);
+                            parseError = $"--dnd-seconds value '{dndSeconds}' must be a positive integer";
+                            return;
                         }
-
-                        if (!int.TryParse(dndValue, out int dnd) || dnd <= 0)
-                        {
-                            return (null, $"--dnd-seconds value '{dndValue}' must be a positive integer");
-                        }
-
                         o.DndSeconds = dnd;
-                        break;
+                    }
 
-                    case "--location-mode-value":
-                        if (!TryTakeValue(args, ref i, arg, out string? lmValue, out string? lmErr))
+                    // Parse LocationModeValue
+                    if (!string.IsNullOrEmpty(locationMode))
+                    {
+                        if (locationMode is not ("home" or "away" or "disarmed"))
                         {
-                            return (null, lmErr);
+                            parseError = $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed";
+                            return;
                         }
+                        o.LocationModeValue = locationMode;
+                    }
 
-                        if (lmValue is not ("home" or "away" or "disarmed"))
-                        {
-                            return (null, $"--location-mode-value value '{lmValue}' must be one of: home, away, disarmed");
-                        }
+                    o.DingId = dingId;
+                    o.AssetUuid = assetUuid;
+                    o.PushToken = pushToken;
+                    o.UserName = username;
+                    o.Password = password;
+                    o.RefreshToken = refreshToken;
+                    o.Quiet = quiet;
+                    o.VerifyDb = verifyDb;
+                    o.DbPath = dbPath;
 
-                        o.LocationModeValue = lmValue;
-                        break;
+                    // Default to "all" if no endpoints specified
+                    if (o.Endpoints.Count == 0)
+                    {
+                        o.Endpoints.Add("all");
+                    }
 
-                    case "--ding-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? dingValue, out string? dingErr))
-                        {
-                            return (null, dingErr);
-                        }
+                    parsedOptions = o;
+                },
+                helpOption, listOption, listJsonOption, authOption, allOption, endpointsOption, outputDirOption,
+                locationIdOption, doorbotIdOption, chimeIdOption, historyLimitOption, destructiveOption, noPhysicalOption,
+                sirenDurationOption, volumeLevelOption, chimeTypeOption, dndSecondsOption, locationModeOption,
+                dingIdOption, assetUuidOption, pushTokenOption, usernameOption, passwordOption, refreshTokenOption,
+                quietOption, verifyDbOption, dbPathOption);
 
-                        o.DingId = dingValue;
-                        break;
+            try
+            {
+                var parseResult = rootCommand.Parse(args);
 
-                    case "--asset-uuid":
-                        if (!TryTakeValue(args, ref i, arg, out string? assetValue, out string? assetErr))
-                        {
-                            return (null, assetErr);
-                        }
+                // Check for parse errors
+                if (parseResult.Errors.Count > 0)
+                {
+                    parseError = parseResult.Errors[0].Message;
+                }
 
-                        o.AssetUuid = assetValue;
-                        break;
-
-                    case "--push-token":
-                        if (!TryTakeValue(args, ref i, arg, out string? pushValue, out string? pushErr))
-                        {
-                            return (null, pushErr);
-                        }
-
-                        o.PushToken = pushValue;
-                        break;
-
-                    case "--username":
-                        if (!TryTakeValue(args, ref i, arg, out string? userValue, out string? userErr))
-                        {
-                            return (null, userErr);
-                        }
-
-                        o.UserName = userValue;
-                        break;
-
-                    case "--password":
-                        if (!TryTakeValue(args, ref i, arg, out string? passValue, out string? passErr))
-                        {
-                            return (null, passErr);
-                        }
-
-                        o.Password = passValue;
-                        break;
-
-                    case "--refresh-token":
-                        if (!TryTakeValue(args, ref i, arg, out string? rtValue, out string? rtErr))
-                        {
-                            return (null, rtErr);
-                        }
-
-                        o.RefreshToken = rtValue;
-                        break;
-
-                    case "--quiet":
-                        o.Quiet = true;
-                        break;
-
-                    case "--verify-db":
-                        o.VerifyDb = true;
-                        break;
-
-                    case "--db-path":
-                        if (!TryTakeValue(args, ref i, arg, out string? dbPathValue, out string? dbPathErr))
-                        {
-                            return (null, dbPathErr);
-                        }
-
-                        o.DbPath = dbPathValue;
-                        break;
-
-                    default:
-                        return (null, $"Unrecognized argument '{arg}'. Use --help to see available switches.");
+                // Invoke the handler
+                if (parseError == null)
+                {
+                    parseResult.Invoke();
                 }
             }
-
-            if (o.Endpoints.Count == 0)
+            catch (Exception ex)
             {
-                o.Endpoints.Add("all");
+                parseError = ex.Message;
             }
 
-            return (o, null);
-        }
-
-        private static bool TryTakeValue(string[] args, ref int i, string flag, out string? value, out string? error)
-        {
-            if (i + 1 >= args.Length)
+            if (parseError != null)
             {
-                value = null;
-                error = $"Missing value for {flag}";
-                return false;
+                return (null, parseError);
             }
 
-            i++;
-            value = args[i];
-            error = null;
-            return true;
+            return (parsedOptions, null);
         }
 
         public const string HelpText = """
