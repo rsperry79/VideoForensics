@@ -1,0 +1,302 @@
+HARD-BAN PERSISTENCE TEST SPECIFICATION
+=============================================================
+
+Date: 2026-10-03
+Implementation: RingHttpUtility.cs (HttpUtility class)
+Test Location: src/providers/ring/core/tests/HttpUtilityTests.cs (to be created)
+
+Test Name: RingHttpUtility_RestoresBanState_AfterProcessRestart()
+Status: DESIGN DOCUMENT (implementation deferred to Task 2.1)
+
+Requirement Analysis:
+=============================================================
+
+Current Implementation (HttpUtility.cs):
+- Hard-ban state persisted to disk: ring_hard_ban.txt
+- File location: %ProgramData%\VideoForensics\ring_hard_ban.txt
+- Storage format: Single long value (DateTime.Ticks as string)
+- Load timing: EnsureHardBanStateLoaded() called on first check
+- Static field: _hardBanUntilUtc (in-memory cache of persisted value)
+
+Problem Solved by Persistence:
+- User closes app during hard-ban
+- App relaunches within ban window
+- Without persistence: New process has no memory of ban
+- Result: Fresh attempts to contact Ring repeat the violation
+- Without fix: Account stays banned for hours due to repeated probes
+
+Current Hard-Ban Mechanics:
+=============================================================
+
+Escalation Path:
+1. First 429: Set throttle cooldown to 30s (wait, then retry)
+2. Second 429: Increase to max 5m cooldown
+3. Third consecutive 429: Trigger hard-ban (1 hour)
+4. Hard-ban persisted to disk
+5. All subsequent requests fail immediately (no network call)
+
+Methods Involved:
+- GetHardBanUntilUtc(): Check if hard-ban active
+- RecordThrottled(): Record a 429, escalate to hard-ban if needed
+- OverrideHardBan(): User requests override (let them try once more)
+- PersistHardBanState(): Write current state to disk
+- EnsureHardBanStateLoaded(): Load persisted state on startup
+
+Test Scenario:
+=============================================================
+
+Three-Part Simulation:
+
+PART 1: Establish Hard-Ban State
+Steps:
+1. Create HttpUtility instance
+2. Simulate receiving 429 response (RecordThrottled)
+3. Repeat for 3 consecutive throttles to trigger hard-ban
+4. Verify _hardBanUntilUtc is set
+5. Verify ring_hard_ban.txt written to disk with future timestamp
+6. Verify GetHardBanUntilUtc() returns non-null value
+
+Expected Result:
+- _hardBanUntilUtc = DateTime.UtcNow + TimeSpan.FromHours(1)
+- File exists with valid Ticks format
+- GetHardBanUntilUtc() returns same value
+
+PART 2: Simulate Process Restart
+Steps:
+1. Create NEW HttpUtility instance (simulates fresh process)
+2. Internal state reset (static fields NOT yet loaded)
+3. Call GetHardBanUntilUtc() to trigger EnsureHardBanStateLoaded()
+4. Verify file is read from disk
+5. Verify _hardBanUntilUtc populated from file
+6. Verify returned value matches persisted value
+
+Expected Result:
+- EnsureHardBanStateLoaded() reads ring_hard_ban.txt
+- _hardBanUntilUtc matches previous process's value
+- GetHardBanUntilUtc() returns non-null (ban still active)
+- Time remaining: Still ~1 hour (or time elapsed if test adds delay)
+
+PART 3: Verify HTTP Requests Blocked Until Ban Expires
+Steps:
+1. Attempt to make HTTP request while hard-ban active
+2. Verify request fails immediately (GetContents throws or returns error)
+3. Verify NO network call made (critical - should fail fast)
+4. Wait until ban expires (or simulate expiration)
+5. Attempt HTTP request again
+6. Verify request succeeds (or gets proper error, not hard-ban block)
+
+Expected Result:
+- Request blocked while ban active
+- No HTTP calls made during hard-ban
+- Request succeeds after ban expires
+- Performance: Fast fail (<1ms) vs. network timeout
+
+Test Implementation Details:
+=============================================================
+
+Test Class: HttpUtilityTests
+Location: src/providers/ring/core/tests/HttpUtilityTests.cs
+
+Dependencies:
+- HttpUtility class
+- System.IO for file operations
+- System.Threading for time-based waits
+- xUnit for test framework
+
+Mocking Strategy:
+- Mock file system access? NO - use actual temp directory
+- Mock GetContents()? Possibly - depends on internal architecture
+- Mock DateTime? NO - use actual clock (tests are integration-style)
+
+Test Cleanup:
+- Delete ring_hard_ban.txt after test completes
+- Reset static fields (_hardBanUntilUtc, _hardBanStateLoaded)
+- Challenge: Static fields persist across test instances
+
+Test Code Structure (Pseudo-code):
+=============================================================
+
+```csharp
+[Fact]
+public void RingHttpUtility_RestoresBanState_AfterProcessRestart()
+{
+    // SETUP: Clear any existing hard-ban state
+    ClearHardBanState();
+
+    // PART 1: Establish hard-ban state
+    var utility1 = new HttpUtility();
+
+    // Simulate 3 consecutive 429 responses
+    utility1.RecordThrottled(); // First
+    utility1.RecordThrottled(); // Second
+    utility1.RecordThrottled(); // Third (triggers hard-ban)
+
+    // Verify hard-ban active
+    var banExpiry1 = HttpUtility.GetHardBanUntilUtc();
+    Assert.NotNull(banExpiry1);
+    Assert.True(banExpiry1 > DateTime.UtcNow);
+
+    // Verify file written
+    var filePath = Path.Combine(/* AppData */, "ring_hard_ban.txt");
+    Assert.True(File.Exists(filePath));
+
+    // PART 2: Simulate process restart
+    // Dispose utility1 (cleanup)
+    utility1 = null;
+
+    // NOTE: In real test, this would be in different process
+    // For this test, we manually reset static fields to simulate
+    ResetHttpUtilityStaticState(); // Simulate fresh process startup
+
+    // Create new instance (simulates new process)
+    var utility2 = new HttpUtility();
+
+    // Get hard-ban status (triggers EnsureHardBanStateLoaded)
+    var banExpiry2 = HttpUtility.GetHardBanUntilUtc();
+
+    // Verify persistence worked
+    Assert.NotNull(banExpiry2, "Hard-ban state not restored from disk");
+    Assert.Equal(banExpiry1, banExpiry2, "Ban expiry differs between processes");
+
+    // PART 3: Verify requests blocked
+    var sw = Stopwatch.StartNew();
+
+    // Attempt to make HTTP request (should fail immediately due to hard-ban)
+    try
+    {
+        var result = utility2.GetContents(someUri, token, hardwareId);
+        Assert.False(true, "Request should have been blocked by hard-ban");
+    }
+    catch (HttpRequestException) // Expected: fast failure
+    {
+        sw.Stop();
+        Assert.True(sw.ElapsedMilliseconds < 100,
+            "Request should fail fast, not wait for network timeout");
+    }
+
+    // CLEANUP
+    ClearHardBanState();
+}
+
+// Helper methods for test
+private void ClearHardBanState()
+{
+    var filePath = Path.Combine(/* AppData */, "ring_hard_ban.txt");
+    if (File.Exists(filePath))
+    {
+        File.Delete(filePath);
+    }
+    ResetHttpUtilityStaticState();
+}
+
+private void ResetHttpUtilityStaticState()
+{
+    // Use reflection to reset static fields
+    // _hardBanStateLoaded = false
+    // _hardBanUntilUtc = null
+    // This is fragile but necessary to simulate new process
+}
+```
+
+Challenges & Solutions:
+=============================================================
+
+CHALLENGE 1: Static Field Pollution Across Tests
+- HttpUtility uses static fields shared across all instances
+- Multiple tests will interfere with each other's state
+- Solution: Use test isolation class, reset statics before/after
+- Or: Create dedicated test double with non-static ban state
+
+CHALLENGE 2: Simulating Process Restart
+- Hard to restart process within unit test
+- Static fields don't reset on new class instance
+- Solution: Use reflection to reset statics OR create test double
+- Better solution: Use IKeyStorageProvider pattern (make ban state injectable)
+
+CHALLENGE 3: Time-Based Testing
+- Hard-ban expires after 1 hour
+- Can't actually wait 1 hour in test
+- Solution: Mock SystemClock OR refactor to use injectable IClock
+- Alternatively: Create test that verifies logic, not actual time passage
+
+CHALLENGE 4: File System Access
+- Tests need to write to ProgramData
+- Permissions issues on some CI agents
+- Solution: Use Path.GetTempPath() for testing, not actual ProgramData
+- Or: Mock file system access via abstraction
+
+Recommended Refactoring (Phase 2):
+=============================================================
+
+TO MAKE THIS TESTABLE:
+
+1. Extract Ban State to Separate Interface:
+   ```csharp
+   public interface IBanStateProvider
+   {
+       DateTime? GetHardBanUntilUtc();
+       void RecordBan(DateTime expiryUtc);
+       void ClearBan();
+   }
+   ```
+
+2. Make HttpUtility Accept Injected IBanStateProvider:
+   ```csharp
+   public HttpUtility(IBanStateProvider banStateProvider, ...)
+   {
+       _banState = banStateProvider;
+   }
+   ```
+
+3. Create Test Implementation of IBanStateProvider:
+   ```csharp
+   public class TestBanStateProvider : IBanStateProvider
+   {
+       public DateTime? _banUntilUtc { get; set; }
+       // Implements interface with simple in-memory storage
+   }
+   ```
+
+4. Test becomes straightforward:
+   ```csharp
+   [Fact]
+   public void HardBan_RestoresAfterRestart()
+   {
+       var banState = new TestBanStateProvider();
+       var utility = new HttpUtility(banState, ...);
+
+       // Simulate hard-ban
+       banState._banUntilUtc = DateTime.UtcNow.AddHours(1);
+
+       // Verify requests blocked
+       Assert.Throws<HttpRequestException>(() => utility.GetContents(...));
+   }
+   ```
+
+Current Test Status:
+=============================================================
+
+DESIGN: ✓ COMPLETE
+IMPLEMENTATION: ⏳ PENDING (Task 2.1)
+BLOCKING: None (design ready, implementation can start immediately)
+
+Expected Effort:
+- Simple path (with refactoring): 3-4 hours
+- Without refactoring (using reflection): 2-3 hours (but fragile)
+- Recommended: Refactor to injectable IBanStateProvider first (best practice)
+
+Acceptance Criteria:
+=============================================================
+
+Test passes when:
+1. Hard-ban state persists to disk correctly
+2. New process instance restores state from disk
+3. HTTP requests fail immediately (no network call) while banned
+4. Ban state expires after timeout
+5. Requests succeed once ban expires
+
+Test fails when:
+- Ban state not written to disk
+- Ban state not read on startup
+- Requests made during ban (network call executed)
+- Ban state not cleared after expiry
