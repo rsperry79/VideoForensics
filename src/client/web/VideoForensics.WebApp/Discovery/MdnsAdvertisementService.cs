@@ -1,6 +1,4 @@
-using System.Net;
-
-using Zeroconf;
+using Makaretu.Dns;
 
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -31,7 +29,8 @@ namespace VideoForensics.WebApp.Discovery
         private readonly IHostApplicationLifetime _lifetime;
         private readonly ILogger<MdnsAdvertisementService> _logger;
 
-        private ServiceRegistration? _serviceRegistration;
+        private MulticastService? _mdns;
+        private ServiceDiscovery? _serviceDiscovery;
 
         public MdnsAdvertisementService(
             IForensicsConfiguration config,
@@ -54,11 +53,11 @@ namespace VideoForensics.WebApp.Discovery
             {
                 try
                 {
-                    if (_config.EnableMdnsAdvertisement && _serviceRegistration is null)
+                    if (_config.EnableMdnsAdvertisement && _serviceDiscovery is null)
                     {
                         await StartAdvertisingAsync();
                     }
-                    else if (!_config.EnableMdnsAdvertisement && _serviceRegistration is not null)
+                    else if (!_config.EnableMdnsAdvertisement && _serviceDiscovery is not null)
                     {
                         await StopAdvertisingAsync();
                     }
@@ -99,41 +98,38 @@ namespace VideoForensics.WebApp.Discovery
 
             try
             {
-                var properties = new Dictionary<string, string>();
+                _mdns = new MulticastService();
+                _serviceDiscovery = new ServiceDiscovery(_mdns);
 
-                _serviceRegistration = new ServiceRegistration
-                {
-                    Name = Environment.MachineName,
-                    RegType = "_videoforensics._tcp",
-                    ReplyDomain = "local",
-                    Port = (ushort)port.Value,
-                    Ttl = TimeSpan.FromHours(2),
-                    Properties = properties,
-                    Addresses = new[] { IPAddress.Loopback }
-                };
-
-                await ServiceRegistrar.RegisterServiceAsync(_serviceRegistration);
+                var profile = new ServiceProfile(Environment.MachineName, "_videoforensics._tcp", (ushort)port.Value);
+                _serviceDiscovery.Advertise(profile);
+                _mdns.Start();
 
                 _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
                     Environment.MachineName, "_videoforensics._tcp.local", port.Value);
+
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to start mDNS advertisement");
-                _serviceRegistration = null;
+                _mdns?.Dispose();
+                _serviceDiscovery?.Dispose();
+                _mdns = null;
+                _serviceDiscovery = null;
             }
         }
 
         private async Task StopAdvertisingAsync()
         {
-            if (_serviceRegistration is null)
+            if (_serviceDiscovery is null)
             {
                 return;
             }
 
             try
             {
-                await ServiceRegistrar.UnregisterServiceAsync(_serviceRegistration);
+                _serviceDiscovery.Unadvertise();
             }
             catch (Exception ex)
             {
@@ -141,9 +137,15 @@ namespace VideoForensics.WebApp.Discovery
             }
             finally
             {
-                _serviceRegistration = null;
+                _mdns?.Stop();
+                _mdns?.Dispose();
+                _serviceDiscovery?.Dispose();
+                _mdns = null;
+                _serviceDiscovery = null;
                 _logger.LogInformation("mDNS advertisement stopped");
             }
+
+            await Task.CompletedTask;
         }
 
         private int? ResolveListeningPort()
@@ -169,12 +171,11 @@ namespace VideoForensics.WebApp.Discovery
         {
             // Synchronously stop advertising since Dispose is not async
             // StopAsync is called by the framework, but we also ensure cleanup here
-            if (_serviceRegistration is not null)
+            if (_serviceDiscovery is not null)
             {
                 try
                 {
-                    // Best-effort unregister
-                    ServiceRegistrar.UnregisterServiceAsync(_serviceRegistration).ConfigureAwait(false).GetAwaiter().GetResult();
+                    _serviceDiscovery.Unadvertise();
                 }
                 catch (Exception ex)
                 {
@@ -182,7 +183,11 @@ namespace VideoForensics.WebApp.Discovery
                 }
                 finally
                 {
-                    _serviceRegistration = null;
+                    _mdns?.Stop();
+                    _mdns?.Dispose();
+                    _serviceDiscovery?.Dispose();
+                    _mdns = null;
+                    _serviceDiscovery = null;
                 }
             }
 

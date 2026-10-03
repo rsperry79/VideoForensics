@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <!-- mDNS service advertisement for local network discovery (plan §5.2). -->
-    <PackageReference Include="Zeroconf" Version="2.1.0" />
+    <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.12" />
     <!-- Web Push Notifications (RFC 8291) - push subscription management and VAPID key handling. -->
@@ -35,8 +35,6 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
     <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
     <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
-    <!-- CIDR notation parsing and IP range matching for banned IP range checks. -->
-    <PackageReference Include="System.Net.IPNetwork" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup>
