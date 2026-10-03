@@ -33,7 +33,8 @@ namespace VideoForensics.Core.Logging.DependencyInjection
             string logFilePath,
             LogLevel minimumLevel = LogLevel.Information,
             bool enableEventLog = false,
-            bool enableSyslog = false)
+            bool enableSyslog = false,
+            bool enableNamedPipeLogger = false)
         {
             _ = logging.AddProvider(new FileLoggerProvider(logFilePath, minimumLevel));
 
@@ -48,6 +49,25 @@ namespace VideoForensics.Core.Logging.DependencyInjection
                     .WriteTo.LocalSyslog(appName: "VideoForensics")
                     .CreateLogger();
                 _ = logging.AddSerilog(syslogLogger, dispose: true);
+            }
+
+            if (enableNamedPipeLogger && OperatingSystem.IsWindows())
+            {
+                _ = logging.AddProvider(new NamedPipeLoggerProvider());
+            }
+
+            return logging;
+        }
+
+        /// <summary>
+        /// Adds the NamedPipeLoggerProvider for Logger Viewer client consumption.
+        /// Windows-only; no-op on other platforms.
+        /// </summary>
+        public static ILoggingBuilder AddNamedPipeLogger(this ILoggingBuilder logging)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                _ = logging.AddProvider(new NamedPipeLoggerProvider());
             }
 
             return logging;

@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.Maui.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-windows10.0.19041.0;net10.0-linux</TargetFrameworks>
+		<TargetFrameworks Condition="$([msbuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">net10.0-windows10.0.19041.0</TargetFrameworks>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+
+		<OutputType>WinExe</OutputType>
+		<RootNamespace>VideoForensics.Utils.LoggerViewer.Maui</RootNamespace>
+		<AssemblyName>VideoForensics.Utils.LoggerViewer.Maui</AssemblyName>
+
+		<!-- Windows Settings -->
+		<WindowsPackageType Condition="$([msbuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
+
+		<!-- Display name -->
+		<Title>Logger Viewer</Title>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.videoforensics.loggerviewer</ApplicationId>
+		<ApplicationIdGuid>00000000-0000-0000-0000-000000000000</ApplicationIdGuid>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<SupportedOSPlatformVersion Condition="$([msbuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([msbuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'linux'">1.0</SupportedOSPlatformVersion>
+
+		<UseTizen>false</UseTizen>
+		<UseAndroid>false</UseAndroid>
+		<UseIOS>false</UseIOS>
+		<UseMacCatalyst>false</UseMacCatalyst>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Microsoft.CodeAnalysis is required per project guidelines -->
+		<PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+
+		<!-- MAUI/WinUI -->
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.6" />
+		<PackageReference Include="Microsoft.Maui.Controls.Hosting" Version="10.0.6" />
+
+		<!-- Extensions for DI and Logging -->
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+
+		<!-- Platform-specific: Windows native -->
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" Condition="$([msbuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<!-- Project-to-project references -->
+	<ItemGroup>
+		<!-- Adjust path based on actual location if needed -->
+	</ItemGroup>
+</Project>

@@ -2177,6 +2177,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("LastCollectCompleteUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("LastDownloadTimeUtc")
                         .HasColumnType("TEXT");
 

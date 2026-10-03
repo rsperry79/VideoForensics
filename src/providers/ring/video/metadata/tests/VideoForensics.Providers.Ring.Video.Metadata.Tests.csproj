@@ -34,8 +34,8 @@
     <ProjectReference Include="../VideoForensics.Providers.Ring.Video.Metadata.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.IO.Abstractions" Version="22.2.0" />
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.2.0" />
+    <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />

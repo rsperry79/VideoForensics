@@ -213,3 +213,6 @@ Generated/
 build_output.txt
 scratchpad_*.cs
 SelfTesterResults/
+
+testEnvironments.json
+test_results.txt

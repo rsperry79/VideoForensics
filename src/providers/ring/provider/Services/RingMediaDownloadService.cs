@@ -164,8 +164,6 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
-                _ = Directory.CreateDirectory(outputPath);
-
                 List<Entities.DoorbotHistoryEvent> events = await GetHistoryEventsAsync(session, startDate, endDate);
                 var relevantEvents = events.Where(e => e.Doorbot?.Id.ToString() == deviceId).ToList();
 

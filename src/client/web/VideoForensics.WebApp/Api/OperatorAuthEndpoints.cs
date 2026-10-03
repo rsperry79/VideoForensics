@@ -1,4 +1,4 @@
-using Fido2NetLib;
+﻿using Fido2NetLib;
 using Fido2NetLib.Objects;
 
 using Microsoft.AspNetCore.Identity;
@@ -17,7 +17,7 @@ using VideoForensics.WebApp.Services;
 namespace VideoForensics.WebApp.Api
 {
     /// <summary>
-    /// Operator (human user) authentication endpoints for username-first passwordless and password-based login (plan §5.11/§5.12).
+    /// Operator (human user) authentication endpoints for username-first passwordless and password-based login (plan Â§5.11/Â§5.12).
     ///
     /// These are DISTINCT from PairingEndpoints.cs which handles service/device pairing (QR + WebAuthn for MAUI/CLI).
     /// Here, we're implementing human operator self-service registration and login:
@@ -531,6 +531,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
+            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             HttpContext context,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -541,6 +542,15 @@ namespace VideoForensics.WebApp.Api
             if (IPAddress.TryParse(sourceIpString, out var parsedIp))
             {
                 sourceIp = parsedIp;
+            }
+
+            // Check: if password authentication is disabled, reject immediately (unless first-run setup is pending)
+            bool isSetupPhase = await operators.IsEmptyAsync(ct);
+            if (!isSetupPhase && !await authMethodsService.IsEnabledAsync("password", ct))
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
+                    sourceIpString, "Password sign-in is disabled", isUrgent: true, ct);
+                return Results.Json(new { error = "Password sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden);
             }
 
             // Check: if IP is in banned ranges, reject immediately.
@@ -913,6 +923,64 @@ namespace VideoForensics.WebApp.Api
             return Results.Ok(new { stepUpToken });
         }
 
+        private static async Task<IResult> RecoverPasswordAsync(
+            IOperatorRepository operators,
+            ISecurityAuditLogger auditLog,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            // Check if request is from localhost only
+            if (context.Connection.RemoteIpAddress != IPAddress.Loopback && context.Connection.RemoteIpAddress != IPAddress.IPv6Loopback)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            // Check if any operators exist
+            IReadOnlyList<Operator> allOps = await operators.ListAsync(ct);
+            if (allOps.Count == 0)
+            {
+                return Results.StatusCode(StatusCodes.Status404NotFound);
+            }
+
+            // Get the primary SuperAdmin operator
+            Operator? primaryAdmin = allOps.FirstOrDefault(o => o.IsPrimarySuperAdmin);
+            if (primaryAdmin == null)
+            {
+                // Fallback to any SuperAdmin if primary doesn't exist
+                primaryAdmin = allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
+            }
+
+            if (primaryAdmin == null)
+            {
+                // No SuperAdmin found at all
+                return Results.StatusCode(StatusCodes.Status404NotFound);
+            }
+
+            // Generate temporary password (16-char alphanumeric)
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            string temporaryPassword = string.Concat(Random.Shared.GetItems<char>(chars, 16));
+
+            // Hash the password
+            var passwordHasher = new PasswordHasher<Operator>();
+            string passwordHash = passwordHasher.HashPassword(primaryAdmin, temporaryPassword);
+
+            // Update operator with new password and set MustChangePassword flag
+            await operators.SetPasswordAsync(primaryAdmin.Id, passwordHash, mustChangePassword: true, ct);
+
+            // Log the recovery event
+            await auditLog.LogAsync(
+                SecurityAuditEventTypes.PasswordReset,
+                primaryAdmin.Id,
+                null,
+                "127.0.0.1",
+                "Localhost password recovery requested",
+                isUrgent: true,
+                ct);
+
+            // Return temporary password (only time it's shown in plaintext)
+            return Results.Ok(new { temporaryPassword });
+        }
+
     }
 
     // Request/response DTOs
@@ -927,3 +995,6 @@ namespace VideoForensics.WebApp.Api
 
     internal record PendingCredentialRegistration(Guid OperatorId, string Label, string OptionsJson);
 }
+
+
+

@@ -22,25 +22,36 @@ else
     <p>@L["SignInDescription"]</p>
 
     <div class="d-flex flex-column gap-3">
-        <!-- Password/Username Login -->
-        <div class="d-flex flex-column gap-2">
+        <!-- Device Passkey Sign-in (usernameless) -->
+        @if (_webAuthnAvailable && _authMethods.PasskeyEnabled)
+        {
             <div>
-                <label>@L["UsernameLabel"]</label>
-                <SfTextBox @bind-Value="_username" Placeholder="@L["UsernamePlaceholder"]" />
+                <SfButton Content="@(_isSigningInWithDevicePasskey ? L["SignInWaiting"] : L["SignInWithDevicePasskeyButton"])" OnClick="SignInWithDevicePasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithDevicePasskey" />
             </div>
-            <div>
-                <label>@L["PasswordLabel"]</label>
-                <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordPlaceholder"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" />
-            </div>
-            <div class="d-flex gap-2">
-                <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
+        }
 
-                @if (_webAuthnAvailable && !string.IsNullOrWhiteSpace(_username))
-                {
-                    <SfButton Content="@L["SignInWithPasskeyButton"]" OnClick="SignInWithPasskeyAsync" CssClass="e-outline" Disabled="@_isSigningInWithPasskey" />
-                }
+        @if (_authMethods.PasswordEnabled)
+        {
+            <!-- Password/Username Login -->
+            <div class="d-flex flex-column gap-2">
+                <div>
+                    <label>@L["UsernameLabel"]</label>
+                    <SfTextBox @bind-Value="_username" Placeholder="@L["UsernamePlaceholder"]" />
+                </div>
+                <div>
+                    <label>@L["PasswordLabel"]</label>
+                    <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordPlaceholder"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" />
+                </div>
+                <div class="d-flex gap-2">
+                    <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
+
+                    @if (_webAuthnAvailable && !string.IsNullOrWhiteSpace(_username) && _authMethods.PasskeyEnabled)
+                    {
+                        <SfButton Content="@L["SignInWithPasskeyButton"]" OnClick="SignInWithPasskeyAsync" CssClass="e-outline" Disabled="@_isSigningInWithPasskey" />
+                    }
+                </div>
             </div>
-        </div>
+        }
 
         @if (_error is not null)
         {
@@ -59,8 +70,11 @@ else
     private string _password = string.Empty;
     private bool _isSigningInWithPassword;
     private bool _isSigningInWithPasskey;
+    private bool _isSigningInWithDevicePasskey;
     private bool _webAuthnAvailable;
     private string? _error;
+    private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
+        PasswordEnabled: true, PasskeyEnabled: true);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -70,6 +84,7 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             _webAuthnAvailable = await WebAuthn.IsAvailableAsync();
+            _authMethods = await WebAuthn.GetAuthMethodsAsync();
             StateHasChanged();
         }
     }
@@ -97,7 +112,7 @@ else
             }
             else
             {
-                NavigationManager.NavigateTo("/settings/devices");
+                NavigationManager.NavigateTo("/");
             }
         }
         catch (Exception ex)
@@ -126,7 +141,7 @@ else
             }
 
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false);
-            NavigationManager.NavigateTo("/settings/devices");
+            NavigationManager.NavigateTo("/");
         }
         catch (Exception ex)
         {
@@ -135,6 +150,26 @@ else
         finally
         {
             _isSigningInWithPasskey = false;
+        }
+    }
+
+    private async Task SignInWithDevicePasskeyAsync()
+    {
+        _isSigningInWithDevicePasskey = true;
+        _error = null;
+        try
+        {
+            var (sessionToken, operatorId, role) = await WebAuthn.SignInAsync();
+            await SessionState.SetAsync(sessionToken, operatorId, role, mustChangePassword: false);
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithDevicePasskey = false;
         }
     }
 
