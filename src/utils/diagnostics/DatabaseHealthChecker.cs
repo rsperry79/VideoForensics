@@ -5,9 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Diagnostics.Contracts;
+using VideoForensics.Utils.Diagnostics.Contracts;
 
-namespace VideoForensics.Diagnostics
+namespace VideoForensics.Utils.Diagnostics
 {
     /// <summary>Reads database health checks without modifying data, mirroring queries from DbDiagnostics.</summary>
     public class DatabaseHealthChecker : IDatabaseHealthChecker

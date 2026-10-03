@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.SelfTester
+namespace VideoForensics.Utils.SelfTest
 {
     /// <summary>
     /// Parsed command-line options. Kept as a plain hand-rolled parser (no external CLI

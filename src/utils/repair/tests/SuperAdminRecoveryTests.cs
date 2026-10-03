@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Moq;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.DbRepair.Contracts;
+using VideoForensics.Utils.DbRepair.Contracts;
 using Xunit;
 
-namespace VideoForensics.DbRepair.Tests;
+namespace VideoForensics.Utils.DbRepair.Tests;
 
 public class SuperAdminRecoveryTests
 {

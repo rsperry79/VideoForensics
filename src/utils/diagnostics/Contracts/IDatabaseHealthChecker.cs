@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace VideoForensics.Diagnostics.Contracts
+namespace VideoForensics.Utils.Diagnostics.Contracts
 {
     /// <summary>Provides read-only database health check queries for detecting redundancy, orphaned records, and table statistics.</summary>
     public interface IDatabaseHealthChecker
