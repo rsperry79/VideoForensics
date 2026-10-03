@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+
 namespace VideoForensics.WebApp.Api
 {
     /// <summary>
@@ -21,61 +23,57 @@ namespace VideoForensics.WebApp.Api
     }
 
     /// <summary>
-    /// In-memory, singleton implementation of IAuthAttemptCache with automatic expiry.
+    /// Composite object for storing auth attempt data in cache.
+    /// </summary>
+    internal class AuthAttemptData
+    {
+        public string? ProviderName { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// In-memory implementation of IAuthAttemptCache using IMemoryCache with automatic expiry.
+    /// IMemoryCache is thread-safe, so no manual locking is needed.
     /// </summary>
     public class AuthAttemptCache : IAuthAttemptCache
     {
-        private readonly object _lock = new();
-        private readonly Dictionary<Guid, (string? ProviderName, string Username, string Password, DateTime ExpiresAt)> _attempts = [];
+        private readonly IMemoryCache _cache;
         private readonly TimeSpan _ttl = TimeSpan.FromMinutes(5);
+
+        public AuthAttemptCache(IMemoryCache cache)
+        {
+            _cache = cache;
+        }
 
         public Guid StoreAttempt(string? providerName, string username, string password)
         {
-            lock (_lock)
+            var attemptId = Guid.NewGuid();
+            var data = new AuthAttemptData
             {
-                // Clean expired entries on each store
-                CleanExpiredAttempts();
+                ProviderName = providerName,
+                Username = username,
+                Password = password
+            };
 
-                var attemptId = Guid.NewGuid();
-                _attempts[attemptId] = (providerName, username, password, DateTime.UtcNow.Add(_ttl));
-                return attemptId;
-            }
+            _cache.Set(attemptId, data, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = _ttl
+            });
+
+            return attemptId;
         }
 
         public (string? ProviderName, string? Username, string? Password)? GetAndRemoveAttempt(Guid attemptId)
         {
-            lock (_lock)
+            if (_cache.TryGetValue(attemptId, out AuthAttemptData? data))
             {
-                if (_attempts.TryGetValue(attemptId, out (string? ProviderName, string Username, string Password, DateTime ExpiresAt) attempt))
-                {
-                    // Check if expired
-                    if (attempt.ExpiresAt <= DateTime.UtcNow)
-                    {
-                        _ = _attempts.Remove(attemptId);
-                        return null;
-                    }
-
-                    // Return and remove (consume the attempt)
-                    _ = _attempts.Remove(attemptId);
-                    return (attempt.ProviderName, attempt.Username, attempt.Password);
-                }
-
-                return null;
+                // Remove the entry (single-use semantics)
+                _cache.Remove(attemptId);
+                return (data?.ProviderName, data?.Username, data?.Password);
             }
-        }
 
-        private void CleanExpiredAttempts()
-        {
-            DateTime now = DateTime.UtcNow;
-            var expiredIds = _attempts
-                .Where(kvp => kvp.Value.ExpiresAt <= now)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (Guid id in expiredIds)
-            {
-                _ = _attempts.Remove(id);
-            }
+            return null;
         }
     }
 }

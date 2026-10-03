@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -10,8 +11,8 @@ using Xunit;
 namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
-    /// Tests for RingHistoryEventCache implementation.
-    /// Verifies cache widening logic and concurrency safety.
+    /// Tests for RingHistoryEventCache implementation using IMemoryCache.
+    /// Verifies cache widening logic, composite entry preservation, and concurrency safety.
     /// </summary>
     public class RingHistoryEventCacheTests
     {
@@ -53,8 +54,9 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingHistoryEventCache_PreservesWideningMetadata_Under100ConcurrentRequests()
         {
             // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var logger = new Mock<ILogger>().Object;
-            var cache = new RingHistoryEventCache(logger);
+            var cache = new RingHistoryEventCache(memoryCache, logger);
             var session = new TestSession();
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var cts = new CancellationTokenSource();
@@ -99,7 +101,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await Task.WhenAll(tasks);
 
-            // Assert: Final cache state should have widened metadata
+            // Assert: Final cache state should have widened metadata preserved in composite entry
             // The widest request range should become the cache bounds
             // widest start: baseDate - 10 days (from tasks 33-66)
             // widest end: baseDate + 40 days (from tasks 66-100)
@@ -108,6 +110,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Verify the cache marked the range as cached (hint check should return true)
             // This indirectly verifies that metadata was preserved through concurrent requests
+            // and that the composite entry stored both events and metadata
             Assert.True(
                 cache.IsCached(expectedStart, expectedEnd),
                 "Cache metadata was not preserved - IsCached returned false for the widened range");
@@ -116,14 +119,17 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(
                 cache.IsCached(baseDate, baseDate.AddDays(20)),
                 "Sub-range not cached - widening metadata lost or corrupted");
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public async Task GetEventsAsync_WithinCachedRange_ReturnsFilteredEventsWithoutFetch()
         {
             // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var logger = new Mock<ILogger>().Object;
-            var cache = new RingHistoryEventCache(logger);
+            var cache = new RingHistoryEventCache(memoryCache, logger);
 
             var session = new TestSession();
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -159,14 +165,17 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.True(evt.CreatedAtDateTime.Value >= baseDate.AddDays(8));
                 Assert.True(evt.CreatedAtDateTime.Value <= baseDate.AddDays(12));
             }
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public async Task GetEventsAsync_WidensCache_WhenRequestExtendsExistingRange()
         {
             // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var logger = new Mock<ILogger>().Object;
-            var cache = new RingHistoryEventCache(logger);
+            var cache = new RingHistoryEventCache(memoryCache, logger);
 
             var session = new TestSession();
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -190,24 +199,30 @@ namespace VideoForensics.Providers.Ring.Tests
                 cts.Token);
 
             // Assert: The cache should now report the extended range as cached
+            // This verifies the composite entry was updated with new boundaries
             Assert.True(cache.IsCached(baseDate, baseDate.AddDays(40)),
                 "Extended range should be cached after widening request");
 
             // Also verify the original range is still cached
             Assert.True(cache.IsCached(baseDate, baseDate.AddDays(20)),
                 "Original range should still be cached");
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public void IsCached_WithoutPopulatedCache_ReturnsFalse()
         {
             // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var logger = new Mock<ILogger>().Object;
-            var cache = new RingHistoryEventCache(logger);
+            var cache = new RingHistoryEventCache(memoryCache, logger);
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
             // Act & Assert
             Assert.False(cache.IsCached(baseDate, baseDate.AddDays(10)));
+
+            memoryCache.Dispose();
         }
     }
 }

@@ -1,16 +1,26 @@
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
 {
+    using Bogus;
+
     /// <summary>
-    /// Builder for creating test DoorbotHistoryEvent instances.
+    /// Builder for creating test DoorbotHistoryEvent instances using Bogus Faker.
+    /// Default values match Ring API patterns (e.g., CreatedAt as ISO-8601 string).
     /// </summary>
     public class DoorbotHistoryEventBuilder
     {
-        private DoorbotHistoryEvent _event;
+        private readonly Faker<DoorbotHistoryEvent> _faker;
         private Doorbot _doorbot;
         private CvProperties _cvProperties;
 
         public DoorbotHistoryEventBuilder()
         {
+            _faker = new Faker<DoorbotHistoryEvent>()
+                .RuleFor(e => e.Id, f => f.Random.Long(1, 1000000))
+                .RuleFor(e => e.CreatedAt, f => f.Date.Recent().ToString("o")) // Ring API: CreatedAt is ISO-8601 string, not DateTime
+                .RuleFor(e => e.Kind, _ => "motion")
+                .RuleFor(e => e.Answered, _ => false)
+                .RuleFor(e => e.Favorite, _ => false);
+
             Reset();
         }
 
@@ -21,31 +31,31 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
 
         public DoorbotHistoryEventBuilder WithId(long id)
         {
-            _event.Id = id;
+            _faker.RuleFor(e => e.Id, _ => id);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithCreatedAt(DateTime dateTime)
         {
-            _event.CreatedAt = dateTime.ToString("o");
+            _faker.RuleFor(e => e.CreatedAt, _ => dateTime.ToString("o"));
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithKind(string kind)
         {
-            _event.Kind = kind;
+            _faker.RuleFor(e => e.Kind, _ => kind);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithAnswered(bool answered)
         {
-            _event.Answered = answered;
+            _faker.RuleFor(e => e.Answered, _ => answered);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithFavorite(bool favorite)
         {
-            _event.Favorite = favorite;
+            _faker.RuleFor(e => e.Favorite, _ => favorite);
             return this;
         }
 
@@ -54,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             var builder = new DoorbotBuilder(_doorbot);
             action(builder);
             _doorbot = builder.Build();
-            _event.Doorbot = _doorbot;
+            _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
             return this;
         }
 
@@ -63,26 +73,18 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             var builder = new CvPropertiesBuilder(_cvProperties);
             action(builder);
             _cvProperties = builder.Build();
-            _event.CvProperties = _cvProperties;
+            _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
             return this;
         }
 
         public DoorbotHistoryEvent Build()
         {
-            return _event;
+            return _faker.Generate();
         }
 
         private void Reset()
         {
-            _event = new DoorbotHistoryEvent
-            {
-                Id = 1,
-                CreatedAt = DateTime.Now.ToString("o"),
-                Kind = "motion",
-                Answered = false,
-                Favorite = false
-            };
-
+            // Default values match Ring API patterns
             _doorbot = new Doorbot
             {
                 Id = 1,
@@ -97,7 +99,8 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             };
 
             _cvProperties = null!;
-            _event.Doorbot = _doorbot;
+            _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
+            _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
         }
     }
 
