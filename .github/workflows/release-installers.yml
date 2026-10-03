@@ -255,7 +255,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-debian, build-windows]
     # Create releases on: version tags (v1.0.0), main branch pushes (prod), and dev branch pushes (dev prerelease)
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && success()
 
     steps:
       - uses: actions/checkout@v4
@@ -266,7 +266,6 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
         shell: bash
         run: |
-<<<<<<< HEAD
           dotnet tool update --global nbgv
           export PATH="$PATH:$HOME/.dotnet/tools"
           VERSION=$(nbgv get-version -v Version)
@@ -294,14 +293,6 @@ jobs:
           git push origin -f "$VERSION_LABEL_TAG" || echo "Failed to push version label tag"
 
           echo "Tagged as: $VERSION_TAG, $LABEL_TAG, $VERSION_LABEL_TAG"
-=======
-          # Force-move Release tag to current commit
-          git tag -f "Release" "${{ github.sha }}"
-          git push origin -f "Release"
-
-          echo "RELEASE_TAG=Release" >> $GITHUB_ENV
-          echo "Tagged as: Release"
->>>>>>> origin/dev
 
       - name: Set release tag for tag-based releases
         if: startsWith(github.ref, 'refs/tags/v')
@@ -310,7 +301,6 @@ jobs:
       - name: Set release label (Testing for dev, Release for main)
         shell: bash
         run: |
-<<<<<<< HEAD
           if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
             echo "RELEASE_LABEL=Testing" >> $GITHUB_ENV
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
@@ -318,11 +308,6 @@ jobs:
           else
             echo "RELEASE_LABEL=" >> $GITHUB_ENV
           fi
-=======
-          gh release delete "Release" --yes || true
-        env:
-          GH_TOKEN: ${{ github.token }}
->>>>>>> origin/dev
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
