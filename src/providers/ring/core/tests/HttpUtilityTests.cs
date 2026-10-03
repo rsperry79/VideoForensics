@@ -20,7 +20,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public HttpUtilityTests()
         {
             _platformDirService = new PlatformDirectoryService();
-            _hardBanStateFilePath = Path.Combine(_platformDirService.GetApplicationDataDirectory(), "ring_hard_ban.txt");
+            string appDataDir = _platformDirService.GetApplicationDataDirectory();
+            Directory.CreateDirectory(appDataDir);
+            _hardBanStateFilePath = Path.Combine(appDataDir, "ring_hard_ban.txt");
 
             // Clean up any pre-existing hard ban state file before each test
             if (File.Exists(_hardBanStateFilePath))
