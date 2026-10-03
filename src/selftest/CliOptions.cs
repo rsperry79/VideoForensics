@@ -1,11 +1,8 @@
-using System.CommandLine;
-using System.CommandLine.Parsing;
-
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     /// <summary>
-    /// Parsed command-line options using System.CommandLine for modern, standardized CLI argument parsing.
-    /// Provides type validation, built-in help text generation, and reduced boilerplate compared to manual parsing.
+    /// Parsed command-line options using simple manual parsing.
+    /// Provides type validation and reduced boilerplate compared to raw args[].
     /// </summary>
     internal sealed class CliOptions
     {
@@ -38,246 +35,178 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
-            var rootCommand = new RootCommand("Ring API SelfTester - API validation and smoke testing");
+            var options = new CliOptions();
+            var i = 0;
 
-            // Flags (boolean options)
-            var helpOption = new Option<bool>(new[] { "-h", "--help" }, "Show help text");
-            var listOption = new Option<bool>(new[] { "--list", "--list-endpoints" }, "List available endpoints and exit");
-            var listJsonOption = new Option<bool>("--list-endpoints-json", "List endpoints as JSON and exit");
-            var authOption = new Option<bool>("--auth", "Interactive one-time login");
-            var allOption = new Option<bool>("--all", "Run all non-destructive endpoints");
-            var destructiveOption = new Option<bool>("--destructive", "Include destructive endpoints");
-            var noPhysicalOption = new Option<bool>("--no-physical", "Exclude physical endpoints when --destructive is set");
-            var quietOption = new Option<bool>("--quiet", "Suppress narration output");
-            var verifyDbOption = new Option<bool>("--verify-db", "Verify database completeness after run");
+            while (i < args.Length)
+            {
+                var arg = args[i];
 
-            // Options with values
-            var endpointsOption = new Option<string?>("--endpoints", "Comma-separated endpoint keys to run");
-            var outputDirOption = new Option<string?>("--output-dir", "Output directory for results");
-            var locationIdOption = new Option<string?>("--location-id", "Location ID (GUID) for location-scoped endpoints");
-            var doorbotIdOption = new Option<string?>("--doorbot-id", "Doorbot ID for doorbot-scoped endpoints");
-            var chimeIdOption = new Option<string?>("--chime-id", "Chime ID for chime-scoped endpoints");
-            var historyLimitOption = new Option<string?>("--history-limit", "Max history items to request (default: 5)");
-            var sirenDurationOption = new Option<string?>("--siren-duration-seconds", "Siren duration in seconds (default: 2)");
-            var volumeLevelOption = new Option<string?>("--volume-level", "Volume level (0-11)");
-            var chimeTypeOption = new Option<string?>("--chime-type-value", "Chime type value (0=Mechanical, 1=Digital, 2=Not Present)");
-            var dndSecondsOption = new Option<string?>("--dnd-seconds", "Do-not-disturb duration in seconds (default: 60)");
-            var locationModeOption = new Option<string?>("--location-mode-value", "Location mode: home, away, or disarmed");
-            var dingIdOption = new Option<string?>("--ding-id", "Ding ID for recording sharing");
-            var assetUuidOption = new Option<string?>("--asset-uuid", "Asset UUID for alarm triggering");
-            var pushTokenOption = new Option<string?>("--push-token", "Push notification token");
-            var usernameOption = new Option<string?>("--username", "Ring username/email");
-            var passwordOption = new Option<string?>("--password", "Ring password");
-            var refreshTokenOption = new Option<string?>("--refresh-token", "OAuth refresh token");
-            var dbPathOption = new Option<string?>("--db-path", "SQLite database path");
-
-            rootCommand.AddOption(helpOption);
-            rootCommand.AddOption(listOption);
-            rootCommand.AddOption(listJsonOption);
-            rootCommand.AddOption(authOption);
-            rootCommand.AddOption(allOption);
-            rootCommand.AddOption(endpointsOption);
-            rootCommand.AddOption(outputDirOption);
-            rootCommand.AddOption(locationIdOption);
-            rootCommand.AddOption(doorbotIdOption);
-            rootCommand.AddOption(chimeIdOption);
-            rootCommand.AddOption(historyLimitOption);
-            rootCommand.AddOption(destructiveOption);
-            rootCommand.AddOption(noPhysicalOption);
-            rootCommand.AddOption(sirenDurationOption);
-            rootCommand.AddOption(volumeLevelOption);
-            rootCommand.AddOption(chimeTypeOption);
-            rootCommand.AddOption(dndSecondsOption);
-            rootCommand.AddOption(locationModeOption);
-            rootCommand.AddOption(dingIdOption);
-            rootCommand.AddOption(assetUuidOption);
-            rootCommand.AddOption(pushTokenOption);
-            rootCommand.AddOption(usernameOption);
-            rootCommand.AddOption(passwordOption);
-            rootCommand.AddOption(refreshTokenOption);
-            rootCommand.AddOption(quietOption);
-            rootCommand.AddOption(verifyDbOption);
-            rootCommand.AddOption(dbPathOption);
-
-            CliOptions? parsedOptions = null;
-            string? parseError = null;
-
-            rootCommand.SetHandler(
-                (help, list, listJson, auth, all, endpoints, outputDir, locationId, doorbotId, chimeId,
-                 historyLimit, destructive, noPhysical, sirenDuration, volumeLevel, chimeType, dndSeconds,
-                 locationMode, dingId, assetUuid, pushToken, username, password, refreshToken, quiet, verifyDb, dbPath) =>
+                switch (arg)
                 {
-                    var o = new CliOptions();
-                    o.ShowHelp = help;
-                    o.ListEndpoints = list;
-                    o.ListEndpointsJson = listJson;
-                    o.InteractiveAuth = auth;
+                    case "-h" or "--help":
+                        options.ShowHelp = true;
+                        break;
 
-                    // Parse endpoints
-                    if (all)
-                    {
-                        o.Endpoints.Add("all");
-                    }
-                    else if (!string.IsNullOrEmpty(endpoints))
-                    {
-                        o.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                    }
+                    case "--list" or "--list-endpoints":
+                        options.ListEndpoints = true;
+                        break;
 
-                    o.OutputDir = outputDir;
+                    case "--list-endpoints-json":
+                        options.ListEndpoints = true;
+                        options.ListEndpointsJson = true;
+                        break;
 
-                    // Parse LocationId
-                    if (!string.IsNullOrEmpty(locationId))
-                    {
-                        if (!Guid.TryParse(locationId, out Guid locGuid))
-                        {
-                            parseError = $"--location-id value '{locationId}' is not a valid GUID";
-                            return;
-                        }
-                        o.LocationId = locGuid;
-                    }
+                    case "--auth":
+                        options.InteractiveAuth = true;
+                        break;
 
-                    // Parse DoorbotId
-                    if (!string.IsNullOrEmpty(doorbotId))
-                    {
-                        if (!long.TryParse(doorbotId, out long dbId))
-                        {
-                            parseError = $"--doorbot-id value '{doorbotId}' is not a valid integer";
-                            return;
-                        }
-                        o.DoorbotId = dbId;
-                    }
+                    case "--all":
+                        options.Endpoints.Add("all");
+                        break;
 
-                    // Parse ChimeId
-                    if (!string.IsNullOrEmpty(chimeId))
-                    {
-                        if (!long.TryParse(chimeId, out long chId))
-                        {
-                            parseError = $"--chime-id value '{chimeId}' is not a valid integer";
-                            return;
-                        }
-                        o.ChimeId = chId;
-                    }
+                    case "--endpoints":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --endpoints");
+                        var endpoints = args[++i];
+                        options.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                        break;
 
-                    // Parse HistoryLimit
-                    if (!string.IsNullOrEmpty(historyLimit))
-                    {
-                        if (!int.TryParse(historyLimit, out int hl) || hl <= 0)
-                        {
-                            parseError = $"--history-limit value '{historyLimit}' must be a positive integer";
-                            return;
-                        }
-                        o.HistoryLimit = hl;
-                    }
+                    case "--output-dir":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --output-dir");
+                        options.OutputDir = args[++i];
+                        break;
 
-                    o.Destructive = destructive;
-                    o.NoPhysical = noPhysical;
+                    case "--location-id":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --location-id");
+                        if (!Guid.TryParse(args[++i], out var locGuid))
+                            return (null, $"--location-id value '{args[i]}' is not a valid GUID");
+                        options.LocationId = locGuid;
+                        break;
 
-                    // Parse SirenDurationSeconds
-                    if (!string.IsNullOrEmpty(sirenDuration))
-                    {
-                        if (!int.TryParse(sirenDuration, out int sd) || sd <= 0)
-                        {
-                            parseError = $"--siren-duration-seconds value '{sirenDuration}' must be a positive integer";
-                            return;
-                        }
-                        o.SirenDurationSeconds = sd;
-                    }
+                    case "--doorbot-id":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --doorbot-id");
+                        if (!long.TryParse(args[++i], out var dbId))
+                            return (null, $"--doorbot-id value '{args[i]}' is not a valid integer");
+                        options.DoorbotId = dbId;
+                        break;
 
-                    // Parse VolumeLevel
-                    if (!string.IsNullOrEmpty(volumeLevel))
-                    {
-                        if (!int.TryParse(volumeLevel, out int vol) || vol < 0)
-                        {
-                            parseError = $"--volume-level value '{volumeLevel}' must be a non-negative integer";
-                            return;
-                        }
-                        o.VolumeLevel = vol;
-                    }
+                    case "--chime-id":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-id");
+                        if (!long.TryParse(args[++i], out var chId))
+                            return (null, $"--chime-id value '{args[i]}' is not a valid integer");
+                        options.ChimeId = chId;
+                        break;
 
-                    // Parse ChimeTypeValue
-                    if (!string.IsNullOrEmpty(chimeType))
-                    {
-                        if (!int.TryParse(chimeType, out int ct) || ct is < 0 or > 2)
-                        {
-                            parseError = $"--chime-type-value value '{chimeType}' must be 0, 1 or 2";
-                            return;
-                        }
-                        o.ChimeTypeValue = ct;
-                    }
+                    case "--history-limit":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --history-limit");
+                        if (!int.TryParse(args[++i], out var hl) || hl <= 0)
+                            return (null, $"--history-limit value '{args[i]}' must be a positive integer");
+                        options.HistoryLimit = hl;
+                        break;
 
-                    // Parse DndSeconds
-                    if (!string.IsNullOrEmpty(dndSeconds))
-                    {
-                        if (!int.TryParse(dndSeconds, out int dnd) || dnd <= 0)
-                        {
-                            parseError = $"--dnd-seconds value '{dndSeconds}' must be a positive integer";
-                            return;
-                        }
-                        o.DndSeconds = dnd;
-                    }
+                    case "--destructive":
+                        options.Destructive = true;
+                        break;
 
-                    // Parse LocationModeValue
-                    if (!string.IsNullOrEmpty(locationMode))
-                    {
+                    case "--no-physical":
+                        options.NoPhysical = true;
+                        break;
+
+                    case "--siren-duration-seconds":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --siren-duration-seconds");
+                        if (!int.TryParse(args[++i], out var sd) || sd <= 0)
+                            return (null, $"--siren-duration-seconds value '{args[i]}' must be a positive integer");
+                        options.SirenDurationSeconds = sd;
+                        break;
+
+                    case "--volume-level":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --volume-level");
+                        if (!int.TryParse(args[++i], out var vol) || vol < 0)
+                            return (null, $"--volume-level value '{args[i]}' must be a non-negative integer");
+                        options.VolumeLevel = vol;
+                        break;
+
+                    case "--chime-type-value":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-type-value");
+                        if (!int.TryParse(args[++i], out var ct) || ct is < 0 or > 2)
+                            return (null, $"--chime-type-value value '{args[i]}' must be 0, 1 or 2");
+                        options.ChimeTypeValue = ct;
+                        break;
+
+                    case "--dnd-seconds":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --dnd-seconds");
+                        if (!int.TryParse(args[++i], out var dnd) || dnd <= 0)
+                            return (null, $"--dnd-seconds value '{args[i]}' must be a positive integer");
+                        options.DndSeconds = dnd;
+                        break;
+
+                    case "--location-mode-value":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --location-mode-value");
+                        var locationMode = args[++i];
                         if (locationMode is not ("home" or "away" or "disarmed"))
-                        {
-                            parseError = $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed";
-                            return;
-                        }
-                        o.LocationModeValue = locationMode;
-                    }
+                            return (null, $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed");
+                        options.LocationModeValue = locationMode;
+                        break;
 
-                    o.DingId = dingId;
-                    o.AssetUuid = assetUuid;
-                    o.PushToken = pushToken;
-                    o.UserName = username;
-                    o.Password = password;
-                    o.RefreshToken = refreshToken;
-                    o.Quiet = quiet;
-                    o.VerifyDb = verifyDb;
-                    o.DbPath = dbPath;
+                    case "--ding-id":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --ding-id");
+                        options.DingId = args[++i];
+                        break;
 
-                    // Default to "all" if no endpoints specified
-                    if (o.Endpoints.Count == 0)
-                    {
-                        o.Endpoints.Add("all");
-                    }
+                    case "--asset-uuid":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --asset-uuid");
+                        options.AssetUuid = args[++i];
+                        break;
 
-                    parsedOptions = o;
-                },
-                helpOption, listOption, listJsonOption, authOption, allOption, endpointsOption, outputDirOption,
-                locationIdOption, doorbotIdOption, chimeIdOption, historyLimitOption, destructiveOption, noPhysicalOption,
-                sirenDurationOption, volumeLevelOption, chimeTypeOption, dndSecondsOption, locationModeOption,
-                dingIdOption, assetUuidOption, pushTokenOption, usernameOption, passwordOption, refreshTokenOption,
-                quietOption, verifyDbOption, dbPathOption);
+                    case "--push-token":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --push-token");
+                        options.PushToken = args[++i];
+                        break;
 
-            try
-            {
-                var parseResult = rootCommand.Parse(args);
+                    case "--username":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --username");
+                        options.UserName = args[++i];
+                        break;
 
-                // Check for parse errors
-                if (parseResult.Errors.Count > 0)
-                {
-                    parseError = parseResult.Errors[0].Message;
+                    case "--password":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --password");
+                        options.Password = args[++i];
+                        break;
+
+                    case "--refresh-token":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --refresh-token");
+                        options.RefreshToken = args[++i];
+                        break;
+
+                    case "--quiet":
+                        options.Quiet = true;
+                        break;
+
+                    case "--verify-db":
+                        options.VerifyDb = true;
+                        break;
+
+                    case "--db-path":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --db-path");
+                        options.DbPath = args[++i];
+                        break;
+
+                    default:
+                        if (arg.StartsWith("--") || arg.StartsWith("-"))
+                            return (null, $"Unrecognized argument: {arg}");
+                        break;
                 }
 
-                // Invoke the handler
-                if (parseError == null)
-                {
-                    parseResult.Invoke();
-                }
-            }
-            catch (Exception ex)
-            {
-                parseError = ex.Message;
+                i++;
             }
 
-            if (parseError != null)
+            // Default to "all" if no endpoints specified
+            if (options.Endpoints.Count == 0)
             {
-                return (null, parseError);
+                options.Endpoints.Add("all");
             }
 
-            return (parsedOptions, null);
+            return (options, null);
         }
 
         public const string HelpText = """
@@ -391,4 +320,3 @@ namespace VideoForensics.Providers.Ring.SelfTester
         """;
     }
 }
-
