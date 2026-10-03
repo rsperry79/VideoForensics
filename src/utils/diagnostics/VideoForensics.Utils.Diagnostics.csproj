@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <RootNamespace>VideoForensics.Utils.Diagnostics</RootNamespace>
+    <AssemblyName>VideoForensics.Utils.Diagnostics</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +15,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**" />
   </ItemGroup>
 
 </Project>

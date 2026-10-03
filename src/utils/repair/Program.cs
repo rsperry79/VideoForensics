@@ -4,21 +4,21 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Diagnostics;
-using VideoForensics.Diagnostics.Contracts;
-using VideoForensics.DbRepair;
-using VideoForensics.DbRepair.Contracts;
+using VideoForensics.Utils.Diagnostics;
+using VideoForensics.Utils.Diagnostics.Contracts;
+using VideoForensics.Utils.DbRepair;
+using VideoForensics.Utils.DbRepair.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Providers.Common.Helpers.Platform;
 
-// VideoForensics.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
+// VideoForensics.Utils.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
 // and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost
 // SuperAdmin passkeys. Operates in dry-run mode by default, requiring --apply to make changes
 // for repair operations.
 //
 // Usage:
-//   VideoForensics.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
-//   VideoForensics.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
+//   VideoForensics.Utils.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
+//   VideoForensics.Utils.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
 //
 // Repair mode:
 //   --db-path takes priority over --data-root; --data-root takes priority over the platform default
@@ -449,13 +449,13 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
 static void PrintUsage()
 {
     Console.WriteLine("""
-        VideoForensics.DbRepair - repair the VideoForensics database or recover SuperAdmin access.
+        VideoForensics.Utils.DbRepair - repair the VideoForensics database or recover SuperAdmin access.
 
         Usage (repair mode):
-          VideoForensics.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
+          VideoForensics.Utils.DbRepair [--db-path <file>] [--data-root <dir>] [--apply] [--yes]
 
         Usage (recovery mode):
-          VideoForensics.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
+          VideoForensics.Utils.DbRepair --reset-superadmin-password [--username <name>] [--db-path <file>] [--data-root <dir>] [--yes]
 
         Options:
           --db-path <file>              Exact path to the SQLite database file. Takes priority over --data-root.
