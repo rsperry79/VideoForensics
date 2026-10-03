@@ -46,7 +46,7 @@ namespace VideoForensics.Hosting.Services
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
-                    _logger.LogWarning("Provider account {AccountId} not found", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
+                    _logger.LogWarning("Provider account not found");
                     return;
                 }
 
@@ -55,7 +55,7 @@ namespace VideoForensics.Hosting.Services
 #pragma warning restore CS0618
                 if (locations.Count == 0)
                 {
-                    _logger.LogInformation("No locations found for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
+                    _logger.LogInformation("No locations found for account");
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
@@ -118,11 +118,11 @@ namespace VideoForensics.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                _logger.LogInformation("Successfully pulled events for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
+                _logger.LogInformation("Successfully pulled events for account");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to pull events for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
+                _logger.LogError(ex, "Failed to pull events for account");
 
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account != null)

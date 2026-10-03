@@ -1,7 +1,0 @@
-queries:
-  - uses: security-and-quality
-
-disable-default-queries: false
-
-exclude:
-  - id: cs/clear-text-storage-of-sensitive-data
