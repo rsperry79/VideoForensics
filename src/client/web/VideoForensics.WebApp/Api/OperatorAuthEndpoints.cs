@@ -956,9 +956,11 @@ namespace VideoForensics.WebApp.Api
                 return Results.StatusCode(StatusCodes.Status404NotFound);
             }
 
-            // Generate temporary password (16-char alphanumeric)
+            // Generate temporary password (16-char alphanumeric) using cryptographically secure RNG
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            string temporaryPassword = string.Concat(Random.Shared.GetItems<char>(chars, 16));
+            byte[] randomBytes = new byte[16];
+            System.Security.Cryptography.RandomNumberGenerator.Fill(randomBytes);
+            string temporaryPassword = string.Concat(randomBytes.Select(b => chars[b % chars.Length]));
 
             // Hash the password
             var passwordHasher = new PasswordHasher<Operator>();

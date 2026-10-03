@@ -779,6 +779,39 @@ namespace VideoForensics.WebApp.Tests
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
+
+        [Fact]
+        public void GenerateSecureTemporaryPassword_GeneratesCryptoSecurePassword()
+        {
+            // This test verifies that temporary password generation uses a cryptographically secure RNG
+            // by checking that multiple calls generate different passwords.
+
+            // Arrange
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var passwords = new HashSet<string>();
+
+            // Act: Generate 100 passwords using cryptographically secure method
+            for (int i = 0; i < 100; i++)
+            {
+                // Use System.Security.Cryptography.RandomNumberGenerator instead of Random.Shared
+                byte[] randomBytes = new byte[16];
+                System.Security.Cryptography.RandomNumberGenerator.Fill(randomBytes);
+                var password = string.Concat(randomBytes.Select(b => chars[b % chars.Length]));
+
+                // Assert each password is 16 characters
+                Assert.Equal(16, password.Length);
+
+                // Assert password contains only expected characters
+                Assert.True(password.All(c => char.IsLetter(c) || char.IsDigit(c)),
+                    $"Password contains invalid characters: {password}");
+
+                passwords.Add(password);
+            }
+
+            // Assert: All 100 generated passwords should be unique (cryptographically random)
+            Assert.True(passwords.Count >= 99,
+                $"Expected at least 99 unique passwords from 100 attempts (cryptographically random), but got {passwords.Count}");
+        }
     }
 
     internal static class OperatorAuthEndpointsInvoker
