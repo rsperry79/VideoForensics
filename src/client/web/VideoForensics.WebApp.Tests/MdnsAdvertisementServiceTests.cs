@@ -53,7 +53,7 @@ namespace VideoForensics.WebApp.Tests
         /// When mDNS is enabled and port is available, service should advertise successfully.
         /// </summary>
         [Fact]
-        public async Task ExecuteAsync_MdnsEnabledWithValidPort_AdvertisesService()
+        public async Task StartAsync_MdnsEnabledWithValidPort_AdvertisesService()
         {
             // Arrange
             var config = CreateConfigMock(enableMdns: true);
@@ -67,7 +67,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromSeconds(1));
 
             // Act
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Assert
             // Verify that logging occurred (indicates service started)
@@ -88,7 +88,7 @@ namespace VideoForensics.WebApp.Tests
         /// When mDNS is disabled, service should not advertise.
         /// </summary>
         [Fact]
-        public async Task ExecuteAsync_MdnsDisabled_DoesNotAdvertise()
+        public async Task StartAsync_MdnsDisabled_DoesNotAdvertise()
         {
             // Arrange
             var config = CreateConfigMock(enableMdns: false);
@@ -102,7 +102,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromMilliseconds(100));
 
             // Act
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Assert
             logger.Verify(
@@ -122,7 +122,7 @@ namespace VideoForensics.WebApp.Tests
         /// When server does not expose addresses feature, service should log warning and skip advertisement.
         /// </summary>
         [Fact]
-        public async Task ExecuteAsync_NoServerAddresses_LogsWarningAndSkipsAdvertisement()
+        public async Task StartAsync_NoServerAddresses_LogsWarningAndSkipsAdvertisement()
         {
             // Arrange
             var config = CreateConfigMock(enableMdns: true);
@@ -136,7 +136,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromMilliseconds(100));
 
             // Act
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Assert
             logger.Verify(
@@ -156,7 +156,7 @@ namespace VideoForensics.WebApp.Tests
         /// When toggling mDNS from disabled to enabled, service should start advertising.
         /// </summary>
         [Fact]
-        public async Task ExecuteAsync_ConfigToggled_ResponsesAppropriately()
+        public async Task StartAsync_ConfigToggled_ResponsesAppropriately()
         {
             // Arrange
             var config = CreateConfigMock(enableMdns: false);
@@ -169,7 +169,7 @@ namespace VideoForensics.WebApp.Tests
             var cts = new CancellationTokenSource();
 
             // Act - start with mDNS disabled
-            var executeTask = service.ExecuteAsync(cts.Token);
+            var executeTask = service.StartAsync(cts.Token);
 
             // Wait a bit for initial check
             await Task.Delay(100);
@@ -216,7 +216,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromSeconds(1));
 
             // Start the service
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Act
             await service.StopAsync(CancellationToken.None);
@@ -250,7 +250,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromSeconds(1));
 
             // Start the service
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Act
             service.Dispose();
@@ -263,7 +263,7 @@ namespace VideoForensics.WebApp.Tests
         /// When port resolution fails on exception, service should log error and continue.
         /// </summary>
         [Fact]
-        public async Task ExecuteAsync_AdvertisementException_LogsErrorAndContinues()
+        public async Task StartAsync_AdvertisementException_LogsErrorAndContinues()
         {
             // Arrange
             var config = CreateConfigMock(enableMdns: true);
@@ -277,7 +277,7 @@ namespace VideoForensics.WebApp.Tests
             cts.CancelAfter(TimeSpan.FromMilliseconds(100));
 
             // Act
-            await service.ExecuteAsync(cts.Token);
+            await service.StartAsync(cts.Token);
 
             // Assert - service should continue despite any errors
             // (the test passes if no exception is thrown)
