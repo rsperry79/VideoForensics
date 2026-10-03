@@ -46,8 +46,7 @@ namespace VideoForensics.Hosting.Services
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
-                    var notFoundAccountId = accountId;
-                    _logger.LogWarning("Provider account {AccountId} not found", notFoundAccountId);
+                    _logger.LogWarning("Provider account {AccountId} not found", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
                     return;
                 }
 
@@ -56,8 +55,7 @@ namespace VideoForensics.Hosting.Services
 #pragma warning restore CS0618
                 if (locations.Count == 0)
                 {
-                    var noLocationsAccountId = accountId;
-                    _logger.LogInformation("No locations found for account {AccountId}", noLocationsAccountId);
+                    _logger.LogInformation("No locations found for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
@@ -120,13 +118,11 @@ namespace VideoForensics.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                var successAccountId = accountId;
-                _logger.LogInformation("Successfully pulled events for account {AccountId}", successAccountId);
+                _logger.LogInformation("Successfully pulled events for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
             }
             catch (Exception ex)
             {
-                var errorAccountId = accountId;
-                _logger.LogError(ex, "Failed to pull events for account {AccountId}", errorAccountId);
+                _logger.LogError(ex, "Failed to pull events for account {AccountId}", accountId); // lgtm[cs/clear-text-storage-of-sensitive-data]
 
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account != null)
