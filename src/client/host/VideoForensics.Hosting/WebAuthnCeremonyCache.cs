@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace VideoForensics.Hosting
 {
@@ -17,21 +17,40 @@ namespace VideoForensics.Hosting
         string? TryTake(string nonce);
     }
 
+    /// <summary>
+    /// In-memory implementation of IWebAuthnCeremonyCache using IMemoryCache with TTL-based expiration.
+    /// Uses single-use semantics: TryTake removes the entry on retrieval.
+    /// </summary>
     public class WebAuthnCeremonyCache : IWebAuthnCeremonyCache
     {
         private static readonly TimeSpan CeremonyLifetime = TimeSpan.FromMinutes(5);
-        private readonly ConcurrentDictionary<string, (string OptionsJson, DateTime ExpiresAtUtc)> _entries = new();
+        private readonly IMemoryCache _cache;
+
+        public WebAuthnCeremonyCache(IMemoryCache cache)
+        {
+            _cache = cache;
+        }
 
         public string Store(string optionsJson)
         {
             string nonce = Guid.NewGuid().ToString("N");
-            _entries[nonce] = (optionsJson, DateTime.UtcNow + CeremonyLifetime);
+            _cache.Set(nonce, optionsJson, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = CeremonyLifetime
+            });
             return nonce;
         }
 
         public string? TryTake(string nonce)
         {
-            return _entries.TryRemove(nonce, out (string OptionsJson, DateTime ExpiresAtUtc) entry) && entry.ExpiresAtUtc > DateTime.UtcNow ? entry.OptionsJson : null;
+            if (_cache.TryGetValue(nonce, out string? optionsJson))
+            {
+                // Remove the entry (single-use semantics)
+                _cache.Remove(nonce);
+                return optionsJson;
+            }
+
+            return null;
         }
     }
 }

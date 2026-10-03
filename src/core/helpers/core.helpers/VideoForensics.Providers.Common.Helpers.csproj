@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
   </ItemGroup>
 
   <ItemGroup>

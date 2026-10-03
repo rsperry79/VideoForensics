@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../providers/ring/utils/VideoForensics.Providers.Ring.Utils.csproj" />
     <ProjectReference Include="../providers/ring/core/VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../providers/ring/auth/VideoForensics.Providers.Ring.Auth.csproj" />

@@ -63,14 +63,11 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(1));
-
             // Act
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to run and log
 
             // Assert
-            // Verify that logging occurred (indicates service started)
             logger.Verify(
                 l => l.Log(
                     LogLevel.Information,
@@ -98,11 +95,9 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
-
             // Act
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to run
 
             // Assert
             logger.Verify(
@@ -132,11 +127,9 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
-
             // Act
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to run
 
             // Assert
             logger.Verify(
@@ -166,23 +159,17 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-
             // Act - start with mDNS disabled
-            var executeTask = service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
 
             // Wait a bit for initial check
-            await Task.Delay(100);
+            await Task.Delay(200);
 
             // Toggle mDNS enabled
             config.Object.EnableMdnsAdvertisement = true;
 
-            // Wait for next check
-            await Task.Delay(1000);
-
-            // Stop the service
-            cts.Cancel();
-            try { await executeTask; } catch (OperationCanceledException) { }
+            // Wait for next check cycle (default is 15 seconds, but we'll wait a bit)
+            await Task.Delay(200);
 
             // Assert
             logger.Verify(
@@ -212,11 +199,9 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(1));
-
             // Start the service
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to start advertising
 
             // Act
             await service.StopAsync(CancellationToken.None);
@@ -246,11 +231,9 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(1));
-
             // Start the service
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to start advertising
 
             // Act
             service.Dispose();
@@ -273,11 +256,9 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
-
             // Act
-            await service.StartAsync(cts.Token);
+            await service.StartAsync(CancellationToken.None);
+            await Task.Delay(200); // Allow ExecuteAsync to run
 
             // Assert - service should continue despite any errors
             // (the test passes if no exception is thrown)

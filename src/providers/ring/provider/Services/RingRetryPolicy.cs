@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.CircuitBreaker;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -37,30 +39,47 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task RetryWithBackoffAsync(Func<Task> operation, string operationName, CancellationToken cancellationToken)
         {
-            int delayMs = InitialDelayMs;
+            // Build a Polly policy that retries on rate-limit errors with exponential backoff.
+            // Hard bans (ThrottledException.IsHardBan = true) are not retried - they fail immediately.
 
-            for (int attempt = 1; attempt <= MaxRetries; attempt++)
+            // Define the filter function for which exceptions to retry
+            bool ShouldRetry(Exception ex)
             {
-                try
-                {
-                    await operation();
-                    return;
-                }
-                // A hard ban (see Session.GetRateLimitBanUntilUtc) fails every attempt identically
-                // with no network call - retrying here just re-runs this backoff loop for zero chance
-                // of success, so let it propagate immediately instead of grinding through it.
-                catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries && (ex as VideoForensics.Providers.Ring.Exceptions.ThrottledException)?.IsHardBan != true)
-                {
-                    _logger.LogWarning("Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
-                        operationName, attempt, MaxRetries, delayMs);
-
-                    await Task.Delay(delayMs, cancellationToken);
-                    delayMs = Math.Min(delayMs * 2, MaxDelayMs);
-                }
+                return IsRateLimitError(ex) && (ex as Exceptions.ThrottledException)?.IsHardBan != true;
             }
 
-            // Final attempt without catch
-            await operation();
+            var retryPolicy = Policy
+                .Handle<Exceptions.ThrottledException>(ex => ShouldRetry(ex))
+                .Or<HttpRequestException>(ex => ShouldRetry(ex))
+                .WaitAndRetryAsync(
+                    retryCount: MaxRetries,
+                    sleepDurationProvider: attempt =>
+                    {
+                        // Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 30s
+                        var delaySeconds = Math.Min(Math.Pow(2, attempt - 1), MaxDelayMs / 1000.0);
+                        return TimeSpan.FromSeconds(delaySeconds);
+                    },
+                    onRetry: (outcome, timespan, retryCount, context) =>
+                    {
+                        _logger.LogWarning(
+                            "Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
+                            operationName,
+                            retryCount,
+                            MaxRetries,
+                            (int)timespan.TotalMilliseconds);
+                    });
+
+            // ExecuteAsync with CancellationToken support
+            // Wrap operation to support cancellation token parameter that Polly provides
+            await retryPolicy.ExecuteAsync(async (ct) =>
+            {
+                // Check if cancellation was already requested before this attempt
+                if (ct.IsCancellationRequested)
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+                await operation();
+            }, cancellationToken);
         }
 
         public bool IsRateLimitError(Exception ex)

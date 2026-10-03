@@ -1,9 +1,8 @@
 namespace VideoForensics.Providers.Ring.SelfTester
 {
     /// <summary>
-    /// Parsed command-line options. Kept as a plain hand-rolled parser (no external CLI
-    /// dependency) so this tool stays trivially invokable from a shell script or an AI agent's
-    /// tool-call layer without pulling in System.CommandLine.
+    /// Parsed command-line options using simple manual parsing.
+    /// Provides type validation and reduced boilerplate compared to raw args[].
     /// </summary>
     internal sealed class CliOptions
     {
@@ -36,285 +35,178 @@ namespace VideoForensics.Providers.Ring.SelfTester
 
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
-            var o = new CliOptions();
+            var options = new CliOptions();
+            var i = 0;
 
-            for (int i = 0; i < args.Length; i++)
+            while (i < args.Length)
             {
-                string arg = args[i];
-                switch (arg.ToLowerInvariant())
+                var arg = args[i];
+
+                switch (arg)
                 {
-                    case "-h":
-                    case "--help":
-                        o.ShowHelp = true;
+                    case "-h" or "--help":
+                        options.ShowHelp = true;
                         break;
 
-                    case "--list":
-                    case "--list-endpoints":
-                        o.ListEndpoints = true;
+                    case "--list" or "--list-endpoints":
+                        options.ListEndpoints = true;
                         break;
 
                     case "--list-endpoints-json":
-                        o.ListEndpoints = true;
-                        o.ListEndpointsJson = true;
+                        options.ListEndpoints = true;
+                        options.ListEndpointsJson = true;
                         break;
 
                     case "--auth":
-                        o.InteractiveAuth = true;
-                        break;
-
-                    case "--endpoints":
-                        if (!TryTakeValue(args, ref i, arg, out string? epValue, out string? epErr))
-                        {
-                            return (null, epErr);
-                        }
-
-                        o.Endpoints.AddRange(epValue!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                        options.InteractiveAuth = true;
                         break;
 
                     case "--all":
-                        o.Endpoints.Add("all");
+                        options.Endpoints.Add("all");
+                        break;
+
+                    case "--endpoints":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --endpoints");
+                        var endpoints = args[++i];
+                        options.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
 
                     case "--output-dir":
-                        if (!TryTakeValue(args, ref i, arg, out string? outValue, out string? outErr))
-                        {
-                            return (null, outErr);
-                        }
-
-                        o.OutputDir = outValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --output-dir");
+                        options.OutputDir = args[++i];
                         break;
 
                     case "--location-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? locValue, out string? locErr))
-                        {
-                            return (null, locErr);
-                        }
-
-                        if (!Guid.TryParse(locValue, out Guid locGuid))
-                        {
-                            return (null, $"--location-id value '{locValue}' is not a valid GUID");
-                        }
-
-                        o.LocationId = locGuid;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --location-id");
+                        if (!Guid.TryParse(args[++i], out var locGuid))
+                            return (null, $"--location-id value '{args[i]}' is not a valid GUID");
+                        options.LocationId = locGuid;
                         break;
 
                     case "--doorbot-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? dbValue, out string? dbErr))
-                        {
-                            return (null, dbErr);
-                        }
-
-                        if (!long.TryParse(dbValue, out long dbId))
-                        {
-                            return (null, $"--doorbot-id value '{dbValue}' is not a valid integer");
-                        }
-
-                        o.DoorbotId = dbId;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --doorbot-id");
+                        if (!long.TryParse(args[++i], out var dbId))
+                            return (null, $"--doorbot-id value '{args[i]}' is not a valid integer");
+                        options.DoorbotId = dbId;
                         break;
 
                     case "--chime-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? chValue, out string? chErr))
-                        {
-                            return (null, chErr);
-                        }
-
-                        if (!long.TryParse(chValue, out long chId))
-                        {
-                            return (null, $"--chime-id value '{chValue}' is not a valid integer");
-                        }
-
-                        o.ChimeId = chId;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-id");
+                        if (!long.TryParse(args[++i], out var chId))
+                            return (null, $"--chime-id value '{args[i]}' is not a valid integer");
+                        options.ChimeId = chId;
                         break;
 
                     case "--history-limit":
-                        if (!TryTakeValue(args, ref i, arg, out string? hlValue, out string? hlErr))
-                        {
-                            return (null, hlErr);
-                        }
-
-                        if (!int.TryParse(hlValue, out int hl) || hl <= 0)
-                        {
-                            return (null, $"--history-limit value '{hlValue}' must be a positive integer");
-                        }
-
-                        o.HistoryLimit = hl;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --history-limit");
+                        if (!int.TryParse(args[++i], out var hl) || hl <= 0)
+                            return (null, $"--history-limit value '{args[i]}' must be a positive integer");
+                        options.HistoryLimit = hl;
                         break;
 
                     case "--destructive":
-                        o.Destructive = true;
+                        options.Destructive = true;
                         break;
 
                     case "--no-physical":
-                        o.NoPhysical = true;
+                        options.NoPhysical = true;
                         break;
 
                     case "--siren-duration-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out string? sdValue, out string? sdErr))
-                        {
-                            return (null, sdErr);
-                        }
-
-                        if (!int.TryParse(sdValue, out int sd) || sd <= 0)
-                        {
-                            return (null, $"--siren-duration-seconds value '{sdValue}' must be a positive integer");
-                        }
-
-                        o.SirenDurationSeconds = sd;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --siren-duration-seconds");
+                        if (!int.TryParse(args[++i], out var sd) || sd <= 0)
+                            return (null, $"--siren-duration-seconds value '{args[i]}' must be a positive integer");
+                        options.SirenDurationSeconds = sd;
                         break;
 
                     case "--volume-level":
-                        if (!TryTakeValue(args, ref i, arg, out string? volValue, out string? volErr))
-                        {
-                            return (null, volErr);
-                        }
-
-                        if (!int.TryParse(volValue, out int vol) || vol < 0)
-                        {
-                            return (null, $"--volume-level value '{volValue}' must be a non-negative integer");
-                        }
-
-                        o.VolumeLevel = vol;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --volume-level");
+                        if (!int.TryParse(args[++i], out var vol) || vol < 0)
+                            return (null, $"--volume-level value '{args[i]}' must be a non-negative integer");
+                        options.VolumeLevel = vol;
                         break;
 
                     case "--chime-type-value":
-                        if (!TryTakeValue(args, ref i, arg, out string? ctValue, out string? ctErr))
-                        {
-                            return (null, ctErr);
-                        }
-
-                        if (!int.TryParse(ctValue, out int ct) || ct is < 0 or > 2)
-                        {
-                            return (null, $"--chime-type-value value '{ctValue}' must be 0, 1 or 2");
-                        }
-
-                        o.ChimeTypeValue = ct;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-type-value");
+                        if (!int.TryParse(args[++i], out var ct) || ct is < 0 or > 2)
+                            return (null, $"--chime-type-value value '{args[i]}' must be 0, 1 or 2");
+                        options.ChimeTypeValue = ct;
                         break;
 
                     case "--dnd-seconds":
-                        if (!TryTakeValue(args, ref i, arg, out string? dndValue, out string? dndErr))
-                        {
-                            return (null, dndErr);
-                        }
-
-                        if (!int.TryParse(dndValue, out int dnd) || dnd <= 0)
-                        {
-                            return (null, $"--dnd-seconds value '{dndValue}' must be a positive integer");
-                        }
-
-                        o.DndSeconds = dnd;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --dnd-seconds");
+                        if (!int.TryParse(args[++i], out var dnd) || dnd <= 0)
+                            return (null, $"--dnd-seconds value '{args[i]}' must be a positive integer");
+                        options.DndSeconds = dnd;
                         break;
 
                     case "--location-mode-value":
-                        if (!TryTakeValue(args, ref i, arg, out string? lmValue, out string? lmErr))
-                        {
-                            return (null, lmErr);
-                        }
-
-                        if (lmValue is not ("home" or "away" or "disarmed"))
-                        {
-                            return (null, $"--location-mode-value value '{lmValue}' must be one of: home, away, disarmed");
-                        }
-
-                        o.LocationModeValue = lmValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --location-mode-value");
+                        var locationMode = args[++i];
+                        if (locationMode is not ("home" or "away" or "disarmed"))
+                            return (null, $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed");
+                        options.LocationModeValue = locationMode;
                         break;
 
                     case "--ding-id":
-                        if (!TryTakeValue(args, ref i, arg, out string? dingValue, out string? dingErr))
-                        {
-                            return (null, dingErr);
-                        }
-
-                        o.DingId = dingValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --ding-id");
+                        options.DingId = args[++i];
                         break;
 
                     case "--asset-uuid":
-                        if (!TryTakeValue(args, ref i, arg, out string? assetValue, out string? assetErr))
-                        {
-                            return (null, assetErr);
-                        }
-
-                        o.AssetUuid = assetValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --asset-uuid");
+                        options.AssetUuid = args[++i];
                         break;
 
                     case "--push-token":
-                        if (!TryTakeValue(args, ref i, arg, out string? pushValue, out string? pushErr))
-                        {
-                            return (null, pushErr);
-                        }
-
-                        o.PushToken = pushValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --push-token");
+                        options.PushToken = args[++i];
                         break;
 
                     case "--username":
-                        if (!TryTakeValue(args, ref i, arg, out string? userValue, out string? userErr))
-                        {
-                            return (null, userErr);
-                        }
-
-                        o.UserName = userValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --username");
+                        options.UserName = args[++i];
                         break;
 
                     case "--password":
-                        if (!TryTakeValue(args, ref i, arg, out string? passValue, out string? passErr))
-                        {
-                            return (null, passErr);
-                        }
-
-                        o.Password = passValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --password");
+                        options.Password = args[++i];
                         break;
 
                     case "--refresh-token":
-                        if (!TryTakeValue(args, ref i, arg, out string? rtValue, out string? rtErr))
-                        {
-                            return (null, rtErr);
-                        }
-
-                        o.RefreshToken = rtValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --refresh-token");
+                        options.RefreshToken = args[++i];
                         break;
 
                     case "--quiet":
-                        o.Quiet = true;
+                        options.Quiet = true;
                         break;
 
                     case "--verify-db":
-                        o.VerifyDb = true;
+                        options.VerifyDb = true;
                         break;
 
                     case "--db-path":
-                        if (!TryTakeValue(args, ref i, arg, out string? dbPathValue, out string? dbPathErr))
-                        {
-                            return (null, dbPathErr);
-                        }
-
-                        o.DbPath = dbPathValue;
+                        if (i + 1 >= args.Length) return (null, "Missing value for --db-path");
+                        options.DbPath = args[++i];
                         break;
 
                     default:
-                        return (null, $"Unrecognized argument '{arg}'. Use --help to see available switches.");
+                        if (arg.StartsWith("--") || arg.StartsWith("-"))
+                            return (null, $"Unrecognized argument: {arg}");
+                        break;
                 }
+
+                i++;
             }
 
-            if (o.Endpoints.Count == 0)
+            // Default to "all" if no endpoints specified
+            if (options.Endpoints.Count == 0)
             {
-                o.Endpoints.Add("all");
+                options.Endpoints.Add("all");
             }
 
-            return (o, null);
-        }
-
-        private static bool TryTakeValue(string[] args, ref int i, string flag, out string? value, out string? error)
-        {
-            if (i + 1 >= args.Length)
-            {
-                value = null;
-                error = $"Missing value for {flag}";
-                return false;
-            }
-
-            i++;
-            value = args[i];
-            error = null;
-            return true;
+            return (options, null);
         }
 
         public const string HelpText = """
@@ -428,4 +320,3 @@ namespace VideoForensics.Providers.Ring.SelfTester
         """;
     }
 }
-
