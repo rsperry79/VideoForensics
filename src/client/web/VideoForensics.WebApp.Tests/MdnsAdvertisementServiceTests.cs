@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using Moq;
 
