@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
+using IPNetworkNuGet = System.Net.IPNetwork;
 
 namespace VideoForensics.WebApp.Services
 {
@@ -27,7 +28,7 @@ namespace VideoForensics.WebApp.Services
             foreach (var range in bannedRanges)
             {
                 // Try to parse the CIDR range; skip malformed entries and continue checking others
-                if (!System.Net.IPNetwork.IPAddressCidr.TryParse(range.CidrRange, out var network))
+                if (!IPNetworkNuGet.IPAddressCidr.TryParse(range.CidrRange, out var network))
                 {
                     _logger.LogWarning("Failed to parse CIDR range '{CidrRange}' (id: {RangeId})", range.CidrRange, range.Id);
                     continue;
