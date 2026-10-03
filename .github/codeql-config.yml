@@ -1,3 +1,7 @@
-disable:
+queries:
+  - uses: security-and-quality
+
+disable-default-queries: false
+
+exclude:
   - id: cs/clear-text-storage-of-sensitive-data
-    reason: 'False positives for non-sensitive Guid identifiers (e.g., provider accountId, which is not sensitive data)'
