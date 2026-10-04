@@ -335,5 +335,63 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal("fallback-device-id", result[0].Id);
             Assert.Equal("stickup_cam", result[0].Type);
         }
+
+        // ===== Account-Aware Tests (Phase 1 Refactoring) =====
+        // These tests verify the new account-aware signatures.
+        // They ensure service methods accept and can be called with a Guid providerAccountId parameter
+        // to enable concurrent processing of multiple Ring accounts without race conditions.
+
+        [Fact]
+        public async Task GetLocationsAsync_WithAccountId_WithoutSession_ReturnsEmptyList()
+        {
+            // Arrange - Account-aware overload that gracefully handles no session
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<CommonContracts.Location> result = await service.GetLocationsAsync(accountId);
+
+            // Assert - Verifies account-aware method returns empty list when no session
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetDevicesAsync_WithAccountId_WithoutSession_ReturnsEmptyList()
+        {
+            // Arrange - Account-aware overload that gracefully handles no session
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(accountId, "location123");
+
+            // Assert - Verifies account-aware method returns empty list when no session
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetDeviceAsync_WithAccountId_WithoutSession_ReturnsNull()
+        {
+            // Arrange - Account-aware overload that gracefully handles no session
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns((Session?)null);
+            ILogger logger = new Mock<ILogger>().Object;
+            var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object);
+
+            // Act
+            Device? result = await service.GetDeviceAsync(accountId, "device123");
+
+            // Assert - Verifies account-aware method returns null when no session
+            Assert.Null(result);
+        }
     }
 }
