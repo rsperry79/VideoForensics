@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>VideoForensics.DbRepair</AssemblyName>
-    <RootNamespace>VideoForensics.DbRepair</RootNamespace>
+    <AssemblyName>VideoForensics.Utils.DbRepair</AssemblyName>
+    <RootNamespace>VideoForensics.Utils.DbRepair</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,11 @@
     <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
     <ProjectReference Include="..\..\client\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
     <ProjectReference Include="..\..\core\helpers\core.helpers\VideoForensics.Providers.Common.Helpers.csproj" />
-    <ProjectReference Include="..\VideoForensics.Diagnostics\VideoForensics.Diagnostics.csproj" />
+    <ProjectReference Include="..\diagnostics\VideoForensics.Utils.Diagnostics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**" />
   </ItemGroup>
 
 </Project>

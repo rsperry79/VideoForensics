@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.DbRepair.Contracts;
+namespace VideoForensics.Utils.DbRepair.Contracts;
 
 /// <summary>
 /// Handles recovery of a SuperAdmin's access when their passkey is lost.

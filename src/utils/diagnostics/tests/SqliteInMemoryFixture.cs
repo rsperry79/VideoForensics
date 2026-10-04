@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using VideoForensics.Data.Database.DbContext;
 using Xunit;
 
-namespace VideoForensics.Diagnostics.Tests
+namespace VideoForensics.Utils.Diagnostics.Tests
 {
     /// <summary>Test fixture that maintains a single in-memory SQLite connection for the lifetime of a test.</summary>
     public class SqliteInMemoryFixture : IAsyncLifetime, IDisposable

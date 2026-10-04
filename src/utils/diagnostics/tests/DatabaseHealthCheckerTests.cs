@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Diagnostics.Contracts;
+using VideoForensics.Utils.Diagnostics.Contracts;
 using Xunit;
 
-namespace VideoForensics.Diagnostics.Tests
+namespace VideoForensics.Utils.Diagnostics.Tests
 {
     public class DatabaseHealthCheckerTests : IAsyncLifetime
     {

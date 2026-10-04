@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>VideoForensics.DbSetup</AssemblyName>
-    <RootNamespace>VideoForensics.DbSetup</RootNamespace>
+    <AssemblyName>VideoForensics.Utils.DbSetup</AssemblyName>
+    <RootNamespace>VideoForensics.Utils.DbSetup</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
