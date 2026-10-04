@@ -32,7 +32,7 @@ jobs:
       # database - not something a CI runner has; see its own failure message:
       # "Run 'dotnet run -- --auth' from src/selftest to authenticate").
       - name: Restore NuGet cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           key: nuget-cache-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
           path: ~/.nuget/packages
