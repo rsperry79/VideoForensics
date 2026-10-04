@@ -130,7 +130,7 @@ namespace VideoForensics.WebApp.Tests.Api
         }
 
         [Fact]
-        public void StoreAttempt_WithConcurrentAccess_EachAttemptIdIsUnique()
+        public async Task StoreAttempt_WithConcurrentAccess_EachAttemptIdIsUnique()
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -147,7 +147,7 @@ namespace VideoForensics.WebApp.Tests.Api
                 }
             })).ToArray();
 
-            Task.WaitAll(tasks);
+            await Task.WhenAll(tasks);
 
             // Assert: All attempt IDs should be unique
             Assert.Equal(50, attemptIds.Count);
@@ -156,7 +156,7 @@ namespace VideoForensics.WebApp.Tests.Api
         }
 
         [Fact]
-        public void GetAndRemoveAttempt_ConcurrentRetrievals_EachConsumesOnce()
+        public async Task GetAndRemoveAttempt_ConcurrentRetrievals_EachConsumesOnce()
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -181,7 +181,7 @@ namespace VideoForensics.WebApp.Tests.Api
                 }
             })).ToArray();
 
-            Task.WaitAll(tasks);
+            await Task.WhenAll(tasks);
 
             // Assert: All attempts should be successfully retrieved once
             Assert.Equal(10, successCount);
