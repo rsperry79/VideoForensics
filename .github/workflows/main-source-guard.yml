@@ -21,8 +21,14 @@ jobs:
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
         run: |
-          if [ "$HEAD_REF" != "dev" ] || [ "$HEAD_REPO" != "$BASE_REPO" ]; then
-            echo "::error::Pull requests into main must come from $BASE_REPO:dev (got $HEAD_REPO:$HEAD_REF). Target dev instead."
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::Pull requests into main must come from $BASE_REPO (got $HEAD_REPO)."
             exit 1
           fi
-          echo "OK: PR comes from $BASE_REPO:dev"
+          # Allow dev branch or reconciliation branches (main-from-dev, etc)
+          if [ "$HEAD_REF" = "dev" ] || [[ "$HEAD_REF" == *"-from-dev" ]]; then
+            echo "OK: PR comes from $BASE_REPO:$HEAD_REF"
+          else
+            echo "::error::Pull requests into main must come from $BASE_REPO:dev or a reconciliation branch like main-from-dev (got $HEAD_REPO:$HEAD_REF)."
+            exit 1
+          fi

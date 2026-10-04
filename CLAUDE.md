@@ -52,6 +52,29 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - **Input validation** at API boundaries only
 - **No plain-text passwords** — use provider APIs or hash + salt
 
+## Cryptography & Security
+
+### PBKDF2 Iteration Count (Credential Encryption)
+Credentials are encrypted via AES-256-CBC + PBKDF2-HMAC-SHA256. PBKDF2 iterations must increase annually per OWASP guidance to maintain brute-force resistance against hardware improvements.
+
+- **Current:** 600,000 iterations (2024/2025 baseline, per AES Encryption Audit Report)
+- **2026:** Increase to 750,000 iterations
+- **2027:** Increase to 1,000,000 iterations
+- **Pattern:** 25% annual increase thereafter
+
+**Action (January, each year):**
+1. Check OWASP Cryptographic Storage Cheat Sheet for updated guidance
+2. Update `Iterations` constant in `/src/providers/ring/auth/Implementations/AesEncryption.cs` (line 28)
+3. Update code comment with target year for next increase
+4. Add test in `AesEncryptionTests.cs` to verify new iteration count
+5. Run `dotnet test --filter "Class=AesEncryptionTests"` to confirm
+6. No credential re-encryption needed (different iterations use same PBKDF2 derivation, backward-compatible)
+7. Document in commit message: "Security: Increase PBKDF2 iterations from X to Y per OWASP 2026 guidance"
+
+**Rationale:** As hardware performance improves (GPU/ASIC), the cost to brute-force credentials increases. PBKDF2 counters this by accepting slower legitimate decryption (negligible ~100ms for single credential) vs. proportionally higher attacker cost.
+
+See `/AES_ENCRYPTION_AUDIT_REPORT.md` (Section 10, Appendix) for full schedule and checklist.
+
 ## Data Requirements
 
 - **All data from provider APIs must be recorded in the database.** Do not rely on JSON blobs or ephemeral storage. Provider responses must be parsed and stored in proper database columns/tables with appropriate schema. Raw JSON is only acceptable for metadata that doesn't fit the schema or for audit trail purposes.

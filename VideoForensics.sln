@@ -272,21 +272,21 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Un
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Uniview.Tests", "src\providers\uniview\provider\tests\VideoForensics.Providers.Uniview.Tests.csproj", "{9A1B2C3D-4E5F-4A6B-8C9D-0E1F2A3B4C5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbSetup", "src\tools\DbSetup\DbSetup.csproj", "{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbSetup", "src\utils\setup\VideoForensics.Utils.DbSetup.csproj", "{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbDiagnostics", "src\tools\DbDiagnostics\DbDiagnostics.csproj", "{814F0BA3-C959-47E8-9D34-FC514C83E1C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbRepair", "src\tools\DbRepair\DbRepair.csproj", "{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair", "src\utils\repair\VideoForensics.Utils.DbRepair.csproj", "{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Diagnostics", "src\tools\VideoForensics.Diagnostics\VideoForensics.Diagnostics.csproj", "{3DDD08CD-5644-48B7-8DF0-8C2DF7737A22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics", "src\utils\diagnostics\VideoForensics.Utils.Diagnostics.csproj", "{3DDD08CD-5644-48B7-8DF0-8C2DF7737A22}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Diagnostics.Tests", "src\tools\VideoForensics.Diagnostics.Tests\VideoForensics.Diagnostics.Tests.csproj", "{40929701-9B23-46B3-A4D7-E37A96489ADE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics.Tests", "src\utils\diagnostics\tests\VideoForensics.Utils.Diagnostics.Tests.csproj", "{40929701-9B23-46B3-A4D7-E37A96489ADE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DCB6FCB8-FF92-AC57-0842-1F72A354D6B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbRepair.Tests", "src\tools\DbRepair.Tests\DbRepair.Tests.csproj", "{8FAC4DE9-A6BB-4D24-B278-F6A8616DB660}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair.Tests", "src\utils\repair\tests\VideoForensics.Utils.DbRepair.Tests.csproj", "{8FAC4DE9-A6BB-4D24-B278-F6A8616DB660}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data", "data", "{58A5B24B-8FB4-5A6E-5EF4-1E3E19F29B1B}"
 EndProject
@@ -1259,3 +1259,5 @@ Global
 		SolutionGuid = {E2D18EAA-1D34-43D6-80DE-41EAF6D99FDA}
 	EndGlobalSection
 EndGlobal
+
+
