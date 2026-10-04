@@ -294,18 +294,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{E86821
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data.common", "data.common", "{99A59A5B-6A36-5980-AAE4-246C85DB1A7A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DCB6FCB8-FF92-AC57-0842-1F72A354D6B1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbRepair.Tests", "src\tools\DbRepair.Tests\DbRepair.Tests.csproj", "{8FAC4DE9-A6BB-4D24-B278-F6A8616DB660}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data", "data", "{58A5B24B-8FB4-5A6E-5EF4-1E3E19F29B1B}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{E8682190-EBCD-976E-9EEF-1643333F87AC}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data.common", "data.common", "{99A59A5B-6A36-5980-AAE4-246C85DB1A7A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
