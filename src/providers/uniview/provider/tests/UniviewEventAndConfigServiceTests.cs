@@ -249,5 +249,79 @@ namespace VideoForensics.Providers.Uniview.Tests
                 client.Dispose();
             }
         }
+
+        [Fact]
+        public async Task UniviewEventAndConfigService_GetEventsAsync_WithAccountId_NotAuthenticated_ReturnsEmptyList()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var accountId = Guid.NewGuid();
+
+            _ = mockSessionProvider.Setup(s => s.GetClient(accountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewEventAndConfigService(
+                mockLogger.Object,
+                mockSessionProvider.Object);
+
+            // Act
+            IReadOnlyList<DeviceEvent> events = await service.GetEventsAsync(
+                accountId,
+                "1",
+                DateTime.Now.AddDays(-7),
+                DateTime.Now,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.Empty(events);
+        }
+
+        [Fact]
+        public async Task UniviewEventAndConfigService_GetDeviceConfigAsync_WithAccountId_NotAuthenticated_ReturnsNull()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var accountId = Guid.NewGuid();
+
+            _ = mockSessionProvider.Setup(s => s.GetClient(accountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewEventAndConfigService(
+                mockLogger.Object,
+                mockSessionProvider.Object);
+
+            // Act
+            DeviceConfig? config = await service.GetDeviceConfigAsync(accountId, "1", CancellationToken.None);
+
+            // Assert
+            Assert.Null(config);
+        }
+
+        [Fact]
+        public async Task UniviewEventAndConfigService_UpdateDeviceConfigAsync_WithAccountId_NotAuthenticated_ReturnsFalse()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewEventAndConfigService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var accountId = Guid.NewGuid();
+
+            _ = mockSessionProvider.Setup(s => s.GetClient(accountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewEventAndConfigService(
+                mockLogger.Object,
+                mockSessionProvider.Object);
+
+            var config = new DeviceConfig(
+                DeviceId: "1",
+                MotionDetectionEnabled: false,
+                MotionSensitivity: 0,
+                RecordingMode: "off");
+
+            // Act
+            bool result = await service.UpdateDeviceConfigAsync(accountId, "1", config, CancellationToken.None);
+
+            // Assert
+            Assert.False(result);
+        }
     }
 }

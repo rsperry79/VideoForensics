@@ -340,5 +340,65 @@ namespace VideoForensics.Providers.Uniview.Tests
             Assert.NotNull(exception.InnerException);
             Assert.IsType<InvalidOperationException>(exception.InnerException);
         }
+
+        [Fact]
+        public async Task UniviewMediaDownloadService_DownloadVideosAsync_WithAccountId_NotAuthenticated_ReturnsFailed()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewMediaDownloadService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+
+            Guid accountId = Guid.NewGuid();
+            _ = mockSessionProvider.Setup(s => s.GetClient(accountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewMediaDownloadService(
+                mockLogger.Object,
+                mockSessionProvider.Object);
+
+            // Act
+            DownloadResult result = await service.DownloadVideosAsync(
+                accountId,
+                "1",
+                "/tmp",
+                DateTime.Now.AddDays(-7),
+                DateTime.Now,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.NotNull(result.ErrorMessage);
+            Assert.Contains("not authenticated", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+            mockSessionProvider.Verify(s => s.GetClient(accountId), Times.Once);
+        }
+
+        [Fact]
+        public async Task UniviewMediaDownloadService_DownloadSnapshotsAsync_WithAccountId_NotAuthenticated_ReturnsFailed()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewMediaDownloadService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+
+            Guid accountId = Guid.NewGuid();
+            _ = mockSessionProvider.Setup(s => s.GetClient(accountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewMediaDownloadService(
+                mockLogger.Object,
+                mockSessionProvider.Object);
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync(
+                accountId,
+                "1",
+                "/tmp",
+                DateTime.Now.AddDays(-7),
+                DateTime.Now,
+                cancellationToken: CancellationToken.None);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.NotNull(result.ErrorMessage);
+            Assert.Contains("not authenticated", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+            mockSessionProvider.Verify(s => s.GetClient(accountId), Times.Once);
+        }
     }
 }

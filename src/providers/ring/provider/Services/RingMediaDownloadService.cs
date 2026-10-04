@@ -114,7 +114,7 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            Session? session = _sessionProvider.GetSession();
+            Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
             if (session == null)
             {
                 return 0;
@@ -154,7 +154,7 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
-                Session? session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -692,7 +692,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
 
-                Session? session = _sessionProvider.GetSession();
+                Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");

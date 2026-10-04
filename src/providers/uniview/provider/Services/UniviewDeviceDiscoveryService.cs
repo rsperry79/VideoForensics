@@ -197,4 +197,186 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             return null;
         }
     }
+
+    /// <summary>
+    /// Returns a single synthetic location representing the Uniview NVR itself for a specific provider account.
+    /// The location ID is the configured NVR host; the name is derived from the device's friendly name if available,
+    /// otherwise defaults to "Uniview NVR".
+    /// </summary>
+    public async Task<IReadOnlyList<Location>> GetLocationsAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching locations for provider account: {ProviderAccountId}", providerAccountId);
+
+            UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
+            if (client == null)
+            {
+                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                return new List<Location>().AsReadOnly();
+            }
+
+            string? nvrHost = _config.UniviewNvrHost;
+            if (string.IsNullOrEmpty(nvrHost))
+            {
+                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                return new List<Location>().AsReadOnly();
+            }
+
+            // Try to get a friendly device name from GetDeviceInfoAsync
+            string locationName = "Uniview NVR";
+            try
+            {
+                JsonNode? deviceInfo = await client.GetDeviceInfoAsync(cancellationToken);
+                string? friendlyName = deviceInfo?["DeviceName"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(friendlyName))
+                {
+                    locationName = friendlyName;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch device info for provider account {ProviderAccountId}; using default", providerAccountId);
+            }
+
+            var location = new Location(
+                Id: nvrHost,
+                Name: locationName
+            );
+
+            _logger.LogInformation("Uniview location for account {ProviderAccountId}: {LocationId} - {LocationName}",
+                providerAccountId, location.Id, location.Name);
+
+            return new List<Location> { location }.AsReadOnly();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching Uniview locations for provider account {ProviderAccountId}", providerAccountId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns all devices (channels) at the given location for a specific provider account.
+    /// If the location ID does not match the configured NVR host, returns an empty list.
+    /// </summary>
+    public async Task<IReadOnlyList<Device>> GetDevicesAsync(Guid providerAccountId, string locationId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching devices for provider account {ProviderAccountId} at location {LocationId}",
+                providerAccountId, locationId);
+
+            UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
+            if (client == null)
+            {
+                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                return new List<Device>().AsReadOnly();
+            }
+
+            string? nvrHost = _config.UniviewNvrHost;
+            if (string.IsNullOrEmpty(nvrHost))
+            {
+                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                return new List<Device>().AsReadOnly();
+            }
+
+            // Only return devices if the location ID matches the configured NVR host
+            if (locationId != nvrHost)
+            {
+                _logger.LogInformation("Location {LocationId} does not match configured NVR host {NvrHost} for account {ProviderAccountId}; returning empty device list",
+                    locationId, nvrHost, providerAccountId);
+                return new List<Device>().AsReadOnly();
+            }
+
+            IReadOnlyList<UniviewClient.ChannelInfo> channels = await client.GetChannelListAsync(cancellationToken);
+            var devices = new List<Device>();
+
+            foreach (UniviewClient.ChannelInfo channel in channels)
+            {
+                var device = new Device(
+                    Id: channel.Index.ToString(),
+                    Name: channel.Name,
+                    Type: "camera",
+                    LocationId: nvrHost,
+                    IsOnline: channel.IsOnline
+                );
+                devices.Add(device);
+            }
+
+            _logger.LogInformation("Found {DeviceCount} channels at Uniview NVR {NvrHost} for account {ProviderAccountId}",
+                devices.Count, nvrHost, providerAccountId);
+            foreach (Device device in devices)
+            {
+                _logger.LogInformation("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
+                    device.Id, device.Name, device.IsOnline);
+            }
+
+            return devices.AsReadOnly();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching devices for provider account {ProviderAccountId} at location {LocationId}",
+                providerAccountId, locationId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns a specific device (channel) by ID for a specific provider account. The device ID is expected to be
+    /// the channel number as a string. If not found, returns null.
+    /// </summary>
+    public async Task<Device?> GetDeviceAsync(Guid providerAccountId, string deviceId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching device {DeviceId} for provider account {ProviderAccountId}",
+                deviceId, providerAccountId);
+
+            UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
+            if (client == null)
+            {
+                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                return null;
+            }
+
+            string? nvrHost = _config.UniviewNvrHost;
+            if (string.IsNullOrEmpty(nvrHost))
+            {
+                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                return null;
+            }
+
+            // Parse deviceId as channel number
+            if (!int.TryParse(deviceId, out int channelNumber))
+            {
+                _logger.LogWarning("Invalid device ID format for account {ProviderAccountId}: {DeviceId}",
+                    providerAccountId, deviceId);
+                return null;
+            }
+
+            // Get all devices and find the matching one
+            IReadOnlyList<Device> devices = await GetDevicesAsync(providerAccountId, nvrHost, cancellationToken);
+            Device? device = devices.FirstOrDefault(d => d.Id == deviceId);
+
+            if (device != null)
+            {
+                _logger.LogInformation("Found device {DeviceId} for account {ProviderAccountId}: {DeviceName}",
+                    device.Id, providerAccountId, device.Name);
+            }
+            else
+            {
+                _logger.LogInformation("Device {DeviceId} not found for account {ProviderAccountId}",
+                    deviceId, providerAccountId);
+            }
+
+            return device;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching device {DeviceId} for provider account {ProviderAccountId}",
+                deviceId, providerAccountId);
+            return null;
+        }
+    }
 }
