@@ -1,0 +1,60 @@
+name: Pack and Push NuGet Packages
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: "Full version string (e.g., 1.0.9.44078)"
+      github-token:
+        required: true
+        type: string
+        description: "GitHub token for pushing to GitHub Packages"
+
+jobs:
+  pack-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Pack VideoForensics.Providers.Common
+        run: |
+          dotnet pack src/core/providers/providers-common/VideoForensics.Providers.Common.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Api.Contracts
+        run: |
+          dotnet pack src/core/api/VideoForensics.Api.Contracts/VideoForensics.Api.Contracts.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Data.Common
+        run: |
+          dotnet pack src/data/common/data.common/VideoForensics.Data.Common.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Pack VideoForensics.Core.Logging
+        run: |
+          dotnet pack src/core/core/core.logging/VideoForensics.Core.Logging.csproj \
+            -c Release -o ./nupkgs
+
+      - name: Push NuGet packages to GitHub Packages
+        run: |
+          dotnet nuget push "./nupkgs/*.nupkg" \
+            --api-key ${{ inputs.github-token }} \
+            --source https://nuget.pkg.github.com/rsperry79/index.json \
+            --skip-duplicate
+
+      - name: Upload NuGet packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ inputs.version }}
+          path: nupkgs/*.nupkg

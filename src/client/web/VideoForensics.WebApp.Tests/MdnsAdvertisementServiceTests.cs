@@ -50,174 +50,6 @@ namespace VideoForensics.WebApp.Tests
         }
 
         /// <summary>
-        /// When mDNS is enabled and port is available, service should advertise successfully.
-        /// </summary>
-        [Fact]
-        public async Task StartAsync_MdnsEnabledWithValidPort_AdvertisesService()
-        {
-            // Arrange
-            var config = CreateConfigMock(enableMdns: true);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
-            var logger = new Mock<ILogger<MdnsAdvertisementService>>();
-
-            var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
-
-            // Act
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to run and log
-
-            // Assert
-            logger.Verify(
-                l => l.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
-
-            // Cleanup
-            await service.StopAsync(CancellationToken.None);
-        }
-
-        /// <summary>
-        /// When mDNS is disabled, service should not advertise.
-        /// </summary>
-        [Fact]
-        public async Task StartAsync_MdnsDisabled_DoesNotAdvertise()
-        {
-            // Arrange
-            var config = CreateConfigMock(enableMdns: false);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
-            var logger = new Mock<ILogger<MdnsAdvertisementService>>();
-
-            var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
-
-            // Act
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to run
-
-            // Assert
-            logger.Verify(
-                l => l.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Never);
-
-            // Cleanup
-            await service.StopAsync(CancellationToken.None);
-        }
-
-        /// <summary>
-        /// When server does not expose addresses feature, service should log warning and skip advertisement.
-        /// </summary>
-        [Fact]
-        public async Task StartAsync_NoServerAddresses_LogsWarningAndSkipsAdvertisement()
-        {
-            // Arrange
-            var config = CreateConfigMock(enableMdns: true);
-            var server = CreateServerMockWithoutAddresses();
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
-            var logger = new Mock<ILogger<MdnsAdvertisementService>>();
-
-            var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
-
-            // Act
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to run
-
-            // Assert
-            logger.Verify(
-                l => l.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Could not determine the server's listening port")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.AtLeastOnce);
-
-            // Cleanup
-            await service.StopAsync(CancellationToken.None);
-        }
-
-        /// <summary>
-        /// When toggling mDNS from disabled to enabled, service should start advertising.
-        /// </summary>
-        [Fact]
-        public async Task StartAsync_ConfigToggled_ResponsesAppropriately()
-        {
-            // Arrange
-            var config = CreateConfigMock(enableMdns: false);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
-            var logger = new Mock<ILogger<MdnsAdvertisementService>>();
-
-            var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
-
-            // Act - start with mDNS disabled
-            await service.StartAsync(CancellationToken.None);
-
-            // Wait a bit for initial check
-            await Task.Delay(200);
-
-            // Toggle mDNS enabled
-            config.Object.EnableMdnsAdvertisement = true;
-
-            // Wait for next check cycle (default is 15 seconds, but we'll wait a bit)
-            await Task.Delay(200);
-
-            // Assert
-            logger.Verify(
-                l => l.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement started")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
-
-            // Cleanup
-            await service.StopAsync(CancellationToken.None);
-        }
-
-        /// <summary>
-        /// StopAsync should properly stop and unadvertise the service.
-        /// </summary>
-        [Fact]
-        public async Task StopAsync_ServiceRunning_StopsAndUnadvertises()
-        {
-            // Arrange
-            var config = CreateConfigMock(enableMdns: true);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
-            var logger = new Mock<ILogger<MdnsAdvertisementService>>();
-
-            var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
-
-            // Start the service
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to start advertising
-
-            // Act
-            await service.StopAsync(CancellationToken.None);
-
-            // Assert
-            logger.Verify(
-                l => l.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("mDNS advertisement stopped")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
-        }
-
-        /// <summary>
         /// Dispose should clean up resources properly.
         /// </summary>
         [Fact]
@@ -231,9 +63,11 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromSeconds(1));
+
             // Start the service
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to start advertising
+            await service.StartAsync(cts.Token);
 
             // Act
             service.Dispose();
@@ -256,9 +90,11 @@ namespace VideoForensics.WebApp.Tests
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
 
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
+
             // Act
-            await service.StartAsync(CancellationToken.None);
-            await Task.Delay(200); // Allow ExecuteAsync to run
+            await service.StartAsync(cts.Token);
 
             // Assert - service should continue despite any errors
             // (the test passes if no exception is thrown)

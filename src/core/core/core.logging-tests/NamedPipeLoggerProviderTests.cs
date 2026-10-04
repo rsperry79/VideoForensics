@@ -179,7 +179,7 @@ namespace VideoForensics.Core.Logging.Tests
         }
 
         [Fact(Skip = "Windows-only test")]
-        public void WriteLog_ThreadSafe_ConcurrentWrites()
+        public async Task WriteLog_ThreadSafe_ConcurrentWrites()
         {
             const int threadCount = 10;
             const int messagesPerThread = 100;
@@ -198,7 +198,7 @@ namespace VideoForensics.Core.Logging.Tests
                 }));
             }
 
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
 
             // Assert - verify all messages were logged (buffer will have last 500 if total > 500)
             var buffered = _provider.GetBufferedEntries();
