@@ -382,11 +382,13 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
                 {
+                    // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
                     _logger.LogInformation("Reusing cached locations ({Count}), fetched {Age:F0}s ago for account {AccountId}",
                         _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds, providerAccountId);
                     return _cachedLocations;
                 }
 
+                // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
                 _logger.LogInformation("Fetching Ring locations for account {AccountId}", providerAccountId);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
@@ -396,6 +398,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return new List<Location>().AsReadOnly();
                 }
 
+                // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
                 _logger.LogInformation("Session exists for account {AccountId}: OAuthToken = {HasToken}",
                     providerAccountId, session.OAuthToken != null ? "yes" : "no");
 
@@ -518,6 +521,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
+                    // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
                     _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
                     return new List<Device>().AsReadOnly();
                 }
