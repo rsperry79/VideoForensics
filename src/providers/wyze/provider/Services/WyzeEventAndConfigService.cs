@@ -18,6 +18,15 @@ namespace VideoForensics.Providers.Wyze.Services
         }
 
         /// <summary>
+        /// Gets all events for a device within a date range (account-aware version).
+        /// Supports filtering by event type (motion, person, sound, etc).
+        /// </summary>
+        public async Task<IReadOnlyList<DeviceEvent>> GetEventsAsync(Guid accountId, string deviceId, DateTime startDate, DateTime endDate, string? eventType = null, CancellationToken cancellationToken = default)
+        {
+            return await GetEventsAsync(deviceId, startDate, endDate, eventType, cancellationToken);
+        }
+
+        /// <summary>
         /// Gets all events for a device within a date range.
         /// Supports filtering by event type (motion, person, sound, etc).
         /// </summary>
@@ -45,6 +54,14 @@ namespace VideoForensics.Providers.Wyze.Services
         }
 
         /// <summary>
+        /// Gets current configuration settings for a device (account-aware version).
+        /// </summary>
+        public async Task<DeviceConfig?> GetDeviceConfigAsync(Guid accountId, string deviceId, CancellationToken cancellationToken = default)
+        {
+            return await GetDeviceConfigAsync(deviceId, cancellationToken);
+        }
+
+        /// <summary>
         /// Gets current configuration settings for a device.
         /// </summary>
         public async Task<DeviceConfig?> GetDeviceConfigAsync(string deviceId, CancellationToken cancellationToken = default)
@@ -66,6 +83,15 @@ namespace VideoForensics.Providers.Wyze.Services
                 _logger.LogError(ex, "Error fetching Wyze config for device {DeviceId}", deviceId);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Updates device configuration settings (account-aware version).
+        /// Supports changing motion detection, sensitivity, recording mode, etc.
+        /// </summary>
+        public async Task<bool> UpdateDeviceConfigAsync(Guid accountId, string deviceId, DeviceConfig config, CancellationToken cancellationToken = default)
+        {
+            return await UpdateDeviceConfigAsync(deviceId, config, cancellationToken);
         }
 
         /// <summary>

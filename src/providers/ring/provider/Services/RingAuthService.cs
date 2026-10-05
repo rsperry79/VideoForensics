@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -222,7 +223,9 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             if (session == null)
             {
                 if (!await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null, cancellationToken))
@@ -230,13 +233,16 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
+#pragma warning disable CS0618
                 session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     return false;
                 }
             }
 
+            Debug.Assert(session != null, "Session must not be null after restore attempt");
             try
             {
                 await session.EnsureSessionValid();
@@ -254,12 +260,15 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Refreshing Ring API token");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     return false;
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 await session.RefreshSession();
                 return true;
             }
@@ -532,7 +541,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         public string GetAuthStatus()
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             return session?.OAuthToken == null ? "Not authenticated" : "Authenticated";
         }
 

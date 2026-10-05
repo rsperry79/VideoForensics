@@ -251,5 +251,83 @@ namespace VideoForensics.Providers.Uniview.Tests
                     mockSessionProvider.Object,
                     null!));
         }
+
+        [Fact]
+        public async Task UniviewDeviceDiscoveryService_GetLocationsAsync_WithAccountId_NotAuthenticated_ReturnsEmptyList()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewDeviceDiscoveryService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var mockConfig = new Mock<IForensicsConfiguration>();
+
+            var providerAccountId = Guid.NewGuid();
+            _ = mockSessionProvider.Setup(s => s.GetClient(providerAccountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewDeviceDiscoveryService(
+                mockLogger.Object,
+                mockSessionProvider.Object,
+                mockConfig.Object);
+
+            var ct = CancellationToken.None;
+
+            // Act
+            IReadOnlyList<Location> locations = await service.GetLocationsAsync(providerAccountId, ct);
+
+            // Assert
+            Assert.Empty(locations);
+            mockSessionProvider.Verify(s => s.GetClient(providerAccountId), Times.Once);
+        }
+
+        [Fact]
+        public async Task UniviewDeviceDiscoveryService_GetDevicesAsync_WithAccountId_NotAuthenticated_ReturnsEmptyList()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewDeviceDiscoveryService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var mockConfig = new Mock<IForensicsConfiguration>();
+
+            var providerAccountId = Guid.NewGuid();
+            _ = mockSessionProvider.Setup(s => s.GetClient(providerAccountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewDeviceDiscoveryService(
+                mockLogger.Object,
+                mockSessionProvider.Object,
+                mockConfig.Object);
+
+            var ct = CancellationToken.None;
+
+            // Act
+            IReadOnlyList<Device> devices = await service.GetDevicesAsync(providerAccountId, "192.168.1.1", ct);
+
+            // Assert
+            Assert.Empty(devices);
+            mockSessionProvider.Verify(s => s.GetClient(providerAccountId), Times.Once);
+        }
+
+        [Fact]
+        public async Task UniviewDeviceDiscoveryService_GetDeviceAsync_WithAccountId_NotAuthenticated_ReturnsNull()
+        {
+            // Arrange
+            var mockLogger = new Mock<ILogger<UniviewDeviceDiscoveryService>>();
+            var mockSessionProvider = new Mock<IUniviewSessionProvider>();
+            var mockConfig = new Mock<IForensicsConfiguration>();
+
+            var providerAccountId = Guid.NewGuid();
+            _ = mockSessionProvider.Setup(s => s.GetClient(providerAccountId)).Returns((UniviewClient?)null);
+
+            var service = new UniviewDeviceDiscoveryService(
+                mockLogger.Object,
+                mockSessionProvider.Object,
+                mockConfig.Object);
+
+            var ct = CancellationToken.None;
+
+            // Act
+            Device? device = await service.GetDeviceAsync(providerAccountId, "1", ct);
+
+            // Assert
+            Assert.Null(device);
+            mockSessionProvider.Verify(s => s.GetClient(providerAccountId), Times.Once);
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.ObjectModel;
@@ -64,13 +65,16 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching Ring locations");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
                     return new List<Location>().AsReadOnly();
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 _logger.LogInformation("Session exists: OAuthToken = {HasToken}",
                     session.OAuthToken != null ? "yes" : "no");
 
@@ -216,13 +220,16 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching the account's full device list");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
                     return new List<Device>().AsReadOnly();
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 Entities.Devices? devices = await session.GetRingDevices();
 
                 var deviceMap = new Dictionary<string, Device>();
@@ -357,6 +364,299 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching device {DeviceId}", deviceId);
+                return null;
+            }
+        }
+
+        // ===== Account-Aware Overloads (Phase 1 Refactoring) =====
+        // These methods enable concurrent processing of multiple Ring accounts without race conditions
+        // by accepting an explicit providerAccountId and passing it to SessionProvider.GetSession(Guid)
+
+        /// <summary>
+        /// Gets all locations/sites for the authenticated user in a specific provider account (account-aware overload).
+        /// </summary>
+        public async Task<IReadOnlyList<Location>> GetLocationsAsync(Guid providerAccountId, CancellationToken cancellationToken = default)
+        {
+            await _locationsCacheLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
+                {
+                    _logger.LogInformation("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
+                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
+                    return _cachedLocations;
+                }
+
+                _logger.LogInformation("Fetching Ring locations");
+
+                Session? session = _sessionProvider.GetSession(providerAccountId);
+                if (session == null)
+                {
+                    _logger.LogError("Not authenticated for Ring account: Session is null");
+                    return new List<Location>().AsReadOnly();
+                }
+
+                _logger.LogInformation("Ring session exists: OAuthToken = {HasToken}",
+                    session.OAuthToken != null ? "yes" : "no");
+
+                // Ensure session is valid before calling APIs
+                try
+                {
+                    await session.EnsureSessionValid();
+                    _logger.LogInformation("Ring session validation passed");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ring session validation failed");
+                    throw;
+                }
+
+                List<Entities.Location>? locations = await session.GetLocations();
+                _logger.LogInformation("GetLocations() completed for account {AccountId}, returned collection type: {Type}",
+                    providerAccountId, locations?.GetType().Name ?? "null");
+
+                if (locations == null)
+                {
+                    _logger.LogWarning("GetLocations returned null for account {AccountId}", providerAccountId);
+                    return new List<Location>().AsReadOnly();
+                }
+
+                _logger.LogInformation("GetLocations returned {RawLocationCount} location(s) for account {AccountId}",
+                    locations.Count, providerAccountId);
+
+                IReadOnlyList<Location> result = locations
+                    .Where(l => l.Id.HasValue)
+                    .Select(l => new Location(
+                        Id: l.Id!.Value.ToString(),
+                        Name: l.Name ?? "Unknown Location",
+                        Address: l.Address?.Address1
+                    ))
+                    .ToList()
+                    .AsReadOnly();
+
+                if (result.Count == 0)
+                {
+                    _logger.LogWarning("GetLocations returned zero locations for account {AccountId}; deriving from device list", providerAccountId);
+                    result = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
+                }
+                else
+                {
+                    var knownIds = new HashSet<string>(result.Select(l => l.Id));
+                    IReadOnlyList<Location> derived = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
+                    var orphaned = derived.Where(l => !knownIds.Contains(l.Id)).ToList();
+                    if (orphaned.Count > 0)
+                    {
+                        _logger.LogWarning("Found {Count} orphaned device location_id(s) for account {AccountId}", orphaned.Count, providerAccountId);
+                        result = result.Concat(orphaned).ToList().AsReadOnly();
+                    }
+                }
+
+                _logger.LogInformation("Found {LocationCount} locations for account {AccountId}", result.Count, providerAccountId);
+                _cachedLocations = result;
+                _cachedLocationsAt = DateTime.UtcNow;
+
+                _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching locations for account {AccountId}: {Message}", providerAccountId, ex.Message);
+                throw;
+            }
+            finally
+            {
+                _ = _locationsCacheLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Derives a location list from device location_ids for a specific account (account-aware overload).
+        /// </summary>
+        private async Task<IReadOnlyList<Location>> DeriveLocationsFromDevicesAsync(Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<Device> devices = await GetAllDevicesUnfilteredAsync(providerAccountId, cancellationToken);
+
+            return devices
+                .Where(d => d.LocationId != UnknownLocationId)
+                .GroupBy(d => d.LocationId)
+                .Select(g => new Location(
+                    Id: g.Key,
+                    Name: "Unknown Location",
+                    Address: null
+                ))
+                .ToList()
+                .AsReadOnly();
+        }
+
+        /// <summary>
+        /// Gets all devices at a specific location for a specific provider account (account-aware overload).
+        /// </summary>
+        public async Task<IReadOnlyList<Device>> GetDevicesAsync(Guid providerAccountId, string locationId, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<Device> allDevices = await GetAllDevicesUnfilteredAsync(providerAccountId, cancellationToken);
+            return allDevices.Where(d => d.LocationId == locationId).ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Gets all devices (unfiltered) for a specific provider account, with caching per account (account-aware overload).
+        /// </summary>
+        private async Task<IReadOnlyList<Device>> GetAllDevicesUnfilteredAsync(Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            await _allDevicesCacheLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (_cachedAllDevices.HasValue && DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt < CacheTtl)
+                {
+                    _logger.LogInformation("Reusing cached device list ({Count}) for account {AccountId}, fetched {Age:F0}s ago",
+                        _cachedAllDevices.Value.Devices.Count, providerAccountId, (DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt).TotalSeconds);
+                    return _cachedAllDevices.Value.Devices;
+                }
+
+                _logger.LogInformation("Fetching device list for account {AccountId}", providerAccountId);
+
+                Session? session = _sessionProvider.GetSession(providerAccountId);
+                if (session == null)
+                {
+                    _logger.LogError("Not authenticated for Ring account: Session is null");
+                    return new List<Device>().AsReadOnly();
+                }
+
+                Entities.Devices? devices = await session.GetRingDevices();
+
+                var deviceMap = new Dictionary<string, Device>();
+
+                if (devices?.Doorbots != null)
+                {
+                    foreach (Entities.Doorbot d in devices.Doorbots)
+                    {
+                        string deviceId = d.Id.ToString();
+                        deviceMap[deviceId] = new Device(
+                            Id: deviceId,
+                            Name: d.Description ?? "Unknown Device",
+                            Type: "doorbot",
+                            LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
+                            IsOnline: d.Subscribed ?? false
+                        );
+                    }
+                }
+
+                if (devices?.AuthorizedDoorbots != null)
+                {
+                    foreach (Entities.Doorbot d in devices.AuthorizedDoorbots)
+                    {
+                        string deviceId = d.Id.ToString();
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: d.Description ?? "Unknown Device",
+                                Type: "doorbot",
+                                LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
+                                IsOnline: d.Subscribed ?? false
+                            );
+                        }
+                    }
+                }
+
+                if (devices?.StickupCams != null)
+                {
+                    foreach (Entities.StickupCam s in devices.StickupCams)
+                    {
+                        string deviceId = s.Id?.ToString() ?? s.DeviceId;
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: s.Description ?? "Unknown Device",
+                                Type: "stickup_cam",
+                                LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
+                                IsOnline: s.Subscribed ?? false
+                            );
+                        }
+                    }
+                }
+
+                if (devices?.AuthorizedDoorbots != null)
+                {
+                    foreach (Entities.Doorbot d in devices.AuthorizedDoorbots)
+                    {
+                        string deviceId = d.Id.ToString();
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: d.Description ?? "Unknown Device",
+                                Type: "authorized_doorbot",
+                                LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
+                                IsOnline: d.Subscribed ?? false
+                            );
+                        }
+                    }
+                }
+
+                if (devices?.Chimes != null)
+                {
+                    foreach (Entities.Chime c in devices.Chimes)
+                    {
+                        string deviceId = c.Id.ToString();
+                        if (!deviceMap.ContainsKey(deviceId))
+                        {
+                            deviceMap[deviceId] = new Device(
+                                Id: deviceId,
+                                Name: c.Description ?? "Unknown Device",
+                                Type: "chime",
+                                LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
+                                IsOnline: c.Health?.Connected ?? false
+                            );
+                        }
+                    }
+                }
+
+                IReadOnlyList<Device> result = deviceMap.Values.ToList().AsReadOnly();
+                _logger.LogInformation("Found {DeviceCount} devices for account {AccountId}", result.Count, providerAccountId);
+
+                _cachedAllDevices = (result, DateTime.UtcNow);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching device list for account {AccountId}: {Message}", providerAccountId, ex.Message);
+                throw;
+            }
+            finally
+            {
+                _ = _allDevicesCacheLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Gets a specific device for a specific provider account (account-aware overload).
+        /// </summary>
+        public async Task<Device?> GetDeviceAsync(Guid providerAccountId, string deviceId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+
+                IReadOnlyList<Location> locations = await GetLocationsAsync(providerAccountId, cancellationToken);
+
+                foreach (Location location in locations)
+                {
+                    IReadOnlyList<Device> devices = await GetDevicesAsync(providerAccountId, location.Id, cancellationToken);
+                    Device? device = devices.FirstOrDefault(d => d.Id == deviceId);
+                    if (device != null)
+                    {
+                        return device;
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
                 return null;
             }
         }

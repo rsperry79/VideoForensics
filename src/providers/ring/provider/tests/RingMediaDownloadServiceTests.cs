@@ -28,7 +28,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns((Session?)null);
             ILogger logger = new Mock<ILogger>().Object;
             IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
@@ -75,7 +75,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns((Session?)null);
             ILogger logger = new Mock<ILogger>().Object;
             IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns((Session?)null);
             ILogger logger = new Mock<ILogger>().Object;
             IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
@@ -325,7 +325,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
             var session = new Mock<Session>("testuser", "testpass", null, null);
-            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session.Object);
             ILogger logger = new Mock<ILogger>().Object;
             IVideoForensicsDataClient dataClient = CreateMockDataClient();
             var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
@@ -353,6 +353,119 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Act & Assert
             _ = Assert.Throws<ArgumentNullException>(() => new RingMediaDownloadService(logger, sessionProvider.Object, null!));
+        }
+
+        [Fact]
+        public async Task GetMatchedEventCountAsync_WithAccountId_PassesToSessionProvider()
+        {
+            // Arrange
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
+
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Prime the cached account ID
+            service.SetActiveProviderAccountId(accountId);
+
+            // Act
+            int count = await service.GetMatchedEventCountAsync("device123", DateTime.Now.AddDays(-7), DateTime.Now);
+
+            // Assert
+            sessionProvider.Verify(sp => sp.GetSession(accountId), Times.Once, "GetSession should be called with the cached accountId");
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_WithAccountId_PassesToSessionProvider()
+        {
+            // Arrange
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
+
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Prime the cached account ID
+            service.SetActiveProviderAccountId(accountId);
+
+            // Act
+            DownloadResult result = await service.DownloadVideosAsync(
+                "device123",
+                "/tmp/videos",
+                DateTime.Now.AddDays(-7),
+                DateTime.Now
+            );
+
+            // Assert
+            sessionProvider.Verify(sp => sp.GetSession(accountId), Times.Once, "GetSession should be called with the cached accountId");
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WithAccountId_PassesToSessionProvider()
+        {
+            // Arrange
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
+
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Prime the cached account ID
+            service.SetActiveProviderAccountId(accountId);
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync(
+                "123",
+                "/tmp/snapshots",
+                DateTime.Now.AddDays(-7),
+                DateTime.Now
+            );
+
+            // Assert
+            sessionProvider.Verify(sp => sp.GetSession(accountId), Times.Once, "GetSession should be called with the cached accountId");
+        }
+
+        [Fact]
+        public async Task ConcurrentDownloads_WithDifferentAccountIds_DoesNotRace()
+        {
+            // Arrange
+            var accountId1 = Guid.NewGuid();
+            var accountId2 = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession1 = new Mock<Session>("user1", "pass1", null, null);
+            var mockSession2 = new Mock<Session>("user2", "pass2", null, null);
+
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(mockSession1.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(mockSession2.Object);
+
+            ILogger logger = new Mock<ILogger>().Object;
+            IVideoForensicsDataClient dataClient = CreateMockDataClient();
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient);
+
+            // Act
+            service.SetActiveProviderAccountId(accountId1);
+            var task1 = service.GetMatchedEventCountAsync("device123", DateTime.Now.AddDays(-7), DateTime.Now);
+
+            service.SetActiveProviderAccountId(accountId2);
+            var task2 = service.GetMatchedEventCountAsync("device456", DateTime.Now.AddDays(-7), DateTime.Now);
+
+            await Task.WhenAll(task1, task2);
+
+            // Assert - verify each account's session was called
+            sessionProvider.Verify(sp => sp.GetSession(accountId1), Times.Once);
+            sessionProvider.Verify(sp => sp.GetSession(accountId2), Times.Once);
         }
     }
 }

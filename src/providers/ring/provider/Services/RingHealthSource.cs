@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -115,13 +116,16 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<IReadOnlyList<DeviceHealthReading>> FetchHealthForSingleSessionAsync(CancellationToken ct)
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             if (session == null)
             {
                 _logger.LogDebug("No active Ring session; skipping health fetch for this account");
                 return Array.Empty<DeviceHealthReading>();
             }
 
+            Debug.Assert(session != null, "Session must not be null after null check");
             try
             {
                 Devices devices = await session.GetRingDevices();

@@ -48,6 +48,7 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - **No vendor SDK outside service layers** — abstract via interfaces
 - **Error handling:** log errors with context, expose via `GetLastError()` method, display to users
 - **User-facing paths:** always log (Info on success, Error on failure)
+- **Account ID logging:** when logging multi-account operations, use human-readable provider name (e.g., "Ring account") instead of GUID. Never log raw GUIDs for account identifiers; CodeQL flags these as storing sensitive data. Pass provider name to services if needed for logging context.
 - **No secrets in code** — use config/env vars/credential stores
 - **Input validation** at API boundaries only
 - **No plain-text passwords** — use provider APIs or hash + salt
