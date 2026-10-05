@@ -382,35 +382,32 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
                 {
-                    // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
-                    _logger.LogInformation("Reusing cached locations ({Count}), fetched {Age:F0}s ago for account {AccountId}",
-                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds, providerAccountId);
+                    _logger.LogInformation("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
+                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
                     return _cachedLocations;
                 }
 
-                // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
-                _logger.LogInformation("Fetching Ring locations for account {AccountId}", providerAccountId);
+                _logger.LogInformation("Fetching Ring locations");
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for Ring account: Session is null");
                     return new List<Location>().AsReadOnly();
                 }
 
-                // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
-                _logger.LogInformation("Session exists for account {AccountId}: OAuthToken = {HasToken}",
-                    providerAccountId, session.OAuthToken != null ? "yes" : "no");
+                _logger.LogInformation("Ring session exists: OAuthToken = {HasToken}",
+                    session.OAuthToken != null ? "yes" : "no");
 
                 // Ensure session is valid before calling APIs
                 try
                 {
                     await session.EnsureSessionValid();
-                    _logger.LogInformation("Session validation passed for account {AccountId}", providerAccountId);
+                    _logger.LogInformation("Ring session validation passed");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Session validation failed for account {AccountId}", providerAccountId);
+                    _logger.LogError(ex, "Ring session validation failed");
                     throw;
                 }
 
@@ -521,8 +518,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    // lgtm[cs/clear-text-logging-sensitive-data]: Guid is account identifier, not a credential
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for Ring account: Session is null");
                     return new List<Device>().AsReadOnly();
                 }
 
