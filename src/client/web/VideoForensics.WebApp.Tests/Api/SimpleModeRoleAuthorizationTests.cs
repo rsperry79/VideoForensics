@@ -58,7 +58,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "This is a relevant piece of evidence.",
@@ -75,7 +75,7 @@ public class SimpleModeRoleAuthorizationTests
 
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -95,7 +95,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Analysis complete",
@@ -113,7 +113,7 @@ public class SimpleModeRoleAuthorizationTests
         // Assert
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -171,7 +171,7 @@ public class SimpleModeRoleAuthorizationTests
         var badRequestResult = result as Microsoft.AspNetCore.Http.HttpResults.BadRequest<object>;
         Assert.NotNull(badRequestResult);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -231,7 +231,7 @@ public class SimpleModeRoleAuthorizationTests
         var badRequestResult = result as Microsoft.AspNetCore.Http.HttpResults.BadRequest<object>;
         Assert.NotNull(badRequestResult);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -252,7 +252,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Got your message",
@@ -270,7 +270,7 @@ public class SimpleModeRoleAuthorizationTests
         // Assert
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -307,7 +307,7 @@ public class SimpleModeRoleAuthorizationTests
         var badRequestResult = result as Microsoft.AspNetCore.Http.HttpResults.BadRequest<object>;
         Assert.NotNull(badRequestResult);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -333,7 +333,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Reply to your message",
@@ -351,7 +351,7 @@ public class SimpleModeRoleAuthorizationTests
         // Assert
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -371,7 +371,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Hi there",
@@ -389,7 +389,7 @@ public class SimpleModeRoleAuthorizationTests
         // Assert
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -412,7 +412,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = expectedReply,
@@ -458,7 +458,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "I'm ready to help",
@@ -475,7 +475,7 @@ public class SimpleModeRoleAuthorizationTests
 
         // Assert
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), "Start a new conversation", It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), "Start a new conversation", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -502,8 +502,8 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         mockChatService
-            .Setup(s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback<List<ChatTurn>, string, CancellationToken>((turns, msg, ct) =>
+            .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<IReadOnlyList<ChatTurn>, string, CancellationToken>((turns, msg, ct) =>
             {
                 // Verify the history for assertions
                 Assert.NotNull(turns);
@@ -526,75 +526,7 @@ public class SimpleModeRoleAuthorizationTests
         // Assert
         Assert.NotNull(result);
         mockChatService.Verify(
-            s => s.SendMessageAsync(It.IsAny<List<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
-    }
-}
-
-/// <summary>
-/// Internal invoker class to call ChatEndpoints static method without going through full WebApplication routing.
-/// Used for unit testing the endpoint logic directly.
-/// </summary>
-public static class ChatEndpointsInvoker
-{
-    public static async Task<IResult> SendChatMessageAsync(
-        ChatRequestDto request,
-        IChatService chatService,
-        HttpContext context,
-        ILogger<Program> logger,
-        CancellationToken ct)
-    {
-        // Null request check
-        if (request == null)
-        {
-            return Results.BadRequest(new { error = "Request body is required." });
-        }
-
-        // Empty message check
-        if (string.IsNullOrWhiteSpace(request.Message))
-        {
-            return Results.BadRequest(new { error = "Message cannot be empty." });
-        }
-
-        // Message length check
-        if (request.Message.Length > 10_000)
-        {
-            return Results.BadRequest(new { error = "Message is too long (max 10,000 characters)." });
-        }
-
-        // History length check
-        if (request.History?.Count > 100)
-        {
-            return Results.BadRequest(new { error = "History is too long (max 100 turns)." });
-        }
-
-        try
-        {
-            // Convert DTOs to domain entities
-            var history = (request.History ?? Array.Empty<ChatMessageDto>())
-                .Select(h => h.ToDomain())
-                .ToList();
-
-            // Invoke the orchestrator
-            var result = await chatService.SendMessageAsync(history, request.Message, ct);
-
-            // Log the interaction
-            logger.LogInformation(
-                "Chat: message from operator, tools_invoked={ToolsInvoked}",
-                string.Join(",", result.ToolsInvoked));
-
-            // Return response as DTO
-            return Results.Ok(result.ToDto());
-        }
-        catch (OperationCanceledException)
-        {
-            logger.LogWarning("Chat: request cancelled");
-            return Results.StatusCode(StatusCodes.Status408RequestTimeout);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Chat: unhandled exception");
-            return Results.StatusCode(StatusCodes.Status500InternalServerError);
-        }
     }
 }

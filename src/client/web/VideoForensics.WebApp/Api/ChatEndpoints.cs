@@ -33,23 +33,23 @@ namespace VideoForensics.WebApp.Api
             // Validate request
             if (request == null)
             {
-                return Results.BadRequest(new { error = "Request body is required." });
+                return Results.BadRequest((object)new { error = "Request body is required." });
             }
 
             if (string.IsNullOrWhiteSpace(request.Message))
             {
-                return Results.BadRequest(new { error = "Message cannot be empty." });
+                return Results.BadRequest((object)new { error = "Message cannot be empty." });
             }
 
             // Limit message and history size
             if (request.Message.Length > 10_000)
             {
-                return Results.BadRequest(new { error = "Message is too long (max 10,000 characters)." });
+                return Results.BadRequest((object)new { error = "Message is too long (max 10,000 characters)." });
             }
 
             if (request.History?.Count > 100)
             {
-                return Results.BadRequest(new { error = "History is too long (max 100 turns)." });
+                return Results.BadRequest((object)new { error = "History is too long (max 100 turns)." });
             }
 
             try

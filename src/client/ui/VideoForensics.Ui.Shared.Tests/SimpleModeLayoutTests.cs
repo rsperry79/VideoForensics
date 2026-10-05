@@ -13,6 +13,14 @@ using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Layout.Mobile;
 using VideoForensics.Ui.Shared.Layout.Simple;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Api.Contracts;
+using Microsoft.Extensions.Localization;
+using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Ui.Shared.Services.Cases;
+using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Providers.Common.Contracts;
 
 /// <summary>
 /// Tests for SimpleLayout component rendering and mode switching behavior.
@@ -28,6 +36,108 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+
+        // Register TimeProvider for ScopeRail component
+        Services.AddSingleton(TimeProvider.System);
+
+        // Register state classes (no-dependency, real instances)
+        Services.AddScoped<InspectorState>();
+        Services.AddScoped<ScopeState>();
+        Services.AddScoped<RightPanelContentService>();
+        Services.AddScoped(sp => new LayoutPreferencesState(sp.GetRequiredService<IJSRuntime>()));
+
+        // Register PairedSessionState for SimpleLayout and other components
+        var session = new PairedSessionState(JSInterop.JSRuntime);
+        Services.AddScoped(_ => session);
+
+        // Register IChatService mock for ChatPanel component
+        var mockChatService = new Mock<IChatService>();
+        Services.AddScoped(_ => mockChatService.Object);
+
+        // Register IStringLocalizer<SharedResources> mock
+        var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
+        localizerMock
+            .Setup(l => l[It.IsAny<string>()])
+            .Returns((string key) => new LocalizedString(key, key));
+        Services.AddScoped(_ => localizerMock.Object);
+
+        // Register IAppLockPreferencesStore mock
+        var appLockMock = new Mock<IAppLockPreferencesStore>();
+        appLockMock.SetupGet(a => a.IsSupported).Returns(false);
+        Services.AddScoped(_ => appLockMock.Object);
+
+        // Register IServerConnectivityState mock
+        var connectivityMock = new Mock<IServerConnectivityState>();
+        connectivityMock.SetupGet(c => c.IsUnreachable).Returns(false);
+        Services.AddScoped(_ => connectivityMock.Object);
+
+        // Register INoticeRepository mock
+        var noticeRepoMock = new Mock<INoticeRepository>();
+        noticeRepoMock
+            .Setup(r => r.CountUndismissedForOperatorAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        noticeRepoMock
+            .Setup(r => r.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Notice>());
+        Services.AddScoped(_ => noticeRepoMock.Object);
+
+        // Register INoticeDismissalRepository mock
+        var dismissalRepoMock = new Mock<INoticeDismissalRepository>();
+        Services.AddScoped(_ => dismissalRepoMock.Object);
+
+        // Register ILegalHoldRepository and IEvidenceValidationService mocks (needed by InspectorPanel)
+        Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
+
+        // Register ICultureSwitcher mock
+        var cultureSwitcherMock = new Mock<ICultureSwitcher>();
+        Services.AddScoped(_ => cultureSwitcherMock.Object);
+
+        // Register IOperatorPreferencesRepository mock
+        var opPrefRepoMock = new Mock<IOperatorPreferencesRepository>();
+        opPrefRepoMock
+            .Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OperatorPreferences?)null);
+        Services.AddScoped(_ => opPrefRepoMock.Object);
+
+        // Register ICaseRepository mock
+        var caseRepoMock = new Mock<ICaseRepository>();
+        caseRepoMock
+            .Setup(r => r.ListAsync(It.IsAny<CaseStatus>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ForensicCase>());
+        Services.AddScoped(_ => caseRepoMock.Object);
+
+        // Register services needed by RightPanel components (AccountSwitcher, ThemeLanguagePicker)
+        Services.AddScoped(_ => new Mock<IProviderAccountRepository>().Object);
+        Services.AddScoped(_ => new Mock<IUserRepository>().Object);
+
+        // Note: AccountSwitcher requires IProviderAuthService which violates client/server architecture.
+        // This is registered here for testing purposes only.
+        // TODO: Refactor AccountSwitcher to use remote service calls instead of direct provider access.
+        var authServiceMock = new Mock<IProviderAuthService>();
+        Services.AddScoped(_ => authServiceMock.Object);
+
+        // Register IForensicsConfiguration mock
+        var forensicsConfigMock = new Mock<IForensicsConfiguration>();
+        forensicsConfigMock.SetupGet(f => f.ActiveProviderAccountId).Returns((Guid?)null);
+        Services.AddScoped(_ => forensicsConfigMock.Object);
+
+        // Register IForensicsConfigurationService mock
+        Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IForensicsConfigurationService>().Object);
+
+        // Register ThemePreferenceService with all its dependencies
+        Services.AddScoped(sp =>
+            new ThemePreferenceService(
+                sp.GetRequiredService<IJSRuntime>(),
+                sp.GetRequiredService<IOperatorPreferencesRepository>(),
+                sp.GetRequiredService<PairedSessionState>(),
+                sp.GetRequiredService<ICultureSwitcher>()));
+
+        // Register CaseState which depends on ICaseRepository and ScopeState
+        Services.AddScoped(sp =>
+            new CaseState(
+                sp.GetRequiredService<ICaseRepository>(),
+                sp.GetRequiredService<ScopeState>()));
     }
 
     protected PairedSessionState RegisterSignedInSession()
@@ -39,11 +149,9 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
 
     protected void RegisterUiModeService(string mode = "Standard")
     {
-        var mockService = new Mock<UiModeService>(
-            Mock.Of<IOperatorPreferencesRepository>(),
-            RegisterSignedInSession()
-        );
+        var mockService = new Mock<IUiModeService>();
         mockService.SetupGet(s => s.Mode).Returns(mode);
+        mockService.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
         mockService.SetupAdd(s => s.OnChange += It.IsAny<Action>());
         Services.AddScoped(_ => mockService.Object);
     }
@@ -261,11 +369,9 @@ public class ResponsiveLayout_ModeChangeHandling_Tests : SimpleModeLayoutTestBas
     public void ResponsiveLayout_RegistersForModeChangeNotifications()
     {
         // Arrange
-        var mockUiMode = new Mock<UiModeService>(
-            Mock.Of<IOperatorPreferencesRepository>(),
-            RegisterSignedInSession()
-        );
+        var mockUiMode = new Mock<IUiModeService>();
         mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
         var modeChangeHandled = false;
         mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>()).Callback<Action>(action =>
         {
