@@ -1,18 +1,20 @@
 name: CodeQL
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - wip
-  pull_request:
-    branches:
-      - main
-      - dev
-      - wip
-  schedule:
-    - cron: '0 3 * * 1'
+  # CodeQL analysis disabled - remove commented lines to re-enable
+  # push:
+  #   branches:
+  #     - main
+  #     - dev
+  #     - wip
+  # pull_request:
+  #   branches:
+  #     - main
+  #     - dev
+  #     - wip
+  # schedule:
+  #   - cron: '0 3 * * 1'
+  workflow_dispatch: # Allow manual trigger if needed
 
 permissions:
   contents: read
