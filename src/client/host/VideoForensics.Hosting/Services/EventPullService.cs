@@ -100,7 +100,7 @@ namespace VideoForensics.Hosting.Services
                         _logger.LogError(ex, "Failed to pull events for device");
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
-                        deviceErrors.Add($"Device {device.ProviderDeviceId}: {ex.Message}");
+                        deviceErrors.Add($"Device {device.Name}: {ex.Message}");
                     }
                 }
 
