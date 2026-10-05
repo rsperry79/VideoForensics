@@ -80,7 +80,6 @@ namespace VideoForensics.Hosting.Services
                         _logger.LogDebug("Pulling events for device {DeviceId}", device.ProviderDeviceId);
 
                         await _eventAndConfigService.GetEventsAsync(
-                            accountId,
                             device.ProviderDeviceId,
                             startTime,
                             endTime,
@@ -88,7 +87,7 @@ namespace VideoForensics.Hosting.Services
                             cancellationToken
                         );
 
-                        await _eventAndConfigService.GetDeviceConfigAsync(accountId, device.ProviderDeviceId, cancellationToken);
+                        await _eventAndConfigService.GetDeviceConfigAsync(device.ProviderDeviceId, cancellationToken);
 
                         device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
