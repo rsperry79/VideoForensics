@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -241,6 +242,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
             }
 
+            Debug.Assert(session != null, "Session must not be null after restore attempt");
             try
             {
                 await session.EnsureSessionValid();
@@ -266,6 +268,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 await session.RefreshSession();
                 return true;
             }

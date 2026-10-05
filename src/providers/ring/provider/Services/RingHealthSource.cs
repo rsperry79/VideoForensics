@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -124,6 +125,7 @@ namespace VideoForensics.Providers.Ring.Services
                 return Array.Empty<DeviceHealthReading>();
             }
 
+            Debug.Assert(session != null, "Session must not be null after null check");
             try
             {
                 Devices devices = await session.GetRingDevices();

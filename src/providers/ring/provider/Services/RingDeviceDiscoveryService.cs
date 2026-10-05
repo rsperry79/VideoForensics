@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.ObjectModel;
@@ -73,6 +74,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return new List<Location>().AsReadOnly();
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 _logger.LogInformation("Session exists: OAuthToken = {HasToken}",
                     session.OAuthToken != null ? "yes" : "no");
 
@@ -227,6 +229,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return new List<Device>().AsReadOnly();
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 Entities.Devices? devices = await session.GetRingDevices();
 
                 var deviceMap = new Dictionary<string, Device>();

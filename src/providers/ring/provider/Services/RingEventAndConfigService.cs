@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Providers.Common.Contracts;
@@ -41,6 +42,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return new List<DeviceEvent>().AsReadOnly();
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 List<Entities.DoorbotHistoryEvent> events = await GetHistoryEventsAsync(session, startDate, endDate);
 
                 List<DeviceEvent> deviceEvents = events?
@@ -80,6 +82,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return null;
                 }
 
+                Debug.Assert(session != null, "Session must not be null after null check");
                 if (!long.TryParse(deviceId, out long doorbotId))
                 {
                     _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
