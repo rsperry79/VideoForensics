@@ -375,6 +375,9 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadToken
 builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
+// System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
+builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
+
     WebApplication app = builder.Build();
 
 // DB init + Events backfill + persisted-config load, in that order - see
@@ -412,6 +415,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 
 app.MapVideoForensicsHealthEndpoints();
+
+app.MapSystemVersionEndpoints();
 
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
