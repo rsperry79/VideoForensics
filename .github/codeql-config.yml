@@ -1,21 +1,11 @@
 name: CodeQL config
 version: 1.0
 
+disable-default-queries: false
+
 paths-ignore:
   - '**/test/**'
   - '**/tests/**'
 
-disable-default-queries: false
-
 queries:
-  - name: Null pointers
-    uses: codeql/csharp-queries/Nullness/NullAlwaysDereference.ql@latest
-    disabled: true
-
-  - name: Potential null reference
-    uses: codeql/csharp-queries/Nullness/PotentiallyNullable.ql@latest
-    disabled: true
-
-  - name: Information disclosure
-    uses: codeql/csharp-queries/Security/CWE-200/ExceptionInformation.ql@latest
-    disabled: true
+  - uses: codeql/csharp-queries
