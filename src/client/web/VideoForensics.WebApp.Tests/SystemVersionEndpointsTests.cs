@@ -15,12 +15,12 @@ namespace VideoForensics.WebApp.Tests
     /// </summary>
     public class SystemVersionEndpointsTests
     {
-        private static Mock<ISystemVersionProvider> CreateMockVersionProvider()
+        public static Mock<ISystemVersionProvider> CreateMockVersionProvider()
         {
             return new Mock<ISystemVersionProvider>();
         }
 
-        private static Mock<ISystemVersionProvider> CreateMockVersionProviderWithDefaults()
+        public static Mock<ISystemVersionProvider> CreateMockVersionProviderWithDefaults()
         {
             var mock = new Mock<ISystemVersionProvider>();
             mock.Setup(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()))
