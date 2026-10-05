@@ -125,11 +125,13 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Sync schedule upserted for provider account: {ProviderAccountId}", schedule.ProviderAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                _logger.LogInformation("Sync schedule upserted for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderAccountId}", schedule.ProviderAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -145,12 +147,14 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.SyncSchedules.Remove(schedule);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Sync schedule deleted for provider account: {ProviderAccountId}", providerAccountId);
+                    var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                    _logger.LogInformation("Sync schedule deleted for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderAccountId}", providerAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }
