@@ -93,11 +93,11 @@ namespace VideoForensics.Hosting.Services
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
 
-                        _logger.LogDebug("Successfully pulled events for device {DeviceId}", device.ProviderDeviceId);
+                        _logger.LogDebug("Successfully pulled events for device");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to pull events for device {DeviceId}", device.ProviderDeviceId);
+                        _logger.LogError(ex, "Failed to pull events for device");
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {device.ProviderDeviceId}: {ex.Message}");
