@@ -25,6 +25,19 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<DeviceEvent>> GetEventsAsync(
+            Guid accountId,
+            string deviceId,
+            DateTime startDate,
+            DateTime endDate,
+            string? eventType = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await GetEventsAsync(deviceId, startDate, endDate, eventType, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<DeviceEvent>> GetEventsAsync(
             string deviceId,
             DateTime startDate,
             DateTime endDate,
@@ -52,6 +65,13 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<DeviceConfig?> GetDeviceConfigAsync(Guid accountId, string deviceId, CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await GetDeviceConfigAsync(deviceId, cancellationToken);
+        }
+
+        /// <inheritdoc />
         public async Task<DeviceConfig?> GetDeviceConfigAsync(string deviceId, CancellationToken cancellationToken = default)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/discovery/devices/{deviceId}/config", cancellationToken);
@@ -63,6 +83,13 @@ namespace VideoForensics.Hosting.Remote
             _ = response.EnsureSuccessStatusCode();
             DeviceConfigDto? dto = await response.Content.ReadFromJsonAsync<DeviceConfigDto>(JsonOptions, cancellationToken);
             return dto?.ToDomain();
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> UpdateDeviceConfigAsync(Guid accountId, string deviceId, DeviceConfig config, CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await UpdateDeviceConfigAsync(deviceId, config, cancellationToken);
         }
 
         /// <inheritdoc />

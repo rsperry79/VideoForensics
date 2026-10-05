@@ -39,6 +39,226 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     /// <summary>
     /// Downloads videos for a device within a date range. Splits the range into month-sized chunks
     /// per the "query one month at a time" requirement documented in docs/NVR_API.md section 9.
+    /// Account-aware overload that retrieves the client for a specific provider account.
+    /// </summary>
+    public async Task<DownloadResult> DownloadVideosAsync(
+        Guid providerAccountId,
+        string deviceId,
+        string outputPath,
+        DateTime startDate,
+        DateTime endDate,
+        string? providerLocationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Downloading videos for account {AccountId}, device {DeviceId} from {StartDate} to {EndDate}",
+                providerAccountId, deviceId, startDate, endDate);
+
+            UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
+            if (client is null)
+            {
+                _logger.LogError("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                return new DownloadResult(
+                    Success: false,
+                    ErrorMessage: "Download failed: not authenticated");
+            }
+
+            // Parse device id to channel number (expect numeric or "channel:<num>" format)
+            if (!TryParseChannelNumber(deviceId, out int channel))
+            {
+                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                return new DownloadResult(
+                    Success: false,
+                    ErrorMessage: $"Invalid device id: {deviceId}");
+            }
+
+            // Split date range into month-sized chunks and query each
+            var allSegments = new List<RecordSegment>();
+            List<(DateTimeOffset Start, DateTimeOffset End)> monthChunks = GetMonthChunks(startDate, endDate);
+
+            foreach ((DateTimeOffset monthStart, DateTimeOffset monthEnd) in monthChunks)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                try
+                {
+                    IReadOnlyList<RecordSegment> monthSegments = await client.ListSegmentsAsync(channel, monthStart, monthEnd, cancellationToken);
+                    allSegments.AddRange(monthSegments);
+
+                    // Log warning if a single month's query looks like it hit the 2000-result cap
+                    if (monthSegments.Count >= 2000)
+                    {
+                        _logger.LogWarning(
+                            "Month {YearMonth} returned exactly 2000 or more segments for channel {Channel} — " +
+                            "may have hit per-query result cap; not attempting to work around it further",
+                            monthStart.ToString("yyyy-MM"), channel);
+                        _activityLog.Enqueue(
+                            $"⚠ Month {monthStart:yyyy-MM} returned {monthSegments.Count} segments (possible result cap hit)");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}",
+                        monthStart.ToString("yyyy-MM"), channel);
+                    _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
+                    // Continue to next month rather than failing the whole batch
+                }
+            }
+
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with
+                {
+                    IsDownloading = true,
+                    FilesTotal = allSegments.Count,
+                    FilesCompleted = 0,
+                    BytesDownloaded = 0
+                };
+            }
+
+            _logger.LogInformation("Found {SegmentCount} segments across all months for channel {Channel}",
+                allSegments.Count, channel);
+
+            int filesDownloaded = 0;
+            long bytesDownloaded = 0L;
+
+            // Download each segment sequentially
+            foreach (RecordSegment segment in allSegments)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                string fileName = EnsureWithinRoot(outputPath, BuildSegmentFileName(outputPath, deviceId, segment));
+
+                try
+                {
+                    // Skip if already exists
+                    if (File.Exists(fileName) && new FileInfo(fileName).Length > 0)
+                    {
+                        long existingSize = new FileInfo(fileName).Length;
+                        lock (_statusLock)
+                        {
+                            filesDownloaded++;
+                            bytesDownloaded += existingSize;
+                            _currentStatus = _currentStatus with
+                            {
+                                FilesCompleted = filesDownloaded,
+                                BytesDownloaded = bytesDownloaded,
+                                CurrentFile = fileName
+                            };
+                        }
+
+                        _activityLog.Enqueue($"○ {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
+                        continue;
+                    }
+
+                    await client.DownloadSegmentAsync(segment, fileName, cancellationToken);
+
+                    if (!File.Exists(fileName))
+                    {
+                        _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: download produced no file");
+                        continue;
+                    }
+
+                    long fileSize = new FileInfo(fileName).Length;
+                    if (fileSize == 0)
+                    {
+                        _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: empty file");
+                        File.Delete(fileName);
+                        continue;
+                    }
+
+                    lock (_statusLock)
+                    {
+                        filesDownloaded++;
+                        bytesDownloaded += fileSize;
+                        _currentStatus = _currentStatus with
+                        {
+                            FilesCompleted = filesDownloaded,
+                            BytesDownloaded = bytesDownloaded,
+                            CurrentFile = fileName
+                        };
+                    }
+
+                    _activityLog.Enqueue($"✓ {Path.GetFileName(fileName)} ({FormatBytes(fileSize)})");
+                }
+                catch (DownloadCapacityException ex)
+                {
+                    _logger.LogError(ex, "Device capacity limit hit while downloading segment; stopping batch");
+                    lock (_statusLock)
+                    {
+                        _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
+                    }
+
+                    _activityLog.Enqueue($"✗ Capacity limit (code 60031): {ex.Message}");
+
+                    lock (_statusLock)
+                    {
+                        _currentStatus = _currentStatus with { IsDownloading = false };
+                    }
+
+                    return new DownloadResult(
+                        Success: false,
+                        FilesDownloaded: filesDownloaded,
+                        BytesDownloaded: bytesDownloaded,
+                        ErrorMessage: "Download stopped: device capacity limit reached. " +
+                                      "Wait for stale sessions to expire or reboot the NVR.",
+                        FilesMatched: allSegments.Count);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to download segment {Begin:O} for channel {Channel}",
+                        segment.Begin, channel);
+                    _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
+                    // Continue with next segment rather than failing the whole batch
+                }
+            }
+
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with { IsDownloading = false };
+            }
+
+            _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
+                filesDownloaded, bytesDownloaded, deviceId);
+
+            return new DownloadResult(
+                Success: true,
+                FilesDownloaded: filesDownloaded,
+                BytesDownloaded: bytesDownloaded,
+                FilesMatched: allSegments.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading videos for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with { IsDownloading = false };
+            }
+
+            return new DownloadResult(
+                Success: false,
+                ErrorMessage: $"Download failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Downloads videos for a device within a date range. Splits the range into month-sized chunks
+    /// per the "query one month at a time" requirement documented in docs/NVR_API.md section 9.
     /// </summary>
     public async Task<DownloadResult> DownloadVideosAsync(
         string deviceId,
@@ -243,6 +463,142 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error downloading videos for device {DeviceId}", deviceId);
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with { IsDownloading = false };
+            }
+
+            return new DownloadResult(
+                Success: false,
+                ErrorMessage: $"Download failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Uniview devices have no device-side historical snapshot capability — only live RTSP frame grab.
+    /// Captures a current-moment JPEG via ffmpeg and clearly documents that only a live snapshot was
+    /// captured, not historical ones for the requested range.
+    /// Account-aware overload that retrieves the client for a specific provider account.
+    /// </summary>
+    public async Task<DownloadResult> DownloadSnapshotsAsync(
+        Guid providerAccountId,
+        string deviceId,
+        string outputPath,
+        DateTime startDate,
+        DateTime endDate,
+        string? providerLocationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Requesting live snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+
+            UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
+            if (client is null)
+            {
+                _logger.LogError("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                return new DownloadResult(
+                    Success: false,
+                    ErrorMessage: "Download failed: not authenticated");
+            }
+
+            // Parse device id to channel number
+            if (!TryParseChannelNumber(deviceId, out int channel))
+            {
+                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                return new DownloadResult(
+                    Success: false,
+                    ErrorMessage: $"Invalid device id: {deviceId}");
+            }
+
+            _ = Directory.CreateDirectory(outputPath);
+
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
+            }
+
+            string fileName = EnsureWithinRoot(outputPath, Path.Combine(outputPath, $"snapshot_{deviceId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg"));
+
+            try
+            {
+                await client.CaptureLiveSnapshotAsync(channel, fileName, cancellationToken);
+
+                if (!File.Exists(fileName))
+                {
+                    lock (_statusLock)
+                    {
+                        _currentStatus = _currentStatus with { IsDownloading = false };
+                    }
+
+                    _activityLog.Enqueue("✗ Snapshot: ffmpeg failed to produce a file");
+                    return new DownloadResult(
+                        Success: false,
+                        ErrorMessage: "Snapshot capture failed: ffmpeg produced no output");
+                }
+
+                long fileSize = new FileInfo(fileName).Length;
+                if (fileSize == 0)
+                {
+                    File.Delete(fileName);
+                    lock (_statusLock)
+                    {
+                        _currentStatus = _currentStatus with { IsDownloading = false };
+                    }
+
+                    _activityLog.Enqueue("✗ Snapshot: empty file");
+                    return new DownloadResult(
+                        Success: false,
+                        ErrorMessage: "Snapshot capture failed: empty file");
+                }
+
+                lock (_statusLock)
+                {
+                    _currentStatus = _currentStatus with
+                    {
+                        IsDownloading = false,
+                        FilesCompleted = 1,
+                        BytesDownloaded = fileSize,
+                        CurrentFile = fileName
+                    };
+                }
+
+                string msg = $"✓ {Path.GetFileName(fileName)} ({FormatBytes(fileSize)}) — " +
+                          "Live snapshot only (Uniview device has no historical snapshot API)";
+                _activityLog.Enqueue(msg);
+
+                _logger.LogInformation("Downloaded live snapshot ({Bytes} bytes) for account {AccountId}, device {DeviceId}",
+                    fileSize, providerAccountId, deviceId);
+
+                return new DownloadResult(
+                    Success: true,
+                    FilesDownloaded: 1,
+                    BytesDownloaded: fileSize,
+                    ErrorMessage: "Only a live snapshot was captured (requested date range cannot be honored " +
+                                  "— this device has no historical snapshot capability)",
+                    FilesMatched: 1);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error capturing snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+                lock (_statusLock)
+                {
+                    _currentStatus = _currentStatus with { IsDownloading = false };
+                }
+
+                _activityLog.Enqueue($"✗ Snapshot: {ex.GetType().Name}");
+                return new DownloadResult(
+                    Success: false,
+                    ErrorMessage: $"Snapshot capture failed: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
