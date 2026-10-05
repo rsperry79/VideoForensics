@@ -45,7 +45,8 @@ namespace VideoForensics.Data.Database.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error decrypting credential for account {ProviderAccountId}", providerAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogError(ex, "Error decrypting credential for account {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -91,12 +92,14 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Credential set for account {ProviderAccountId} (type: {CredentialType})",
-                    providerAccountId, credentialType);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogInformation("Credential set for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
+                    providerAccountId, account?.ProviderName ?? "unknown", credentialType);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting credential for account {ProviderAccountId}", providerAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogError(ex, "Error setting credential for account {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -114,13 +117,15 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Credentials.Remove(credential);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Credential deleted for account {ProviderAccountId} (type: {CredentialType})",
-                        providerAccountId, credentialType);
+                    var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                    _logger.LogInformation("Credential deleted for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
+                        providerAccountId, account?.ProviderName ?? "unknown", credentialType);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting credential for account {ProviderAccountId}", providerAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogError(ex, "Error deleting credential for account {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -139,14 +144,16 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     db.Credentials.RemoveRange(credentials);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("All credentials deleted for account {ProviderAccountId}",
-                        providerAccountId);
+                    var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                    _logger.LogInformation("All credentials deleted for account {ProviderAccountId} ({ProviderName})",
+                        providerAccountId, account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting all credentials for account {ProviderAccountId}",
-                    providerAccountId);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                _logger.LogError(ex, "Error deleting all credentials for account {ProviderAccountId} ({ProviderName})",
+                    providerAccountId, account?.ProviderName ?? "unknown");
                 throw;
             }
         }

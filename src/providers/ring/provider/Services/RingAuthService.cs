@@ -379,7 +379,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                                     {
-                                        _logger.LogInformation("Restoring Ring session from database for account {AccountId}", account.Id);
+                                        _logger.LogInformation("Restoring Ring session from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
                                         credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                                         resolvedAccountId = account.Id;
                                         break;
@@ -387,7 +387,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", account.Id);
+                                    _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
                                     if (_providerAccountRepository != null)
                                     {
                                         try
@@ -399,7 +399,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception recordEx)
                                         {
-                                            _logger.LogError(recordEx, "Failed to record error for account {AccountId}", account.Id);
+                                            _logger.LogError(recordEx, "Failed to record error for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
                                         }
                                     }
 
@@ -421,7 +421,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception notifEx)
                                         {
-                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId}", account.Id);
+                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
                                         }
                                     }
                                 }

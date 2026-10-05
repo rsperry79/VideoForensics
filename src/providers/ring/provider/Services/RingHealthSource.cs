@@ -77,7 +77,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // If still no session, skip this account
                         if (session == null)
                         {
-                            _logger.LogDebug("No active or restorable Ring session for account {AccountId}; skipping", account.Id);
+                            _logger.LogDebug("No active or restorable Ring session for account {AccountId} ({ProviderName}); skipping", account.Id, account.ProviderName);
                             continue;
                         }
 
@@ -94,13 +94,13 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to fetch Ring health for account {AccountId} (non-critical)", account.Id);
+                            _logger.LogWarning(ex, "Failed to fetch Ring health for account {AccountId} ({ProviderName}) (non-critical)", account.Id, account.ProviderName);
                             // Continue with next account
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error processing Ring account {AccountId} (non-critical)", account.Id);
+                        _logger.LogWarning(ex, "Error processing Ring account {AccountId} ({ProviderName}) (non-critical)", account.Id, account.ProviderName);
                         // Continue with next account
                     }
                 }
