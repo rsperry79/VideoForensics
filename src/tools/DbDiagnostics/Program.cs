@@ -4,13 +4,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using VideoForensics.Diagnostics.Contracts;
+using VideoForensics.Utils.Diagnostics.Contracts;
 using VideoForensics.Hosting;
+using VideoForensics.Utils.Diagnostics;
 
 // Build services
 var services = new ServiceCollection();
 services.AddVideoForensicsDataLayer();
-services.AddScoped<IDatabaseHealthChecker, VideoForensics.Diagnostics.DatabaseHealthChecker>();
+services.AddScoped<IDatabaseHealthChecker, DatabaseHealthChecker>();
 var provider = services.BuildServiceProvider();
 
 // Get the health checker
