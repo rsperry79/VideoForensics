@@ -23,14 +23,16 @@ namespace VideoForensics.Providers.Ring.Services
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
         }
 
+        /// <summary>Gets events for a device (single-account UI flow).</summary>
         public async Task<IReadOnlyList<DeviceEvent>> GetEventsAsync(string deviceId, DateTime startDate, DateTime endDate, string? eventType = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("Fetching events for device {DeviceId} from {StartDate} to {EndDate}",
-                    SanitizeForLog(deviceId), startDate, endDate);
+                _logger.LogInformation("Fetching events for device from {StartDate} to {EndDate}",
+                    startDate, endDate);
 
 #pragma warning disable CS0618
+                // Single-account UI flow: GetSession() returns the currently authenticated account
                 Session? session = _sessionProvider.GetSession();
 #pragma warning restore CS0618
                 if (session == null)
