@@ -28,13 +28,13 @@ namespace VideoForensics.WebApp.Tests
     public class UpdateCheckEndToEndTests
     {
         [Fact]
-        public void VersionAndUpdateCheck_Manifest_IncludesCurrentAndLatestVersions()
+        public async Task VersionAndUpdateCheck_Manifest_IncludesCurrentAndLatestVersions()
         {
             // Arrange - Create mocks for version provider
             var versionProvider = SystemVersionEndpointsTests.CreateMockVersionProviderWithDefaults();
 
             // Act - Get the version manifest
-            var manifestResult = SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var manifestResult = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
 
             // Assert - Verify CurrentVersion is never null and manifest has correct structure
             Assert.NotNull(manifestResult);
@@ -66,20 +66,20 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public void VersionEndpoint_ClientCanCompareVersions_AndDecideUpdate()
+        public async Task VersionEndpoint_ClientCanCompareVersions_AndDecideUpdate()
         {
             // Arrange - Create mock version provider
             var versionProvider = SystemVersionEndpointsTests.CreateMockVersionProviderWithDefaults();
 
             // Act - Get current version
-            var versionResult = SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var versionResult = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
             Assert.NotNull(versionResult);
             var versionOk = versionResult as Microsoft.AspNetCore.Http.HttpResults.Ok<SystemVersionDto>;
             Assert.NotNull(versionOk);
             var currentVersion = versionOk.Value;
 
             // Act - Get available version from manifest
-            var manifestResult = SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var manifestResult = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
             Assert.NotNull(manifestResult);
             var manifestOk = manifestResult as Microsoft.AspNetCore.Http.HttpResults.Ok<VersionManifestDto>;
             Assert.NotNull(manifestOk);
@@ -108,14 +108,14 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public void VersionData_Consistency_AcrossEndpoints()
+        public async Task VersionData_Consistency_AcrossEndpoints()
         {
             // Arrange
             var versionProvider = SystemVersionEndpointsTests.CreateMockVersionProviderWithDefaults();
 
             // Act - Call both endpoints
-            var versionResult = SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
-            var manifestResult = SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var versionResult = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
+            var manifestResult = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
 
             // Assert - Data is consistent
             Assert.NotNull(versionResult);
@@ -141,13 +141,13 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public void SystemVersionEndpoint_ReturnsValidSystemVersionDto()
+        public async Task SystemVersionEndpoint_ReturnsValidSystemVersionDto()
         {
             // Arrange
             var versionProvider = SystemVersionEndpointsTests.CreateMockVersionProviderWithDefaults();
 
             // Act
-            var result = SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var result = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -161,13 +161,13 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public void VersionManifestEndpoint_ReturnsValidVersionManifestDto()
+        public async Task VersionManifestEndpoint_ReturnsValidVersionManifestDto()
         {
             // Arrange
             var versionProvider = SystemVersionEndpointsTests.CreateMockVersionProviderWithDefaults();
 
             // Act
-            var result = SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None).GetAwaiter().GetResult();
+            var result = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
