@@ -30,7 +30,9 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Fetching events for device {DeviceId} from {StartDate} to {EndDate}",
                     SanitizeForLog(deviceId), startDate, endDate);
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -67,7 +69,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogInformation("Fetching configuration for device {DeviceId}", deviceId);
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");

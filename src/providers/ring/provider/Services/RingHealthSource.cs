@@ -115,7 +115,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<IReadOnlyList<DeviceHealthReading>> FetchHealthForSingleSessionAsync(CancellationToken ct)
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             if (session == null)
             {
                 _logger.LogDebug("No active Ring session; skipping health fetch for this account");

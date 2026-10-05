@@ -64,7 +64,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching Ring locations");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -216,7 +218,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Fetching the account's full device list");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
