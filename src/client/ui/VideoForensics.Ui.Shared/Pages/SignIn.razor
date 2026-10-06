@@ -1,64 +1,151 @@
 @page "/signin"
+@layout MinimalLayout
+@using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
-@inject IProviderAuthService AuthService
+@inject WebAuthnClient WebAuthn
+@inject PairedSessionState SessionState
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SignIn> L
 
 <h4 class="mb-4">@L["Title"]</h4>
 
-@if (_restoringSession)
+@if (_isLoading)
 {
     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
 else
 {
-    @if (!string.IsNullOrEmpty(_restoreErrorMessage))
-    {
-        <div class="alert alert-danger">@_restoreErrorMessage</div>
-    }
+    <p>@L["SignInDescription"]</p>
 
-    <AuthForm IdPrefix="signin" SubmitLabel="@L["Title"]" OnAuthenticated="HandleAuthenticated" />
+    <div class="d-flex flex-column gap-3">
+        <!-- Passkey Sign-in -->
+        @if (_webAuthnAvailable)
+        {
+            <div>
+                <SfButton Content="@(_isSigningInWithPasskey ? L["SignInWaiting"] : L["SignInWithPasskeyButton"])" OnClick="SignInWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPasskey" />
+            </div>
+        }
+
+        <!-- Password/Username Login -->
+        @if (_authMethods.PasswordEnabled)
+        {
+            <div class="d-flex flex-column gap-2">
+                <div>
+                    <label>@L["UsernameLabel"]</label>
+                    <SfTextBox @bind-Value="_username" Placeholder="@L["UsernamePlaceholder"]" />
+                </div>
+                <div>
+                    <label>@L["PasswordLabel"]</label>
+                    <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordPlaceholder"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" />
+                </div>
+                <div>
+                    <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
+                </div>
+            </div>
+        }
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <!-- Register link -->
+        <div class="text-center">
+            <p>@L["NoAccountText"] <a href="/register">@L["RegisterLink"]</a></p>
+        </div>
+    </div>
 }
 
 @code {
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
 
-    private bool _restoringSession = true;
-    private string? _restoreErrorMessage;
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private bool _isSigningInWithPassword;
+    private bool _isSigningInWithPasskey;
+    private bool _webAuthnAvailable;
+    private bool _isLoading = true;
+    private string? _error;
+    private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
+        PasswordEnabled: true, PasskeyEnabled: true);
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            _webAuthnAvailable = await WebAuthn.IsAvailableAsync();
+            _authMethods = await WebAuthn.GetAuthMethodsAsync();
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SignInWithPasswordAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
         try
         {
-            if (await AuthService.RestoreFromSavedCredentialsAsync())
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword) =
+                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
+
+            if (!success)
+            {
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+
+            if (mustChangePassword)
+            {
+                NavigationManager.NavigateTo("/change-password");
+            }
+            else
             {
                 NavigationManager.NavigateTo(GetReturnUrl());
-                return;
             }
         }
         catch (Exception ex)
         {
-            // A fresh install legitimately has no saved credentials - RestoreFromSavedCredentialsAsync
-            // returning false is expected and not surfaced as an error. Only an actual exception here
-            // (e.g. a corrupt credential store) is worth telling the user about.
-            _restoreErrorMessage = L["CouldNotCheckSavedSession", ex.Message].Value;
+            _error = L["SignInFailed", ex.Message];
         }
         finally
         {
-            _restoringSession = false;
+            _isSigningInWithPassword = false;
         }
     }
 
-    private void HandleAuthenticated(AuthResult result)
+    private async Task SignInWithPasskeyAsync()
     {
-        NavigationManager.NavigateTo(GetReturnUrl());
+        _isSigningInWithPasskey = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role) =
+                await WebAuthn.SignInWithUsernameAsync(_username.Trim());
+
+            if (!success)
+            {
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false);
+            NavigationManager.NavigateTo(GetReturnUrl());
+        }
+        catch (Exception ex)
+        {
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPasskey = false;
+        }
     }
 
-    // Every "You are not signed in" prompt across the app links here with a returnUrl pointing back
-    // at itself (e.g. Evidence.razor -> "/signin?returnUrl=%2Fevidence") so signing in doesn't strand
-    // the user on the dashboard - only trust a same-app relative path, never an absolute/external URL
-    // a crafted link could smuggle in via the query string.
     private string GetReturnUrl()
     {
         if (ReturnUrl is not null && Uri.TryCreate(ReturnUrl, UriKind.Relative, out _))
