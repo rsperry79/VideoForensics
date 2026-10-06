@@ -65,17 +65,25 @@ From CLAUDE.md and codebase analysis:
 
 ## Phase C Plans: Viability & Timing
 
+### ✅ COMPLETED (2026-10-05)
+
+**per-user-login-password-passkey** 🔐 **DONE**
+- **Completed:** 2026-10-05
+- **What shipped:** Per-user password + passkey authentication with operator approval workflows
+  - Operator.Username, Role, PasswordHash, SecurityStamp, MustChangePassword enforcement
+  - OperatorCredential table with IsApproved per-credential model
+  - Password login, passkey sign-in, credential approval workflows
+  - Password reset with forced change-on-next-login
+  - Self-service registration (bootstrap SuperAdmin, others ReadOnly+unapproved)
+  - Admin UI for credential approval, operator approval, password reset
+  - Rate limiting, security audit logging, timing-attack mitigation
+- **Test coverage:** 260 WebApp + 438 Hosting + 578 Database tests passing
+- **Backwards compatibility:** Device pairing, service credentials unchanged
+- **Branch:** `ci/per-user-login-password-passkey` (ready for PR to dev)
+
 ### 🔵 SHOULD DO (After Phase B)
 
-**per-user-login-password-passkey** 🔐
-- **Why:** Current auth conflates device pairing with human login
-  - Today: every pairing creates brand-new Operator
-  - Need: One Operator identity, usable from multiple browsers/devices
-  - Enables: Shared family accounts, admin password resets
-- **Alignment:** Supports Goal #4 (Auth Model)
-- **Impact:** Better multi-user household support
-- **Risk:** HIGH (auth is critical path)
-- **Recommendation:** **After Phase B** (coordinate with scheduled-sync timing)
+**Note:** Phase C Item 2 completed; Phase C Item 3 (ci-cd-versioning) previously completed in PR #157
 
 **ci-cd-versioning-update-check** 🔄
 - **Why:** Release automation & auto-update capability
