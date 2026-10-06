@@ -78,6 +78,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Security Events", "/settings/security-events"),
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
+                new("Pending Approvals", "/admin/pending-credentials", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Network Access", "/settings/network", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Storage", "/settings/storage", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
@@ -121,7 +122,7 @@ namespace VideoForensics.Ui.Shared.Layout
             }
             else
             {
-                items.Add(new("Device Sign-In", "/device-signin"));
+                items.Add(new("Sign In", "/signin"));
             }
 
             return items;

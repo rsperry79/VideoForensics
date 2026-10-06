@@ -16,7 +16,13 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(c => c.RevokedReason).HasMaxLength(512);
 
             _ = builder.HasIndex(c => c.OperatorId);
-            _ = builder.HasIndex(c => c.WebAuthnCredentialId);
+            _ = builder.HasIndex(c => c.WebAuthnCredentialId).IsUnique();
+
+            // Relationship to Operator
+            _ = builder.HasOne<Operator>()
+                .WithMany(o => o.OperatorCredentials)
+                .HasForeignKey(c => c.OperatorId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

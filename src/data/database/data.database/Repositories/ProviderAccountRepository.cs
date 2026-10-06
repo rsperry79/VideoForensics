@@ -81,11 +81,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.ProviderAccounts.Update(account);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Provider account updated: {ProviderAccountId}", account.Id);
+                _logger.LogInformation("Provider account updated: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider account: {ProviderAccountId}", account.Id);
+                _logger.LogError(ex, "Error updating provider account: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
                 throw;
             }
         }
@@ -94,19 +94,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task DeleteAsync(Guid accountId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            ProviderAccount? account = null;
             try
             {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId, ct);
+                account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId, ct);
                 if (account != null)
                 {
                     _ = db.ProviderAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Provider account deleted: {ProviderAccountId}", accountId);
+                    _logger.LogInformation("Provider account deleted: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider account: {ProviderAccountId}", accountId);
+                _logger.LogError(ex, "Error deleting provider account: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }
@@ -115,21 +116,22 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(cancellationToken);
+            ProviderAccount? account = null;
             try
             {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
+                account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
                 if (account != null)
                 {
                     account.LastErrorUtc = DateTime.UtcNow;
                     account.LastErrorMessage = errorMessage;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Provider account error recorded: {ProviderAccountId}, Message: {ErrorMessage}", providerAccountId, errorMessage);
+                    _logger.LogInformation("Provider account error recorded: {ProviderAccountId} ({ProviderName}), Message: {ErrorMessage}", providerAccountId, SanitizeForLog(account.ProviderName), errorMessage);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording error for provider account: {ProviderAccountId}", providerAccountId);
+                _logger.LogError(ex, "Error recording error for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }
@@ -138,9 +140,10 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(cancellationToken);
+            ProviderAccount? account = null;
             try
             {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
+                account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, cancellationToken);
                 if (account != null)
                 {
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
@@ -148,12 +151,12 @@ namespace VideoForensics.Data.Database.Repositories
                     account.LastErrorMessage = null;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Provider account success recorded, error state cleared: {ProviderAccountId}", providerAccountId);
+                    _logger.LogInformation("Provider account success recorded, error state cleared: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording success for provider account: {ProviderAccountId}", providerAccountId);
+                _logger.LogError(ex, "Error recording success for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }

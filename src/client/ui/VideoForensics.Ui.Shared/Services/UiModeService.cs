@@ -11,7 +11,7 @@ namespace VideoForensics.Ui.Shared.Services
     /// created with defaults on first sign-in). This service mirrors <see cref="ThemePreferenceService"/>
     /// in structure and lifecycle.
     /// </summary>
-    public class UiModeService
+    public class UiModeService : IUiModeService
     {
         private readonly IOperatorPreferencesRepository _repository;
         private readonly PairedSessionState _session;

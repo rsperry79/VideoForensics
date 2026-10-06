@@ -11,6 +11,15 @@ namespace VideoForensics.Providers.Common.Contracts
 
         /// <summary>Gets a specific device details</summary>
         Task<Device?> GetDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets all locations/sites for a specific provider account (account-aware overload)</summary>
+        Task<IReadOnlyList<Location>> GetLocationsAsync(Guid providerAccountId, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets all devices at a specific location for a specific provider account (account-aware overload)</summary>
+        Task<IReadOnlyList<Device>> GetDevicesAsync(Guid providerAccountId, string locationId, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets a specific device details for a specific provider account (account-aware overload)</summary>
+        Task<Device?> GetDeviceAsync(Guid providerAccountId, string deviceId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Represents a location/site (home, office, etc.)</summary>

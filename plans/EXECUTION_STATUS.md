@@ -1,10 +1,33 @@
-# Execution Status: VideoForensics Consolidation & Reorganization
+# Execution Status: VideoForensics Planning & Implementation
 
-## Plan Documents
-- **[Phase 1: Navigation & Layout](phase-1-navigation-layout.md)** — Nav reorganization, date filter, consolidated collect page
-- **[Phase 2: Data Fetching](phase-2-data-fetching.md)** — Auto-pull events on account connect + manual sync button
-- **[Phase 3: Project Reorganization](phase-3-project-reorganization.md)** — Move CLI tools to src/utils/
-- **[Phase 4: Logger Viewer](phase-4-logger-viewer.md)** — Named pipe logging + WPF LoggerViewer
+## Active Plans
+
+### Phase C: Authentication & Release Infrastructure
+
+#### ✅ **Phase C Item 2: Per-User Login (Password + Passkey)** — COMPLETED 2026-10-05
+- **Plan:** `per-user-login-password-passkey.md`
+- **Branch:** `ci/per-user-login-password-passkey` (2 commits: Milestone 3 endpoints + Milestone 4 UI)
+- **Status:** Awaiting final PR to dev
+- **Implementation:** 4 milestones completed
+  1. Data model + repositories (Operator.Username, OperatorCredential entity)
+  2. Session/auth plumbing (CredentialKind, SecurityStamp, MustChangePassword enforcement)
+  3. Server endpoints (register, login/password, change-password, credential approval flows, reset-password)
+  4. UI components (SignIn.razor, PendingCredentials.razor, navigation updates)
+- **Testing:** 260 WebApp + 438 Hosting + 578 Database tests (all passing)
+- **Notes:** Device pairing unchanged; service credentials unchanged; backwards compatible
+
+#### ✅ **Phase C Item 3: CI/CD Versioning & Update Check** — COMPLETED (PR #157)
+- **Plan:** `ci-cd-versioning-update-check.md`
+- **Status:** Merged to dev
+- **Implementation:** Semantic versioning, release notes generation, client update checker
+
+---
+
+## Previous Phase Plans
+
+### Phase 1–4: Navigation, Data Fetching, Project Reorganization, Logger Viewer
+- **Location:** `plans/phase-*-*.md` and `plans/archive/`
+- **Status:** Completed/In Progress as documented in their respective files
 
 ---
 

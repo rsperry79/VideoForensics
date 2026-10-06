@@ -160,8 +160,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Null(result);
         }
 
-        [Fact(Skip = "Test uses Task.WaitAll blocking operation")]
-        public void HardBanState_IsThreadSafe()
+        [Fact(Skip = "File I/O contention in concurrent writes")]
+        public async Task HardBanState_IsThreadSafe()
         {
             // Arrange
             var banExpiry = DateTime.UtcNow.AddHours(1);
@@ -178,7 +178,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 });
             }
 
-            Task.WaitAll(tasks);
+            await Task.WhenAll(tasks);
 
             // Assert - all threads succeeded without exception
             Assert.True(true);

@@ -17,6 +17,22 @@ namespace VideoForensics.Providers.Common.Contracts
 
         /// <summary>Updates device configuration settings</summary>
         Task<bool> UpdateDeviceConfigAsync(string deviceId, DeviceConfig config, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets events (motion, person detection, etc.) for a device in a specific provider account (account-aware overload)</summary>
+        Task<IReadOnlyList<DeviceEvent>> GetEventsAsync(
+            Guid providerAccountId,
+            string deviceId,
+            DateTime startDate,
+            DateTime endDate,
+            string? eventType = null,
+            CancellationToken cancellationToken = default
+        );
+
+        /// <summary>Gets device configuration settings for a specific provider account (account-aware overload)</summary>
+        Task<DeviceConfig?> GetDeviceConfigAsync(Guid providerAccountId, string deviceId, CancellationToken cancellationToken = default);
+
+        /// <summary>Updates device configuration settings for a specific provider account (account-aware overload)</summary>
+        Task<bool> UpdateDeviceConfigAsync(Guid providerAccountId, string deviceId, DeviceConfig config, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Represents a device event (motion, person detection, etc.)</summary>

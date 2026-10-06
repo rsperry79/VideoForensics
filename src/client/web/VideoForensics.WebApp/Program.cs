@@ -356,7 +356,7 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
-builder.Services.AddScoped<UiModeService>();
+builder.Services.AddScoped<IUiModeService, UiModeService>();
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
@@ -374,6 +374,9 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
+
+// System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
+builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
 
     WebApplication app = builder.Build();
 
@@ -412,6 +415,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 
 app.MapVideoForensicsHealthEndpoints();
+
+app.MapSystemVersionEndpoints();
 
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
