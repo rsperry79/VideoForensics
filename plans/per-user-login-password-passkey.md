@@ -1,7 +1,5 @@
 # Move website human login to per-user (password + passkey); keep device pairing for services
 
-**STATUS: ✅ COMPLETED** (2026-10-05)
-
 ## Context
 
 Today there is exactly one way for a human to sign into the website: the QR-code/WebAuthn "pairing"
@@ -306,60 +304,3 @@ Given the size, implementation is dispatched to Haiku subagents in dependency or
 5. Tests — can start as soon as the relevant repository/endpoint from earlier phases lands, run in
    parallel with later phases where there's no file overlap.
 Each phase's lite gate (build + relevant tests) runs before moving to the next phase.
-
-## Implementation Summary
-
-**Completed 2026-10-05** by Haiku subagents across 4 milestones:
-
-### Milestone 1: Data Model & Repositories
-- Added `Operator.Username`, `Role`, `PasswordHash`, `MustChangePassword`, `PasswordUpdatedAtUtc`, `FirstName`, `LastName`, `Email`, `Phone`, `SecurityStamp`, `ApprovalFirstLoginNotifiedAtUtc`
-- Added `OperatorCredential` entity with `IsApproved`, `IsActive`, `FirstLoginNotifiedAtUtc`, `RevokedAtUtc`, `RevokedReason`
-- Created EF Core migration adding columns and new `OperatorCredentials` table
-- Implemented `IOperatorCredentialRepository` with CRUD and approval operations
-- Extended `IOperatorRepository` with `GetByUsernameAsync`, `SetPasswordAsync`, `SetRoleAsync`, `ApproveAsync`
-
-### Milestone 2: Session & Auth Plumbing  
-- Extended `SessionPrincipal` with `CredentialKind { ServiceDevice, Password, OperatorPasskey }` and nullable `CredentialId`
-- Updated `PairedDeviceAuthenticationHandler` to branch re-validation on credential kind
-- Added `SecurityStamp` validation to invalidate sessions on password reset
-- Added `MustChangePassword` enforcement (server-side 403 rejection on non-allowed endpoints)
-
-### Milestone 3: Server Endpoints & Tests
-- `POST /api/v1/auth/register` — self-service signup (bootstrap SuperAdmin auto-approved, others ReadOnly+unapproved)
-- `POST /api/v1/auth/login/password` — password auth with timing-attack mitigation
-- `POST /api/v1/auth/change-password` — password change (or forced change via MustChangePassword)
-- `POST /api/v1/auth/stepup/password` — re-auth for step-up-gated actions
-- `POST /api/v1/auth/operator-credentials/register/{options,complete}` — passkey registration (IsApproved=false for subsequent credentials)
-- `GET /api/v1/devices-management/operator-credentials/mine` — self-service credential list
-- `GET /api/v1/devices-management/operator-credentials/pending` — admin view of pending approvals
-- `POST /api/v1/devices-management/operator-credentials/{id}/approve` — admin approval (step-up gated)
-- `POST /api/v1/devices-management/operator-credentials/{id}/revoke` — admin revocation
-- `POST /api/v1/devices-management/operators/{id}/approve` — fixed missing endpoint for operator approval
-- `POST /api/v1/devices-management/operators/{id}/reset-password` — SuperAdmin reset with temp password
-- All endpoints: rate-limited ("auth"), audit-logged, validated
-- Comprehensive test suite: 260+ WebApp tests, 438+ Hosting tests, 578+ Database tests (all passing)
-
-### Milestone 4: UI Components & User Flows
-- Updated `SignIn.razor` with per-user password login and passkey authentication flows
-- Created `PendingCredentials.razor` for admin credential approval workflow with step-up re-auth
-- Updated `AuthGate.razor` to allow `/signin` and `/change-password` routes for unauthenticated users
-- Updated `NavGroups.cs` navigation (added "Pending Approvals" menu, updated user menu)
-- Updated sign-in and new UI localization (.resx files)
-
-### Backwards Compatibility
-- Device pairing (`/pair`, QR-code ceremony) completely unchanged
-- Service credentials (device-code flow, API key) unchanged
-- Existing operators keep paired devices; no auto-password generation (one-time transition)
-- Session token format backward-compatible (nullable `CredentialId`)
-
-### Test Coverage
-- **WebApp tests:** 260 passing (auth endpoints, session handling, security audit)
-- **Hosting tests:** 438 passing (auth method settings, WebAuthn ceremonies, two-factor cache)
-- **Database tests:** 578 passing (operator/credential repositories, new migrations)
-- All auth-related code paths exercised; no gaps in per-user-login functionality
-
-### Known Limitations (Out of Scope)
-- Email notifications for approvals/resets (manual handoff, infrastructure exists)
-- Self-service "forgot password" email-reset flow (defer to future work)
-- MAUI password change UI (separate from API endpoints; same underlying flows)
-- Mobile layout optimization (pending per CLAUDE.md)

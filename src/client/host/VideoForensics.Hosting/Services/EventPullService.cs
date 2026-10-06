@@ -53,7 +53,7 @@ namespace VideoForensics.Hosting.Services
 #pragma warning disable CS0618
                 var locations = await _locationRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
 #pragma warning restore CS0618
-                if (locations == null || locations.Count == 0)
+                if (locations.Count == 0)
                 {
                     _logger.LogInformation("No locations found for account");
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
@@ -65,12 +65,8 @@ namespace VideoForensics.Hosting.Services
                 var allDevices = new List<VideoForensics.Data.Common.Entities.Device>();
                 foreach (var location in locations)
                 {
-                    if (location == null) continue;
                     var devices = await _deviceRepository.GetByLocationIdAsync(location.Id, cancellationToken);
-                    if (devices != null)
-                    {
-                        allDevices.AddRange(devices);
-                    }
+                    allDevices.AddRange(devices);
                 }
 
                 var startTime = fromTimestampUtc ?? DateTime.MinValue;
@@ -79,14 +75,11 @@ namespace VideoForensics.Hosting.Services
 
                 foreach (var device in allDevices)
                 {
-                    if (device == null) continue;
-
                     try
                     {
-                        _logger.LogDebug("Pulling events for device");
+                        _logger.LogDebug("Pulling events for device {DeviceId}", device.ProviderDeviceId);
 
                         await _eventAndConfigService.GetEventsAsync(
-                            accountId,
                             device.ProviderDeviceId,
                             startTime,
                             endTime,
@@ -94,21 +87,20 @@ namespace VideoForensics.Hosting.Services
                             cancellationToken
                         );
 
-                        await _eventAndConfigService.GetDeviceConfigAsync(accountId, device.ProviderDeviceId, cancellationToken);
+                        await _eventAndConfigService.GetDeviceConfigAsync(device.ProviderDeviceId, cancellationToken);
 
                         device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
 
-                        _logger.LogDebug("Successfully pulled events for device");
+                        _logger.LogDebug("Successfully pulled events for device {DeviceId}", device.ProviderDeviceId);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to pull events for device");
+                        _logger.LogError(ex, "Failed to pull events for device {DeviceId}", device.ProviderDeviceId);
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
-                        var deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
-                        deviceErrors.Add($"Device {deviceName}: {ex.Message}");
+                        deviceErrors.Add($"Device {device.ProviderDeviceId}: {ex.Message}");
                     }
                 }
 
@@ -144,7 +136,6 @@ namespace VideoForensics.Hosting.Services
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)
         {
-            if (message == null) return null;
             return message.Length > maxLength ? message.Substring(0, maxLength) : message;
         }
     }

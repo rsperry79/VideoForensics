@@ -103,7 +103,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public async Task Store_WithConcurrentAccess_EachNonceIsUnique()
+        public void Store_WithConcurrentAccess_EachNonceIsUnique()
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -123,7 +123,7 @@ namespace VideoForensics.Hosting.Tests
                 }
             })).ToArray();
 
-            await Task.WhenAll(tasks);
+            Task.WaitAll(tasks);
 
             // Assert: All nonces should be unique
             Assert.Equal(50, nonces.Count);

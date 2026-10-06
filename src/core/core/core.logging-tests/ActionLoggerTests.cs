@@ -296,7 +296,7 @@ namespace VideoForensics.Core.Logging.Tests
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }
 
@@ -337,7 +337,7 @@ namespace VideoForensics.Core.Logging.Tests
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }
 
@@ -377,7 +377,7 @@ namespace VideoForensics.Core.Logging.Tests
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once,
                 "Serilog should be called");
 
@@ -426,7 +426,7 @@ namespace VideoForensics.Core.Logging.Tests
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once,
                 "Serilog (primary) should be called even if repository fails");
 
