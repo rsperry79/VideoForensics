@@ -25,13 +25,16 @@ namespace VideoForensics.Providers.Ring.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct)
+        /// <summary>
+        /// Starts a live view connection with an explicit account ID.
+        /// </summary>
+        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, Guid accountId, CancellationToken ct)
         {
-            // Get the current authenticated Session
-            var session = _sessionProvider.GetSession();
+            // Get the authenticated Session for the specific account
+            var session = _sessionProvider.GetSession(accountId);
             if (session == null)
             {
-                throw new InvalidOperationException("Not authenticated with Ring.");
+                throw new InvalidOperationException($"Not authenticated with Ring for account {accountId}.");
             }
 
             // Parse Ring doorbot ID (should be numeric)
@@ -40,7 +43,7 @@ namespace VideoForensics.Providers.Ring.Services
                 throw new ArgumentException($"Invalid Ring doorbot ID '{providerDeviceId}'. Expected a numeric ID.", nameof(providerDeviceId));
             }
 
-            _logger.LogInformation("Starting Ring live view for doorbot {DoorbotId}", doorbotId);
+            _logger.LogInformation("Starting Ring live view for doorbot {DoorbotId} with account {AccountId}", doorbotId, accountId);
 
             try
             {
@@ -58,6 +61,16 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogError(ex, "Failed to start Ring live view for doorbot {DoorbotId}", doorbotId);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Starts a live view connection using the default/current authenticated session.
+        /// Implements ILiveViewCapableProvider.StartLiveViewAsync.
+        /// </summary>
+        public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, CancellationToken ct)
+        {
+            // Delegate to the account-aware overload with Guid.Empty to use the default session
+            return await StartLiveViewAsync(providerDeviceId, Guid.Empty, ct);
         }
     }
 }

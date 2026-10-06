@@ -103,7 +103,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public void Store_WithConcurrentAccess_EachTokenIsUnique()
+        public async Task Store_WithConcurrentAccess_EachTokenIsUnique()
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -121,7 +121,7 @@ namespace VideoForensics.Hosting.Tests
                 }
             })).ToArray();
 
-            Task.WaitAll(tasks);
+            await Task.WhenAll(tasks);
 
             // Assert: All tokens should be unique
             Assert.Equal(50, tokens.Count);

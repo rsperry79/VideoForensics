@@ -206,12 +206,12 @@ namespace VideoForensics.Providers.Uniview.Services
 
                         if (username != null && password != null)
                         {
-                            _logger.LogInformation("Restoring Uniview session from database for account {AccountId}", providerAccountId);
+                            _logger.LogInformation("Restoring Uniview session from database for account {AccountId} (provider: Uniview)", providerAccountId);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId}", providerAccountId);
+                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId} (provider: Uniview)", providerAccountId);
                     }
                 }
 

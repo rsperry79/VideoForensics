@@ -24,6 +24,13 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<IReadOnlyList<Location>> GetLocationsAsync(Guid accountId, CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await GetLocationsAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/discovery/locations", cancellationToken);
@@ -33,12 +40,26 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<IReadOnlyList<Device>> GetDevicesAsync(Guid accountId, string locationId, CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await GetDevicesAsync(locationId, cancellationToken);
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<Device>> GetDevicesAsync(string locationId, CancellationToken cancellationToken = default)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/discovery/locations/{locationId}/devices", cancellationToken);
             _ = response.EnsureSuccessStatusCode();
             List<DiscoveryDeviceDto>? dtos = await response.Content.ReadFromJsonAsync<List<DiscoveryDeviceDto>>(JsonOptions, cancellationToken);
             return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+        }
+
+        /// <inheritdoc />
+        public async Task<Device?> GetDeviceAsync(Guid accountId, string deviceId, CancellationToken cancellationToken = default)
+        {
+            // Delegate to legacy method (accountId will be used in future API versioning)
+            return await GetDeviceAsync(deviceId, cancellationToken);
         }
 
         /// <inheritdoc />
