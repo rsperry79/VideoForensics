@@ -1,25 +1,18 @@
 # Execution Status: VideoForensics Planning & Implementation
 
-## Active Plans
+## Archived Completed Plans
 
 ### Phase C: Authentication & Release Infrastructure
 
 #### ✅ **Phase C Item 2: Per-User Login (Password + Passkey)** — COMPLETED 2026-10-05
-- **Plan:** `per-user-login-password-passkey.md`
-- **Branch:** `ci/per-user-login-password-passkey` (2 commits: Milestone 3 endpoints + Milestone 4 UI)
-- **Status:** Awaiting final PR to dev
+- **Plan:** `plans/archive/per-user-login-password-passkey.md`
+- **Status:** Merged to dev (PR #166)
 - **Implementation:** 4 milestones completed
-  1. Data model + repositories (Operator.Username, OperatorCredential entity)
-  2. Session/auth plumbing (CredentialKind, SecurityStamp, MustChangePassword enforcement)
-  3. Server endpoints (register, login/password, change-password, credential approval flows, reset-password)
-  4. UI components (SignIn.razor, PendingCredentials.razor, navigation updates)
-- **Testing:** 260 WebApp + 438 Hosting + 578 Database tests (all passing)
-- **Notes:** Device pairing unchanged; service credentials unchanged; backwards compatible
+- **Testing:** All passing (260 WebApp + 438 Hosting + 578 Database)
 
-#### ✅ **Phase C Item 3: CI/CD Versioning & Update Check** — COMPLETED (PR #157)
-- **Plan:** `ci-cd-versioning-update-check.md`
-- **Status:** Merged to dev
-- **Implementation:** Semantic versioning, release notes generation, client update checker
+#### ✅ **Phase C Item 3: CI/CD Versioning & Update Check** — COMPLETED 2026-10-05
+- **Plan:** `plans/archive/ci-cd-versioning-update-check.md`
+- **Status:** Merged to dev (PR #159)
 
 ---
 
