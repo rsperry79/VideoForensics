@@ -272,8 +272,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Un
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbSetup", "src\utils\setup\VideoForensics.Utils.DbSetup.csproj", "{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbDiagnostics", "src\tools\DbDiagnostics\DbDiagnostics.csproj", "{814F0BA3-C959-47E8-9D34-FC514C83E1C7}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair", "src\utils\repair\VideoForensics.Utils.DbRepair.csproj", "{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics", "src\utils\diagnostics\VideoForensics.Utils.Diagnostics.csproj", "{3DDD08CD-5644-48B7-8DF0-8C2DF7737A22}"
@@ -1046,18 +1044,6 @@ Global
 		{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}.Release|x64.Build.0 = Release|Any CPU
 		{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}.Release|x86.ActiveCfg = Release|Any CPU
 		{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}.Release|x86.Build.0 = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|x64.Build.0 = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Debug|x86.Build.0 = Debug|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|x64.ActiveCfg = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|x64.Build.0 = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|x86.ActiveCfg = Release|Any CPU
-		{814F0BA3-C959-47E8-9D34-FC514C83E1C7}.Release|x86.Build.0 = Release|Any CPU
 		{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}.Debug|x64.ActiveCfg = Debug|Any CPU
