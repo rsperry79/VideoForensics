@@ -2,8 +2,8 @@ using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Ui.Shared.Layout
 {
-    /// <summary>A single left-nav item within a top-level tab group.</summary>
-    public sealed record NavItem(string Text, string Path, Func<NavContext, bool>? Visible = null)
+    /// <summary>A single left-nav item within a top-level tab group, optionally with child items.</summary>
+    public sealed record NavItem(string Text, string Path, Func<NavContext, bool>? Visible = null, IReadOnlyList<NavItem>? Children = null)
     {
         public bool IsVisible(NavContext ctx)
         {
@@ -41,8 +41,18 @@ namespace VideoForensics.Ui.Shared.Layout
             new("evidence", "Evidence", "/evidence",
             [
                 new("Evidence", "/evidence"),
-                new("Collect Videos", "/collect/videos"),
-                new("Collect Snapshots", "/collect/snapshots")
+                new("Collect", "/collect"),
+                new("Dates Filter", "/evidence/dates-filter", Visible: ctx => false,
+                    Children: null),
+                new("Analyze", "/analyze",
+                    Children:
+                    [
+                        new("Forensic Reports", "/analyze?analysis=reports"),
+                        new("Signal Anomalies", "/analyze?analysis=anomalies"),
+                        new("Access Control", "/analyze?analysis=access"),
+                        new("Jamming Analysis", "/analyze?analysis=jamming")
+                    ]),
+                new("Chat Assistant", "/chat", ctx => ctx.HasRole(OperatorRole.ReadOnly))
             ]),
 
             new("cases", "Cases", "/cases",
@@ -54,22 +64,12 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Export Evidence", "/review/export")
             ]),
 
-            new("analyze", "Analyze", "/analyze",
-            [
-                new("Forensic Reports", "/analyze?analysis=reports"),
-                new("Signal Anomalies", "/analyze?analysis=anomalies"),
-                new("Access Control", "/analyze?analysis=access"),
-                new("Jamming Analysis", "/analyze?analysis=jamming")
-            ]),
-
             new("sources", "Sources", "/accounts",
             [
                 new("Provider Accounts", "/accounts"),
                 new("Device Configuration", "/devices/config"),
                 new("Query API", "/query"),
-                new("Chat Assistant", "/chat", ctx => ctx.HasRole(OperatorRole.ReadOnly)),
-                new("API Tester", "/tools/ring-selftest"),
-                new("Import / Export", "/tools/import-export")
+                new("API Tester", "/tools/ring-selftest")
             ]),
 
             new("admin", "Admin", "/settings",
@@ -78,6 +78,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Security Events", "/settings/security-events"),
                 new("Infrastructure", "/settings/infrastructure"),
                 new("Operators", "/settings/operators", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
+                new("Pending Approvals", "/admin/pending-credentials", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Paired Devices", "/settings/devices", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Network Access", "/settings/network", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Storage", "/settings/storage", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
@@ -88,7 +89,9 @@ namespace VideoForensics.Ui.Shared.Layout
                 // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
                 // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).
                 new("Lockout Policy", "/settings/lockout-policy", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
-                new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported)
+                new("Login Methods", "/settings/auth-methods", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
+                new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported),
+                new("Import / Export", "/tools/import-export")
             ])
         ];
     }
@@ -119,7 +122,7 @@ namespace VideoForensics.Ui.Shared.Layout
             }
             else
             {
-                items.Add(new("Device Sign-In", "/device-signin"));
+                items.Add(new("Sign In", "/signin"));
             }
 
             return items;

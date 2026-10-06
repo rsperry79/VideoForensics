@@ -13,7 +13,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetEventsAsync_WithoutOperatorId_CallsCorrectEndpoint()
         {
             // Arrange
-            var events = new List<SecurityEventDto>
+            var events = new List<VideoForensics.Api.Contracts.SecurityEventDto>
             {
                 new(
                     Id: Guid.NewGuid(),
@@ -54,7 +54,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var events = new List<SecurityEventDto>
+            var events = new List<VideoForensics.Api.Contracts.SecurityEventDto>
             {
                 new(
                     Id: Guid.NewGuid(),
@@ -96,7 +96,7 @@ namespace VideoForensics.Hosting.Tests
                 request =>
                 {
                     var response = new HttpResponseMessage(HttpStatusCode.OK);
-                    response.Content = JsonContent.Create(new List<SecurityEventDto>());
+                    response.Content = JsonContent.Create(new List<VideoForensics.Api.Contracts.SecurityEventDto>());
                     return response;
                 }
             );

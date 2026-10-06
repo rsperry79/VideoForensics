@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace VideoForensics.Hosting
 {
@@ -26,28 +26,36 @@ namespace VideoForensics.Hosting
     }
 
     /// <summary>
-    /// In-memory implementation of ITwoFactorPendingAuthCache with TTL-based expiration.
+    /// In-memory implementation of ITwoFactorPendingAuthCache using IMemoryCache with TTL-based expiration.
+    /// Uses single-use semantics: TryTake removes the entry on retrieval.
     /// </summary>
     public class TwoFactorPendingAuthCache : ITwoFactorPendingAuthCache
     {
         private static readonly TimeSpan PendingAuthLifetime = TimeSpan.FromMinutes(5);
-        private readonly ConcurrentDictionary<string, (Guid OperatorId, DateTime ExpiresAtUtc)> _entries = new();
+        private readonly IMemoryCache _cache;
+
+        public TwoFactorPendingAuthCache(IMemoryCache cache)
+        {
+            _cache = cache;
+        }
 
         public string Store(Guid operatorId)
         {
             string correlationToken = Guid.NewGuid().ToString("N");
-            _entries[correlationToken] = (operatorId, DateTime.UtcNow + PendingAuthLifetime);
+            _cache.Set(correlationToken, operatorId, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = PendingAuthLifetime
+            });
             return correlationToken;
         }
 
         public Guid? TryTake(string correlationToken)
         {
-            if (_entries.TryRemove(correlationToken, out (Guid OperatorId, DateTime ExpiresAtUtc) entry))
+            if (_cache.TryGetValue(correlationToken, out Guid operatorId))
             {
-                if (entry.ExpiresAtUtc > DateTime.UtcNow)
-                {
-                    return entry.OperatorId;
-                }
+                // Remove the entry (single-use semantics)
+                _cache.Remove(correlationToken);
+                return operatorId;
             }
 
             return null;

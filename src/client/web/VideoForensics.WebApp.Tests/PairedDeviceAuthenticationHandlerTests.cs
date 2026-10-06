@@ -678,5 +678,611 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(NetworkTier.Local, ClaimedTier(result));
             headerProtector.Verify(p => p.TryUnprotect(It.IsAny<string>(), out It.Ref<NetworkTier>.IsAny, out It.Ref<Guid?>.IsAny), Times.Never);
         }
+
+        // --- Password Credential Kind Tests ---
+
+        private static (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasswordSession(string token)
+        {
+            var operatorId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
+            var tokenService = new Mock<ISessionTokenService>();
+            var operatorRepository = new Mock<IOperatorRepository>();
+            var tierResolver = new Mock<INetworkTierResolver>();
+
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = false
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+
+            return (operatorId, tokenService, operatorRepository, tierResolver);
+        }
+
+        [Fact]
+        public async Task Password_ValidOperatorWithMatchingSecurityStamp_SucceedsWithClaimsWithoutPairedDeviceId()
+        {
+            // Arrange
+            const string token = "password-valid-token";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Ticket);
+            ClaimsPrincipal principal = result.Ticket.Principal;
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.OperatorId && c.Value == operatorId.ToString());
+            Assert.DoesNotContain(principal.Claims, c => c.Type == VideoForensicsClaimTypes.PairedDeviceId);
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.Role && c.Value == OperatorRole.SuperAdmin.ToString());
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.NetworkTier && c.Value == NetworkTier.Local.ToString());
+        }
+
+        [Fact]
+        public async Task Password_OperatorNotApproved_Fails()
+        {
+            // Arrange
+            const string token = "password-not-approved";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = false, // Not approved
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = Guid.NewGuid()
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task Password_OperatorNotActive_Fails()
+        {
+            // Arrange
+            const string token = "password-not-active";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = false, // Not active
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = Guid.NewGuid()
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task Password_SecurityStampMismatch_Fails()
+        {
+            // Arrange
+            const string token = "password-stamp-mismatch";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            // Override operatorRepository to return an operator with different SecurityStamp
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = Guid.NewGuid() // Different from token's stamp
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task Password_MustChangePasswordOnChangePasswordPath_Succeeds()
+        {
+            // Arrange
+            const string token = "password-must-change-on-valid-path";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            var securityStamp = Guid.NewGuid();
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = true // Must change password
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = "/api/v1/auth/change-password"; // Allowed path
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Ticket);
+        }
+
+        [Fact]
+        public async Task Password_MustChangePasswordOnWebAuthnStepupCompletePath_Succeeds()
+        {
+            // Arrange
+            const string token = "password-must-change-on-stepup-path";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            var securityStamp = Guid.NewGuid();
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = true // Must change password
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = "/api/v1/auth/webauthn/stepup-complete"; // Second allowed path
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert - This test will FAIL initially because the handler only checks for /api/v1/auth/change-password
+            // The implementation needs to be updated to include /api/v1/auth/webauthn/stepup-complete as an allowed path
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Ticket);
+        }
+
+        [Fact]
+        public async Task Password_MustChangePasswordOnOtherPath_FailsWith403()
+        {
+            // Arrange
+            const string token = "password-must-change-blocked";
+            (Guid operatorId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasswordSession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+
+            var securityStamp = Guid.NewGuid();
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = true // Must change password
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = "/api/v1/devices"; // Not an allowed path
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Password change required.", result.Failure?.Message);
+        }
+
+        // --- OperatorPasskey Credential Kind Tests ---
+
+        private static (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) SetUpValidPasskeySession(string token)
+        {
+            var operatorId = Guid.NewGuid();
+            var credentialId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
+            var tokenService = new Mock<ISessionTokenService>();
+            var operatorRepository = new Mock<IOperatorRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+            var tierResolver = new Mock<INetworkTierResolver>();
+
+            var principal = new SessionPrincipal(
+                operatorId, credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Test Passkey",
+                WebAuthnCredentialId = "test-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = true,
+                RevokedAtUtc = null // Not revoked
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = false
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            _ = tierResolver.Setup(t => t.ResolveTier(It.IsAny<HttpContext>())).Returns(NetworkTier.Local);
+
+            return (operatorId, credentialId, tokenService, operatorRepository, credentialRepository, tierResolver);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_ValidCredentialAndOperator_SucceedsWithCredentialIdClaim()
+        {
+            // Arrange
+            const string token = "passkey-valid-token";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Ticket);
+            ClaimsPrincipal principal = result.Ticket.Principal;
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.OperatorId && c.Value == operatorId.ToString());
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.PairedDeviceId && c.Value == credentialId.ToString());
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.Role && c.Value == OperatorRole.SuperAdmin.ToString());
+            Assert.Contains(principal.Claims, c => c.Type == VideoForensicsClaimTypes.NetworkTier && c.Value == NetworkTier.Local.ToString());
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_CredentialNotFound_Fails()
+        {
+            // Arrange
+            const string token = "passkey-not-found";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync((OperatorCredential?)null);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_CredentialNotActive_Fails()
+        {
+            // Arrange
+            const string token = "passkey-not-active";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Revoked Passkey",
+                WebAuthnCredentialId = "revoked-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = true,
+                RevokedAtUtc = DateTime.UtcNow.AddHours(-1) // Revoked
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_CredentialNotApproved_Fails()
+        {
+            // Arrange
+            const string token = "passkey-not-approved";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Unapproved Passkey",
+                WebAuthnCredentialId = "unapproved-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = false, // Not approved
+                RevokedAtUtc = null
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_OperatorSecurityStampMismatch_Fails()
+        {
+            // Arrange
+            const string token = "passkey-stamp-mismatch";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Test Passkey",
+                WebAuthnCredentialId = "test-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = true,
+                RevokedAtUtc = null
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            // Override operator with different SecurityStamp
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = Guid.NewGuid() // Different from token's stamp
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Invalid or expired credential.", result.Failure?.Message);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_MustChangePasswordOnChangePasswordPath_Succeeds()
+        {
+            // Arrange
+            const string token = "passkey-must-change-valid-path";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            var securityStamp = Guid.NewGuid();
+            var principal = new SessionPrincipal(
+                operatorId, credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Test Passkey",
+                WebAuthnCredentialId = "test-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = true,
+                RevokedAtUtc = null
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = true // Must change password
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = "/api/v1/auth/change-password"; // Allowed path
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Ticket);
+        }
+
+        [Fact]
+        public async Task OperatorPasskey_MustChangePasswordOnOtherPath_FailsWith403()
+        {
+            // Arrange
+            const string token = "passkey-must-change-blocked";
+            (Guid operatorId, Guid credentialId, Mock<ISessionTokenService> tokenService, Mock<IOperatorRepository> operatorRepository, Mock<IOperatorCredentialRepository> credentialRepository, Mock<INetworkTierResolver> tierResolver) = SetUpValidPasskeySession(token);
+            var repo = new Mock<IPairedDeviceRepository>();
+
+            var securityStamp = Guid.NewGuid();
+            var principal = new SessionPrincipal(
+                operatorId, credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var credential = new OperatorCredential
+            {
+                Id = credentialId,
+                OperatorId = operatorId,
+                Label = "Test Passkey",
+                WebAuthnCredentialId = "test-cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                CreatedAtUtc = DateTime.UtcNow,
+                IsApproved = true,
+                RevokedAtUtc = null
+            };
+            _ = credentialRepository.Setup(c => c.GetAsync(credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(credential);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp,
+                MustChangePassword = true // Must change password
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = "/api/v1/devices"; // Not an allowed path
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Password change required.", result.Failure?.Message);
+        }
     }
 }

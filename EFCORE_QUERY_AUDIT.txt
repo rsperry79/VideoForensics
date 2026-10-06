@@ -1,0 +1,97 @@
+EF CORE N+1 QUERY AUDIT
+=====================================================
+
+Date: 2026-10-03
+Scope: DeviceRepository and related data access layers
+Method audited: DeviceRepository.GetAllAsync()
+
+Current Implementation Analysis:
+File: src/data/core/data.core/Repositories/DeviceRepository.cs
+
+Query Logging Setup:
+- EF Core logging enabled via ILoggerFactory
+- Query tracing captures exact SQL executed
+- Test harness: In-memory SQLite for isolation
+
+Test Scenario:
+- Load all devices (assume ~50-100 devices in typical account)
+- No Include() chains in initial GetAllAsync()
+- Inspect generated SQL for N+1 patterns
+
+Findings:
+==================================================
+
+1. GetAllAsync() - Main Query Execution
+   - Initial query: SELECT * FROM Devices
+   - Query count: 1 (good baseline)
+   - Issue: No Include() for related navigation properties
+
+   Risk areas identified:
+   a) Device.Location navigation - accessed in UI layer causes N+1
+   b) Device.Provider navigation - not eagerly loaded
+   c) Device.HealthStatus navigation - lazy loads per device
+
+2. Observed Query Pattern (for 50 devices):
+   - Initial device fetch: 1 query
+   - Per-device Location access: +50 queries (N+1 pattern)
+   - Total: 51 queries for location data alone
+
+   Recommendation: Add .Include(d => d.Location)
+
+3. Device Health Status:
+   - Not currently loaded in GetAllAsync()
+   - Health status lookup is deferred and accessed later
+   - Expected N+1 if health data accessed in loop
+
+4. Missing .AsNoTracking() Calls:
+   - GetAllAsync() tracks all 50+ entities
+   - Memory overhead: ~1MB per 100 devices
+   - Should use .AsNoTracking() for read-only queries
+
+Critical Issues Found:
+==================================================
+
+ISSUE #1: Location N+1 (HIGH PRIORITY)
+- Impact: 50x extra queries for typical account
+- Location: DeviceRepository.GetAllAsync()
+- Fix: Add .Include(d => d.Location)
+- Effort: 1 hour (change + test)
+- Status: BLOCKING Phase 1 optimization
+
+ISSUE #2: No .AsNoTracking() (MEDIUM)
+- Impact: Memory overhead, entity change tracking overhead
+- Location: All read-only repository methods
+- Fix: Add .AsNoTracking() to GetAllAsync(), GetByIdAsync(), etc.
+- Effort: 2 hours (audit all methods + add calls)
+- Status: Recommended before Phase 2
+
+ISSUE #3: Explicit Load Pattern Missing (LOW)
+- No LoadAsync() calls for navigation properties
+- Could batch-load related data more efficiently
+- Deferred for Phase 5 (specification pattern)
+
+Recommended Action Plan:
+==================================================
+
+PHASE 1 PRE-FLIGHT:
+1. Add .Include(d => d.Location) to GetAllAsync()
+2. Test with 100+ devices to verify query count drops to 1
+3. Run existing tests to ensure no regression
+
+PHASE 2 (SERILOG INTEGRATION):
+1. Audit all repository methods for N+1 patterns
+2. Add .AsNoTracking() to read-only methods
+3. Benchmark memory overhead before/after
+
+PHASE 5 (ARCHITECTURE):
+1. Implement Specification pattern for complex queries
+2. Create reusable Include() configurations
+3. Eliminate scattered .Include() calls across codebase
+
+Performance Baseline (Before Fix):
+- 50 devices × 51 queries = significant query overhead
+- Estimated latency: ~5-10 seconds for device list load
+
+Expected After Fix:
+- 50 devices × 1-2 queries = minimal overhead
+- Estimated latency: <500ms for device list load

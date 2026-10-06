@@ -50,7 +50,9 @@ namespace VideoForensics.WebApp.Api
                     Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     id, tierResolver.ResolveClientIp(context), request.Reason, isUrgent: true, ct);
                 return Results.Ok();
-            }).AddEndpointFilter<StepUpEndpointFilter>();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = group.MapPost("/operators/{id:guid}/deactivate", async (
                 Guid id,
@@ -76,7 +78,9 @@ namespace VideoForensics.WebApp.Api
                     null, tierResolver.ResolveClientIp(context), $"Operator {id}, {revokedDeviceIds.Count} device(s) revoked: {request.Reason}", isUrgent: true, ct);
 
                 return Results.Ok(new { revokedDeviceCount = revokedDeviceIds.Count });
-            }).AddEndpointFilter<StepUpEndpointFilter>();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = group.MapPost("/operators/{id:guid}/approve", async (
                 Guid id,
@@ -92,7 +96,9 @@ namespace VideoForensics.WebApp.Api
                     Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                     null, tierResolver.ResolveClientIp(context), $"Operator {id} approved", isUrgent: true, ct);
                 return Results.Ok();
-            }).AddEndpointFilter<StepUpEndpointFilter>();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = group.MapPost("/operators/{id:guid}/reset-password", async (
                 Guid id,
@@ -128,9 +134,12 @@ namespace VideoForensics.WebApp.Api
                     null, tierResolver.ResolveClientIp(context), $"Password reset for operator {id}", isUrgent: true, ct);
 
                 return Results.Ok(new { temporaryPassword });
-            }).AddEndpointFilter<StepUpEndpointFilter>();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
 
-            _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync);
+            _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync)
+                .RequireRateLimiting("auth");
 
             // Separate route group for operator credentials management. Base policy is the LOWEST
             // requirement any route here needs (ReadOnly, i.e. "just signed in") - RequireAuthorization
@@ -144,7 +153,8 @@ namespace VideoForensics.WebApp.Api
                 IOperatorCredentialRepository credentials,
                 CancellationToken ct) =>
                 Results.Ok(await credentials.ListPendingApprovalAsync(ct)))
-            .RequireAuthorization(VideoForensicsPolicies.Admin);
+            .RequireAuthorization(VideoForensicsPolicies.Admin)
+            .RequireRateLimiting("auth");
 
             _ = credentialGroup.MapPost("/{id:guid}/approve", async (
                 Guid id,
@@ -162,6 +172,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok();
             })
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+            .RequireRateLimiting("auth")
             .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = credentialGroup.MapPost("/{id:guid}/revoke", async (
@@ -200,6 +211,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok();
             })
             .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+            .RequireRateLimiting("auth")
             .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = credentialGroup.MapGet("/mine", async (
@@ -215,7 +227,8 @@ namespace VideoForensics.WebApp.Api
 
                 return Results.Ok(await credentials.ListForOperatorAsync(operatorId, ct));
             })
-            .RequireAuthorization(VideoForensicsPolicies.ReadOnly);
+            .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+            .RequireRateLimiting("auth");
         }
 
         /// <summary>

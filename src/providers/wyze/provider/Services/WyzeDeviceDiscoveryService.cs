@@ -18,6 +18,14 @@ namespace VideoForensics.Providers.Wyze.Services
         }
 
         /// <summary>
+        /// Gets all locations (homes/properties) for the authenticated Wyze account (account-aware version).
+        /// </summary>
+        public async Task<IReadOnlyList<Location>> GetLocationsAsync(Guid accountId, CancellationToken cancellationToken = default)
+        {
+            return await GetLocationsAsync(cancellationToken);
+        }
+
+        /// <summary>
         /// Gets all locations (homes/properties) for the authenticated Wyze account.
         /// </summary>
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -38,6 +46,14 @@ namespace VideoForensics.Providers.Wyze.Services
                 _logger.LogError(ex, "Error fetching Wyze locations");
                 return new List<Location>().AsReadOnly();
             }
+        }
+
+        /// <summary>
+        /// Gets all devices at a specific location (account-aware version).
+        /// </summary>
+        public async Task<IReadOnlyList<Device>> GetDevicesAsync(Guid accountId, string locationId, CancellationToken cancellationToken = default)
+        {
+            return await GetDevicesAsync(locationId, cancellationToken);
         }
 
         /// <summary>
@@ -62,6 +78,14 @@ namespace VideoForensics.Providers.Wyze.Services
                 _logger.LogError(ex, "Error fetching Wyze devices for location {LocationId}", locationId);
                 return new List<Device>().AsReadOnly();
             }
+        }
+
+        /// <summary>
+        /// Gets details for a specific device (account-aware version).
+        /// </summary>
+        public async Task<Device?> GetDeviceAsync(Guid accountId, string deviceId, CancellationToken cancellationToken = default)
+        {
+            return await GetDeviceAsync(deviceId, cancellationToken);
         }
 
         /// <summary>

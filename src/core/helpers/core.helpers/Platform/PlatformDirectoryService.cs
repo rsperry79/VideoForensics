@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.IO.Abstractions;
 
 using VideoForensics.Providers.Common.Helpers.Contracts;
 
@@ -11,16 +12,29 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         private const string AppName = "RingVideos";
         private const string AppDirName = "ringvideos";
 
+        private readonly IFileSystem _fileSystem;
+
+        /// <summary>Initializes a new instance of PlatformDirectoryService with a real filesystem</summary>
+        public PlatformDirectoryService() : this(new FileSystem())
+        {
+        }
+
+        /// <summary>Initializes a new instance of PlatformDirectoryService with an abstracted filesystem for testing</summary>
+        public PlatformDirectoryService(IFileSystem fileSystem)
+        {
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        }
+
         public string GetApplicationDataDirectory()
         {
             return OperatingSystem.IsWindows()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics")
                 : OperatingSystem.IsLinux()
                 ? GetXdgDataHome()
                 : OperatingSystem.IsMacOS()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Application Support", AppName)
                 : throw new PlatformNotSupportedException($"Unsupported platform");
@@ -29,13 +43,13 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         public string GetLogsDirectory()
         {
             return OperatingSystem.IsWindows()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics", "Logs")
                 : OperatingSystem.IsLinux()
                 ? GetXdgStateHome()
                 : OperatingSystem.IsMacOS()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Logs", AppName)
                 : throw new PlatformNotSupportedException($"Unsupported platform");
@@ -44,13 +58,13 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         public string GetConfigDirectory()
         {
             return OperatingSystem.IsWindows()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "VideoForensics")
                 : OperatingSystem.IsLinux()
                 ? GetXdgConfigHome()
                 : OperatingSystem.IsMacOS()
-                ? Path.Combine(
+                ? _fileSystem.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Library", "Preferences", AppName)
                 : throw new PlatformNotSupportedException($"Unsupported platform");
@@ -60,8 +74,8 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         {
             string? xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
             return !string.IsNullOrEmpty(xdgDataHome)
-                ? Path.Combine(xdgDataHome, AppDirName)
-                : Path.Combine(
+                ? _fileSystem.Path.Combine(xdgDataHome, AppDirName)
+                : _fileSystem.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".local", "share", AppDirName);
         }
@@ -70,8 +84,8 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         {
             string? xdgStateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
             return !string.IsNullOrEmpty(xdgStateHome)
-                ? Path.Combine(xdgStateHome, AppDirName)
-                : Path.Combine(
+                ? _fileSystem.Path.Combine(xdgStateHome, AppDirName)
+                : _fileSystem.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".local", "state", AppDirName);
         }
@@ -80,8 +94,8 @@ namespace VideoForensics.Providers.Common.Helpers.Platform
         {
             string? xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
             return !string.IsNullOrEmpty(xdgConfigHome)
-                ? Path.Combine(xdgConfigHome, AppDirName)
-                : Path.Combine(
+                ? _fileSystem.Path.Combine(xdgConfigHome, AppDirName)
+                : _fileSystem.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".config", AppDirName);
         }

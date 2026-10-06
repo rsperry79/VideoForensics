@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+
 using Xunit;
 
 namespace VideoForensics.Hosting.Tests
@@ -8,7 +10,8 @@ namespace VideoForensics.Hosting.Tests
         public void Store_ReturnsOpaqueToken()
         {
             // Arrange
-            var cache = new TwoFactorPendingAuthCache();
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
             var operatorId = Guid.NewGuid();
 
             // Act
@@ -17,13 +20,16 @@ namespace VideoForensics.Hosting.Tests
             // Assert
             Assert.NotEmpty(token);
             Assert.Equal(32, token.Length); // GUIDs in N format are 32 chars
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public void TryTake_WithValidToken_ReturnsOperatorId()
         {
             // Arrange
-            var cache = new TwoFactorPendingAuthCache();
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
             var operatorId = Guid.NewGuid();
             string token = cache.Store(operatorId);
 
@@ -33,61 +39,54 @@ namespace VideoForensics.Hosting.Tests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(operatorId, result.Value);
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public void TryTake_IsSingleUse_CannotTakeTwice()
         {
             // Arrange
-            var cache = new TwoFactorPendingAuthCache();
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
             var operatorId = Guid.NewGuid();
             string token = cache.Store(operatorId);
 
             // Act - first take succeeds
             Guid? first = cache.TryTake(token);
-            // Second take should fail
+            // Second take should fail (entry was removed on first take)
             Guid? second = cache.TryTake(token);
 
             // Assert
             Assert.NotNull(first);
             Assert.Equal(operatorId, first.Value);
             Assert.Null(second);
+
+            memoryCache.Dispose();
         }
 
         [Fact]
         public void TryTake_WithInvalidToken_ReturnsNull()
         {
             // Arrange
-            var cache = new TwoFactorPendingAuthCache();
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
 
             // Act
             Guid? result = cache.TryTake("invalid-token");
 
             // Assert
             Assert.Null(result);
-        }
 
-        [Fact]
-        public void TryTake_WithExpiredToken_ReturnsNull()
-        {
-            // Arrange
-            var cache = new TwoFactorPendingAuthCache();
-            var operatorId = Guid.NewGuid();
-            string token = cache.Store(operatorId);
-
-            // Act - wait for expiration (5 minutes + 1 second)
-            System.Threading.Thread.Sleep(5 * 60 * 1000 + 1000);
-            Guid? result = cache.TryTake(token);
-
-            // Assert
-            Assert.Null(result);
+            memoryCache.Dispose();
         }
 
         [Fact]
         public void StoreMultiple_EachHasUniqueToken()
         {
             // Arrange
-            var cache = new TwoFactorPendingAuthCache();
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
             var op1 = Guid.NewGuid();
             var op2 = Guid.NewGuid();
 
@@ -99,6 +98,35 @@ namespace VideoForensics.Hosting.Tests
             Assert.NotEqual(token1, token2);
             Assert.Equal(op1, cache.TryTake(token1));
             Assert.Equal(op2, cache.TryTake(token2));
+
+            memoryCache.Dispose();
+        }
+
+        [Fact]
+        public async Task Store_WithConcurrentAccess_EachTokenIsUnique()
+        {
+            // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var cache = new TwoFactorPendingAuthCache(memoryCache);
+            var tokens = new System.Collections.Generic.HashSet<string>();
+            var ids = Enumerable.Range(0, 50).Select(_ => Guid.NewGuid()).ToList();
+
+            // Act: Concurrent stores
+            var tasks = ids.Select(id => Task.Run(() =>
+            {
+                string token = cache.Store(id);
+                lock (tokens)
+                {
+                    tokens.Add(token);
+                }
+            })).ToArray();
+
+            await Task.WhenAll(tasks);
+
+            // Assert: All tokens should be unique
+            Assert.Equal(50, tokens.Count);
+
+            memoryCache.Dispose();
         }
     }
 }

@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 
@@ -22,20 +21,11 @@ namespace VideoForensics.WebApp.Services
 
         public async Task<bool> IsIpBannedAsync(IPAddress ipAddress, CancellationToken ct)
         {
-            // Get all active banned IP ranges
             var bannedRanges = await _repository.GetActiveAsync(ct);
 
             foreach (var range in bannedRanges)
             {
-                // Try to parse the CIDR range; skip malformed entries and continue checking others
-                if (!TryParseCidr(range.CidrRange, out IPAddress? networkAddress, out int prefixLength))
-                {
-                    _logger.LogWarning("Failed to parse CIDR range '{CidrRange}' (id: {RangeId})", range.CidrRange, range.Id);
-                    continue;
-                }
-
-                // Check if the given IP is within this range
-                if (IsIpInRange(ipAddress, networkAddress!, prefixLength))
+                if (IsIpInCidrRange(ipAddress, range.CidrRange))
                 {
                     return true;
                 }
@@ -44,86 +34,65 @@ namespace VideoForensics.WebApp.Services
             return false;
         }
 
-        /// <summary>
-        /// Parses a CIDR notation string into network address and prefix length.
-        /// </summary>
-        private static bool TryParseCidr(string cidr, out IPAddress? networkAddress, out int prefixLength)
+        private bool IsIpInCidrRange(IPAddress ipAddress, string cidrRange)
         {
-            networkAddress = null;
-            prefixLength = 0;
-
             try
             {
-                var parts = cidr.Split('/');
+                // Parse CIDR notation: e.g., "192.168.0.0/24"
+                var parts = cidrRange.Split('/');
                 if (parts.Length != 2)
                 {
+                    _logger.LogWarning("Invalid CIDR format: {CidrRange}", cidrRange);
                     return false;
                 }
 
-                if (!IPAddress.TryParse(parts[0], out networkAddress) || networkAddress == null)
+                if (!IPAddress.TryParse(parts[0], out var network))
                 {
+                    _logger.LogWarning("Failed to parse network address in CIDR: {CidrRange}", cidrRange);
                     return false;
                 }
 
-                if (!int.TryParse(parts[1], out prefixLength))
+                if (!int.TryParse(parts[1], out var prefixLength) || prefixLength < 0 || prefixLength > (network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
                 {
+                    _logger.LogWarning("Invalid prefix length in CIDR: {CidrRange}", cidrRange);
                     return false;
                 }
 
-                // Validate prefix length based on address family
-                int maxPrefix = networkAddress.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
-                if (prefixLength < 0 || prefixLength > maxPrefix)
-                {
-                    return false;
-                }
-
-                return true;
+                return IsIpInNetwork(ipAddress, network, prefixLength);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Error checking CIDR range: {CidrRange}", cidrRange);
                 return false;
             }
         }
 
-        /// <summary>
-        /// Checks if an IP address is contained within a CIDR range.
-        /// </summary>
-        private static bool IsIpInRange(IPAddress ipAddress, IPAddress networkAddress, int prefixLength)
+        private bool IsIpInNetwork(IPAddress ipAddress, IPAddress network, int prefixLength)
         {
-            // Ensure both addresses are the same family
-            if (ipAddress.AddressFamily != networkAddress.AddressFamily)
-            {
+            if (ipAddress.AddressFamily != network.AddressFamily)
                 return false;
-            }
 
-            var ipBytes = ipAddress.GetAddressBytes();
-            var networkBytes = networkAddress.GetAddressBytes();
+            byte[] ipBytes = ipAddress.GetAddressBytes();
+            byte[] networkBytes = network.GetAddressBytes();
 
-            // Calculate the number of complete bytes to compare
-            int completeBytesToCheck = prefixLength / 8;
-            int remainingBits = prefixLength % 8;
+            int byteCount = prefixLength / 8;
+            int bitCount = prefixLength % 8;
 
-            // Check complete bytes
-            for (int i = 0; i < completeBytesToCheck; i++)
+            for (int i = 0; i < byteCount; i++)
             {
                 if (ipBytes[i] != networkBytes[i])
-                {
                     return false;
-                }
             }
 
-            // Check remaining bits in the next byte (if any)
-            if (remainingBits > 0 && completeBytesToCheck < ipBytes.Length)
+            if (bitCount > 0)
             {
-                byte mask = (byte)(0xFF << (8 - remainingBits));
-                if ((ipBytes[completeBytesToCheck] & mask) != (networkBytes[completeBytesToCheck] & mask))
-                {
-                    return false;
-                }
+                byte mask = (byte)(0xFF << (8 - bitCount));
+                return (ipBytes[byteCount] & mask) == (networkBytes[byteCount] & mask);
             }
 
             return true;
         }
+
     }
 
     /// <summary>

@@ -2046,7 +2046,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("OperatorId");
 
-                    b.HasIndex("WebAuthnCredentialId");
+                    b.HasIndex("WebAuthnCredentialId")
+                        .IsUnique();
 
                     b.ToTable("OperatorCredentials");
                 });
@@ -2176,6 +2177,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastCollectCompleteUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastDownloadTimeUtc")
                         .HasColumnType("TEXT");
@@ -2754,11 +2758,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorCredential", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Operator", null)
+                        .WithMany("OperatorCredentials")
+                        .HasForeignKey("OperatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>
                 {
                     b.Navigation("MotionZones");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>
+                {
+                    b.Navigation("OperatorCredentials");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>

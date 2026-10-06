@@ -29,6 +29,16 @@ namespace VideoForensics.WebApp.Auth
     /// </summary>
     public class PairedDeviceAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
+        /// <summary>
+        /// Request paths allowed when an operator's MustChangePassword flag is true.
+        /// These are the only paths an operator can access until they complete a password change.
+        /// </summary>
+        private static readonly string[] MustChangePasswordAllowedPaths =
+        {
+            "/api/v1/auth/change-password",
+            "/api/v1/auth/webauthn/stepup-complete"
+        };
+
         private readonly ISessionTokenService _tokenService;
         private readonly IPairedDeviceRepository _pairedDeviceRepository;
         private readonly IOperatorCredentialRepository _operatorCredentialRepository;
@@ -54,6 +64,15 @@ namespace VideoForensics.WebApp.Auth
             _tierResolver = tierResolver;
             _operatorRepository = operatorRepository;
             _headerProtector = headerProtector;
+        }
+
+        /// <summary>
+        /// Checks if the current request path is allowed when an operator's MustChangePassword flag is true.
+        /// </summary>
+        private bool IsAllowedDuringPasswordChange()
+        {
+            return MustChangePasswordAllowedPaths.Any(allowedPath =>
+                Context.Request.Path.StartsWithSegments(allowedPath, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -118,7 +137,7 @@ namespace VideoForensics.WebApp.Auth
                 {
                     // Password: plain username+password login, no credential row.
                     // Check if password change is forced.
-                    if (op.MustChangePassword && !Context.Request.Path.StartsWithSegments("/api/v1/auth/change-password", StringComparison.OrdinalIgnoreCase))
+                    if (op.MustChangePassword && !IsAllowedDuringPasswordChange())
                     {
                         return AuthenticateResult.Fail("Password change required.");
                     }
@@ -142,7 +161,7 @@ namespace VideoForensics.WebApp.Auth
                     }
 
                     // Check if password change is forced.
-                    if (op.MustChangePassword && !Context.Request.Path.StartsWithSegments("/api/v1/auth/change-password", StringComparison.OrdinalIgnoreCase))
+                    if (op.MustChangePassword && !IsAllowedDuringPasswordChange())
                     {
                         return AuthenticateResult.Fail("Password change required.");
                     }

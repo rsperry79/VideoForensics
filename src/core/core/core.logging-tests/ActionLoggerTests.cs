@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using Serilog.Context;
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +26,7 @@ namespace VideoForensics.Core.Logging.Tests
         {
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<ActionLogger>>();
-            _actionLogger = new ActionLogger(_mockActionLogRepository.Object, _mockLogger.Object);
+            _actionLogger = new ActionLogger(_mockLogger.Object, _mockActionLogRepository.Object);
         }
 
         [Fact]
@@ -256,6 +258,179 @@ namespace VideoForensics.Core.Logging.Tests
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task LogAsync_WithSerilog_LogsStructuredProperties()
+        {
+            // Arrange
+            string action = "CreateDevice";
+            string entityType = "Device";
+            var entityId = Guid.NewGuid();
+            string userName = Environment.UserName;
+
+            var expectedEntry = TestHelpers.CreateActionLogEntry(
+                actor: userName,
+                action: action,
+                entityType: entityType,
+                entityId: entityId);
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedEntry);
+
+            // Act
+            _ = await _actionLogger.LogAsync(action, entityType, entityId);
+
+            // Assert - verify Serilog ILogger.LogInformation was called with structured data
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task LogAsAsync_WithSerilog_EnrichesWithActorAndEntityType()
+        {
+            // Arrange
+            string customActor = "system:retention-job";
+            ActorType actorType = ActorType.System;
+            string action = "MediaPurge";
+            string entityType = "MediaItem";
+            var entityId = Guid.NewGuid();
+
+            var expectedEntry = TestHelpers.CreateActionLogEntry(
+                actor: customActor,
+                action: action,
+                entityType: entityType,
+                entityId: entityId);
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedEntry);
+
+            // Act
+            _ = await _actionLogger.LogAsAsync(customActor, actorType, action, entityType, entityId);
+
+            // Assert - verify logger was called (structured enrichment happens via LogContext internally)
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task LogAsync_DualWrite_LogsToSerilogAndRepository()
+        {
+            // Arrange
+            string action = "UpdateConfig";
+            string entityType = "Configuration";
+            var entityId = Guid.NewGuid();
+            string details = "setting changed";
+
+            var expectedEntry = TestHelpers.CreateActionLogEntry(
+                action: action,
+                entityType: entityType,
+                entityId: entityId,
+                details: details);
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedEntry);
+
+            // Act
+            ActionLogEntry result = await _actionLogger.LogAsync(action, entityType, entityId, details);
+
+            // Assert - verify BOTH Serilog and repository were called (dual-write)
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "Serilog should be called");
+
+            _mockActionLogRepository.Verify(
+                x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once,
+                "Repository should be called");
+
+            Assert.Equal(expectedEntry, result);
+        }
+
+        [Fact]
+        public async Task LogAsAsync_RepositoryFailure_StillLogsToSerilog()
+        {
+            // Arrange
+            string action = "FailingAction";
+            string entityType = "TestEntity";
+            var repositoryException = new InvalidOperationException("DB connection failed");
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.AppendAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ActorType>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Guid?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(repositoryException);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _actionLogger.LogAsync(action, entityType));
+
+            // Serilog should have been called before repository failed
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "Serilog (primary) should be called even if repository fails");
+
+            Assert.Equal(repositoryException, ex);
         }
     }
 }

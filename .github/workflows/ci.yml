@@ -31,6 +31,12 @@ jobs:
       # fixture requires live Ring account credentials stored in a local dev
       # database - not something a CI runner has; see its own failure message:
       # "Run 'dotnet run -- --auth' from src/selftest to authenticate").
+      - name: Restore NuGet cache
+        uses: actions/cache@v6
+        with:
+          key: nuget-cache-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          path: ~/.nuget/packages
+
       - name: Restore
         run: dotnet restore VideoForensics.CI.slnf
 
@@ -48,6 +54,17 @@ jobs:
           dotnet test VideoForensics.CI.slnf --configuration Release --no-build
           --report-xunit-trx --results-directory TestResults
 
+      - name: Create build cache
+        if: success()
+        run: tar -czf build-cache-release.tar.gz $(find . -type d -name bin -o -type d -name obj)
+
+      - name: Upload build cache
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: build-cache-ci-release
+          path: build-cache-release.tar.gz
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -57,7 +74,7 @@ jobs:
 
   dependency-review:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && success()
 
     steps:
       - uses: actions/checkout@v4

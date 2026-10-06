@@ -1,0 +1,82 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+  VideoForensics.Providers.Common -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\providers\providers-common\bin\Release\net10.0\VideoForensics.Providers.Common.dll
+  VideoForensics.Forensics -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\helpers\core.helpers\core.forensics\bin\Release\net10.0\VideoForensics.Forensics.dll
+  VideoForensics.Providers.Ring.Video -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\video\bin\Release\net10.0\VideoForensics.Providers.Ring.Video.dll
+  VideoForensics.Providers.Core -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\providers\providers-core\bin\Release\net10.0\VideoForensics.Providers.Core.dll
+  VideoForensics.Data.Common -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\data\common\data.common\bin\Release\net10.0\VideoForensics.Data.Common.dll
+  VideoForensics.Providers.Common.Helpers -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\helpers\core.helpers\bin\Release\net10.0\VideoForensics.Providers.Common.Helpers.dll
+  VideoForensics.Core.Logging -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\core\core.logging\bin\Release\net10.0\VideoForensics.Core.Logging.dll
+  VideoForensics.Providers.Ring.Common -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\common\bin\Release\net10.0\VideoForensics.Providers.Ring.Common.dll
+  VideoForensics.Client.Common -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\common\VideoForensics.Client.Common\bin\Release\net10.0\VideoForensics.Client.Common.dll
+  VideoForensics.Providers.Ring.Auth -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\auth\bin\Release\net10.0\VideoForensics.Providers.Ring.Auth.dll
+  VideoForensics.Providers.Ring.Forensics -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\forensics\bin\Release\net10.0\VideoForensics.Providers.Ring.Forensics.dll
+  VideoForensics.Providers.Ring.Core -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\core\bin\Release\net10.0\VideoForensics.Providers.Ring.Core.dll
+  VideoForensics.Data.Core -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\data\core\data.core\bin\Release\net10.0\VideoForensics.Data.Core.dll
+  VideoForensics.Api.Contracts -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\core\api\VideoForensics.Api.Contracts\bin\Release\net10.0\VideoForensics.Api.Contracts.dll
+  VideoForensics.Providers.Ring -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\provider\bin\Release\net10.0\VideoForensics.Ring.dll
+  VideoForensics.Providers.Ring.Utils -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\providers\ring\utils\bin\Release\net10.0\VideoForensics.Providers.Ring.Utils.dll
+  VideoForensics.Client.Core -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\core\VideoForensics.Client.Core\bin\Release\net10.0\VideoForensics.Client.Core.dll
+  VideoForensics.Ui.Shared -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared\bin\Release\net10.0\VideoForensics.Ui.Shared.dll
+  VideoForensics.Ui.Shared.Tests -> C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\bin\Release\net10.0\VideoForensics.Ui.Shared.Tests.dll
+Running tests from C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\bin\Release\net10.0\VideoForensics.Ui.Shared.Tests.dll (net10.0|x64)
+failed VideoForensics.Ui.Shared.Tests.ResponsiveLayout_ModeSelection_Tests.ResponsiveLayout_StandardModeOnDesktop_RendersMainLayout (138ms)
+  from C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\bin\Release\net10.0\VideoForensics.Ui.Shared.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.InvalidOperationException : Cannot provide a value for property 'EvidenceValidationService' on type 'VideoForensics.Ui.Shared.Components.Inspector.InspectorPanel'. There is no registered service of type 'VideoForensics.Client.Common.Contracts.IEvidenceValidationService'.
+    at Microsoft.AspNetCore.Components.ComponentFactory.<>c__DisplayClass11_0.<CreatePropertyInjector>g__Initialize|1(IServiceProvider serviceProvider, IComponent component)
+    at Microsoft.AspNetCore.Components.ComponentFactory.InstantiateComponent(IServiceProvider serviceProvider, Type componentType, IComponentRenderMode callerSpecifiedRenderMode, Nullable`1 parentComponentId)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.InstantiateChildComponentOnFrame(RenderTreeFrame[] frames, Int32 frameIndex, Int32 parentComponentId)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InitializeNewComponentFrame(DiffContext& diffContext, Int32 frameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InitializeNewSubtree(DiffContext& diffContext, Int32 frameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InsertNewFrame(DiffContext& diffContext, Int32 newFrameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.AppendDiffEntriesForRange(DiffContext& diffContext, Int32 oldStartIndex, Int32 oldEndIndexExcl, Int32 newStartIndex, Int32 newEndIndexExcl)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.ComputeDiff(Renderer renderer, RenderBatchBuilder batchBuilder, Int32 componentId, ArrayRange`1 oldTree, ArrayRange`1 newTree)
+    at Microsoft.AspNetCore.Components.Rendering.ComponentState.RenderIntoBatch(RenderBatchBuilder batchBuilder, RenderFragment renderFragment, Exception& renderFragmentException)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.RenderInExistingBatch(RenderQueueEntry renderQueueEntry)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.ProcessRenderQueue()
+    --- End of stack trace from previous location ---
+    at Bunit.Rendering.BunitRenderer.AssertNoUnhandledExceptions() in /_/src/bunit/Rendering/BunitRenderer.cs:755
+    at Bunit.Rendering.BunitRenderer.Render(RenderFragment renderFragment) in /_/src/bunit/Rendering/BunitRenderer.cs:645
+    at Bunit.Rendering.BunitRenderer.RenderFragment(RenderFragment renderFragment) in /_/src/bunit/Rendering/BunitRenderer.cs:185
+    at Bunit.BunitContext.RenderInsideRenderTree(RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:247
+    at Bunit.BunitContext.RenderInsideRenderTree[TComponent](RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:231
+    at Bunit.BunitContext.Render[TComponent](RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:169
+    at Bunit.BunitContext.Render[TComponent](Action`1 parameterBuilder) in /_/src/bunit/BunitContext.cs:152
+    at VideoForensics.Ui.Shared.Tests.ResponsiveLayout_ModeSelection_Tests.ResponsiveLayout_StandardModeOnDesktop_RendersMainLayout() in C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\SimpleModeLayoutTests.cs:189
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+failed VideoForensics.Ui.Shared.Tests.ResponsiveLayout_ModeSelection_Tests.ResponsiveLayout_StandardMode_RendersMainLayout (97ms)
+  from C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\bin\Release\net10.0\VideoForensics.Ui.Shared.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: System.InvalidOperationException : Cannot provide a value for property 'EvidenceValidationService' on type 'VideoForensics.Ui.Shared.Components.Inspector.InspectorPanel'. There is no registered service of type 'VideoForensics.Client.Common.Contracts.IEvidenceValidationService'.
+    at Microsoft.AspNetCore.Components.ComponentFactory.<>c__DisplayClass11_0.<CreatePropertyInjector>g__Initialize|1(IServiceProvider serviceProvider, IComponent component)
+    at Microsoft.AspNetCore.Components.ComponentFactory.InstantiateComponent(IServiceProvider serviceProvider, Type componentType, IComponentRenderMode callerSpecifiedRenderMode, Nullable`1 parentComponentId)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.InstantiateChildComponentOnFrame(RenderTreeFrame[] frames, Int32 frameIndex, Int32 parentComponentId)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InitializeNewComponentFrame(DiffContext& diffContext, Int32 frameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InitializeNewSubtree(DiffContext& diffContext, Int32 frameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.InsertNewFrame(DiffContext& diffContext, Int32 newFrameIndex)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.AppendDiffEntriesForRange(DiffContext& diffContext, Int32 oldStartIndex, Int32 oldEndIndexExcl, Int32 newStartIndex, Int32 newEndIndexExcl)
+    at Microsoft.AspNetCore.Components.RenderTree.RenderTreeDiffBuilder.ComputeDiff(Renderer renderer, RenderBatchBuilder batchBuilder, Int32 componentId, ArrayRange`1 oldTree, ArrayRange`1 newTree)
+    at Microsoft.AspNetCore.Components.Rendering.ComponentState.RenderIntoBatch(RenderBatchBuilder batchBuilder, RenderFragment renderFragment, Exception& renderFragmentException)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.RenderInExistingBatch(RenderQueueEntry renderQueueEntry)
+    at Microsoft.AspNetCore.Components.RenderTree.Renderer.ProcessRenderQueue()
+    --- End of stack trace from previous location ---
+    at Bunit.Rendering.BunitRenderer.AssertNoUnhandledExceptions() in /_/src/bunit/Rendering/BunitRenderer.cs:755
+    at Bunit.Rendering.BunitRenderer.Render(RenderFragment renderFragment) in /_/src/bunit/Rendering/BunitRenderer.cs:645
+    at Bunit.Rendering.BunitRenderer.RenderFragment(RenderFragment renderFragment) in /_/src/bunit/Rendering/BunitRenderer.cs:185
+    at Bunit.BunitContext.RenderInsideRenderTree(RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:247
+    at Bunit.BunitContext.RenderInsideRenderTree[TComponent](RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:231
+    at Bunit.BunitContext.Render[TComponent](RenderFragment renderFragment) in /_/src/bunit/BunitContext.cs:169
+    at Bunit.BunitContext.Render[TComponent](Action`1 parameterBuilder) in /_/src/bunit/BunitContext.cs:152
+    at VideoForensics.Ui.Shared.Tests.ResponsiveLayout_ModeSelection_Tests.ResponsiveLayout_StandardMode_RendersMainLayout() in C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\SimpleModeLayoutTests.cs:170
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+C:\Users\richa\source\repos\VideoForensics\.claude\worktrees\organize-claude-plans-8d6fac\src\client\ui\VideoForensics.Ui.Shared.Tests\bin\Release\net10.0\VideoForensics.Ui.Shared.Tests.dll (net10.0|x64) failed with 2 error(s) (5s 623ms)
+Exit code: 2
+
+Test run summary: Failed!
+  total: 4
+  failed: 2
+  succeeded: 2
+  skipped: 0
+  duration: 9s 239ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

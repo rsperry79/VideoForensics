@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using Serilog;
+
 using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
@@ -35,6 +37,32 @@ NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocat
 
 VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 
+// Configure Serilog for structured audit logging BEFORE creating the host.
+// Dual-write: file sinks (primary/truth) + IActionLogRepository (secondary/searchable).
+var storageProvider = new StorageLocationProvider();
+string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
+Directory.CreateDirectory(logsDir);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "VideoForensics.WebApp")
+    // Text format: human-readable with structured properties appended
+    .WriteTo.File(
+        path: Path.Combine(logsDir, "audit-.txt"),
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        shared: true)
+    // JSON format: structured output with all properties
+    .WriteTo.File(
+        path: Path.Combine(logsDir, "audit-.json"),
+        outputTemplate: "{{\"Timestamp\":\"{Timestamp:o}\",\"Level\":\"{Level}\",\"Message\":\"{Message:lj}\",\"Exception\":\"{Exception}\",\"Properties\":{Properties:j}}}{NewLine}",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        shared: true)
+    .CreateLogger();
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Windows Service hosting - enables running under Windows Service Control Manager while keeping
@@ -66,14 +94,12 @@ builder.WebHost.ConfigureKestrel(options =>
     }
 });
 
-// Register file-based logging + Windows Event Log (service visibility) + Linux syslog. Log file
-// lands under %ProgramData%/VideoForensics/logs, matching the console/MAUI apps' pattern.
-var storageProvider = new StorageLocationProvider();
-string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
-Directory.CreateDirectory(logsDir);
-string logFilePath = Path.Combine(logsDir, $"videoforensics-webapp-{DateTime.Now:yyyy-MM-dd}.log");
+// Serilog is already configured above with file sinks. Optionally enable additional sinks
+// (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
 builder.Logging.SetMinimumLevel(LogLevel.Information);
-builder.Logging.AddVideoForensicsLogging(logFilePath, LogLevel.Information, enableEventLog: true, enableSyslog: true);
+// Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
+// the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
+builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -330,7 +356,7 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
-builder.Services.AddScoped<UiModeService>();
+builder.Services.AddScoped<IUiModeService, UiModeService>();
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
@@ -348,6 +374,9 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
+
+// System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
+builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
 
     WebApplication app = builder.Build();
 
@@ -387,6 +416,8 @@ app.MapStaticAssets();
 
 app.MapVideoForensicsHealthEndpoints();
 
+app.MapSystemVersionEndpoints();
+
 // Minimal API surface for paired clients (MAUI today; more later) - see Api/MediaApiEndpoints.cs
 // for the explicit "unauthenticated until M6" note.
 app.MapMediaApiEndpoints();
@@ -405,6 +436,7 @@ app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();
+app.MapAuthMethodEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
@@ -412,7 +444,7 @@ app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
-app.MapAccountEndpoints();
+app.MapAccountEndpoints(app.Services.GetRequiredService<VideoForensics.Hosting.Services.IEventPullService>());
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();

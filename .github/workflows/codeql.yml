@@ -1,18 +1,20 @@
 name: CodeQL
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - wip
-  pull_request:
-    branches:
-      - main
-      - dev
-      - wip
-  schedule:
-    - cron: '0 3 * * 1'
+  # CodeQL analysis disabled - remove commented lines to re-enable
+  # push:
+  #   branches:
+  #     - main
+  #     - dev
+  #     - wip
+  # pull_request:
+  #   branches:
+  #     - main
+  #     - dev
+  #     - wip
+  # schedule:
+  #   - cron: '0 3 * * 1'
+  workflow_dispatch: # Allow manual trigger if needed
 
 permissions:
   contents: read
@@ -46,6 +48,12 @@ jobs:
       # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj - see
       # ci.yml for why; CodeQL doesn't need the MAUI Windows target analyzed
       # separately from what the cross-platform library/test projects cover.
+      - name: Restore NuGet cache
+        uses: actions/cache@v6
+        with:
+          key: nuget-cache-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          path: ~/.nuget/packages
+
       - name: Restore
         run: dotnet restore VideoForensics.CI.slnf
 

@@ -48,9 +48,33 @@ There is no `archive/` directory in this repo — don't assume one exists.
 - **No vendor SDK outside service layers** — abstract via interfaces
 - **Error handling:** log errors with context, expose via `GetLastError()` method, display to users
 - **User-facing paths:** always log (Info on success, Error on failure)
+- **Account ID logging:** when logging multi-account operations, use human-readable provider name (e.g., "Ring account") instead of GUID. Never log raw GUIDs for account identifiers; CodeQL flags these as storing sensitive data. Pass provider name to services if needed for logging context.
 - **No secrets in code** — use config/env vars/credential stores
 - **Input validation** at API boundaries only
 - **No plain-text passwords** — use provider APIs or hash + salt
+
+## Cryptography & Security
+
+### PBKDF2 Iteration Count (Credential Encryption)
+Credentials are encrypted via AES-256-CBC + PBKDF2-HMAC-SHA256. PBKDF2 iterations must increase annually per OWASP guidance to maintain brute-force resistance against hardware improvements.
+
+- **Current:** 600,000 iterations (2024/2025 baseline, per AES Encryption Audit Report)
+- **2026:** Increase to 750,000 iterations
+- **2027:** Increase to 1,000,000 iterations
+- **Pattern:** 25% annual increase thereafter
+
+**Action (January, each year):**
+1. Check OWASP Cryptographic Storage Cheat Sheet for updated guidance
+2. Update `Iterations` constant in `/src/providers/ring/auth/Implementations/AesEncryption.cs` (line 28)
+3. Update code comment with target year for next increase
+4. Add test in `AesEncryptionTests.cs` to verify new iteration count
+5. Run `dotnet test --filter "Class=AesEncryptionTests"` to confirm
+6. No credential re-encryption needed (different iterations use same PBKDF2 derivation, backward-compatible)
+7. Document in commit message: "Security: Increase PBKDF2 iterations from X to Y per OWASP 2026 guidance"
+
+**Rationale:** As hardware performance improves (GPU/ASIC), the cost to brute-force credentials increases. PBKDF2 counters this by accepting slower legitimate decryption (negligible ~100ms for single credential) vs. proportionally higher attacker cost.
+
+See `/AES_ENCRYPTION_AUDIT_REPORT.md` (Section 10, Appendix) for full schedule and checklist.
 
 ## Data Requirements
 
@@ -154,4 +178,4 @@ Every officially CI-built distributed binary ships with a Syncfusion Blazor lice
 - **Always delegate implementation work to Haiku subagents.** The main session (Sonnet) plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku subagent. Only escalate specific work to Sonnet if a Haiku subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.) — never preemptively use Sonnet for work that has a clear, prewritten approach.
 - **Lite gate:** the default verification step after a Haiku subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their sibling `tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
 - **Committing and pushing a branch (no PR yet) only requires the lite gate** to have already passed for every change being committed/pushed — do not run the full gate just to commit or push a branch.
-- **Full gate:** required before opening a pull request (not merely before a commit/push). **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump), then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
+- **Full gate:** required before opening a pull request (not merely before a commit/push). **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first check if the current branch is up-to-date with the destination branch (dev) — if not, sync it (`git merge dev` or `git rebase dev` depending on history preference) to ensure building against the latest integration branch code; then update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump); wait for the build to complete, then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures (do not start tests while build is still running to avoid duplicating compilation work). This local gate is a precaution that catches issues before CI runs — CI (.github/workflows/ci.yml) will also build and test on any PR to dev/main, so the full gate is about catching issues early locally, not replacing CI validation. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
