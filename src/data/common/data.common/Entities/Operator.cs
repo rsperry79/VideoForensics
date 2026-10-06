@@ -98,6 +98,11 @@ namespace VideoForensics.Data.Common.Entities
         /// Allows a SuperAdmin to force two-factor on/off for one person regardless of their role's default policy.
         /// </summary>
         public TwoFactorRequirementOverride TwoFactorRequirementOverride { get; set; }
+
+        /// <summary>
+        /// Navigation property for the operator's WebAuthn credentials (passkeys).
+        /// </summary>
+        public ICollection<OperatorCredential> OperatorCredentials { get; set; } = new List<OperatorCredential>();
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,7 @@ using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.WebApp.Api;
+using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Services;
 
 using Xunit;
@@ -812,6 +814,269 @@ namespace VideoForensics.WebApp.Tests
             Assert.True(passwords.Count >= 99,
                 $"Expected at least 99 unique passwords from 100 attempts (cryptographically random), but got {passwords.Count}");
         }
+
+        // --- RegisterAsync Tests ---
+
+        [Fact]
+        public async Task Register_ValidCredentials_ReturnsCreatedWithOperatorId()
+        {
+            // Arrange
+            var request = new RegisterRequest("newuser", "ValidPassword123!", "John", "Doe", "john@example.com");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync("newuser", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator?)null);
+            operators.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Operator>());
+            operators.Setup(r => r.AddAsync(It.IsAny<Operator>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Operator op, CancellationToken ct) => op);
+
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var context = CreateHttpContext();
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.RegisterAsync(
+                request, operators.Object, auditLog.Object, tierResolver.Object,
+                notificationDispatcher.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            auditLog.Verify(a => a.LogAsync(SecurityAuditEventTypes.OperatorRegistered, It.IsAny<Guid>(), null,
+                It.IsAny<string>(), It.IsAny<string>(), false, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Register_DuplicateUsername_ReturnsConflict()
+        {
+            // Arrange
+            var existingOp = CreateOperator(username: "newuser");
+            var request = new RegisterRequest("newuser", "ValidPassword123!", "John", "Doe", "john@example.com");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync("newuser", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingOp);
+
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var context = CreateHttpContext();
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.RegisterAsync(
+                request, operators.Object, auditLog.Object, tierResolver.Object,
+                notificationDispatcher.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            var conflictResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status409Conflict, conflictResult.StatusCode);
+        }
+
+        [Fact]
+        public async Task Register_PasswordTooShort_ReturnsBadRequest()
+        {
+            // Arrange
+            var request = new RegisterRequest("newuser", "Short1!", "John", "Doe", "john@example.com");
+
+            var operators = new Mock<IOperatorRepository>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var context = CreateHttpContext();
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.RegisterAsync(
+                request, operators.Object, auditLog.Object, tierResolver.Object,
+                notificationDispatcher.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            var badResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badResult.StatusCode);
+        }
+
+        // --- ChangePasswordAsync Tests ---
+
+        [Fact]
+        public async Task ChangePassword_ValidCurrentPassword_ReturnsNewSessionToken()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var request = new ChangePasswordRequest(TestPassword, "NewPassword123!");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+            operators.Setup(r => r.SetPasswordAsync(op.Id, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var sessionTokens = MockSessionTokenService();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+
+            var context = CreateHttpContext();
+            var claims = new List<Claim>
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, op.Id.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.ChangePasswordAsync(
+                request, operators.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, It.IsAny<Guid>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangePassword_InvalidCurrentPassword_ReturnsUnauthorized()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var request = new ChangePasswordRequest("WrongPassword123!", "NewPassword123!");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+
+            var sessionTokens = MockSessionTokenService();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+
+            var context = CreateHttpContext();
+            var claims = new List<Claim>
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, op.Id.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.ChangePasswordAsync(
+                request, operators.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            var unauthorizedResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+        }
+
+        [Fact]
+        public async Task ChangePassword_NewPasswordTooShort_ReturnsBadRequest()
+        {
+            // Arrange
+            var op = CreateOperator();
+            var request = new ChangePasswordRequest(TestPassword, "Short!");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+
+            var sessionTokens = MockSessionTokenService();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+
+            var context = CreateHttpContext();
+            var claims = new List<Claim>
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, op.Id.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.ChangePasswordAsync(
+                request, operators.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            var badResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badResult.StatusCode);
+        }
+
+        // --- StepUpPasswordAsync Tests ---
+
+        [Fact]
+        public async Task StepUpPassword_ValidPassword_ReturnsStepUpToken()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var request = new StepUpPasswordRequest(TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+
+            var stepUpAuth = new Mock<IStepUpAuthService>();
+            stepUpAuth.Setup(s => s.IssueToken(op.Id))
+                .Returns("step-up-token-123");
+
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+
+            var context = CreateHttpContext();
+            var claims = new List<Claim>
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, op.Id.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.StepUpPasswordAsync(
+                request, operators.Object, stepUpAuth.Object, auditLog.Object,
+                tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            auditLog.Verify(a => a.LogAsync(SecurityAuditEventTypes.StepUpVerified, op.Id, null,
+                It.IsAny<string>(), null, false, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task StepUpPassword_InvalidPassword_ReturnsUnauthorized()
+        {
+            // Arrange
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var request = new StepUpPasswordRequest("WrongPassword123!");
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+
+            var stepUpAuth = new Mock<IStepUpAuthService>();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+
+            var context = CreateHttpContext();
+            var claims = new List<Claim>
+            {
+                new Claim(VideoForensicsClaimTypes.OperatorId, op.Id.ToString())
+            };
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+            // Act
+            var result = await OperatorAuthEndpointsInvoker.StepUpPasswordAsync(
+                request, operators.Object, stepUpAuth.Object, auditLog.Object,
+                tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            var unauthorizedResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+        }
     }
 
     internal static class OperatorAuthEndpointsInvoker
@@ -919,6 +1184,84 @@ namespace VideoForensics.WebApp.Tests
             }
 
             var result = method.Invoke(null, [operators, auditLog, context, ct]);
+            return await (Task<IResult>)result!;
+        }
+
+        public static async Task<IResult> RegisterAsync(
+            RegisterRequest request,
+            IOperatorRepository operators,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            INotificationDispatcher? notificationDispatcher,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            var method = typeof(OperatorAuthEndpoints)
+                .GetMethod("RegisterAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null,
+                    [typeof(RegisterRequest), typeof(IOperatorRepository), typeof(ISecurityAuditLogger),
+                     typeof(INetworkTierResolver), typeof(INotificationDispatcher), typeof(HttpContext), typeof(CancellationToken)],
+                    null);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException("Could not find RegisterAsync method");
+            }
+
+            var result = method.Invoke(null, [request, operators, auditLog, tierResolver, notificationDispatcher, context, ct]);
+            return await (Task<IResult>)result!;
+        }
+
+        public static async Task<IResult> ChangePasswordAsync(
+            ChangePasswordRequest request,
+            IOperatorRepository operators,
+            ISessionTokenService sessionTokens,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            var method = typeof(OperatorAuthEndpoints)
+                .GetMethod("ChangePasswordAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null,
+                    [typeof(ChangePasswordRequest), typeof(IOperatorRepository), typeof(ISessionTokenService),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
+                    null);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException("Could not find ChangePasswordAsync method");
+            }
+
+            var result = method.Invoke(null, [request, operators, sessionTokens, auditLog, tierResolver, context, ct]);
+            return await (Task<IResult>)result!;
+        }
+
+        public static async Task<IResult> StepUpPasswordAsync(
+            StepUpPasswordRequest request,
+            IOperatorRepository operators,
+            IStepUpAuthService stepUpAuth,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            var method = typeof(OperatorAuthEndpoints)
+                .GetMethod("StepUpPasswordAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                    null,
+                    [typeof(StepUpPasswordRequest), typeof(IOperatorRepository), typeof(IStepUpAuthService),
+                     typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
+                    null);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException("Could not find StepUpPasswordAsync method");
+            }
+
+            var result = method.Invoke(null, [request, operators, stepUpAuth, auditLog, tierResolver, context, ct]);
             return await (Task<IResult>)result!;
         }
     }
