@@ -81,9 +81,19 @@ namespace VideoForensics.Data.Database.Repositories
             CancellationToken ct)
         {
             // Idempotency check: if incident already has a case, return it
-            if (jammingEvent.CaseId.HasValue && jammingEvent.CaseId != Guid.Empty)
+            Guid? linkedCaseId = jammingEvent.CaseId;
+            if (linkedCaseId is null || linkedCaseId == Guid.Empty)
             {
-                ForensicCase? existingCase = await GetAsync(jammingEvent.CaseId.Value, ct);
+                await using VideoForensicsDbContext lookup = await _factory.CreateDbContextAsync(ct);
+                linkedCaseId = await lookup.JammingIncidentRecords
+                    .Where(i => i.Id == jammingEvent.Id)
+                    .Select(i => i.CaseId)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            if (linkedCaseId.HasValue && linkedCaseId != Guid.Empty)
+            {
+                ForensicCase? existingCase = await GetAsync(linkedCaseId.Value, ct);
                 if (existingCase is not null)
                 {
                     _logger.LogInformation("Jamming incident {IncidentId} already has case {CaseId}; returning existing case", jammingEvent.Id, jammingEvent.CaseId);
@@ -97,7 +107,12 @@ namespace VideoForensics.Data.Database.Repositories
                 ? "Jamming Detected"
                 : "Jamming Suspected";
 
-            string caseDescription = BuildAlertDescription(jammingEvent);
+            string caseDescription = $"Jamming incident detected on device {jammingEvent.DeviceId} " +
+                $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
+                $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
+                $"Affected events: {jammingEvent.AffectedEventCount}. " +
+                $"Confidence: {jammingEvent.Confidence}. " +
+                (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
 
             // Create case with callback that atomically creates alert and links incident
             return await CreateCoreAsync(
@@ -118,7 +133,7 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         Id = Guid.NewGuid(),
                         Title = alertTitle,
-                        Description = caseDescription,
+                        Description = BuildAlertDescription(jammingEvent, forensicCase.CaseNumber),
                         RelatedCaseId = forensicCase.Id,
                         Status = "Open",
                         CreatedBy = SystemActor,
@@ -149,12 +164,12 @@ namespace VideoForensics.Data.Database.Repositories
 
         /// <summary>
         /// Builds a formatted description for a jamming incident alert.
-        /// Includes device ID, time window, degradation dB, affected event count, and confidence.
+        /// Includes case number, device ID, time window, degradation dB, affected event count, and confidence.
         /// Description is capped at 4000 characters.
         /// </summary>
-        private string BuildAlertDescription(JammingIncidentRecord jammingEvent)
+        private static string BuildAlertDescription(JammingIncidentRecord jammingEvent, string caseNumber)
         {
-            string description = $"Jamming incident on device {jammingEvent.DeviceId} " +
+            string description = $"Case {caseNumber}: jamming incident on device {jammingEvent.DeviceId} " +
                 $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
                 $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
                 $"Affected events: {jammingEvent.AffectedEventCount}. " +

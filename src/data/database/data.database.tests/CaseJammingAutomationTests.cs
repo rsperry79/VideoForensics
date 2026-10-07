@@ -1,5 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -12,19 +13,16 @@ using Xunit;
 namespace VideoForensics.Data.Database.Tests
 {
     /// <summary>
-    /// Comprehensive tests for case creation from jamming detection incidents.
-    /// Verifies idempotency, atomic alert creation, incident linking, description formatting,
-    /// and failure handling (missing incident row, save interceptor exceptions).
+    /// Tests for the case + alert + incident-link automation in CaseRepository.CreateFromJammingDetectionAsync.
     /// </summary>
     public class CaseJammingAutomationTests : IAsyncLifetime
     {
+        private static readonly DateTime Start = new(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime End = new(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc);
+
         private SqliteInMemoryFixture _fixture = null!;
-        private ICaseRepository _caseRepository = null!;
-        private IAlertRepository _alertRepository = null!;
-        private ActionLogRepository _actionLogRepository = null!;
-        private LocationRepository _locationRepository = null!;
-        private DeviceRepository _deviceRepository = null!;
-        private IJammingRepository _jammingRepository = null!;
+        private CaseRepository _cases = null!;
+        private AlertRepository _alerts = null!;
         private ILoggerFactory _loggerFactory = null!;
 
         public async ValueTask InitializeAsync()
@@ -32,13 +30,8 @@ namespace VideoForensics.Data.Database.Tests
             _fixture = new SqliteInMemoryFixture();
             await _fixture.InitializeAsync();
             _loggerFactory = LoggerFactory.Create(b => { });
-
-            _actionLogRepository = new ActionLogRepository(_fixture.Factory, _loggerFactory.CreateLogger<ActionLogRepository>());
-            _locationRepository = new LocationRepository(_fixture.Factory, _loggerFactory.CreateLogger<LocationRepository>());
-            _deviceRepository = new DeviceRepository(_fixture.Factory, _loggerFactory.CreateLogger<DeviceRepository>());
-            _caseRepository = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>());
-            _alertRepository = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
-            _jammingRepository = new JammingRepository(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>());
+            _cases = BuildRepo(_fixture.Factory);
+            _alerts = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
         }
 
         public async ValueTask DisposeAsync()
@@ -48,41 +41,52 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory.Dispose();
         }
 
-        private async Task<Guid> SeedDeviceAsync()
+        private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory) =>
+            new(factory,
+                new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
+                _loggerFactory.CreateLogger<CaseRepository>(),
+                new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
+
+        private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
-            var loc = TestDataBuilder.BuildLocation(name: "Test Location");
-            await _locationRepository.AddAsync(loc, CancellationToken.None);
-            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
-            await _deviceRepository.AddAsync(device, CancellationToken.None);
+            var loc = TestDataBuilder.BuildLocation(name: "Jam Location");
+            await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
+            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
+            await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
-        #region Detected vs Suspected Alert Title Tests
+        private static JammingIncidentRecord NewIncident(Guid deviceId, JammingConfidenceLevel level, string? notes = null) => new()
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            StartUtc = Start,
+            EndUtc = End,
+            AffectedEventCount = 7,
+            AverageDegradationDb = 8.5,
+            Confidence = level,
+            DetectedAtUtc = End,
+            Notes = notes,
+            Source = JammingIncidentSource.AutoDetected
+        };
+
+        private static async Task PersistIncidentAsync(IDbContextFactory<VideoForensicsDbContext> factory, JammingIncidentRecord incident)
+        {
+            await using VideoForensicsDbContext db = factory.CreateDbContext();
+            _ = db.JammingIncidentRecords.Add(incident);
+            _ = await db.SaveChangesAsync();
+        }
 
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_DetectedConfidence_CreatesAlertWithDetectedTitle()
+        public async Task CreateFromJamming_Detected_CreatesOpenSystemAlertWithDetectedTitle()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act
-            ForensicCase case1 = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Assert
-            Assert.NotNull(case1);
-            Alert? alert = await _alertRepository.GetByCaseIdAsync(case1.Id, CancellationToken.None);
+            Alert? alert = await _alerts.GetByCaseIdAsync(created.Id, CancellationToken.None);
             Assert.NotNull(alert);
             Assert.Equal("Jamming Detected", alert.Title);
             Assert.Equal("Open", alert.Status);
@@ -91,216 +95,137 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_SuspectedConfidence_CreatesAlertWithSuspectedTitle()
+        public async Task CreateFromJamming_Suspected_CreatesAlertWithSuspectedTitle()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.Low,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.Low);
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act
-            ForensicCase case1 = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Assert
-            Assert.NotNull(case1);
-            Alert? alert = await _alertRepository.GetByCaseIdAsync(case1.Id, CancellationToken.None);
+            Alert? alert = await _alerts.GetByCaseIdAsync(created.Id, CancellationToken.None);
             Assert.NotNull(alert);
             Assert.Equal("Jamming Suspected", alert.Title);
-            Assert.Equal("Open", alert.Status);
-            Assert.Equal("System", alert.CreatedBy);
             Assert.Equal("JammingDetection", alert.AlertType);
         }
 
-        #endregion
-
-        #region Idempotency Tests
-
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_CalledTwice_ReturnsExistingCaseNoNewAlert()
+        public async Task CreateFromJamming_PersistsIncidentCaseId()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act - First call
-            ForensicCase case1 = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Act - Second call (incident now has CaseId set)
-            incident.CaseId = case1.Id;
-            ForensicCase case2 = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
-
-            // Assert
-            Assert.Equal(case1.Id, case2.Id);
-            Assert.Equal(case1.CaseNumber, case2.CaseNumber);
-            
-            // Verify only 1 alert was created
-            var alerts = await _alertRepository.ListAsync("Open", CancellationToken.None);
-            var caseAlerts = alerts.Where(a => a.RelatedCaseId == case1.Id).ToList();
-            Assert.Single(caseAlerts);
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            JammingIncidentRecord stored = await db.JammingIncidentRecords.AsNoTracking().SingleAsync(i => i.Id == incident.Id);
+            Assert.Equal(created.Id, stored.CaseId);
         }
 
-        #endregion
-
-        #region Incident Linking Tests
-
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_LinkedToIncidentAndDatabase()
+        public async Task CreateFromJamming_CalledTwice_ReturnsSameCaseAndSingleAlert()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act
-            ForensicCase createdCase = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase first = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Assert - Verify incident.CaseId is set
-            Assert.NotEqual(Guid.Empty, createdCase.Id);
-            Assert.Equal(createdCase.Id, incident.CaseId);
+            // Second call with a stale copy that does not know about the link: idempotency must come from the DB row.
+            JammingIncidentRecord stale = NewIncident(deviceId, JammingConfidenceLevel.High);
+            stale.Id = incident.Id;
+            ForensicCase second = await _cases.CreateFromJammingDetectionAsync(stale, CancellationToken.None);
+
+            Assert.Equal(first.Id, second.Id);
+            Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
         }
 
-        #endregion
-
-        #region Alert Description Tests
-
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_AlertDescriptionContainsDeviceIdAndTimeWindow()
+        public async Task CreateFromJamming_AlertDescription_ContainsCaseNumberDeviceAndWindow()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var startTime = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc);
-            var endTime = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc);
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = startTime,
-                EndUtc = endTime,
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act
-            ForensicCase createdCase = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Assert
-            Alert? alert = await _alertRepository.GetByCaseIdAsync(createdCase.Id, CancellationToken.None);
-            Assert.NotNull(alert);
-            Assert.NotNull(alert.Description);
+            Alert alert = (await _alerts.GetByCaseIdAsync(created.Id, CancellationToken.None))!;
+            Assert.Contains(created.CaseNumber, alert.Description);
             Assert.Contains(deviceId.ToString(), alert.Description);
-            Assert.Contains(startTime.ToString("O"), alert.Description);
-            Assert.Contains(endTime.ToString("O"), alert.Description);
-            Assert.Contains("8.50 dB", alert.Description); // AverageDegradationDb formatted
-            Assert.Contains("5", alert.Description); // AffectedEventCount
+            Assert.Contains($"{Start:O}", alert.Description);
+            Assert.Contains($"{End:O}", alert.Description);
+            Assert.Contains("8.50 dB", alert.Description);
+            Assert.Contains("Affected events: 7", alert.Description);
+            Assert.Contains("High", alert.Description);
         }
 
         [Fact]
-        public async Task CreateFromJammingDetectionAsync_AlertDescriptionCappedAt4000Chars()
+        public async Task CreateFromJamming_LongNotes_AlertDescriptionCappedAt4000()
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var longNotes = new string('x', 3500); // Very long notes to exceed 4000 char limit
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = longNotes
-            };
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High, new string('x', 6000));
+            await PersistIncidentAsync(_fixture.Factory, incident);
 
-            // Act
-            ForensicCase createdCase = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
 
-            // Assert
-            Alert? alert = await _alertRepository.GetByCaseIdAsync(createdCase.Id, CancellationToken.None);
-            Assert.NotNull(alert);
-            Assert.NotNull(alert.Description);
-            Assert.True(alert.Description.Length <= 4000, $"Description length {alert.Description.Length} exceeds 4000 char limit");
-            if (alert.Description.Length >= 3997)
+            Alert alert = (await _alerts.GetByCaseIdAsync(created.Id, CancellationToken.None))!;
+            Assert.Equal(4000, alert.Description!.Length);
+        }
+
+        [Fact]
+        public async Task CreateFromJamming_IncidentRowMissing_StillCreatesCaseAndAlert()
+        {
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High); // never persisted
+
+            ForensicCase created = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+
+            Assert.NotNull(await _cases.GetAsync(created.Id, CancellationToken.None));
+            Assert.NotNull(await _alerts.GetByCaseIdAsync(created.Id, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CreateFromJamming_SaveFails_NothingPersisted()
+        {
+            await using var conn = new SqliteConnection("DataSource=:memory:");
+            await conn.OpenAsync();
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plainFactory = new SimpleFactory(plain);
+            await using (VideoForensicsDbContext init = plainFactory.CreateDbContext())
             {
-                // If truncated, should end with "..."
-                Assert.EndsWith("...", alert.Description);
+                _ = await init.Database.EnsureCreatedAsync();
             }
+
+            Guid deviceId = await SeedDeviceAsync(plainFactory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(plainFactory, incident);
+
+            var throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+                .UseSqlite(conn).AddInterceptors(new ThrowOnSaveInterceptor()).Options;
+            CaseRepository failing = BuildRepo(new SimpleFactory(throwing));
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => failing.CreateFromJammingDetectionAsync(incident, CancellationToken.None));
+
+            await using VideoForensicsDbContext db = plainFactory.CreateDbContext();
+            Assert.Equal(0, await db.Cases.CountAsync());
+            Assert.Equal(0, await db.Alerts.CountAsync());
+            Assert.Equal(0, await db.CaseDevices.CountAsync());
+            Assert.Null((await db.JammingIncidentRecords.AsNoTracking().SingleAsync(i => i.Id == incident.Id)).CaseId);
         }
 
-        #endregion
-
-        #region Missing Incident Row Tests
-
-        [Fact]
-        public async Task CreateFromJammingDetectionAsync_IncidentNotInDatabase_CaseAndAlertCreatedSuccessfully()
+        private sealed class SimpleFactory(DbContextOptions<VideoForensicsDbContext> options) : IDbContextFactory<VideoForensicsDbContext>
         {
-            // Arrange
-            var deviceId = await SeedDeviceAsync();
-            var incident = new JammingIncidentRecord
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = new DateTime(2026, 10, 7, 10, 0, 0, DateTimeKind.Utc),
-                EndUtc = new DateTime(2026, 10, 7, 10, 30, 0, DateTimeKind.Utc),
-                AffectedEventCount = 5,
-                AverageDegradationDb = 8.5,
-                Confidence = JammingConfidenceLevel.High,
-                DetectedAtUtc = DateTime.UtcNow,
-                Notes = null
-            };
-            // Don't add incident to DB; it's just created in memory
-
-            // Act - Should not throw, just log warning
-            ForensicCase createdCase = await _caseRepository.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
-
-            // Assert
-            Assert.NotNull(createdCase);
-            Assert.NotEqual(Guid.Empty, createdCase.Id);
-            
-            // Case should exist
-            var retrievedCase = await _caseRepository.GetAsync(createdCase.Id, CancellationToken.None);
-            Assert.NotNull(retrievedCase);
-
-            // Alert should exist
-            Alert? alert = await _alertRepository.GetByCaseIdAsync(createdCase.Id, CancellationToken.None);
-            Assert.NotNull(alert);
+            public VideoForensicsDbContext CreateDbContext() => new(options);
         }
 
-        #endregion
+        private sealed class ThrowOnSaveInterceptor : SaveChangesInterceptor
+        {
+            public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+                DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+                => throw new InvalidOperationException("simulated save failure");
+        }
     }
 }
