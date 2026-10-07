@@ -38,6 +38,9 @@ namespace VideoForensics.Data.Database.Tests
             _caseRepo = new CaseRepository(_fixture.Factory, actionLogRepo, _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
             _alertRepo = new AlertRepository(_fixture.Factory, _loggerFactory.CreateLogger<AlertRepository>());
+
+            // Initialize a plain reader instance with no case repository for reading back test results
+            _jammingRepo = BuildJammingRepo();
         }
 
         public async ValueTask DisposeAsync()
@@ -291,28 +294,54 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         /// <summary>
-        /// Test (h): DI resolution test - verify JammingRepository is wired with CaseRepository via DI.
+        /// Test (h): DI resolution test - verify JammingRepository is wired with CaseRepository via DI
+        /// and behaves correctly when injected (NEW incidents create cases and alerts).
         /// </summary>
         [Fact]
         public async Task DIResolution_JammingRepositoryReceivesCaseRepository()
         {
-            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-            services.AddVideoForensicsDatabase();
+            // Set up a fixture for this test (separate from the class fixture)
+            var testFixture = new SqliteInMemoryFixture();
+            await testFixture.InitializeAsync();
 
-            await using (var db = new VideoForensicsDbContext(new DbContextOptionsBuilder<VideoForensicsDbContext>()
-                .UseSqlite("DataSource=:memory:")
-                .Options))
-            {
-                await db.Database.EnsureCreatedAsync();
-            }
+            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+            // Register the DbContext factory first
+            services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(testFixture.Factory);
+
+            // Add logging
+            services.AddLogging();
+
+            // Add the database layer
+            services.AddVideoForensicsDatabase();
 
             var sp = services.BuildServiceProvider();
 
+            // Verify IJammingRepository is resolved
             var jammingRepo = sp.GetRequiredService<IJammingRepository>();
             Assert.NotNull(jammingRepo);
-
-            // The resolved IJammingRepository should be a JammingRepository instance
             Assert.IsType<JammingRepository>(jammingRepo);
+
+            // Verify ICaseRepository is also resolved
+            var caseRepo = sp.GetRequiredService<ICaseRepository>();
+            Assert.NotNull(caseRepo);
+
+            // Behavioral test: seed a device, then upsert a NEW incident and verify case/alert creation
+            Guid deviceId = await SeedDeviceAsync(testFixture.Factory, sp.GetRequiredService<ILoggerFactory>());
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+
+            JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
+
+            // The incident should have a CaseId set (thanks to the injected CaseRepository)
+            Assert.NotNull(result.CaseId);
+
+            // Verify the case actually exists
+            ForensicCase? forensicCase = await caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);
+            Assert.NotNull(forensicCase);
+            Assert.StartsWith("detected-", forensicCase.CaseNumber);
+
+            await testFixture.DisposeAsync();
+            testFixture.Dispose();
         }
     }
 }
