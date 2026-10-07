@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Channels;
 
 namespace VideoForensics.Core.Logging.Services
 {
@@ -17,6 +20,7 @@ namespace VideoForensics.Core.Logging.Services
         private readonly object _syncRoot = new();
         private long _nextSequence = 1;
         private bool _disposed;
+        private Subscriber[] _subscribers = Array.Empty<Subscriber>();
 
         /// <summary>
         /// Gets the highest sequence number currently in the buffer.
@@ -31,6 +35,11 @@ namespace VideoForensics.Core.Logging.Services
                 }
             }
         }
+
+        /// <summary>
+        /// Gets the number of live subscribers currently registered.
+        /// </summary>
+        public int SubscriberCount => Volatile.Read(ref _subscribers).Length;
 
         /// <summary>
         /// Initializes a new instance with the specified capacity (default 5000).
@@ -77,6 +86,13 @@ namespace VideoForensics.Core.Logging.Services
                 {
                     _entries.RemoveAt(0);
                 }
+
+                // TryWrite on a DropOldest channel never blocks, so publishing under the lock keeps live
+                // delivery in sequence order without letting a slow reader stall writers.
+                foreach (var subscriber in _subscribers)
+                {
+                    subscriber.TryPublish(finalEntry);
+                }
             }
         }
 
@@ -90,26 +106,20 @@ namespace VideoForensics.Core.Logging.Services
         /// <param name="limit">Maximum entries to return</param>
         public List<LogRecord> GetSnapshot(string? minLevel, string? search, long? afterSequence, int limit)
         {
-            var filtered = new List<LogRecord>();
-
             lock (_syncRoot)
             {
-                foreach (var entry in _entries)
-                {
-                    // Filter by afterSequence
-                    if (afterSequence.HasValue && entry.Sequence <= afterSequence.Value)
-                        continue;
+                return SnapshotLocked(minLevel, search, afterSequence, limit);
+            }
+        }
 
-                    // Filter by minLevel
-                    if (minLevel != null && !PassesMinLevelFilter(entry.Level, minLevel))
-                        continue;
+        private List<LogRecord> SnapshotLocked(string? minLevel, string? search, long? afterSequence, int limit)
+        {
+            var filtered = new List<LogRecord>();
 
-                    // Filter by search term
-                    if (search != null && !PassesSearchFilter(entry, search))
-                        continue;
-
+            foreach (var entry in _entries)
+            {
+                if (Matches(entry, minLevel, search, afterSequence))
                     filtered.Add(entry);
-                }
             }
 
             // If limit is exceeded and afterSequence is null, return the newest (highest sequence) entries
@@ -129,17 +139,147 @@ namespace VideoForensics.Core.Logging.Services
         }
 
         /// <summary>
-        /// Disposes the buffer, preventing new log appends.
+        /// Subscribes to records appended after this call. Unsubscribes when the enumeration is disposed or
+        /// <paramref name="ct"/> is cancelled. Slow subscribers lose their oldest unread records instead of blocking writers.
+        /// </summary>
+        public IAsyncEnumerable<LogRecord> Subscribe(string? minLevel, string? search, long? afterSequence, CancellationToken ct)
+        {
+            lock (_syncRoot)
+            {
+                return RegisterLocked(minLevel, search, afterSequence, ct);
+            }
+        }
+
+        /// <summary>
+        /// Atomically takes the backlog snapshot and registers a live subscriber so no record is lost or duplicated
+        /// between them: every live record has a sequence greater than the last backlog record.
+        /// With no <paramref name="afterSequence"/> the backlog is the newest <paramref name="backlogLimit"/> matches;
+        /// with one, the backlog is every newer match (the limit is ignored, otherwise the skipped middle would never be delivered).
+        /// </summary>
+        public (IReadOnlyList<LogRecord> Backlog, IAsyncEnumerable<LogRecord> Live) SubscribeWithBacklog(
+            string? minLevel, string? search, long? afterSequence, int backlogLimit, CancellationToken ct)
+        {
+            lock (_syncRoot)
+            {
+                var backlog = SnapshotLocked(minLevel, search, afterSequence, afterSequence.HasValue ? int.MaxValue : backlogLimit);
+                var live = RegisterLocked(minLevel, search, _nextSequence - 1, ct);
+                return (backlog, live);
+            }
+        }
+
+        /// <summary>
+        /// Disposes the buffer, preventing new log appends and completing all subscribers.
         /// </summary>
         public void Dispose()
         {
-            if (_disposed)
-                return;
-
+            Subscriber[] toComplete;
             lock (_syncRoot)
             {
+                if (_disposed)
+                    return;
+
                 _disposed = true;
+                toComplete = _subscribers;
+                _subscribers = Array.Empty<Subscriber>();
             }
+
+            foreach (var subscriber in toComplete)
+            {
+                subscriber.Complete();
+            }
+        }
+
+        private IAsyncEnumerable<LogRecord> RegisterLocked(string? minLevel, string? search, long? afterSequence, CancellationToken ct)
+        {
+            var subscriber = new Subscriber(minLevel, search, afterSequence);
+            if (_disposed || ct.IsCancellationRequested)
+            {
+                subscriber.Complete();
+                return subscriber.ReadAsync(static _ => { }, ct);
+            }
+
+            _subscribers = [.. _subscribers, subscriber];
+            subscriber.CancellationRegistration = ct.Register(() => Unsubscribe(subscriber));
+            return subscriber.ReadAsync(Unsubscribe, ct);
+        }
+
+        private void Unsubscribe(Subscriber subscriber)
+        {
+            lock (_syncRoot)
+            {
+                _subscribers = Array.FindAll(_subscribers, s => !ReferenceEquals(s, subscriber));
+            }
+
+            subscriber.Complete();
+        }
+
+        private sealed class Subscriber
+        {
+            private const int ChannelCapacity = 1000;
+
+            private readonly Channel<LogRecord> _channel = Channel.CreateBounded<LogRecord>(
+                new BoundedChannelOptions(ChannelCapacity)
+                {
+                    FullMode = BoundedChannelFullMode.DropOldest,
+                    SingleReader = true,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false
+                });
+
+            private readonly string? _minLevel;
+            private readonly string? _search;
+            private readonly long? _afterSequence;
+
+            public Subscriber(string? minLevel, string? search, long? afterSequence)
+            {
+                _minLevel = minLevel;
+                _search = search;
+                _afterSequence = afterSequence;
+            }
+
+            public CancellationTokenRegistration CancellationRegistration { get; set; }
+
+            public void TryPublish(LogRecord record)
+            {
+                if (Matches(record, _minLevel, _search, _afterSequence))
+                {
+                    _ = _channel.Writer.TryWrite(record);
+                }
+            }
+
+            public void Complete()
+            {
+                _ = _channel.Writer.TryComplete();
+                CancellationRegistration.Dispose();
+            }
+
+            public async IAsyncEnumerable<LogRecord> ReadAsync(
+                Action<Subscriber> onFinished,
+                [EnumeratorCancellation] CancellationToken ct)
+            {
+                try
+                {
+                    await foreach (var record in _channel.Reader.ReadAllAsync(ct))
+                    {
+                        yield return record;
+                    }
+                }
+                finally
+                {
+                    onFinished(this);
+                }
+            }
+        }
+
+        private static bool Matches(LogRecord entry, string? minLevel, string? search, long? afterSequence)
+        {
+            if (afterSequence.HasValue && entry.Sequence <= afterSequence.Value)
+                return false;
+
+            if (minLevel != null && !PassesMinLevelFilter(entry.Level, minLevel))
+                return false;
+
+            return search == null || PassesSearchFilter(entry, search);
         }
 
         private static bool PassesMinLevelFilter(string entryLevel, string minLevel)
