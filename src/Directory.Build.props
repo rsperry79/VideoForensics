@@ -16,7 +16,7 @@
 
     <!-- Test projects need Microsoft.Testing.Platform for .NET 10 compatibility -->
     <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-        <PackageReference Include="Microsoft.Testing.Platform" Version="2.4.1" />
+        <PackageReference Include="Microsoft.Testing.Platform" Version="2.5.0" />
     </ItemGroup>
 
     <!-- Nerdbank.GitVersioning for semantic versioning from git tags -->

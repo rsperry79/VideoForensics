@@ -15,13 +15,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
-    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../core.helpers/VideoForensics.Providers.Common.Helpers.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.0" />
   </ItemGroup>
 </Project>
