@@ -1,0 +1,44 @@
+.log-viewport {
+    max-height: calc(100vh - 290px);
+    min-height: 300px;
+    overflow: auto;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 4px;
+}
+
+.log-table {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.8rem;
+}
+
+.log-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg, #fff);
+}
+
+.log-message {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.log-exception-row pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.75rem;
+}
+
+.lvl {
+    color: #fff;
+    font-weight: 600;
+    min-width: 5.5em;
+}
+
+.lvl-trace { background-color: #6c757d; }
+.lvl-debug { background-color: #5b7083; }
+.lvl-information { background-color: #0b6fa4; }
+.lvl-warning { background-color: #b45f06; }
+.lvl-error { background-color: #c62828; }
+.lvl-critical { background-color: #7b1fa2; }
+.lvl-unknown { background-color: #495057; }

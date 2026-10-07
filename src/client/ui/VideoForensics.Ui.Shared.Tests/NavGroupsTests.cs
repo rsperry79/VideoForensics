@@ -127,6 +127,29 @@ public class NavGroups_Tests
     }
 
     [Fact]
+    public void ServerLogs_RequiresSuperAdminRole()
+    {
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var logsItem = group.Items.First(i => i.Path == "/settings/logs");
+
+        Assert.Equal("Server Logs", logsItem.Text);
+        Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void ServerLogs_SitsImmediatelyAfterSecurityAuditLog()
+    {
+        var items = NavGroups.All.First(g => g.Key == "admin").Items.ToList();
+
+        int auditIndex = items.FindIndex(i => i.Text == "Security Audit Log");
+        Assert.True(auditIndex >= 0);
+        Assert.Equal("Server Logs", items[auditIndex + 1].Text);
+    }
+    [Fact]
     public void Operators_RequiresSuperAdminRole()
     {
         var group = NavGroups.All.First(g => g.Key == "admin");

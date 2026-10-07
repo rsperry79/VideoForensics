@@ -73,13 +73,21 @@ processes (CLI tools), a local-process log source for the MAUI app (optional fol
   for MAUI. No `data.*`/provider references are added to any client host (client/server split rules).
 
 ### 5. UI (`Ui.Shared`)
-- `Pages/Settings/ServerLogs.razor`, route `/settings/logs`; nav entry "Server Logs" in the admin group
+- `Pages/ServerLogs.razor` (+ `.resx`, scoped `.razor.css`, inline `@code` like its sibling pages; there is no `Pages/Settings/` folder), route `/settings/logs`; nav entry "Server Logs" in the admin group
   (`ctx.HasRole(OperatorRole.SuperAdmin)`), placed after "Security Audit Log".
 - Level filter, text search, pause/resume, auto-scroll, clear (client-side), "download visible as .txt".
   Desktop-first layout per the UI Layout rules; no mobile-specific logic.
 - Live tail via `StreamAsync`; initial fill via `GetPageAsync`; bounded client list (e.g. 2000 rows).
 - Step-up: the page obtains the token with `WebAuthn.StepUpAsync(SessionState.SessionToken)` and caches it until a
   401/403 from the service forces a new one (re-prompt, then retry or reconnect the stream).
+- Implemented (M4): plain Bootstrap table (not Syncfusion/`Virtualize`: append-heavy tail, variable-height expandable rows),
+  keyed by sequence, capped at 2000 rows; the stream loop queues entries and a 100 ms throttle renders them in batches.
+  Initial fill resumes the stream from `max(LatestSequence, last entry)`. Time, debounce (300 ms) and backoff (1 s doubling to
+  30 s) all go through `TimeProvider` (resolved from DI, falling back to `TimeProvider.System`) so tests drive them with a
+  manual provider. Scroll-to-bottom and "download visible" use a tiny ES module, `wwwroot/js/server-logs.js`, imported on demand
+  (no global `<script>` in the hosts). `WebAuthnClient.StepUpAsync` became `virtual` so the page can be tested with Moq.
+  The page has no `[Authorize]` attribute, matching the other admin pages: access control is the nav gate plus the
+  `SuperAdminLocal` endpoint policy; a 401/403 from the service shows the access-denied message.
 
 ### 6. Removal
 - Delete `src/utils/logger/` (both viewer projects) and their sln entries — **hand-edit `VideoForensics.sln`**
