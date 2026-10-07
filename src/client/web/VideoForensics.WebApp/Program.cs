@@ -434,6 +434,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
