@@ -58,11 +58,19 @@ processes (CLI tools), a local-process log source for the MAUI app (optional fol
   `LogViewed`), since logs can contain sensitive operational data.
 
 ### 4. Client service (names unchanged for the UI)
-- `ILogViewerService` in `Client.Common/Contracts/`: `GetPageAsync(LogQueryDto, ct)` and
-  `StreamAsync(LogQueryDto, ct) : IAsyncEnumerable<LogEntryDto>` (both take/forward `CancellationToken`).
-- `RemoteLogViewerService` in `VideoForensics.Hosting/Remote/`, bearer credential like every other `Remote*` class.
-  Registered with `AddSelfHttpService<ILogViewerService>` in the WebApp and through `AddVideoForensicsClientApi` for
-  MAUI. No `data.*`/provider references are added to any client host (client/server split rules).
+- Client-side types `LogEntry`, `LogQuery` and `LogPage` live in `Client.Common/Contracts/` next to
+  `ILogViewerService`, not the `Api.Contracts` DTOs: `Api.Contracts` references `Client.Common`, so the
+  reverse reference would be a cycle (same reason as `SecurityEventSummary`).
+- `ILogViewerService`: `GetPageAsync(LogQuery, string stepUpToken, ct)` and
+  `StreamAsync(LogQuery, string stepUpToken, ct) : IAsyncEnumerable<LogEntry>`. Both endpoints require a step-up
+  token, so it is a required per-call parameter (empty -> `ArgumentException`); a stream reconnect needs a valid
+  token again.
+- `RemoteLogViewerService` in `VideoForensics.Hosting/Remote/`: bearer credential like every other `Remote*`
+  class, `X-StepUp-Token` attached per request (never on the shared `HttpClient`), maps DTOs with
+  `dto.ToDomain()` / `query.ToDto()`. Streaming uses `SseParser` (heartbeat comments skipped); resume via the
+  `afterSequence` query value. 401/403 surface as `HttpRequestException` with `StatusCode` set.
+  Registered with `AddSelfHttpService<ILogViewerService>` in the WebApp and through `AddVideoForensicsClientApi`
+  for MAUI. No `data.*`/provider references are added to any client host (client/server split rules).
 
 ### 5. UI (`Ui.Shared`)
 - `Pages/Settings/ServerLogs.razor`, route `/settings/logs`; nav entry "Server Logs" in the admin group
@@ -70,6 +78,8 @@ processes (CLI tools), a local-process log source for the MAUI app (optional fol
 - Level filter, text search, pause/resume, auto-scroll, clear (client-side), "download visible as .txt".
   Desktop-first layout per the UI Layout rules; no mobile-specific logic.
 - Live tail via `StreamAsync`; initial fill via `GetPageAsync`; bounded client list (e.g. 2000 rows).
+- Step-up: the page obtains the token with `WebAuthn.StepUpAsync(SessionState.SessionToken)` and caches it until a
+  401/403 from the service forces a new one (re-prompt, then retry or reconnect the stream).
 
 ### 6. Removal
 - Delete `src/utils/logger/` (both viewer projects) and their sln entries — **hand-edit `VideoForensics.sln`**

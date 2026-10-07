@@ -337,6 +337,7 @@ builder.Services.AddScoped<SessionNetworkContext>();
 // fresh, real HttpContext per call, which a Blazor circuit alone can't guarantee for UI-event-driven
 // code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
+builder.Services.AddSelfHttpService<ILogViewerService>(http => new RemoteLogViewerService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
 
 // Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
