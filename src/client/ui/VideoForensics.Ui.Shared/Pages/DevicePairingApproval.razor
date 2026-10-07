@@ -12,7 +12,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToApprove"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToApprove"]
     </div>
 }
 else

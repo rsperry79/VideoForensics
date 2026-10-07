@@ -90,7 +90,7 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     }
 
     [Fact]
-    public async Task ClickingSignOut_ClearsSession_CallsJsClear_AndNavigatesToDeviceSignIn()
+    public async Task ClickingSignOut_ClearsSession_CallsJsClear_AndNavigatesToSignIn()
     {
         var session = await SignInAsync(OperatorRole.Admin);
 
@@ -101,7 +101,8 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
         Assert.Contains(JSInterop.Invocations, i => i.Identifier == "vfWebAuthn.clearSession");
 
         var nav = Services.GetRequiredService<NavigationManager>();
-        Assert.EndsWith("/device-signin", nav.Uri);
+        Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath);
+        Assert.Equal(string.Empty, new Uri(nav.Uri).Query);
     }
 }
 

@@ -36,7 +36,7 @@
     <value>Notifications</value>
   </data>
   <data name="SignInWithPasskey" xml:space="preserve">
-    <value>Sign in with your passkey</value>
+    <value>Sign in</value>
   </data>
   <data name="ToManageNotifications" xml:space="preserve">
     <value>to manage notification settings.</value>

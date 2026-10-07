@@ -342,7 +342,8 @@ public class SimpleLayout_SignOut_Tests : SimpleModeLayoutTestBase
         // Assert
         // Session should be cleared and navigation should occur
         var nav = Services.GetRequiredService<NavigationManager>();
-        Assert.EndsWith("/device-signin", nav.Uri);
+        Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath);
+        Assert.False(session.IsSignedIn);
     }
 
     [Fact]

@@ -36,7 +36,7 @@
     <value>LLM API Configuration</value>
   </data>
   <data name="SignInWithPasskey" xml:space="preserve">
-    <value>Sign in with your passkey</value>
+    <value>Sign in</value>
   </data>
   <data name="SignInRequired" xml:space="preserve">
     <value>to configure LLM settings.</value>
