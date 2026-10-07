@@ -1,6 +1,6 @@
 # Server Log Viewer in the WebApp (SuperAdmin) — replaces the desktop LoggerViewer apps
 
-**STATUS: APPROVED — in progress (M6 deferred)**
+**STATUS: COMPLETED (M6 deferred) — 2026-10-06**
 
 ## Context
 
