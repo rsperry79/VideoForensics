@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+﻿using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Common.Contracts
 {
@@ -108,6 +108,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>
         /// Auto-creates a forensic case from a jamming incident detection or suspicion.
         /// Generates case number with "detected" or "suspected" prefix and auto-populates title, description, and scope from the incident.
+        /// Idempotent: if the incident already has a CaseId and that case exists, returns it without creating a duplicate.
+        /// Atomically creates the case, device scope entries, a linked Alert, and updates the incident's CaseId in a single SaveChangesAsync call.
+        /// Creates an Alert with AlertType="JammingDetection", Status="Open", CreatedBy="System", and Title based on confidence level ("Jamming Detected" or "Jamming Suspected").
         /// Appends a chain-of-custody ActionLog entry ("CreateCase") in the same operation.
         /// </summary>
         Task<ForensicCase> CreateFromJammingDetectionAsync(
@@ -115,3 +118,4 @@ namespace VideoForensics.Data.Common.Contracts
             CancellationToken ct);
     }
 }
+

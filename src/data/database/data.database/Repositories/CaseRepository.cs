@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -70,38 +70,104 @@ namespace VideoForensics.Data.Database.Repositories
         /// Creates a forensic case auto-triggered by jamming detection.
         /// Prefix is determined by confidence level: "detected" if High/Definite, else "suspected".
         /// Scope is set from jamming event time window.
+        /// Idempotent: if the incident already has a CaseId and that case exists, returns it without creating a duplicate.
+        /// Atomically creates the case, device scope, and a linked Alert in a single SaveChangesAsync call.
         /// </summary>
         /// <param name="jammingEvent">The jamming incident record that triggered case creation</param>
         /// <param name="ct">Cancellation token</param>
-        /// <returns>The created forensic case</returns>
+        /// <returns>The created or existing forensic case</returns>
         public async Task<ForensicCase> CreateFromJammingDetectionAsync(
             JammingIncidentRecord jammingEvent,
             CancellationToken ct)
         {
-            // Determine prefix based on confidence level
+            // Idempotency check: if incident already has a case, return it
+            if (jammingEvent.CaseId.HasValue && jammingEvent.CaseId != Guid.Empty)
+            {
+                ForensicCase? existingCase = await GetAsync(jammingEvent.CaseId.Value, ct);
+                if (existingCase is not null)
+                {
+                    _logger.LogInformation("Jamming incident {IncidentId} already has case {CaseId}; returning existing case", jammingEvent.Id, jammingEvent.CaseId);
+                    return existingCase;
+                }
+            }
+
+            // Determine prefix and title based on confidence level
             string prefix = jammingEvent.Confidence >= JammingConfidenceLevel.High ? "detected" : "suspected";
-            string title = jammingEvent.Confidence >= JammingConfidenceLevel.High
+            string alertTitle = jammingEvent.Confidence >= JammingConfidenceLevel.High
                 ? "Jamming Detected"
                 : "Jamming Suspected";
 
-            string description = $"Jamming incident detected on device {jammingEvent.DeviceId} " +
+            string caseDescription = BuildAlertDescription(jammingEvent);
+
+            // Create case with callback that atomically creates alert and links incident
+            return await CreateCoreAsync(
+                null,
+                prefix,
+                alertTitle,
+                caseDescription,
+                leadOperatorId: null,
+                jammingEvent.StartUtc,
+                jammingEvent.EndUtc,
+                new[] { jammingEvent.DeviceId },
+                SystemActor,
+                ct,
+                onBeforeSave: (db, forensicCase) =>
+                {
+                    // Create the alert within the same transaction
+                    var alert = new Alert
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = alertTitle,
+                        Description = caseDescription,
+                        RelatedCaseId = forensicCase.Id,
+                        Status = "Open",
+                        CreatedBy = SystemActor,
+                        AlertType = "JammingDetection",
+                        CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        UpdatedAtUtc = null
+                    };
+                    _ = db.Alerts.Add(alert);
+
+                    // Link the incident to the case
+                    jammingEvent.CaseId = forensicCase.Id;
+                    
+                    // Note: jammingEvent is already tracked by db.JammingIncidents if it was loaded from this context.
+                    // If not tracked, we need to attach and mark as modified.
+                    var incident = db.JammingIncidentRecords.Find(jammingEvent.Id);
+                    if (incident is not null)
+                    {
+                        incident.CaseId = forensicCase.Id;
+                    }
+                    else
+                    {
+                        // Incident not in DB yet or from another context; log and continue
+                        // The callback cannot add it because we don't know if it exists
+                        _logger.LogWarning("Jamming incident {IncidentId} not found in database context; skipping CaseId link", jammingEvent.Id);
+                    }
+                });
+        }
+
+        /// <summary>
+        /// Builds a formatted description for a jamming incident alert.
+        /// Includes device ID, time window, degradation dB, affected event count, and confidence.
+        /// Description is capped at 4000 characters.
+        /// </summary>
+        private string BuildAlertDescription(JammingIncidentRecord jammingEvent)
+        {
+            string description = $"Jamming incident on device {jammingEvent.DeviceId} " +
                 $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
                 $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
                 $"Affected events: {jammingEvent.AffectedEventCount}. " +
                 $"Confidence: {jammingEvent.Confidence}. " +
                 (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
 
-            return await CreateCoreAsync(
-                null,
-                prefix,
-                title,
-                description,
-                leadOperatorId: null,
-                jammingEvent.StartUtc,
-                jammingEvent.EndUtc,
-                new[] { jammingEvent.DeviceId },
-                SystemActor,
-                ct);
+            // Cap at 4000 chars as per Alert schema
+            if (description.Length > 4000)
+            {
+                description = description.Substring(0, 3997) + "...";
+            }
+
+            return description;
         }
 
         public Task<ForensicCase> CreateAsync(
@@ -126,7 +192,8 @@ namespace VideoForensics.Data.Database.Repositories
             DateTime? scopeToUtc,
             IReadOnlyCollection<Guid> deviceIds,
             string createdBy,
-            CancellationToken ct)
+            CancellationToken ct,
+            Action<VideoForensicsDbContext, ForensicCase>? onBeforeSave = null)
         {
             bool wasGenerated = string.IsNullOrWhiteSpace(explicitNumber);
             string finalCaseNumber = wasGenerated ? await GenerateCaseNumber(generatedPrefix, ct) : explicitNumber!;
@@ -185,6 +252,8 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     ActorType actorType = createdBy == SystemActor ? ActorType.System : ActorType.Human;
+
+                    onBeforeSave?.Invoke(db, forensicCase);
 
                     _ = await db.SaveChangesAsync(ct);
 
@@ -626,3 +695,5 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 }
+
+
