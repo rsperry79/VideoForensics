@@ -27,6 +27,6 @@
     <ProjectReference Include="../VideoForensics.Providers.Ring.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.0" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
   </ItemGroup>
 </Project>

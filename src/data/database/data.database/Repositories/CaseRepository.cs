@@ -13,78 +13,185 @@ namespace VideoForensics.Data.Database.Repositories
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly ILogger<CaseRepository> _logger;
+        private const string SystemActor = "System";
+
+        private readonly TimeProvider _timeProvider;
 
         /// <summary>Initializes a new instance of the CaseRepository.</summary>
         public CaseRepository(
             IDbContextFactory<VideoForensicsDbContext> factory,
             IActionLogRepository actionLogRepository,
-            ILogger<CaseRepository> logger)
+            ILogger<CaseRepository> logger,
+            TimeProvider? timeProvider = null)
         {
             _factory = factory;
             _actionLogRepository = actionLogRepository;
             _logger = logger;
+            _timeProvider = timeProvider ?? TimeProvider.System;
         }
 
         /// <summary>
         /// Generates a unique case number with the pattern {prefix}-yyyy-mm-dd-hh-mm-{index}.
-        /// The index is the count of cases created in the same minute.
+        /// The index is the maximum existing index for the given prefix in the same minute, plus one.
+        /// This ensures collision-safe generation even with concurrent creates.
         /// </summary>
         /// <param name="prefix">Case number prefix (e.g., "detected", "suspected", "manual")</param>
+        /// <param name="ct">Cancellation token</param>
         /// <returns>Generated case number string</returns>
         public async Task<string> GenerateCaseNumber(string prefix, CancellationToken ct)
         {
-            DateTime now = DateTime.UtcNow;
+            DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
             DateTime startOfMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
             DateTime endOfMinute = startOfMinute.AddMinutes(1);
+            string timePrefix = now.ToString("yyyy-MM-dd-HH-mm");
+            string searchPattern = $"{prefix}-{timePrefix}-";
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            int count = await db.Cases
-                .Where(c => c.CreatedAtUtc >= startOfMinute && c.CreatedAtUtc < endOfMinute)
-                .CountAsync(ct);
+            
+            // Get all case numbers that match the prefix and time window, extract indices
+            var matchingNumbers = await db.Cases
+                .Where(c => c.CreatedAtUtc >= startOfMinute && c.CreatedAtUtc < endOfMinute && c.CaseNumber.StartsWith(searchPattern))
+                .Select(c => c.CaseNumber)
+                .ToListAsync(ct);
 
-            return $"{prefix}-{now:yyyy-MM-dd-HH-mm}-{count}";
+            int maxIndex = -1;
+            foreach (var number in matchingNumbers)
+            {
+                if (int.TryParse(number.Substring(searchPattern.Length), out int index))
+                {
+                    maxIndex = Math.Max(maxIndex, index);
+                }
+            }
+
+            return $"{searchPattern}{maxIndex + 1}";
         }
 
         /// <summary>
         /// Creates a forensic case auto-triggered by jamming detection.
         /// Prefix is determined by confidence level: "detected" if High/Definite, else "suspected".
         /// Scope is set from jamming event time window.
+        /// Idempotent: if the incident already has a CaseId and that case exists, returns it without creating a duplicate.
+        /// Atomically creates the case, device scope, and a linked Alert in a single SaveChangesAsync call.
         /// </summary>
         /// <param name="jammingEvent">The jamming incident record that triggered case creation</param>
         /// <param name="ct">Cancellation token</param>
-        /// <returns>The created forensic case</returns>
+        /// <returns>The created or existing forensic case</returns>
         public async Task<ForensicCase> CreateFromJammingDetectionAsync(
             JammingIncidentRecord jammingEvent,
             CancellationToken ct)
         {
-            // Determine prefix based on confidence level
+            // Idempotency check: if incident already has a case, return it
+            Guid? linkedCaseId = jammingEvent.CaseId;
+            if (linkedCaseId is null || linkedCaseId == Guid.Empty)
+            {
+                await using VideoForensicsDbContext lookup = await _factory.CreateDbContextAsync(ct);
+                linkedCaseId = await lookup.JammingIncidentRecords
+                    .Where(i => i.Id == jammingEvent.Id)
+                    .Select(i => i.CaseId)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            if (linkedCaseId.HasValue && linkedCaseId != Guid.Empty)
+            {
+                ForensicCase? existingCase = await GetAsync(linkedCaseId.Value, ct);
+                if (existingCase is not null)
+                {
+                    _logger.LogInformation("Jamming incident {IncidentId} already has case {CaseId}; returning existing case", jammingEvent.Id, jammingEvent.CaseId);
+                    return existingCase;
+                }
+            }
+
+            // Determine prefix and title based on confidence level
             string prefix = jammingEvent.Confidence >= JammingConfidenceLevel.High ? "detected" : "suspected";
-            string caseNumber = await GenerateCaseNumber(prefix, ct);
-            string title = jammingEvent.Confidence >= JammingConfidenceLevel.High
+            string alertTitle = jammingEvent.Confidence >= JammingConfidenceLevel.High
                 ? "Jamming Detected"
                 : "Jamming Suspected";
 
-            string description = $"Jamming incident detected on device {jammingEvent.DeviceId} " +
+            string caseDescription = $"Jamming incident detected on device {jammingEvent.DeviceId} " +
                 $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
                 $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
                 $"Affected events: {jammingEvent.AffectedEventCount}. " +
                 $"Confidence: {jammingEvent.Confidence}. " +
                 (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
 
-            return await CreateAsync(
-                caseNumber,
-                title,
-                description,
+            // Create case with callback that atomically creates alert and links incident
+            var createdCase = await CreateCoreAsync(
+                null,
+                prefix,
+                alertTitle,
+                caseDescription,
                 leadOperatorId: null,
                 jammingEvent.StartUtc,
                 jammingEvent.EndUtc,
                 new[] { jammingEvent.DeviceId },
-                "System",
-                ct);
+                SystemActor,
+                ct,
+                onBeforeSave: (db, forensicCase) =>
+                {
+                    // Create the alert within the same transaction
+                    var alert = new Alert
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = alertTitle,
+                        Description = BuildAlertDescription(jammingEvent, forensicCase.CaseNumber),
+                        RelatedCaseId = forensicCase.Id,
+                        Status = "Open",
+                        CreatedBy = SystemActor,
+                        AlertType = "JammingDetection",
+                        CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        UpdatedAtUtc = null
+                    };
+                    _ = db.Alerts.Add(alert);
+
+                    // Note: jammingEvent is already tracked by db.JammingIncidents if it was loaded from this context.
+                    // If not tracked, we need to attach and mark as modified.
+                    var incident = db.JammingIncidentRecords.Find(jammingEvent.Id);
+                    if (incident is not null)
+                    {
+                        incident.CaseId = forensicCase.Id;
+                    }
+                    else
+                    {
+                        // Incident not in DB yet or from another context; log and continue
+                        // The callback cannot add it because we don't know if it exists
+                        _logger.LogWarning("Jamming incident {IncidentId} not found in database context; skipping CaseId link", jammingEvent.Id);
+                    }
+                });
+
+            
+            // Update the caller's object now that the save succeeded
+            
+            jammingEvent.CaseId = createdCase.Id;
+
+            
+            return createdCase;
         }
 
-        public async Task<ForensicCase> CreateAsync(
-            string caseNumber,
+        /// <summary>
+        /// Builds a formatted description for a jamming incident alert.
+        /// Includes case number, device ID, time window, degradation dB, affected event count, and confidence.
+        /// Description is capped at 4000 characters.
+        /// </summary>
+        private static string BuildAlertDescription(JammingIncidentRecord jammingEvent, string caseNumber)
+        {
+            string description = $"Case {caseNumber}: jamming incident on device {jammingEvent.DeviceId} " +
+                $"from {jammingEvent.StartUtc:O} to {jammingEvent.EndUtc:O}. " +
+                $"Average degradation: {jammingEvent.AverageDegradationDb:F2} dB. " +
+                $"Affected events: {jammingEvent.AffectedEventCount}. " +
+                $"Confidence: {jammingEvent.Confidence}. " +
+                (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
+
+            // Cap at 4000 chars as per Alert schema
+            if (description.Length > 4000)
+            {
+                description = description.Substring(0, 3997) + "...";
+            }
+
+            return description;
+        }
+
+        public Task<ForensicCase> CreateAsync(
+            string? caseNumber,
             string title,
             string? description,
             Guid? leadOperatorId,
@@ -93,77 +200,122 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyCollection<Guid> deviceIds,
             string createdBy,
             CancellationToken ct)
+            => CreateCoreAsync(caseNumber, "manual", title, description, leadOperatorId, scopeFromUtc, scopeToUtc, deviceIds, createdBy, ct);
+
+        private async Task<ForensicCase> CreateCoreAsync(
+            string? explicitNumber,
+            string generatedPrefix,
+            string title,
+            string? description,
+            Guid? leadOperatorId,
+            DateTime? scopeFromUtc,
+            DateTime? scopeToUtc,
+            IReadOnlyCollection<Guid> deviceIds,
+            string createdBy,
+            CancellationToken ct,
+            Action<VideoForensicsDbContext, ForensicCase>? onBeforeSave = null)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            try
+            bool wasGenerated = string.IsNullOrWhiteSpace(explicitNumber);
+            string finalCaseNumber = wasGenerated ? await GenerateCaseNumber(generatedPrefix, ct) : explicitNumber!;
+
+            // For auto-generated numbers, retry up to 5 times on collision
+            int maxRetries = wasGenerated ? 5 : 1;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                // Check for duplicate case number
-                bool exists = await db.Cases.AnyAsync(c => c.CaseNumber == caseNumber, ct);
-                if (exists)
+                await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+                try
                 {
-                    throw new InvalidOperationException($"A case with number '{caseNumber}' already exists.");
-                }
-
-                var forensicCase = new ForensicCase
-                {
-                    Id = Guid.NewGuid(),
-                    CaseNumber = caseNumber,
-                    Title = title,
-                    Description = description,
-                    LeadOperatorId = leadOperatorId,
-                    Status = CaseStatus.Open,
-                    CreatedBy = createdBy,
-                    CreatedAtUtc = DateTime.UtcNow,
-                    UpdatedAtUtc = DateTime.UtcNow,
-                    ScopeFromUtc = scopeFromUtc,
-                    ScopeToUtc = scopeToUtc
-                };
-
-                _ = db.Cases.Add(forensicCase);
-
-                // Add device scope entries
-                var deviceSet = new List<CaseDevice>();
-                foreach (var deviceId in deviceIds)
-                {
-                    deviceSet.Add(new CaseDevice
+                    // Check for duplicate case number
+                    bool exists = await db.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct);
+                    if (exists)
                     {
-                        CaseId = forensicCase.Id,
-                        DeviceId = deviceId,
-                        AddedAtUtc = DateTime.UtcNow
-                    });
+                        if (wasGenerated && attempt < maxRetries - 1)
+                        {
+                            // Retry with a new generated number
+                            finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
+                            continue;
+                        }
+                        throw new InvalidOperationException($"A case with number '{finalCaseNumber}' already exists.");
+                    }
+
+                    var forensicCase = new ForensicCase
+                    {
+                        Id = Guid.NewGuid(),
+                        CaseNumber = finalCaseNumber,
+                        Title = title,
+                        Description = description,
+                        LeadOperatorId = leadOperatorId,
+                        Status = CaseStatus.Open,
+                        CreatedBy = createdBy,
+                        CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        ScopeFromUtc = scopeFromUtc,
+                        ScopeToUtc = scopeToUtc
+                    };
+
+                    _ = db.Cases.Add(forensicCase);
+
+                    // Add device scope entries
+                    var deviceSet = new List<CaseDevice>();
+                    foreach (var deviceId in deviceIds)
+                    {
+                        deviceSet.Add(new CaseDevice
+                        {
+                            CaseId = forensicCase.Id,
+                            DeviceId = deviceId,
+                            AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
+                        });
+                    }
+                    if (deviceSet.Count > 0)
+                    {
+                        db.CaseDevices.AddRange(deviceSet);
+                    }
+
+                    ActorType actorType = createdBy == SystemActor ? ActorType.System : ActorType.Human;
+
+                    onBeforeSave?.Invoke(db, forensicCase);
+
+                    _ = await db.SaveChangesAsync(ct);
+
+                    // Append custody entry
+                    _ = await _actionLogRepository.AppendAsync(
+                        createdBy,
+                        actorType,
+                        "CreateCase",
+                        "Case",
+                        forensicCase.Id,
+                        $"Case number: {finalCaseNumber}, Title: {title}, Devices: {deviceIds.Count}",
+                        ct);
+
+                    _logger.LogInformation("Case {CaseNumber} created by {CreatedBy}", finalCaseNumber, createdBy);
+
+                    return forensicCase;
                 }
-                if (deviceSet.Count > 0)
+                catch (InvalidOperationException)
                 {
-                    db.CaseDevices.AddRange(deviceSet);
+                    throw;
                 }
+                catch (DbUpdateException) when (wasGenerated && attempt < maxRetries - 1)
+                {
+                    // Another writer can take the number between the pre-check and the insert; only a
+                    // number collision is retried, so FK and other constraint failures still propagate.
+                    await using VideoForensicsDbContext check = await _factory.CreateDbContextAsync(ct);
+                    if (!await check.Cases.AnyAsync(c => c.CaseNumber == finalCaseNumber, ct))
+                    {
+                        throw;
+                    }
 
-                _ = await db.SaveChangesAsync(ct);
-
-                // Append custody entry
-                _ = await _actionLogRepository.AppendAsync(
-                    createdBy,
-                    ActorType.Human,
-                    "CreateCase",
-                    "Case",
-                    forensicCase.Id,
-                    $"Case number: {caseNumber}, Title: {title}, Devices: {deviceIds.Count}",
-                    ct);
-
-                _logger.LogInformation("Case {CaseNumber} created by {CreatedBy}", caseNumber, createdBy);
-
-                return forensicCase;
+                    finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating case {CaseNumber}", finalCaseNumber);
+                    throw;
+                }
             }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating case {CaseNumber}", caseNumber);
-                throw;
-            }
+
+            throw new InvalidOperationException("Failed to create case after maximum retries.");
         }
-
         public async Task<ForensicCase?> GetAsync(Guid id, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
@@ -277,7 +429,7 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         CaseId = id,
                         DeviceId = deviceId,
-                        AddedAtUtc = DateTime.UtcNow
+                        AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
                     });
                 }
                 if (newDevices.Count > 0)
@@ -458,7 +610,7 @@ namespace VideoForensics.Data.Database.Repositories
                     MediaItemId = kind == CaseItemKind.Media ? targetId : null,
                     Reason = reason,
                     AddedBy = addedBy,
-                    AddedAtUtc = DateTime.UtcNow,
+                    AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
                     MediaSha256AtAdd = mediaSha256AtAdd
                 };
 
@@ -563,3 +715,5 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 }
+
+

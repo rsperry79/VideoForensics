@@ -286,16 +286,114 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public async Task CreateCaseAsync_EmptyCaseNumber_ReturnsBadRequest()
+        public async Task CreateCaseAsync_NullCaseNumber_PassesNullToRepository()
         {
             (var cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new CreateCaseRequestDto("", "Test", null, null, null, null, new List<Guid>());
+            var @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto(null, "Test", null, null, null, null, new List<Guid>());
+            cases.Setup(c => c.CreateAsync(
+                It.Is<string?>(s => s == null),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(@case);
+            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Guid>());
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
 
-            Assert.True(result.GetType().Name.Contains("BadRequest"));
+            cases.Verify(c => c.CreateAsync(
+                It.Is<string?>(s => s == null),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                operatorId.ToString(),
+                It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(result.GetType().Name.StartsWith("Created"));
+        }
+
+        [Fact]
+        public async Task CreateCaseAsync_EmptyStringCaseNumber_PassesEmptyToRepository()
+        {
+            (var cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto("", "Test", null, null, null, null, new List<Guid>());
+            cases.Setup(c => c.CreateAsync(
+                It.Is<string?>(s => string.IsNullOrWhiteSpace(s)),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(@case);
+            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Guid>());
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
+
+            cases.Verify(c => c.CreateAsync(
+                It.Is<string?>(s => string.IsNullOrWhiteSpace(s)),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                operatorId.ToString(),
+                It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(result.GetType().Name.StartsWith("Created"));
+        }
+
+        [Fact]
+        public async Task CreateCaseAsync_ExplicitCaseNumber_PassesThroughExactly()
+        {
+            (var cases, _) = CreateMocks();
+            var operatorId = Guid.NewGuid();
+            var @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, new List<Guid>());
+            cases.Setup(c => c.CreateAsync(
+                It.Is<string?>(s => s == "CASE-001"),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(@case);
+            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Guid>());
+            var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
+
+            IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
+
+            cases.Verify(c => c.CreateAsync(
+                It.Is<string?>(s => s == "CASE-001"),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                operatorId.ToString(),
+                It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(result.GetType().Name.StartsWith("Created"));
         }
 
         [Fact]

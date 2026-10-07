@@ -32,7 +32,7 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         public async Task<ForensicCase> CreateAsync(
-            string caseNumber,
+            string? caseNumber,
             string title,
             string? description,
             Guid? leadOperatorId,
