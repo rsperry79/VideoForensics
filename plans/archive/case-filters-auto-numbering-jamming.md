@@ -1,5 +1,14 @@
 # Case Filters & Auto-Generated Case Numbers (with Jamming Auto-Detection)
 
+**STATUS: COMPLETED (2026-10-07)**
+
+- Phase 1: Server-generated collision-safe case numbers (manual/detected/suspected); \CreateAsync\ accepts null number; create-case endpoint passes it through — DONE
+- Phase 2: CaseNew shows read-only preview, no manual input — already in code before this work
+- Phase 3: ScopeRail moved out of MainLayout onto Cases/CaseDetails and mobile filter sheet — already in code before this work
+- Phase 4: Alert created with jamming case, implemented atomically in same save — DONE
+- Jamming hook placed in \JammingRepository.UpsertIncidentAsync\ (insert path only) for consistent behavior; \JammingIncidentRecord.CaseId\ (new nullable column, migration \AddJammingIncidentCaseId\) links incident to case and makes creation idempotent
+- Both ManuallyRecorded and AutoDetected incidents create case + alert (low confidence → \suspected-\); incidents recorded before this change get no case
+
 ## Context
 Currently, filters (case selector, devices, time range, search) are embedded in the left sidebar via ScopeRail, making them visible across all pages. Case numbers are manually entered by users with no standardization. The goals are:
 

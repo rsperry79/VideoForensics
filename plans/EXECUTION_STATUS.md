@@ -20,6 +20,12 @@
 - **Implementation:** In-memory log buffer + `/api/v1/logs` history & SSE + SuperAdmin Server Logs page in Ui.Shared; removed WPF and MAUI LoggerViewer projects; M6 (local MAUI logs) deferred
 - **Note:** 5 `NavGroups_Tests` were already failing before this work (stale group expectations) and are tracked separately
 
+
+#### ✅ **Case Filters & Auto-Generated Case Numbers** — COMPLETED 2026-10-07
+- **Plan:** `plans/archive/case-filters-auto-numbering-jamming.md`
+- **Status:** Ready for PR to dev
+- **Implementation:** Server-generated collision-safe case numbers (manual/detected/suspected), jamming hook in JammingRepository (insert path only), CaseId links incident to case for idempotent creation, auto-alert creation with case
+- **Testing:** Case numbering (29 tests), jamming case automation (11), JammingRepository case automation (9), JammingRepository CaseId (6) — full gate 4070 tests, 0 failures
 ---
 
 ## Previous Phase Plans
