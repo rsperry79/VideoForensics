@@ -6,12 +6,12 @@ namespace VideoForensics.Data.Common.Contracts
     public interface ICaseRepository
     {
         /// <summary>
-        /// Creates a new forensic case with optional scope and device set.
+        /// Creates a new forensic case with optional scope and device set. If caseNumber is null or empty, a unique case number is auto-generated with the "manual-" prefix.
         /// Appends a chain-of-custody ActionLog entry ("CreateCase") in the same operation.
         /// Throws InvalidOperationException if CaseNumber already exists.
         /// </summary>
         Task<ForensicCase> CreateAsync(
-            string caseNumber,
+            string? caseNumber,
             string title,
             string? description,
             Guid? leadOperatorId,
