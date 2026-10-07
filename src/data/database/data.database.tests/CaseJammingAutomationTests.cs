@@ -216,6 +216,117 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Null((await db.JammingIncidentRecords.AsNoTracking().SingleAsync(i => i.Id == incident.Id)).CaseId);
         }
 
+        [Fact]
+        public async Task CreateFromJamming_StaleIncidentCopy_ReturnsSameCaseWithoutDuplicates()
+        {
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
+
+            ForensicCase case1 = await _cases.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+
+            // Create a stale copy: new object with same Id but CaseId not set
+            JammingIncidentRecord staleCopy = NewIncident(deviceId, JammingConfidenceLevel.High);
+            staleCopy.Id = incident.Id;
+
+            ForensicCase case2 = await _cases.CreateFromJammingDetectionAsync(staleCopy, CancellationToken.None);
+
+            Assert.Equal(case1.Id, case2.Id);
+            Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
+
+            await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
+            Assert.Single(await db.CaseDevices.Where(cd => cd.CaseId == case1.Id).ToListAsync());
+        }
+
+        [Fact]
+        public async Task CreateFromJamming_AlertInsertFails_NothingPersistedAndCallerUnlinked()
+        {
+            await using var conn = new SqliteConnection("DataSource=:memory:");
+            await conn.OpenAsync();
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plainFactory = new SimpleFactory(plain);
+            await using (VideoForensicsDbContext init = plainFactory.CreateDbContext())
+            {
+                _ = await init.Database.EnsureCreatedAsync();
+            }
+
+            Guid deviceId = await SeedDeviceAsync(plainFactory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(plainFactory, incident);
+
+            var throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+                .UseSqlite(conn).AddInterceptors(new ThrowOnAlertInsertInterceptor()).Options;
+            CaseRepository failing = BuildRepo(new SimpleFactory(throwing));
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => failing.CreateFromJammingDetectionAsync(incident, CancellationToken.None));
+
+            await using VideoForensicsDbContext db = plainFactory.CreateDbContext();
+            Assert.Equal(0, await db.Cases.CountAsync());
+            Assert.Equal(0, await db.CaseDevices.CountAsync());
+            Assert.Equal(0, await db.Alerts.CountAsync());
+            Assert.Null((await db.JammingIncidentRecords.AsNoTracking().SingleAsync(i => i.Id == incident.Id)).CaseId);
+            Assert.Null(incident.CaseId);
+        }
+
+        [Fact]
+        public async Task CreateFromJamming_InsertTimeNumberCollision_RetriesWithDetectedPrefixAndSingleAlert()
+        {
+            var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
+            Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
+            JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
+            await PersistIncidentAsync(_fixture.Factory, incident);
+
+            var conn = new SqliteConnection("DataSource=:memory:");
+            await conn.OpenAsync();
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            await using (VideoForensicsDbContext init = new(plain))
+            {
+                _ = await init.Database.EnsureCreatedAsync();
+            }
+
+            // Seed the device in the in-memory connection
+            var plainFactory = new SimpleFactory(plain);
+            var locRepo = new LocationRepository(plainFactory, _loggerFactory.CreateLogger<LocationRepository>());
+            var devRepo = new DeviceRepository(plainFactory, _loggerFactory.CreateLogger<DeviceRepository>());
+            var loc = TestDataBuilder.BuildLocation(name: "Jam Location");
+            await locRepo.AddAsync(loc, CancellationToken.None);
+            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
+            await devRepo.AddAsync(device, CancellationToken.None);
+            deviceId = device.Id;
+
+            // Persist incident to the in-memory DB
+            incident.DeviceId = deviceId;
+            await PersistIncidentAsync(plainFactory, incident);
+
+            var interceptor = new CollisionInterceptor(() => new VideoForensicsDbContext(plain), fakeTime.GetUtcNow().UtcDateTime);
+            var racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
+            CaseRepository racingRepo = new(new SimpleFactory(racing),
+                new ActionLogRepository(new SimpleFactory(racing), _loggerFactory.CreateLogger<ActionLogRepository>()),
+                _loggerFactory.CreateLogger<CaseRepository>(),
+                fakeTime);
+
+            ForensicCase created = await racingRepo.CreateFromJammingDetectionAsync(incident, CancellationToken.None);
+
+            // Verify the case number starts with "detected-" and ends with "-1"
+            Assert.StartsWith("detected-2026-10-07-14-35-", created.CaseNumber);
+            Assert.EndsWith("-1", created.CaseNumber);
+
+            await using VideoForensicsDbContext verifyDb = new(plain);
+            Alert? alert = await verifyDb.Alerts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.RelatedCaseId == created.Id);
+            Assert.NotNull(alert);
+
+            JammingIncidentRecord storedIncident = await verifyDb.JammingIncidentRecords.AsNoTracking()
+                .SingleAsync(i => i.Id == incident.Id);
+            Assert.Equal(created.Id, storedIncident.CaseId);
+
+            // Verify competing case still exists
+            int caseCount = await verifyDb.Cases.CountAsync();
+            Assert.Equal(2, caseCount);
+        }
+
         private sealed class SimpleFactory(DbContextOptions<VideoForensicsDbContext> options) : IDbContextFactory<VideoForensicsDbContext>
         {
             public VideoForensicsDbContext CreateDbContext() => new(options);
@@ -226,6 +337,59 @@ namespace VideoForensics.Data.Database.Tests
             public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
                 DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
                 => throw new InvalidOperationException("simulated save failure");
+        }
+
+        private sealed class ThrowOnAlertInsertInterceptor : SaveChangesInterceptor
+        {
+            public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+                DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            {
+                if (eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added))
+                {
+                    throw new InvalidOperationException("simulated alert insert failure");
+                }
+                return base.SavingChangesAsync(eventData, result, cancellationToken);
+            }
+
+            public override InterceptionResult<int> SavingChanges(
+                DbContextEventData eventData, InterceptionResult<int> result)
+            {
+                if (eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added))
+                {
+                    throw new InvalidOperationException("simulated alert insert failure");
+                }
+                return base.SavingChanges(eventData, result);
+            }
+        }
+
+        private sealed class CollisionInterceptor(Func<VideoForensicsDbContext> contextFactory, DateTime now) : SaveChangesInterceptor
+        {
+            private bool _fired;
+
+            public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+                DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            {
+                ForensicCase? added = eventData.Context?.ChangeTracker.Entries<ForensicCase>()
+                    .FirstOrDefault(e => e.State == EntityState.Added)?.Entity;
+                if (!_fired && added is not null)
+                {
+                    _fired = true;
+                    await using VideoForensicsDbContext other = contextFactory();
+                    _ = other.Cases.Add(new ForensicCase
+                    {
+                        Id = Guid.NewGuid(),
+                        CaseNumber = added.CaseNumber,
+                        Title = "Competitor",
+                        Status = CaseStatus.Open,
+                        CreatedBy = "racer",
+                        CreatedAtUtc = now,
+                        UpdatedAtUtc = now
+                    });
+                    _ = await other.SaveChangesAsync(cancellationToken);
+                }
+
+                return result;
+            }
         }
     }
 }
