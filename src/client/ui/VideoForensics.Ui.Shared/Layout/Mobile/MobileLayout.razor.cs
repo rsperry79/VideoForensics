@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Extensions;
 
 namespace VideoForensics.Ui.Shared.Layout.Mobile
 {
@@ -81,7 +82,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
         {
             _ = InvokeAsync(() =>
             {
-                Nav.NavigateTo("/device-signin");
+                Nav.NavigateTo(Nav.SignInPathWithReturnUrl());
                 StateHasChanged();
             });
         }
