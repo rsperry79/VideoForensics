@@ -11,6 +11,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists jamming incidents, optionally filtered by device and date range.</summary>
         Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct);
 
+        /// <summary>Gets a jamming incident record by ID.</summary>
+        Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct);
+
         /// <summary>Gets the jamming stats summary for a device.</summary>
         Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct);
 

@@ -53,6 +53,11 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.DetectedAtUtc = incident.DetectedAtUtc;
                     existing.Notes = incident.Notes;
                     existing.Source = incident.Source;
+                    // Preserve CaseId if incoming is null, otherwise update it
+                    if (incident.CaseId.HasValue)
+                    {
+                        existing.CaseId = incident.CaseId;
+                    }
                     _ = db.JammingIncidentRecords.Update(existing);
                     _logger.LogInformation("Jamming incident upserted (updated): {IncidentId}", incident.Id);
                 }
@@ -143,5 +148,12 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+        /// <summary>Gets a jamming incident record by ID.</summary>
+        public async Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.JammingIncidentRecords.FirstOrDefaultAsync(j => j.Id == incidentId, ct);
+        }
     }
+
 }
