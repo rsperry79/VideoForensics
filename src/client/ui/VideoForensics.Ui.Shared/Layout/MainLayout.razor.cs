@@ -4,6 +4,7 @@ using Microsoft.JSInterop;
 using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Extensions;
 
 namespace VideoForensics.Ui.Shared.Layout
 {
@@ -147,7 +148,7 @@ namespace VideoForensics.Ui.Shared.Layout
         {
             _ = InvokeAsync(() =>
             {
-                Nav.NavigateTo("/device-signin");
+                Nav.NavigateTo(Nav.SignInPathWithReturnUrl());
                 StateHasChanged();
             });
         }

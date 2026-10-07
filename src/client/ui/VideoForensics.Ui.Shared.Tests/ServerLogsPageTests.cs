@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
@@ -379,6 +380,16 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         Assert.Empty(Logs.PageCalls);
         WebAuthn.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Never);
         Assert.Empty(page.FindAll("[data-testid='log-row']"));
+    }
+
+    [Fact]
+    public void ServerLogsPage_SignedOut_SignInLinkReturnsToThisPage()
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/settings/logs");
+        var page = Render<ServerLogs>();
+
+        var href = page.Find("a[href^='/signin?returnUrl=']").GetAttribute("href")!;
+        Assert.Equal("/settings/logs", Uri.UnescapeDataString(href["/signin?returnUrl=".Length..]));
     }
 }
 
