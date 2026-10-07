@@ -1,4 +1,4 @@
-﻿using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Common.Contracts
 {

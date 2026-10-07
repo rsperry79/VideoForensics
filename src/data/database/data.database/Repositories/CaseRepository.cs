@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -115,7 +115,7 @@ namespace VideoForensics.Data.Database.Repositories
                 (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
 
             // Create case with callback that atomically creates alert and links incident
-            return await CreateCoreAsync(
+            var createdCase = await CreateCoreAsync(
                 null,
                 prefix,
                 alertTitle,
@@ -143,9 +143,6 @@ namespace VideoForensics.Data.Database.Repositories
                     };
                     _ = db.Alerts.Add(alert);
 
-                    // Link the incident to the case
-                    jammingEvent.CaseId = forensicCase.Id;
-                    
                     // Note: jammingEvent is already tracked by db.JammingIncidents if it was loaded from this context.
                     // If not tracked, we need to attach and mark as modified.
                     var incident = db.JammingIncidentRecords.Find(jammingEvent.Id);
@@ -160,6 +157,14 @@ namespace VideoForensics.Data.Database.Repositories
                         _logger.LogWarning("Jamming incident {IncidentId} not found in database context; skipping CaseId link", jammingEvent.Id);
                     }
                 });
+
+            
+            // Update the caller's object now that the save succeeded
+            
+            jammingEvent.CaseId = createdCase.Id;
+
+            
+            return createdCase;
         }
 
         /// <summary>
