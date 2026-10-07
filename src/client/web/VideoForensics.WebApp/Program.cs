@@ -99,6 +99,8 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
+// Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
+builder.Services.AddInMemoryLogBuffer();
 builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.

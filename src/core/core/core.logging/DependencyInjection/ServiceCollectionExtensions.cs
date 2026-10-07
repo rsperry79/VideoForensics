@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Serilog;
 
@@ -94,24 +95,12 @@ namespace VideoForensics.Core.Logging.DependencyInjection
                 _ = logging.AddProvider(new NamedPipeLoggerProvider());
             }
 
-            // Register the in-memory buffer provider if the buffer is available in DI
-            try
-            {
-                using (var sp = logging.Services.BuildServiceProvider())
-                {
-                    var buffer = sp.GetService<InMemoryLogBuffer>();
-                    if (buffer != null)
-                    {
-                        _ = logging.AddProvider(new InMemoryLogBufferProvider(buffer));
-                    }
-                }
-            }
-            catch
-            {
-                // If DI is not yet fully configured, the buffer provider will be skipped
-                // This is acceptable; the buffer can still be manually wired if needed
-            }
-
+            // Resolve the buffer lazily from the real container so registration order doesn't matter and the
+            // provider writes to the same singleton the endpoints read (no throwaway service provider).
+            logging.Services.AddSingleton<ILoggerProvider>(sp =>
+                sp.GetService<InMemoryLogBuffer>() is { } buffer
+                    ? new InMemoryLogBufferProvider(buffer)
+                    : NullLoggerProvider.Instance);
             return logging;
         }
 

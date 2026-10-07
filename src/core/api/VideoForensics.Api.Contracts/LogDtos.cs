@@ -25,12 +25,12 @@ namespace VideoForensics.Api.Contracts
     /// <param name="MinLevel">Minimum log level to include (e.g., "Warning", "Error"); null = all levels.</param>
     /// <param name="Search">Text search term for message/category/exception; null = no search filter.</param>
     /// <param name="AfterSequence">Only return entries with sequence > this value; null = no afterSequence filter.</param>
-    /// <param name="Limit">Maximum entries to return (clamped 1..2000, default 500).</param>
+    /// <param name="Limit">Maximum entries to return (0 or negative = default 500, capped at 2000).</param>
     public record LogQueryDto(
         string? MinLevel,
         string? Search,
         long? AfterSequence,
-        int Limit);
+        int Limit = 0);
 
     /// <summary>
     /// Paginated response of log entries with metadata.

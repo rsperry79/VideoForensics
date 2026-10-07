@@ -83,33 +83,28 @@ namespace VideoForensics.WebApp.Tests
                 Times.Once);
         }
 
-        [Fact]
-        public async Task GetLogsAsync_LimitClamping_Clamps()
+        [Theory]
+        [InlineData(0, 500)]
+        [InlineData(-5, 500)]
+        [InlineData(1, 1)]
+        [InlineData(2000, 2000)]
+        [InlineData(5000, 2000)]
+        public async Task GetLogsAsync_Limit_IsClampedWithZeroMeaningDefault(int limit, int expectedCount)
         {
             (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
-
-            // Test lower limit clamp (0 should default to 1)
-            var query1 = new LogQueryDto(null, null, null, 0);
-            _ = await LogEndpoints.GetLogsAsync(query1, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
-
-            // Test upper limit clamp (should be clamped to 2000)
+            var context = CreateHttpContextWithStepUpToken(Guid.NewGuid());
             var entry = new LogRecord(0, DateTimeOffset.UtcNow, "Information", "Test", "Test", null);
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 2100; i++)
             {
                 buffer.Append(ref entry);
             }
 
-            var query2 = new LogQueryDto(null, null, null, 5000);
-            var result = await LogEndpoints.GetLogsAsync(query2, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+            var result = await LogEndpoints.GetLogsAsync(new LogQueryDto(null, null, null, limit), buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             var okResult = Assert.IsType<Ok<LogPageDto>>(result);
-            // Should be limited by max of 2000, but we only have 50 entries
-            Assert.Equal(50, okResult.Value.Entries.Count);
-            Assert.False(okResult.Value.Truncated);
+            Assert.Equal(expectedCount, okResult.Value!.Entries.Count);
+            Assert.True(okResult.Value.Truncated);
         }
-
         [Fact]
         public async Task GetLogsAsync_InvalidMinLevel_ReturnsBadRequest()
         {
