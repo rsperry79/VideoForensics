@@ -72,6 +72,7 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
         var items = component.FindAll("[data-testid='user-menu-item']");
         Assert.Contains(items, i => i.GetAttribute("data-path") == "/change-password");
         Assert.Contains(items, i => i.GetAttribute("data-path") == "/settings/passkeys");
+        Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/signin");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/device-signin");
         Assert.NotEmpty(component.FindAll("[data-testid='user-menu-signout']"));
     }
@@ -107,14 +108,14 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
 public class UserMenuButton_SignedOut_Tests : UserMenuButtonTestBase
 {
     [Fact]
-    public void OpeningMenu_ShowsDeviceSignIn_NotChangePasswordOrPasskeys()
+    public void OpeningMenu_ShowsSignIn_NotChangePasswordOrPasskeys()
     {
         RegisterSignedOut();
 
         var component = RenderAndOpen();
 
         var items = component.FindAll("[data-testid='user-menu-item']");
-        Assert.Contains(items, i => i.GetAttribute("data-path") == "/device-signin");
+        Assert.Contains(items, i => i.GetAttribute("data-path") == "/signin");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/change-password");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/settings/passkeys");
         Assert.Empty(component.FindAll("[data-testid='user-menu-signout']"));

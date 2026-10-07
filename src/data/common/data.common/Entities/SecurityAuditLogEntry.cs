@@ -58,6 +58,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string AuthMethodsUpdated = nameof(AuthMethodsUpdated);
         public const string OperatorUnlocked = nameof(OperatorUnlocked);
         public const string SuperAdminPasswordReset = nameof(SuperAdminPasswordReset);
+        public const string LogViewed = nameof(LogViewed);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -102,6 +103,7 @@ namespace VideoForensics.Data.Common.Entities
             [AuthMethodsUpdated] = true,
             [OperatorUnlocked] = true,
             [SuperAdminPasswordReset] = true,
+            [LogViewed] = false,
         };
     }
 }

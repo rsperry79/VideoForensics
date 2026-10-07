@@ -24,6 +24,6 @@
     <ProjectReference Include="../core.telemetry/VideoForensics.Core.Telemetry.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.0" />
   </ItemGroup>
 </Project>

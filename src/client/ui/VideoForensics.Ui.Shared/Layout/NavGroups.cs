@@ -85,6 +85,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("App Update", "/settings/update-check", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
+                new("Server Logs", "/settings/logs", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("LLM API", "/settings/llm", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
                 // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).

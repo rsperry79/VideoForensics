@@ -119,7 +119,7 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <summary>Fresh passkey assertion for an already-signed-in session (plan §5.7) - returns the short-lived step-up token to attach as the X-StepUp-Token header on the one protected call it authorizes.</summary>
-        public async Task<string> StepUpAsync(string sessionToken)
+        public virtual async Task<string> StepUpAsync(string sessionToken)
         {
             using HttpClient client = CreateClient(sessionToken);
 

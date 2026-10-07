@@ -37,13 +37,13 @@ public class UserMenu_Tests
     }
 
     [Fact]
-    public void Items_NotSignedIn_ContainsDeviceSignIn()
+    public void Items_NotSignedIn_ContainsSignIn()
     {
         var ctx = new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false);
         var items = UserMenu.Items(ctx);
 
         Assert.NotEmpty(items);
-        Assert.Contains(items, i => i.Path == "/device-signin");
+        Assert.Contains(items, i => i.Path == "/signin");
     }
 
     [Fact]

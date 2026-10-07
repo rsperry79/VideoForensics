@@ -14,6 +14,12 @@
 - **Plan:** `plans/archive/ci-cd-versioning-update-check.md`
 - **Status:** Merged to dev (PR #159)
 
+#### ✅ **WebApp Log Viewer** — COMPLETED 2026-10-06
+- **Plan:** `plans/archive/webapp-log-viewer.md`
+- **Status:** Ready for PR to dev
+- **Implementation:** In-memory log buffer + `/api/v1/logs` history & SSE + SuperAdmin Server Logs page in Ui.Shared; removed WPF and MAUI LoggerViewer projects; M6 (local MAUI logs) deferred
+- **Note:** 5 `NavGroups_Tests` were already failing before this work (stale group expectations) and are tracked separately
+
 ---
 
 ## Previous Phase Plans

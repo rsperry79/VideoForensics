@@ -652,6 +652,7 @@ namespace VideoForensics.Hosting
             // Hosting project (Hosting already depends on Ui.Shared for PairedSessionState) without a cycle.
             _ = services.AddHttpClient<IAdminOperatorService, Remote.RemoteAdminOperatorService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ILogViewerService, Remote.RemoteLogViewerService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller

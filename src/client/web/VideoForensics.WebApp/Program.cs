@@ -99,6 +99,8 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
+// Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
+builder.Services.AddInMemoryLogBuffer();
 builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
@@ -335,6 +337,7 @@ builder.Services.AddScoped<SessionNetworkContext>();
 // fresh, real HttpContext per call, which a Blazor circuit alone can't guarantee for UI-event-driven
 // code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
+builder.Services.AddSelfHttpService<ILogViewerService>(http => new RemoteLogViewerService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
 
 // Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
@@ -434,6 +437,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
