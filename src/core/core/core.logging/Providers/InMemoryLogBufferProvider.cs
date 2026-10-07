@@ -14,7 +14,7 @@ namespace VideoForensics.Core.Logging.Providers
     public sealed class InMemoryLogBufferProvider : ILoggerProvider
     {
         private readonly InMemoryLogBuffer _buffer;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         /// <summary>
         /// Initializes a new instance with the given buffer.
@@ -26,10 +26,14 @@ namespace VideoForensics.Core.Logging.Providers
 
         /// <summary>
         /// Creates a logger for the given category name.
+        /// Returns a no-op logger if the provider has been disposed.
         /// </summary>
         public ILogger CreateLogger(string categoryName)
         {
-            return new InMemoryLogBufferLogger(categoryName, _buffer);
+            if (_disposed)
+                return new NoOpLogger();
+
+            return new InMemoryLogBufferLogger(categoryName, _buffer, this);
         }
 
         /// <summary>
@@ -43,15 +47,24 @@ namespace VideoForensics.Core.Logging.Providers
             _disposed = true;
         }
 
+        private sealed class NoOpLogger : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => false;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+        }
+
         private sealed class InMemoryLogBufferLogger : ILogger
         {
             private readonly string _categoryName;
             private readonly InMemoryLogBuffer _buffer;
+            private readonly InMemoryLogBufferProvider _provider;
 
-            public InMemoryLogBufferLogger(string categoryName, InMemoryLogBuffer buffer)
+            public InMemoryLogBufferLogger(string categoryName, InMemoryLogBuffer buffer, InMemoryLogBufferProvider provider)
             {
                 _categoryName = categoryName;
                 _buffer = buffer;
+                _provider = provider;
             }
 
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull
@@ -71,7 +84,7 @@ namespace VideoForensics.Core.Logging.Providers
                 Exception? exception,
                 Func<TState, Exception?, string> formatter)
             {
-                if (!IsEnabled(logLevel))
+                if (!IsEnabled(logLevel) || _provider._disposed)
                     return;
 
                 // Format the message
