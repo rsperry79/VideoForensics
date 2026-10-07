@@ -32,16 +32,26 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         }
 
         [Fact]
-        public async Task GetDefaultProviderAsync_Always_ReturnsFileBasedProvider()
+        public async Task GetDefaultProviderAsync_ReturnsAvailableDefaultProvider()
         {
-            // Act - Since TPM and DPAPI are not available on test machine,
-            // the default should be file-based encrypted storage
+            // Act - The default provider depends on platform availability:
+            // Windows: DPAPI if available, else File-Based
+            // Linux/macOS: File-Based (no DPAPI)
             IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
             // Assert
             Assert.NotNull(provider);
-            Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
-            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
+            Assert.True(provider.IsAvailable);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Equal("Windows DPAPI", provider.ProviderName);
+                _ = Assert.IsType<DpapiKeyStorageProvider>(provider);
+            }
+            else
+            {
+                Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
+                _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
+            }
         }
 
         [Fact]
@@ -90,13 +100,21 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
         }
 
         [Fact]
-        public void CreateDpapiProvider_AlwaysReturnsFalseForIsAvailable()
+        public void CreateDpapiProvider_IsAvailableDependsOnPlatform()
         {
             // Act
             IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider();
 
             // Assert
-            Assert.False(provider.IsAvailable);
+            Assert.NotNull(provider);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.True(provider.IsAvailable);
+            }
+            else
+            {
+                Assert.False(provider.IsAvailable);
+            }
         }
 
         [Fact]

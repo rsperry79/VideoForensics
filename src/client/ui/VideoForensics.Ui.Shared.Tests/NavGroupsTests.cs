@@ -8,16 +8,16 @@ using System.Reflection;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyFiveGroups()
+    public void All_HasExactlyFourGroups()
     {
-        Assert.Equal(5, NavGroups.All.Count);
+        Assert.Equal(4, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "evidence", "cases", "analyze", "sources", "admin" }, groupKeys);
+        Assert.Equal(new[] { "evidence", "cases", "sources", "admin" }, groupKeys);
     }
 
     [Fact]
@@ -29,8 +29,19 @@ public class NavGroups_Tests
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/evidence", itemPaths);
-        Assert.Contains("/collect/videos", itemPaths);
-        Assert.Contains("/collect/snapshots", itemPaths);
+        Assert.Contains("/collect", itemPaths);
+        Assert.Contains("/analyze", itemPaths);
+        Assert.Contains("/chat", itemPaths);
+
+        // Verify Analyze is nested under Evidence with its sub-items
+        var analyzeItem = group.Items.FirstOrDefault(i => i.Path == "/analyze");
+        Assert.NotNull(analyzeItem);
+        Assert.NotNull(analyzeItem.Children);
+        var analyzeChildPaths = analyzeItem.Children.Select(c => c.Path).ToList();
+        Assert.Contains("/analyze?analysis=reports", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=anomalies", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=access", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=jamming", analyzeChildPaths);
     }
 
     [Fact]
@@ -61,17 +72,18 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Analyze_GroupHasCorrectProperties()
+    public void Analyze_NoLongerTopLevel_NestedUnderEvidence()
     {
-        var group = NavGroups.All.First(g => g.Key == "analyze");
-        Assert.Equal("Analyze", group.Text);
-        Assert.Equal("/analyze", group.Path);
+        // Analyze was moved from a top-level group to be nested under Evidence (phase 1 consolidation).
+        // Verify it doesn't exist as a top-level group anymore.
+        var analyzeGroup = NavGroups.All.FirstOrDefault(g => g.Key == "analyze");
+        Assert.Null(analyzeGroup);
 
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/analyze?analysis=reports", itemPaths);
-        Assert.Contains("/analyze?analysis=anomalies", itemPaths);
-        Assert.Contains("/analyze?analysis=access", itemPaths);
-        Assert.Contains("/analyze?analysis=jamming", itemPaths);
+        // Verify it exists as a nested item under Evidence instead
+        var evidenceGroup = NavGroups.All.First(g => g.Key == "evidence");
+        var analyzeItem = evidenceGroup.Items.First(i => i.Path == "/analyze");
+        Assert.Equal("Analyze", analyzeItem.Text);
+        Assert.NotNull(analyzeItem.Children);
     }
 
     [Fact]
@@ -86,7 +98,6 @@ public class NavGroups_Tests
         Assert.Contains("/devices/config", itemPaths);
         Assert.Contains("/query", itemPaths);
         Assert.Contains("/tools/ring-selftest", itemPaths);
-        Assert.Contains("/tools/import-export", itemPaths);
     }
 
     [Fact]
@@ -256,6 +267,15 @@ public class NavGroups_Tests
                 // Extract path portion before query string
                 var itemPath = item.Path.Split('?')[0];
                 navPaths.Add(itemPath);
+                // Also check nested children
+                if (item.Children != null)
+                {
+                    foreach (var child in item.Children)
+                    {
+                        var childPath = child.Path.Split('?')[0];
+                        navPaths.Add(childPath);
+                    }
+                }
             }
         }
 
