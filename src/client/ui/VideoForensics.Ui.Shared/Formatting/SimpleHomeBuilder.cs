@@ -39,14 +39,14 @@ public sealed class SimpleHomeBuilder
     /// <param name="events">Event repository.</param>
     /// <param name="media">Media repository.</param>
     /// <param name="devices">Device repository.</param>
-    /// <param name="jamming">Jamming incident repository.</param>
+    /// <param name="jamming">Jamming incident repository; null when the host has none (remote client), in which case no blocked entries are added.</param>
     /// <param name="window">How far back from now to look (the Simple home uses 7 days).</param>
     /// <param name="ct">Cancellation token, forwarded to every repository call.</param>
     public async Task<SimpleHomeModel> BuildAsync(
         IEventRepository events,
         IMediaItemRepository media,
         IDeviceRepository devices,
-        IJammingRepository jamming,
+        IJammingRepository? jamming,
         TimeSpan window,
         CancellationToken ct)
     {
@@ -75,22 +75,37 @@ public sealed class SimpleHomeBuilder
                 mediaItems.Add((item, name));
         }
 
-        foreach (var incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
+        // Blocked-activity data is optional: a missing or failing source must not hide the device events.
+        var blockedUnavailable = jamming is null;
+        if (jamming is not null)
         {
-            names.TryGetValue(incident.DeviceId, out var name);
-            var start = AsUtc(incident.StartUtc);
-            // Only the duration is passed on: signal strength and degradation are technical and must not reach victims.
-            var text = EventPlainLanguageFormatter.DescribeJammingIncident(name, start, AsUtc(incident.EndUtc));
-            entries.Add(new SimpleTimelineEntry(start, TimeText(start), text, SimpleEntryKind.Blocked));
+            try
+            {
+                foreach (var incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
+                {
+                    names.TryGetValue(incident.DeviceId, out var name);
+                    var start = AsUtc(incident.StartUtc);
+                    // Only the duration is passed on: signal strength and degradation are technical and must not reach victims.
+                    var text = EventPlainLanguageFormatter.DescribeJammingIncident(name, start, AsUtc(incident.EndUtc));
+                    entries.Add(new SimpleTimelineEntry(start, TimeText(start), text, SimpleEntryKind.Blocked));
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                blockedUnavailable = true;
+            }
         }
-
         var ordered = entries.OrderByDescending(e => e.TimeUtc).ToList();
         var hasMore = ordered.Count > MaxTimelineEntries;
         var days = GroupByLocalDay(ordered.Take(MaxTimelineEntries), nowUtc);
 
         var evidence = await BuildEvidenceAsync(mediaItems, ct);
 
-        return new SimpleHomeModel(days, evidence, hasMore, fromUtc);
+        return new SimpleHomeModel(days, evidence, hasMore, fromUtc, blockedUnavailable);
     }
 
     private async Task<IReadOnlyList<SimpleEvidenceItem>> BuildEvidenceAsync(List<(MediaItem Item, string? Name)> mediaItems, CancellationToken ct)

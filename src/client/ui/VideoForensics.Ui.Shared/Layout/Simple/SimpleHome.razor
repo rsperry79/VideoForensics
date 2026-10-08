@@ -1,5 +1,6 @@
 @namespace VideoForensics.Ui.Shared.Layout.Simple
 @implements IDisposable
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Contracts
@@ -8,7 +9,7 @@
 @inject IEventRepository Events
 @inject IMediaItemRepository Media
 @inject IDeviceRepository Devices
-@inject IJammingRepository Jamming
+@inject IServiceProvider Services
 @inject ILogger<SimpleHome> Logger
 
 <div class="simple-home">
@@ -53,6 +54,11 @@
             {
                 <p class="simple-more-note">Older activity is not shown here.</p>
             }
+        }
+
+        @if (_model.BlockedActivityUnavailable)
+        {
+            <p class="simple-blocked-unavailable">Camera-blocked activity can't be shown right now.</p>
         }
 
         <section class="simple-evidence">
@@ -113,7 +119,7 @@
     {
         try
         {
-            _model = await Builder.BuildAsync(Events, Media, Devices, Jamming, Window, _cts.Token);
+            _model = await Builder.BuildAsync(Events, Media, Devices, Services.GetService<IJammingRepository>(), Window, _cts.Token);
             _state = LoadState.Loaded;
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)

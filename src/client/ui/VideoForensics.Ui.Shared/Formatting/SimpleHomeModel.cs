@@ -37,8 +37,10 @@ public sealed record SimpleEvidenceItem(string Label, string TypeText, DateTime 
 /// <param name="Evidence">Evidence items, newest first.</param>
 /// <param name="HasMoreTimeline">True when older entries were left out by the cap.</param>
 /// <param name="WindowStartUtc">Start of the time window that was queried.</param>
+/// <param name="BlockedActivityUnavailable">True when camera-blocked activity could not be loaded (no jamming data source, or it failed).</param>
 public sealed record SimpleHomeModel(
     IReadOnlyList<SimpleTimelineDay> Days,
     IReadOnlyList<SimpleEvidenceItem> Evidence,
     bool HasMoreTimeline,
-    DateTime WindowStartUtc);
+    DateTime WindowStartUtc,
+    bool BlockedActivityUnavailable = false);

@@ -252,4 +252,29 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         Assert.DoesNotContain("weird_type_9", text);
         Assert.DoesNotContain("ring", text, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void SimpleHome_NoJammingRepositoryRegistered_ShowsTimelineAndMutedNote()
+    {
+        // Remote-client mode: the server-only jamming repository is not in DI.
+        foreach (var descriptor in Services.Where(d => d.ServiceType == typeof(IJammingRepository)).ToList())
+            Services.Remove(descriptor);
+        _eventData = new List<Event> { Evt("motion", NowUtc.AddMinutes(-25)) };
+
+        var component = RenderLoaded();
+
+        Assert.Empty(component.FindAll(".simple-home-error"));
+        Assert.Single(component.FindAll(".simple-entry"));
+        Assert.Contains("Camera-blocked activity can't be shown right now.", component.Find(".simple-blocked-unavailable").TextContent);
+    }
+
+    [Fact]
+    public void SimpleHome_JammingRepositoryHealthy_ShowsNoNote()
+    {
+        _eventData = new List<Event> { Evt("motion", NowUtc.AddMinutes(-25)) };
+
+        var component = RenderLoaded();
+
+        Assert.Empty(component.FindAll(".simple-blocked-unavailable"));
+    }
 }

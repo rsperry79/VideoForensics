@@ -321,4 +321,59 @@ public class SimpleHomeBuilderTests
 
         Assert.Equal("boom", ex.Message);
     }
+
+    private Task<SimpleHomeModel> BuildWithJammingAsync(IJammingRepository? jamming, CancellationToken ct = default) =>
+        new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, Zone)
+            .BuildAsync(_events.Object, _media.Object, _devices.Object, jamming, TimeSpan.FromDays(7), ct);
+
+    [Fact]
+    public async Task BuildAsync_HealthyJamming_BlockedActivityAvailable()
+    {
+        var model = await BuildAsync();
+
+        Assert.False(model.BlockedActivityUnavailable);
+    }
+
+    [Fact]
+    public async Task BuildAsync_NullJamming_ReturnsEventsAndFlagsBlockedActivityUnavailable()
+    {
+        SetEvents(Evt("motion", new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)));
+
+        var model = await BuildWithJammingAsync(null);
+
+        Assert.True(model.BlockedActivityUnavailable);
+        var entry = Assert.Single(Assert.Single(model.Days).Entries);
+        Assert.Equal(SimpleEntryKind.Event, entry.Kind);
+    }
+
+    [Fact]
+    public async Task BuildAsync_JammingThrows_ReturnsEventsAndFlagsBlockedActivityUnavailable()
+    {
+        SetEvents(Evt("motion", new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)));
+        _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("jamming down"));
+
+        var model = await BuildAsync();
+
+        Assert.True(model.BlockedActivityUnavailable);
+        Assert.Single(Assert.Single(model.Days).Entries);
+    }
+
+    [Fact]
+    public async Task BuildAsync_JammingCancelled_Propagates()
+    {
+        using var cts = new CancellationTokenSource();
+        _jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Returns(() => { cts.Cancel(); throw new OperationCanceledException(cts.Token); });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildAsync(ct: cts.Token));
+    }
+
+    [Fact]
+    public async Task BuildAsync_DevicesRepositoryThrows_Propagates()
+    {
+        _devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => BuildAsync());
+    }
 }
