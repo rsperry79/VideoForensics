@@ -1,4 +1,7 @@
 using System.Net.Http.Json;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -25,10 +28,16 @@ namespace VideoForensics.WebApp.Chat
             };
         }
 
-        public async Task<LlmCompletionResult> CompleteAsync(
+        /// <inheritdoc />
+        /// <remarks>
+        /// Uses Chat Completions streaming (<c>stream: true</c>). Content deltas are yielded as they arrive. Tool-call
+        /// arguments arrive as fragments keyed by <c>index</c>, so they are buffered per index and reported when the
+        /// step completes. As with the Anthropic provider, a tool call takes precedence over text in the same step.
+        /// </remarks>
+        public async IAsyncEnumerable<LlmStreamEvent> StreamCompleteAsync(
             IReadOnlyList<LlmMessage> messages,
             IReadOnlyList<LlmToolDefinition> tools,
-            CancellationToken ct)
+            [EnumeratorCancellation] CancellationToken ct)
         {
             if (messages == null || messages.Count == 0)
                 throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
@@ -37,6 +46,7 @@ namespace VideoForensics.WebApp.Chat
             var endpoint = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
 
             var request = BuildRequest(messages, tools);
+            request.Stream = true;
             var content = JsonContent.Create(request, options: _jsonOptions);
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
@@ -46,13 +56,90 @@ namespace VideoForensics.WebApp.Chat
 
             httpRequest.Headers.Add("Authorization", $"Bearer {_options.ApiKey}");
 
-            var response = await _httpClient.SendAsync(httpRequest, ct);
+            using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
-            var responseBody = await response.Content.ReadFromJsonAsync<OpenAiResponse>(_jsonOptions, cancellationToken: ct)
-                ?? throw new InvalidOperationException("Empty response from OpenAI API");
+            await using Stream body = await response.Content.ReadAsStreamAsync(ct);
 
-            return ParseResponse(responseBody);
+            var text = new StringBuilder();
+            var toolCalls = new SortedDictionary<int, PartialToolCall>();
+
+            await foreach (SseItem<string> sse in SseParser.Create(body).EnumerateAsync(ct))
+            {
+                // OpenAI terminates the stream with a literal [DONE] sentinel rather than a JSON event.
+                if (sse.Data == "[DONE]")
+                    break;
+
+                using var doc = JsonDocument.Parse(sse.Data);
+                if (!doc.RootElement.TryGetProperty("choices", out JsonElement choices) || choices.GetArrayLength() == 0)
+                    continue;
+
+                if (!choices[0].TryGetProperty("delta", out JsonElement delta))
+                    continue;
+
+                if (delta.TryGetProperty("content", out JsonElement contentElement) && contentElement.ValueKind == JsonValueKind.String)
+                {
+                    string fragment = contentElement.GetString() ?? string.Empty;
+                    if (fragment.Length > 0)
+                    {
+                        _ = text.Append(fragment);
+                        yield return new LlmTextDelta(fragment);
+                    }
+                }
+
+                if (delta.TryGetProperty("tool_calls", out JsonElement callsElement) && callsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement call in callsElement.EnumerateArray())
+                    {
+                        int index = call.TryGetProperty("index", out JsonElement indexElement) ? indexElement.GetInt32() : 0;
+                        if (!toolCalls.TryGetValue(index, out PartialToolCall? partial))
+                        {
+                            partial = new PartialToolCall();
+                            toolCalls[index] = partial;
+                        }
+
+                        if (call.TryGetProperty("id", out JsonElement idElement) && idElement.ValueKind == JsonValueKind.String)
+                            partial.Id ??= idElement.GetString();
+
+                        if (call.TryGetProperty("function", out JsonElement function))
+                        {
+                            if (function.TryGetProperty("name", out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                                partial.Name = nameElement.GetString() ?? string.Empty;
+
+                            if (function.TryGetProperty("arguments", out JsonElement argsElement) && argsElement.ValueKind == JsonValueKind.String)
+                                _ = partial.Arguments.Append(argsElement.GetString());
+                        }
+                    }
+                }
+            }
+
+            if (toolCalls.Count > 0)
+            {
+                PartialToolCall first = toolCalls.First().Value;
+                yield return new LlmStepCompleted(new LlmCompletionResult(
+                    TextReply: null,
+                    ToolCallId: first.Id,
+                    ToolName: first.Name,
+                    ToolArgumentsJson: first.Arguments.Length > 0 ? first.Arguments.ToString() : "{}"));
+                yield break;
+            }
+
+            if (text.Length == 0)
+                throw new InvalidOperationException("No valid content type found in OpenAI response");
+
+            yield return new LlmStepCompleted(new LlmCompletionResult(
+                TextReply: text.ToString(),
+                ToolCallId: null,
+                ToolName: null,
+                ToolArgumentsJson: null));
+        }
+
+        /// <summary>Accumulates one streamed tool call across its fragments.</summary>
+        private sealed class PartialToolCall
+        {
+            public string? Id { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public StringBuilder Arguments { get; } = new();
         }
 
         private OpenAiRequest BuildRequest(IReadOnlyList<LlmMessage> messages, IReadOnlyList<LlmToolDefinition> tools)
@@ -119,36 +206,6 @@ namespace VideoForensics.WebApp.Chat
             };
         }
 
-        private LlmCompletionResult ParseResponse(OpenAiResponse response)
-        {
-            if (response.Choices == null || response.Choices.Count == 0)
-                throw new InvalidOperationException("Empty choices in OpenAI response");
-
-            var choice = response.Choices[0];
-            var message = choice.Message;
-
-            if (message.ToolCalls != null && message.ToolCalls.Length > 0)
-            {
-                var toolCall = message.ToolCalls[0];
-                return new LlmCompletionResult(
-                    TextReply: null,
-                    ToolCallId: toolCall.Id,
-                    ToolName: toolCall.Function?.Name,
-                    ToolArgumentsJson: toolCall.Function?.Arguments);
-            }
-
-            if (!string.IsNullOrEmpty(message.Content))
-            {
-                return new LlmCompletionResult(
-                    TextReply: message.Content,
-                    ToolCallId: null,
-                    ToolName: null,
-                    ToolArgumentsJson: null);
-            }
-
-            throw new InvalidOperationException("No valid content type found in OpenAI response");
-        }
-
         private static object? ParseJsonToObject(string? json)
         {
             if (string.IsNullOrEmpty(json))
@@ -169,6 +226,9 @@ namespace VideoForensics.WebApp.Chat
             [JsonPropertyName("tools")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public List<OpenAiTool>? Tools { get; set; }
+
+            [JsonPropertyName("stream")]
+            public bool Stream { get; set; }
         }
 
         private class OpenAiMessage
@@ -231,16 +291,5 @@ namespace VideoForensics.WebApp.Chat
             public object? Parameters { get; set; }
         }
 
-        private class OpenAiResponse
-        {
-            [JsonPropertyName("choices")]
-            public List<OpenAiChoice>? Choices { get; set; }
-        }
-
-        private class OpenAiChoice
-        {
-            [JsonPropertyName("message")]
-            public OpenAiMessage Message { get; set; } = new();
-        }
     }
 }

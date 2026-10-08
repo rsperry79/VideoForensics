@@ -27,8 +27,11 @@ jobs:
       # can't run on the ubuntu runner the rest of CI uses. This is a compile-only
       # check (no code signing, no simulator launch, no App Store distribution) -
       # it validates the project actually targets and builds for iOS, nothing more.
+      # Pinned to workload set 10.0.401: set 10.0.401.1 moved the iOS pack to 27.0.10722, which requires
+      # Xcode 27, but macos-latest still ships Xcode 26.6 (build-ios fails with "requires Xcode 27.0").
+      # 10.0.401 is the set the last passing run (2026-09-28) used. Unpin once macos-latest has Xcode 27.
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios
+        run: dotnet workload install maui-ios --version 10.0.401
 
       - name: Restore
         run: dotnet restore src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj -p:TargetFramework=net10.0-ios -p:BuildIOS=true

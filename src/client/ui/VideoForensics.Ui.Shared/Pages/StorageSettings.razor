@@ -1,4 +1,5 @@
 @page "/settings/storage"
+@inject NavigationManager NavigationManager
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Providers.Common.Helpers.Platform
 @using Microsoft.Extensions.Localization
@@ -12,7 +13,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="/device-signin">Sign in with your passkey</a> @L["SignInToManage"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToManage"]
     </div>
 }
 

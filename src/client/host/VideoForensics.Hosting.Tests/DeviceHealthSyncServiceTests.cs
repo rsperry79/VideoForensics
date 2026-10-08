@@ -345,7 +345,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Set up mocks for the real orchestrator
             // Return history with sustained degradation to trigger jamming detection
-            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
                     new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
                     new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },
@@ -434,7 +434,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Set up mocks for the real orchestrator
             // Return history with sustained degradation to trigger jamming detection
-            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
                     new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
                     new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },
@@ -523,7 +523,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Set up mocks for the real orchestrator
             // Return history WITHOUT sustained degradation (no jamming detected)
-            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()))
+            _ = healthRepository.Setup(r => r.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<IReadOnlyList<DeviceHealth>>([
                     new() { WifiSignalRssi = -60, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-5) },
                     new() { WifiSignalRssi = -58, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-3) },

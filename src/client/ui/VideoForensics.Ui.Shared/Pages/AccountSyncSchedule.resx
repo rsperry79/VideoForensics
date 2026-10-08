@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="BreadcrumbAccounts" xml:space="preserve">
+    <value>Accounts</value>
+  </data>
+  <data name="BreadcrumbAccountDetails" xml:space="preserve">
+    <value>Account Details</value>
+  </data>
+  <data name="SyncScheduleTitle" xml:space="preserve">
+    <value>Sync Schedule</value>
+  </data>
+  <data name="ConfigureSyncSettings" xml:space="preserve">
+    <value>Configure Sync Settings</value>
+  </data>
+  <data name="SnapshotRssiIntervalLabel" xml:space="preserve">
+    <value>Snapshot/RSSI Interval (minutes):</value>
+  </data>
+  <data name="EventPollIntervalLabel" xml:space="preserve">
+    <value>Event Poll Interval (minutes):</value>
+  </data>
+  <data name="EnableSync" xml:space="preserve">
+    <value>Enable Sync</value>
+  </data>
+  <data name="LastEventPoll" xml:space="preserve">
+    <value>Last Event Poll:</value>
+  </data>
+  <data name="NextEventPoll" xml:space="preserve">
+    <value>Next Event Poll:</value>
+  </data>
+  <data name="LastSnapshotPoll" xml:space="preserve">
+    <value>Last Snapshot Poll:</value>
+  </data>
+  <data name="NextSnapshotPoll" xml:space="preserve">
+    <value>Next Snapshot Poll:</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>N/A</value>
+  </data>
+  <data name="AdvancedJammingSchedule" xml:space="preserve">
+    <value>Advanced Jamming Schedule</value>
+  </data>
+  <data name="JammingDetectionWindows" xml:space="preserve">
+    <value>Jamming Detection Windows</value>
+  </data>
+  <data name="NoJammingWindows" xml:space="preserve">
+    <value>No jamming windows configured yet.</value>
+  </data>
+  <data name="ColDayOfWeek" xml:space="preserve">
+    <value>Day of Week</value>
+  </data>
+  <data name="ColStartTime" xml:space="preserve">
+    <value>Start Time</value>
+  </data>
+  <data name="ColEndTime" xml:space="preserve">
+    <value>End Time</value>
+  </data>
+  <data name="ColIntervalMin" xml:space="preserve">
+    <value>Interval (min)</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="AddWindow" xml:space="preserve">
+    <value>Add Window</value>
+  </data>
+  <data name="Saving" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Sunday" xml:space="preserve">
+    <value>Sunday</value>
+  </data>
+  <data name="Monday" xml:space="preserve">
+    <value>Monday</value>
+  </data>
+  <data name="Tuesday" xml:space="preserve">
+    <value>Tuesday</value>
+  </data>
+  <data name="Wednesday" xml:space="preserve">
+    <value>Wednesday</value>
+  </data>
+  <data name="Thursday" xml:space="preserve">
+    <value>Thursday</value>
+  </data>
+  <data name="Friday" xml:space="preserve">
+    <value>Friday</value>
+  </data>
+  <data name="Saturday" xml:space="preserve">
+    <value>Saturday</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="FailedToLoadSchedule" xml:space="preserve">
+    <value>Failed to load schedule: {0}</value>
+  </data>
+  <data name="AdvancedScheduleNoWindows" xml:space="preserve">
+    <value>Advanced Jamming Schedule is enabled but no windows are configured.</value>
+  </data>
+  <data name="InvalidDayOfWeek" xml:space="preserve">
+    <value>Invalid day of week: {0}. Must be 0-6.</value>
+  </data>
+  <data name="StartTimeMultiple" xml:space="preserve">
+    <value>Start time {0} must be a multiple of 15 minutes.</value>
+  </data>
+  <data name="EndTimeMultiple" xml:space="preserve">
+    <value>End time {0} must be a multiple of 15 minutes.</value>
+  </data>
+  <data name="EndAfterStart" xml:space="preserve">
+    <value>End time must be after start time for {0}.</value>
+  </data>
+  <data name="IntervalMinimum" xml:space="preserve">
+    <value>Window interval must be &gt;= {0} minute(s).</value>
+  </data>
+  <data name="ScheduleSaved" xml:space="preserve">
+    <value>Schedule saved successfully.</value>
+  </data>
+  <data name="FailedToSaveSchedule" xml:space="preserve">
+    <value>Failed to save schedule: {0}</value>
+  </data>
+</root>

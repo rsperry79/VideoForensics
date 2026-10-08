@@ -1,6 +1,6 @@
 # Windows installer code signing
 
-`VideoForensicsSetup.exe` is signed at build time (`.github/workflows/publish-testing.yml`,
+`VideoForensicsSetup.exe` is signed at build time (`.github/workflows/ci.yml`,
 `Sign installer with self-signed certificate` step) with a **self-signed** certificate. The
 private key exists only as GitHub Actions secrets (`WINDOWS_CODESIGN_PFX_BASE64`,
 `WINDOWS_CODESIGN_PFX_PASSWORD`) - it is never checked into this repo.
@@ -44,4 +44,4 @@ release pipeline.
 If the private key is ever compromised, generate a new self-signed cert, export the new public
 `.cer` over this one, and replace the `WINDOWS_CODESIGN_PFX_BASE64` /
 `WINDOWS_CODESIGN_PFX_PASSWORD` GitHub Actions secrets. Update the thumbprint/fingerprint values
-above and in `.github/workflows/publish-testing.yml`'s release notes.
+above and in `.github/workflows/ci.yml`'s release notes.

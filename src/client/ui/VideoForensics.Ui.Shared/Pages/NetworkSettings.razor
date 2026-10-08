@@ -27,7 +27,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="/device-signin">@L["SignInPrompt"]</a> @L["SignInToManage"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["SignInToManage"]
     </div>
 }
 
@@ -39,7 +39,7 @@ else if (_authError is not null)
 {
     <div class="alert alert-danger mb-2">@_authError</div>
     <span>
-        @L["AuthErrorHeader"] <a href="/device-signin">@L["SignInPrompt"]</a> @L["AuthErrorDescription"]
+        @L["AuthErrorHeader"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["AuthErrorDescription"]
     </span>
 }
 else if (_loadError is not null)

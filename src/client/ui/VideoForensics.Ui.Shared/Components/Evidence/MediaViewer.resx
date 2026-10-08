@@ -50,4 +50,25 @@
   <data name="GrabStillOpenLabel" xml:space="preserve">
     <value>Open</value>
   </data>
+  <data name="ZoomFit" xml:space="preserve">
+    <value>Fit</value>
+  </data>
+  <data name="FrameBackLabel" xml:space="preserve">
+    <value>◀ frame</value>
+  </data>
+  <data name="FrameForwardLabel" xml:space="preserve">
+    <value>frame ▶</value>
+  </data>
+  <data name="MediaPreviewUnavailable" xml:space="preserve">
+    <value>Media preview unavailable.</value>
+  </data>
+  <data name="ViewerPrev" xml:space="preserve">
+    <value>← Prev</value>
+  </data>
+  <data name="ViewerNext" xml:space="preserve">
+    <value>Next →</value>
+  </data>
+  <data name="ViewerClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
 </root>

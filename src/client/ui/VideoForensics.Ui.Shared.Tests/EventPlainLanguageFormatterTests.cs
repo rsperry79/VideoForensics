@@ -27,7 +27,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Front Door Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.Describe(eventDto, deviceName);
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
 
         // Assert
         Assert.NotNull(result);
@@ -57,7 +57,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Side Yard Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.Describe(eventDto, deviceName);
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
 
         // Assert
         Assert.NotNull(result);
@@ -87,7 +87,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Porch Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.Describe(eventDto, deviceName);
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
 
         // Assert
         Assert.NotNull(result);
@@ -117,12 +117,36 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "My Device";
 
         // Act
-        string result = EventPlainLanguageFormatter.Describe(eventDto, deviceName);
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
 
         // Assert - should not throw, should return a safe generic message
         Assert.NotNull(result);
         Assert.NotEmpty(result);
-        Assert.Contains("event", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("activity", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EventPlainLanguageFormatter_Describe_UnknownEventType_NeverShowsRawEventType()
+    {
+        var now = DateTime.UtcNow;
+        var eventDto = new EventDto(
+            Id: Guid.NewGuid(),
+            DeviceId: Guid.NewGuid(),
+            ProviderEventId: "provider-unknown",
+            EventType: "ding_dong_v2",
+            OccurredAtUtc: now,
+            SnapshotUrl: null,
+            MetadataJson: null,
+            DiscoveredAtUtc: now,
+            DownloadedAtUtc: null,
+            ApiSourceHash: null,
+            EventIntegrityHash: null
+        );
+
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, "Porch");
+
+        Assert.DoesNotContain("ding_dong_v2", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Your Porch detected some activity.", result);
     }
 
     [Fact]
@@ -145,7 +169,7 @@ public class EventPlainLanguageFormatterTests
         );
 
         // Act
-        string result = EventPlainLanguageFormatter.Describe(eventDto, null);
+        string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, null);
 
         // Assert
         Assert.NotNull(result);
@@ -163,7 +187,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Front Door Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
             deviceName,
             startTime,
             endTime,
@@ -188,7 +212,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
             deviceName,
             startTime,
             endTime,
@@ -212,7 +236,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
             deviceName,
             startTime,
             endTime,
@@ -236,7 +260,7 @@ public class EventPlainLanguageFormatterTests
         var deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
             deviceName,
             startTime,
             endTime,

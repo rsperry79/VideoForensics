@@ -16,6 +16,8 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(2000);
 
             _ = builder.HasIndex(j => j.DeviceId);
+
+            _ = builder.HasIndex(j => j.CaseId);
         }
     }
 }

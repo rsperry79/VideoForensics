@@ -167,11 +167,14 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IUiModeService, VideoForensics.Ui.Shared.Services.UiModeService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder(
+                sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<VideoForensics.Client.Common.Contracts.IMediaContentUrlProvider>(),
+                sp.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>()));
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IViewportService, VideoForensics.Ui.Shared.Services.DefaultViewportService>();
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 
-            // MainLayout.razor's shared <RadzenComponents> needs a render mode decision too - MAUI's
+            // Shared Ui.Shared components need a render mode decision too - MAUI's
             // BlazorWebView has no ASP.NET Core render-mode infrastructure at all (it renders through
             // its own native IPC channel) and throws "the current platform does not support the
             // ServerRenderMode" the instant MainLayout renders if @rendermode is set to anything.

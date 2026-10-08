@@ -1,5 +1,8 @@
 @using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
+@inject IStringLocalizer<SharedResources> L
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
 @implements IDisposable
@@ -9,9 +12,9 @@
     <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
         <div class="text-center">
             <div class="spinner-border mb-3" role="status">
-                <span class="visually-hidden">Checking session...</span>
+                <span class="visually-hidden">@L["CheckingSession"]</span>
             </div>
-            <p>Checking session...</p>
+            <p>@L["CheckingSession"]</p>
         </div>
     </div>
 }
@@ -20,9 +23,9 @@ else if (_redirecting)
     <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
         <div class="text-center">
             <div class="spinner-border mb-3" role="status">
-                <span class="visually-hidden">Redirecting...</span>
+                <span class="visually-hidden">@L["Redirecting"]</span>
             </div>
-            <p>Redirecting...</p>
+            <p>@L["Redirecting"]</p>
         </div>
     </div>
 }

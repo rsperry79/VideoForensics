@@ -6,12 +6,13 @@
 @using VideoForensics.Providers.Common.Contracts
 @using VideoForensics.Ui.Shared.Services
 @inject INoticeRepository NoticeRepository
+@inject IStringLocalizer<Notices> L
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject PairedSessionState SessionState
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
-<h4 class="mb-4">Notices</h4>
+<h4 class="mb-4">@L["NoticesTitle"]</h4>
 
 @if (_isLoading)
 {
@@ -20,13 +21,13 @@
 else
 {
     <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
-        <SfCheckBox TChecked="bool" @bind-Checked="_showDismissed" @bind-Checked:after="LoadNoticesAsync" Label="Show dismissed" />
-        <SfButton Content="Mark all as read" OnClick="@DismissAllAsync" Disabled="@(_notices.Count == 0)" CssClass="e-info" />
+        <SfCheckBox TChecked="bool" @bind-Checked="_showDismissed" @bind-Checked:after="LoadNoticesAsync" Label="@L["ShowDismissed"]" />
+        <SfButton Content="@L["MarkAllAsRead"]" OnClick="@DismissAllAsync" Disabled="@(_notices.Count == 0)" CssClass="e-info" />
     </div>
 
     @if (_notices.Count == 0)
     {
-        <p>@(_showDismissed ? "No notices found." : "No undismissed notices.")</p>
+        <p>@(_showDismissed ? L["NoNoticesFound"] : L["NoUndismissedNotices"])</p>
     }
     else
     {
@@ -34,7 +35,7 @@ else
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn HeaderText="Severity" Width="100px" AllowSorting="true">
+                <GridColumn HeaderText="@L["ColumnSeverity"]" Width="100px" AllowSorting="true">
                     <Template>
                         @{
                             var notice = (Notice)context;
@@ -44,8 +45,8 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="EventType" HeaderText="Event Type" AllowSorting="true" MinWidth="100" />
-                <GridColumn HeaderText="Details" AllowSorting="false" MinWidth="100">
+                <GridColumn Field="EventType" HeaderText="@L["ColumnEventType"]" AllowSorting="true" MinWidth="100" />
+                <GridColumn HeaderText="@L["ColumnDetails"]" AllowSorting="false" MinWidth="100">
                     <Template>
                         @{
                             var notice = (Notice)context;
@@ -55,12 +56,12 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="TimestampUtc" HeaderText="Timestamp" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" MinWidth="100" />
+                <GridColumn Field="TimestampUtc" HeaderText="@L["ColumnTimestamp"]" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" MinWidth="100" />
                 <GridColumn HeaderText="" Width="120px" AllowSorting="false" AllowFiltering="false">
                     <Template>
                         @{
                             var notice = (Notice)context;
-                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" />
+                            <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" />
                         }
                     </Template>
                 </GridColumn>
@@ -70,13 +71,14 @@ else
 }
 
 @code {
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Home", "/"), ("Notices", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<Notice> _notices = new();
     private bool _showDismissed = false;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (L["BreadcrumbHome"].Value, "/"), (L["NoticesTitle"].Value, null) };
         await LoadNoticesAsync();
     }
 
@@ -152,11 +154,11 @@ else
     {
         return severity switch
         {
-            NoticeSeverity.Info => "Info",
-            NoticeSeverity.Warning => "Warning",
-            NoticeSeverity.Alert => "Alert",
-            NoticeSeverity.Critical => "Critical",
-            _ => "Info"
+            NoticeSeverity.Info => L["SeverityInfo"],
+            NoticeSeverity.Warning => L["SeverityWarning"],
+            NoticeSeverity.Alert => L["SeverityAlert"],
+            NoticeSeverity.Critical => L["SeverityCritical"],
+            _ => L["SeverityInfo"]
         };
     }
 }

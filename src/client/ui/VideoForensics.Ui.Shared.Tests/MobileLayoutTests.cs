@@ -49,12 +49,7 @@ public class MobileFiltersSheet_Rendering_Tests : BunitContext
 
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
-        // Register localizer
-        var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
-        localizerMock
-            .Setup(l => l[It.IsAny<string>()])
-            .Returns((string key) => new LocalizedString(key, key));
-        Services.AddScoped(_ => localizerMock.Object);
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
 
         Services.AddSingleton(TimeProvider.System);
     }
@@ -238,11 +233,7 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
 
-        var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
-        localizerMock
-            .Setup(l => l[It.IsAny<string>()])
-            .Returns((string key) => new LocalizedString(key, key));
-        Services.AddScoped(_ => localizerMock.Object);
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
 
         Services.AddSingleton(TimeProvider.System);
     }

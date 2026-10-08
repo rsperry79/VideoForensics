@@ -2,14 +2,16 @@
 @layout MinimalLayout
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Welcome> L
 
-<p class="card-text text-center text-muted mb-5">Welcome to your video surveillance and forensics platform</p>
+<p class="card-text text-center text-muted mb-5">@L["WelcomeMessage"]</p>
 
 <div class="d-flex flex-column gap-3">
     <SfButton CssClass="btn-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/signin"))">
-        Login
+        @L["Login"]
     </SfButton>
     <SfButton CssClass="btn-outline-primary btn-lg" OnClick="@(() => NavigationManager.NavigateTo("/register"))">
-        Create New Account
+        @L["CreateNewAccount"]
     </SfButton>
 </div>

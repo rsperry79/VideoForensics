@@ -19,6 +19,7 @@ public class ScopeRail_Rendering_Tests : BunitContext
     public ScopeRail_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
 
         // Default TimeProvider for tests that don't need a fixed clock; RegisterFakeTime overrides
         // this (later registrations win resolution) for tests asserting exact quick-range dates.

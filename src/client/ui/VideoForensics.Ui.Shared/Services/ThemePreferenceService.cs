@@ -13,7 +13,7 @@ namespace VideoForensics.Ui.Shared.Services
     }
 
     /// <summary>
-    /// Circuit-scoped orchestration of the effective Light/Dark Radzen theme and the active culture,
+    /// Circuit-scoped orchestration of the effective Light/Dark Syncfusion theme and the active culture,
     /// both stored per-operator (OperatorPreferences, keyed by PairedSessionState.OperatorId) rather
     /// than per-device or globally. Before sign-in (no OperatorId), theme defaults to System and
     /// culture is left at whatever the host's ambient culture already is - neither is persisted,

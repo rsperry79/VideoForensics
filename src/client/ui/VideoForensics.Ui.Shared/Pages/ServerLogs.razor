@@ -1,0 +1,656 @@
+@page "/settings/logs"
+@inject NavigationManager NavigationManager
+@using System.Collections.Concurrent
+@using System.Globalization
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services
+@implements IAsyncDisposable
+@inject ILogViewerService LogViewer
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
+@inject IJSRuntime JS
+@inject IServiceProvider Services
+@inject IStringLocalizer<ServerLogs> L
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h4 class="mb-0">@L["Title"]</h4>
+    <span class="badge @StatusCss" data-testid="logs-status" data-status="@StatusKey">@StatusText</span>
+</div>
+
+@if (SessionState.IsSignedIn)
+{
+    @if (_stepUpError is not null)
+    {
+        <div class="alert alert-warning d-flex align-items-center justify-content-between gap-2" data-testid="logs-stepup-error">
+            <span>@L["StepUpFailed"] <span class="text-muted">@_stepUpError</span></span>
+            <button type="button" class="btn btn-sm btn-primary" data-testid="logs-retry" @onclick="RetryAsync">@L["TryAgainButton"]</button>
+        </div>
+    }
+    else if (_denied)
+    {
+        <div class="alert alert-danger" data-testid="logs-denied">@L["AccessDenied"]</div>
+    }
+
+    <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
+        <div>
+            <label class="form-label small mb-0" for="logs-level">@L["MinLevelLabel"]</label>
+            <select id="logs-level" class="form-select form-select-sm" data-testid="logs-level" @onchange="OnLevelChanged">
+                @foreach (string level in Levels)
+                {
+                    <option value="@level" selected="@(level == _minLevel)">@level</option>
+                }
+            </select>
+        </div>
+        <div class="flex-grow-1" style="max-width: 360px;">
+            <label class="form-label small mb-0" for="logs-search">@L["SearchLabel"]</label>
+            <input id="logs-search" type="search" class="form-control form-control-sm" data-testid="logs-search"
+                   placeholder="@L["SearchPlaceholder"]" value="@_searchText" @oninput="OnSearchInput" />
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="logs-pause" @onclick="TogglePause">
+                @(_paused ? L["ResumeButton"] : L["PauseButton"])
+            </button>
+            @if (_paused && _held.Count > 0)
+            {
+                <span class="badge bg-info text-dark" data-testid="logs-new-badge">@L["NewBadge", _held.Count]</span>
+            }
+        </div>
+        <div class="form-check mb-1">
+            <input id="logs-autoscroll" type="checkbox" class="form-check-input" data-testid="logs-autoscroll"
+                   @bind="_autoScroll" @bind:after="OnAutoScrollChanged" />
+            <label class="form-check-label small" for="logs-autoscroll">@L["AutoScrollLabel"]</label>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="logs-clear" @onclick="ClearRows">@L["ClearButton"]</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="logs-download" disabled="@(_rows.Count == 0)" @onclick="DownloadAsync">@L["DownloadButton"]</button>
+        </div>
+    </div>
+
+    <div class="log-viewport" @ref="_viewport" data-testid="logs-viewport">
+        <table class="table table-sm table-hover log-table mb-0">
+            <thead>
+                <tr>
+                    <th class="col-time">@L["ColTime"]</th>
+                    <th class="col-level">@L["ColLevel"]</th>
+                    <th class="col-category">@L["ColCategory"]</th>
+                    <th>@L["ColMessage"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (LogEntry entry in _rows)
+                {
+                    bool expanded = entry.Exception is not null && _expanded.Contains(entry.Sequence);
+                    <tr @key="entry.Sequence" data-testid="log-row" data-seq="@entry.Sequence" data-level="@entry.Level">
+                        <td class="text-nowrap" data-testid="log-time" title="@FormatUtc(entry)">@FormatLocal(entry)</td>
+                        <td><span class="badge lvl @LevelCss(entry.Level)" data-testid="log-level-badge">@entry.Level</span></td>
+                        <td class="text-nowrap" data-testid="log-category" title="@entry.Category">@ShortCategory(entry.Category)</td>
+                        <td class="log-message">
+                            @if (entry.Exception is not null)
+                            {
+                                <button type="button" class="btn btn-link btn-sm p-0 me-1 align-baseline" data-testid="log-row-toggle"
+                                        title="@(expanded ? L["HideException"] : L["ShowException"])" aria-expanded="@(expanded ? "true" : "false")"
+                                        @onclick="() => ToggleException(entry.Sequence)">@(expanded ? "▾" : "▸")</button>
+                            }
+                            <span data-testid="log-message">@entry.Message</span>
+                        </td>
+                    </tr>
+                    @if (expanded)
+                    {
+                        <tr @key="(entry.Sequence, 'x')" class="log-exception-row">
+                            <td colspan="4"><pre class="mb-0" data-testid="log-exception">@entry.Exception</pre></td>
+                        </tr>
+                    }
+                }
+                @if (_rows.Count == 0)
+                {
+                    <tr data-testid="logs-empty"><td colspan="4" class="text-muted">@L["NoEntries"]</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (_sessionChecked)
+{
+    <div class="alert alert-info mb-4">
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+
+@code {
+    private const int MaxRows = 2000;
+    private const string ModulePath = "./_content/VideoForensics.Ui.Shared/js/server-logs.js";
+    private static readonly string[] Levels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
+    private static readonly TimeSpan RenderThrottle = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan InitialBackoff = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(30);
+
+    private enum ConnectionStatus { Connecting, Live, Reconnecting, Disconnected }
+
+    /// <summary>One fetch-then-stream session for a given filter; a filter change or retry replaces it.</summary>
+    private sealed class Run(string? minLevel, string? search)
+    {
+        public CancellationTokenSource Cts { get; } = new();
+        public ConcurrentQueue<LogEntry> Inbox { get; } = new();
+        public long LastSequence { get; set; }
+        public int FlushScheduled;
+
+        public LogQuery Query(long? afterSequence) => new(minLevel, search, afterSequence);
+    }
+
+    private readonly List<LogEntry> _rows = new();
+    private readonly List<LogEntry> _held = new();
+    private readonly HashSet<long> _expanded = new();
+    private readonly object _tokenGate = new();
+
+    private TimeProvider _time = TimeProvider.System;
+    private Run? _run;
+    private CancellationTokenSource? _debounceCts;
+    private IJSObjectReference? _module;
+    private ElementReference _viewport;
+    private Task<string>? _stepUpTask;
+    private string? _stepUpToken;
+    private volatile bool _disposed;
+
+    private ConnectionStatus _status = ConnectionStatus.Connecting;
+    private bool _sessionChecked;
+    private bool _paused;
+    private bool _autoScroll = true;
+    private bool _scrollPending;
+    private bool _denied;
+    private string? _stepUpError;
+    private string _minLevel = "Information";
+    private string _searchText = string.Empty;
+    private string? _activeSearch;
+
+    private string StatusKey => _paused && _status == ConnectionStatus.Live ? "paused" : _status.ToString().ToLowerInvariant();
+
+    private string StatusText => StatusKey switch
+    {
+        "live" => L["StatusLive"],
+        "paused" => L["StatusPaused"],
+        "reconnecting" => L["StatusReconnecting"],
+        "disconnected" => L["StatusDisconnected"],
+        _ => L["StatusConnecting"]
+    };
+
+    private string StatusCss => StatusKey switch
+    {
+        "live" => "bg-success",
+        "paused" => "bg-info text-dark",
+        "reconnecting" => "bg-warning text-dark",
+        "disconnected" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    protected override void OnInitialized()
+    {
+        _time = Services.GetService<TimeProvider>() ?? TimeProvider.System;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            _sessionChecked = true;
+            if (SessionState.IsSignedIn)
+            {
+                StartRun();
+            }
+
+            StateHasChanged();
+
+            try
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
+            {
+                // Scrolling and download are conveniences; the live tail itself does not depend on the module.
+                return;
+            }
+
+            if (_scrollPending)
+            {
+                StateHasChanged();
+            }
+
+            return;
+        }
+
+        if (_scrollPending && _autoScroll && _module is not null)
+        {
+            _scrollPending = false;
+            try
+            {
+                await _module.InvokeVoidAsync("scrollToBottom", _viewport);
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    private void StartRun()
+    {
+        CancelRun();
+        _denied = false;
+        _stepUpError = null;
+        _status = ConnectionStatus.Connecting;
+        var run = new Run(_minLevel, _activeSearch);
+        _run = run;
+        _ = RunAsync(run);
+    }
+
+    private void CancelRun()
+    {
+        _run?.Cts.Cancel();
+        _run?.Cts.Dispose();
+        _run = null;
+    }
+
+    private async Task RunAsync(Run run)
+    {
+        CancellationToken ct = run.Cts.Token;
+        TimeSpan backoff = InitialBackoff;
+        bool authRetried = false;
+        bool filled = false;
+        string? token = null;
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                try
+                {
+                    token = await AcquireTokenAsync();
+                }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    // User cancelled the passkey prompt or verification failed: surface it and wait for "Try again".
+                    await PostAsync(run, () =>
+                    {
+                        _stepUpError = ex.Message;
+                        _status = ConnectionStatus.Disconnected;
+                    });
+                    return;
+                }
+
+                ct.ThrowIfCancellationRequested();
+
+                if (!filled)
+                {
+                    LogPage page = await LogViewer.GetPageAsync(run.Query(null), token, ct);
+                    ct.ThrowIfCancellationRequested();
+                    List<LogEntry> entries = page.Entries.OrderBy(e => e.Sequence).ToList();
+                    // LatestSequence also covers newer entries that the filter excluded, so the stream does not re-scan them.
+                    run.LastSequence = Math.Max(page.LatestSequence, entries.Count > 0 ? entries[^1].Sequence : 0);
+                    await PostAsync(run, () =>
+                    {
+                        AppendRows(entries);
+                        _scrollPending = true;
+                    });
+                    filled = true;
+                }
+
+                await PostAsync(run, () => _status = ConnectionStatus.Live);
+
+                await foreach (LogEntry entry in LogViewer.StreamAsync(run.Query(run.LastSequence), token, ct).WithCancellation(ct))
+                {
+                    if (entry.Sequence <= run.LastSequence)
+                    {
+                        continue;
+                    }
+
+                    run.LastSequence = entry.Sequence;
+                    run.Inbox.Enqueue(entry);
+                    ScheduleFlush(run);
+                    backoff = InitialBackoff;
+                    authRetried = false;
+                }
+
+                // The server closed the stream; treat it like a drop and resume from LastSequence.
+                await PostAsync(run, () => _status = ConnectionStatus.Reconnecting);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                if (token is not null)
+                {
+                    InvalidateToken(token);
+                }
+
+                if (authRetried)
+                {
+                    await PostAsync(run, () =>
+                    {
+                        _denied = true;
+                        _status = ConnectionStatus.Disconnected;
+                    });
+                    return;
+                }
+
+                authRetried = true;
+                continue;
+            }
+            catch (Exception)
+            {
+                await PostAsync(run, () => _status = ConnectionStatus.Reconnecting);
+            }
+
+            try
+            {
+                await Task.Delay(backoff, _time, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, MaxBackoff.Ticks));
+        }
+    }
+
+    private Task<string> AcquireTokenAsync()
+    {
+        lock (_tokenGate)
+        {
+            if (_stepUpToken is not null)
+            {
+                return Task.FromResult(_stepUpToken);
+            }
+
+            // Share an in-flight prompt between a restarted run and the one it replaced; a finished task is never reused.
+            if (_stepUpTask is { IsCompleted: false } inFlight)
+            {
+                return inFlight;
+            }
+
+            _stepUpTask = StepUpCoreAsync();
+            return _stepUpTask;
+        }
+    }
+
+    private async Task<string> StepUpCoreAsync()
+    {
+        string token = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
+        lock (_tokenGate)
+        {
+            _stepUpToken = token;
+        }
+
+        return token;
+    }
+
+    private void InvalidateToken(string token)
+    {
+        lock (_tokenGate)
+        {
+            if (_stepUpToken == token)
+            {
+                _stepUpToken = null;
+            }
+        }
+    }
+
+    private async Task PostAsync(Run run, System.Action apply)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (_disposed || run != _run)
+                {
+                    return;
+                }
+
+                apply();
+                StateHasChanged();
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+            // The page was disposed while a background step was finishing.
+        }
+    }
+
+    private void ScheduleFlush(Run run)
+    {
+        if (Interlocked.Exchange(ref run.FlushScheduled, 1) == 1)
+        {
+            return;
+        }
+
+        _ = FlushAfterDelayAsync(run);
+    }
+
+    // Live entries are queued by the stream loop and rendered in batches so a busy server cannot force a render per line.
+    private async Task FlushAfterDelayAsync(Run run)
+    {
+        try
+        {
+            await Task.Delay(RenderThrottle, _time, run.Cts.Token);
+            await InvokeAsync(() =>
+            {
+                Volatile.Write(ref run.FlushScheduled, 0);
+                if (_disposed || run != _run)
+                {
+                    return;
+                }
+
+                Drain(run);
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+        {
+        }
+    }
+
+    private void Drain(Run run)
+    {
+        bool anyVisible = false;
+        while (run.Inbox.TryDequeue(out LogEntry? entry))
+        {
+            if (_paused)
+            {
+                _held.Add(entry);
+            }
+            else
+            {
+                _rows.Add(entry);
+                anyVisible = true;
+            }
+        }
+
+        Trim(_held);
+        Trim(_rows);
+        _scrollPending |= anyVisible;
+    }
+
+    private void AppendRows(IEnumerable<LogEntry> entries)
+    {
+        _rows.AddRange(entries);
+        Trim(_rows);
+    }
+
+    private static void Trim(List<LogEntry> list)
+    {
+        if (list.Count > MaxRows)
+        {
+            list.RemoveRange(0, list.Count - MaxRows);
+        }
+    }
+
+    private void ResetRows()
+    {
+        _rows.Clear();
+        _held.Clear();
+        _expanded.Clear();
+    }
+
+    private void OnLevelChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        string? value = e.Value?.ToString();
+        _minLevel = value is not null && Levels.Contains(value) ? value : "Information";
+        ResetRows();
+        StartRun();
+    }
+
+    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _debounceCts = cts;
+        _ = DebounceSearchAsync(cts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounce, _time, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (_disposed || ct.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                string? effective = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText.Trim();
+                if (effective == _activeSearch)
+                {
+                    return;
+                }
+
+                _activeSearch = effective;
+                ResetRows();
+                StartRun();
+                StateHasChanged();
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void TogglePause()
+    {
+        _paused = !_paused;
+        if (!_paused)
+        {
+            AppendRows(_held);
+            _held.Clear();
+            _scrollPending = true;
+        }
+    }
+
+    private void OnAutoScrollChanged()
+    {
+        if (_autoScroll)
+        {
+            _scrollPending = true;
+        }
+    }
+
+    private void ClearRows()
+    {
+        ResetRows();
+    }
+
+    private void ToggleException(long sequence)
+    {
+        if (!_expanded.Remove(sequence))
+        {
+            _expanded.Add(sequence);
+        }
+    }
+
+    private Task RetryAsync()
+    {
+        StartRun();
+        return Task.CompletedTask;
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        string text = string.Join("\n", _rows.Select(FormatLine));
+        string fileName = $"server-logs-{_time.GetUtcNow().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.txt";
+        try
+        {
+            await _module.InvokeVoidAsync("downloadText", fileName, text);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException)
+        {
+        }
+    }
+
+    private static string FormatLine(LogEntry e)
+    {
+        string line = $"{FormatUtc(e)} [{e.Level}] {e.Category}: {e.Message}";
+        return e.Exception is null ? line : line + "\n" + e.Exception;
+    }
+
+    private static string FormatUtc(LogEntry e)
+        => e.TimestampUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " UTC";
+
+    private static string FormatLocal(LogEntry e)
+        => e.TimestampUtc.ToLocalTime().ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
+    private static string ShortCategory(string category)
+    {
+        int dot = category.LastIndexOf('.');
+        return dot >= 0 && dot < category.Length - 1 ? category[(dot + 1)..] : category;
+    }
+
+    // Fixed class names only: the level string comes from the server log and is never used to build markup.
+    private static string LevelCss(string level) => level switch
+    {
+        "Trace" => "lvl-trace",
+        "Debug" => "lvl-debug",
+        "Information" => "lvl-information",
+        "Warning" => "lvl-warning",
+        "Error" => "lvl-error",
+        "Critical" => "lvl-critical",
+        _ => "lvl-unknown"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        CancelRun();
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException)
+            {
+            }
+        }
+    }
+}

@@ -1,12 +1,18 @@
 namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
 
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using VideoForensics.Ui.Shared.Components.Evidence;
 using VideoForensics.Ui.Shared.Services.Evidence;
 
 public class DeviceTimeGridViewTests : BunitContext
 {
+    public DeviceTimeGridViewTests()
+    {
+        Services.AddLocalization();
+    }
+
     private static DeviceTimeGridResult BuildResult(out Guid deviceAId, out Guid deviceBId)
     {
         deviceAId = Guid.NewGuid();

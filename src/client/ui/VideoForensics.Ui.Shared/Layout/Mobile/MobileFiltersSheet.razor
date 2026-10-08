@@ -13,7 +13,7 @@
     <div class="mobile-filters-sheet" data-testid="mobile-filters-sheet">
         <div class="mobile-filters-sheet-header">
             <div class="mobile-filters-sheet-title">@L["Filters"]</div>
-            <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="Close" data-testid="mobile-filters-close" title="Close filters" />
+            <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="Close" data-testid="mobile-filters-close" title="@L["CloseFilters"]" />
         </div>
         <div class="mobile-filters-sheet-content">
             <ScopeRail />
@@ -21,7 +21,7 @@
     </div>
 }
 
-<button type="button" class="mobile-filters-button" data-testid="mobile-filters-toggle" @onclick="Toggle" title="Open filters">
+<button type="button" class="mobile-filters-button" data-testid="mobile-filters-toggle" @onclick="Toggle" title="@L["OpenFilters"]">
     @L["Filters"]
     @if (_hasCustomScope)
     {

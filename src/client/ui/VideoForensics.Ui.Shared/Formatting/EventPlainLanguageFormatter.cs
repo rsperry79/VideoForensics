@@ -1,4 +1,5 @@
 using VideoForensics.Api.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace VideoForensics.Ui.Shared.Formatting;
 
@@ -11,22 +12,26 @@ public static class EventPlainLanguageFormatter
     /// <summary>
     /// Describes an event in plain, non-technical language.
     /// </summary>
+    /// <param name="localizer">Localizer used for every user-visible string (resource keys live in SharedResources).</param>
     /// <param name="eventDto">The event to describe.</param>
     /// <param name="deviceName">Friendly name of the device, optional.</param>
     /// <returns>A plain-language description of the event.</returns>
-    public static string Describe(EventDto eventDto, string? deviceName = null)
+    public static string Describe(IStringLocalizer localizer, EventDto eventDto, string? deviceName = null)
     {
         if (eventDto == null)
-            return "An event was detected.";
+            return localizer["PlainEventDetected"].Value;
 
-        var devicePart = !string.IsNullOrWhiteSpace(deviceName) ? $"Your {deviceName}" : "Your camera";
+        var devicePart = !string.IsNullOrWhiteSpace(deviceName)
+            ? localizer["PlainDeviceNamed", deviceName].Value
+            : localizer["PlainDeviceFallback"].Value;
 
         return eventDto.EventType.ToLowerInvariant() switch
         {
-            "motion" => $"{devicePart} detected motion.",
-            "person" => $"{devicePart} detected a person.",
-            "package" => $"{devicePart} detected a package.",
-            _ => $"{devicePart} detected an event of type '{eventDto.EventType}'."
+            "motion" => localizer["PlainEventMotion", devicePart].Value,
+            "person" => localizer["PlainEventPerson", devicePart].Value,
+            "package" => localizer["PlainEventPackage", devicePart].Value,
+            // Unknown types get a generic line: the raw provider type is technical and must never reach victims.
+            _ => localizer["PlainEventGeneric", devicePart].Value
         };
     }
 
@@ -34,6 +39,7 @@ public static class EventPlainLanguageFormatter
     /// Describes a jamming incident in plain, non-technical language.
     /// Translates technical signal degradation metrics into user-friendly terms.
     /// </summary>
+    /// <param name="localizer">Localizer used for every user-visible string (resource keys live in SharedResources).</param>
     /// <param name="deviceName">Friendly name of the device.</param>
     /// <param name="startUtc">Start time of the jamming incident, in UTC.</param>
     /// <param name="endUtc">End time of the jamming incident, in UTC.</param>
@@ -42,6 +48,7 @@ public static class EventPlainLanguageFormatter
     /// <param name="confidence">Confidence level of the jamming detection (Low, Medium, High, Definite), optional.</param>
     /// <returns>A plain-language description of the jamming incident.</returns>
     public static string DescribeJammingIncident(
+        IStringLocalizer localizer,
         string? deviceName,
         DateTime startUtc,
         DateTime endUtc,
@@ -49,32 +56,33 @@ public static class EventPlainLanguageFormatter
         double? degradationDb = null,
         string? confidence = null)
     {
+        // The "Your " guard is a defensive English-only heuristic for callers that already prefixed the name.
         if (string.IsNullOrWhiteSpace(deviceName))
-            deviceName = "Your camera";
+            deviceName = localizer["PlainDeviceFallback"].Value;
         else if (!deviceName.StartsWith("Your ", StringComparison.OrdinalIgnoreCase))
-            deviceName = $"Your {deviceName}";
+            deviceName = localizer["PlainDeviceNamed", deviceName].Value;
 
         var duration = endUtc - startUtc;
-        var durationText = FormatDuration(duration);
+        var durationText = FormatDuration(localizer, duration);
 
-        return $"{deviceName} was blocked for {durationText}.";
+        return localizer["PlainJammingBlocked", deviceName, durationText].Value;
     }
 
     /// <summary>
     /// Formats a time duration into human-readable text.
     /// </summary>
-    private static string FormatDuration(TimeSpan duration)
+    private static string FormatDuration(IStringLocalizer localizer, TimeSpan duration)
     {
         if (duration.TotalSeconds < 60)
         {
             var seconds = (int)Math.Round(duration.TotalSeconds);
-            return seconds == 1 ? "1 second" : $"{seconds} seconds";
+            return seconds == 1 ? localizer["PlainDurationSecond"].Value : localizer["PlainDurationSeconds", seconds].Value;
         }
 
         if (duration.TotalMinutes < 60)
         {
             var minutes = (int)Math.Round(duration.TotalMinutes);
-            return minutes == 1 ? "1 minute" : $"{minutes} minutes";
+            return minutes == 1 ? localizer["PlainDurationMinute"].Value : localizer["PlainDurationMinutes", minutes].Value;
         }
 
         if (duration.TotalHours < 24)
@@ -83,14 +91,14 @@ public static class EventPlainLanguageFormatter
             var remainingMinutes = duration.Minutes;
 
             if (remainingMinutes == 0)
-                return hours == 1 ? "1 hour" : $"{hours} hours";
+                return hours == 1 ? localizer["PlainDurationHour"].Value : localizer["PlainDurationHours", hours].Value;
 
             return remainingMinutes == 1
-                ? $"{hours} hours and 1 minute"
-                : $"{hours} hours and {remainingMinutes} minutes";
+                ? localizer["PlainDurationHoursAndMinute", hours].Value
+                : localizer["PlainDurationHoursAndMinutes", hours, remainingMinutes].Value;
         }
 
         var days = (int)Math.Round(duration.TotalDays);
-        return days == 1 ? "1 day" : $"{days} days";
+        return days == 1 ? localizer["PlainDurationDay"].Value : localizer["PlainDurationDays", days].Value;
     }
 }

@@ -243,5 +243,100 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Contains("500", ex.Message);
         }
+
+        private static HttpResponseMessage SseResponse(string body) => new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "text/event-stream")
+        };
+
+        private static async Task<List<ChatStreamEvent>> DrainAsync(IAsyncEnumerable<ChatStreamEvent> events)
+        {
+            var list = new List<ChatStreamEvent>();
+            await foreach (ChatStreamEvent evt in events)
+            {
+                list.Add(evt);
+            }
+            return list;
+        }
+
+        [Fact]
+        public async Task StreamMessageAsync_PostsToStreamEndpointWithEventStreamAccept()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return SseResponse("event: done\ndata: {\"reply\":\"ok\",\"toolsInvoked\":[]}\n\n");
+            });
+            var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
+
+            _ = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
+
+            Assert.NotNull(handler.CapturedRequest);
+            Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
+            Assert.Equal("/api/v1/chat/stream", handler.CapturedRequest.RequestUri?.PathAndQuery);
+            Assert.Contains(handler.CapturedRequest.Headers.Accept, h => h.MediaType == "text/event-stream");
+        }
+
+        [Fact]
+        public async Task StreamMessageAsync_MapsDeltaToolAndDoneFramesInOrder()
+        {
+            string body =
+                "event: delta\ndata: {\"text\":\"Checking\"}\n\n" +
+                "event: tool\ndata: {\"name\":\"get_info\"}\n\n" +
+                "event: delta\ndata: {\"text\":\" done\"}\n\n" +
+                "event: done\ndata: {\"reply\":\"Checking done\",\"toolsInvoked\":[\"get_info\"]}\n\n";
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return SseResponse(body);
+            });
+            var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
+
+            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
+
+            Assert.Collection(events,
+                e => Assert.Equal("Checking", Assert.IsType<ChatTextDelta>(e).Text),
+                e => Assert.Equal("get_info", Assert.IsType<ChatToolInvoked>(e).ToolName),
+                e => Assert.Equal(" done", Assert.IsType<ChatTextDelta>(e).Text),
+                e =>
+                {
+                    ChatTurnResult result = Assert.IsType<ChatTurnCompleted>(e).Result;
+                    Assert.Equal("Checking done", result.Reply);
+                    Assert.Equal(new[] { "get_info" }, result.ToolsInvoked);
+                });
+        }
+
+        [Fact]
+        public async Task StreamMessageAsync_UnknownEventName_IsSkipped()
+        {
+            string body =
+                "event: ping\ndata: {}\n\n" +
+                "event: done\ndata: {\"reply\":\"ok\",\"toolsInvoked\":[]}\n\n";
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return SseResponse(body);
+            });
+            var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
+
+            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
+
+            ChatStreamEvent only = Assert.Single(events);
+            Assert.Equal("ok", Assert.IsType<ChatTurnCompleted>(only).Result.Reply);
+        }
+
+        [Fact]
+        public async Task StreamMessageAsync_HttpError_ThrowsBeforeYieldingAnyEvent()
+        {
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            });
+            var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
+
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
+                () => DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None)));
+        }
     }
 }

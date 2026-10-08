@@ -2,33 +2,35 @@
 @using VideoForensics.Ui.Shared.Services.Scope
 @inject NavigationManager NavigationManager
 @inject ScopeState ScopeState
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<EvidenceDatesFilter> L
 
 <div style="display: flex; flex-direction: row; align-items: center; gap: 1rem; margin-bottom: 2rem;">
-    <SfButton IconCss="e-icons e-arrow-left" CssClass="e-outline" OnClick="GoBack" Title="Back to Evidence" />
-    <h4 style="margin: 0;">Filter by Date</h4>
+    <SfButton IconCss="e-icons e-arrow-left" CssClass="e-outline" OnClick="GoBack" Title="@L["BackToEvidence"]" />
+    <h4 style="margin: 0;">@L["FilterByDate"]</h4>
 </div>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">
     <!-- Preset buttons -->
     <div style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: wrap;">
         <SfButton
-            Content="Last 24h"
+            Content="@L["Last24h"]"
             CssClass="@(_selectedPreset == "24h" ? "e-primary" : "e-outline")"
             OnClick="@(() => ApplyPreset(PresetType.Last24h))" />
         <SfButton
-            Content="Last 3 days"
+            Content="@L["Last3Days"]"
             CssClass="@(_selectedPreset == "3d" ? "e-primary" : "e-outline")"
             OnClick="@(() => ApplyPreset(PresetType.Last3Days))" />
         <SfButton
-            Content="Last 7 days"
+            Content="@L["Last7Days"]"
             CssClass="@(_selectedPreset == "7d" ? "e-primary" : "e-outline")"
             OnClick="@(() => ApplyPreset(PresetType.Last7Days))" />
         <SfButton
-            Content="Last month"
+            Content="@L["LastMonth"]"
             CssClass="@(_selectedPreset == "30d" ? "e-primary" : "e-outline")"
             OnClick="@(() => ApplyPreset(PresetType.LastMonth))" />
         <SfButton
-            Content="Custom"
+            Content="@L["Custom"]"
             CssClass="@(_selectedPreset == "custom" ? "e-primary" : "e-outline")"
             OnClick="@(() => _selectedPreset = "custom")" />
     </div>
@@ -38,17 +40,17 @@
     {
         <div style="display: flex; flex-direction: column; gap: 1rem; border: 1px solid #e0e0e0; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label style="font-weight: 500;">Start Date</label>
+                <label style="font-weight: 500;">@L["StartDate"]</label>
                 <SfDatePicker TValue="DateTime" @bind-Value="_customStartDate" />
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label style="font-weight: 500;">End Date</label>
+                <label style="font-weight: 500;">@L["EndDate"]</label>
                 <SfDatePicker TValue="DateTime" @bind-Value="_customEndDate" />
             </div>
 
             <SfButton
-                Content="Apply"
+                Content="@L["Apply"]"
                 CssClass="e-primary"
                 OnClick="ApplyCustomRange" />
         </div>

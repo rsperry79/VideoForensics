@@ -346,5 +346,115 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(1, summary.HighConfidenceCount);
             Assert.Equal(1, summary.DefiniteConfidenceCount);
         }
-    }
+
+        [Fact]
+        public async Task UpsertIncidentAsync_RoundTrips_CaseId_OnCreate()
+        {
+            var deviceId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
+            var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
+            incident.CaseId = caseId;
+
+            JammingIncidentRecord result = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+
+            Assert.Equal(caseId, result.CaseId);
+
+            // Verify round-trip by retrieving
+            JammingIncidentRecord? retrieved = await _repository.GetIncidentAsync(result.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal(caseId, retrieved.CaseId);
+        }
+
+        [Fact]
+        public async Task UpsertIncidentAsync_PreservesExisting_CaseId_WhenIncomingIsNull()
+        {
+            var deviceId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
+            var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
+            incident.CaseId = caseId;
+
+            JammingIncidentRecord created = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+            Guid incidentId = created.Id;
+
+            // Upsert the same incident with CaseId = null
+            JammingIncidentRecord updateWithoutCase = BuildJammingIncident(deviceId, startTime);
+            updateWithoutCase.Id = incidentId;
+            updateWithoutCase.CaseId = null;
+
+            JammingIncidentRecord updated = await _repository.UpsertIncidentAsync(updateWithoutCase, CancellationToken.None);
+
+            // CaseId should still be the original value
+            Assert.Equal(caseId, updated.CaseId);
+        }
+
+        [Fact]
+        public async Task UpsertIncidentAsync_Updates_CaseId_WhenIncomingIsNotNull()
+        {
+            var deviceId = Guid.NewGuid();
+            var caseId1 = Guid.NewGuid();
+            var caseId2 = Guid.NewGuid();
+            var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
+            incident.CaseId = caseId1;
+
+            JammingIncidentRecord created = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+            Guid incidentId = created.Id;
+
+            // Upsert with a different CaseId
+            JammingIncidentRecord updateWithNewCase = BuildJammingIncident(deviceId, startTime);
+            updateWithNewCase.Id = incidentId;
+            updateWithNewCase.CaseId = caseId2;
+
+            JammingIncidentRecord updated = await _repository.UpsertIncidentAsync(updateWithNewCase, CancellationToken.None);
+
+            // CaseId should be the new value
+            Assert.Equal(caseId2, updated.CaseId);
+        }
+
+        [Fact]
+        public async Task UpsertIncidentAsync_RoundTrips_Null_CaseId()
+        {
+            var deviceId = Guid.NewGuid();
+            var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
+            // CaseId is null by default
+
+            JammingIncidentRecord result = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+
+            Assert.Null(result.CaseId);
+
+            // Verify round-trip by retrieving
+            JammingIncidentRecord? retrieved = await _repository.GetIncidentAsync(result.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Null(retrieved.CaseId);
+        }
+
+        [Fact]
+        public async Task GetIncidentAsync_ReturnsIncident_WhenExists()
+        {
+            var deviceId = Guid.NewGuid();
+            var startTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            JammingIncidentRecord incident = BuildJammingIncident(deviceId, startTime);
+
+            JammingIncidentRecord created = await _repository.UpsertIncidentAsync(incident, CancellationToken.None);
+
+            JammingIncidentRecord? retrieved = await _repository.GetIncidentAsync(created.Id, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal(created.Id, retrieved.Id);
+            Assert.Equal(deviceId, retrieved.DeviceId);
+        }
+
+        [Fact]
+        public async Task GetIncidentAsync_ReturnsNull_WhenNotExists()
+        {
+            var nonExistentId = Guid.NewGuid();
+
+            JammingIncidentRecord? retrieved = await _repository.GetIncidentAsync(nonExistentId, CancellationToken.None);
+
+            Assert.Null(retrieved);
+        }
+}
 }

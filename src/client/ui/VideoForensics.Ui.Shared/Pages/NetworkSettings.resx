@@ -36,7 +36,7 @@
     <value>Network Access</value>
   </data>
   <data name="SignInPrompt" xml:space="preserve">
-    <value>Sign in with your passkey</value>
+    <value>Sign in</value>
   </data>
   <data name="SignInToManage" xml:space="preserve">
     <value>to manage network access.</value>

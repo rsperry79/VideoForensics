@@ -21,7 +21,7 @@ namespace VideoForensics.Ui.Shared.Layout
     }
 
     /// <summary>Role/session state needed to evaluate a NavItem/NavGroup's visibility predicate.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported)
+    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false)
     {
         public bool HasRole(OperatorRole minimum)
         {
@@ -31,7 +31,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
     /// <summary>
     /// The full nav tree - single source of truth for both the top tab bar (groups) and the left
-    /// vertical tab rail (the active group's items). Replaces the inline RadzenMenuItem tree that
+    /// vertical tab rail (the active group's items). Replaces the inline menu tree that
     /// used to live directly in MainLayout.razor's markup.
     /// </summary>
     public static class NavGroups
@@ -85,6 +85,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("App Update", "/settings/update-check", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("Notifications", "/settings/notifications", ctx => ctx.HasRole(OperatorRole.Admin)),
                 new("Security Audit Log", "/settings/security-log", ctx => ctx.HasRole(OperatorRole.Admin)),
+                new("Server Logs", "/settings/logs", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 new("LLM API", "/settings/llm", ctx => ctx.HasRole(OperatorRole.SuperAdmin)),
                 // Mirrors SecurityLockoutPolicy's own backend policy: /api/v1/lockout-policy is
                 // mapped behind VideoForensicsPolicies.SuperAdminLocal (see LockoutPolicyEndpoints.cs).
@@ -102,7 +103,7 @@ namespace VideoForensics.Ui.Shared.Layout
     /// </summary>
     public static class UserMenu
     {
-        public sealed record UserMenuItem(string Text, string? Path = null, Func<NavContext, bool>? Visible = null)
+        public sealed record UserMenuItem(string Text, string? Path = null, Func<NavContext, bool>? Visible = null, string? Action = null)
         {
             public bool IsVisible(NavContext ctx)
             {
@@ -118,6 +119,20 @@ namespace VideoForensics.Ui.Shared.Layout
             {
                 items.Add(new("Change Password", "/change-password"));
                 items.Add(new("My Passkeys", "/settings/passkeys"));
+                
+                // Add UI mode toggle if not locked
+                if (!ctx.UiModeLocked)
+                {
+                    if (ctx.UiMode == "Standard")
+                    {
+                        items.Add(new("Switch to Simple view", Action: "set-ui-mode:Simple"));
+                    }
+                    else
+                    {
+                        items.Add(new("Switch to Standard view", Action: "set-ui-mode:Standard"));
+                    }
+                }
+                
                 items.Add(new("Sign Out", null)); // No path - handled by click handler
             }
             else

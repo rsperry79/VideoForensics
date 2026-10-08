@@ -35,6 +35,24 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             {
                 await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(cancellationToken);
 
+                // Alpha-only guard: the migration history was consolidated into a single InitialCreate, so a
+                // database created by an older alpha build carries migration ids this build no longer contains.
+                // EF cannot upgrade such a file in place; fail loudly instead of crashing later on a schema mismatch.
+                // GetAppliedMigrationsAsync tolerates a missing __EFMigrationsHistory table (fresh/empty file).
+                HashSet<string> knownMigrations = db.Database.GetMigrations().ToHashSet(StringComparer.Ordinal);
+                List<string> unknownApplied = (await db.Database.GetAppliedMigrationsAsync(cancellationToken))
+                    .Where(id => !knownMigrations.Contains(id))
+                    .ToList();
+                if (unknownApplied.Count > 0)
+                {
+                    string dbFile = db.Database.GetDbConnection().DataSource ?? "(unknown)";
+                    string message =
+                        $"The database '{dbFile}' was created by an older alpha build with a different migration history " +
+                        $"(unrecognized migration: {unknownApplied[0]}) and cannot be upgraded in place. " +
+                        "Delete the file (or move it aside) and restart so a new database is created; all data in the old database will be lost.";
+                    logger.LogError("{Message}", message);
+                    throw new InvalidOperationException(message);
+                }
                 // Check for pending migrations
                 IEnumerable<string> pendingMigrations = await db.Database.GetPendingMigrationsAsync(cancellationToken);
                 bool hasPendingMigrations = pendingMigrations.Any();
