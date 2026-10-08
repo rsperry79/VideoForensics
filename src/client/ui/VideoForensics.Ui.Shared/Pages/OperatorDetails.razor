@@ -7,6 +7,7 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<OperatorDetails> L
+@inject VideoForensics.Client.Common.Contracts.IAdminOperatorService AdminOperatorService
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -146,6 +147,37 @@ else
     }
 }
 
+@if (IsAdminViewer)
+{
+    <div class="mb-4" id="display-mode-section">
+        <h5>@L["DisplayModeHeading"]</h5>
+        @if (_uiModeLoadError is not null)
+        {
+            <div class="alert alert-danger">@_uiModeLoadError</div>
+        }
+        <div class="mb-3">
+            <label class="form-label" for="display-mode-select">@L["DisplayModeLabel"]</label>
+            <select id="display-mode-select" class="form-select display-mode-select" style="max-width: 200px;" @bind="_uiMode" disabled="@_isSavingUiMode">
+                <option value="Standard" selected="@(_uiMode == "Standard")">@L["ModeStandard"]</option>
+                <option value="Simple" selected="@(_uiMode == "Simple")">@L["ModeSimple"]</option>
+            </select>
+        </div>
+        <div class="form-check mb-3">
+            <input id="display-mode-lock" type="checkbox" class="form-check-input display-mode-lock" @bind="_uiLocked" disabled="@_isSavingUiMode" />
+            <label class="form-check-label" for="display-mode-lock">@L["LockLabel"]</label>
+        </div>
+        <SfButton Content="@L["SaveButton"]" OnClick="SaveUiModeAsync" Disabled="@(_isSavingUiMode || _uiModeLoadError is not null)" CssClass="e-primary display-mode-save" />
+        @if (_uiModeSavedMessage is not null)
+        {
+            <div class="alert alert-success mt-3 display-mode-saved">@_uiModeSavedMessage</div>
+        }
+        @if (_uiModeSaveError is not null)
+        {
+            <div class="alert alert-danger mt-3 display-mode-save-error">@_uiModeSaveError</div>
+        }
+    </div>
+}
+
 @if (_updateError is not null)
 {
     <div class="alert alert-danger mt-4">@_updateError</div>
@@ -177,11 +209,26 @@ else
     private TwoFactorRequirementOverride _twoFactorOverrideInput;
     private bool _isSavingTwoFactorOverride;
 
+    // Display mode (Simple Mode) state - shown to Admin and SuperAdmin viewers only. Independent of the
+    // operator fetch above so a failure there doesn't hide it.
+    private string _uiMode = "Standard";
+    private bool _uiLocked;
+    private bool _isSavingUiMode;
+    private bool _uiModeLoadAttempted;
+    private string? _uiModeLoadError;
+    private string? _uiModeSavedMessage;
+    private string? _uiModeSaveError;
+
+    private bool IsAdminViewer => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.Admin;
+
     // Unlock state
     private bool _isUnlocking;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadUiModeAsync();
         await LoadAsync();
     }
 
@@ -192,8 +239,54 @@ else
         if (firstRender)
         {
             await SessionState.EnsureLoadedAsync();
+            await LoadUiModeAsync();
             await LoadAsync();
             StateHasChanged();
+        }
+    }
+
+    private async Task LoadUiModeAsync()
+    {
+        if (_uiModeLoadAttempted || !IsAdminViewer)
+        {
+            return;
+        }
+
+        _uiModeLoadAttempted = true;
+        try
+        {
+            var stored = await AdminOperatorService.GetUiModeAsync(Id, CancellationToken.None);
+            _uiMode = string.Equals(stored.Mode, "Simple", StringComparison.OrdinalIgnoreCase) ? "Simple" : "Standard";
+            _uiLocked = stored.Locked;
+        }
+        catch (Exception ex)
+        {
+            _uiModeLoadError = L["DisplayModeLoadFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveUiModeAsync()
+    {
+        if (_isSavingUiMode)
+        {
+            return;
+        }
+
+        _isSavingUiMode = true;
+        _uiModeSavedMessage = null;
+        _uiModeSaveError = null;
+        try
+        {
+            await AdminOperatorService.SetUiModeAsync(Id, _uiMode, _uiLocked, CancellationToken.None);
+            _uiModeSavedMessage = L["DisplayModeSaved"];
+        }
+        catch (Exception ex)
+        {
+            _uiModeSaveError = L["DisplayModeSaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSavingUiMode = false;
         }
     }
 
