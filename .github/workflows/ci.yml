@@ -87,25 +87,8 @@ jobs:
 
       - uses: actions/dependency-review-action@v4
 
-  bump-version:
-    needs: [build-and-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Bump version
-        run: bash .github/scripts/bump-version.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GIT_AUTHOR_NAME: 'GitHub Actions'
-          GIT_AUTHOR_EMAIL: 'noreply@github.com'
-          GIT_COMMITTER_NAME: 'GitHub Actions'
-          GIT_COMMITTER_EMAIL: 'noreply@github.com'
-
   build-debian-dev:
-    needs: [build-and-test, bump-version]
+    needs: [build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     permissions:
@@ -195,7 +178,7 @@ jobs:
             deploy/debian/videoforensics_${{ steps.get-version.outputs.version }}_amd64.deb.sha256
 
   build-windows-dev:
-    needs: [build-and-test, bump-version]
+    needs: [build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: windows-latest
     permissions:
