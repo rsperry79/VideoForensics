@@ -1,5 +1,11 @@
 # Migrate UI framework: Radzen.Blazor → Syncfusion Blazor
 
+**STATUS: NEARLY COMPLETE (2026-10-08)**
+
+- 62 of 90 razor files under `VideoForensics.Ui.Shared` use Sf* components; `AddSyncfusionBlazor()` is registered in WebApp `Program.cs` (line 112) and `MauiProgram.cs` (line 51); `AddRadzenComponents` is gone.
+- REMAINING: `src/client/ui/VideoForensics.Ui.Shared/Dialogs/FolderBrowserDialog.razor` still uses RadzenText/RadzenStack/RadzenButton (lines 10-26, plus `@using Radzen` at lines 4-5); `<PackageReference Include="Radzen.Blazor" Version="12.0.7" />` is still in `VideoForensics.Ui.Shared.csproj` (line 25); `@using Radzen` / `@using Radzen.Blazor` remain in `_Imports.razor` (lines 9-10).
+- Stale comments mentioning `<RadzenComponents>`: `src/client/web/VideoForensics.WebApp/Program.cs` line 369 and `src/client/maui/VideoForensics.MauiApp/MauiProgram.cs` line 176; also `Services/IBlazorRenderModeProvider.cs` line 8, `Services/ThemePreferenceService.cs` line 16 ("Radzen theme") and `Layout/NavGroups.cs` line 34 in Ui.Shared.
+
 ## Context
 
 The app's entire Blazor UI (shared by the MAUI desktop client and the Web/Blazor-Server host) is built on Radzen.Blazor 11.2.2. The user wants to move to Syncfusion Blazor instead, as a full framework swap, done in one big-bang pass rather than an incremental page-by-page migration. No Syncfusion license is in place yet — **that is a hard blocking prerequisite**, since Syncfusion Blazor components refuse to render (they show a licensing/trial banner or throw) without a registered license key at runtime.

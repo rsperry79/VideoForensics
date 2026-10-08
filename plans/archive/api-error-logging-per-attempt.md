@@ -1,5 +1,11 @@
 # Persist Provider API Errors (Status Code + Response Body) per Event
 
+**STATUS: COMPLETED (2026-10-08)** - shipped in PR #172.
+
+- Entity `ProviderApiErrorLog` (`src/data/common/data.common/Entities/`), `IProviderApiErrorLogRepository` (data.common Contracts), `ProviderApiErrorLogRepository`, `ProviderApiErrorLogConfiguration` (EF) and `ProviderApiErrorLogRepositoryTests` all exist; the table is part of the consolidated `InitialCreate` migration.
+- Ring provider writes the log rows: `src/providers/ring/provider/Services/RingMediaDownloadService.cs` (two `new ProviderApiErrorLog` sites, video and snapshot failures) and `src/providers/ring/provider/Services/RingProviderApiErrorClassifier.cs` (error categorization).
+- Also exposed on `IVideoForensicsDataClient` / `VideoForensicsDataClient` (data.core).
+
 ## Context
 
 Today, when a Ring download fails, only a free-text `DownloadEvent.ErrorMessage` (a humanized .NET exception type + `ex.Message`) is persisted — and `DownloadEvent` is upserted per `(DeviceId, ProviderEventId)`, so it only ever holds the *latest* attempt's state, overwriting prior attempts. The actual HTTP status code and raw response body Ring returned *are* captured today (via `ApiRawLogger.OnRawResponse`, see [ApiRawLogger.cs](src/providers/ring/core/ApiRawLogger.cs)), but that stream only reaches a text log file ([Program.cs:107-108](src/client/VideoForensics/Program.cs#L107-L108)) — never the database. This makes it impossible to later answer "what exactly did Ring say, every time this event failed?" or to distinguish *why* an event is unavailable — most importantly, the case where a recording **was** successfully downloaded before but Ring now 404s it (deleted on Ring's side) versus one that was simply never available.

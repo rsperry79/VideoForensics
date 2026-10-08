@@ -27,9 +27,9 @@ From CLAUDE.md and codebase analysis:
   - Linux deployment requires parity with Windows service
 - **Alignment:** Directly supports Goal #3 (Operational Reliability)
 - **Impact:** Makes product usable for multi-account setups
-- **Blocker:** Decision needed on sequential (2 weeks) vs. refactored (4 weeks) approach
+- **Status (2026-10-08):** PARTIAL - `SyncSchedule` entity/repository and the `AccountSyncSchedule.razor` page exist, but no background service consumes them. The sequential-vs-refactored decision is overtaken by PR #152 (account-aware provider services).
 - **Risk:** Medium (session racing issue, but mitigation acceptable)
-- **Recommendation:** **DECIDE ON APPROACH FIRST**, then dispatch immediately after
+- **Recommendation:** **DO NEXT** - build the per-account event-sync and snapshot/RSSI background services on top of `SyncSchedule`
 
 ---
 
@@ -43,8 +43,8 @@ From CLAUDE.md and codebase analysis:
 - **Alignment:** Directly supports Goal #2 (End-User Support) — NEW USER SEGMENT
 - **Impact:** Opens product to victims/home-owners (market expansion)
 - **Risk:** LOW (reuses existing MCP, layout pattern already proven)
-- **Status:** Ready to dispatch immediately (not blocked)
-- **Recommendation:** **START NOW while waiting for scheduled-sync decision**
+- **Status:** DONE 2026-10-08 (Simple Mode shipped end to end)
+- **Recommendation:** Done; remaining follow-ups are localization of its strings and a browser check
 
 ---
 
@@ -58,8 +58,8 @@ From CLAUDE.md and codebase analysis:
 - **Alignment:** Supports Goal #5 (Data Integrity) — enables error categorization
 - **Impact:** Reduces MTTR on provider API issues
 - **Risk:** LOW (schema already exists in codebase)
-- **Status:** Ready to dispatch immediately
-- **Recommendation:** **PARALLEL with simple-mode** (doesn't block other work)
+- **Status:** DONE (PR #172)
+- **Recommendation:** Done
 
 ---
 
@@ -92,76 +92,15 @@ From CLAUDE.md and codebase analysis:
 - **Alignment:** Supports operational reliability & deployment
 - **Impact:** Reduces release friction, enables auto-updates
 - **Risk:** Medium (CI/CD infrastructure)
-- **Recommendation:** **After Phase B** (independent of feature work)
+- **Status:** DONE (merged to dev, PR #159). Recommendation: none, complete.
 
 ---
 
-## Recommendation: EXECUTION ORDER
+## Current Execution Order (2026-10-08)
 
-### ✅ IMMEDIATE (This week)
+Done: simple-mode (2026-10-08), api-error-logging (PR #172), per-user-login (PR #166), ci-cd versioning and update check (PR #159).
 
-**1. CONFIRM DECISION: scheduled-background-sync-tasks-linux approach**
-   - Sequential (faster, ~2 weeks) or Refactored (better, ~4 weeks)?
-   - Once decided, dispatch immediately to Haiku
-
-**2. DISPATCH: simple-mode-embedded-mcp-chat**
-   - **Start:** Now (not blocked)
-   - **Effort:** 3-4 days
-   - **Why:** Unblocks victim support feature, high strategic value
-   - **Parallel:** Run with #1 decision-making
-
-**3. [OPTIONAL] DISPATCH: api-error-logging-per-attempt**
-   - **Start:** After simple-mode (or parallel if capacity)
-   - **Effort:** 2-3 days
-   - **Why:** Observability + data integrity improvements
-   - **Note:** Can run in parallel with scheduled-sync once that decision is made
-
-### ⏳ NEXT (After Phase B complete)
-
-**4. REVIEW & PLAN: per-user-login-password-passkey**
-   - Complex auth refactor, needs careful review
-   - High-risk changes (touched by all auth flows)
-
-**5. PLAN & SETUP: ci-cd-versioning-update-check**
-   - Infrastructure work, likely 1-2 weeks of setup
-
-### 📋 LOWER PRIORITY (Backlog)
-
-- **maui-layout-theme-localization** — Large feature (2-3 weeks), nice-to-have
-- **case-filters-auto-numbering-jamming** — Forensic workflow enhancement, medium priority
-- **ui-framework-migration-syncfusion** — Technical debt, defer to end
-
----
-
-## Strategic Summary
-
-| Phase | Item | Why | Blocker | Start |
-|-------|------|-----|---------|-------|
-| B | scheduled-sync | **CRITICAL** operational reliability | Decision needed | After decision |
-| B | simple-mode | **HIGH** end-user support (new segment) | None | DONE 2026-10-08 ✅ |
-| B | api-error-logging | **MEDIUM** observability | None | After simple-mode |
-| C | per-user-login | **MEDIUM** auth model | None | Week 3+ |
-| C | ci-cd | **MEDIUM** automation | None | Week 3+ |
-
----
-
-## The Ask
-
-**For the user:**
-
-1. **Decide on scheduled-sync approach:** Sequential or Refactored?
-   - Sequential: Ship faster (2 weeks), accept session racing mitigation
-   - Refactored: Better design (4 weeks), true concurrency, but larger scope
-   - **Impact:** Enables operational reliability goal, multi-account support
-
-2. **Confirm simple-mode priority:** Start immediately?
-   - This is the "victim support" feature (product differentiator)
-   - No blockers, ready to dispatch to Haiku
-   - 3-4 days elapsed time
-
-3. **Optionally:** api-error-logging in parallel?
-   - Improves observability (debugging provider issues)
-   - 2-3 days elapsed time
-   - Can run simultaneously with other work
-
-**Recommendation:** Dispatch simple-mode NOW, decide scheduled-sync approach, then do both in phase.
+1. **Scheduled per-account sync (CRITICAL, partial)** - `SyncSchedule` storage, `AccountSyncSchedule.razor`, keyed DI and `UseSystemd` exist; the event-sync and snapshot/RSSI background services that consume the schedules do not. Sequential vs. refactored: PR #152 (account-aware provider services, `ISessionProvider.GetSession(Guid providerAccountId)`) already addressed most of the SessionProvider race the refactored plan feared, so the refactor is mostly done; only about 10 parameterless `GetSession()` call sites remain to re-audit. Plans: `scheduled-background-sync-tasks-linux.md` (full scope) and `SCHEDULED_SYNC_REFACTORED_PLAN.md` (overlaps it).
+2. **Radzen removal (small)** - `FolderBrowserDialog.razor`, the `Radzen.Blazor` package reference, `@using Radzen` in `_Imports.razor` and stale comments (`ui-framework-migration-syncfusion.md`).
+3. **Localization of the last 14 pages (mechanical)** plus the hard-coded Simple Mode strings (`maui-layout-theme-localization.md`).
+4. **Backlog** - MAUI log viewer M6 (local logs), streaming chat, operator details page SuperAdmin-only load for plain Admins, browser check of Simple Mode / log viewer / case numbering.
