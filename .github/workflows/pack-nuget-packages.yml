@@ -7,10 +7,11 @@ on:
         required: true
         type: string
         description: "Full version string (e.g., 1.0.9.44078)"
-      github-token:
-        required: true
-        type: string
-        description: "GitHub token for pushing to GitHub Packages"
+      push:
+        required: false
+        type: boolean
+        default: true
+        description: "Push packages to GitHub Packages; false packs only"
 
 jobs:
   pack-and-push:
@@ -47,9 +48,12 @@ jobs:
             -c Release -o ./nupkgs
 
       - name: Push NuGet packages to GitHub Packages
+        if: inputs.push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           dotnet nuget push "./nupkgs/*.nupkg" \
-            --api-key ${{ inputs.github-token }} \
+            --api-key "$GITHUB_TOKEN" \
             --source https://nuget.pkg.github.com/rsperry79/index.json \
             --skip-duplicate
 

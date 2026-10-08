@@ -87,6 +87,15 @@ jobs:
 
       - uses: actions/dependency-review-action@v4
 
+  pack-nuget-pr:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pack-nuget-packages.yml
+    with:
+      version: pr-${{ github.event.pull_request.number }}
+      push: false
+
   build-debian-dev:
     needs: [build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -394,7 +403,7 @@ jobs:
     uses: ./.github/workflows/pack-nuget-packages.yml
     with:
       version: ${{ needs.build-debian-dev.outputs.version }}
-      github-token: ${{ github.token }}
+    secrets: inherit
 
   publish-dev-release:
     needs: [build-debian-dev, build-windows-dev, pack-and-push-nuget-dev]
@@ -511,7 +520,7 @@ jobs:
     uses: ./.github/workflows/pack-nuget-packages.yml
     with:
       version: ${{ needs.get-version.outputs.version }}
-      github-token: ${{ github.token }}
+    secrets: inherit
 
   # Runs on v* tags and main pushes; dev pushes are handled by publish-dev-release.
   release-installers:
