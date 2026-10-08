@@ -31,7 +31,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
     /// <summary>
     /// The full nav tree - single source of truth for both the top tab bar (groups) and the left
-    /// vertical tab rail (the active group's items). Replaces the inline RadzenMenuItem tree that
+    /// vertical tab rail (the active group's items). Replaces the inline menu tree that
     /// used to live directly in MainLayout.razor's markup.
     /// </summary>
     public static class NavGroups

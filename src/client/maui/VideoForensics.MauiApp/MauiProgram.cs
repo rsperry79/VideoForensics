@@ -173,7 +173,7 @@ namespace VideoForensics.MauiApp
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();
 
-            // MainLayout.razor's shared <RadzenComponents> needs a render mode decision too - MAUI's
+            // Shared Ui.Shared components need a render mode decision too - MAUI's
             // BlazorWebView has no ASP.NET Core render-mode infrastructure at all (it renders through
             // its own native IPC channel) and throws "the current platform does not support the
             // ServerRenderMode" the instant MainLayout renders if @rendermode is set to anything.

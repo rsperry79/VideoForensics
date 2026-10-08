@@ -366,7 +366,7 @@ builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 
-// MainLayout.razor's shared <RadzenComponents> needs @rendermode="InteractiveServer" here - this
+// Hosts that support interactive render modes register InteractiveServerBlazorRenderModeProvider - this
 // is a real ASP.NET Core host with interactive server components configured below. MAUI's
 // BlazorWebView registers NullBlazorRenderModeProvider instead - see IBlazorRenderModeProvider.
 builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazorRenderModeProvider>();
