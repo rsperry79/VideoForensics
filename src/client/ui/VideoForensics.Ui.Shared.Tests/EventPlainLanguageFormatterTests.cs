@@ -122,7 +122,31 @@ public class EventPlainLanguageFormatterTests
         // Assert - should not throw, should return a safe generic message
         Assert.NotNull(result);
         Assert.NotEmpty(result);
-        Assert.Contains("event", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("activity", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EventPlainLanguageFormatter_Describe_UnknownEventType_NeverShowsRawEventType()
+    {
+        var now = DateTime.UtcNow;
+        var eventDto = new EventDto(
+            Id: Guid.NewGuid(),
+            DeviceId: Guid.NewGuid(),
+            ProviderEventId: "provider-unknown",
+            EventType: "ding_dong_v2",
+            OccurredAtUtc: now,
+            SnapshotUrl: null,
+            MetadataJson: null,
+            DiscoveredAtUtc: now,
+            DownloadedAtUtc: null,
+            ApiSourceHash: null,
+            EventIntegrityHash: null
+        );
+
+        string result = EventPlainLanguageFormatter.Describe(eventDto, "Porch");
+
+        Assert.DoesNotContain("ding_dong_v2", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Your Porch detected some activity.", result);
     }
 
     [Fact]

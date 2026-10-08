@@ -9,6 +9,7 @@ using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components;
+using VideoForensics.Ui.Shared.Formatting;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Layout.Mobile;
 using VideoForensics.Ui.Shared.Layout.Simple;
@@ -115,6 +116,13 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
             .Setup(r => r.ListAsync(It.IsAny<CaseStatus>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ForensicCase>());
         Services.AddScoped(_ => caseRepoMock.Object);
+
+        // Defaults for SimpleHome, which SimpleLayout renders at "/" and "/evidence" (empty data; SimpleHomeTests override these)
+        Services.AddScoped(_ => new Mock<IEventRepository>().Object);
+        Services.AddScoped(_ => new Mock<IMediaItemRepository>().Object);
+        Services.AddScoped(_ => new Mock<IDeviceRepository>().Object);
+        Services.AddScoped(_ => new Mock<IJammingRepository>().Object);
+        Services.AddScoped(_ => new SimpleHomeBuilder(TimeProvider.System, new Mock<IMediaContentUrlProvider>().Object));
 
         // Register services needed by RightPanel components (AccountSwitcher, ThemeLanguagePicker)
         Services.AddScoped(_ => new Mock<IProviderAccountRepository>().Object);

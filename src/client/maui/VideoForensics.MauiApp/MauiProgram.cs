@@ -167,6 +167,8 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IUiModeService, VideoForensics.Ui.Shared.Services.UiModeService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder(
+                sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<VideoForensics.Client.Common.Contracts.IMediaContentUrlProvider>()));
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IViewportService, VideoForensics.Ui.Shared.Services.DefaultViewportService>();
             builder.Services.AddSingleton<VideoForensics.Ui.Shared.Services.ICultureSwitcher, VideoForensics.Ui.Shared.Services.CultureSwitcher>();
             builder.Services.AddLocalization();

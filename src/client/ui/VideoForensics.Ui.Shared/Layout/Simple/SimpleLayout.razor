@@ -1,5 +1,6 @@
 @namespace VideoForensics.Ui.Shared.Layout.Simple
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Services
@@ -23,7 +24,14 @@
     </header>
     <main class="simple-layout-body">
         <div class="simple-layout-content">
-            @Body
+            @if (IsHomeRoute())
+            {
+                <SimpleHome />
+            }
+            else
+            {
+                @Body
+            }
         </div>
         <div class="simple-layout-chat">
             <ChatPanel />
@@ -35,7 +43,17 @@
     protected override void OnInitialized()
     {
         UiModeService.OnChange += StateHasChanged;
+        Nav.LocationChanged += OnLocationChanged;
     }
+
+    // Only the home routes get the plain-language home; every other route (sign-in, password change, chat, cases...) renders as routed.
+    private bool IsHomeRoute()
+    {
+        var path = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
+        return path.Length == 0 || string.Equals(path, "/evidence", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     private async Task SwitchToStandardAsync()
     {
@@ -51,5 +69,6 @@
     public void Dispose()
     {
         UiModeService.OnChange -= StateHasChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

@@ -360,6 +360,8 @@ builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>()
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder(
+    sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>()));
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
