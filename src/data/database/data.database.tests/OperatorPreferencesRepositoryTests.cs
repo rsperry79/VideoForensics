@@ -1,4 +1,4 @@
-﻿using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
