@@ -1,5 +1,10 @@
 # Phase 3: Project Reorganization (Utils Folder Consolidation)
 
+**STATUS: COMPLETED (2026-10-08)**
+
+- `src/utils/` now holds `selftest/VideoForensics.Utils.SelfTest`, `setup/VideoForensics.Utils.DbSetup`, `repair/VideoForensics.Utils.DbRepair` (+ tests) and `diagnostics/VideoForensics.Utils.Diagnostics` (+ tests). `src/selftest` and `src/tools` no longer exist.
+- Cleanup note: `src/utils/logger` is an empty leftover folder (not touched here).
+
 ## Scope
 Reorganize all CLI tools under unified `src/utils` folder with consistent naming and namespace updates.
 

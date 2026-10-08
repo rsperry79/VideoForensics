@@ -1,5 +1,12 @@
 # Docked MAUI/Blazor Layout + Theme + Localization + Per-Operator Preferences
 
+**STATUS: MOSTLY COMPLETE (2026-10-08)**
+
+- DONE: docked layout / NavGroups, per-operator `OperatorPreferences` (theme, culture, UiMode), 46 resx files. 40 of the 54 real pages under `Ui.Shared/Pages` use `IStringLocalizer` (the two redirect pages EventsRedirect and WorkflowRedirect have no text).
+- REMAINING - 14 pages without localization: AccessControl, AccountDetails, AccountSyncSchedule, AddAccountWizard, AwaitingSetup, CaseDetails, CaseNew, Cases, EvidenceDatesFilter, ForensicReports, JammingAnalysis, Notices, SignalAnomalies, Welcome.
+- REMAINING - Simple Mode strings that are hard-coded English: `Layout/Simple/SimpleLayout.razor` "Standard view" button (line 20); `Layout/Simple/SimpleHome.razor` headings and messages ("What happened this week", "Your evidence", "We couldn't load your activity...") and `Formatting/SimpleHomeBuilder.cs` day headings (no localizer in either); user-menu toggle labels "Switch to Simple view" / "Switch to Standard view" in `Layout/NavGroups.cs` (lines 128, 132). Already resx: the operator-details "Display mode" section (`Pages/OperatorDetails.resx`).
+- Decision unchanged: English-only for now.
+
 ## Context
 
 The VideoForensics client (`src/client/ui/VideoForensics.Ui.Shared`, a Blazor Hybrid Razor Class Library shared by the MAUI app and the server-hosted `VideoForensics.WebApp`) currently uses a single flat top-menu bar (`MainLayout.razor`) with flyout submenus for all navigation, a single hardcoded Radzen "material" theme, and no localization. The user wants a docked-app shell: top tabs per menu group, a hideable vertical left nav for items within the active group, and a hideable right-side "dynamic settings" panel (account switcher up top, then page-specific context below). Alongside the layout redo, the user also asked for a Light/Dark/System theme setting (System default) and full localization of all pages — both stored **per operator** (not per-device, not global), which requires new schema since no per-user preference concept exists today.

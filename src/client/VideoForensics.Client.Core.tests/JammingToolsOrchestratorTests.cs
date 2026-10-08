@@ -26,6 +26,11 @@ namespace VideoForensics.Client.Core.Tests
                 _loggerMock.Object,
                 _repositoryMock.Object,
                 _healthRepositoryMock.Object);
+
+            // Remote clients throw NotSupportedException for the unranged history; analysis must never call it.
+            _ = _healthRepositoryMock
+                .Setup(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new NotSupportedException("Unranged history is not supported remotely"));
         }
 
         [Fact]
@@ -185,7 +190,7 @@ namespace VideoForensics.Client.Core.Tests
             DateTime now = DateTime.UtcNow;
 
             _ = _healthRepositoryMock
-                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
                 [
                     new() { DeviceId = deviceId, WifiSignalRssi = -40, CapturedAtUtc = now }
@@ -228,7 +233,7 @@ namespace VideoForensics.Client.Core.Tests
             readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -39, CapturedAtUtc = t0.AddMinutes(11) });
 
             _ = _healthRepositoryMock
-                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(readings);
             _ = _repositoryMock
                 .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
@@ -273,7 +278,7 @@ namespace VideoForensics.Client.Core.Tests
             readings.Add(new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = -40, CapturedAtUtc = t0.AddMinutes(11) });
 
             _ = _healthRepositoryMock
-                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(readings);
             _ = _repositoryMock
                 .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
@@ -290,6 +295,128 @@ namespace VideoForensics.Client.Core.Tests
 
             Assert.True(report.Success);
             Assert.Equal(1, report.NewlyDetectedCount);
+        }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_RequestsRangedHistoryForTheAnalysisWindow_NeverTheUnrangedOverload()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime from = new(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime to = new(2026, 3, 1, 6, 0, 0, DateTimeKind.Utc);
+            _ = _healthRepositoryMock
+                .Setup(r => r.GetHistoryAsync(deviceId, from, to, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = _repositoryMock
+                .Setup(r => r.GetStatsAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((JammingStatsSummary?)null);
+            _ = _repositoryMock
+                .Setup(r => r.ListIncidentsAsync(deviceId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            JammingAnalysisReport report = await _orchestrator.AnalyzeJammingAsync(deviceId, from, to);
+
+            Assert.True(report.Success);
+            _healthRepositoryMock.Verify(r => r.GetHistoryAsync(deviceId, from, to, It.IsAny<CancellationToken>()), Times.Once);
+            _healthRepositoryMock.Verify(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        /// <summary>
+        /// Mimics the remote jamming API: the client's Source is preserved for new incidents, the server
+        /// assigns the CaseId and DetectedAtUtc, and ListIncidentsAsync filters on the incident start.
+        /// </summary>
+        private sealed class RemoteSemanticsJammingRepository : IJammingRepository
+        {
+            public List<JammingIncidentRecord> Stored { get; } = [];
+            public int UpsertCalls { get; private set; }
+
+            public Task<JammingIncidentRecord> UpsertIncidentAsync(JammingIncidentRecord incident, CancellationToken ct)
+            {
+                UpsertCalls++;
+                JammingIncidentRecord? existing = Stored.FirstOrDefault(i => i.Id == incident.Id);
+                if (existing != null)
+                {
+                    Stored.Remove(existing);
+                }
+
+                var saved = new JammingIncidentRecord
+                {
+                    Id = incident.Id,
+                    DeviceId = incident.DeviceId,
+                    StartUtc = incident.StartUtc,
+                    EndUtc = incident.EndUtc,
+                    AffectedEventCount = incident.AffectedEventCount,
+                    AverageDegradationDb = incident.AverageDegradationDb,
+                    Confidence = incident.Confidence,
+                    Notes = incident.Notes,
+                    Source = existing?.Source ?? incident.Source,
+                    DetectedAtUtc = existing?.DetectedAtUtc ?? DateTime.UtcNow,
+                    CaseId = existing?.CaseId ?? Guid.NewGuid()
+                };
+                Stored.Add(saved);
+                return Task.FromResult(saved);
+            }
+
+            public Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
+            {
+                IReadOnlyList<JammingIncidentRecord> result = Stored
+                    .Where(i => (deviceId == null || i.DeviceId == deviceId)
+                        && (fromUtc == null || i.StartUtc >= fromUtc)
+                        && (toUtc == null || i.StartUtc <= toUtc))
+                    .ToList();
+                return Task.FromResult(result);
+            }
+
+            public Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
+                => Task.FromResult(Stored.FirstOrDefault(i => i.Id == incidentId));
+
+            public Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct)
+                => Task.FromResult<JammingStatsSummary?>(new JammingStatsSummary
+                {
+                    DeviceId = deviceId,
+                    IncidentCount = Stored.Count(i => i.DeviceId == deviceId)
+                });
+
+            public Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct)
+                => Task.FromResult<IReadOnlyList<JammingStatsSummary>>([]);
+
+            public Task<JammingStatsSummary> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
+                => Task.FromResult(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = Stored.Count(i => i.DeviceId == deviceId) });
+        }
+
+        [Fact]
+        public async Task AnalyzeJammingAsync_RemoteSemantics_CreatesAutoDetectedIncidentsOnce_AndSecondRunCreatesNone()
+        {
+            var deviceId = Guid.NewGuid();
+            DateTime t0 = new(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            // 10 baseline, 3 degraded, 6 baseline, 3 degraded, 4 baseline (two separate jamming runs).
+            int[] rssi = [.. Enumerable.Repeat(-40, 10), -60, -62, -59, .. Enumerable.Repeat(-40, 6), -61, -60, -63, .. Enumerable.Repeat(-40, 4)];
+            List<DeviceHealth> readings = rssi
+                .Select((v, i) => new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = v, CapturedAtUtc = t0.AddMinutes(i) })
+                .ToList();
+            DateTime from = t0.AddMinutes(-1);
+            DateTime to = t0.AddMinutes(rssi.Length);
+
+            _ = _healthRepositoryMock
+                .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, DateTime f, DateTime t, CancellationToken _) =>
+                    (IReadOnlyList<DeviceHealth>)readings.Where(r => r.CapturedAtUtc >= f && r.CapturedAtUtc <= t).OrderBy(r => r.CapturedAtUtc).ToList());
+            var remote = new RemoteSemanticsJammingRepository();
+            var orchestrator = new JammingToolsOrchestrator(_loggerMock.Object, remote, _healthRepositoryMock.Object);
+
+            JammingAnalysisReport first = await orchestrator.AnalyzeJammingAsync(deviceId, from, to);
+            JammingAnalysisReport second = await orchestrator.AnalyzeJammingAsync(deviceId, from, to);
+
+            Assert.True(first.Success);
+            Assert.Equal(2, first.NewlyDetectedCount);
+            Assert.Equal(2, remote.Stored.Count);
+            Assert.All(remote.Stored, i => Assert.Equal(JammingIncidentSource.AutoDetected, i.Source));
+            Assert.All(remote.Stored, i => Assert.NotNull(i.CaseId));
+            Assert.True(second.Success);
+            Assert.Equal(0, second.NewlyDetectedCount);
+            Assert.Equal(2, remote.Stored.Count);
+            Assert.Equal(2, remote.UpsertCalls);
+            _healthRepositoryMock.Verify(r => r.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

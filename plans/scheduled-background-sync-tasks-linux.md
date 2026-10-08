@@ -1,5 +1,14 @@
 # Multi-provider-account scheduled tasks + Linux service
 
+**STATUS: PARTIALLY COMPLETE (2026-10-08)** - storage, DI, host and service unit exist; the scheduled loops themselves do not.
+
+- EXISTS: `SyncSchedule` entity (one row per provider account: `EventPollIntervalMinutes`, `SnapshotRssiIntervalMinutes`, `IsEnabled`, next/last run timestamps, jamming windows), `ISyncScheduleRepository` + `SyncScheduleRepository` + EF configuration, and the `AccountSyncSchedule.razor` settings page. This replaces Phase 0 as written: there is no `ProviderAccountScheduleSetting` in src, and the schedule is one row per account, not one row per task type.
+- EXISTS: Phase 1 keyed DI - 13 `AddKeyedScoped` registrations in `VideoForensicsHostingExtensions.cs`.
+- EXISTS: Linux host - `builder.Host.UseSystemd()` in `src/client/web/VideoForensics.WebApp/Program.cs` (line 75, plus a comment above it) and `deploy/debian/videoforensics.service`. Not checked: PlatformDirectoryService path routing and an `install-service.sh` script.
+- NOT DONE: Phase 2 background services. Nothing consumes the schedules: `ISyncScheduleRepository` is referenced only by its DI registration and `AccountSyncSchedule.razor`. `src/client/host/VideoForensics.Hosting/BackgroundServices` contains only CameraBitrateCalibrationService, DeviceHealthSyncService, ElevatedPollingWindowTracker, LiveViewIdleTimeoutService and UpdateCheckService - no per-account event-sync or snapshot/RSSI service. Manual sync works (`POST /api/v1/provider-accounts/{id}/sync-now`, "Sync Now" in AccountDetails.razor).
+- The sequential-within-provider mitigation described below was motivated by the SessionProvider race; PR #152 (account-aware provider services) has since addressed most of that - see `SCHEDULED_SYNC_REFACTORED_PLAN.md`.
+- Overlap: this plan and `SCHEDULED_SYNC_REFACTORED_PLAN.md` describe the same feature. This one carries the full scope (storage, DI, host, config, Linux scripts, tests); the refactored plan adds only the account-aware SessionProvider work. Treat this plan as the source of truth for the remaining background-service work.
+
 ## Context
 
 The Windows Service host (`VideoForensics.WebApp` via `UseWindowsService()`) currently has one background task at all: `DeviceHealthSyncService`, which polls RSSI on a single hardcoded 15-minute timer for whichever provider happens to be the unkeyed "active provider" in DI. Event sync and snapshot download are 100% manual, UI-button-triggered actions today (`Workflow.razor`, `CollectSnapshots.razor`) — there is no automated loop for either.
