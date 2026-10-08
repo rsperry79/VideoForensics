@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading.Channels;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Infrastructure;
@@ -65,7 +67,61 @@ namespace VideoForensics.WebApp.Chat
             _mcpToolClientFactory = mcpToolClientFactory;
         }
 
+        /// <inheritdoc />
         public async Task<ChatTurnResult> SendMessageAsync(IReadOnlyList<ChatTurn> history, string message, CancellationToken ct)
+        {
+            ChatTurnResult? result = null;
+            await foreach (ChatStreamEvent evt in StreamMessageAsync(history, message, ct))
+            {
+                if (evt is ChatTurnCompleted completed)
+                {
+                    result = completed.Result;
+                }
+            }
+
+            return result ?? new ChatTurnResult
+            {
+                Reply = "An error occurred while processing your request.",
+                ToolsInvoked = Array.Empty<string>()
+            };
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// The turn runs in its own task and writes events to a channel, so text deltas reach the caller as the LLM
+        /// produces them rather than after the whole tool-use loop finishes. The turn task never throws (errors become
+        /// a <see cref="ChatTurnCompleted"/> reply), and the channel is completed once the final event is written.
+        /// </remarks>
+        public async IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(
+            IReadOnlyList<ChatTurn> history,
+            string message,
+            [EnumeratorCancellation] CancellationToken ct)
+        {
+            Channel<ChatStreamEvent> channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions { SingleReader = true });
+
+            _ = RunTurnAsync(history, message, channel.Writer, ct).ContinueWith(turn =>
+            {
+                if (turn.IsFaulted)
+                {
+                    _ = channel.Writer.TryComplete(turn.Exception);
+                    return;
+                }
+
+                _ = channel.Writer.TryWrite(new ChatTurnCompleted(turn.Result));
+                _ = channel.Writer.TryComplete();
+            }, TaskScheduler.Default);
+
+            await foreach (ChatStreamEvent evt in channel.Reader.ReadAllAsync(ct))
+            {
+                yield return evt;
+            }
+        }
+
+        /// <summary>
+        /// Runs one chat turn: resolves configuration, drives the streaming LLM tool-use loop, and writes each
+        /// <see cref="ChatStreamEvent"/> to <paramref name="events"/> as it happens. Returns the final reply.
+        /// </summary>
+        private async Task<ChatTurnResult> RunTurnAsync(IReadOnlyList<ChatTurn> history, string message, ChannelWriter<ChatStreamEvent> events, CancellationToken ct)
         {
             try
             {
@@ -136,8 +192,26 @@ namespace VideoForensics.WebApp.Chat
 
                     while (toolCallCount < MaxToolCalls)
                     {
-                        // Call LLM
-                        var completion = await llmProvider.CompleteAsync(llmMessages, tools, ct);
+                        // Call LLM, forwarding text as it streams. Text from a step that ends in a tool call is
+                        // still forwarded (e.g. "Let me check..."); the final Reply only contains the last step's text.
+                        LlmCompletionResult? completion = null;
+                        await foreach (LlmStreamEvent evt in llmProvider.StreamCompleteAsync(llmMessages, tools, ct))
+                        {
+                            switch (evt)
+                            {
+                                case LlmTextDelta delta:
+                                    _ = events.TryWrite(new ChatTextDelta(delta.Text));
+                                    break;
+                                case LlmStepCompleted step:
+                                    completion = step.Result;
+                                    break;
+                            }
+                        }
+
+                        if (completion is null)
+                        {
+                            throw new InvalidOperationException("LLM stream ended without a completion step.");
+                        }
 
                         if (!completion.IsToolCall)
                         {
@@ -162,6 +236,7 @@ namespace VideoForensics.WebApp.Chat
 
                         _logger.LogInformation("ChatOrchestrator: Invoking tool {ToolName}", completion.ToolName);
                         toolsInvoked.Add(completion.ToolName);
+                        _ = events.TryWrite(new ChatToolInvoked(completion.ToolName));
 
                         // Invoke the MCP tool
                         IReadOnlyDictionary<string, object?>? toolArguments = null;

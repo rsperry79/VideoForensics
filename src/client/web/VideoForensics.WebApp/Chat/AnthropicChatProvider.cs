@@ -1,4 +1,7 @@
 using System.Net.Http.Json;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -25,10 +28,17 @@ namespace VideoForensics.WebApp.Chat
             };
         }
 
-        public async Task<LlmCompletionResult> CompleteAsync(
+        /// <inheritdoc />
+        /// <remarks>
+        /// Uses Anthropic's server-sent events (<c>stream: true</c>). Text blocks are yielded as they arrive. Tool-use
+        /// input arrives as partial JSON fragments, which are buffered until the step completes. If the model emits
+        /// a tool call, the step reports that call (even if text came first), because the orchestrator can only act
+        /// on one call at a time.
+        /// </remarks>
+        public async IAsyncEnumerable<LlmStreamEvent> StreamCompleteAsync(
             IReadOnlyList<LlmMessage> messages,
             IReadOnlyList<LlmToolDefinition> tools,
-            CancellationToken ct)
+            [EnumeratorCancellation] CancellationToken ct)
         {
             if (messages == null || messages.Count == 0)
                 throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
@@ -37,6 +47,7 @@ namespace VideoForensics.WebApp.Chat
             var endpoint = $"{baseUrl.TrimEnd('/')}/v1/messages";
 
             var request = BuildRequest(messages, tools);
+            request.Stream = true;
             var content = JsonContent.Create(request, options: _jsonOptions);
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
@@ -47,13 +58,83 @@ namespace VideoForensics.WebApp.Chat
             httpRequest.Headers.Add("x-api-key", _options.ApiKey);
             httpRequest.Headers.Add("anthropic-version", "2023-06-01");
 
-            var response = await _httpClient.SendAsync(httpRequest, ct);
+            using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
-            var responseBody = await response.Content.ReadFromJsonAsync<AnthropicResponse>(_jsonOptions, cancellationToken: ct)
-                ?? throw new InvalidOperationException("Empty response from Anthropic API");
+            await using Stream body = await response.Content.ReadAsStreamAsync(ct);
 
-            return ParseResponse(responseBody);
+            var text = new StringBuilder();
+            string? toolCallId = null;
+            string? toolName = null;
+            var toolArgumentsJson = new StringBuilder();
+            bool sawToolUse = false;
+
+            await foreach (SseItem<string> sse in SseParser.Create(body).EnumerateAsync(ct))
+            {
+                switch (sse.EventType)
+                {
+                    case "content_block_start":
+                    {
+                        using var doc = JsonDocument.Parse(sse.Data);
+                        JsonElement block = doc.RootElement.GetProperty("content_block");
+                        if (block.GetProperty("type").GetString() == "tool_use")
+                        {
+                            sawToolUse = true;
+                            toolCallId = block.GetProperty("id").GetString();
+                            toolName = block.GetProperty("name").GetString();
+                        }
+                        break;
+                    }
+
+                    case "content_block_delta":
+                    {
+                        using var doc = JsonDocument.Parse(sse.Data);
+                        JsonElement delta = doc.RootElement.GetProperty("delta");
+                        switch (delta.GetProperty("type").GetString())
+                        {
+                            case "text_delta":
+                                string fragment = delta.GetProperty("text").GetString() ?? string.Empty;
+                                if (fragment.Length > 0)
+                                {
+                                    _ = text.Append(fragment);
+                                    yield return new LlmTextDelta(fragment);
+                                }
+                                break;
+
+                            case "input_json_delta":
+                                _ = toolArgumentsJson.Append(delta.GetProperty("partial_json").GetString());
+                                break;
+                        }
+                        break;
+                    }
+
+                    case "error":
+                        throw new InvalidOperationException($"Anthropic stream error: {sse.Data}");
+
+                    case "message_stop":
+                        goto Done;
+                }
+            }
+
+            Done:
+            if (sawToolUse)
+            {
+                yield return new LlmStepCompleted(new LlmCompletionResult(
+                    TextReply: null,
+                    ToolCallId: toolCallId,
+                    ToolName: toolName,
+                    ToolArgumentsJson: toolArgumentsJson.Length > 0 ? toolArgumentsJson.ToString() : "{}"));
+                yield break;
+            }
+
+            if (text.Length == 0)
+                throw new InvalidOperationException("No valid content type found in Anthropic response");
+
+            yield return new LlmStepCompleted(new LlmCompletionResult(
+                TextReply: text.ToString(),
+                ToolCallId: null,
+                ToolName: null,
+                ToolArgumentsJson: null));
         }
 
         private AnthropicRequest BuildRequest(IReadOnlyList<LlmMessage> messages, IReadOnlyList<LlmToolDefinition> tools)
@@ -120,39 +201,6 @@ namespace VideoForensics.WebApp.Chat
             };
         }
 
-        private LlmCompletionResult ParseResponse(AnthropicResponse response)
-        {
-            if (response.Content == null || response.Content.Count == 0)
-                throw new InvalidOperationException("Empty content in Anthropic response");
-
-            foreach (var content in response.Content)
-            {
-                if (content.Type == "text" && content.Text != null)
-                {
-                    return new LlmCompletionResult(
-                        TextReply: content.Text,
-                        ToolCallId: null,
-                        ToolName: null,
-                        ToolArgumentsJson: null);
-                }
-
-                if (content.Type == "tool_use" && content.Name != null)
-                {
-                    var inputJson = content.Input != null
-                        ? JsonSerializer.Serialize(content.Input, _jsonOptions)
-                        : "{}";
-
-                    return new LlmCompletionResult(
-                        TextReply: null,
-                        ToolCallId: content.Id,
-                        ToolName: content.Name,
-                        ToolArgumentsJson: inputJson);
-                }
-            }
-
-            throw new InvalidOperationException("No valid content type found in Anthropic response");
-        }
-
         private static object? ParseJsonToObject(string? json)
         {
             if (string.IsNullOrEmpty(json))
@@ -176,6 +224,9 @@ namespace VideoForensics.WebApp.Chat
             [JsonPropertyName("tools")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public List<AnthropicTool>? Tools { get; set; }
+
+            [JsonPropertyName("stream")]
+            public bool Stream { get; set; }
         }
 
         private class AnthropicMessage
@@ -227,12 +278,6 @@ namespace VideoForensics.WebApp.Chat
 
             [JsonPropertyName("input_schema")]
             public object? InputSchema { get; set; }
-        }
-
-        private class AnthropicResponse
-        {
-            [JsonPropertyName("content")]
-            public List<AnthropicContent>? Content { get; set; }
         }
     }
 }
