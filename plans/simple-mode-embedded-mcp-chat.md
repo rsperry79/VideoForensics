@@ -45,7 +45,13 @@ Follow the existing `NavGroup`/`NavContext` pattern (`NavGroups.cs`) only if Sim
 - `RemoteChatService : IChatService` in `src/client/host/VideoForensics.Hosting/Remote/`, following `RemoteDeviceRepository.cs`'s exact shape: typed `HttpClient`, `PairedDeviceAuthHandler` reused automatically (no new auth plumbing — satisfies "do not change auth"), DTOs in/out, `/api/v1/chat` route. Registered in `AddVideoForensicsClientApi` alongside the ~23 existing typed clients.
 - New `ChatPanel.razor` in `Ui.Shared`, injecting `IChatService`. Available in both `MainLayout` (as an optional panel/nav item, gated to at least Admin or whatever role should have it) and `SimpleLayout` (prominent, primary surface).
 
-**Streaming — explicitly deferred:** no SSE/Polly exists in the solution today. MVP ships as a single request/response call (matches how `RemoteDeviceRepository`-style calls already work), not token streaming. Flag streaming as a fast-follow, not part of this plan.
+**Streaming — implemented (fast-follow, commit `eae6169` on `claude/fix-chat-streaming-4633f8`):** the original plan shipped a single request/response call. Streaming is now end to end:
+- Providers call their APIs with streaming enabled and parse SSE (`AnthropicChatProvider`, `OpenAiCompatibleChatProvider`). `ILlmChatProvider.CompleteAsync` is replaced by `StreamCompleteAsync`, which yields `LlmTextDelta` events and one `LlmStepCompleted`.
+- `ChatOrchestrator.StreamMessageAsync` emits `ChatTextDelta`, `ChatToolInvoked`, and a final `ChatTurnCompleted`. `SendMessageAsync` drains the stream, so the non-streaming `/api/v1/chat` route keeps its behavior.
+- New `POST /api/v1/chat/stream` (`ChatEndpoints.cs`) writes `delta`, `tool`, and `done` SSE frames, flushing after each.
+- `RemoteChatService.StreamMessageAsync` reads the stream incrementally; unknown frame names are skipped.
+- `ChatPanel` renders deltas as they arrive. Also fixed: the user's message was sent twice (history plus new message), and `@onkeydown:preventDefault` blocked typing.
+- Still open: no automated test for the stream endpoint's frame output or for `ChatPanel`, and no end-to-end run against a live LLM.
 
 ## Execution order (Haiku dispatch, per CLAUDE.md workflow)
 
