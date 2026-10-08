@@ -21,6 +21,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>"Standard" (default) or "Simple" UI mode preference.</summary>
         public string UiMode { get; set; } = "Standard";
 
+        /// <summary>When true an administrator has locked UiMode; the operator cannot change it themselves.</summary>
+        public bool UiModeLocked { get; set; } = false;
+
         public DateTime UpdatedAtUtc { get; set; }
     }
 }
