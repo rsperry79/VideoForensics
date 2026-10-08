@@ -7,7 +7,6 @@ using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.Api.Contracts;
-using VideoForensics.Api.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -143,10 +142,17 @@ namespace VideoForensics.WebApp.Api
             _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync)
                 .RequireRateLimiting("auth");
 
-            _ = group.MapGet("/operators/{id:guid}/ui-mode", GetUiModeAsync)
+            // Separate route group for UI mode management. Base policy is ReadOnly (any authenticated user),
+            // but routes require Admin role (which includes SuperAdmin). Unlike the SuperAdminLocal group above,
+            // these routes do NOT require Local network tier, so Admin from Internet is allowed.
+            RouteGroupBuilder uiModeGroup = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.ReadOnly);
+
+            _ = uiModeGroup.MapGet("/operators/{id:guid}/ui-mode", GetUiModeAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Admin)
                 .RequireRateLimiting("auth");
 
-            _ = group.MapPut("/operators/{id:guid}/ui-mode", SetUiModeAsync)
+            _ = uiModeGroup.MapPut("/operators/{id:guid}/ui-mode", SetUiModeAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Admin)
                 .RequireRateLimiting("auth");
 
             // Separate route group for operator credentials management. Base policy is the LOWEST
@@ -251,8 +257,6 @@ namespace VideoForensics.WebApp.Api
             Guid id,
             IOperatorRepository operators,
             IOperatorPreferencesRepository preferences,
-            INetworkTierResolver tierResolver,
-            HttpContext context,
             CancellationToken ct)
         {
             Operator? op = await operators.GetAsync(id, ct);
@@ -296,9 +300,9 @@ namespace VideoForensics.WebApp.Api
             // Set the UI mode and return the saved preferences
             OperatorPreferences saved = await preferences.SetUiModeAsync(id, request.Mode, request.Locked, ct);
 
-            // Log the change
+            // Log the change with the target operator's username
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-            string details = $"mode={request.Mode} locked={request.Locked}";
+            string details = $"target={op.Username} mode={request.Mode} locked={request.Locked}";
             await auditLog.LogAsync(SecurityAuditEventTypes.OperatorUiModeChanged,
                 Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                 null, tierResolver.ResolveClientIp(context), details, isUrgent: false, ct);

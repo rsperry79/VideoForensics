@@ -554,7 +554,11 @@ public class SimpleLayout_StandardViewButton_Tests : SimpleModeLayoutTestBase
             Action onChangeCallback = null;
             var mockUiMode = new Mock<IUiModeService>();
             mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
-            mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+
+            // Track whether OnChange has been raised to change IsLocked behavior
+            bool hasChangeOccurred = false;
+            mockUiMode.SetupGet(s => s.IsLocked).Returns(() => hasChangeOccurred);
+
             mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
             mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>()).Callback<Action>(action =>
             {
@@ -563,15 +567,18 @@ public class SimpleLayout_StandardViewButton_Tests : SimpleModeLayoutTestBase
             Services.AddScoped(_ => mockUiMode.Object);
 
             var component = Render<SimpleLayout>();
+            // Precondition: the "Standard view" button should be rendered initially
             var initialButton = component.FindAll("button").FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
             Assert.NotNull(initialButton);
 
-            // Act - simulate OnChange event and trigger re-render from dispatcher
+            // Act - simulate OnChange event (which sets IsLocked to true) and trigger re-render from dispatcher
+            hasChangeOccurred = true;
             Assert.NotNull(onChangeCallback);
             await component.InvokeAsync(() => onChangeCallback.Invoke());
 
-            // Assert - component should have re-rendered
-            var renderedButtons = component.FindAll("button");
-            Assert.NotEmpty(renderedButtons);
+            // Assert - the "Standard view" button should no longer be rendered after OnChange with IsLocked=true
+            var buttonsAfterChange = component.FindAll("button");
+            var standardButtonAfterChange = buttonsAfterChange.FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
+            Assert.Null(standardButtonAfterChange);
         }
 }
