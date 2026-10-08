@@ -394,7 +394,7 @@ jobs:
     uses: ./.github/workflows/pack-nuget-packages.yml
     with:
       version: ${{ needs.build-debian-dev.outputs.version }}
-      github-token: ${{ github.token }}
+    secrets: inherit
 
   publish-dev-release:
     needs: [build-debian-dev, build-windows-dev, pack-and-push-nuget-dev]
@@ -511,7 +511,7 @@ jobs:
     uses: ./.github/workflows/pack-nuget-packages.yml
     with:
       version: ${{ needs.get-version.outputs.version }}
-      github-token: ${{ github.token }}
+    secrets: inherit
 
   # Runs on v* tags and main pushes; dev pushes are handled by publish-dev-release.
   release-installers:
