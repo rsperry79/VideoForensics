@@ -8,6 +8,8 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<AccountDetails> L
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -24,7 +26,7 @@ else
 
     @if (_account == null)
     {
-        <p>Account not found.</p>
+        <p>@L["AccountNotFound"]</p>
     }
     else
     {
@@ -33,44 +35,44 @@ else
                 <h5 class="card-title mb-3">@(_displayName ?? _account.ProviderName)</h5>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Display Name</label>
+                    <label class="form-label fw-bold">@L["DisplayNameLabel"]</label>
                     <p class="form-control-plaintext">@_displayName</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Provider</label>
+                    <label class="form-label fw-bold">@L["ProviderLabel"]</label>
                     <p class="form-control-plaintext">@_account.ProviderName</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Linked</label>
+                    <label class="form-label fw-bold">@L["LinkedLabel"]</label>
                     <p class="form-control-plaintext">@_account.LinkedUtc</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Last Successful Auth</label>
-                    <p class="form-control-plaintext">@(_account.LastSuccessfulAuthUtc?.ToString() ?? "Never")</p>
+                    <label class="form-label fw-bold">@L["LastSuccessfulAuthLabel"]</label>
+                    <p class="form-control-plaintext">@(_account.LastSuccessfulAuthUtc?.ToString() ?? L["Never"])</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Active</label>
-                    <p class="form-control-plaintext">@(_account.IsActive ? "Yes" : "No")</p>
+                    <label class="form-label fw-bold">@L["ActiveLabel"]</label>
+                    <p class="form-control-plaintext">@(_account.IsActive ? L["Yes"] : L["No"])</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Last Download</label>
-                    <p class="form-control-plaintext">@(_account.LastDownloadTimeUtc?.ToString() ?? "Never")</p>
+                    <label class="form-label fw-bold">@L["LastDownloadLabel"]</label>
+                    <p class="form-control-plaintext">@(_account.LastDownloadTimeUtc?.ToString() ?? L["Never"])</p>
                 </div>
 
                 @if (_account.LastErrorUtc.HasValue || !string.IsNullOrEmpty(_account.LastErrorMessage))
                 {
                     <div class="mb-3 p-3 border border-danger rounded" style="background-color: #fff5f5;">
-                        <label class="form-label fw-bold text-danger">Last Error</label>
+                        <label class="form-label fw-bold text-danger">@L["LastErrorLabel"]</label>
                         <p class="form-control-plaintext mb-1">
-                            <strong>Time:</strong> @(_account.LastErrorUtc?.ToString() ?? "-")
+                            <strong>@L["TimeLabel"]</strong> @(_account.LastErrorUtc?.ToString() ?? "-")
                         </p>
                         <p class="form-control-plaintext">
-                            <strong>Message:</strong> @(_account.LastErrorMessage ?? "-")
+                            <strong>@L["MessageLabel"]</strong> @(_account.LastErrorMessage ?? "-")
                         </p>
                     </div>
                 }
@@ -79,15 +81,15 @@ else
 
         <div class="mb-4">
             <div class="d-flex gap-2 align-items-center">
-                <SfButton CssClass="e-primary" Content="Sync Now" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
+                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
                 @if (_isSyncing)
                 {
                     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
                 }
-                <SfButton CssClass="e-primary" Content="Sync Schedule" OnClick="GoToSyncSchedule" />
+                <SfButton CssClass="e-primary" Content="@L["SyncSchedule"]" OnClick="GoToSyncSchedule" />
                 @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
                 {
-                    <SfButton CssClass="e-warning" Content="Login" OnClick="() => _reAuthDialogVisible = true" />
+                    <SfButton CssClass="e-warning" Content="@L["Login"]" OnClick="() => _reAuthDialogVisible = true" />
                 }
             </div>
         </div>
@@ -96,14 +98,14 @@ else
             @if (_confirmingRemove)
             {
                 <div class="d-flex gap-2 align-items-center p-3 border border-danger rounded">
-                    <p class="mb-0">Are you sure you want to remove this account? This cannot be undone.</p>
-                    <SfButton CssClass="e-danger" Content="Yes, Remove" OnClick="ConfirmRemoveAsync" Disabled="@_isBusy" />
-                    <SfButton CssClass="e-outline" Content="Cancel" OnClick="CancelRemove" Disabled="@_isBusy" />
+                    <p class="mb-0">@L["ConfirmRemovePrompt"]</p>
+                    <SfButton CssClass="e-danger" Content="@L["YesRemove"]" OnClick="ConfirmRemoveAsync" Disabled="@_isBusy" />
+                    <SfButton CssClass="e-outline" Content="@L["Cancel"]" OnClick="CancelRemove" Disabled="@_isBusy" />
                 </div>
             }
             else
             {
-                <SfButton CssClass="e-danger" Content="Remove Account" OnClick="PromptRemove" Disabled="@_isBusy" />
+                <SfButton CssClass="e-danger" Content="@L["RemoveAccount"]" OnClick="PromptRemove" Disabled="@_isBusy" />
             }
         </div>
 
@@ -123,7 +125,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Accounts", "/accounts"), ("Account Details", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private VideoForensics.Data.Common.Entities.ProviderAccount? _account;
     private string? _displayName;
     private bool _isLoading = true;
@@ -136,6 +138,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], null) };
         await LoadAccountAsync();
     }
 
@@ -166,7 +169,7 @@ else
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Error loading account: {ex.Message}";
+            _statusMessage = L["ErrorLoadingAccount", ex.Message];
         }
         finally
         {
@@ -207,7 +210,7 @@ else
                 }
                 catch (NotSupportedException)
                 {
-                    _statusMessage = "This setting can only be changed from the server directly.";
+                    _statusMessage = L["SettingServerOnly"];
                     _isBusy = false;
                     return;
                 }
@@ -217,7 +220,7 @@ else
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Error removing account: {ex.Message}";
+            _statusMessage = L["ErrorRemovingAccount", ex.Message];
         }
         finally
         {
@@ -248,7 +251,7 @@ else
             {
                 await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
                 {
-                    Title = "Sync started",
+                    Title = L["SyncStarted"],
                     Icon = "e-success"
                 });
 
@@ -260,7 +263,7 @@ else
             {
                 await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
                 {
-                    Title = "Sync failed",
+                    Title = L["SyncFailed"],
                     Icon = "e-danger"
                 });
             }
@@ -269,7 +272,7 @@ else
         {
             await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
             {
-                Title = "Error",
+                Title = L["ErrorTitle"],
                 Content = ex.Message,
                 Icon = "e-danger"
             });

@@ -32,43 +32,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="GrabStillLabel" xml:space="preserve">
-    <value>Grab still</value>
+  <data name="WaitingForSetup" xml:space="preserve">
+    <value>Waiting for setup</value>
   </data>
-  <data name="GrabStillTitle" xml:space="preserve">
-    <value>Grab still with hash (S)</value>
+  <data name="NotSetUpMessage" xml:space="preserve">
+    <value>This VideoForensics installation hasn&apos;t been set up yet. Ask whoever installed it to open it from the local machine and create the administrator account.</value>
   </data>
-  <data name="GrabStillInProgress" xml:space="preserve">
-    <value>Capturing still…</value>
+  <data name="Checking" xml:space="preserve">
+    <value>Checking...</value>
   </data>
-  <data name="GrabStillErrorPrefix" xml:space="preserve">
-    <value>Grab still failed:</value>
-  </data>
-  <data name="GrabStillResultPrefix" xml:space="preserve">
-    <value>Still captured · SHA-256:</value>
-  </data>
-  <data name="GrabStillOpenLabel" xml:space="preserve">
-    <value>Open</value>
-  </data>
-  <data name="ZoomFit" xml:space="preserve">
-    <value>Fit</value>
-  </data>
-  <data name="FrameBackLabel" xml:space="preserve">
-    <value>◀ frame</value>
-  </data>
-  <data name="FrameForwardLabel" xml:space="preserve">
-    <value>frame ▶</value>
-  </data>
-  <data name="MediaPreviewUnavailable" xml:space="preserve">
-    <value>Media preview unavailable.</value>
-  </data>
-  <data name="ViewerPrev" xml:space="preserve">
-    <value>← Prev</value>
-  </data>
-  <data name="ViewerNext" xml:space="preserve">
-    <value>Next →</value>
-  </data>
-  <data name="ViewerClose" xml:space="preserve">
-    <value>Close</value>
+  <data name="CheckAgain" xml:space="preserve">
+    <value>Check again</value>
   </data>
 </root>

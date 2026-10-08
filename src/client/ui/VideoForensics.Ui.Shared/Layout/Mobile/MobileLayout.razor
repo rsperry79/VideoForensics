@@ -20,13 +20,13 @@
     @if (ConnectivityState.IsUnreachable)
     {
         <div class="alert alert-danger" role="alert" style="margin: 0; border-radius: 0; border: none; padding: 12px 16px;">
-            <strong>Server Not Reachable</strong> — Could not connect to the server. Please check your connection or pair a new device.
+            <strong>@L["ServerNotReachableTitle"]</strong> — @L["ServerNotReachableMessage"]
         </div>
     }
 
     <div class="mobile-app-header">
         <div class="mobile-app-bar">
-            <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="Toggle navigation" />
+            <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="@L["ToggleNavigation"]" />
 
             @if (SessionState.IsSignedIn)
             {
@@ -38,13 +38,13 @@
             </div>
 
             <div style="position: relative; margin-left: auto;">
-                <SfButton Content="🔔" CssClass="notices-button e-flat" OnClick="@ToggleNoticesAsync" title="Notices" />
+                <SfButton Content="🔔" CssClass="notices-button e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
                 @if (_undismissedCount > 0)
                 {
                     <span class="notices-badge">@_undismissedCount</span>
                 }
             </div>
-            <SfButton Content="⚙" CssClass="settings-button e-flat" OnClick="@ToggleSettingsSheetAsync" title="Toggle settings" />
+            <SfButton Content="⚙" CssClass="settings-button e-flat" OnClick="@ToggleSettingsSheetAsync" title="@L["ToggleSettings"]" />
             <UserMenuButton />
         </div>
     </div>
@@ -55,13 +55,13 @@
             @if (_noticesList.Count > 0)
             {
                 <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; text-align: right;">
-                    <SfButton Content="Clear all" OnClick="@DismissAllNoticesAsync" CssClass="e-outline e-small" />
+                    <SfButton Content="@L["ClearAll"]" OnClick="@DismissAllNoticesAsync" CssClass="e-outline e-small" />
                 </div>
             }
             <div style="max-height: 400px; overflow-y: auto;">
                 @if (_noticesList.Count == 0)
                 {
-                    <div style="padding: 16px; text-align: center; color: #666;">No notices</div>
+                    <div style="padding: 16px; text-align: center; color: #666;">@L["NoNotices"]</div>
                 }
                 else
                 {
@@ -82,13 +82,13 @@
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
                             </div>
-                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
+                            <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
                         </div>
                     }
                 }
             </div>
             <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
-                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">View All</a>
+                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
             </div>
         </div>
     }
@@ -102,8 +102,8 @@
         <div class="nav-drawer-backdrop" @onclick="@(() => CloseNavDrawerAsync())"></div>
         <div class="nav-drawer">
             <div class="nav-drawer-header">
-                <div style="flex: 1; font-weight: 600; color: #333;">Navigation</div>
-                <SfButton Content="✕" CssClass="drawer-close-button e-flat" OnClick="@CloseNavDrawerAsync" title="Close navigation" />
+                <div style="flex: 1; font-weight: 600; color: #333;">@L["Navigation"]</div>
+                <SfButton Content="✕" CssClass="drawer-close-button e-flat" OnClick="@CloseNavDrawerAsync" title="@L["CloseNavigation"]" />
             </div>
             <div class="nav-drawer-content">
                 @foreach (var group in VisibleGroups)
@@ -134,8 +134,8 @@
         <div class="settings-sheet-backdrop" @onclick="@(() => CloseSettingsSheetAsync())"></div>
         <div class="settings-sheet">
             <div class="settings-sheet-header">
-                <div style="flex: 1; font-weight: 600; color: #333;">Settings</div>
-                <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="@CloseSettingsSheetAsync" title="Close settings" />
+                <div style="flex: 1; font-weight: 600; color: #333;">@L["Settings"]</div>
+                <SfButton Content="✕" CssClass="sheet-close-button e-flat" OnClick="@CloseSettingsSheetAsync" title="@L["CloseSettings"]" />
             </div>
             <div class="settings-sheet-content">
                 <RightPanelHost />

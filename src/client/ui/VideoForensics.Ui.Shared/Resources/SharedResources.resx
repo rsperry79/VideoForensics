@@ -200,4 +200,421 @@
   <data name="Filters" xml:space="preserve">
     <value>Filters</value>
   </data>
+  <data name="SimpleStandardView" xml:space="preserve">
+    <value>Standard view</value>
+  </data>
+  <data name="SimpleHomeHeading" xml:space="preserve">
+    <value>What happened this week</value>
+  </data>
+  <data name="SimpleHomeLoading" xml:space="preserve">
+    <value>Loading your activity...</value>
+  </data>
+  <data name="SimpleHomeLoadError" xml:space="preserve">
+    <value>We couldn&apos;t load your activity. Please try again later.</value>
+  </data>
+  <data name="SimpleHomeRetry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="SimpleHomeNoActivity" xml:space="preserve">
+    <value>Nothing has been recorded in the last 7 days.</value>
+  </data>
+  <data name="SimpleHomeOlderNote" xml:space="preserve">
+    <value>Older activity is not shown here.</value>
+  </data>
+  <data name="SimpleHomeBlockedUnavailable" xml:space="preserve">
+    <value>Camera-blocked activity can&apos;t be shown right now.</value>
+  </data>
+  <data name="SimpleHomeEvidenceHeading" xml:space="preserve">
+    <value>Your evidence</value>
+  </data>
+  <data name="SimpleHomeNoEvidence" xml:space="preserve">
+    <value>No evidence yet.</value>
+  </data>
+  <data name="SimpleHomeEvidenceOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="SimpleHomeEvidenceUnavailable" xml:space="preserve">
+    <value>No longer available</value>
+  </data>
+  <data name="SimpleDayToday" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="SimpleDayYesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="SimpleEvidenceLabel" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="SimpleEvidenceSnapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="SimpleEvidenceVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="PlainDeviceFallback" xml:space="preserve">
+    <value>Your camera</value>
+  </data>
+  <data name="PlainDeviceNamed" xml:space="preserve">
+    <value>Your {0}</value>
+  </data>
+  <data name="PlainEventDetected" xml:space="preserve">
+    <value>An event was detected.</value>
+  </data>
+  <data name="PlainEventMotion" xml:space="preserve">
+    <value>{0} detected motion.</value>
+  </data>
+  <data name="PlainEventPerson" xml:space="preserve">
+    <value>{0} detected a person.</value>
+  </data>
+  <data name="PlainEventPackage" xml:space="preserve">
+    <value>{0} detected a package.</value>
+  </data>
+  <data name="PlainEventGeneric" xml:space="preserve">
+    <value>{0} detected some activity.</value>
+  </data>
+  <data name="PlainJammingBlocked" xml:space="preserve">
+    <value>{0} was blocked for {1}.</value>
+  </data>
+  <data name="PlainDurationSecond" xml:space="preserve">
+    <value>1 second</value>
+  </data>
+  <data name="PlainDurationSeconds" xml:space="preserve">
+    <value>{0} seconds</value>
+  </data>
+  <data name="PlainDurationMinute" xml:space="preserve">
+    <value>1 minute</value>
+  </data>
+  <data name="PlainDurationMinutes" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
+  <data name="PlainDurationHour" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="PlainDurationHours" xml:space="preserve">
+    <value>{0} hours</value>
+  </data>
+  <data name="PlainDurationHoursAndMinute" xml:space="preserve">
+    <value>{0} hours and 1 minute</value>
+  </data>
+  <data name="PlainDurationHoursAndMinutes" xml:space="preserve">
+    <value>{0} hours and {1} minutes</value>
+  </data>
+  <data name="PlainDurationDay" xml:space="preserve">
+    <value>1 day</value>
+  </data>
+  <data name="PlainDurationDays" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="Switch to Simple view" xml:space="preserve">
+    <value>Switch to Simple view</value>
+  </data>
+  <data name="Switch to Standard view" xml:space="preserve">
+    <value>Switch to Standard view</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Sign Out</value>
+  </data>
+  <data name="AccountMenuTitle" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="OperatorFallback" xml:space="preserve">
+    <value>Operator</value>
+  </data>
+  <data name="ServerNotReachableTitle" xml:space="preserve">
+    <value>Server Not Reachable</value>
+  </data>
+  <data name="ServerNotReachableMessage" xml:space="preserve">
+    <value>Could not connect to the server. Please check your connection or pair a new device.</value>
+  </data>
+  <data name="ToggleNavigation" xml:space="preserve">
+    <value>Toggle navigation</value>
+  </data>
+  <data name="ToggleSettingsPanel" xml:space="preserve">
+    <value>Toggle settings panel</value>
+  </data>
+  <data name="ToggleSettings" xml:space="preserve">
+    <value>Toggle settings</value>
+  </data>
+  <data name="DragToResize" xml:space="preserve">
+    <value>Drag to resize</value>
+  </data>
+  <data name="Notices" xml:space="preserve">
+    <value>Notices</value>
+  </data>
+  <data name="ClearAll" xml:space="preserve">
+    <value>Clear all</value>
+  </data>
+  <data name="NoNotices" xml:space="preserve">
+    <value>No notices</value>
+  </data>
+  <data name="Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="ViewAll" xml:space="preserve">
+    <value>View All</value>
+  </data>
+  <data name="Navigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
+  <data name="CloseNavigation" xml:space="preserve">
+    <value>Close navigation</value>
+  </data>
+  <data name="CloseSettings" xml:space="preserve">
+    <value>Close settings</value>
+  </data>
+  <data name="CloseFilters" xml:space="preserve">
+    <value>Close filters</value>
+  </data>
+  <data name="OpenFilters" xml:space="preserve">
+    <value>Open filters</value>
+  </data>
+  <data name="RelativeJustNow" xml:space="preserve">
+    <value>just now</value>
+  </data>
+  <data name="RelativeMinutesAgo" xml:space="preserve">
+    <value>{0}m ago</value>
+  </data>
+  <data name="RelativeHoursAgo" xml:space="preserve">
+    <value>{0}h ago</value>
+  </data>
+  <data name="RelativeDaysAgo" xml:space="preserve">
+    <value>{0}d ago</value>
+  </data>
+  <data name="CheckingSession" xml:space="preserve">
+    <value>Checking session...</value>
+  </data>
+  <data name="Redirecting" xml:space="preserve">
+    <value>Redirecting...</value>
+  </data>
+  <data name="NoAccountsLinked" xml:space="preserve">
+    <value>No accounts linked yet.</value>
+  </data>
+  <data name="SwitchedActiveAccount" xml:space="preserve">
+    <value>Switched active account.</value>
+  </data>
+  <data name="SwitchedSessionNotResumed" xml:space="preserve">
+    <value>Switched, but the saved session could not be resumed - sign in again.</value>
+  </data>
+  <data name="CouldNotSwitchAccount" xml:space="preserve">
+    <value>Could not switch account: {0}</value>
+  </data>
+  <data name="SearchPlaceholder" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+  <data name="CopyJson" xml:space="preserve">
+    <value>Copy JSON</value>
+  </data>
+  <data name="CopyFailed" xml:space="preserve">
+    <value>Copy failed</value>
+  </data>
+  <data name="InvalidJson" xml:space="preserve">
+    <value>Invalid JSON:</value>
+  </data>
+  <data name="DumpObject" xml:space="preserve">
+    <value>Object</value>
+  </data>
+  <data name="DumpArrayItems" xml:space="preserve">
+    <value>Array ({0} items)</value>
+  </data>
+  <data name="ScopeCase" xml:space="preserve">
+    <value>Case</value>
+  </data>
+  <data name="ScopeCasesUnavailable" xml:space="preserve">
+    <value>Cases unavailable</value>
+  </data>
+  <data name="ScopeNoCase" xml:space="preserve">
+    <value>(no case)</value>
+  </data>
+  <data name="ScopeSaveToCase" xml:space="preserve">
+    <value>Save scope to case</value>
+  </data>
+  <data name="ScopeAllCases" xml:space="preserve">
+    <value>All cases</value>
+  </data>
+  <data name="ScopeDevicesUnavailable" xml:space="preserve">
+    <value>Devices unavailable</value>
+  </data>
+  <data name="ScopeDevices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="ScopeNoDevices" xml:space="preserve">
+    <value>No devices</value>
+  </data>
+  <data name="ScopeAllDevices" xml:space="preserve">
+    <value>All devices</value>
+  </data>
+  <data name="ScopeTimeRange" xml:space="preserve">
+    <value>Time range</value>
+  </data>
+  <data name="ScopeFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="ScopeTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="ScopeQuick24Hours" xml:space="preserve">
+    <value>24h</value>
+  </data>
+  <data name="ScopeQuick7Days" xml:space="preserve">
+    <value>7d</value>
+  </data>
+  <data name="ScopeQuick30Days" xml:space="preserve">
+    <value>30d</value>
+  </data>
+  <data name="ScopeReset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="ScopeSearch" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="AuthFormProvider" xml:space="preserve">
+    <value>Provider:</value>
+  </data>
+  <data name="AuthFormEmail" xml:space="preserve">
+    <value>Email:</value>
+  </data>
+  <data name="AuthFormPassword" xml:space="preserve">
+    <value>Password:</value>
+  </data>
+  <data name="AuthFormSignIn" xml:space="preserve">
+    <value>Sign In</value>
+  </data>
+  <data name="AuthFormSigningIn" xml:space="preserve">
+    <value>Signing in...</value>
+  </data>
+  <data name="AuthFormTwoFactorCode" xml:space="preserve">
+    <value>Enter your 2FA code:</value>
+  </data>
+  <data name="AuthFormVerify" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="AuthFormVerifying" xml:space="preserve">
+    <value>Verifying...</value>
+  </data>
+  <data name="AuthFormAuthFailed" xml:space="preserve">
+    <value>Authentication failed.</value>
+  </data>
+  <data name="AuthFormAuthFailedWithReason" xml:space="preserve">
+    <value>Authentication failed: {0}</value>
+  </data>
+  <data name="BreadcrumbBack" xml:space="preserve">
+    <value>Go back to previous page</value>
+  </data>
+  <data name="ChatThinking" xml:space="preserve">
+    <value>Thinking...</value>
+  </data>
+  <data name="ChatPlaceholder" xml:space="preserve">
+    <value>Ask a question about the investigation...</value>
+  </data>
+  <data name="ChatSend" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="ChatConnectError" xml:space="preserve">
+    <value>Failed to connect to the server. Please check your connection.</value>
+  </data>
+  <data name="ChatGenericError" xml:space="preserve">
+    <value>An error occurred: {0}</value>
+  </data>
+  <data name="ReAuthTitle" xml:space="preserve">
+    <value>Re-authenticate {0}</value>
+  </data>
+  <data name="ReAuthPrompt" xml:space="preserve">
+    <value>Enter the current password for this account to restore access.</value>
+  </data>
+  <data name="ReAuthLogIn" xml:space="preserve">
+    <value>Log In</value>
+  </data>
+  <data name="DownloadProgressTitle" xml:space="preserve">
+    <value>Collection Progress ({0})</value>
+  </data>
+  <data name="DownloadProgressFiles" xml:space="preserve">
+    <value>Files: {0} / {1} ({2} downloaded)</value>
+  </data>
+  <data name="DownloadProgressDevice" xml:space="preserve">
+    <value>Device: {0} ({1} / {2})</value>
+  </data>
+  <data name="DownloadProgressError" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="InspectorTabFields" xml:space="preserve">
+    <value>Fields</value>
+  </data>
+  <data name="InspectorTabRaw" xml:space="preserve">
+    <value>Raw</value>
+  </data>
+  <data name="InspectorTabRelated" xml:space="preserve">
+    <value>Related</value>
+  </data>
+  <data name="InspectorTabProvenance" xml:space="preserve">
+    <value>Provenance</value>
+  </data>
+  <data name="InspectorNoRawData" xml:space="preserve">
+    <value>No raw provider data recorded for this item.</value>
+  </data>
+  <data name="InspectorNoRelated" xml:space="preserve">
+    <value>No related items.</value>
+  </data>
+  <data name="InspectorKey" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="InspectorValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="InspectorNoProvenance" xml:space="preserve">
+    <value>No provenance recorded.</value>
+  </data>
+  <data name="InspectorSelectCase" xml:space="preserve">
+    <value>Select a case in the left panel to pin evidence.</value>
+  </data>
+  <data name="InspectorPinReason" xml:space="preserve">
+    <value>Reason for pinning to this case</value>
+  </data>
+  <data name="InspectorPinTo" xml:space="preserve">
+    <value>Pin to {0}</value>
+  </data>
+  <data name="InspectorHoldReason" xml:space="preserve">
+    <value>Reason for hold</value>
+  </data>
+  <data name="InspectorReleaseReason" xml:space="preserve">
+    <value>Reason for release</value>
+  </data>
+  <data name="InspectorConfirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="InspectorCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="InspectorPlaceHold" xml:space="preserve">
+    <value>Place Legal Hold</value>
+  </data>
+  <data name="InspectorReleaseHold" xml:space="preserve">
+    <value>Release Legal Hold</value>
+  </data>
+  <data name="InspectorVerifyIntegrity" xml:space="preserve">
+    <value>Verify Integrity (device)</value>
+  </data>
+  <data name="InspectorExport" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="InspectorSignInRequired" xml:space="preserve">
+    <value>You must be signed in to perform this action.</value>
+  </data>
+  <data name="InspectorHoldPlaced" xml:space="preserve">
+    <value>Legal hold placed</value>
+  </data>
+  <data name="InspectorHoldReleased" xml:space="preserve">
+    <value>Legal hold released</value>
+  </data>
+  <data name="InspectorFilesVerified" xml:space="preserve">
+    <value>{0} of {1} file(s) verified for this device.</value>
+  </data>
+  <data name="InspectorPinnedTo" xml:space="preserve">
+    <value>Pinned to {0}</value>
+  </data>
+  <data name="GridCellSummary" xml:space="preserve">
+    <value>{0} UTC – {1} event(s), {2} media</value>
+  </data>
+  <data name="GridCellGap" xml:space="preserve">
+    <value>{0} (gap)</value>
+  </data>
 </root>

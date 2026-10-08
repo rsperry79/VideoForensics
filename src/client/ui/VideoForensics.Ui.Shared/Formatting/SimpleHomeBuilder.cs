@@ -1,8 +1,10 @@
 using System.Globalization;
+using Microsoft.Extensions.Localization;
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Ui.Shared.Formatting;
@@ -19,19 +21,20 @@ public sealed class SimpleHomeBuilder
     /// <summary>Maximum number of evidence items returned.</summary>
     public const int MaxEvidenceItems = 50;
 
-    private const string FallbackDeviceName = "Your camera";
-
     private readonly TimeProvider _timeProvider;
     private readonly IMediaContentUrlProvider _urlProvider;
+    private readonly IStringLocalizer<SharedResources> _localizer;
     private readonly TimeZoneInfo _timeZone;
 
     /// <param name="timeProvider">Clock used for the window and the Today/Yesterday headings.</param>
     /// <param name="urlProvider">Resolves browser-loadable addresses for evidence items.</param>
+    /// <param name="localizer">Localizer for every user-visible string (headings, labels, timeline text).</param>
     /// <param name="timeZone">Zone used to show local times; defaults to the machine's local zone.</param>
-    public SimpleHomeBuilder(TimeProvider timeProvider, IMediaContentUrlProvider urlProvider, TimeZoneInfo? timeZone = null)
+    public SimpleHomeBuilder(TimeProvider timeProvider, IMediaContentUrlProvider urlProvider, IStringLocalizer<SharedResources> localizer, TimeZoneInfo? timeZone = null)
     {
         _timeProvider = timeProvider;
         _urlProvider = urlProvider;
+        _localizer = localizer;
         _timeZone = timeZone ?? TimeZoneInfo.Local;
     }
 
@@ -68,7 +71,7 @@ public sealed class SimpleHomeBuilder
             foreach (var evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
                 var when = AsUtc(evt.OccurredAtUtc);
-                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(evt.ToDto(), name), SimpleEntryKind.Event));
+                entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt.ToDto(), name), SimpleEntryKind.Event));
             }
 
             foreach (var item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
@@ -86,7 +89,7 @@ public sealed class SimpleHomeBuilder
                     names.TryGetValue(incident.DeviceId, out var name);
                     var start = AsUtc(incident.StartUtc);
                     // Only the duration is passed on: signal strength and degradation are technical and must not reach victims.
-                    var text = EventPlainLanguageFormatter.DescribeJammingIncident(name, start, AsUtc(incident.EndUtc));
+                    var text = EventPlainLanguageFormatter.DescribeJammingIncident(_localizer, name, start, AsUtc(incident.EndUtc));
                     entries.Add(new SimpleTimelineEntry(start, TimeText(start), text, SimpleEntryKind.Blocked));
                 }
             }
@@ -128,8 +131,8 @@ public sealed class SimpleHomeBuilder
                 url = found;
 
             return new SimpleEvidenceItem(
-                $"{CameraLabel(m.Name)} - {timeText}",
-                MediaFormatHelper.IsImage(m.Item.MediaFormat) ? "Snapshot" : "Video",
+                _localizer["SimpleEvidenceLabel", CameraLabel(m.Name), timeText].Value,
+                MediaFormatHelper.IsImage(m.Item.MediaFormat) ? _localizer["SimpleEvidenceSnapshot"].Value : _localizer["SimpleEvidenceVideo"].Value,
                 when,
                 timeText,
                 url,
@@ -148,11 +151,12 @@ public sealed class SimpleHomeBuilder
             .ToList();
     }
 
-    private static string Heading(DateOnly date, DateOnly today)
+    private string Heading(DateOnly date, DateOnly today)
     {
-        if (date == today) return "Today";
-        if (date == today.AddDays(-1)) return "Yesterday";
-        return date.ToString("dddd d MMMM", CultureInfo.InvariantCulture);
+        if (date == today) return _localizer["SimpleDayToday"].Value;
+        if (date == today.AddDays(-1)) return _localizer["SimpleDayYesterday"].Value;
+        // Day/month names follow the active UI culture (en keeps "Monday 5 October").
+        return date.ToString("dddd d MMMM", CultureInfo.CurrentUICulture);
     }
 
     private string TimeText(DateTime utc) =>
@@ -161,6 +165,6 @@ public sealed class SimpleHomeBuilder
     private static DateTime AsUtc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     // Evidence labels read as a noun phrase ("Front door camera"), unlike timeline text ("Your front door camera ...").
-    private static string CameraLabel(string? name) =>
-        string.IsNullOrWhiteSpace(name) ? FallbackDeviceName : char.ToUpperInvariant(name[0]) + name[1..];
+    private string CameraLabel(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? _localizer["PlainDeviceFallback"].Value : char.ToUpperInvariant(name[0]) + name[1..];
 }

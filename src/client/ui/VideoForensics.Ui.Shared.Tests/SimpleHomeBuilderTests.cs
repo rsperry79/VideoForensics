@@ -73,7 +73,7 @@ public class SimpleHomeBuilderTests
             .ReturnsAsync(items.ToList());
 
     private Task<SimpleHomeModel> BuildAsync(TimeSpan? window = null, CancellationToken ct = default) =>
-        new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, Zone)
+        new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, TestLocalizer.Create(), Zone)
             .BuildAsync(_events.Object, _media.Object, _devices.Object, _jamming.Object, window ?? TimeSpan.FromDays(7), ct);
 
     [Fact]
@@ -120,14 +120,43 @@ public class SimpleHomeBuilderTests
     [Fact]
     public async Task BuildAsync_Headings_UseTodayYesterdayAndDatedForm()
     {
+        // The dated heading uses day/month names from the active UI culture, so pin it for a stable assertion.
+        var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en-US");
+        try
+        {
+            SetEvents(
+                Evt("motion", new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)),
+                Evt("motion", new DateTime(2026, 10, 6, 19, 35, 0, DateTimeKind.Utc)),
+                Evt("motion", new DateTime(2026, 10, 5, 19, 35, 0, DateTimeKind.Utc)));
+
+            var model = await BuildAsync();
+
+            Assert.Equal(new[] { "Today", "Yesterday", "Monday 5 October" }, model.Days.Select(d => d.Heading).ToArray());
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+        }
+    }
+
+    [Fact]
+    public async Task BuildAsync_UserVisibleText_ComesFromTheLocalizer()
+    {
         SetEvents(
             Evt("motion", new DateTime(2026, 10, 7, 19, 35, 0, DateTimeKind.Utc)),
-            Evt("motion", new DateTime(2026, 10, 6, 19, 35, 0, DateTimeKind.Utc)),
-            Evt("motion", new DateTime(2026, 10, 5, 19, 35, 0, DateTimeKind.Utc)));
+            Evt("motion", new DateTime(2026, 10, 6, 19, 35, 0, DateTimeKind.Utc)));
+        SetMedia(Media(new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc)), Media(new DateTime(2026, 10, 7, 18, 0, 0, DateTimeKind.Utc), format: "image/jpeg"));
+        SetJamming(Jam(new DateTime(2026, 10, 7, 17, 0, 0, DateTimeKind.Utc), TimeSpan.FromMinutes(5)));
 
-        var model = await BuildAsync();
+        var model = await new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, new TaggingLocalizer(), Zone)
+            .BuildAsync(_events.Object, _media.Object, _devices.Object, _jamming.Object, TimeSpan.FromDays(7), CancellationToken.None);
 
-        Assert.Equal(new[] { "Today", "Yesterday", "Monday 5 October" }, model.Days.Select(d => d.Heading).ToArray());
+        Assert.Equal(new[] { "L:SimpleDayToday", "L:SimpleDayYesterday" }, model.Days.Select(d => d.Heading).ToArray());
+        Assert.Contains(model.Days[0].Entries, e => e.Kind == SimpleEntryKind.Event && e.Text.StartsWith("L:PlainEventMotion"));
+        Assert.Contains(model.Days[0].Entries, e => e.Kind == SimpleEntryKind.Blocked && e.Text.StartsWith("L:PlainJammingBlocked"));
+        Assert.Equal(new[] { "L:SimpleEvidenceVideo", "L:SimpleEvidenceSnapshot" }, model.Evidence.Select(e => e.TypeText).ToArray());
+        Assert.All(model.Evidence, e => Assert.StartsWith("L:SimpleEvidenceLabel", e.Label));
     }
 
     [Fact]
@@ -155,7 +184,7 @@ public class SimpleHomeBuilderTests
         var model = await BuildAsync();
 
         var entry = Assert.Single(Assert.Single(model.Days).Entries);
-        Assert.Equal(EventPlainLanguageFormatter.DescribeJammingIncident("front door camera", start, start.AddMinutes(5)), entry.Text);
+        Assert.Equal(EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), "front door camera", start, start.AddMinutes(5)), entry.Text);
         Assert.Equal("Your front door camera was blocked for 5 minutes.", entry.Text);
     }
 
@@ -323,7 +352,7 @@ public class SimpleHomeBuilderTests
     }
 
     private Task<SimpleHomeModel> BuildWithJammingAsync(IJammingRepository? jamming, CancellationToken ct = default) =>
-        new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, Zone)
+        new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, TestLocalizer.Create(), Zone)
             .BuildAsync(_events.Object, _media.Object, _devices.Object, jamming, TimeSpan.FromDays(7), ct);
 
     [Fact]

@@ -23,6 +23,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     public InspectorPanel_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
 
         // Defaults: no active case, no signed-in operator. Pin tests override these with
         // RegisterCaseState / RegisterRoleAsync (later registrations win).
@@ -500,6 +501,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     public InspectorPanel_EvidenceActions_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
         Services.AddScoped(_ => new CaseState(new Mock<ICaseRepository>().Object, new ScopeState()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(_ => _legalHoldRepository.Object);

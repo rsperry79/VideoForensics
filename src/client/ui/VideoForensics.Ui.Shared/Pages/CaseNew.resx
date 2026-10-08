@@ -32,43 +32,55 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="GrabStillLabel" xml:space="preserve">
-    <value>Grab still</value>
+  <data name="NewCaseTitle" xml:space="preserve">
+    <value>New Case</value>
   </data>
-  <data name="GrabStillTitle" xml:space="preserve">
-    <value>Grab still with hash (S)</value>
+  <data name="NoPermission" xml:space="preserve">
+    <value>You do not have permission to create cases.</value>
   </data>
-  <data name="GrabStillInProgress" xml:space="preserve">
-    <value>Capturing still…</value>
+  <data name="CaseNumberLabel" xml:space="preserve">
+    <value>Case Number</value>
   </data>
-  <data name="GrabStillErrorPrefix" xml:space="preserve">
-    <value>Grab still failed:</value>
+  <data name="CaseNumberHelp" xml:space="preserve">
+    <value>Auto-generated on creation</value>
   </data>
-  <data name="GrabStillResultPrefix" xml:space="preserve">
-    <value>Still captured · SHA-256:</value>
+  <data name="TitleLabel" xml:space="preserve">
+    <value>Title *</value>
   </data>
-  <data name="GrabStillOpenLabel" xml:space="preserve">
-    <value>Open</value>
+  <data name="TitlePlaceholder" xml:space="preserve">
+    <value>Brief case title</value>
   </data>
-  <data name="ZoomFit" xml:space="preserve">
-    <value>Fit</value>
+  <data name="DescriptionLabel" xml:space="preserve">
+    <value>Description</value>
   </data>
-  <data name="FrameBackLabel" xml:space="preserve">
-    <value>◀ frame</value>
+  <data name="DescriptionPlaceholder" xml:space="preserve">
+    <value>Optional case description</value>
   </data>
-  <data name="FrameForwardLabel" xml:space="preserve">
-    <value>frame ▶</value>
+  <data name="UseCurrentScope" xml:space="preserve">
+    <value>Use current scope</value>
   </data>
-  <data name="MediaPreviewUnavailable" xml:space="preserve">
-    <value>Media preview unavailable.</value>
+  <data name="DevicesLabel" xml:space="preserve">
+    <value>Devices:</value>
   </data>
-  <data name="ViewerPrev" xml:space="preserve">
-    <value>← Prev</value>
+  <data name="AllDevices" xml:space="preserve">
+    <value>All devices</value>
   </data>
-  <data name="ViewerNext" xml:space="preserve">
-    <value>Next →</value>
+  <data name="DevicesSelected" xml:space="preserve">
+    <value>{0} device(s) selected</value>
   </data>
-  <data name="ViewerClose" xml:space="preserve">
-    <value>Close</value>
+  <data name="WindowLabel" xml:space="preserve">
+    <value>Window:</value>
+  </data>
+  <data name="CreateCase" xml:space="preserve">
+    <value>Create Case</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="TitleRequired" xml:space="preserve">
+    <value>Title is required</value>
+  </data>
+  <data name="FailedToCreateCase" xml:space="preserve">
+    <value>Failed to create case: {0}</value>
   </data>
 </root>

@@ -1,5 +1,8 @@
 @using System.Collections.Generic
 @inject NavigationManager NavigationManager
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
     @if (Items != null && Items.Count >= 2)
@@ -9,7 +12,7 @@
             CssClass="e-outline e-small"
             OnClick="@(() => NavigateToParent())"
             TrueName="Back"
-            Title="Go back to previous page" />
+            Title="@L["BreadcrumbBack"]" />
     }
 
     @if (Items != null && Items.Count > 0)

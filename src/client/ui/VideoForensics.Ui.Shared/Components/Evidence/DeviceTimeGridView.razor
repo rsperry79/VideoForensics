@@ -1,4 +1,7 @@
 @using VideoForensics.Ui.Shared.Services.Evidence
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 <div class="device-time-grid" data-testid="device-time-grid">
     <div class="device-time-grid-scroll">
@@ -79,9 +82,9 @@
             : "device-time-cell device-time-cell-active";
     }
 
-    private static string CellTitle(DeviceTimeBucket bucket)
+    private string CellTitle(DeviceTimeBucket bucket)
     {
-        var summary = $"{bucket.StartUtc:yyyy-MM-dd HH:mm} UTC – {bucket.EventCount} event(s), {bucket.SnapshotCount} media";
-        return bucket.IsGap ? $"{summary} (gap)" : summary;
+        var summary = L["GridCellSummary", bucket.StartUtc.ToString("yyyy-MM-dd HH:mm"), bucket.EventCount, bucket.SnapshotCount].Value;
+        return bucket.IsGap ? L["GridCellGap", summary].Value : summary;
     }
 }

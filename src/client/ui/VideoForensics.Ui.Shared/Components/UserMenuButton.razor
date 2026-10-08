@@ -11,7 +11,7 @@
 @* The operator's OWN login (paired-device / WebAuthn session) - kept separate from provider
    account logins, which are switched via AccountSwitcher in the right panel. *@
 <div class="user-menu" data-testid="user-menu" data-role-label="@ButtonLabel">
-    <SfButton Content="@ButtonLabel" CssClass="user-menu-toggle e-flat" OnClick="@Toggle" title="Account" data-testid="user-menu-toggle" />
+    <SfButton Content="@ButtonLabel" CssClass="user-menu-toggle e-flat" OnClick="@Toggle" title="@L["AccountMenuTitle"]" data-testid="user-menu-toggle" />
 
     @if (_open)
     {
@@ -40,7 +40,7 @@
 
     private OperatorRole? Role => SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
 
-    private string ButtonLabel => SessionState.IsSignedIn ? (Role?.ToString() ?? "Operator") : L["Device Sign-In"].Value;
+    private string ButtonLabel => SessionState.IsSignedIn ? (Role?.ToString() ?? L["OperatorFallback"].Value) : L["Device Sign-In"].Value;
 
     private NavContext BuildContext() => new(
         SessionState.IsSignedIn,

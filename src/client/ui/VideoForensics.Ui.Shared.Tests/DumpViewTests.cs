@@ -2,6 +2,7 @@ namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Xunit;
 using VideoForensics.Ui.Shared.Components.Dump;
@@ -11,6 +12,7 @@ public class DumpView_Rendering_Tests : BunitContext
     public DumpView_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
     }
 
     [Fact]

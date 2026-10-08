@@ -19,7 +19,7 @@
         }
         else if (_rows.Count == 0)
         {
-            <small>No accounts linked yet.</small>
+            <small>@L["NoAccountsLinked"]</small>
         }
         else
         {
@@ -121,12 +121,12 @@
 
             var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
             _statusMessage = resumed
-                ? "Switched active account."
-                : "Switched, but the saved session could not be resumed - sign in again.";
+                ? L["SwitchedActiveAccount"].Value
+                : L["SwitchedSessionNotResumed"].Value;
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Could not switch account: {ex.Message}";
+            _statusMessage = L["CouldNotSwitchAccount", ex.Message].Value;
         }
         finally
         {

@@ -69,6 +69,7 @@ public abstract class CasesPagesTestBase : BunitContext
     protected CasesPagesTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
 
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();

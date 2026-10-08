@@ -55,12 +55,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         var mockChatService = new Mock<IChatService>();
         Services.AddScoped(_ => mockChatService.Object);
 
-        // Register IStringLocalizer<SharedResources> mock
-        var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
-        localizerMock
-            .Setup(l => l[It.IsAny<string>()])
-            .Returns((string key) => new LocalizedString(key, key));
-        Services.AddScoped(_ => localizerMock.Object);
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
 
         // Register IAppLockPreferencesStore mock
         var appLockMock = new Mock<IAppLockPreferencesStore>();
@@ -122,7 +117,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         Services.AddScoped(_ => new Mock<IMediaItemRepository>().Object);
         Services.AddScoped(_ => new Mock<IDeviceRepository>().Object);
         Services.AddScoped(_ => new Mock<IJammingRepository>().Object);
-        Services.AddScoped(_ => new SimpleHomeBuilder(TimeProvider.System, new Mock<IMediaContentUrlProvider>().Object));
+        Services.AddScoped(_ => new SimpleHomeBuilder(TimeProvider.System, new Mock<IMediaContentUrlProvider>().Object, TestLocalizer.Create()));
 
         // Register services needed by RightPanel components (AccountSwitcher, ThemeLanguagePicker)
         Services.AddScoped(_ => new Mock<IProviderAccountRepository>().Object);

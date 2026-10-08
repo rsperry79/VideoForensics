@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="BreadcrumbAccounts" xml:space="preserve">
+    <value>Accounts</value>
+  </data>
+  <data name="AddAccount" xml:space="preserve">
+    <value>Add Account</value>
+  </data>
+  <data name="SelectProviderHeading" xml:space="preserve">
+    <value>Select a Provider</value>
+  </data>
+  <data name="SelectProviderPrompt" xml:space="preserve">
+    <value>Choose which video platform to add an account for.</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="UniviewAuthHeading" xml:space="preserve">
+    <value>Uniview NVR Authentication</value>
+  </data>
+  <data name="UniviewHostHint" xml:space="preserve">
+    <value>NVR Host is configured on the server. Enter your local NVR credentials below.</value>
+  </data>
+  <data name="UsernameLabel" xml:space="preserve">
+    <value>Username:</value>
+  </data>
+  <data name="PasswordLabel" xml:space="preserve">
+    <value>Password:</value>
+  </data>
+  <data name="Authenticate" xml:space="preserve">
+    <value>Authenticate</value>
+  </data>
+  <data name="Authenticating" xml:space="preserve">
+    <value>Authenticating...</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="ProviderAccountHeading" xml:space="preserve">
+    <value>{0} Account</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="AccountAddedSuccessfully" xml:space="preserve">
+    <value>Account added successfully for {0}.</value>
+  </data>
+  <data name="AuthenticationFailedHeading" xml:space="preserve">
+    <value>Authentication Failed</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Try Again</value>
+  </data>
+  <data name="FailedToLoadProviders" xml:space="preserve">
+    <value>Failed to load providers: {0}</value>
+  </data>
+  <data name="AuthenticationFailed" xml:space="preserve">
+    <value>Authentication failed.</value>
+  </data>
+  <data name="AuthenticationFailedWithReason" xml:space="preserve">
+    <value>Authentication failed: {0}</value>
+  </data>
+</root>

@@ -17,7 +17,7 @@
         <div class="simple-layout-buttons">
             @if (!UiModeService.IsLocked)
             {
-                <SfButton Content="Standard view" OnClick="@SwitchToStandardAsync" CssClass="simple-layout-standard-button e-flat" />
+                <SfButton Content="@L["SimpleStandardView"]" OnClick="@SwitchToStandardAsync" CssClass="simple-layout-standard-button e-flat" />
             }
             <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="simple-layout-signout e-flat" />
         </div>

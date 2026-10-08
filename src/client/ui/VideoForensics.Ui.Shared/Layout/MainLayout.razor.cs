@@ -300,12 +300,12 @@ namespace VideoForensics.Ui.Shared.Layout
         {
             TimeSpan elapsed = DateTime.UtcNow - utcTime;
             return elapsed.TotalSeconds < 60
-                ? "just now"
+                ? L["RelativeJustNow"].Value
                 : elapsed.TotalMinutes < 60
-                ? $"{(int)elapsed.TotalMinutes}m ago"
+                ? L["RelativeMinutesAgo", (int)elapsed.TotalMinutes].Value
                 : elapsed.TotalHours < 24
-                ? $"{(int)elapsed.TotalHours}h ago"
-                : elapsed.TotalDays < 7 ? $"{(int)elapsed.TotalDays}d ago" : utcTime.ToString("MMM d, yyyy");
+                ? L["RelativeHoursAgo", (int)elapsed.TotalHours].Value
+                : elapsed.TotalDays < 7 ? L["RelativeDaysAgo", (int)elapsed.TotalDays].Value : utcTime.ToString("MMM d, yyyy", System.Globalization.CultureInfo.CurrentUICulture);
         }
 
         public void Dispose()
