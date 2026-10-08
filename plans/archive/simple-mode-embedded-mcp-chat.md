@@ -66,7 +66,7 @@ Follow the existing `NavGroup`/`NavContext` pattern (`NavGroups.cs`) only if Sim
 - New `POST /api/v1/chat/stream` (`ChatEndpoints.cs`) writes `delta`, `tool`, and `done` SSE frames, flushing after each.
 - `RemoteChatService.StreamMessageAsync` reads the stream incrementally; unknown frame names are skipped.
 - `ChatPanel` renders deltas as they arrive. Also fixed: the user's message was sent twice (history plus new message), and `@onkeydown:preventDefault` blocked typing.
-- Still open: no automated test for the stream endpoint's frame output or for `ChatPanel`, and no end-to-end run against a live LLM.
+- Test coverage: the frame-order and `ToSseFrame` tests in `ChatEndpointsPipelineTests` and the `ChatPanel` bUnit tests in `ChatPanelTests` now cover the stream endpoint's frame output and `ChatPanel`. A live Anthropic test exists in `LiveAnthropicChatProviderTests` and runs only when `ANTHROPIC_API_KEY` is set (CI passes the secret to the test step). Caveat: it has not been run against a real key in this session, since it is skipped without one.
 
 ## Execution order (Haiku dispatch, per CLAUDE.md workflow)
 
@@ -82,7 +82,7 @@ Each item below is TDD-first (test written and failing before implementation), o
 8. `IChatOrchestrator` (MCP client loop) + tests (mock `McpClient`)
 9. `ChatEndpoints.cs` (`/api/v1/chat`) + integration test
 10. `RemoteChatService` + registration in `AddVideoForensicsClientApi` + test
-11. `ChatPanel.razor` wired into `MainLayout` and `SimpleLayout`
+11. `ChatPanel.razor` wired into `MainLayout` and `SimpleLayout`. The `/chat` nav item (`NavGroups.cs`, route `/chat`, `ReadOnly` role, rendering `Pages/Chat.razor`) satisfies the optional MainLayout panel, so `ChatPanel` is wired in MainLayout through that nav item rather than as a separate docked panel; it stays in SimpleLayout.
 12. SuperAdmin settings page section for LLM provider config
 
 Full gate (clean rebuild + full test suite + package updates) before opening the PR, with user confirmation first, per existing CLAUDE.md workflow.

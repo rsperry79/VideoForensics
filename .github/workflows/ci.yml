@@ -55,7 +55,12 @@ jobs:
       # (every project reports "Zero tests ran"). Use MTP's native xUnit trx
       # reporter flag instead.
       #
+      # ANTHROPIC_API_KEY feeds the live Anthropic test in VideoForensics.WebApp.Tests, which
+      # skips when the variable is empty, so forks and PRs without the secret stay green.
+      # The key is only passed via env and is never printed.
       - name: Test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
           dotnet test VideoForensics.CI.slnf --configuration Release --no-build
           --report-xunit-trx --results-directory TestResults
