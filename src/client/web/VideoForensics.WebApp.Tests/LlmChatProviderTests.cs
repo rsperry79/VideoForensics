@@ -1,5 +1,5 @@
 using System.Net;
-using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using VideoForensics.WebApp.Chat;
 using Xunit;
@@ -12,9 +12,43 @@ internal static class LlmChatProviderTestHelpers
     public static LlmMessage UserMessage(string content) => new("user", content);
     public static LlmMessage AssistantMessage(string content) => new("assistant", content);
     public static LlmMessage ToolResultMessage(string toolCallId, string result) => new("tool", result, ToolCallId: toolCallId);
+
+    /// <summary>Builds a server-sent-events body from (event, data) frames. Pass null as event for data-only frames.</summary>
+    public static string Sse(params (string? Event, string Data)[] frames)
+    {
+        var sb = new StringBuilder();
+        foreach (var (evt, data) in frames)
+        {
+            if (evt != null) sb.Append("event: ").Append(evt).Append('\n');
+            sb.Append("data: ").Append(data).Append("\n\n");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Drains a provider stream, returning text deltas in order and the single step completion.</summary>
+    public static async Task<(List<string> Deltas, LlmCompletionResult Completion)> CollectAsync(IAsyncEnumerable<LlmStreamEvent> events)
+    {
+        var deltas = new List<string>();
+        LlmCompletionResult? completion = null;
+        await foreach (LlmStreamEvent evt in events)
+        {
+            switch (evt)
+            {
+                case LlmTextDelta delta:
+                    deltas.Add(delta.Text);
+                    break;
+                case LlmStepCompleted step:
+                    Assert.Null(completion); // exactly one completion per step
+                    completion = step.Result;
+                    break;
+            }
+        }
+        Assert.NotNull(completion);
+        return (deltas, completion);
+    }
 }
 
-/// <summary>Tests for AnthropicChatProvider.</summary>
+/// <summary>Tests for AnthropicChatProvider streaming.</summary>
 public class AnthropicChatProvider_Tests
 {
     private static readonly AnthropicChatOptions TestOptions = new()
@@ -29,82 +63,104 @@ public class AnthropicChatProvider_Tests
         JsonSchema: """{"type":"object","properties":{"param":{"type":"string"}},"required":["param"]}"""
     );
 
+    private const string TextBlockStart = """{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""";
+    private const string BlockStop = """{"type":"content_block_stop","index":0}""";
+    private const string MessageStop = """{"type":"message_stop"}""";
+
+    private static string TextDelta(string text) =>
+        JsonSerializer.Serialize(new { type = "content_block_delta", index = 0, delta = new { type = "text_delta", text } });
+
     [Fact]
-    public async Task CompleteAsync_TextReply_ReturnsTextReplyResult()
+    public async Task StreamCompleteAsync_TextReply_YieldsDeltasThenCompletion()
     {
         // Arrange
-        var handler = new TestHttpMessageHandler(response: new
-        {
-            content = new[]
-            {
-                new { type = "text", text = "Hello, world!" }
-            }
-        });
-        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(handler));
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("message_start", """{"type":"message_start"}"""),
+            ("content_block_start", TextBlockStart),
+            ("content_block_delta", TextDelta("Hello, ")),
+            ("content_block_delta", TextDelta("world!")),
+            ("content_block_stop", BlockStop),
+            ("message_stop", MessageStop));
+        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
         var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Hello") };
 
         // Act
-        var result = await provider.CompleteAsync(messages, Array.Empty<LlmToolDefinition>(), CancellationToken.None);
+        var (deltas, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(messages, Array.Empty<LlmToolDefinition>(), CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
+        Assert.Equal(new[] { "Hello, ", "world!" }, deltas);
         Assert.Equal("Hello, world!", result.TextReply);
         Assert.False(result.IsToolCall);
-        Assert.Null(result.ToolName);
     }
 
     [Fact]
-    public async Task CompleteAsync_ToolCall_ReturnsToolCallResult()
+    public async Task StreamCompleteAsync_ToolCall_AccumulatesPartialJsonIntoArguments()
     {
         // Arrange
-        var toolCallId = "call_123";
-        var handler = new TestHttpMessageHandler(response: new
-        {
-            content = new[]
-            {
-                new
-                {
-                    type = "tool_use",
-                    id = toolCallId,
-                    name = "test_tool",
-                    input = new { param = "test_value" }
-                }
-            }
-        });
-        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(handler));
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"test_tool","input":{}}}"""),
+            ("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"param\":"}}"""),
+            ("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\"test_value\"}"}}"""),
+            ("content_block_stop", BlockStop),
+            ("message_stop", MessageStop));
+        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
         var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Call a tool") };
 
         // Act
-        var result = await provider.CompleteAsync(messages, new[] { TestTool }, CancellationToken.None);
+        var (deltas, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(messages, new[] { TestTool }, CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
+        Assert.Empty(deltas);
         Assert.True(result.IsToolCall);
-        Assert.Equal(toolCallId, result.ToolCallId);
+        Assert.Equal("toolu_1", result.ToolCallId);
         Assert.Equal("test_tool", result.ToolName);
-        Assert.NotNull(result.ToolArgumentsJson);
+        Assert.Equal("""{"param":"test_value"}""", result.ToolArgumentsJson);
         Assert.Null(result.TextReply);
     }
 
     [Fact]
-    public async Task CompleteAsync_WithToolResultMessage_IncludesInRequest()
+    public async Task StreamCompleteAsync_TextBeforeToolCall_StillReportsToolCall()
+    {
+        // Arrange: a step that says "Let me check" and then calls a tool. Text is streamed, the tool call is the result.
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("content_block_start", TextBlockStart),
+            ("content_block_delta", TextDelta("Let me check.")),
+            ("content_block_stop", BlockStop),
+            ("content_block_start", """{"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_2","name":"test_tool","input":{}}}"""),
+            ("content_block_delta", """{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{}"}}"""),
+            ("content_block_stop", BlockStop),
+            ("message_stop", MessageStop));
+        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
+
+        // Act
+        var (deltas, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("x") }, new[] { TestTool }, CancellationToken.None));
+
+        // Assert
+        Assert.Equal(new[] { "Let me check." }, deltas);
+        Assert.True(result.IsToolCall);
+        Assert.Equal("toolu_2", result.ToolCallId);
+    }
+
+    [Fact]
+    public async Task StreamCompleteAsync_WithToolResultMessage_IncludesInRequest()
     {
         // Arrange
         var toolCallId = "call_123";
-        var handler = new TestHttpMessageHandler(
-            requestValidator: req =>
-            {
-                // Verify the request includes the tool result message
-                var body = req.Content?.ReadAsStringAsync().Result ?? "";
-                Assert.Contains("tool", body);
-                Assert.Contains(toolCallId, body);
-                Assert.Contains("tool result content", body);
-            },
-            response: new
-            {
-                content = new[] { new { type = "text", text = "Got it" } }
-            }
-        );
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("content_block_start", TextBlockStart),
+            ("content_block_delta", TextDelta("Got it")),
+            ("content_block_stop", BlockStop),
+            ("message_stop", MessageStop));
+        var handler = new TestSseHttpMessageHandler(sse, requestValidator: req =>
+        {
+            var body = req.Content?.ReadAsStringAsync().Result ?? "";
+            Assert.Contains("tool_result", body);
+            Assert.Contains(toolCallId, body);
+            Assert.Contains("tool result content", body);
+        });
         var provider = new AnthropicChatProvider(TestOptions, new HttpClient(handler));
         var messages = new[]
         {
@@ -114,41 +170,55 @@ public class AnthropicChatProvider_Tests
         };
 
         // Act
-        var result = await provider.CompleteAsync(messages, new[] { TestTool }, CancellationToken.None);
+        var (_, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(messages, new[] { TestTool }, CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
         Assert.Equal("Got it", result.TextReply);
     }
 
     [Fact]
-    public async Task CompleteAsync_SendsCorrectRequestFormat()
+    public async Task StreamCompleteAsync_SendsStreamingRequestWithAuthHeaders()
     {
         // Arrange
-        var handler = new TestHttpMessageHandler(
-            requestValidator: req =>
-            {
-                Assert.Equal(HttpMethod.Post, req.Method);
-                Assert.Contains("test-key", req.Headers.GetValues("x-api-key").First());
-                Assert.NotNull(req.Content);
-            },
-            response: new
-            {
-                content = new[] { new { type = "text", text = "OK" } }
-            }
-        );
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("content_block_start", TextBlockStart),
+            ("content_block_delta", TextDelta("OK")),
+            ("content_block_stop", BlockStop),
+            ("message_stop", MessageStop));
+        var handler = new TestSseHttpMessageHandler(sse, requestValidator: req =>
+        {
+            Assert.Equal(HttpMethod.Post, req.Method);
+            Assert.Contains("test-key", req.Headers.GetValues("x-api-key").First());
+            var body = req.Content?.ReadAsStringAsync().Result ?? "";
+            Assert.Contains("\"stream\":true", body);
+        });
         var provider = new AnthropicChatProvider(TestOptions, new HttpClient(handler));
-        var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Test") };
 
         // Act
-        await provider.CompleteAsync(messages, Array.Empty<LlmToolDefinition>(), CancellationToken.None);
+        var (_, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Test") }, Array.Empty<LlmToolDefinition>(), CancellationToken.None));
 
         // Assert
-        // Handler validation already ran
+        Assert.Equal("OK", result.TextReply);
+    }
+
+    [Fact]
+    public async Task StreamCompleteAsync_ErrorEvent_Throws()
+    {
+        // Arrange
+        string sse = LlmChatProviderTestHelpers.Sse(
+            ("error", """{"type":"error","error":{"type":"overloaded_error","message":"busy"}}"""));
+        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
+
+        // Act + Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LlmChatProviderTestHelpers.CollectAsync(
+                provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Test") }, Array.Empty<LlmToolDefinition>(), CancellationToken.None)));
     }
 }
 
-/// <summary>Tests for OpenAiCompatibleChatProvider.</summary>
+/// <summary>Tests for OpenAiCompatibleChatProvider streaming.</summary>
 public class OpenAiCompatibleChatProvider_Tests
 {
     private static readonly OpenAiChatOptions TestOptions = new()
@@ -164,97 +234,65 @@ public class OpenAiCompatibleChatProvider_Tests
     );
 
     [Fact]
-    public async Task CompleteAsync_TextReply_ReturnsTextReplyResult()
+    public async Task StreamCompleteAsync_TextReply_YieldsDeltasThenCompletion()
     {
         // Arrange
-        var handler = new TestHttpMessageHandler(response: new
-        {
-            choices = new[]
-            {
-                new
-                {
-                    message = new { role = "assistant", content = "Hello, world!" }
-                }
-            }
-        });
-        var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(handler));
-        var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Hello") };
+        string sse = LlmChatProviderTestHelpers.Sse(
+            (null, """{"choices":[{"index":0,"delta":{"role":"assistant","content":"Hi"}}]}"""),
+            (null, """{"choices":[{"index":0,"delta":{"content":" there"}}]}"""),
+            (null, """{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}"""),
+            (null, "[DONE]"));
+        var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
 
         // Act
-        var result = await provider.CompleteAsync(messages, Array.Empty<LlmToolDefinition>(), CancellationToken.None);
+        var (deltas, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Hello") }, Array.Empty<LlmToolDefinition>(), CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal("Hello, world!", result.TextReply);
+        Assert.Equal(new[] { "Hi", " there" }, deltas);
+        Assert.Equal("Hi there", result.TextReply);
         Assert.False(result.IsToolCall);
-        Assert.Null(result.ToolName);
     }
 
     [Fact]
-    public async Task CompleteAsync_ToolCall_ReturnsToolCallResult()
+    public async Task StreamCompleteAsync_ToolCall_AccumulatesArgumentFragments()
     {
         // Arrange
-        var toolCallId = "call_123";
-        var handler = new TestHttpMessageHandler(response: new
-        {
-            choices = new[]
-            {
-                new
-                {
-                    message = new
-                    {
-                        role = "assistant",
-                        content = (string?)null,
-                        tool_calls = new[]
-                        {
-                            new
-                            {
-                                id = toolCallId,
-                                function = new
-                                {
-                                    name = "test_tool",
-                                    arguments = """{"param":"test_value"}"""
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(handler));
-        var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Call a tool") };
+        string sse = LlmChatProviderTestHelpers.Sse(
+            (null, """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"test_tool","arguments":""}}]}}]}"""),
+            (null, """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"param\":"}}]}}]}"""),
+            (null, """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"x\"}"}}]}}]}"""),
+            (null, """{"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}"""),
+            (null, "[DONE]"));
+        var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(new TestSseHttpMessageHandler(sse)));
 
         // Act
-        var result = await provider.CompleteAsync(messages, new[] { TestTool }, CancellationToken.None);
+        var (deltas, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Call") }, new[] { TestTool }, CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
+        Assert.Empty(deltas);
         Assert.True(result.IsToolCall);
-        Assert.Equal(toolCallId, result.ToolCallId);
+        Assert.Equal("call_1", result.ToolCallId);
         Assert.Equal("test_tool", result.ToolName);
-        Assert.Equal("""{"param":"test_value"}""", result.ToolArgumentsJson);
-        Assert.Null(result.TextReply);
+        Assert.Equal("""{"param":"x"}""", result.ToolArgumentsJson);
     }
 
     [Fact]
-    public async Task CompleteAsync_WithToolResultMessage_IncludesInRequest()
+    public async Task StreamCompleteAsync_WithToolResultMessage_IncludesInRequest()
     {
         // Arrange
         var toolCallId = "call_123";
-        var handler = new TestHttpMessageHandler(
-            requestValidator: req =>
-            {
-                // Verify the request includes the tool result message
-                var body = req.Content?.ReadAsStringAsync().Result ?? "";
-                Assert.Contains("tool", body);
-                Assert.Contains(toolCallId, body);
-                Assert.Contains("tool result content", body);
-            },
-            response: new
-            {
-                choices = new[] { new { message = new { role = "assistant", content = "Got it" } } }
-            }
-        );
+        string sse = LlmChatProviderTestHelpers.Sse(
+            (null, """{"choices":[{"index":0,"delta":{"content":"Got it"}}]}"""),
+            (null, "[DONE]"));
+        var handler = new TestSseHttpMessageHandler(sse, requestValidator: req =>
+        {
+            var body = req.Content?.ReadAsStringAsync().Result ?? "";
+            Assert.Contains("tool_call_id", body);
+            Assert.Contains(toolCallId, body);
+            Assert.Contains("tool result content", body);
+        });
         var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(handler));
         var messages = new[]
         {
@@ -264,49 +302,47 @@ public class OpenAiCompatibleChatProvider_Tests
         };
 
         // Act
-        var result = await provider.CompleteAsync(messages, new[] { TestTool }, CancellationToken.None);
+        var (_, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(messages, new[] { TestTool }, CancellationToken.None));
 
         // Assert
-        Assert.NotNull(result);
         Assert.Equal("Got it", result.TextReply);
     }
 
     [Fact]
-    public async Task CompleteAsync_SendsCorrectRequestFormat()
+    public async Task StreamCompleteAsync_SendsStreamingRequestWithBearerAuth()
     {
         // Arrange
-        var handler = new TestHttpMessageHandler(
-            requestValidator: req =>
-            {
-                Assert.Equal(HttpMethod.Post, req.Method);
-                Assert.Contains("test-key", req.Headers.GetValues("Authorization").First());
-                Assert.NotNull(req.Content);
-            },
-            response: new
-            {
-                choices = new[] { new { message = new { role = "assistant", content = "OK" } } }
-            }
-        );
+        string sse = LlmChatProviderTestHelpers.Sse(
+            (null, """{"choices":[{"index":0,"delta":{"content":"OK"}}]}"""),
+            (null, "[DONE]"));
+        var handler = new TestSseHttpMessageHandler(sse, requestValidator: req =>
+        {
+            Assert.Equal(HttpMethod.Post, req.Method);
+            Assert.Equal("Bearer test-key", req.Headers.Authorization?.ToString());
+            var body = req.Content?.ReadAsStringAsync().Result ?? "";
+            Assert.Contains("\"stream\":true", body);
+        });
         var provider = new OpenAiCompatibleChatProvider(TestOptions, new HttpClient(handler));
-        var messages = new[] { LlmChatProviderTestHelpers.UserMessage("Test") };
 
         // Act
-        await provider.CompleteAsync(messages, Array.Empty<LlmToolDefinition>(), CancellationToken.None);
+        var (_, result) = await LlmChatProviderTestHelpers.CollectAsync(
+            provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Test") }, Array.Empty<LlmToolDefinition>(), CancellationToken.None));
 
         // Assert
-        // Handler validation already ran
+        Assert.Equal("OK", result.TextReply);
     }
 }
 
-/// <summary>Mock HTTP message handler for testing.</summary>
-internal class TestHttpMessageHandler : HttpMessageHandler
+/// <summary>Mock HTTP message handler that returns a fixed server-sent-events body.</summary>
+internal class TestSseHttpMessageHandler : HttpMessageHandler
 {
+    private readonly string _sseBody;
     private readonly Action<HttpRequestMessage>? _requestValidator;
-    private readonly object _response;
 
-    public TestHttpMessageHandler(object response, Action<HttpRequestMessage>? requestValidator = null)
+    public TestSseHttpMessageHandler(string sseBody, Action<HttpRequestMessage>? requestValidator = null)
     {
-        _response = response;
+        _sseBody = sseBody;
         _requestValidator = requestValidator;
     }
 
@@ -314,13 +350,7 @@ internal class TestHttpMessageHandler : HttpMessageHandler
     {
         _requestValidator?.Invoke(request);
 
-        var json = JsonSerializer.Serialize(_response);
-        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-        return Task.FromResult(new HttpResponseMessage
-        {
-            StatusCode = HttpStatusCode.OK,
-            Content = content
-        });
+        var content = new StringContent(_sseBody, Encoding.UTF8, "text/event-stream");
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
     }
 }
