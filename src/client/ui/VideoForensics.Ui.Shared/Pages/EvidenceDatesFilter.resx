@@ -32,43 +32,34 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="GrabStillLabel" xml:space="preserve">
-    <value>Grab still</value>
+  <data name="BackToEvidence" xml:space="preserve">
+    <value>Back to Evidence</value>
   </data>
-  <data name="GrabStillTitle" xml:space="preserve">
-    <value>Grab still with hash (S)</value>
+  <data name="FilterByDate" xml:space="preserve">
+    <value>Filter by Date</value>
   </data>
-  <data name="GrabStillInProgress" xml:space="preserve">
-    <value>Capturing still…</value>
+  <data name="Last24h" xml:space="preserve">
+    <value>Last 24h</value>
   </data>
-  <data name="GrabStillErrorPrefix" xml:space="preserve">
-    <value>Grab still failed:</value>
+  <data name="Last3Days" xml:space="preserve">
+    <value>Last 3 days</value>
   </data>
-  <data name="GrabStillResultPrefix" xml:space="preserve">
-    <value>Still captured · SHA-256:</value>
+  <data name="Last7Days" xml:space="preserve">
+    <value>Last 7 days</value>
   </data>
-  <data name="GrabStillOpenLabel" xml:space="preserve">
-    <value>Open</value>
+  <data name="LastMonth" xml:space="preserve">
+    <value>Last month</value>
   </data>
-  <data name="ZoomFit" xml:space="preserve">
-    <value>Fit</value>
+  <data name="Custom" xml:space="preserve">
+    <value>Custom</value>
   </data>
-  <data name="FrameBackLabel" xml:space="preserve">
-    <value>◀ frame</value>
+  <data name="StartDate" xml:space="preserve">
+    <value>Start Date</value>
   </data>
-  <data name="FrameForwardLabel" xml:space="preserve">
-    <value>frame ▶</value>
+  <data name="EndDate" xml:space="preserve">
+    <value>End Date</value>
   </data>
-  <data name="MediaPreviewUnavailable" xml:space="preserve">
-    <value>Media preview unavailable.</value>
-  </data>
-  <data name="ViewerPrev" xml:space="preserve">
-    <value>← Prev</value>
-  </data>
-  <data name="ViewerNext" xml:space="preserve">
-    <value>Next →</value>
-  </data>
-  <data name="ViewerClose" xml:space="preserve">
-    <value>Close</value>
+  <data name="Apply" xml:space="preserve">
+    <value>Apply</value>
   </data>
 </root>

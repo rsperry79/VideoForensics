@@ -3,16 +3,17 @@
 @using VideoForensics.Ui.Shared.Services
 @inject NavigationManager NavigationManager
 @inject WebAuthnClient WebAuthn
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<AwaitingSetup> L
 
-<h4 class="mb-4">Waiting for setup</h4>
+<h4 class="mb-4">@L["WaitingForSetup"]</h4>
 <p class="card-text text-center text-muted mb-4">
-    This VideoForensics installation hasn't been set up yet. Ask whoever installed it to open
-    it from the local machine and create the administrator account.
+    @L["NotSetUpMessage"]
 </p>
 
 <div class="d-flex justify-content-center">
     <SfButton CssClass="btn-primary btn-lg" OnClick="CheckAgainAsync" Disabled="@_checking">
-        @(_checking ? "Checking..." : "Check again")
+        @(_checking ? L["Checking"] : L["CheckAgain"])
     </SfButton>
 </div>
 

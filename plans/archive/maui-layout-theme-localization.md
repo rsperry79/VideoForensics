@@ -1,11 +1,11 @@
 # Docked MAUI/Blazor Layout + Theme + Localization + Per-Operator Preferences
 
-**STATUS: MOSTLY COMPLETE (2026-10-08)**
+**STATUS: COMPLETED (2026-10-08)**
 
-- DONE: docked layout / NavGroups, per-operator `OperatorPreferences` (theme, culture, UiMode), 46 resx files. 40 of the 54 real pages under `Ui.Shared/Pages` use `IStringLocalizer` (the two redirect pages EventsRedirect and WorkflowRedirect have no text).
-- REMAINING - 14 pages without localization: AccessControl, AccountDetails, AccountSyncSchedule, AddAccountWizard, AwaitingSetup, CaseDetails, CaseNew, Cases, EvidenceDatesFilter, ForensicReports, JammingAnalysis, Notices, SignalAnomalies, Welcome.
-- REMAINING - Simple Mode strings that are hard-coded English: `Layout/Simple/SimpleLayout.razor` "Standard view" button (line 20); `Layout/Simple/SimpleHome.razor` headings and messages ("What happened this week", "Your evidence", "We couldn't load your activity...") and `Formatting/SimpleHomeBuilder.cs` day headings (no localizer in either); user-menu toggle labels "Switch to Simple view" / "Switch to Standard view" in `Layout/NavGroups.cs` (lines 128, 132). Already resx: the operator-details "Display mode" section (`Pages/OperatorDetails.resx`).
-- Decision unchanged: English-only for now.
+- DONE: docked layout / NavGroups, per-operator `OperatorPreferences` (theme, culture, UiMode), localization of every page with user-visible text, Simple Mode, layout chrome and shared components (English only; the infrastructure and culture selector are ready for more languages).
+- Intentionally left in English: enum columns bound to data in the case grids, the `ChatToolsFormatter` "Checked: " prefix, the brand name, date/time formats, pass-through exception and provider text.
+- The pages AccessControl, ForensicReports, JammingAnalysis, SignalAnomalies, EventsRedirect and WorkflowRedirect are redirects with no text.
+- Follow-up: browser check of the localized pages.
 
 ## Context
 

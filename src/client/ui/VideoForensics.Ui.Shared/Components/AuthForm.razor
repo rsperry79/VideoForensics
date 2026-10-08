@@ -5,6 +5,9 @@
    MenuManager.AuthenticateWithTwoFactorAsync in the console app for the equivalent flow). *@
 @using System.Linq
 @inject IProviderAuthService AuthService
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 @inject IMultiProviderAuthService MultiProviderAuthService
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
@@ -20,29 +23,29 @@
         @if (AvailableProviders is { Count: > 1 })
         {
             <div>
-                <label for="@($"{IdPrefix}-provider")">Provider:</label>
+                <label for="@($"{IdPrefix}-provider")">@L["AuthFormProvider"]</label>
                 <SfDropDownList TValue="string" TItem="string" ID="@($"{IdPrefix}-provider")" DataSource="@AvailableProviders" @bind-Value="_selectedProvider" />
             </div>
         }
         <div>
-            <label for="@($"{IdPrefix}-email")">Email:</label>
+            <label for="@($"{IdPrefix}-email")">@L["AuthFormEmail"]</label>
             <SfTextBox ID="@($"{IdPrefix}-email")" @bind-Value="_email" />
         </div>
         <div>
-            <label for="@($"{IdPrefix}-password")">Password:</label>
+            <label for="@($"{IdPrefix}-password")">@L["AuthFormPassword"]</label>
             <SfTextBox ID="@($"{IdPrefix}-password")" Type="Syncfusion.Blazor.Inputs.InputType.Password" @bind-Value="_password" />
         </div>
-        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? "Signing in..." : SubmitLabel)" />
+        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? L["AuthFormSigningIn"].Value : (SubmitLabel ?? L["AuthFormSignIn"].Value))" />
     </EditForm>
 }
 else
 {
     <EditForm Model="this" OnValidSubmit="SubmitTwoFactorAsync">
         <div>
-            <label for="@($"{IdPrefix}-2fa")">Enter your 2FA code:</label>
+            <label for="@($"{IdPrefix}-2fa")">@L["AuthFormTwoFactorCode"]</label>
             <SfTextBox ID="@($"{IdPrefix}-2fa")" @bind-Value="_twoFactorCode" />
         </div>
-        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? "Verifying..." : "Verify")" />
+        <SfButton CssClass="e-primary" type="submit" Disabled="@_isBusy" Content="@(_isBusy ? L["AuthFormVerifying"].Value : L["AuthFormVerify"].Value)" />
     </EditForm>
 }
 
@@ -51,7 +54,7 @@ else
     [Parameter] public string IdPrefix { get; set; } = "auth";
 
     /// <summary>Label for the credentials submit button.</summary>
-    [Parameter] public string SubmitLabel { get; set; } = "Sign In";
+    [Parameter] public string? SubmitLabel { get; set; }
 
     /// <summary>Raised after a successful login, once ActiveProviderAccountId has been set/saved when applicable.</summary>
     [Parameter] public EventCallback<AuthResult> OnAuthenticated { get; set; }
@@ -106,13 +109,13 @@ else
             }
             else
             {
-                _errorMessage = result.ErrorMessage ?? "Authentication failed.";
+                _errorMessage = result.ErrorMessage ?? L["AuthFormAuthFailed"].Value;
                 _needsTwoFactor = false;
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Authentication failed: {ex.Message}";
+            _errorMessage = L["AuthFormAuthFailedWithReason", ex.Message].Value;
             _needsTwoFactor = false;
         }
         finally

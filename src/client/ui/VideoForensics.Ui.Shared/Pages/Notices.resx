@@ -32,43 +32,49 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="GrabStillLabel" xml:space="preserve">
-    <value>Grab still</value>
+  <data name="NoticesTitle" xml:space="preserve">
+    <value>Notices</value>
   </data>
-  <data name="GrabStillTitle" xml:space="preserve">
-    <value>Grab still with hash (S)</value>
+  <data name="BreadcrumbHome" xml:space="preserve">
+    <value>Home</value>
   </data>
-  <data name="GrabStillInProgress" xml:space="preserve">
-    <value>Capturing still…</value>
+  <data name="ShowDismissed" xml:space="preserve">
+    <value>Show dismissed</value>
   </data>
-  <data name="GrabStillErrorPrefix" xml:space="preserve">
-    <value>Grab still failed:</value>
+  <data name="MarkAllAsRead" xml:space="preserve">
+    <value>Mark all as read</value>
   </data>
-  <data name="GrabStillResultPrefix" xml:space="preserve">
-    <value>Still captured · SHA-256:</value>
+  <data name="NoNoticesFound" xml:space="preserve">
+    <value>No notices found.</value>
   </data>
-  <data name="GrabStillOpenLabel" xml:space="preserve">
-    <value>Open</value>
+  <data name="NoUndismissedNotices" xml:space="preserve">
+    <value>No undismissed notices.</value>
   </data>
-  <data name="ZoomFit" xml:space="preserve">
-    <value>Fit</value>
+  <data name="ColumnSeverity" xml:space="preserve">
+    <value>Severity</value>
   </data>
-  <data name="FrameBackLabel" xml:space="preserve">
-    <value>◀ frame</value>
+  <data name="ColumnEventType" xml:space="preserve">
+    <value>Event Type</value>
   </data>
-  <data name="FrameForwardLabel" xml:space="preserve">
-    <value>frame ▶</value>
+  <data name="ColumnDetails" xml:space="preserve">
+    <value>Details</value>
   </data>
-  <data name="MediaPreviewUnavailable" xml:space="preserve">
-    <value>Media preview unavailable.</value>
+  <data name="ColumnTimestamp" xml:space="preserve">
+    <value>Timestamp</value>
   </data>
-  <data name="ViewerPrev" xml:space="preserve">
-    <value>← Prev</value>
+  <data name="Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
   </data>
-  <data name="ViewerNext" xml:space="preserve">
-    <value>Next →</value>
+  <data name="SeverityInfo" xml:space="preserve">
+    <value>Info</value>
   </data>
-  <data name="ViewerClose" xml:space="preserve">
-    <value>Close</value>
+  <data name="SeverityWarning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="SeverityAlert" xml:space="preserve">
+    <value>Alert</value>
+  </data>
+  <data name="SeverityCritical" xml:space="preserve">
+    <value>Critical</value>
   </data>
 </root>

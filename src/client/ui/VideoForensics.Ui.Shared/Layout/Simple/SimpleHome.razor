@@ -1,36 +1,39 @@
 @namespace VideoForensics.Ui.Shared.Layout.Simple
 @implements IDisposable
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Ui.Shared.Formatting
+@using VideoForensics.Ui.Shared.Resources
 @inject SimpleHomeBuilder Builder
 @inject IEventRepository Events
 @inject IMediaItemRepository Media
 @inject IDeviceRepository Devices
 @inject IServiceProvider Services
 @inject ILogger<SimpleHome> Logger
+@inject IStringLocalizer<SharedResources> L
 
 <div class="simple-home">
-    <h1 class="simple-home-heading">What happened this week</h1>
+    <h1 class="simple-home-heading">@L["SimpleHomeHeading"]</h1>
 
     @if (_state == LoadState.Loading)
     {
-        <p class="simple-home-loading" role="status">Loading your activity...</p>
+        <p class="simple-home-loading" role="status">@L["SimpleHomeLoading"]</p>
     }
     else if (_state == LoadState.Failed)
     {
         <div class="simple-home-error" role="alert">
-            <p>We couldn't load your activity. Please try again later.</p>
-            <button type="button" class="simple-home-retry" @onclick="RetryAsync">Retry</button>
+            <p>@L["SimpleHomeLoadError"]</p>
+            <button type="button" class="simple-home-retry" @onclick="RetryAsync">@L["SimpleHomeRetry"]</button>
         </div>
     }
     else if (_model is not null)
     {
         @if (_model.Days.Count == 0)
         {
-            <p class="simple-timeline-empty">Nothing has been recorded in the last 7 days.</p>
+            <p class="simple-timeline-empty">@L["SimpleHomeNoActivity"]</p>
         }
         else
         {
@@ -52,20 +55,20 @@
 
             @if (_model.HasMoreTimeline)
             {
-                <p class="simple-more-note">Older activity is not shown here.</p>
+                <p class="simple-more-note">@L["SimpleHomeOlderNote"]</p>
             }
         }
 
         @if (_model.BlockedActivityUnavailable)
         {
-            <p class="simple-blocked-unavailable">Camera-blocked activity can't be shown right now.</p>
+            <p class="simple-blocked-unavailable">@L["SimpleHomeBlockedUnavailable"]</p>
         }
 
         <section class="simple-evidence">
-            <h2 class="simple-evidence-heading">Your evidence</h2>
+            <h2 class="simple-evidence-heading">@L["SimpleHomeEvidenceHeading"]</h2>
             @if (_model.Evidence.Count == 0)
             {
-                <p class="simple-evidence-empty">No evidence yet.</p>
+                <p class="simple-evidence-empty">@L["SimpleHomeNoEvidence"]</p>
             }
             else
             {
@@ -77,11 +80,11 @@
                             <span class="simple-evidence-type">@item.TypeText</span>
                             @if (item.IsAvailable && item.Url is not null)
                             {
-                                <a class="simple-evidence-open" href="@item.Url" target="_blank" rel="noopener noreferrer">Open</a>
+                                <a class="simple-evidence-open" href="@item.Url" target="_blank" rel="noopener noreferrer">@L["SimpleHomeEvidenceOpen"]</a>
                             }
                             else
                             {
-                                <span class="simple-evidence-unavailable">No longer available</span>
+                                <span class="simple-evidence-unavailable">@L["SimpleHomeEvidenceUnavailable"]</span>
                             }
                         </li>
                     }

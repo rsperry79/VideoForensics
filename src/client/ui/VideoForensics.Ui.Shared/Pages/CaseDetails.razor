@@ -1,4 +1,5 @@
 @page "/cases/{CaseId:guid}"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Core.Contracts
@@ -18,6 +19,7 @@
 @inject PairedSessionState SessionState
 @inject CaseState CaseState
 @inject InspectorState InspectorState
+@inject IStringLocalizer<CaseDetails> L
 
 <div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
     <div style="overflow: auto;">
@@ -26,12 +28,12 @@
     {
         <span>@_case.CaseNumber · @_case.Title</span>
         <span class="badge" style="background-color: @(_case.Status == CaseStatus.Closed ? "#6c757d" : "#198754")">
-            @_case.Status.ToString()
+            @StatusText(_case.Status)
         </span>
     }
     else
     {
-        <span>Case Details</span>
+        <span>@L["CaseDetailsTitle"]</span>
     }
 </h4>
 
@@ -41,23 +43,23 @@
 }
 else if (_case is null)
 {
-    <div class="alert alert-warning">Case not found.</div>
+    <div class="alert alert-warning">@L["CaseNotFound"]</div>
 }
 else
 {
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header">Case Information</div>
+                <div class="card-header">@L["CaseInformation"]</div>
                 <div class="card-body">
-                    <p><strong>Case Number:</strong> @_case.CaseNumber</p>
-                    <p><strong>Title:</strong> @_case.Title</p>
-                    <p><strong>Status:</strong> @_case.Status.ToString()</p>
-                    <p><strong>Created:</strong> @_case.CreatedAtUtc:u</p>
-                    <p><strong>Updated:</strong> @_case.UpdatedAtUtc:u</p>
+                    <p><strong>@L["CaseNumberLabel"]</strong> @_case.CaseNumber</p>
+                    <p><strong>@L["TitleLabel"]</strong> @_case.Title</p>
+                    <p><strong>@L["StatusLabel"]</strong> @StatusText(_case.Status)</p>
+                    <p><strong>@L["CreatedLabel"]</strong> @_case.CreatedAtUtc:u</p>
+                    <p><strong>@L["UpdatedLabel"]</strong> @_case.UpdatedAtUtc:u</p>
                     @if (!string.IsNullOrEmpty(_case.Description))
                     {
-                        <p><strong>Description:</strong> @_case.Description</p>
+                        <p><strong>@L["DescriptionLabel"]</strong> @_case.Description</p>
                     }
                 </div>
             </div>
@@ -67,32 +69,32 @@ else
                 <div class="mt-3">
                     @if (CanClose)
                     {
-                        <button class="btn btn-danger" @onclick="CloseCase" data-testid="close-case">Close Case</button>
+                        <button class="btn btn-danger" @onclick="CloseCase" data-testid="close-case">@L["CloseCase"]</button>
                     }
-                    <button class="btn btn-primary" @onclick="ActivateCase" data-testid="activate-case">Work on this case</button>
+                    <button class="btn btn-primary" @onclick="ActivateCase" data-testid="activate-case">@L["WorkOnCase"]</button>
                 </div>
             }
             else if (_case.Status == CaseStatus.Closed && CanClose)
             {
                 <div class="mt-3">
-                    <button class="btn btn-success" @onclick="ReopenCase" data-testid="reopen-case">Reopen Case</button>
+                    <button class="btn btn-success" @onclick="ReopenCase" data-testid="reopen-case">@L["ReopenCase"]</button>
                 </div>
             }
         </div>
 
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header">Scope</div>
+                <div class="card-header">@L["ScopeHeading"]</div>
                 <div class="card-body">
-                    <p><strong>Devices:</strong></p>
+                    <p><strong>@L["DevicesLabel"]</strong></p>
                     <ul class="list-unstyled">
                         @if (_case.ScopeFromUtc is null && _case.ScopeToUtc is null)
                         {
-                            <li>No saved scope</li>
+                            <li>@L["NoSavedScope"]</li>
                         }
                         else
                         {
-                            <li>Window: @_case.ScopeFromUtc:u - @_case.ScopeToUtc:u</li>
+                            <li>@(L["ScopeWindow", _case.ScopeFromUtc?.ToString("u") ?? "", _case.ScopeToUtc?.ToString("u") ?? ""])</li>
                         }
                     </ul>
                 </div>
@@ -102,22 +104,22 @@ else
 
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Pinned Items</span>
+            <span>@L["PinnedItems"]</span>
             <div>
                 <label class="form-check-label">
                     <input type="checkbox" class="form-check-input" @onchange="OnShowRemovedChanged" data-testid="show-removed" />
-                    Show removed
+                    @L["ShowRemoved"]
                 </label>
             </div>
         </div>
         <div class="card-body">
             @if (_caseItems is null)
             {
-                <p>Loading items...</p>
+                <p>@L["LoadingItems"]</p>
             }
             else if (_caseItems.Count == 0)
             {
-                <p>No pinned items.</p>
+                <p>@L["NoPinnedItems"]</p>
             }
             else
             {
@@ -126,20 +128,20 @@ else
                               OnRowSelected="@OnItemSelected"
                               ToInspector="@(row => InspectorModelFromItem(row))">
                     <Columns>
-                        <GridColumn Field="@nameof(CaseItemRow.Kind)" HeaderText="Kind" Width="100"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.Label)" HeaderText="Label" Width="250"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.Reason)" HeaderText="Reason" Width="200"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.AddedBy)" HeaderText="Added By" Width="120"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.AddedAtUtc)" HeaderText="Added At" Width="150" Format="@("u")"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.Integrity)" HeaderText="Integrity" Width="100"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Kind)" HeaderText="@L["ColumnKind"]" Width="100"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Label)" HeaderText="@L["ColumnLabel"]" Width="250"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Reason)" HeaderText="@L["ColumnReason"]" Width="200"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.AddedBy)" HeaderText="@L["ColumnAddedBy"]" Width="120"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.AddedAtUtc)" HeaderText="@L["ColumnAddedAt"]" Width="150" Format="@("u")"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.Integrity)" HeaderText="@L["ColumnIntegrity"]" Width="100"></GridColumn>
                     </Columns>
                 </ForensicGrid>
 
                 @if (CanEdit && _selectedItem is not null && _case.Status != CaseStatus.Closed)
                 {
                     <div class="mt-3">
-                        <input type="text" class="form-control mb-2" placeholder="Removal reason" @bind="_removalReason" data-testid="remove-reason" />
-                        <button class="btn btn-danger" @onclick="RemoveItem" data-testid="remove-pin">Remove Pin</button>
+                        <input type="text" class="form-control mb-2" placeholder="@L["RemovalReasonPlaceholder"]" @bind="_removalReason" data-testid="remove-reason" />
+                        <button class="btn btn-danger" @onclick="RemoveItem" data-testid="remove-pin">@L["RemovePin"]</button>
                     </div>
                 }
             }
@@ -162,6 +164,13 @@ else
     private bool _showRemoved = false;
     private string? _error;
     private string _removalReason = "";
+
+    private string StatusText(CaseStatus status) => status switch
+    {
+        CaseStatus.Open => L["StatusOpen"],
+        CaseStatus.Closed => L["StatusClosed"],
+        _ => status.ToString()
+    };
 
     private bool CanEdit =>
         SessionState.OperatorId.HasValue &&
@@ -197,7 +206,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load case: {ex.Message}";
+            _error = L["FailedToLoadCase", ex.Message].Value;
         }
     }
 
@@ -230,7 +239,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load case items: {ex.Message}";
+            _error = L["FailedToLoadCaseItems", ex.Message].Value;
         }
     }
 
@@ -260,7 +269,7 @@ else
             // Ignore errors, return "Unavailable" below
         }
 
-        return "Unavailable";
+        return L["Unavailable"];
     }
 
     private async Task<PinIntegrity> GetItemIntegrity(CaseItem item)
@@ -291,10 +300,10 @@ else
     {
         var provenance = new List<KeyValuePair<string, string>>
         {
-            new("Reason", row.Reason),
-            new("Added By", row.AddedBy),
-            new("Added At", row.AddedAtUtc.ToString("u")),
-            new("Integrity", row.Integrity.ToString())
+            new(L["ColumnReason"], row.Reason),
+            new(L["ColumnAddedBy"], row.AddedBy),
+            new(L["ColumnAddedAt"], row.AddedAtUtc.ToString("u")),
+            new(L["ColumnIntegrity"], row.Integrity.ToString())
         };
 
         return new InspectorModel(
@@ -324,7 +333,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to remove item: {ex.Message}";
+            _error = L["FailedToRemoveItem", ex.Message].Value;
         }
     }
 
@@ -344,7 +353,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to activate case: {ex.Message}";
+            _error = L["FailedToActivateCase", ex.Message].Value;
         }
     }
 
@@ -362,7 +371,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to close case: {ex.Message}";
+            _error = L["FailedToCloseCase", ex.Message].Value;
         }
     }
 
@@ -380,7 +389,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to reopen case: {ex.Message}";
+            _error = L["FailedToReopenCase", ex.Message].Value;
         }
     }
 

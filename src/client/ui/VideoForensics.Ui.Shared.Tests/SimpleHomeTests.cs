@@ -48,7 +48,7 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
         Services.AddScoped(_ => _media.Object);
         Services.AddScoped(_ => _devices.Object);
         Services.AddScoped(_ => _jamming.Object);
-        Services.AddScoped(_ => new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, Zone));
+        Services.AddScoped(_ => new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), _urls.Object, TestLocalizer.Create(), Zone));
     }
 
     private static Device Device(Guid id, string name) => new()
@@ -102,6 +102,19 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
 
         Assert.Equal("What happened this week", component.Find("h1.simple-home-heading").TextContent.Trim());
         Assert.Contains("Your evidence", component.Find("h2.simple-evidence-heading").TextContent);
+    }
+
+    [Fact]
+    public void SimpleHome_Text_ComesFromTheLocalizer()
+    {
+        Services.AddScoped<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>(_ => new TaggingLocalizer());
+
+        var component = RenderLoaded();
+
+        Assert.Equal("L:SimpleHomeHeading", component.Find("h1.simple-home-heading").TextContent.Trim());
+        Assert.Equal("L:SimpleHomeEvidenceHeading", component.Find("h2.simple-evidence-heading").TextContent.Trim());
+        Assert.Equal("L:SimpleHomeNoActivity", component.Find(".simple-timeline-empty").TextContent.Trim());
+        Assert.Equal("L:SimpleHomeNoEvidence", component.Find(".simple-evidence-empty").TextContent.Trim());
     }
 
     [Fact]

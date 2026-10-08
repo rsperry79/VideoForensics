@@ -51,6 +51,11 @@
 #### ✅ **Project reorganization (utils)** — COMPLETED
 - **Plan:** `plans/archive/phase-3-project-reorganization.md`
 
+#### ✅ **Docked layout, theme and localization** — COMPLETED 2026-10-08
+- **Plan:** `plans/archive/maui-layout-theme-localization.md`
+- **Implementation:** Docked layout, per-operator theme/culture/UI mode, every page and shared component localized (English only), Simple Mode strings via `SharedResources.resx`
+- **Testing:** Ui.Shared.Tests 793 passed, 0 failed; CLAUDE.md now requires localizing all user-visible text
+
 ---
 
 ## Current Work State (2026-10-08)
@@ -79,8 +84,7 @@
 
 1. **Scheduled per-account background sync (CRITICAL, partial).** `SyncSchedule` entity/repository and the `AccountSyncSchedule.razor` page exist, keyed DI and `UseSystemd` are in place, but no background service consumes the schedules. See `plans/scheduled-background-sync-tasks-linux.md` and `plans/SCHEDULED_SYNC_REFACTORED_PLAN.md`.
 2. **Finish Radzen removal.** `FolderBrowserDialog.razor`, the `Radzen.Blazor` package reference and stale comments. See `plans/ui-framework-migration-syncfusion.md`.
-3. **Finish localization.** 14 pages plus the Simple Mode strings. See `plans/maui-layout-theme-localization.md`.
-4. **Deferred / known issues:**
+3. **Deferred / known issues:**
    - Log viewer M6 (local MAUI logs)
    - Streaming chat
    - Operator details page loads the operator through a SuperAdmin-only call, so a plain Admin sees an unauthorized alert

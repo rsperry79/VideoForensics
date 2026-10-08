@@ -44,7 +44,7 @@ From CLAUDE.md and codebase analysis:
 - **Impact:** Opens product to victims/home-owners (market expansion)
 - **Risk:** LOW (reuses existing MCP, layout pattern already proven)
 - **Status:** DONE 2026-10-08 (Simple Mode shipped end to end)
-- **Recommendation:** Done; remaining follow-ups are localization of its strings and a browser check
+- **Recommendation:** Done; remaining follow-up is a browser check
 
 ---
 
@@ -98,9 +98,8 @@ From CLAUDE.md and codebase analysis:
 
 ## Current Execution Order (2026-10-08)
 
-Done: simple-mode (2026-10-08), api-error-logging (PR #172), per-user-login (PR #166), ci-cd versioning and update check (PR #159).
+Done: simple-mode (2026-10-08), api-error-logging (PR #172), per-user-login (PR #166), ci-cd versioning and update check (PR #159), localization (2026-10-08).
 
 1. **Scheduled per-account sync (CRITICAL, partial)** - `SyncSchedule` storage, `AccountSyncSchedule.razor`, keyed DI and `UseSystemd` exist; the event-sync and snapshot/RSSI background services that consume the schedules do not. Sequential vs. refactored: PR #152 (account-aware provider services, `ISessionProvider.GetSession(Guid providerAccountId)`) already addressed most of the SessionProvider race the refactored plan feared, so the refactor is mostly done; only about 10 parameterless `GetSession()` call sites remain to re-audit. Plans: `scheduled-background-sync-tasks-linux.md` (full scope) and `SCHEDULED_SYNC_REFACTORED_PLAN.md` (overlaps it).
 2. **Radzen removal (small)** - `FolderBrowserDialog.razor`, the `Radzen.Blazor` package reference, `@using Radzen` in `_Imports.razor` and stale comments (`ui-framework-migration-syncfusion.md`).
-3. **Localization of the last 14 pages (mechanical)** plus the hard-coded Simple Mode strings (`maui-layout-theme-localization.md`).
-4. **Backlog** - MAUI log viewer M6 (local logs), streaming chat, operator details page SuperAdmin-only load for plain Admins, browser check of Simple Mode / log viewer / case numbering.
+3. **Backlog** - MAUI log viewer M6 (local logs), streaming chat, operator details page SuperAdmin-only load for plain Admins, browser check of Simple Mode / log viewer / case numbering.

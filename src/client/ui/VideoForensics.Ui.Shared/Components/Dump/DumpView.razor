@@ -1,22 +1,25 @@
 @implements IAsyncDisposable
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
 
 <div class="dump-view">
     @if (ShowSearch)
     {
         <div class="dump-search-bar">
-            <input type="text" class="form-control" placeholder="Search..." @bind="SearchTerm" @bind:event="oninput" />
+            <input type="text" class="form-control" placeholder="@L["SearchPlaceholder"]" @bind="SearchTerm" @bind:event="oninput" />
         </div>
     }
 
     @if (ShowCopy)
     {
         <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="CopyToClipboard">
-            Copy JSON
+            @L["CopyJson"]
         </button>
         @if (copyFailed)
         {
-            <span class="text-danger ms-2" style="font-size: 0.875rem;">Copy failed</span>
+            <span class="text-danger ms-2" style="font-size: 0.875rem;">@L["CopyFailed"]</span>
         }
     }
 
@@ -39,7 +42,7 @@
     else if (invalidJsonError != null)
     {
         <div class="alert alert-danger">
-            <strong>Invalid JSON:</strong> @invalidJsonError
+            <strong>@L["InvalidJson"]</strong> @invalidJsonError
         </div>
         <pre style="background-color: var(--bs-gray-100); padding: 10px; border-radius: 4px; max-height: 200px; overflow: auto;">@rawJsonInput</pre>
     }

@@ -8,6 +8,9 @@
 @using VideoForensics.Ui.Shared.Components.Dump
 @implements IDisposable
 @inject InspectorState InspectorState
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 @inject CaseState CaseState
 @inject PairedSessionState SessionState
 @inject ILegalHoldRepository LegalHoldRepository
@@ -26,22 +29,22 @@
             <button class="inspector-tab @(_activeTab == "fields" ? "active" : "")"
                     data-testid="inspector-tab-fields"
                     @onclick="@(() => SelectTab("fields"))">
-                Fields
+                @L["InspectorTabFields"]
             </button>
             <button class="inspector-tab @(_activeTab == "raw" ? "active" : "")"
                     data-testid="inspector-tab-raw"
                     @onclick="@(() => SelectTab("raw"))">
-                Raw
+                @L["InspectorTabRaw"]
             </button>
             <button class="inspector-tab @(_activeTab == "related" ? "active" : "")"
                     data-testid="inspector-tab-related"
                     @onclick="@(() => SelectTab("related"))">
-                Related
+                @L["InspectorTabRelated"]
             </button>
             <button class="inspector-tab @(_activeTab == "provenance" ? "active" : "")"
                     data-testid="inspector-tab-provenance"
                     @onclick="@(() => SelectTab("provenance"))">
-                Provenance
+                @L["InspectorTabProvenance"]
             </button>
         </div>
 
@@ -58,7 +61,7 @@
                 }
                 else
                 {
-                    <div class="muted-text">No raw provider data recorded for this item.</div>
+                    <div class="muted-text">@L["InspectorNoRawData"]</div>
                 }
             }
             else if (_activeTab == "related")
@@ -74,7 +77,7 @@
                 }
                 else
                 {
-                    <div class="muted-text">No related items.</div>
+                    <div class="muted-text">@L["InspectorNoRelated"]</div>
                 }
             }
             else if (_activeTab == "provenance")
@@ -84,8 +87,8 @@
                     <table class="provenance-table">
                         <thead>
                             <tr>
-                                <th>Key</th>
-                                <th>Value</th>
+                                <th>@L["InspectorKey"]</th>
+                                <th>@L["InspectorValue"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,7 +104,7 @@
                 }
                 else
                 {
-                    <div class="muted-text">No provenance recorded.</div>
+                    <div class="muted-text">@L["InspectorNoProvenance"]</div>
                 }
             }
         </div>
@@ -111,13 +114,13 @@
             <div class="inspector-pin-section">
                 @if (CaseState.ActiveCase is null)
                 {
-                    <div class="muted-text">Select a case in the left panel to pin evidence.</div>
+                    <div class="muted-text">@L["InspectorSelectCase"]</div>
                 }
                 else if (CaseState.ActiveCase.Status == CaseStatus.Open && _role.HasValue && _role >= OperatorRole.Review)
                 {
                     <textarea class="inspector-pin-reason"
                               data-testid="pin-reason"
-                              placeholder="Reason for pinning to this case"
+                              placeholder="@L["InspectorPinReason"]"
                               @bind="_pinReason"
                               @bind:event="oninput"></textarea>
                     <button type="button"
@@ -125,7 +128,7 @@
                             data-testid="pin-to-case"
                             disabled="@string.IsNullOrWhiteSpace(_pinReason)"
                             @onclick="OnPinClicked">
-                        Pin to @CaseState.ActiveCase.CaseNumber
+                        @L["InspectorPinTo", CaseState.ActiveCase.CaseNumber]
                     </button>
                     @if (_pinSuccessMessage is not null)
                     {
@@ -148,22 +151,22 @@
                     {
                         <textarea class="inspector-action-reason"
                                   data-testid="hold-reason"
-                                  placeholder="Reason for hold"
+                                  placeholder="@L["InspectorHoldReason"]"
                                   @bind="_actionReasonInput"
                                   @bind:event="oninput"></textarea>
                         <button type="button" data-testid="confirm-place-hold"
                                 disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
                                 @onclick="OnConfirmPlaceHoldClicked">
-                            Confirm
+                            @L["InspectorConfirm"]
                         </button>
                         <button type="button" data-testid="cancel-evidence-action" @onclick="OnCancelActionClicked">
-                            Cancel
+                            @L["InspectorCancel"]
                         </button>
                     }
                     else
                     {
                         <button type="button" data-testid="place-legal-hold" @onclick="@(() => BeginAction(PendingEvidenceAction.Hold))">
-                            Place Legal Hold
+                            @L["InspectorPlaceHold"]
                         </button>
                     }
                 }
@@ -174,22 +177,22 @@
                     {
                         <textarea class="inspector-action-reason"
                                   data-testid="hold-reason"
-                                  placeholder="Reason for release"
+                                  placeholder="@L["InspectorReleaseReason"]"
                                   @bind="_actionReasonInput"
                                   @bind:event="oninput"></textarea>
                         <button type="button" data-testid="confirm-release-hold"
                                 disabled="@string.IsNullOrWhiteSpace(_actionReasonInput)"
                                 @onclick="OnConfirmReleaseClicked">
-                            Confirm
+                            @L["InspectorConfirm"]
                         </button>
                         <button type="button" data-testid="cancel-evidence-action" @onclick="OnCancelActionClicked">
-                            Cancel
+                            @L["InspectorCancel"]
                         </button>
                     }
                     else
                     {
                         <button type="button" data-testid="release-legal-hold" @onclick="@(() => BeginAction(PendingEvidenceAction.Release))">
-                            Release Legal Hold
+                            @L["InspectorReleaseHold"]
                         </button>
                     }
                 }
@@ -197,14 +200,14 @@
                 @if (EvidenceActions.CanVerifyIntegrity(EffectiveActions))
                 {
                     <button type="button" data-testid="verify-integrity" @onclick="OnVerifyIntegrityClicked">
-                        Verify Integrity (device)
+                        @L["InspectorVerifyIntegrity"]
                     </button>
                 }
 
                 @if (EvidenceActions.CanExport(EffectiveActions))
                 {
                     <button type="button" data-testid="export-evidence" @onclick="OnExportClicked">
-                        Export
+                        @L["InspectorExport"]
                     </button>
                 }
 
@@ -306,7 +309,7 @@
         try
         {
             await CaseState.PinAsync(pin.Kind, pin.TargetId, _pinReason, actor, CancellationToken.None);
-            _pinSuccessMessage = $"Pinned to {caseNumber}";
+            _pinSuccessMessage = L["InspectorPinnedTo", caseNumber].Value;
         }
         catch (InvalidOperationException ex)
         {
@@ -364,7 +367,7 @@
         var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
         if (actor is null)
         {
-            _actionError = "You must be signed in to perform this action.";
+            _actionError = L["InspectorSignInRequired"].Value;
             _pendingAction = PendingEvidenceAction.None;
             _actionReasonInput = string.Empty;
             return;
@@ -375,7 +378,7 @@
             var hold = await LegalHoldRepository.PlaceAsync(mediaItemId, _actionReasonInput, actor, CancellationToken.None);
             _hasHoldOverride = true;
             _holdOverrideActiveHoldId = hold.Id;
-            _actionSuccessMessage = "Legal hold placed";
+            _actionSuccessMessage = L["InspectorHoldPlaced"].Value;
         }
         catch (Exception ex)
         {
@@ -403,7 +406,7 @@
         var actor = EvidenceActions.ResolveOperatorActor(SessionState.OperatorId);
         if (actor is null)
         {
-            _actionError = "You must be signed in to perform this action.";
+            _actionError = L["InspectorSignInRequired"].Value;
             _pendingAction = PendingEvidenceAction.None;
             _actionReasonInput = string.Empty;
             return;
@@ -414,7 +417,7 @@
             await LegalHoldRepository.ReleaseAsync(holdId, actor, _actionReasonInput, CancellationToken.None);
             _hasHoldOverride = true;
             _holdOverrideActiveHoldId = null;
-            _actionSuccessMessage = "Legal hold released";
+            _actionSuccessMessage = L["InspectorHoldReleased"].Value;
         }
         catch (Exception ex)
         {
@@ -440,7 +443,7 @@
         {
             var results = await EvidenceValidationService.VerifyLocalIntegrityAsync(actions.DeviceId, CancellationToken.None);
             var failed = results.Count(r => r.Status != "verified");
-            _actionSuccessMessage = $"{results.Count - failed} of {results.Count} file(s) verified for this device.";
+            _actionSuccessMessage = L["InspectorFilesVerified", results.Count - failed, results.Count].Value;
         }
         catch (Exception ex)
         {

@@ -1,9 +1,12 @@
 @implements IAsyncDisposable
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 @if (IsActive || _hasEverStarted)
 {
     <div class="download-progress-panel">
-        <h3>Collection Progress (@CollectionType)</h3>
+        <h3>@L["DownloadProgressTitle", CollectionType]</h3>
 
         @{
             var progress = _progress;
@@ -13,19 +16,18 @@
         @if (progress is not null)
         {
             <p>
-                Files: @progress.FilesCompleted / @progress.FilesTotal
-                (@FormatBytes(progress.BytesDownloaded) downloaded)
+                @L["DownloadProgressFiles", progress.FilesCompleted, progress.FilesTotal, FormatBytes(progress.BytesDownloaded)]
             </p>
         }
 
         @if (currentDevice.Total > 0)
         {
-            <p>Device: @currentDevice.Name (@currentDevice.Index / @currentDevice.Total)</p>
+            <p>@L["DownloadProgressDevice", currentDevice.Name, currentDevice.Index, currentDevice.Total]</p>
         }
 
         @if (!string.IsNullOrEmpty(_lastError))
         {
-            <p style="color: red;">Error: @_lastError</p>
+            <p style="color: red;">@L["DownloadProgressError", _lastError]</p>
         }
 
         <div class="activity-log" style="height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 4px; font-family: monospace; font-size: 0.85em;">
