@@ -54,8 +54,8 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            // Verify it's a NotFound result
-            var notFoundResult = Assert.IsType<NotFound>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(404, status.StatusCode);
         }
 
         [Fact]
@@ -167,7 +167,8 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            var notFoundResult = Assert.IsType<NotFound>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(404, status.StatusCode);
             preferences.Verify(r => r.SetUiModeAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
             auditLog.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -196,7 +197,8 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            var badRequestResult = Assert.IsType<BadRequest>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(400, status.StatusCode);
             preferences.Verify(r => r.SetUiModeAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
             auditLog.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
