@@ -249,6 +249,9 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
+// Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
+builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
+
 // Forensics query repositories (Phases 1-4) - MCP tools (Milestone 8 HTTP hosting)
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ITimelineRepository, VideoForensics.Data.Database.Repositories.TimelineRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRepository, VideoForensics.Data.Database.Repositories.IntegrityRepository>();

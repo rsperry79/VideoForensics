@@ -158,5 +158,39 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
-    }
+
+        /// <summary>Lists every enabled sync schedule with its JammingWindows, ordered by ProviderAccountId.</summary>
+        public async Task<IReadOnlyList<SyncSchedule>> ListEnabledAsync(CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.SyncSchedules
+                .AsNoTracking()
+                .Include(ss => ss.JammingWindows)
+                .Where(ss => ss.IsEnabled)
+                .OrderBy(ss => ss.ProviderAccountId)
+                .ToListAsync(ct);
+        }
+
+        /// <summary>Updates only EventLastRunUtc/EventNextRunUtc; a vanished row is a no-op.</summary>
+        public async Task RecordEventRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct)
+        {
+            // Set-based update (no entity load) so a concurrent edit of intervals/IsEnabled is never overwritten.
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(ss => ss.EventLastRunUtc, ranAtUtc)
+                    .SetProperty(ss => ss.EventNextRunUtc, nextRunUtc), ct);
+        }
+
+        /// <summary>Updates only SnapshotLastRunUtc/SnapshotNextRunUtc; a vanished row is a no-op.</summary>
+        public async Task RecordSnapshotRunAsync(Guid providerAccountId, DateTime ranAtUtc, DateTime nextRunUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(ss => ss.SnapshotLastRunUtc, ranAtUtc)
+                    .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
+        }    }
 }
