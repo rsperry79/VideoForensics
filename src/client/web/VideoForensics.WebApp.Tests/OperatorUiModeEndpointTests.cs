@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Moq;
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
@@ -66,7 +67,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator" });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
             preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
@@ -93,7 +94,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator" });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
             var storedPrefs = new OperatorPreferences
             {
@@ -127,7 +128,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test" });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
             preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
@@ -182,7 +183,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test" });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
@@ -211,7 +212,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test" });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var savedPrefs = new OperatorPreferences
             {
@@ -258,7 +259,7 @@ namespace VideoForensics.WebApp.Tests
 
             var operators = new Mock<IOperatorRepository>();
             operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = targetUsername });
+                .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = targetUsername, FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var savedPrefs = new OperatorPreferences
             {
