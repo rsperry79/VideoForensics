@@ -4,6 +4,10 @@
 
 ### Phase C: Authentication & Release Infrastructure
 
+#### ✅ **UI Framework Migration: Radzen to Syncfusion** — COMPLETED 2026-10-08
+- **Plan:** `plans/archive/ui-framework-migration-syncfusion.md`
+- **Status:** Radzen fully removed (FolderBrowserDialog migrated, package and imports dropped); browser walkthrough not done
+
 #### ✅ **Phase C Item 2: Per-User Login (Password + Passkey)** — COMPLETED 2026-10-05
 - **Plan:** `plans/archive/per-user-login-password-passkey.md`
 - **Status:** Merged to dev (PR #166)

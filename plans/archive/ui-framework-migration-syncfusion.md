@@ -1,6 +1,8 @@
 # Migrate UI framework: Radzen.Blazor → Syncfusion Blazor
 
-**STATUS: NEARLY COMPLETE (2026-10-08)**
+**STATUS: COMPLETED (2026-10-08)**
+
+- Radzen fully removed: FolderBrowserDialog now uses Syncfusion, the Radzen.Blazor package and @using imports are gone. Browser walkthrough not done.
 
 - 62 of 90 razor files under `VideoForensics.Ui.Shared` use Sf* components; `AddSyncfusionBlazor()` is registered in WebApp `Program.cs` (line 112) and `MauiProgram.cs` (line 51); `AddRadzenComponents` is gone.
 - REMAINING: `src/client/ui/VideoForensics.Ui.Shared/Dialogs/FolderBrowserDialog.razor` still uses RadzenText/RadzenStack/RadzenButton (lines 10-26, plus `@using Radzen` at lines 4-5); `<PackageReference Include="Radzen.Blazor" Version="12.0.7" />` is still in `VideoForensics.Ui.Shared.csproj` (line 25); `@using Radzen` / `@using Radzen.Blazor` remain in `_Imports.razor` (lines 9-10).
