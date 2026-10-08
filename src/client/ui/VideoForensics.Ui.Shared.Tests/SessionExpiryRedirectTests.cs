@@ -13,7 +13,7 @@ using VideoForensics.Ui.Shared.Services;
 /// when PairedSessionState raises AuthenticationExpired, the layout must send the user to
 /// /signin carrying a returnUrl back to the page they were on.
 /// </summary>
-public class SessionExpiryRedirectTests : UserMenuButtonTestBase
+public class SessionExpiryRedirectTests : SimpleModeLayoutTestBase
 {
     [Fact]
     public async Task MobileLayout_SessionExpires_NavigatesToSignInWithReturnUrl()
