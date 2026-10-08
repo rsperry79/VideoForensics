@@ -98,7 +98,7 @@ so it can also be compiled directly from a checkout for quick iteration without 
 
 ### CI / Release Pipeline
 
-`.github/workflows/release-installers.yml`, `publish-testing.yml`, and `publish-dev.yml` all publish
+`.github/workflows/ci.yml` (dev, main and tag runs) and `.github/workflows/release-installers.yml` (main and tag runs) publish
 both components, then run the same `ISCC.exe` command shown above, using the version computed by
 Nerdbank.GitVersioning (`nbgv get-version -v Version`).
 

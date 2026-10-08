@@ -16,9 +16,7 @@
 name: Build and Release Installers
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
   workflow_dispatch:
 
 permissions:
