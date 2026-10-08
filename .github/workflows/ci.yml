@@ -87,6 +87,15 @@ jobs:
 
       - uses: actions/dependency-review-action@v4
 
+  pack-nuget-pr:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pack-nuget-packages.yml
+    with:
+      version: pr-${{ github.event.pull_request.number }}
+      push: false
+
   build-debian-dev:
     needs: [build-and-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
