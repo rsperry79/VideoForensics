@@ -6,6 +6,8 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Hubs;
+using VideoForensics.Api.Contracts;
+using VideoForensics.Api.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -141,6 +143,12 @@ namespace VideoForensics.WebApp.Api
             _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync)
                 .RequireRateLimiting("auth");
 
+            _ = group.MapGet("/operators/{id:guid}/ui-mode", GetUiModeAsync)
+                .RequireRateLimiting("auth");
+
+            _ = group.MapPut("/operators/{id:guid}/ui-mode", SetUiModeAsync)
+                .RequireRateLimiting("auth");
+
             // Separate route group for operator credentials management. Base policy is the LOWEST
             // requirement any route here needs (ReadOnly, i.e. "just signed in") - RequireAuthorization
             // calls stack additively (AND-combined) rather than replacing each other, so a stricter
@@ -235,6 +243,69 @@ namespace VideoForensics.WebApp.Api
         /// Clears an operator's lockout state. Unlike approve/deactivate this restores existing
         /// access rather than granting new access, so it deliberately carries no step-up requirement.
         /// </summary>
+
+        /// <summary>
+        /// Gets the UI mode and lock status for an operator. Returns defaults (Standard, false) if no preferences row exists.
+        /// </summary>
+        private static async Task<IResult> GetUiModeAsync(
+            Guid id,
+            IOperatorRepository operators,
+            IOperatorPreferencesRepository preferences,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            if (op == null)
+            {
+                return Results.NotFound(new { error = "Operator not found" });
+            }
+
+            OperatorPreferences? prefs = await preferences.GetAsync(id, ct);
+            return Results.Ok(new OperatorUiModeDto(
+                prefs?.UiMode ?? "Standard",
+                prefs?.UiModeLocked ?? false
+            ));
+        }
+
+        /// <summary>
+        /// Sets the UI mode and lock status for an operator. Mode must be "Standard" or "Simple".
+        /// </summary>
+        private static async Task<IResult> SetUiModeAsync(
+            Guid id,
+            SetOperatorUiModeRequest request,
+            IOperatorRepository operators,
+            IOperatorPreferencesRepository preferences,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            if (op == null)
+            {
+                return Results.NotFound(new { error = "Operator not found" });
+            }
+
+            // Validate mode
+            if (request.Mode != "Standard" && request.Mode != "Simple")
+            {
+                return Results.BadRequest(new { error = "Invalid UI mode. Must be 'Standard' or 'Simple'." });
+            }
+
+            // Set the UI mode and return the saved preferences
+            OperatorPreferences saved = await preferences.SetUiModeAsync(id, request.Mode, request.Locked, ct);
+
+            // Log the change
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            string details = $"mode={request.Mode} locked={request.Locked}";
+            await auditLog.LogAsync(SecurityAuditEventTypes.OperatorUiModeChanged,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), details, isUrgent: false, ct);
+
+            return Results.Ok(new OperatorUiModeDto(saved.UiMode, saved.UiModeLocked));
+        }
+
         private static async Task<IResult> UnlockAsync(
             Guid id,
             IOperatorRepository operators,

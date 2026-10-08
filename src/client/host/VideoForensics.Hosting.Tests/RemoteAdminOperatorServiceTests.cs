@@ -101,6 +101,94 @@ namespace VideoForensics.Hosting.Tests
                 () => service.ListOperatorsAsync(CancellationToken.None));
         }
 
+        
+        [Fact]
+        public async Task GetUiModeAsync_CallsExpectedEndpoint_ReturnsMappedValues()
+        {
+            // Arrange
+            var operatorId = Guid.NewGuid();
+            var dto = new OperatorUiModeDto("Simple", true);
+
+            var handler = new FakeHttpMessageHandler(request =>
+            {
+                Assert.Equal(HttpMethod.Get, request.Method);
+                Assert.Equal($"/api/devices-management/operators/{operatorId}/ui-mode", request.RequestUri?.AbsolutePath);
+                var response = new HttpResponseMessage(HttpStatusCode.OK);
+                response.Content = JsonContent.Create(dto);
+                return response;
+            });
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteAdminOperatorService(httpClient);
+
+            // Act
+            var result = await service.GetUiModeAsync(operatorId, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("Simple", result.Mode);
+            Assert.True(result.Locked);
+        }
+
+        [Fact]
+        public async Task GetUiModeAsync_NotFoundResponse_ThrowsHttpRequestException()
+        {
+            var operatorId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteAdminOperatorService(httpClient);
+
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => service.GetUiModeAsync(operatorId, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_CallsExpectedEndpoint_WithCorrectMethod()
+        {
+            // Arrange
+            var operatorId = Guid.NewGuid();
+            var mode = "Standard";
+            var locked = false;
+
+            var handler = new FakeHttpMessageHandler(request =>
+            {
+                Assert.Equal(HttpMethod.Put, request.Method);
+                Assert.Equal($"/api/devices-management/operators/{operatorId}/ui-mode", request.RequestUri?.AbsolutePath);
+                var response = new HttpResponseMessage(HttpStatusCode.OK);
+                response.Content = JsonContent.Create(new OperatorUiModeDto(mode, locked));
+                return response;
+            });
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteAdminOperatorService(httpClient);
+
+            // Act & Assert - should not throw
+            await service.SetUiModeAsync(operatorId, mode, locked, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_BadRequestResponse_ThrowsHttpRequestException()
+        {
+            var operatorId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteAdminOperatorService(httpClient);
+
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => service.SetUiModeAsync(operatorId, "Invalid", false, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_NotFoundResponse_ThrowsHttpRequestException()
+        {
+            var operatorId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+            var service = new RemoteAdminOperatorService(httpClient);
+
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => service.SetUiModeAsync(operatorId, "Simple", true, CancellationToken.None));
+        }
         private class FakeHttpMessageHandler : HttpMessageHandler
         {
             private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
