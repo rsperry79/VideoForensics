@@ -86,4 +86,62 @@ public class UserMenu_Tests
             Assert.False(string.IsNullOrWhiteSpace(item.Text));
         }
     }
-}
+
+    [Fact]
+    public void Items_SignedInUserNotLocked_ContainsUiModeToggle()
+    {
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
+        var items = UserMenu.Items(ctx);
+
+        Assert.NotEmpty(items);
+        var toggleItem = items.FirstOrDefault(i => i.Action == "set-ui-mode:Simple");
+        Assert.NotNull(toggleItem);
+        Assert.Equal("Switch to Simple view", toggleItem.Text);
+    }
+
+    [Fact]
+    public void Items_SignedInUserInSimpleMode_ToggleToStandard()
+    {
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Simple", UiModeLocked: false);
+        var items = UserMenu.Items(ctx);
+
+        Assert.NotEmpty(items);
+        var toggleItem = items.FirstOrDefault(i => i.Action == "set-ui-mode:Standard");
+        Assert.NotNull(toggleItem);
+        Assert.Equal("Switch to Standard view", toggleItem.Text);
+    }
+
+    [Fact]
+    public void Items_SignedInUserLocked_NoUiModeToggle()
+    {
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: true);
+        var items = UserMenu.Items(ctx);
+
+        var toggleItems = items.Where(i => i.Action != null && i.Action.StartsWith("set-ui-mode:")).ToList();
+        Assert.Empty(toggleItems);
+    }
+
+    [Fact]
+    public void Items_SignedOut_NoUiModeToggle()
+    {
+        var ctx = new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
+        var items = UserMenu.Items(ctx);
+
+        var toggleItems = items.Where(i => i.Action != null && i.Action.StartsWith("set-ui-mode:")).ToList();
+        Assert.Empty(toggleItems);
+    }
+
+    [Fact]
+    public void Items_UiModeToggleAfterMyPasskeys()
+    {
+        var ctx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false, UiMode: "Standard", UiModeLocked: false);
+        var items = UserMenu.Items(ctx).ToList();
+
+        var passkeysIndex = items.FindIndex(i => i.Path == "/settings/passkeys");
+        Assert.True(passkeysIndex >= 0, "My Passkeys item should exist");
+
+        var toggleIndex = items.FindIndex(i => i.Action != null && i.Action.StartsWith("set-ui-mode:"));
+        Assert.True(toggleIndex >= 0, "UI mode toggle should exist");
+        
+        Assert.True(toggleIndex > passkeysIndex, "UI mode toggle should appear after My Passkeys");
+    }}

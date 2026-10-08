@@ -4,14 +4,22 @@
 @using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Components
+@implements IDisposable
 @inject PairedSessionState SessionState
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
+@inject IUiModeService UiModeService
 
 <div class="simple-layout">
     <header class="simple-layout-header">
         <span class="simple-layout-title">VideoForensics</span>
-        <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="simple-layout-signout e-flat" />
+        <div class="simple-layout-buttons">
+            @if (!UiModeService.IsLocked)
+            {
+                <SfButton Content="Standard view" OnClick="@SwitchToStandardAsync" CssClass="simple-layout-standard-button e-flat" />
+            }
+            <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="simple-layout-signout e-flat" />
+        </div>
     </header>
     <main class="simple-layout-body">
         <div class="simple-layout-content">
@@ -24,9 +32,24 @@
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        UiModeService.OnChange += StateHasChanged;
+    }
+
+    private async Task SwitchToStandardAsync()
+    {
+        await UiModeService.SetModeAsync("Standard");
+    }
+
     private async Task SignOutAsync()
     {
         await SessionState.ClearAsync();
         Nav.NavigateTo("/signin");
+    }
+
+    public void Dispose()
+    {
+        UiModeService.OnChange -= StateHasChanged;
     }
 }

@@ -2,9 +2,11 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Layout
 @inject PairedSessionState SessionState
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
+@inject IUiModeService UiModeService
 
 @* The operator's OWN login (paired-device / WebAuthn session) - kept separate from provider
    account logins, which are switched via AccountSwitcher in the right panel. *@
@@ -16,7 +18,11 @@
         <div class="user-menu-dropdown" data-testid="user-menu-dropdown">
             @foreach (var item in UserMenu.Items(BuildContext()))
             {
-                @if (item.Path is not null)
+                @if (item.Action is not null)
+                {
+                    <button type="button" class="user-menu-item" data-testid="user-menu-item" data-action="@item.Action" @onclick="@(async () => await HandleActionAsync(item.Action))">@L[item.Text]</button>
+                }
+                else if (item.Path is not null)
                 {
                     <button type="button" class="user-menu-item" data-testid="user-menu-item" data-path="@item.Path" @onclick="@(() => NavigateTo(item.Path))">@L[item.Text]</button>
                 }
@@ -36,7 +42,12 @@
 
     private string ButtonLabel => SessionState.IsSignedIn ? (Role?.ToString() ?? "Operator") : L["Device Sign-In"].Value;
 
-    private NavContext BuildContext() => new(SessionState.IsSignedIn, Role, AppLockSupported: false);
+    private NavContext BuildContext() => new(
+        SessionState.IsSignedIn,
+        Role,
+        AppLockSupported: false,
+        UiMode: UiModeService.Mode,
+        UiModeLocked: UiModeService.IsLocked);
 
     private void Toggle()
     {
@@ -54,5 +65,24 @@
         _open = false;
         await SessionState.ClearAsync();
         Nav.NavigateTo("/signin");
+    }
+
+    private async Task HandleActionAsync(string action)
+    {
+        _open = false;
+        
+        if (action.StartsWith("set-ui-mode:"))
+        {
+            var mode = action.Substring("set-ui-mode:".Length);
+            try
+            {
+                await UiModeService.SetModeAsync(mode);
+            }
+            catch (InvalidOperationException)
+            {
+                // Mode is locked - just close the menu and re-render
+                StateHasChanged();
+            }
+        }
     }
 }
