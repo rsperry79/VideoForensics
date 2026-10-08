@@ -60,6 +60,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string SuperAdminPasswordReset = nameof(SuperAdminPasswordReset);
         public const string LogViewed = nameof(LogViewed);
         public const string OperatorUiModeChanged = nameof(OperatorUiModeChanged);
+        public const string JammingIncidentRecorded = nameof(JammingIncidentRecorded);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -105,7 +106,8 @@ namespace VideoForensics.Data.Common.Entities
             [OperatorUnlocked] = true,
             [SuperAdminPasswordReset] = true,
             [LogViewed] = false,
-            [OperatorUiModeChanged] = false
+            [OperatorUiModeChanged] = false,
+            [JammingIncidentRecorded] = false
         };
     }
 }

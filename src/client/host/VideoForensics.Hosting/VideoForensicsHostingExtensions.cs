@@ -632,6 +632,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
@@ -654,6 +655,12 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILogViewerService, Remote.RemoteLogViewerService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
+
+            // Ui.Shared's JammingPanel (Analyze page) injects this orchestrator directly. In client mode it runs over
+            // the Remote* repositories: recording an incident and reading stats/incidents work end to end; the
+            // RSSI-history auto-detection path needs IDeviceHealthRepository.GetHistoryAsync(deviceId, ct), which
+            // RemoteDeviceHealthRepository does not support yet, so AnalyzeJammingAsync reports a failure there.
+            _ = services.AddScoped<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>();
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
