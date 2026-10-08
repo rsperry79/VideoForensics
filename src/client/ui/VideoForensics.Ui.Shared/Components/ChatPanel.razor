@@ -24,7 +24,14 @@
         {
             <div class="chat-message assistant-message">
                 <div class="chat-message-content">
-                    <span class="chat-thinking">Thinking...</span>
+                    @if (string.IsNullOrEmpty(_streamingText))
+                    {
+                        <span class="chat-thinking">Thinking...</span>
+                    }
+                    else
+                    {
+                        @_streamingText
+                    }
                 </div>
             </div>
         }
@@ -43,8 +50,8 @@
         <textarea
             class="chat-input"
             @bind="_inputText"
+            @bind:event="oninput"
             @onkeydown="@OnInputKeyDownAsync"
-            @onkeydown:preventDefault="true"
             placeholder="Ask a question about the investigation..."
             disabled="@_isLoading" />
         <SfButton
@@ -157,6 +164,7 @@
     private List<ChatTurn> _messageHistory = [];
     private string _inputText = string.Empty;
     private bool _isLoading = false;
+    private string _streamingText = string.Empty;
     private string? _errorMessage;
     private string? _lastToolsInvokedNote;
     private ElementReference _messagesEndRef;
@@ -174,20 +182,42 @@
             string userMessage = _inputText.Trim();
             _inputText = string.Empty;
 
-            // Add user message to history
+            // Send the prior turns only: the server appends userMessage itself, so including it here would send it twice.
+            var priorHistory = _messageHistory.ToList();
             _messageHistory.Add(new ChatTurn { Role = "user", Content = userMessage });
             _isLoading = true;
+            _streamingText = string.Empty;
             await InvokeAsync(StateHasChanged);
 
-            // Send to service
-            ChatTurnResult result = await ChatService.SendMessageAsync(_messageHistory, userMessage, CancellationToken.None);
+            ChatTurnResult? result = null;
+            await foreach (ChatStreamEvent evt in ChatService.StreamMessageAsync(priorHistory, userMessage, CancellationToken.None))
+            {
+                switch (evt)
+                {
+                    case ChatTextDelta delta:
+                        _streamingText += delta.Text;
+                        await InvokeAsync(StateHasChanged);
+                        break;
 
-            // Add assistant reply
-            _messageHistory.Add(new ChatTurn { Role = "assistant", Content = result.Reply });
+                    case ChatToolInvoked tool:
+                        // Drop text from the step that requested the tool; the next step's text replaces it.
+                        _streamingText = string.Empty;
+                        break;
 
-            // Format tools invoked if any
-            _lastToolsInvokedNote = ChatToolsFormatter.FormatToolsInvoked(result.ToolsInvoked);
+                    case ChatTurnCompleted completed:
+                        result = completed.Result;
+                        break;
+                }
+            }
 
+            // If the stream ended without a completion event, keep whatever text arrived so the reply is not lost.
+            string reply = result?.Reply ?? _streamingText;
+            IReadOnlyList<string> toolsInvoked = result?.ToolsInvoked ?? [];
+
+            _messageHistory.Add(new ChatTurn { Role = "assistant", Content = reply });
+            _lastToolsInvokedNote = ChatToolsFormatter.FormatToolsInvoked(toolsInvoked);
+
+            _streamingText = string.Empty;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);
             await ScrollToBottomAsync();
@@ -195,12 +225,14 @@
         catch (HttpRequestException)
         {
             _errorMessage = "Failed to connect to the server. Please check your connection.";
+            _streamingText = string.Empty;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
             _errorMessage = $"An error occurred: {ex.Message}";
+            _streamingText = string.Empty;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);
         }

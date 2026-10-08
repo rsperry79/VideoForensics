@@ -31,6 +31,18 @@ namespace VideoForensics.Api.Contracts
     );
 
     /// <summary>
+    /// Payload of a "delta" frame on the streaming chat endpoint: a fragment of assistant text.
+    /// </summary>
+    /// <param name="Text">The text fragment.</param>
+    public record ChatStreamDeltaDto(string Text);
+
+    /// <summary>
+    /// Payload of a "tool" frame on the streaming chat endpoint: the assistant started invoking an MCP tool.
+    /// </summary>
+    /// <param name="Name">MCP tool name.</param>
+    public record ChatStreamToolDto(string Name);
+
+    /// <summary>
     /// Request to update LLM settings (provider, model, API key, base URL).
     /// Only non-null/non-empty apiKey fields update the stored API key; null/empty leaves it unchanged.
     /// </summary>
