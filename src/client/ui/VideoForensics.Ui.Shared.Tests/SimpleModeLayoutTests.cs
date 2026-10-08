@@ -100,6 +100,15 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
             .ReturnsAsync((OperatorPreferences?)null);
         Services.AddScoped(_ => opPrefRepoMock.Object);
 
+        // Register default IUiModeService mock (can be overridden by individual tests)
+        var uiModeMock = new Mock<IUiModeService>();
+        uiModeMock.SetupGet(u => u.Mode).Returns("Standard");
+        uiModeMock.SetupGet(u => u.IsLocked).Returns(false);
+        uiModeMock.Setup(u => u.InitializeAsync()).Returns(Task.CompletedTask);
+        uiModeMock.Setup(u => u.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        uiModeMock.SetupAdd(u => u.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => uiModeMock.Object);
+
         // Register ICaseRepository mock
         var caseRepoMock = new Mock<ICaseRepository>();
         caseRepoMock
@@ -537,32 +546,32 @@ public class SimpleLayout_StandardViewButton_Tests : SimpleModeLayoutTestBase
     }
 
     [Fact]
-    public void SimpleLayout_OnChange_CausesReRender()
-    {
-        // Arrange
-        RegisterSignedInSession();
-        RegisterViewportService();
-        Action onChangeCallback = null;
-        var mockUiMode = new Mock<IUiModeService>();
-        mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
-        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
-        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>()).Callback<Action>(action =>
+    public async Task SimpleLayout_OnChange_CausesReRender()
         {
-            onChangeCallback = action;
-        });
-        Services.AddScoped(_ => mockUiMode.Object);
+            // Arrange
+            RegisterSignedInSession();
+            RegisterViewportService();
+            Action onChangeCallback = null;
+            var mockUiMode = new Mock<IUiModeService>();
+            mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+            mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+            mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+            mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>()).Callback<Action>(action =>
+            {
+                onChangeCallback = action;
+            });
+            Services.AddScoped(_ => mockUiMode.Object);
 
-        var component = Render<SimpleLayout>();
-        var initialButton = component.FindAll("button").FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
-        Assert.NotNull(initialButton);
+            var component = Render<SimpleLayout>();
+            var initialButton = component.FindAll("button").FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
+            Assert.NotNull(initialButton);
 
-        // Act - simulate OnChange event
-        Assert.NotNull(onChangeCallback);
-        onChangeCallback.Invoke();
+            // Act - simulate OnChange event and trigger re-render from dispatcher
+            Assert.NotNull(onChangeCallback);
+            await component.InvokeAsync(() => onChangeCallback.Invoke());
 
-        // Assert - component should still render
-        var renderedButtons = component.FindAll("button");
-        Assert.NotEmpty(renderedButtons);
-    }
+            // Assert - component should have re-rendered
+            var renderedButtons = component.FindAll("button");
+            Assert.NotEmpty(renderedButtons);
+        }
 }
