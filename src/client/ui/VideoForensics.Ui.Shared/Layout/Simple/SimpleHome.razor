@@ -1,0 +1,148 @@
+@namespace VideoForensics.Ui.Shared.Layout.Simple
+@implements IDisposable
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Ui.Shared.Formatting
+@inject SimpleHomeBuilder Builder
+@inject IEventRepository Events
+@inject IMediaItemRepository Media
+@inject IDeviceRepository Devices
+@inject IServiceProvider Services
+@inject ILogger<SimpleHome> Logger
+
+<div class="simple-home">
+    <h1 class="simple-home-heading">What happened this week</h1>
+
+    @if (_state == LoadState.Loading)
+    {
+        <p class="simple-home-loading" role="status">Loading your activity...</p>
+    }
+    else if (_state == LoadState.Failed)
+    {
+        <div class="simple-home-error" role="alert">
+            <p>We couldn't load your activity. Please try again later.</p>
+            <button type="button" class="simple-home-retry" @onclick="RetryAsync">Retry</button>
+        </div>
+    }
+    else if (_model is not null)
+    {
+        @if (_model.Days.Count == 0)
+        {
+            <p class="simple-timeline-empty">Nothing has been recorded in the last 7 days.</p>
+        }
+        else
+        {
+            @foreach (var day in _model.Days)
+            {
+                <section class="simple-day">
+                    <h2 class="simple-day-heading">@day.Heading</h2>
+                    <ul class="simple-entries">
+                        @foreach (var entry in day.Entries)
+                        {
+                            <li class="@EntryClass(entry)">
+                                <span class="simple-entry-time">@entry.TimeText</span>
+                                <span class="simple-entry-text">@entry.Text</span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            @if (_model.HasMoreTimeline)
+            {
+                <p class="simple-more-note">Older activity is not shown here.</p>
+            }
+        }
+
+        @if (_model.BlockedActivityUnavailable)
+        {
+            <p class="simple-blocked-unavailable">Camera-blocked activity can't be shown right now.</p>
+        }
+
+        <section class="simple-evidence">
+            <h2 class="simple-evidence-heading">Your evidence</h2>
+            @if (_model.Evidence.Count == 0)
+            {
+                <p class="simple-evidence-empty">No evidence yet.</p>
+            }
+            else
+            {
+                <ul class="simple-evidence-list">
+                    @foreach (var item in _model.Evidence)
+                    {
+                        <li class="simple-evidence-item">
+                            <span class="simple-evidence-label">@item.Label</span>
+                            <span class="simple-evidence-type">@item.TypeText</span>
+                            @if (item.IsAvailable && item.Url is not null)
+                            {
+                                <a class="simple-evidence-open" href="@item.Url" target="_blank" rel="noopener noreferrer">Open</a>
+                            }
+                            else
+                            {
+                                <span class="simple-evidence-unavailable">No longer available</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private enum LoadState { Loading, Loaded, Failed }
+
+    private static readonly TimeSpan Window = TimeSpan.FromDays(7);
+
+    // Cancelled on disposal so a navigation away abandons any in-flight repository calls.
+    private readonly CancellationTokenSource _cts = new();
+    private LoadState _state = LoadState.Loading;
+    private SimpleHomeModel? _model;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Loaded after the first render (not in OnInitializedAsync) so server prerendering does not hit the repositories twice.
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private async Task RetryAsync()
+    {
+        _state = LoadState.Loading;
+        StateHasChanged();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _model = await Builder.BuildAsync(Events, Media, Devices, Services.GetService<IJammingRepository>(), Window, _cts.Token);
+            _state = LoadState.Loaded;
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Victims only ever see the friendly message; the detail goes to the log.
+            Logger.LogError(ex, "Failed to load the Simple Mode home.");
+            _state = LoadState.Failed;
+        }
+
+        if (!_cts.IsCancellationRequested)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private static string EntryClass(SimpleTimelineEntry entry) =>
+        entry.Kind == SimpleEntryKind.Blocked ? "simple-entry simple-entry-blocked" : "simple-entry";
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

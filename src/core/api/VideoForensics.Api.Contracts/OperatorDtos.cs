@@ -13,4 +13,24 @@ namespace VideoForensics.Api.Contracts
         string DisplayName,
         bool Active
     );
+
+    /// <summary>
+    /// Wire DTO for an operator's UI mode and lock status.
+    /// </summary>
+    /// <param name="Mode">The UI mode: "Standard" or "Simple".</param>
+    /// <param name="Locked">When true, the UI mode is locked and the operator cannot change it.</param>
+    public record OperatorUiModeDto(
+        string Mode,
+        bool Locked
+    );
+
+    /// <summary>
+    /// Request body to set an operator's UI mode and lock status.
+    /// </summary>
+    /// <param name="Mode">The UI mode: "Standard" or "Simple".</param>
+    /// <param name="Locked">When true, lock the UI mode so the operator cannot change it.</param>
+    public record SetOperatorUiModeRequest(
+        string Mode,
+        bool Locked
+    );
 }

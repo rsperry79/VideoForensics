@@ -1,5 +1,20 @@
 # Simple Mode + Embedded MCP Chat
 
+**STATUS: COMPLETED (2026-10-08)**
+
+- Existing before this work: embedded MCP chat (ChatEndpoints `POST /api/v1/chat`, ChatOrchestrator MCP client loop, Anthropic and OpenAI-compatible providers, LlmApiKeyStore, LLM settings page, RemoteChatService, ChatPanel, /chat page), per-operator `UiMode` preference + `UiModeService`, `ResponsiveLayout` third branch and `SimpleLayout`, `EventPlainLanguageFormatter`.
+- Added on this branch: admin lock (`OperatorPreferences.UiModeLocked`, migration `AddOperatorPreferencesUiModeLocked`; repository enforces it: `UpsertAsync` never changes the lock and rejects a mode change when locked, `SetUiModeAsync` is the only way to set it).
+- Added on this branch: user-facing Simple/Standard toggle in the user menu and a "Standard view" button in SimpleLayout (hidden when locked).
+- Added on this branch: admin endpoints `GET/PUT /api/devices-management/operators/{id}/ui-mode` (Admin and SuperAdmin, audited as `OperatorUiModeChanged`), `IAdminOperatorService.GetUiModeAsync/SetUiModeAsync`, and a "Display mode" section with lock checkbox on the operator details page.
+- Added on this branch: Simple home (`SimpleHomeBuilder` + `SimpleHome`: 7-day plain-language timeline, evidence list with open links), shown by SimpleLayout only on `/` and `/evidence` so other routes (forced password change, sign-in, chat) still render; formatter fallback no longer shows raw event types.
+
+### Known limitations / follow-ups
+
+- Not verified in a browser.
+- MAUI remote-client mode has no jamming endpoint or Remote repository, so the Simple home shows device events only (with a note) there; the Analyze page has the same pre-existing gap.
+- Operator details still loads the operator through a SuperAdmin-only call, so a plain Admin sees an unauthorized alert above the working Display mode section.
+- Streaming chat remains deferred.
+
 ## Context
 
 VideoForensics currently has one unified "operator" UI aimed at investigators, with role-gated nav items (`OperatorRole`: ReadOnly/Review/Admin/SuperAdmin) but no simplified experience for the crime-victim end users who actually view this data. Victims don't need — and are overwhelmed by — device config, provider setup, or raw jamming telemetry. They need a plain-language timeline of what happened to their cameras and their evidence, and a way to ask questions about it in natural language.

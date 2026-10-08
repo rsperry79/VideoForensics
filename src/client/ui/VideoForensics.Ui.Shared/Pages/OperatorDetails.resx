@@ -143,4 +143,28 @@
   <data name="TwoFactorOverrideSaveFailed" xml:space="preserve">
     <value>Two-factor override save failed: {0}</value>
   </data>
+  <data name="DisplayModeHeading" xml:space="preserve">
+    <value>Display mode</value>
+  </data>
+  <data name="DisplayModeLabel" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="ModeStandard" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="ModeSimple" xml:space="preserve">
+    <value>Simple</value>
+  </data>
+  <data name="LockLabel" xml:space="preserve">
+    <value>Lock - the user cannot change it themselves</value>
+  </data>
+  <data name="DisplayModeSaved" xml:space="preserve">
+    <value>Saved. Takes effect the next time the user loads a page.</value>
+  </data>
+  <data name="DisplayModeLoadFailed" xml:space="preserve">
+    <value>Could not load the display mode: {0}</value>
+  </data>
+  <data name="DisplayModeSaveFailed" xml:space="preserve">
+    <value>Could not save the display mode: {0}</value>
+  </data>
 </root>

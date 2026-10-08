@@ -138,7 +138,7 @@ From CLAUDE.md and codebase analysis:
 | Phase | Item | Why | Blocker | Start |
 |-------|------|-----|---------|-------|
 | B | scheduled-sync | **CRITICAL** operational reliability | Decision needed | After decision |
-| B | simple-mode | **HIGH** end-user support (new segment) | None | NOW ✅ |
+| B | simple-mode | **HIGH** end-user support (new segment) | None | DONE 2026-10-08 ✅ |
 | B | api-error-logging | **MEDIUM** observability | None | After simple-mode |
 | C | per-user-login | **MEDIUM** auth model | None | Week 3+ |
 | C | ci-cd | **MEDIUM** automation | None | Week 3+ |

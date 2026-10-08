@@ -42,5 +42,22 @@ namespace VideoForensics.Hosting.Remote
                 .Select(dto => new OperatorSummary(dto.Id, dto.DisplayName, dto.Active))
                 .ToList();
         }
+
+        /// <inheritdoc />
+        public async Task<OperatorUiMode> GetUiModeAsync(Guid operatorId, CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/devices-management/operators/{operatorId}/ui-mode", ct);
+            _ = response.EnsureSuccessStatusCode();
+            OperatorUiModeDto? dto = await response.Content.ReadFromJsonAsync<OperatorUiModeDto>(JsonOptions, ct);
+            return dto != null ? new OperatorUiMode(dto.Mode, dto.Locked) : new OperatorUiMode("Standard", false);
+        }
+
+        /// <inheritdoc />
+        public async Task SetUiModeAsync(Guid operatorId, string mode, bool locked, CancellationToken ct)
+        {
+            var request = new SetOperatorUiModeRequest(mode, locked);
+            HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/devices-management/operators/{operatorId}/ui-mode", request, cancellationToken: ct);
+            _ = response.EnsureSuccessStatusCode();
+        }
     }
 }

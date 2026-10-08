@@ -28,6 +28,8 @@ namespace VideoForensics.Ui.Shared.Services
 
         public string Mode { get; private set; } = "Standard";
 
+        public bool IsLocked { get; private set; }
+
         public event Action? OnChange;
 
         public async Task InitializeAsync()
@@ -46,6 +48,7 @@ namespace VideoForensics.Ui.Shared.Services
                 if (saved is not null)
                 {
                     Mode = saved.UiMode ?? "Standard";
+                    IsLocked = saved.UiModeLocked;
                 }
             }
 
@@ -54,6 +57,18 @@ namespace VideoForensics.Ui.Shared.Services
 
         public async Task SetModeAsync(string mode)
         {
+            // Validate mode
+            if (mode != "Standard" && mode != "Simple")
+            {
+                throw new ArgumentException($"Invalid UI mode '{mode}'. Must be 'Standard' or 'Simple'.", nameof(mode));
+            }
+
+            // Check if locked before making any changes
+            if (IsLocked)
+            {
+                throw new InvalidOperationException("The display mode is locked by an administrator.");
+            }
+
             Mode = mode;
             await PersistAsync();
             OnChange?.Invoke();
@@ -75,6 +90,7 @@ namespace VideoForensics.Ui.Shared.Services
             OperatorPreferences? existing = await _repository.GetAsync(operatorId, CancellationToken.None);
 
             // Merge: keep existing ThemeMode and CultureName, but update UiMode and UpdatedAtUtc.
+            // Never write the UiModeLocked field - it's managed by the admin lock endpoint.
             var prefs = new OperatorPreferences
             {
                 Id = existing?.Id ?? Guid.NewGuid(),
@@ -82,10 +98,27 @@ namespace VideoForensics.Ui.Shared.Services
                 ThemeMode = existing?.ThemeMode ?? "System",
                 CultureName = existing?.CultureName,
                 UiMode = Mode,
-                UpdatedAtUtc = DateTime.UtcNow
+                UpdatedAtUtc = DateTime.UtcNow,
+                // Preserve the lock state without writing it
+                UiModeLocked = existing?.UiModeLocked ?? false
             };
 
-            await _repository.UpsertAsync(prefs, CancellationToken.None);
+            try
+            {
+                await _repository.UpsertAsync(prefs, CancellationToken.None);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "The display mode is locked by an administrator.")
+            {
+                // Admin locked it after this circuit loaded. Refresh state from repository.
+                OperatorPreferences? refreshed = await _repository.GetAsync(operatorId, CancellationToken.None);
+                if (refreshed is not null)
+                {
+                    Mode = refreshed.UiMode ?? "Standard";
+                    IsLocked = refreshed.UiModeLocked;
+                    OnChange?.Invoke();
+                }
+                throw;
+            }
         }
     }
 }

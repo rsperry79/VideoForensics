@@ -26,7 +26,8 @@ public static class EventPlainLanguageFormatter
             "motion" => $"{devicePart} detected motion.",
             "person" => $"{devicePart} detected a person.",
             "package" => $"{devicePart} detected a package.",
-            _ => $"{devicePart} detected an event of type '{eventDto.EventType}'."
+            // Unknown types get a generic line: the raw provider type is technical and must never reach victims.
+            _ => $"{devicePart} detected some activity."
         };
     }
 

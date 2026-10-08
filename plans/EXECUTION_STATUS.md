@@ -26,6 +26,12 @@
 - **Status:** Ready for PR to dev
 - **Implementation:** Server-generated collision-safe case numbers (manual/detected/suspected), jamming hook in JammingRepository (insert path only), CaseId links incident to case for idempotent creation, auto-alert creation with case
 - **Testing:** Case numbering (29 tests), jamming case automation (11), JammingRepository case automation (9), JammingRepository CaseId (6) — full gate 4070 tests, 0 failures
+
+#### ✅ **Simple Mode + Embedded MCP Chat** — COMPLETED 2026-10-08
+- **Plan:** `plans/archive/simple-mode-embedded-mcp-chat.md`
+- **Status:** Ready for PR to dev
+- **Implementation:** Per-operator admin lock on UI mode (migration, repository enforcement), Simple/Standard user toggle, admin ui-mode endpoints + Display mode section on operator details, Simple home (7-day plain-language timeline + evidence list), plain-language formatter fallback
+- **Testing:** UI mode lock repository (8), UiModeService/user menu/SimpleLayout (+38 Ui.Shared), admin UI-mode endpoints (21 pipeline/unit) and remote service (5), operator details Display mode (11), Simple home builder (24) and component/routing (35) - full gate 4195 tests, 0 failures
 ---
 
 ## Previous Phase Plans

@@ -21,7 +21,7 @@ namespace VideoForensics.Ui.Shared.Layout
     }
 
     /// <summary>Role/session state needed to evaluate a NavItem/NavGroup's visibility predicate.</summary>
-    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported)
+    public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false)
     {
         public bool HasRole(OperatorRole minimum)
         {
@@ -103,7 +103,7 @@ namespace VideoForensics.Ui.Shared.Layout
     /// </summary>
     public static class UserMenu
     {
-        public sealed record UserMenuItem(string Text, string? Path = null, Func<NavContext, bool>? Visible = null)
+        public sealed record UserMenuItem(string Text, string? Path = null, Func<NavContext, bool>? Visible = null, string? Action = null)
         {
             public bool IsVisible(NavContext ctx)
             {
@@ -119,6 +119,20 @@ namespace VideoForensics.Ui.Shared.Layout
             {
                 items.Add(new("Change Password", "/change-password"));
                 items.Add(new("My Passkeys", "/settings/passkeys"));
+                
+                // Add UI mode toggle if not locked
+                if (!ctx.UiModeLocked)
+                {
+                    if (ctx.UiMode == "Standard")
+                    {
+                        items.Add(new("Switch to Simple view", Action: "set-ui-mode:Simple"));
+                    }
+                    else
+                    {
+                        items.Add(new("Switch to Standard view", Action: "set-ui-mode:Standard"));
+                    }
+                }
+                
                 items.Add(new("Sign Out", null)); // No path - handled by click handler
             }
             else
