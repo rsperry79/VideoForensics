@@ -69,6 +69,7 @@ public abstract class CasesPagesTestBase : BunitContext
     protected CasesPagesTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization();
 
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
@@ -89,7 +90,9 @@ public abstract class CasesPagesTestBase : BunitContext
         Services.AddScoped(_ => EventRepositoryMock.Object);
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
 
-        ScopeState = new ScopeState(new FakeTimeProvider(FixedNowUtc));
+        var timeProvider = new FakeTimeProvider(FixedNowUtc);
+        ScopeState = new ScopeState(timeProvider);
+        Services.AddSingleton<TimeProvider>(timeProvider);
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
 
@@ -236,7 +239,8 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         var component = RenderPage();
 
-        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Once);
+        // ScopeRail.razor:158 also calls ListAsync(Open), so expect exactly 2 calls: page + rail
+        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Exactly(2));
 
         var cases = GridData(component).ToList();
         Assert.Equal(2, cases.Count);
@@ -336,7 +340,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
 
     private static void Fill(IRenderedComponent<CaseNew> component, string caseNumber, string title)
     {
-        ((IHtmlInputElement)component.Find("#caseNumber")).Change(caseNumber);
+        // For @bind on text inputs, use Change() to trigger binding update
         ((IHtmlInputElement)component.Find("#title")).Change(title);
     }
 
@@ -348,7 +352,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
         await RegisterRoleAsync(OperatorRole.Review);
         var component = RenderPage();
 
-        ((IHtmlInputElement)component.Find("#caseNumber")).Change("CASE-100");
+        // caseNumber is auto-generated, so we do not need to set it
         Submit(component);
 
         CaseRepositoryMock.Verify(
@@ -375,7 +379,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
 
         CaseRepositoryMock
             .Setup(r => r.CreateAsync(
-                "NEW-001",
+                null,
                 "New Investigation",
                 null,
                 TestOperatorId,
@@ -395,7 +399,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
 
         CaseRepositoryMock.Verify(
             r => r.CreateAsync(
-                "NEW-001",
+                null,
                 "New Investigation",
                 null,
                 TestOperatorId,
@@ -438,7 +442,7 @@ public class CaseNewPage_Tests : CasesPagesTestBase
 
         CaseRepositoryMock.Verify(
             r => r.CreateAsync(
-                "NEW-002", "No Scope", null, TestOperatorId,
+                null, "No Scope", null, TestOperatorId,
                 null, null,
                 It.Is<IReadOnlyCollection<Guid>>(d => d.Count == 0),
                 TestOperatorId.ToString(), It.IsAny<CancellationToken>()),

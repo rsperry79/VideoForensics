@@ -12,7 +12,12 @@ namespace VideoForensics.Ui.Shared.Services
         string Mode { get; }
 
         /// <summary>
-        /// Fired when the UI mode changes or is initialized.
+        
+        /// <summary>
+        /// Gets whether the UI mode is locked by an administrator.
+        /// When locked, SetModeAsync will throw InvalidOperationException if an attempt is made to change the mode.
+        /// </summary>
+        bool IsLocked { get; }/// Fired when the UI mode changes or is initialized.
         /// </summary>
         event Action? OnChange;
 

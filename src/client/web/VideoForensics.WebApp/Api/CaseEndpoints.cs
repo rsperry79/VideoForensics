@@ -1,7 +1,6 @@
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Database.Repositories;
 using VideoForensics.WebApp.Auth;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -211,22 +210,8 @@ namespace VideoForensics.WebApp.Api
             try
             {
                 // Generate case number if not provided
-                string caseNumber = request.CaseNumber ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(caseNumber))
-                {
-                    // Cast to concrete type to access GenerateCaseNumber
-                    if (cases is VideoForensics.Data.Database.Repositories.CaseRepository concreteRepo)
-                    {
-                        caseNumber = await concreteRepo.GenerateCaseNumber("manual", ct);
-                    }
-                    else
-                    {
-                        return Results.BadRequest("Unable to generate case number");
-                    }
-                }
-
                 ForensicCase @case = await cases.CreateAsync(
-                    caseNumber,
+                    request.CaseNumber,
                     request.Title,
                     request.Description,
                     request.LeadOperatorId,

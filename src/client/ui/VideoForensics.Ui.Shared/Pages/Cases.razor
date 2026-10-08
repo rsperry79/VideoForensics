@@ -1,4 +1,5 @@
 @page "/cases"
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Components.Inspector
@@ -11,21 +12,22 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject InspectorState InspectorState
+@inject IStringLocalizer<Cases> L
 
 <div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
     <div style="overflow: auto;">
-        <h4 class="mb-4">Cases</h4>
+        <h4 class="mb-4">@L["CasesTitle"]</h4>
 
 <div class="mb-3 d-flex gap-2">
     <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" style="max-width: 200px;" data-testid="case-status-filter">
-        <option value="">All</option>
-        <option value="Open">Open</option>
-        <option value="Closed">Closed</option>
+        <option value="">@L["FilterAll"]</option>
+        <option value="Open">@L["FilterOpen"]</option>
+        <option value="Closed">@L["FilterClosed"]</option>
     </select>
 
     @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Review)
     {
-        <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">New Case</button>
+        <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">@L["NewCase"]</button>
     }
 </div>
 
@@ -39,7 +41,7 @@ else if (_error is not null)
 }
 else if (_cases is null || _cases.Count == 0)
 {
-    <p>No cases found.</p>
+    <p>@L["NoCasesFound"]</p>
 }
 else
 {
@@ -48,11 +50,11 @@ else
                   OnRowSelected="@OnCaseSelected"
                   ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = c.CreatedAtUtc.ToString("u"), Updated = c.UpdatedAtUtc.ToString("u") }))">
         <Columns>
-            <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="Case Number" Width="120"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="Title" Width="250"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="Status" Width="100"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="Created" Width="150" Format="@("u")"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="Updated" Width="150" Format="@("u")"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150" Format="@("u")"></GridColumn>
+            <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150" Format="@("u")"></GridColumn>
         </Columns>
     </ForensicGrid>
 }
@@ -91,7 +93,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Failed to load cases: {ex.Message}";
+            _error = L["FailedToLoadCases", ex.Message].Value;
         }
         finally
         {

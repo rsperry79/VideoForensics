@@ -356,5 +356,208 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(retrieved);
             Assert.Equal("Simple", retrieved.UiMode);
         }
+
+        // Tests for SetUiModeAsync and UiModeLocked feature
+
+        [Fact]
+        public async Task SetUiModeAsync_CreatesNewRow_WithSimpleAndLocked()
+        {
+            var operatorId = Guid.NewGuid();
+
+            OperatorPreferences result = await _repository.SetUiModeAsync(operatorId, "Simple", true, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal(operatorId, result.OperatorId);
+            Assert.Equal("Simple", result.UiMode);
+            Assert.True(result.UiModeLocked);
+            Assert.Equal("System", result.ThemeMode);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal("Simple", retrieved.UiMode);
+            Assert.True(retrieved.UiModeLocked);
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_UpdatesExistingRow_PreservesThemeAndCulture()
+        {
+            var operatorId = Guid.NewGuid();
+            var preferences = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "Dark",
+                CultureName = "de-DE",
+                UiMode = "Standard",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(preferences, CancellationToken.None);
+
+            OperatorPreferences result = await _repository.SetUiModeAsync(operatorId, "Simple", true, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("Simple", result.UiMode);
+            Assert.True(result.UiModeLocked);
+            Assert.Equal("Dark", result.ThemeMode);
+            Assert.Equal("de-DE", result.CultureName);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal("Dark", retrieved.ThemeMode);
+            Assert.Equal("de-DE", retrieved.CultureName);
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_InvalidMode_ThrowsArgumentException()
+        {
+            var operatorId = Guid.NewGuid();
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _repository.SetUiModeAsync(operatorId, "Bogus", false, CancellationToken.None));
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.Null(retrieved);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_OnLockedRow_WithDifferentUiMode_ThrowsInvalidOperationException()
+        {
+            var operatorId = Guid.NewGuid();
+
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+
+            var updated = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "Light",
+                CultureName = "en-US",
+                UiMode = "Simple",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _repository.UpsertAsync(updated, CancellationToken.None));
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal("Standard", retrieved.UiMode);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_OnLockedRow_WithSameUiMode_AllowsThemeChange()
+        {
+            var operatorId = Guid.NewGuid();
+
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+
+            var updated = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "Light",
+                CultureName = "en-US",
+                UiMode = "Standard",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(updated, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal("Standard", retrieved.UiMode);
+            Assert.Equal("Light", retrieved.ThemeMode);
+            Assert.True(retrieved.UiModeLocked);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_OnUnlockedRow_IgnoresIncomingLockAttempt()
+        {
+            var operatorId = Guid.NewGuid();
+
+            var preferences = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                CultureName = null,
+                UiMode = "Standard",
+                UiModeLocked = false,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(preferences, CancellationToken.None);
+
+            var updated = new OperatorPreferences
+            {
+                Id = preferences.Id,
+                OperatorId = operatorId,
+                ThemeMode = "Light",
+                CultureName = "en-US",
+                UiMode = "Simple",
+                UiModeLocked = true,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(updated, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.False(retrieved.UiModeLocked);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_CreatingNewRow_IgnoresIncomingLock()
+        {
+            var operatorId = Guid.NewGuid();
+
+            var preferences = new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                CultureName = null,
+                UiMode = "Simple",
+                UiModeLocked = true,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(preferences, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.False(retrieved.UiModeLocked);
+        }
+
+        [Fact]
+        public async Task SetUiModeAsync_UnlocksRow_AllowsSubsequentUpsert()
+        {
+            var operatorId = Guid.NewGuid();
+
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+
+            await _repository.SetUiModeAsync(operatorId, "Standard", false, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.False(retrieved.UiModeLocked);
+
+            var updated = new OperatorPreferences
+            {
+                Id = retrieved.Id,
+                OperatorId = operatorId,
+                ThemeMode = "Dark",
+                CultureName = "fr-FR",
+                UiMode = "Simple",
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(updated, CancellationToken.None);
+
+            OperatorPreferences? finalRetrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+            Assert.NotNull(finalRetrieved);
+            Assert.Equal("Simple", finalRetrieved.UiMode);
+        }
     }
 }

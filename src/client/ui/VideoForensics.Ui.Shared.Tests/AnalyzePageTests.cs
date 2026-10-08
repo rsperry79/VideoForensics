@@ -67,7 +67,7 @@ public abstract class AnalyzePageTestBase : BunitContext
             .ReturnsAsync(new AccessControlReport());
 
         DeviceHealthRepositoryMock
-            .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DeviceHealth>());
         JammingRepositoryMock
             .Setup(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -341,7 +341,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
 
         var component = RenderPage();
 
-        DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
+        DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Empty(component.FindAll(".alert-danger"));
     }
@@ -354,7 +354,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
         var component = RenderPage();
 
         Assert.Contains("Select a single device for jamming analysis", component.Markup);
-        DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
 

@@ -25,13 +25,13 @@
     @if (ConnectivityState.IsUnreachable)
     {
         <div class="alert alert-danger" role="alert" style="margin: 0; border-radius: 0; border: none; padding: 12px 16px;">
-            <strong>Server Not Reachable</strong> — Could not connect to the server. Please check your connection or pair a new device.
+            <strong>@L["ServerNotReachableTitle"]</strong> — @L["ServerNotReachableMessage"]
         </div>
     }
 
     <div class="app-header">
         <div class="app-bar">
-            <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="Toggle navigation" />
+            <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="@L["ToggleNavigation"]" />
 
             <div class="top-tabs">
                 @foreach (var group in VisibleGroups)
@@ -42,13 +42,13 @@
             </div>
 
             <div style="position: relative;">
-                <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="Notices" />
+                <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
                 @if (_undismissedCount > 0)
                 {
                     <span class="notices-badge">@_undismissedCount</span>
                 }
             </div>
-            <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="Toggle settings panel" />
+            <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="@L["ToggleSettingsPanel"]" />
             <UserMenuButton />
         </div>
     </div>
@@ -59,13 +59,13 @@
             @if (_noticesList.Count > 0)
             {
                 <div style="padding: 8px 16px; border-bottom: 1px solid #e0e0e0; text-align: right;">
-                    <SfButton Content="Clear all" OnClick="@DismissAllNoticesAsync" CssClass="e-outline e-small" />
+                    <SfButton Content="@L["ClearAll"]" OnClick="@DismissAllNoticesAsync" CssClass="e-outline e-small" />
                 </div>
             }
             <div style="max-height: 400px; overflow-y: auto;">
                 @if (_noticesList.Count == 0)
                 {
-                    <div style="padding: 16px; text-align: center; color: #666;">No notices</div>
+                    <div style="padding: 16px; text-align: center; color: #666;">@L["NoNotices"]</div>
                 }
                 else
                 {
@@ -86,13 +86,13 @@
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
                             </div>
-                            <SfButton Content="Dismiss" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
+                            <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
                         </div>
                     }
                 }
             </div>
             <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; text-align: center;">
-                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">View All</a>
+                <a href="/notices" @onclick="GoToAllNoticesAsync" @onclick:preventDefault="true" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">@L["ViewAll"]</a>
             </div>
         </div>
     }
@@ -131,7 +131,7 @@
                         </div>
                         @if (!LayoutPrefs.RightPanelCollapsed)
                         {
-                            <div id="@_rightPanelHandleId" class="right-panel-handle" title="Drag to resize"></div>
+                            <div id="@_rightPanelHandleId" class="right-panel-handle" title="@L["DragToResize"]"></div>
                             <div id="@_rightPanelId" class="right-panel-fixed" style="@RightPanelStyle">
                                 <RightPanelHost />
                             </div>

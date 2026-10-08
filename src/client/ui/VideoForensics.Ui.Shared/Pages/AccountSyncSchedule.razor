@@ -3,10 +3,12 @@
 @using VideoForensics.Data.Common.Contracts
 @inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<AccountSyncSchedule> L
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
-<h4 class="mb-4">Sync Schedule</h4>
+<h4 class="mb-4">@L["SyncScheduleTitle"]</h4>
 
 @if (_isLoading)
 {
@@ -16,52 +18,52 @@ else
 {
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
-        <div class="alert @(_statusMessage.StartsWith("Failed") ? "alert-danger" : "alert-success")">
+        <div class="alert @(_statusIsError ? "alert-danger" : "alert-success")">
             @_statusMessage
         </div>
     }
 
     <div class="card p-4">
         <div class="card-body">
-            <h5 class="card-title">Configure Sync Settings</h5>
+            <h5 class="card-title">@L["ConfigureSyncSettings"]</h5>
 
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
-                    <label for="snapshot-rssi-interval">Snapshot/RSSI Interval (minutes):</label>
+                    <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
                     <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" Min="1" Step="1" />
                 </div>
                 <div class="mb-3">
-                    <label for="event-poll-interval">Event Poll Interval (minutes):</label>
+                    <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
                     <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
                 </div>
 
                 <div class="mb-3">
                     <label for="is-enabled">
                         <SfCheckBox ID="is-enabled" @bind-Checked="_isEnabled" TChecked="bool" />
-                        Enable Sync
+                        @L["EnableSync"]
                     </label>
                 </div>
 
                 @if (_schedule != null)
                 {
                     <div class="mb-3">
-                        <label>Last Event Poll:</label>
-                        <p>@(_schedule.EventLastRunUtc?.ToString("g") ?? "Never")</p>
+                        <label>@L["LastEventPoll"]</label>
+                        <p>@(_schedule.EventLastRunUtc?.ToString("g") ?? L["Never"])</p>
                     </div>
 
                     <div class="mb-3">
-                        <label>Next Event Poll:</label>
-                        <p>@(_schedule.EventNextRunUtc?.ToString("g") ?? "N/A")</p>
+                        <label>@L["NextEventPoll"]</label>
+                        <p>@(_schedule.EventNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
                     </div>
 
                     <div class="mb-3">
-                        <label>Last Snapshot Poll:</label>
-                        <p>@(_schedule.SnapshotLastRunUtc?.ToString("g") ?? "Never")</p>
+                        <label>@L["LastSnapshotPoll"]</label>
+                        <p>@(_schedule.SnapshotLastRunUtc?.ToString("g") ?? L["Never"])</p>
                     </div>
 
                     <div class="mb-3">
-                        <label>Next Snapshot Poll:</label>
-                        <p>@(_schedule.SnapshotNextRunUtc?.ToString("g") ?? "N/A")</p>
+                        <label>@L["NextSnapshotPoll"]</label>
+                        <p>@(_schedule.SnapshotNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
                     </div>
                 }
 
@@ -70,7 +72,7 @@ else
                 <div class="mb-3">
                     <label for="use-advanced-jamming">
                         <SfCheckBox ID="use-advanced-jamming" @bind-Checked="_useAdvancedJammingSchedule" TChecked="bool" />
-                        Advanced Jamming Schedule
+                        @L["AdvancedJammingSchedule"]
                     </label>
                 </div>
 
@@ -78,12 +80,12 @@ else
                 {
                     <div class="card border-secondary mb-4">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0">Jamming Detection Windows</h6>
+                            <h6 class="mb-0">@L["JammingDetectionWindows"]</h6>
                         </div>
                         <div class="card-body">
                             @if (_jammingWindows == null || _jammingWindows.Count == 0)
                             {
-                                <p class="text-muted">No jamming windows configured yet.</p>
+                                <p class="text-muted">@L["NoJammingWindows"]</p>
                             }
                             else
                             {
@@ -91,10 +93,10 @@ else
                                     <table class="table table-sm table-hover">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>Day of Week</th>
-                                                <th>Start Time</th>
-                                                <th>End Time</th>
-                                                <th>Interval (min)</th>
+                                                <th>@L["ColDayOfWeek"]</th>
+                                                <th>@L["ColStartTime"]</th>
+                                                <th>@L["ColEndTime"]</th>
+                                                <th>@L["ColIntervalMin"]</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
@@ -121,7 +123,7 @@ else
                                                         <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" Min="1" Step="1" />
                                                     </td>
                                                     <td>
-                                                        <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="Remove" />
+                                                        <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
                                                     </td>
                                                 </tr>
                                             }
@@ -131,14 +133,14 @@ else
                             }
 
                             <div class="mt-3">
-                                <SfButton type="button" OnClick="AddWindow" CssClass="e-outline" Content="Add Window" />
+                                <SfButton type="button" OnClick="AddWindow" CssClass="e-outline" Content="@L["AddWindow"]" />
                             </div>
                         </div>
                     </div>
                 }
 
                 <div class="mt-4">
-                    <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? "Saving..." : "Save")" />
+                    <SfButton type="submit" CssClass="e-primary" Disabled="@_isBusy" Content="@(_isBusy ? L["Saving"] : L["Save"])" />
                 </div>
             </EditForm>
         </div>
@@ -159,6 +161,7 @@ else
     private bool _isLoading = true;
     private bool _isBusy;
     private string? _statusMessage;
+    private bool _statusIsError;
 
     private record TimeOption(int Minutes, string Display);
     private List<TimeOption> _timeOptions = [];
@@ -166,7 +169,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _breadcrumbItems = new() { ("Accounts", "/accounts"), ("Account Details", $"/accounts/{Id}"), ("Sync Schedule", null) };
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["SyncScheduleTitle"], null) };
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
         await LoadScheduleAsync();
@@ -188,13 +191,13 @@ else
     {
         return new List<(int Value, string Display)>
         {
-            (0, "Sunday"),
-            (1, "Monday"),
-            (2, "Tuesday"),
-            (3, "Wednesday"),
-            (4, "Thursday"),
-            (5, "Friday"),
-            (6, "Saturday")
+            (0, L["Sunday"]),
+            (1, L["Monday"]),
+            (2, L["Tuesday"]),
+            (3, L["Wednesday"]),
+            (4, L["Thursday"]),
+            (5, L["Friday"]),
+            (6, L["Saturday"])
         };
     }
 
@@ -202,6 +205,7 @@ else
     {
         _isLoading = true;
         _statusMessage = null;
+        _statusIsError = false;
         try
         {
             _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
@@ -221,7 +225,8 @@ else
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Failed to load schedule: {ex.Message}";
+            _statusMessage = L["FailedToLoadSchedule", ex.Message];
+            _statusIsError = true;
         }
         finally
         {
@@ -264,7 +269,8 @@ else
 
         if (_jammingWindows == null || _jammingWindows.Count == 0)
         {
-            _statusMessage = "Advanced Jamming Schedule is enabled but no windows are configured.";
+            _statusMessage = L["AdvancedScheduleNoWindows"];
+            _statusIsError = true;
             return false;
         }
 
@@ -273,34 +279,39 @@ else
             // Validate day of week
             if (window.DayOfWeek < 0 || window.DayOfWeek > 6)
             {
-                _statusMessage = $"Invalid day of week: {window.DayOfWeek}. Must be 0-6.";
+                _statusMessage = L["InvalidDayOfWeek", window.DayOfWeek];
+                _statusIsError = true;
                 return false;
             }
 
             // Validate start and end times are multiples of 15
             if (window.StartMinuteOfDay % 15 != 0)
             {
-                _statusMessage = $"Start time {FormatMinutes(window.StartMinuteOfDay)} must be a multiple of 15 minutes.";
+                _statusMessage = L["StartTimeMultiple", FormatMinutes(window.StartMinuteOfDay)];
+                _statusIsError = true;
                 return false;
             }
 
             if (window.EndMinuteOfDay % 15 != 0)
             {
-                _statusMessage = $"End time {FormatMinutes(window.EndMinuteOfDay)} must be a multiple of 15 minutes.";
+                _statusMessage = L["EndTimeMultiple", FormatMinutes(window.EndMinuteOfDay)];
+                _statusIsError = true;
                 return false;
             }
 
             // Validate end time is after start time
             if (window.EndMinuteOfDay <= window.StartMinuteOfDay)
             {
-                _statusMessage = $"End time must be after start time for {GetDayName(window.DayOfWeek)}.";
+                _statusMessage = L["EndAfterStart", GetDayName(window.DayOfWeek)];
+                _statusIsError = true;
                 return false;
             }
 
             // Validate interval meets minimum
             if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
             {
-                _statusMessage = $"Window interval must be >= {SyncSchedule.MinimumPollIntervalMinutes} minute(s).";
+                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumPollIntervalMinutes];
+                _statusIsError = true;
                 return false;
             }
         }
@@ -317,14 +328,14 @@ else
 
     private string GetDayName(int dayOfWeek) => dayOfWeek switch
     {
-        0 => "Sunday",
-        1 => "Monday",
-        2 => "Tuesday",
-        3 => "Wednesday",
-        4 => "Thursday",
-        5 => "Friday",
-        6 => "Saturday",
-        _ => "Unknown"
+        0 => L["Sunday"],
+        1 => L["Monday"],
+        2 => L["Tuesday"],
+        3 => L["Wednesday"],
+        4 => L["Thursday"],
+        5 => L["Friday"],
+        6 => L["Saturday"],
+        _ => L["Unknown"]
     };
 
     private async Task SaveScheduleAsync()
@@ -377,7 +388,8 @@ else
             }
 
             await SyncScheduleRepository.UpsertAsync(_schedule, CancellationToken.None);
-            _statusMessage = "Schedule saved successfully.";
+            _statusMessage = L["ScheduleSaved"];
+            _statusIsError = false;
 
             // Navigate back after a brief delay to show the success message
             await Task.Delay(1500);
@@ -385,7 +397,8 @@ else
         }
         catch (Exception ex)
         {
-            _statusMessage = $"Failed to save schedule: {ex.Message}";
+            _statusMessage = L["FailedToSaveSchedule", ex.Message];
+            _statusIsError = true;
         }
         finally
         {

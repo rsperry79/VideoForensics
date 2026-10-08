@@ -13,6 +13,8 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime DetectedAtUtc { get; set; }
         public string? Notes { get; set; }
         public JammingIncidentSource Source { get; set; }
+        /// <summary>Forensic case auto-created for this incident; null until one exists.</summary>
+        public Guid? CaseId { get; set; }
     }
 
     public enum JammingConfidenceLevel

@@ -1,6 +1,9 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Ui.Shared.Formatting
 @inject IChatService ChatService
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 <div class="chat-panel">
     <div class="chat-messages">
@@ -26,9 +29,10 @@
                 <div class="chat-message-content">
                     @if (string.IsNullOrEmpty(_streamingText))
                     {
-                        <span class="chat-thinking">Thinking...</span>
+                        <span class="chat-thinking">@L["ChatThinking"]</span>
                     }
-                    else
+                    
+else
                     {
                         @_streamingText
                     }
@@ -52,10 +56,10 @@
             @bind="_inputText"
             @bind:event="oninput"
             @onkeydown="@OnInputKeyDownAsync"
-            placeholder="Ask a question about the investigation..."
+            placeholder="@L["ChatPlaceholder"]"
             disabled="@_isLoading" />
         <SfButton
-            Content="Send"
+            Content="@L["ChatSend"]"
             OnClick="@SendMessageAsync"
             CssClass="e-primary"
             Disabled="@(_isLoading || string.IsNullOrWhiteSpace(_inputText))" />
@@ -224,14 +228,14 @@
         }
         catch (HttpRequestException)
         {
-            _errorMessage = "Failed to connect to the server. Please check your connection.";
+            _errorMessage = L["ChatConnectError"].Value;
             _streamingText = string.Empty;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
-            _errorMessage = $"An error occurred: {ex.Message}";
+            _errorMessage = L["ChatGenericError", ex.Message].Value;
             _streamingText = string.Empty;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);

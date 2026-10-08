@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Repositories
 {
@@ -12,12 +13,14 @@ namespace VideoForensics.Data.Database.Repositories
     {
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<JammingRepository> _logger;
+        private readonly ICaseRepository? _caseRepository;
 
         /// <summary>Initializes a new instance of the JammingRepository.</summary>
-        public JammingRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<JammingRepository> logger)
+        public JammingRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<JammingRepository> logger, ICaseRepository? caseRepository = null)
         {
             _factory = factory;
             _logger = logger;
+            _caseRepository = caseRepository;
         }
 
         /// <summary>Upserts (inserts or updates) a jamming incident record.</summary>
@@ -53,11 +56,35 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.DetectedAtUtc = incident.DetectedAtUtc;
                     existing.Notes = incident.Notes;
                     existing.Source = incident.Source;
+                    // Preserve CaseId if incoming is null, otherwise update it
+                    if (incident.CaseId.HasValue)
+                    {
+                        existing.CaseId = incident.CaseId;
+                    }
                     _ = db.JammingIncidentRecords.Update(existing);
                     _logger.LogInformation("Jamming incident upserted (updated): {IncidentId}", incident.Id);
                 }
 
+                bool isInsert = existing == null;
+
                 _ = await db.SaveChangesAsync(ct);
+
+                // M3: Auto-create case and alert on new jamming incident INSERT
+                if (isInsert && _caseRepository is not null)
+                {
+                    try
+                    {
+                        _ = await _caseRepository.CreateFromJammingDetectionAsync(incident, ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to create case for jamming incident {IncidentId}; incident saved but case not linked", incident.Id);
+                    }
+                }
                 return existing ?? incident;
             }
             catch (Exception ex)
@@ -143,5 +170,12 @@ namespace VideoForensics.Data.Database.Repositories
                 throw;
             }
         }
+        /// <summary>Gets a jamming incident record by ID.</summary>
+        public async Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.JammingIncidentRecords.FirstOrDefaultAsync(j => j.Id == incidentId, ct);
+        }
     }
+
 }

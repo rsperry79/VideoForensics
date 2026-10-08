@@ -39,6 +39,6 @@
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.Testing.Platform" Version="2.4.1" />
+    <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+    <data name="Title" xml:space="preserve">
+    <value>Server Logs</value>
+  </data>
+  <data name="SignInPrompt" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to view server logs.</value>
+  </data>
+  <data name="StatusConnecting" xml:space="preserve">
+    <value>Connecting</value>
+  </data>
+  <data name="StatusLive" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="StatusPaused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="StatusReconnecting" xml:space="preserve">
+    <value>Reconnecting</value>
+  </data>
+  <data name="StatusDisconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="MinLevelLabel" xml:space="preserve">
+    <value>Minimum level</value>
+  </data>
+  <data name="SearchLabel" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchPlaceholder" xml:space="preserve">
+    <value>Filter messages...</value>
+  </data>
+  <data name="PauseButton" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="ResumeButton" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="NewBadge" xml:space="preserve">
+    <value>{0} new</value>
+  </data>
+  <data name="AutoScrollLabel" xml:space="preserve">
+    <value>Auto-scroll</value>
+  </data>
+  <data name="ClearButton" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="DownloadButton" xml:space="preserve">
+    <value>Download visible (.txt)</value>
+  </data>
+  <data name="ColTime" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="ColLevel" xml:space="preserve">
+    <value>Level</value>
+  </data>
+  <data name="ColCategory" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="ColMessage" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="NoEntries" xml:space="preserve">
+    <value>No log entries match the current filter.</value>
+  </data>
+  <data name="StepUpFailed" xml:space="preserve">
+    <value>Passkey verification was cancelled or failed, so server logs cannot be loaded.</value>
+  </data>
+  <data name="TryAgainButton" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Access denied. Server logs require a SuperAdmin on the local network and a successful passkey verification.</value>
+  </data>
+  <data name="ShowException" xml:space="preserve">
+    <value>Show exception</value>
+  </data>
+  <data name="HideException" xml:space="preserve">
+    <value>Hide exception</value>
+  </data>
+</root>

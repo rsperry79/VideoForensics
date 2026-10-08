@@ -1,8 +1,11 @@
 @using VideoForensics.Providers.Common.Contracts
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
-<SfDialog @bind-Visible="Visible" Width="420px" IsModal="true" ShowCloseIcon="true" Header="@($"Re-authenticate {ProviderName}")">
-    <p>Enter the current password for this account to restore access.</p>
-    <AuthForm IdPrefix="reauth" SubmitLabel="Log In"
+<SfDialog @bind-Visible="Visible" Width="420px" IsModal="true" ShowCloseIcon="true" Header="@L["ReAuthTitle", ProviderName]">
+    <p>@L["ReAuthPrompt"]</p>
+    <AuthForm IdPrefix="reauth" SubmitLabel="@L["ReAuthLogIn"]"
               OnAuthenticated="HandleAuthenticatedAsync"
               AvailableProviders="@(new[] { ProviderName })"
               InitialEmail="@InitialEmail" />

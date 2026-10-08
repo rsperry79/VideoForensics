@@ -1311,6 +1311,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double>("AverageDegradationDb")
                         .HasColumnType("REAL");
 
+                    b.Property<Guid?>("CaseId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Confidence")
                         .HasColumnType("INTEGER");
 
@@ -1334,6 +1337,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CaseId");
 
                     b.HasIndex("DeviceId");
 
@@ -2091,6 +2096,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("UiModeLocked")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("TEXT");

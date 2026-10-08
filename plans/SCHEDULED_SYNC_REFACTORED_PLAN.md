@@ -1,5 +1,12 @@
 # Scheduled Background Sync Tasks (Refactored Approach)
 
+**STATUS: PARTIALLY COMPLETE (2026-10-08)** - the refactor prerequisite is largely done (PR #152); the background sync services are not.
+
+- DONE (largely): PR #152 "Make provider services account-aware to eliminate SessionProvider race condition". `ISessionProvider` now has `GetSession(Guid providerAccountId)` and `RingDeviceDiscoveryService` has account-aware paths using it. The parameterless `GetSession()` still exists (about 10 call sites in src, kept for the single-account UI flow), so Phases 1-2 below are mostly satisfied rather than open work; re-audit the remaining parameterless callers before relying on true concurrency.
+- NOT DONE: Phase 4 (BackgroundServices). `ProviderEventSyncService` / `ProviderSnapshotSyncService` do not exist; nothing consumes the existing `SyncSchedule` rows (`ISyncScheduleRepository` is used only by its DI registration and `AccountSyncSchedule.razor`).
+- The "per-account schedule config" decision is implemented as the `SyncSchedule` entity, not a `ProviderAccountScheduleSetting` table.
+- Overlap: duplicates `scheduled-background-sync-tasks-linux.md`. That plan holds the full scope and is the better source of truth for what remains; this plan only contributes the SessionProvider refactor, which has largely landed. Merging the two into one is still open.
+
 **Decision:** REFACTORED (Better design, true concurrency)  
 **Effort:** ~4 weeks  
 **Strategic Value:** Operational reliability + multi-provider account support  

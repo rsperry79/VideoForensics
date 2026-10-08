@@ -1,3 +1,5 @@
+> **SUPERSEDED:** The desktop LoggerViewer projects (WPF and MAUI) described here were replaced by the WebApp Server Logs page; the Linux-viewer requirement was dropped. See `plans/archive/webapp-log-viewer.md`.
+
 # Phase 4: Logger Viewer & Named Pipe Logging Infrastructure
 
 ## Scope

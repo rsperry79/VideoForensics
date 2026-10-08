@@ -27,7 +27,7 @@
                 <!-- Image toolbar -->
                 <button class="btn btn-sm btn-outline-light" data-testid="zoom-in" @onclick="ZoomIn">+</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="zoom-out" @onclick="ZoomOut">-</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="zoom-fit" @onclick="ZoomFit">Fit</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="zoom-fit" @onclick="ZoomFit">@L["ZoomFit"]</button>
             }
             else if (MediaFormatHelper.IsVideo(Item.Media?.MediaFormat))
             {
@@ -39,8 +39,8 @@
                     <option value="1.5">1.5x</option>
                     <option value="2">2x</option>
                 </select>
-                <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">◀ frame</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">frame ▶</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">@L["FrameBackLabel"]</button>
+                <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">@L["FrameForwardLabel"]</button>
                 <button class="btn btn-sm btn-outline-light" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
                 @if (CanGrabStill)
                 {
@@ -79,7 +79,7 @@
         @if (string.IsNullOrEmpty(ContentUrl))
         {
             <div class="viewer-unavailable">
-                Media preview unavailable.
+                @L["MediaPreviewUnavailable"]
             </div>
         }
         else if (MediaFormatHelper.IsImage(Item.Media?.MediaFormat))
@@ -101,9 +101,9 @@
 
     <!-- Footer -->
     <div class="viewer-footer">
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-prev" disabled="@(!HasPrevious)" @onclick="OnPrevious">← Prev</button>
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-next" disabled="@(!HasNext)" @onclick="OnNext">Next →</button>
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-close" @onclick="OnClose">Close</button>
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-prev" disabled="@(!HasPrevious)" @onclick="OnPrevious">@L["ViewerPrev"]</button>
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-next" disabled="@(!HasNext)" @onclick="OnNext">@L["ViewerNext"]</button>
+        <button class="btn btn-sm btn-outline-light" data-testid="viewer-close" @onclick="OnClose">@L["ViewerClose"]</button>
     </div>
 </div>
 

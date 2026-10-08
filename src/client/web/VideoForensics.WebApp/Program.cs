@@ -99,6 +99,8 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
+// Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
+builder.Services.AddInMemoryLogBuffer();
 builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
@@ -335,6 +337,7 @@ builder.Services.AddScoped<SessionNetworkContext>();
 // fresh, real HttpContext per call, which a Blazor circuit alone can't guarantee for UI-event-driven
 // code). This keeps the endpoint's own authorization rule the single source of truth for both hosts.
 builder.Services.AddSelfHttpService<ISecurityEventsService>(http => new RemoteSecurityEventsService(http));
+builder.Services.AddSelfHttpService<ILogViewerService>(http => new RemoteLogViewerService(http));
 builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdminOperatorService(http));
 
 // Pages/Security*.razor (SecurityLockoutPolicy/SecurityDevices/SecurityOperators/SecurityAuditLog)
@@ -357,11 +360,14 @@ builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>()
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder(
+    sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>(),
+    sp.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>()));
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
 
-// MainLayout.razor's shared <RadzenComponents> needs @rendermode="InteractiveServer" here - this
+// Hosts that support interactive render modes register InteractiveServerBlazorRenderModeProvider - this
 // is a real ASP.NET Core host with interactive server components configured below. MAUI's
 // BlazorWebView registers NullBlazorRenderModeProvider instead - see IBlazorRenderModeProvider.
 builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazorRenderModeProvider>();
@@ -434,6 +440,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
@@ -442,6 +449,7 @@ app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
+app.MapJammingEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints(app.Services.GetRequiredService<VideoForensics.Hosting.Services.IEventPullService>());

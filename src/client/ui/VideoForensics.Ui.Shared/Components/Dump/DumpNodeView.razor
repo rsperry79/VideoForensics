@@ -1,4 +1,7 @@
+@using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Components.Dump
+@using VideoForensics.Ui.Shared.Resources
+@inject IStringLocalizer<SharedResources> L
 
 <div class="dump-node" data-path="@Node.Path">
     @if (Node.Kind == DumpNodeKind.Object)
@@ -15,7 +18,7 @@
                         <span>▶</span>
                     }
                 </span>
-                <span class="dump-object-label">Object</span>
+                <span class="dump-object-label">@L["DumpObject"]</span>
             </div>
             @if (IsOpen)
             {
@@ -55,7 +58,7 @@
                             <span>▶</span>
                         }
                     </span>
-                    <span class="dump-array-label">Array (@Node.Children.Count items)</span>
+                    <span class="dump-array-label">@L["DumpArrayItems", Node.Children.Count]</span>
                 </div>
                 @if (IsOpen && Node.TableColumns.Count > 0)
                 {
@@ -109,7 +112,7 @@
                             <span>▶</span>
                         }
                     </span>
-                    <span class="dump-array-label">Array (@Node.Children.Count items)</span>
+                    <span class="dump-array-label">@L["DumpArrayItems", Node.Children.Count]</span>
                 </div>
                 @if (IsOpen)
                 {

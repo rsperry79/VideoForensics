@@ -9,6 +9,7 @@ using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components;
+using VideoForensics.Ui.Shared.Formatting;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Layout.Mobile;
 using VideoForensics.Ui.Shared.Layout.Simple;
@@ -54,12 +55,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         var mockChatService = new Mock<IChatService>();
         Services.AddScoped(_ => mockChatService.Object);
 
-        // Register IStringLocalizer<SharedResources> mock
-        var localizerMock = new Mock<IStringLocalizer<SharedResources>>();
-        localizerMock
-            .Setup(l => l[It.IsAny<string>()])
-            .Returns((string key) => new LocalizedString(key, key));
-        Services.AddScoped(_ => localizerMock.Object);
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
 
         // Register IAppLockPreferencesStore mock
         var appLockMock = new Mock<IAppLockPreferencesStore>();
@@ -100,12 +96,28 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
             .ReturnsAsync((OperatorPreferences?)null);
         Services.AddScoped(_ => opPrefRepoMock.Object);
 
+        // Register default IUiModeService mock (can be overridden by individual tests)
+        var uiModeMock = new Mock<IUiModeService>();
+        uiModeMock.SetupGet(u => u.Mode).Returns("Standard");
+        uiModeMock.SetupGet(u => u.IsLocked).Returns(false);
+        uiModeMock.Setup(u => u.InitializeAsync()).Returns(Task.CompletedTask);
+        uiModeMock.Setup(u => u.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        uiModeMock.SetupAdd(u => u.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => uiModeMock.Object);
+
         // Register ICaseRepository mock
         var caseRepoMock = new Mock<ICaseRepository>();
         caseRepoMock
             .Setup(r => r.ListAsync(It.IsAny<CaseStatus>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ForensicCase>());
         Services.AddScoped(_ => caseRepoMock.Object);
+
+        // Defaults for SimpleHome, which SimpleLayout renders at "/" and "/evidence" (empty data; SimpleHomeTests override these)
+        Services.AddScoped(_ => new Mock<IEventRepository>().Object);
+        Services.AddScoped(_ => new Mock<IMediaItemRepository>().Object);
+        Services.AddScoped(_ => new Mock<IDeviceRepository>().Object);
+        Services.AddScoped(_ => new Mock<IJammingRepository>().Object);
+        Services.AddScoped(_ => new SimpleHomeBuilder(TimeProvider.System, new Mock<IMediaContentUrlProvider>().Object, TestLocalizer.Create()));
 
         // Register services needed by RightPanel components (AccountSwitcher, ThemeLanguagePicker)
         Services.AddScoped(_ => new Mock<IProviderAccountRepository>().Object);
@@ -342,7 +354,8 @@ public class SimpleLayout_SignOut_Tests : SimpleModeLayoutTestBase
         // Assert
         // Session should be cleared and navigation should occur
         var nav = Services.GetRequiredService<NavigationManager>();
-        Assert.EndsWith("/device-signin", nav.Uri);
+        Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath);
+        Assert.False(session.IsSignedIn);
     }
 
     [Fact]
@@ -462,4 +475,113 @@ public class SimpleLayout_LayoutStructure_Tests : SimpleModeLayoutTestBase
         Assert.True(contentIndex >= 0, "Content container not found");
         Assert.True(chatIndex >= 0, "Chat container not found");
     }
+}
+public class SimpleLayout_StandardViewButton_Tests : SimpleModeLayoutTestBase
+{
+    [Fact]
+    public void SimpleLayout_WhenUnlocked_RendersStandardViewButton()
+    {
+        // Arrange
+        RegisterSignedInSession();
+        RegisterViewportService();
+        RegisterUiModeService("Simple");
+        var mockUiMode = new Mock<IUiModeService>();
+        mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
+
+        // Act
+        var component = Render<SimpleLayout>();
+
+        // Assert
+        var button = component.FindAll("button").FirstOrDefault(b =>
+            b.ClassList.Contains("simple-layout-standard-button") &&
+            b.TextContent.Contains("Standard view"));
+        Assert.NotNull(button);
+    }
+
+    [Fact]
+    public async Task SimpleLayout_ClickingStandardViewButton_CallsSetModeAsync()
+    {
+        // Arrange
+        RegisterSignedInSession();
+        RegisterViewportService();
+        var mockUiMode = new Mock<IUiModeService>();
+        mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
+
+        var component = Render<SimpleLayout>();
+        var button = component.FindAll("button").First(b => b.ClassList.Contains("simple-layout-standard-button"));
+
+        // Act
+        await component.InvokeAsync(() => button.Click());
+
+        // Assert
+        mockUiMode.Verify(s => s.SetModeAsync("Standard"), Times.Once);
+    }
+
+    [Fact]
+    public void SimpleLayout_WhenLocked_HidesStandardViewButton()
+    {
+        // Arrange
+        RegisterSignedInSession();
+        RegisterViewportService();
+        var mockUiMode = new Mock<IUiModeService>();
+        mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(true);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
+
+        // Act
+        var component = Render<SimpleLayout>();
+
+        // Assert
+        var button = component.FindAll("button").FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
+        Assert.Null(button);
+    }
+
+    [Fact]
+    public async Task SimpleLayout_OnChange_CausesReRender()
+        {
+            // Arrange
+            RegisterSignedInSession();
+            RegisterViewportService();
+            Action onChangeCallback = null;
+            var mockUiMode = new Mock<IUiModeService>();
+            mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+
+            // Track whether OnChange has been raised to change IsLocked behavior
+            bool hasChangeOccurred = false;
+            mockUiMode.SetupGet(s => s.IsLocked).Returns(() => hasChangeOccurred);
+
+            mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+            mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>()).Callback<Action>(action =>
+            {
+                onChangeCallback = action;
+            });
+            Services.AddScoped(_ => mockUiMode.Object);
+
+            var component = Render<SimpleLayout>();
+            // Precondition: the "Standard view" button should be rendered initially
+            var initialButton = component.FindAll("button").FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
+            Assert.NotNull(initialButton);
+
+            // Act - simulate OnChange event (which sets IsLocked to true) and trigger re-render from dispatcher
+            hasChangeOccurred = true;
+            Assert.NotNull(onChangeCallback);
+            await component.InvokeAsync(() => onChangeCallback.Invoke());
+
+            // Assert - the "Standard view" button should no longer be rendered after OnChange with IsLocked=true
+            var buttonsAfterChange = component.FindAll("button");
+            var standardButtonAfterChange = buttonsAfterChange.FirstOrDefault(b => b.ClassList.Contains("simple-layout-standard-button"));
+            Assert.Null(standardButtonAfterChange);
+        }
 }
