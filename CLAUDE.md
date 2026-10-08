@@ -126,6 +126,15 @@ Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared
 - **No stdio MCP process may bootstrap `AddVideoForensicsDataLayer()`/`AddVideoForensicsServerCore()`.** If a client-side MCP task seems to need one of those calls to work, that's a sign the task is being done wrong, not a sign to add the call back.
 - **Mapping naming convention:** DTO mapping extension methods are always `entity.ToDto()` and `dto.ToDomain()` — not `FromDto`, not a mix.
 
+## Localization (required)
+
+Every user-visible string in VideoForensics.Ui.Shared (pages, components, dialogs, layouts, validation and alert text) must be localized — never hard-code English literals in markup or @code.
+
+- Inject IStringLocalizer<SharedResources> (conventionally `@inject IStringLocalizer<SharedResources> L`) and use `@L["Key"]`; for page-specific text follow the existing per-page .resx pattern (e.g. DeviceSignIn.resx).
+- Add the key to the .resx in the same change. A new or changed page/component is incomplete until all its visible text (labels, buttons, headings, placeholders, tooltips, error messages, aria labels) comes from resources.
+- Tests that assert on text should go through the localizer or the resource key, not a duplicated English literal where practical.
+- Not user-visible, so exempt: log messages, exception messages not shown to users, route paths, CSS classes, test data.
+- Existing pages that are not yet localized (see plans/maui-layout-theme-localization.md) must be localized when they are next touched.
 ## UI Layout (Desktop-First)
 
 `VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
