@@ -13,8 +13,10 @@ namespace VideoForensics.WebApp.Api
     ///
     /// Base policy is the default authenticated-user policy (any signed-in role may read); the write
     /// routes stack <see cref="VideoForensicsPolicies.Admin"/> on top, exactly like <c>CaseEndpoints</c>.
-    /// <c>CaseId</c>, <c>Source</c> and <c>DetectedAtUtc</c> are server-controlled and never accepted
-    /// from the client: the repository creates the case + alert itself when a NEW incident is inserted.
+    /// <c>CaseId</c> and <c>DetectedAtUtc</c> are server-controlled and never accepted from the client:
+    /// the repository creates the case + alert itself when a NEW incident is inserted. <c>Source</c> is
+    /// client-claimed by an Admin and honoured only for NEW incidents (so a client host that ran the
+    /// RSSI analysis can keep its AutoDetected provenance); an existing incident keeps its stored Source.
     /// </summary>
     public static class JammingEndpoints
     {
@@ -48,7 +50,7 @@ namespace VideoForensics.WebApp.Api
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
                 .RequireRateLimiting("default")
                 .WithSummary("Record jamming incident")
-                .WithDescription("Inserts or updates a jamming incident. Source, DetectedAtUtc and CaseId are server-controlled.");
+                .WithDescription("Inserts or updates a jamming incident. DetectedAtUtc and CaseId are server-controlled; Source (optional, new incidents only) defaults to ManuallyRecorded.");
 
             _ = group.MapPost("/stats/{deviceId:guid}/recompute", RecomputeStatsAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Admin)
@@ -117,7 +119,7 @@ namespace VideoForensics.WebApp.Api
             JammingIncidentRecord? existing = request.Id == Guid.Empty ? null : await jamming.GetIncidentAsync(request.Id, ct);
             if (existing == null)
             {
-                record.Source = JammingIncidentSource.ManuallyRecorded;
+                // record.Source already holds the validated client claim (ManuallyRecorded when omitted).
                 record.DetectedAtUtc = DateTime.UtcNow;
                 record.CaseId = null;
             }
@@ -169,6 +171,12 @@ namespace VideoForensics.WebApp.Api
                 || !Enum.IsDefined(confidence))
             {
                 return "Invalid confidence. Must be one of: " + string.Join(", ", Enum.GetNames<JammingConfidenceLevel>()) + ".";
+            }
+
+            if (request.Source != null
+                && (!Enum.TryParse(request.Source, ignoreCase: true, out JammingIncidentSource source) || !Enum.IsDefined(source)))
+            {
+                return "Invalid source. Must be one of: " + string.Join(", ", Enum.GetNames<JammingIncidentSource>()) + ".";
             }
 
             if (request.StartUtc >= request.EndUtc)

@@ -239,7 +239,9 @@ namespace VideoForensics.Client.Core.Tools
         /// </summary>
         private async Task<int> DetectAndPersistIncidentsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            IReadOnlyList<DeviceHealth> history = await _healthRepository.GetHistoryAsync(deviceId, ct);
+            // Ranged overload on purpose: remote (MAUI) clients can only fetch a bounded window
+            // (GET /api/v1/devices/{id}/health?from&to) and throw NotSupportedException for full history.
+            IReadOnlyList<DeviceHealth> history = await _healthRepository.GetHistoryAsync(deviceId, fromUtc, toUtc, ct);
 
             var readings = history
                 .Where(s => s.WifiSignalRssi.HasValue && s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)

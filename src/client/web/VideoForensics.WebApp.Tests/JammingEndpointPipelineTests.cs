@@ -327,7 +327,7 @@ namespace VideoForensics.WebApp.Tests
         // ---- PUT behaviour through the real binder -------------------------------------------------
 
         [Fact]
-        public async Task Put_BodyContainingCaseIdSourceAndDetectedAt_ThoseAreIgnoredForNewIncident()
+        public async Task Put_BodyContainingCaseIdAndDetectedAt_AreIgnoredForNewIncident_SourceIsHonoured()
         {
             await using var host = await StartAsync();
             string json = $$"""
@@ -341,10 +341,41 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
             JammingIncidentRecord sent = Assert.Single(host.Upserted);
             Assert.Null(sent.CaseId);
-            Assert.Equal(JammingIncidentSource.ManuallyRecorded, sent.Source);
+            Assert.Equal(JammingIncidentSource.AutoDetected, sent.Source);
             Assert.True(sent.DetectedAtUtc > new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
             var dto = await resp.Content.ReadFromJsonAsync<JammingIncidentDto>(WebJson);
             Assert.Null(dto!.CaseId);
+            Assert.Equal("AutoDetected", dto.Source);
+        }
+
+        [Fact]
+        public async Task Put_BodyWithoutSource_StoresManuallyRecorded()
+        {
+            await using var host = await StartAsync();
+            string json = $$"""
+                {"id":"{{Guid.Empty}}","deviceId":"{{DeviceId}}","startUtc":"2026-03-01T10:00:00Z","endUtc":"2026-03-01T10:30:00Z",
+                 "affectedEventCount":3,"averageDegradationDb":14.5,"confidence":"High"}
+                """;
+
+            HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Put, "/api/v1/jamming/incidents", "Admin", content: new StringContent(json, Encoding.UTF8, "application/json")));
+
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+            Assert.Equal(JammingIncidentSource.ManuallyRecorded, Assert.Single(host.Upserted).Source);
+        }
+
+        [Fact]
+        public async Task Put_BodyWithInvalidSource_Returns400AndWritesNothing()
+        {
+            await using var host = await StartAsync();
+            string json = $$"""
+                {"id":"{{Guid.Empty}}","deviceId":"{{DeviceId}}","startUtc":"2026-03-01T10:00:00Z","endUtc":"2026-03-01T10:30:00Z",
+                 "affectedEventCount":3,"averageDegradationDb":14.5,"confidence":"High","source":"Forged"}
+                """;
+
+            HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Put, "/api/v1/jamming/incidents", "Admin", content: new StringContent(json, Encoding.UTF8, "application/json")));
+
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+            host.Jamming.Verify(j => j.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

@@ -55,6 +55,26 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal("x", record.Notes);
         }
 
+        [Theory]
+        [InlineData("AutoDetected", JammingIncidentSource.AutoDetected)]
+        [InlineData("autodetected", JammingIncidentSource.AutoDetected)]
+        [InlineData("ManuallyRecorded", JammingIncidentSource.ManuallyRecorded)]
+        public void UpsertRequest_ToDomain_KeepsRequestedSource(string source, JammingIncidentSource expected)
+        {
+            var request = new UpsertJammingIncidentRequest(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddHours(-1), DateTime.UtcNow, 2, 9.5, "Low", null, source);
+
+            Assert.Equal(expected, request.ToDomain().Source);
+        }
+
+        [Fact]
+        public void UpsertRequest_ToDomain_NullSourceDefaultsToManuallyRecorded()
+        {
+            var request = new UpsertJammingIncidentRequest(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddHours(-1), DateTime.UtcNow, 2, 9.5, "Low", null);
+
+            Assert.Null(request.Source);
+            Assert.Equal(JammingIncidentSource.ManuallyRecorded, request.ToDomain().Source);
+        }
+
         [Fact]
         public void JammingStatsSummary_ToDto_ToDomain_RoundTripsEveryField()
         {

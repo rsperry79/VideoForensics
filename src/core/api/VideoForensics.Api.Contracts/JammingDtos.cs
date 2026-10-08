@@ -32,8 +32,10 @@ namespace VideoForensics.Api.Contracts
 
     /// <summary>
     /// Request body to record (insert or update) a jamming incident. Deliberately carries no
-    /// <c>CaseId</c>, <c>Source</c> or <c>DetectedAtUtc</c>: those are server-controlled so a client
-    /// can neither forge a case link nor claim an incident was auto-detected.
+    /// <c>CaseId</c> or <c>DetectedAtUtc</c>: those are server-controlled so a client cannot forge a
+    /// case link or rewrite when an incident was detected. <c>Source</c> is the one client-claimed
+    /// provenance field (the write route is Admin-only): it lets a client host that ran the analysis
+    /// itself record incidents as AutoDetected so re-runs dedupe; it applies to NEW incidents only.
     /// </summary>
     /// <param name="Id">Incident id; <see cref="Guid.Empty"/> (or an unknown id) records a new incident.</param>
     /// <param name="DeviceId">The device the incident was observed on.</param>
@@ -43,6 +45,7 @@ namespace VideoForensics.Api.Contracts
     /// <param name="AverageDegradationDb">Average signal degradation in dB (non-negative).</param>
     /// <param name="Confidence">Confidence level name (Low, Medium, High, Definite).</param>
     /// <param name="Notes">Optional free-text notes (max 2000 characters).</param>
+    /// <param name="Source">Optional origin name (AutoDetected or ManuallyRecorded, case-insensitive); null means ManuallyRecorded. Applied to new incidents only; an existing incident keeps its stored source.</param>
     public record UpsertJammingIncidentRequest(
         Guid Id,
         Guid DeviceId,
@@ -51,7 +54,8 @@ namespace VideoForensics.Api.Contracts
         int AffectedEventCount,
         double AverageDegradationDb,
         string Confidence,
-        string? Notes
+        string? Notes,
+        string? Source = null
     );
 
     /// <summary>Wire DTO for the aggregated jamming statistics of a single device.</summary>
@@ -126,8 +130,8 @@ namespace VideoForensics.Api.Contracts
 
         /// <summary>
         /// Converts an <see cref="UpsertJammingIncidentRequest"/> to a <see cref="JammingIncidentRecord"/>.
-        /// Server-controlled fields are left at neutral values (<c>Source</c> = ManuallyRecorded,
-        /// <c>DetectedAtUtc</c> = default, <c>CaseId</c> = null); the caller must overlay them.
+        /// <c>Source</c> is parsed from the request (null = ManuallyRecorded; the server validates the name first);
+        /// <c>DetectedAtUtc</c> = default and <c>CaseId</c> = null are server-controlled and must be overlaid by the caller.
         /// </summary>
         public static JammingIncidentRecord ToDomain(this UpsertJammingIncidentRequest request)
         {
@@ -141,7 +145,9 @@ namespace VideoForensics.Api.Contracts
                 AverageDegradationDb = request.AverageDegradationDb,
                 Confidence = Enum.Parse<JammingConfidenceLevel>(request.Confidence, ignoreCase: true),
                 Notes = request.Notes,
-                Source = JammingIncidentSource.ManuallyRecorded,
+                Source = request.Source == null
+                    ? JammingIncidentSource.ManuallyRecorded
+                    : Enum.Parse<JammingIncidentSource>(request.Source, ignoreCase: true),
                 CaseId = null
             };
         }

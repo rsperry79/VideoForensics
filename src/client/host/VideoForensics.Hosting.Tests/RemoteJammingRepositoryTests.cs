@@ -199,7 +199,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public async Task UpsertIncidentAsync_PutsRequestWithoutServerControlledFields_AndReturnsSavedRecord()
+        public async Task UpsertIncidentAsync_PutsRequestWithSourceButWithoutServerControlledFields_AndReturnsSavedRecord()
         {
             var (repo, seen, bodies, _) = Create(_ => Json(SampleIncidentDto(CaseId)));
             var incident = new JammingIncidentRecord
@@ -224,7 +224,7 @@ namespace VideoForensics.Hosting.Tests
             using JsonDocument body = JsonDocument.Parse(bodies[0]!);
             JsonElement root = body.RootElement;
             Assert.False(root.EnumerateObject().Any(p => p.Name.Equals("caseId", StringComparison.OrdinalIgnoreCase)));
-            Assert.False(root.EnumerateObject().Any(p => p.Name.Equals("source", StringComparison.OrdinalIgnoreCase)));
+            Assert.Equal("AutoDetected", root.GetProperty("source").GetString());
             Assert.False(root.EnumerateObject().Any(p => p.Name.Equals("detectedAtUtc", StringComparison.OrdinalIgnoreCase)));
             Assert.Equal(IncidentId, root.GetProperty("id").GetGuid());
             Assert.Equal(DeviceId, root.GetProperty("deviceId").GetGuid());

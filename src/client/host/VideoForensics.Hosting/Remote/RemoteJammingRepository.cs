@@ -13,9 +13,10 @@ namespace VideoForensics.Hosting.Remote
     /// (see VideoForensics.WebApp/Api/JammingEndpoints.cs) instead of a local database - the client's
     /// implementation of the "thin client talks to a server API" half of the client/server split.
     ///
-    /// Writes only ever send an <see cref="UpsertJammingIncidentRequest"/>: <c>CaseId</c>, <c>Source</c>
-    /// and <c>DetectedAtUtc</c> are server-controlled and are never put on the wire, so the saved record
-    /// the server returns (including the case it auto-created for a new incident) is authoritative.
+    /// Writes only ever send an <see cref="UpsertJammingIncidentRequest"/>: <c>CaseId</c> and
+    /// <c>DetectedAtUtc</c> are server-controlled and never put on the wire, so the saved record the server
+    /// returns (including the case it auto-created for a new incident) is authoritative. <c>Source</c> IS
+    /// sent so auto-detected incidents keep their provenance (the server applies it to new incidents only).
     /// </summary>
     public class RemoteJammingRepository : IJammingRepository
     {
@@ -39,7 +40,8 @@ namespace VideoForensics.Hosting.Remote
                 incident.AffectedEventCount,
                 incident.AverageDegradationDb,
                 incident.Confidence.ToString(),
-                incident.Notes);
+                incident.Notes,
+                incident.Source.ToString());
 
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync("/api/v1/jamming/incidents", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();

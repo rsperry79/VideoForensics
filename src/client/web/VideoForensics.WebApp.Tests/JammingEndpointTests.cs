@@ -286,6 +286,68 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task Upsert_NewIncidentWithAutoDetectedSource_StoresAutoDetected()
+        {
+            var f = new Fixture();
+
+            IResult result = await f.Upsert(ValidRequest() with { Source = "AutoDetected" });
+
+            Assert.Equal(JammingIncidentSource.AutoDetected, Assert.Single(f.Upserted).Source);
+            Assert.Equal("AutoDetected", Assert.IsType<Ok<JammingIncidentDto>>(result).Value!.Source);
+        }
+
+        [Fact]
+        public async Task Upsert_NewIncidentWithLowerCaseSource_IsAccepted()
+        {
+            var f = new Fixture();
+
+            IResult result = await f.Upsert(ValidRequest() with { Source = "autodetected" });
+
+            Assert.Equal(200, Status(result));
+            Assert.Equal(JammingIncidentSource.AutoDetected, Assert.Single(f.Upserted).Source);
+        }
+
+        [Fact]
+        public async Task Upsert_NewIncidentWithOmittedSource_StoresManuallyRecorded()
+        {
+            var f = new Fixture();
+
+            _ = await f.Upsert(ValidRequest() with { Source = null });
+
+            Assert.Equal(JammingIncidentSource.ManuallyRecorded, Assert.Single(f.Upserted).Source);
+        }
+
+        [Theory]
+        [InlineData("Bogus")]
+        [InlineData("99")]
+        [InlineData("")]
+        public async Task Upsert_InvalidSource_Returns400AndSavesNothing(string source)
+        {
+            var f = new Fixture();
+
+            IResult result = await f.Upsert(ValidRequest() with { Source = source });
+
+            Assert.Equal(400, Status(result));
+            f.Jamming.Verify(j => j.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()), Times.Never);
+            f.Audit.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task Upsert_ExistingIncidentWithDifferentSourceClaim_KeepsStoredSource()
+        {
+            var f = new Fixture();
+            var id = Guid.NewGuid();
+            _ = f.Jamming.Setup(j => j.GetIncidentAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(new JammingIncidentRecord
+            {
+                Id = id, DeviceId = DeviceId, Source = JammingIncidentSource.ManuallyRecorded, Confidence = JammingConfidenceLevel.Low
+            });
+
+            _ = await f.Upsert(ValidRequest(id) with { Source = "AutoDetected" });
+
+            Assert.Equal(JammingIncidentSource.ManuallyRecorded, Assert.Single(f.Upserted).Source);
+        }
+
+        [Fact]
         public async Task Upsert_NewIncident_ReturnsCaseIdTheRepositoryAssignedAfterSave()
         {
             var f = new Fixture();
