@@ -11,8 +11,8 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    [Migration("20261002204131_AddLastCollectCompleteUtcToProviderAccount")]
-    partial class AddLastCollectCompleteUtcToProviderAccount
+    [Migration("20261008165211_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1314,6 +1314,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double>("AverageDegradationDb")
                         .HasColumnType("REAL");
 
+                    b.Property<Guid?>("CaseId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Confidence")
                         .HasColumnType("INTEGER");
 
@@ -1337,6 +1340,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CaseId");
 
                     b.HasIndex("DeviceId");
 
@@ -2049,7 +2054,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("OperatorId");
 
-                    b.HasIndex("WebAuthnCredentialId");
+                    b.HasIndex("WebAuthnCredentialId")
+                        .IsUnique();
 
                     b.ToTable("OperatorCredentials");
                 });
@@ -2093,6 +2099,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("UiModeLocked")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("TEXT");
@@ -2760,11 +2769,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.OperatorCredential", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Operator", null)
+                        .WithMany("OperatorCredentials")
+                        .HasForeignKey("OperatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>
                 {
                     b.Navigation("MotionZones");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>
+                {
+                    b.Navigation("OperatorCredentials");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>

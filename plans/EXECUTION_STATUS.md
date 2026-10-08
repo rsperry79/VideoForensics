@@ -32,6 +32,13 @@
 - **Status:** Ready for PR to dev
 - **Implementation:** Per-operator admin lock on UI mode (migration, repository enforcement), Simple/Standard user toggle, admin ui-mode endpoints + Display mode section on operator details, Simple home (7-day plain-language timeline + evidence list), plain-language formatter fallback
 - **Testing:** UI mode lock repository (8), UiModeService/user menu/SimpleLayout (+38 Ui.Shared), admin UI-mode endpoints (21 pipeline/unit) and remote service (5), operator details Display mode (11), Simple home builder (24) and component/routing (35) - full gate 4195 tests, 0 failures
+
+#### ✅ **Migration reset (alpha)** — COMPLETED 2026-10-08
+- **Status:** Ready for PR to dev
+- **Implementation:** Consolidated the five EF Core SQLite migrations into a single fresh `InitialCreate` (model snapshot byte-identical to the previous one, so the schema is unchanged). `DatabaseInitializer` now refuses to open a database whose `__EFMigrationsHistory` holds migration ids this build does not contain, logs an Error and throws `InvalidOperationException` naming the file.
+- **Note:** Existing alpha databases must be deleted: first start after upgrade fails with an explicit message (nothing is deleted automatically; data in the old database is lost).
+- **Testing:** DatabaseInitializer tests (+5): single `InitialCreate`, legacy history rejected and logged, current-only history accepted, empty file works, migrated schema equals `EnsureCreated` schema
+
 ---
 
 ## Previous Phase Plans

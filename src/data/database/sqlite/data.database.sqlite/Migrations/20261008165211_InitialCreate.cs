@@ -538,7 +538,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     Confidence = table.Column<int>(type: "INTEGER", nullable: false),
                     DetectedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Notes = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    Source = table.Column<int>(type: "INTEGER", nullable: false)
+                    Source = table.Column<int>(type: "INTEGER", nullable: false),
+                    CaseId = table.Column<Guid>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -754,28 +755,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "OperatorCredentials",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Label = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
-                    WebAuthnCredentialId = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
-                    WebAuthnPublicKey = table.Column<byte[]>(type: "BLOB", nullable: false),
-                    WebAuthnSignCount = table.Column<uint>(type: "INTEGER", nullable: false),
-                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    LastUsedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    IsApproved = table.Column<bool>(type: "INTEGER", nullable: false),
-                    RevokedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    RevokedReason = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
-                    FirstLoginNotifiedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OperatorCredentials", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "OperatorNotificationPreferences",
                 columns: table => new
                 {
@@ -797,6 +776,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     ThemeMode = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     CultureName = table.Column<string>(type: "TEXT", maxLength: 16, nullable: true),
                     UiMode = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
+                    UiModeLocked = table.Column<bool>(type: "INTEGER", nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
@@ -871,6 +851,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     LastSuccessfulAuthUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
                     IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
                     LastDownloadTimeUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastCollectCompleteUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
                     LastErrorUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
                     LastErrorMessage = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true)
                 },
@@ -1245,6 +1226,34 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OperatorCredentials",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OperatorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Label = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    WebAuthnCredentialId = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
+                    WebAuthnPublicKey = table.Column<byte[]>(type: "BLOB", nullable: false),
+                    WebAuthnSignCount = table.Column<uint>(type: "INTEGER", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastUsedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    IsApproved = table.Column<bool>(type: "INTEGER", nullable: false),
+                    RevokedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    RevokedReason = table.Column<string>(type: "TEXT", maxLength: 512, nullable: true),
+                    FirstLoginNotifiedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OperatorCredentials", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OperatorCredentials_Operators_OperatorId",
+                        column: x => x.OperatorId,
+                        principalTable: "Operators",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "JammingScheduleWindows",
                 columns: table => new
                 {
@@ -1531,6 +1540,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 column: "MediaItemId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_JammingIncidentRecords_CaseId",
+                table: "JammingIncidentRecords",
+                column: "CaseId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_JammingIncidentRecords_DeviceId",
                 table: "JammingIncidentRecords",
                 column: "DeviceId");
@@ -1623,7 +1637,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_OperatorCredentials_WebAuthnCredentialId",
                 table: "OperatorCredentials",
-                column: "WebAuthnCredentialId");
+                column: "WebAuthnCredentialId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_OperatorPreferences_OperatorId",
@@ -1883,9 +1898,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 name: "OperatorPreferences");
 
             migrationBuilder.DropTable(
-                name: "Operators");
-
-            migrationBuilder.DropTable(
                 name: "PairedDevices");
 
             migrationBuilder.DropTable(
@@ -1941,6 +1953,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "MediaItems");
+
+            migrationBuilder.DropTable(
+                name: "Operators");
         }
     }
 }
