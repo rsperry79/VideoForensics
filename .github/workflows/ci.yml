@@ -4,7 +4,8 @@ name: CI - Build and Test
 #   check-dependencies  (PR only)  dependency review, independent of the build
 #   build-windows                  restore NuGet packages and build the solution
 #   test-windows                   run the tests against the build output
-# Publish jobs are added after test-windows when publishing is re-enabled.
+#   determine-version   (dev/main) read the NBGV version after tests pass
+#   publish-packages    (dev/main) pack and push NuGet packages to GitHub Packages
 
 on:
   push:
@@ -96,3 +97,39 @@ jobs:
         with:
           name: test-results-windows
           path: TestResults/
+
+  # Publishing runs only after the tests pass, and only for pushes to dev or main. Pull requests never publish.
+  determine-version:
+    needs: [test-windows]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version with NBGV
+        id: extract
+        shell: bash
+        run: |
+          dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+  publish-packages:
+    needs: [determine-version]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/pack-nuget-packages.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+    secrets: inherit
