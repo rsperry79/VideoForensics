@@ -134,18 +134,20 @@ namespace VideoForensics.Hosting.BackgroundServices
                     return;
                 }
 
-                // Parse the release tag (strip leading 'v' if present) to extract version.
-                string tagVersion = release.TagName.TrimStart('v');
+                // Prefer the version.json version over the tag: "Release"/"Testing" are moving labels, not versions.
+                // Strip leading 'v' if present to extract the version.
+                string versionSource = release.Version ?? release.TagName;
+                string tagVersion = versionSource.TrimStart('v');
                 if (!System.Version.TryParse(ExtractBaseVersion(tagVersion), out System.Version? latestParsed))
                 {
                     lock (_lock)
                     {
-                        _errorMessage = $"Could not parse release tag '{release.TagName}' as a valid version.";
+                        _errorMessage = $"Could not parse release tag '{versionSource}' as a valid version.";
                         _lastCheckedUtc = DateTime.UtcNow;
                         _updateAvailable = false;
                     }
 
-                    _logger.LogWarning("Update check tick: Failed to parse release tag '{TagName}'", release.TagName);
+                    _logger.LogWarning("Update check tick: Failed to parse release tag '{TagName}'", versionSource);
                     return;
                 }
 

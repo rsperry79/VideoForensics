@@ -431,6 +431,20 @@ jobs:
           echo "Release files ready:"
           ls -lah release-files/
 
+      - name: Write version.json release asset
+        shell: bash
+        run: |
+          # Moving tags (Testing, Release) carry no version, so the client reads the
+          # version from this asset instead. Install NBGV here so the step works on
+          # both branch and tag refs.
+          dotnet tool install --global nbgv || dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
+          CHANNEL="${RELEASE_LABEL:-Tagged}"
+          jq -n --arg v "$VERSION" --arg c "$CHANNEL" '{version: $v, channel: $c}' > release-files/version.json
+          echo "Wrote release-files/version.json:"
+          cat release-files/version.json
+
       - name: Copy generated release notes
         shell: bash
         run: |

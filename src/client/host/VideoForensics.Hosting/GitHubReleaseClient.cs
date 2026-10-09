@@ -5,8 +5,10 @@ namespace VideoForensics.Hosting
 {
     /// <summary>
     /// Information about a GitHub release fetched from the GitHub Releases REST API.
+    /// <paramref name="Version"/> is read from the release's <c>version.json</c> asset when present; it is null otherwise.
+    /// Moving tags such as "Release" and "Testing" are not version numbers, so callers should prefer Version over TagName.
     /// </summary>
-    public record GitHubReleaseInfo(string TagName, string HtmlUrl, bool Draft, bool Prerelease, IReadOnlyList<GitHubReleaseAsset> Assets);
+    public record GitHubReleaseInfo(string TagName, string HtmlUrl, bool Draft, bool Prerelease, IReadOnlyList<GitHubReleaseAsset> Assets, string? Version = null);
 
     /// <summary>
     /// An asset (downloadable file) attached to a GitHub release.
@@ -37,6 +39,9 @@ namespace VideoForensics.Hosting
     /// </summary>
     public class GitHubReleaseClient : IGitHubReleaseClient
     {
+        /// <summary>Name of the release asset CI publishes to carry the authoritative version string.</summary>
+        private const string VersionAssetName = "version.json";
+
         private readonly HttpClient _httpClient;
 
         /// <summary>
@@ -82,17 +87,65 @@ namespace VideoForensics.Hosting
                 var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
                     ?? new List<GitHubReleaseAsset>();
 
+                // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
+                string? version = await TryFetchVersionAsync(assets, ct);
+
                 return new GitHubReleaseInfo(
                     releaseDto.TagName,
                     releaseDto.HtmlUrl,
                     releaseDto.Draft,
                     releaseDto.Prerelease,
-                    assets
+                    assets,
+                    version
                 );
             }
             catch
             {
                 // Catch any exception (JSON parse errors, network errors, etc.) and return null rather than propagating.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Reads the "version" property from the release's version.json asset.
+        /// Returns null when the asset is absent, the download fails, or the JSON is malformed; never throws.
+        /// </summary>
+        /// <remarks>
+        /// The CI-published version.json exists because the "Release" and "Testing" tags are moving labels,
+        /// not version numbers, so the tag cannot carry the version.
+        /// </remarks>
+        private async Task<string?> TryFetchVersionAsync(IReadOnlyList<GitHubReleaseAsset> assets, CancellationToken ct)
+        {
+            GitHubReleaseAsset? versionAsset = assets.FirstOrDefault(a => a.Name == VersionAssetName);
+            if (versionAsset == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                using HttpResponseMessage response = await _httpClient.GetAsync(versionAsset.BrowserDownloadUrl, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                string json = await response.Content.ReadAsStringAsync(ct);
+                using JsonDocument document = JsonDocument.Parse(json);
+
+                if (document.RootElement.ValueKind == JsonValueKind.Object
+                    && document.RootElement.TryGetProperty("version", out JsonElement versionElement)
+                    && versionElement.ValueKind == JsonValueKind.String)
+                {
+                    string? version = versionElement.GetString();
+                    return string.IsNullOrWhiteSpace(version) ? null : version;
+                }
+
+                return null;
+            }
+            catch
+            {
+                // Malformed JSON, network failure, etc. -- the caller falls back to the tag.
                 return null;
             }
         }
