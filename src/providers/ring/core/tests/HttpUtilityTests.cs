@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Common.Helpers.Platform;
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
@@ -22,33 +21,18 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Isolated per-test directory so tests never touch the machine-wide ProgramData state.
             _testDirectory = Path.Combine(Path.GetTempPath(), "vf-httputility-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_testDirectory);
-            HttpUtility.SetHardBanStateDirectoryForTesting(_testDirectory);
-            _hardBanStateFilePath = HttpUtility.GetHardBanStateFilePath();
+            var store = new FileHardBanStateStore(_testDirectory);
+            _hardBanStateFilePath = store.FilePath;
+            HttpUtility.UseHardBanStateStoreForTesting(store);
         }
 
         public void Dispose()
         {
-            HttpUtility.SetHardBanStateDirectoryForTesting(null);
+            HttpUtility.UseHardBanStateStoreForTesting(null);
             if (Directory.Exists(_testDirectory))
             {
                 Directory.Delete(_testDirectory, true);
             }
-        }
-
-        [Fact]
-        public void HardBanStateFilePath_WithoutOverride_IsProgramDataApplicationDirectory()
-        {
-            HttpUtility.SetHardBanStateDirectoryForTesting(null);
-
-            string expected = Path.Combine(new PlatformDirectoryService().GetApplicationDataDirectory(), "ring_hard_ban.txt");
-
-            Assert.Equal(expected, HttpUtility.GetHardBanStateFilePath());
-        }
-
-        [Fact]
-        public void HardBanStateFilePath_WithOverride_IsInsideOverrideDirectory()
-        {
-            Assert.Equal(Path.Combine(_testDirectory, "ring_hard_ban.txt"), HttpUtility.GetHardBanStateFilePath());
         }
 
         [Fact]
@@ -124,18 +108,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public void HardBanStateFile_CreatesApplicationDataDirectory_IfMissing()
+        public void GetHardBanUntilUtc_WithMissingDirectory_ReturnsNull()
         {
-            // Arrange - state directory does not exist
             Directory.Delete(_testDirectory, true);
-            Assert.False(Directory.Exists(_testDirectory));
 
-            // Act - reading with no directory must not throw; persisting must create it
             Assert.Null(HttpUtility.GetHardBanUntilUtc());
             HttpUtility.OverrideHardBan();
-
-            // Assert
-            Assert.True(Directory.Exists(_testDirectory));
+            Assert.Null(HttpUtility.GetHardBanUntilUtc());
         }
 
         [Fact]

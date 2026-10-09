@@ -67,32 +67,20 @@ namespace VideoForensics.Providers.Ring
         private static bool _hardBanStateLoaded;
         private const string HardBanStateFileName = "ring_hard_ban.txt";
 
-        // Test seam: when set, the hard-ban state file lives in this directory instead of the
-        // machine-wide application data directory, so tests can isolate themselves from each other.
-        private static string? _hardBanStateDirectoryOverride;
+        // Injectable persistence; defaults lazily to the file store in the application data directory.
+        private static IHardBanStateStore? _hardBanStateStore;
 
-        private static string HardBanStateFilePath => Path.Combine(
-            _hardBanStateDirectoryOverride ?? new PlatformDirectoryService().GetApplicationDataDirectory(),
-            HardBanStateFileName);
+        private static IHardBanStateStore HardBanStateStore => _hardBanStateStore ??= new FileHardBanStateStore();
 
         /// <summary>
-        /// Full path of the file the hard-ban state is persisted to. Defaults to
-        /// <c>ring_hard_ban.txt</c> in the application data directory.
+        /// Replaces the hard-ban persistence (or restores the default file store when null) and resets
+        /// all in-memory throttle state. Intended for testing only.
         /// </summary>
-        public static string GetHardBanStateFilePath()
-        {
-            return HardBanStateFilePath;
-        }
-
-        /// <summary>
-        /// Redirects hard-ban persistence to <paramref name="directory"/> (or back to the default
-        /// application data directory when null) and resets the in-memory state. Intended for testing only.
-        /// </summary>
-        public static void SetHardBanStateDirectoryForTesting(string? directory)
+        internal static void UseHardBanStateStoreForTesting(IHardBanStateStore? store)
         {
             lock (_throttleLock)
             {
-                _hardBanStateDirectoryOverride = directory;
+                _hardBanStateStore = store;
                 _hardBanStateLoaded = false;
                 _hardBanUntilUtc = null;
                 _consecutiveThrottles = 0;
@@ -114,19 +102,11 @@ namespace VideoForensics.Providers.Ring
                     return;
                 }
 
-                try
+                DateTime? persisted = HardBanStateStore.Read();
+                if (persisted.HasValue && persisted.Value > DateTime.UtcNow)
                 {
-                    if (File.Exists(HardBanStateFilePath) &&
-                        long.TryParse(File.ReadAllText(HardBanStateFilePath).Trim(), out long ticks))
-                    {
-                        var persisted = new DateTime(ticks, DateTimeKind.Utc);
-                        if (persisted > DateTime.UtcNow)
-                        {
-                            _hardBanUntilUtc = persisted;
-                        }
-                    }
+                    _hardBanUntilUtc = persisted;
                 }
-                catch { }
 
                 _hardBanStateLoaded = true;
             }
@@ -143,7 +123,7 @@ namespace VideoForensics.Providers.Ring
             // (This supports test cleanup without requiring test-specific methods)
             lock (_throttleLock)
             {
-                if (_hardBanStateLoaded && !File.Exists(HardBanStateFilePath))
+                if (_hardBanStateLoaded && HardBanStateStore.Read() == null)
                 {
                     _hardBanStateLoaded = false;
                     _hardBanUntilUtc = null;
@@ -196,24 +176,14 @@ namespace VideoForensics.Providers.Ring
 
         private static void PersistHardBanState()
         {
-            try
+            if (_hardBanUntilUtc.HasValue)
             {
-                string? folder = Path.GetDirectoryName(HardBanStateFilePath);
-                if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
-                {
-                    _ = Directory.CreateDirectory(folder);
-                }
-
-                if (_hardBanUntilUtc.HasValue)
-                {
-                    File.WriteAllText(HardBanStateFilePath, _hardBanUntilUtc.Value.Ticks.ToString());
-                }
-                else if (File.Exists(HardBanStateFilePath))
-                {
-                    File.Delete(HardBanStateFilePath);
-                }
+                HardBanStateStore.Write(_hardBanUntilUtc.Value);
             }
-            catch { }
+            else
+            {
+                HardBanStateStore.Clear();
+            }
         }
 
         #endregion
