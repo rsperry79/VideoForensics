@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
@@ -19,9 +20,11 @@ namespace VideoForensics.WebApp.Hubs
     /// on an in-process wrapper (plan §6's explicit "no separate real-time infrastructure needed for
     /// the server's own UI").
     ///
-    /// Sends only, deliberately: clients don't call hub methods here (no "StartDownload" RPC on this
-    /// hub) - triggering actions is a plain HTTP POST per plan §6, kept separate from this push
-    /// channel's own concerns.
+    /// Sends only, deliberately, with one exception: the hub accepts exactly two subscription calls
+    /// (<c>SubscribeLiveView</c>, <c>UnsubscribeLiveView</c>) for per-session live-view group
+    /// membership, and no other client calls. Triggering actions (starting or stopping live view, a
+    /// "StartDownload" RPC, and so on) stays a plain HTTP POST per plan §6, kept separate from this
+    /// push channel's own concerns.
     /// </summary>
     [Authorize(AuthenticationSchemes = PairedDeviceAuthenticationDefaults.SchemeName, Policy = VideoForensicsPolicies.ReadOnly)]
     public class LiveHub : Hub
@@ -120,6 +123,38 @@ namespace VideoForensics.WebApp.Hubs
             }
 
             return base.OnDisconnectedAsync(exception);
+        }
+
+        /// <summary>
+        /// Joins the caller to the live-view group for <paramref name="sessionId"/>, so it receives that
+        /// session's state changes. Only a session that exists can be subscribed to.
+        /// </summary>
+        /// <param name="sessionId">The live-view session to follow.</param>
+        /// <exception cref="HubException">Thrown when no session with that id exists. Sent to the client as a hub error.</exception>
+        public async Task SubscribeLiveView(Guid sessionId)
+        {
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+                LiveViewSession? session = await sessionRepository.GetByIdAsync(sessionId, Context.ConnectionAborted);
+                if (session is null)
+                {
+                    throw new HubException("Live-view session not found.");
+                }
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, LiveHubMethods.LiveViewGroup(sessionId), Context.ConnectionAborted);
+            _logger.LogInformation("Connection {ConnectionId} subscribed to live-view session {SessionId}", Context.ConnectionId, sessionId);
+        }
+
+        /// <summary>
+        /// Removes the caller from the live-view group for <paramref name="sessionId"/>. Idempotent: removing a
+        /// connection that is not a member is a no-op.
+        /// </summary>
+        /// <param name="sessionId">The live-view session to stop following.</param>
+        public Task UnsubscribeLiveView(Guid sessionId)
+        {
+            return Groups.RemoveFromGroupAsync(Context.ConnectionId, LiveHubMethods.LiveViewGroup(sessionId), Context.ConnectionAborted);
         }
 
         private Guid? GetPairedDeviceId()

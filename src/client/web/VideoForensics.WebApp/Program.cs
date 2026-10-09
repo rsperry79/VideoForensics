@@ -167,6 +167,10 @@ if (OperatingSystem.IsWindows())
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
+// Live-view session pushes to subscribed clients (batch 3b). Replace, not Add: the Hosting registration
+// later in this file (AddVideoForensicsServerCore) uses TryAddSingleton for the no-op publisher, so this
+// registration must come first to win; Replace also guarantees a single descriptor for this interface.
+builder.Services.Replace(ServiceDescriptor.Singleton<ILiveViewTelemetryPublisher, LiveViewTelemetryBroadcastService>());
 builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
