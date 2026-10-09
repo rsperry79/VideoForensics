@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
@@ -38,7 +39,7 @@ namespace VideoForensics.WebApp.Tests
             context.Setup(c => c.ConnectionId).Returns("conn-1");
             context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
 
-            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory)
+            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
             {
                 Clients = clients.Object,
                 Groups = new Mock<IGroupManager>().Object,
@@ -61,6 +62,19 @@ namespace VideoForensics.WebApp.Tests
                     It.Is<object?[]>(a => a.Length == 1 && a[0] is DownloadProgressDto),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task LiveHub_DownloadSnapshotThrows_StillCompletesConnect()
+        {
+            (LiveHub hub, Mock<ISingleClientProxy> caller, Mock<IVideoDownloadService> download) = BuildHub();
+            download.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("download state unavailable"));
+
+            await hub.OnConnectedAsync();
+
+            caller.Verify(
+                p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]

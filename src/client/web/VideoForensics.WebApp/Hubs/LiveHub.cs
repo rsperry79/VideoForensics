@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
@@ -27,11 +28,13 @@ namespace VideoForensics.WebApp.Hubs
     {
         private readonly ILiveConnectionTracker _connectionTracker;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<LiveHub> _logger;
 
-        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory)
+        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger)
         {
             _connectionTracker = connectionTracker;
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         public override async Task OnConnectedAsync()
@@ -42,9 +45,12 @@ namespace VideoForensics.WebApp.Hubs
                 _connectionTracker.Register(deviceId.Value, Context);
             }
 
-            // Add admins to the admins group for admin-only notifications
+            // Admin gate shared by the admins-group join and the admin-only SelfTestStatus snapshot.
             string? roleClaim = Context.User?.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
-            if (Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= OperatorRole.Admin)
+            bool isAdmin = Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= OperatorRole.Admin;
+
+            // Add admins to the admins group for admin-only notifications
+            if (isAdmin)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "admins", CancellationToken.None);
             }
@@ -52,14 +58,55 @@ namespace VideoForensics.WebApp.Hubs
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state
             // immediately instead of waiting for the next change. Uses the non-draining builder so
             // this connection never consumes activity lines that other clients still need.
-            DownloadProgressDto snapshot;
-            using (IServiceScope scope = _scopeFactory.CreateScope())
+            // Snapshots are non-fatal: a failing data source must not stop the connection from opening.
+            // Errors are logged and the connection continues; rethrow only when the connection is aborting,
+            // since that cancellation is the real reason the send failed.
+            try
             {
-                IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
-                snapshot = downloadService.ToDownloadProgressSnapshot();
+                DownloadProgressDto snapshot;
+                using (IServiceScope scope = _scopeFactory.CreateScope())
+                {
+                    IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
+                    snapshot = downloadService.ToDownloadProgressSnapshot();
+                }
+
+                await Clients.Caller.SendAsync(LiveHubMethods.DownloadProgress, snapshot, Context.ConnectionAborted);
+            }
+            catch (Exception ex)
+            {
+                if (Context.ConnectionAborted.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                _logger.LogError(ex, "Failed to send download progress snapshot to connection {ConnectionId}", Context.ConnectionId);
             }
 
-            await Clients.Caller.SendAsync("DownloadProgress", snapshot, Context.ConnectionAborted);
+            // Admin-only snapshot-on-connect for the self-test status. Non-admins never receive this
+            // stream, and their connections don't touch the self-test service at all.
+            if (isAdmin)
+            {
+                try
+                {
+                    SelfTestStatusDto selfTestSnapshot;
+                    using (IServiceScope scope = _scopeFactory.CreateScope())
+                    {
+                        IRingSelfTestService selfTestService = scope.ServiceProvider.GetRequiredService<IRingSelfTestService>();
+                        selfTestSnapshot = await selfTestService.GetStatusAsync(Context.ConnectionAborted);
+                    }
+
+                    await Clients.Caller.SendAsync(LiveHubMethods.SelfTestStatus, selfTestSnapshot, Context.ConnectionAborted);
+                }
+                catch (Exception ex)
+                {
+                    if (Context.ConnectionAborted.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+
+                    _logger.LogError(ex, "Failed to send self-test status snapshot to connection {ConnectionId}", Context.ConnectionId);
+                }
+            }
 
             await base.OnConnectedAsync();
         }

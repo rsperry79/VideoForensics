@@ -59,7 +59,7 @@ namespace VideoForensics.WebApp.Hubs
                         continue;
                     }
 
-                    await _hubContext.Clients.All.SendAsync("DownloadProgress", payload, stoppingToken);
+                    await _hubContext.Clients.All.SendAsync(LiveHubMethods.DownloadProgress, payload, stoppingToken);
                     lastSent = payload;
                 }
                 catch (Exception ex)
