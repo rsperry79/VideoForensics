@@ -55,8 +55,9 @@ namespace VideoForensics.Hosting
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
         /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
-        /// 2. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
-        /// Falls back to unlicensed/dev-mode behavior if neither source provides a key.
+        /// 2. SYNCFUSION_LICENSE_KEY environment variable (lets Visual Studio debug sessions pick up the key without a ProgramData file)
+        /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
+        /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
         /// </summary>
         public static void RegisterSyncfusionLicenseIfPresent()
         {
@@ -67,6 +68,13 @@ namespace VideoForensics.Hosting
                 return;
             }
 
+            string? environmentKey = GetSyncfusionLicenseKeyFromEnvironment();
+            if (environmentKey != null)
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(environmentKey);
+                return;
+            }
+
             string? bakedInKey = Assembly.GetExecutingAssembly()
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
                 .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value;
@@ -74,6 +82,17 @@ namespace VideoForensics.Hosting
             {
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(bakedInKey.Trim());
             }
+        }
+
+        /// <summary>
+        /// Reads the SYNCFUSION_LICENSE_KEY environment variable, trimmed. Returns null when unset or blank
+        /// so the caller falls through to the baked-in key. Internal so tests can exercise it without
+        /// touching the process-wide Syncfusion license provider.
+        /// </summary>
+        internal static string? GetSyncfusionLicenseKeyFromEnvironment()
+        {
+            string? value = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")?.Trim();
+            return string.IsNullOrEmpty(value) ? null : value;
         }
 
         /// <summary>

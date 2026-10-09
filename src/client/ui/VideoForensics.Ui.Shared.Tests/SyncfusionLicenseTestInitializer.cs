@@ -22,6 +22,15 @@ namespace VideoForensics.Ui.Shared.Tests
             {
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(
                     File.ReadAllText(syncfusionLicenseKeyPath).Trim());
+                return;
+            }
+
+            // Same env var source as VideoForensicsHostingExtensions.GetSyncfusionLicenseKeyFromEnvironment,
+            // so bUnit tests run under Visual Studio see the key the same way the debugged app does.
+            string? environmentKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")?.Trim();
+            if (!string.IsNullOrEmpty(environmentKey))
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(environmentKey);
             }
         }
     }
