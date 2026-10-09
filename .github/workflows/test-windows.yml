@@ -1,0 +1,47 @@
+name: Test Windows
+
+# Reusable: runs the solution tests against the build output from build-windows. Windows is the only test host,
+# so the Windows-only tests run on every PR instead of being skipped.
+on:
+  workflow_call:
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+      # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props), so `dotnet test` uses MTP's CLI.
+      # The VSTest-style `--logger trx` flag breaks discovery there, so use MTP's native xUnit trx reporter.
+      # The live Anthropic test skips when ANTHROPIC_API_KEY is empty, so forks without the secret stay green.
+      - name: Run tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          dotnet test VideoForensics.CI.slnf --configuration Release --no-build
+          --report-xunit-trx --results-directory TestResults
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-windows
+          path: TestResults/

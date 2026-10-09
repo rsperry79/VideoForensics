@@ -1,12 +1,12 @@
 name: CI - Build and Test
 
-# Stages run in dependency order (see `needs:`):
-#   check-dependencies  (PR only)  dependency review, independent of the build
-#   build-windows                  restore NuGet packages and build the solution
-#   test-windows                   run the tests against the build output
-#   determine-version   (dev/main) read the NBGV version after tests pass
-#   publish-packages    (dev/main) pack and push NuGet packages to GitHub Packages
-#   publish-releases    (dev/main) build installers and create the GitHub release (dev prerelease, main release)
+# Orchestrates the stages. Each stage is a reusable workflow in this folder, so each file is read on its own.
+#   check-dependencies  (PR only)     check-dependencies.yml   dependency review, parallel with the build
+#   build-windows                     build-windows.yml        restore and build the solution
+#   test-windows                      test-windows.yml         run the tests against the build output
+#   determine-version   (dev/main)    determine-version.yml    read the NBGV version
+#   publish-packages    (dev/main)    pack-nuget-packages.yml  pack and push NuGet packages to GitHub Packages
+#   publish-releases    (dev/main)    release-installers.yml   build installers and create the GitHub release
 
 on:
   push:
@@ -19,110 +19,22 @@ permissions:
 
 jobs:
   check-dependencies:
-    runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/dependency-review-action@v4
+    uses: ./.github/workflows/check-dependencies.yml
 
   build-windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj (MAUI needs Windows workloads and a win-x64
-      # RuntimeIdentifier, which this gate does not set) and keeps to the cross-platform library and test projects.
-      - name: Restore NuGet cache
-        uses: actions/cache@v6
-        with:
-          key: nuget-cache-windows-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
-          path: ~/.nuget/packages
-
-      - name: Restore NuGet packages
-        run: dotnet restore VideoForensics.CI.slnf
-
-      - name: Build solution
-        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
-
-      # Hand the compiled output to test-windows so tests run without rebuilding.
-      - name: Upload build output
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          include-hidden-files: true
-          path: |
-            **/bin/Release/
-            **/obj/
+    uses: ./.github/workflows/build-windows.yml
 
   test-windows:
-    runs-on: windows-latest
     needs: [build-windows]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Download build output
-        uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: .
-
-      # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props), so `dotnet test` uses MTP's CLI.
-      # The VSTest-style `--logger trx` flag breaks discovery there, so use MTP's native xUnit trx reporter.
-      # The live Anthropic test skips when ANTHROPIC_API_KEY is empty, so forks without the secret stay green.
-      - name: Run tests
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: >
-          dotnet test VideoForensics.CI.slnf --configuration Release --no-build
-          --report-xunit-trx --results-directory TestResults
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-windows
-          path: TestResults/
+    uses: ./.github/workflows/test-windows.yml
+    secrets: inherit
 
   # Publishing runs only after the tests pass, and only for pushes to dev or main. Pull requests never publish.
   determine-version:
     needs: [test-windows]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      version: ${{ steps.extract.outputs.version }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Read version with NBGV
-        id: extract
-        shell: bash
-        run: |
-          dotnet tool update --global nbgv
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          VERSION=$(nbgv get-version -v Version)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
+    uses: ./.github/workflows/determine-version.yml
 
   publish-packages:
     needs: [determine-version]

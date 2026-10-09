@@ -1,0 +1,33 @@
+name: Determine Version
+
+# Reusable: reads the NBGV version so the publish stages can name their artifacts and releases.
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "Version from NBGV"
+        value: ${{ jobs.read.outputs.version }}
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version with NBGV
+        id: extract
+        shell: bash
+        run: |
+          dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"

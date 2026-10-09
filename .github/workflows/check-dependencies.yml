@@ -1,0 +1,17 @@
+name: Check Dependencies
+
+# Reusable: dependency review for pull requests. Independent of the build, so it runs in parallel with it.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
