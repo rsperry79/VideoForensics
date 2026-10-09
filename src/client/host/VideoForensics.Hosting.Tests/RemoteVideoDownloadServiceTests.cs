@@ -188,6 +188,53 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public void GetLastError_ReturnsCachedValueFromProgressPush()
+        {
+            HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+            var hubConnection = new Mock<ILiveHubConnection>();
+            var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
+
+            hubConnection.Raise(h => h.DownloadProgressReceived += null, CreateProgressDto(lastError: "Disk full"));
+
+            Assert.Equal("Disk full", service.GetLastError());
+        }
+
+        [Fact]
+        public void GetRemainingReason_ReturnsCachedValueFromProgressPush()
+        {
+            HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+            var hubConnection = new Mock<ILiveHubConnection>();
+            var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
+
+            hubConnection.Raise(h => h.DownloadProgressReceived += null, CreateProgressDto(remainingReason: "Rate limited by provider"));
+
+            Assert.Equal("Rate limited by provider", service.GetRemainingReason());
+        }
+
+        [Fact]
+        public void GetRemainingReason_ReturnsNullByDefault()
+        {
+            HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+            var hubConnection = new Mock<ILiveHubConnection>();
+            var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
+
+            Assert.Null(service.GetRemainingReason());
+        }
+
+        private static DownloadProgressDto CreateProgressDto(string? lastError = null, string? remainingReason = null)
+        {
+            return new DownloadProgressDto(
+                new DownloadStatusDto(false, 0, 0, 0),
+                0,
+                0,
+                null,
+                Array.Empty<string>(),
+                new Dictionary<string, int>(),
+                lastError,
+                remainingReason);
+        }
+
+        [Fact]
         public async Task AuthenticateAsync_ThrowsNotSupportedException()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));

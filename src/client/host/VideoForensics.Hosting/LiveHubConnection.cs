@@ -2,23 +2,12 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Hosting
 {
-    /// <summary>
-    /// Payload for a download-progress broadcast from the server (plan §6). Matches the shape
-    /// sent by <see cref="VideoForensics.WebApp.Hubs.DownloadProgressBroadcastService"/>.
-    /// </summary>
-    public record DownloadProgressPayload(
-        DownloadStatus Progress,
-        int CurrentDeviceIndex,
-        int CurrentDeviceTotal,
-        string? CurrentDeviceName,
-        IReadOnlyList<string> Activity,
-        IReadOnlyDictionary<string, int> PreScanCounts);
-
     /// <summary>
     /// Manages a SignalR connection to the server's LiveHub, allowing remote clients (MAUI) to
     /// receive real-time updates for download progress and urgent events (plan §6). The hub
@@ -28,7 +17,7 @@ namespace VideoForensics.Hosting
     public interface ILiveHubConnection
     {
         /// <summary>Fired when the server broadcasts a download-progress update.</summary>
-        event Action<DownloadProgressPayload>? DownloadProgressReceived;
+        event Action<DownloadProgressDto>? DownloadProgressReceived;
 
         /// <summary>Fired when the server broadcasts an urgent security event.</summary>
         event Action<NotificationEvent>? UrgentEventReceived;
@@ -52,7 +41,7 @@ namespace VideoForensics.Hosting
         private HubConnection? _connection;
         private readonly object _lockObj = new();
 
-        public event Action<DownloadProgressPayload>? DownloadProgressReceived;
+        public event Action<DownloadProgressDto>? DownloadProgressReceived;
         public event Action<NotificationEvent>? UrgentEventReceived;
 
         public LiveHubConnection(Uri serverAddress, IServiceProvider serviceProvider)
@@ -97,7 +86,7 @@ namespace VideoForensics.Hosting
             // Subscribe to connection closure events to detect auth failures after reconnect attempts are exhausted.
             _connection.Closed += OnConnectionClosedAsync;
 
-            _ = _connection.On<DownloadProgressPayload>("DownloadProgress", payload =>
+            _ = _connection.On<DownloadProgressDto>("DownloadProgress", payload =>
             {
                 DownloadProgressReceived?.Invoke(payload);
             });

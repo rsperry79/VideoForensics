@@ -22,7 +22,7 @@ namespace VideoForensics.Hosting.Remote
     {
         private readonly HttpClient _httpClient;
         private readonly ILiveHubConnection _hubConnection;
-        private DownloadProgressPayload? _lastPayload;
+        private DownloadProgressDto? _lastPayload;
         private readonly object _lockObj = new();
         private List<string> _activityLog = [];
 
@@ -108,9 +108,10 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public string? GetRemainingReason()
         {
-            // The cached payload doesn't currently carry a "remaining reason" field
-            // (that's tracked server-side in the provider). Return null for now.
-            return null;
+            lock (_lockObj)
+            {
+                return _lastPayload?.RemainingReason;
+            }
         }
 
         /// <inheritdoc />
@@ -132,7 +133,7 @@ namespace VideoForensics.Hosting.Remote
         {
             lock (_lockObj)
             {
-                return _lastPayload?.Progress ?? new DownloadStatus(false, 0, 0, 0);
+                return _lastPayload?.Progress.ToDomain() ?? new DownloadStatus(false, 0, 0, 0);
             }
         }
 
@@ -156,9 +157,12 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public string? GetLastError()
         {
-            // Unlike other unsupported methods, return null instead of throwing - a UI calling this
-            // defensively for display purposes shouldn't crash if nothing failed.
-            return null;
+            // Returns null (not a throw) when no progress has been received or nothing failed, so a UI
+            // calling this defensively for display purposes doesn't crash.
+            lock (_lockObj)
+            {
+                return _lastPayload?.LastError;
+            }
         }
 
         /// <inheritdoc />
