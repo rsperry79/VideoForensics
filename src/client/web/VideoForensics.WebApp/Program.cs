@@ -455,7 +455,7 @@ app.MapCaseEndpoints();
 app.MapJammingEndpoints();
 app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
-app.MapAccountEndpoints(app.Services.GetRequiredService<VideoForensics.Hosting.Services.IEventPullService>());
+app.MapAccountEndpoints();
 app.MapConfigEndpoints();
 app.MapDiscoveryEndpoints();
 app.MapStorageSettingsEndpoints();

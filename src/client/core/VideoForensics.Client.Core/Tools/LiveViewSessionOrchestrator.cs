@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -19,20 +19,17 @@ namespace VideoForensics.Client.Core.Tools
     /// SINGLETON - owns live provider connections in memory. Must be registered as AddSingleton so that
     /// multiple calls to StartAsync against the same device return the same in-memory connection handle.
     /// If registered as Scoped, each scope would own separate connections and state divergence.
+    ///
+    /// Because this instance outlives any request, it must not capture scoped services (repositories,
+    /// the budget guard, the notification dispatcher, providers) in its constructor. Each operation
+    /// opens its own DI scope via <see cref="IServiceScopeFactory"/> and resolves what it needs there.
     /// </summary>
     public class LiveViewSessionOrchestrator : ILiveViewSessionService
     {
         private readonly ILogger<LiveViewSessionOrchestrator> _logger;
-        private readonly ILiveViewSessionRepository _sessionRepository;
-        private readonly ILiveViewTelemetryRepository _telemetryRepository;
-        private readonly ICameraBitrateBaselineRepository _baselineRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILiveViewInterferenceScorer _interferenceScorer;
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IDeviceRepository _deviceRepository;
         private readonly IForensicsConfiguration _config;
-        private readonly IOptions<ForensicsOptions> _options;
-        private readonly IProviderApiBudgetGuard _budgetGuard;
-        private readonly INotificationDispatcher? _notificationDispatcher;
 
         /// <summary>
         /// In-memory map of active sessions to their live provider connections and state.
@@ -51,28 +48,14 @@ namespace VideoForensics.Client.Core.Tools
 
         public LiveViewSessionOrchestrator(
             ILogger<LiveViewSessionOrchestrator> logger,
-            ILiveViewSessionRepository sessionRepository,
-            ILiveViewTelemetryRepository telemetryRepository,
-            ICameraBitrateBaselineRepository baselineRepository,
+            IServiceScopeFactory scopeFactory,
             ILiveViewInterferenceScorer interferenceScorer,
-            IServiceProvider serviceProvider,
-            IDeviceRepository deviceRepository,
-            IForensicsConfiguration config,
-            IOptions<ForensicsOptions> options,
-            IProviderApiBudgetGuard budgetGuard,
-            INotificationDispatcher? notificationDispatcher = null)
+            IForensicsConfiguration config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
-            _telemetryRepository = telemetryRepository ?? throw new ArgumentNullException(nameof(telemetryRepository));
-            _baselineRepository = baselineRepository ?? throw new ArgumentNullException(nameof(baselineRepository));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _interferenceScorer = interferenceScorer ?? throw new ArgumentNullException(nameof(interferenceScorer));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _deviceRepository = deviceRepository ?? throw new ArgumentNullException(nameof(deviceRepository));
             _config = config ?? throw new ArgumentNullException(nameof(config));
-            _options = options ?? throw new ArgumentNullException(nameof(options));
-            _budgetGuard = budgetGuard ?? throw new ArgumentNullException(nameof(budgetGuard));
-            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<LiveViewSession> StartAsync(
@@ -87,8 +70,13 @@ namespace VideoForensics.Client.Core.Tools
                 throw new InvalidOperationException("Live view is disabled in configuration.");
             }
 
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+            IDeviceRepository deviceRepository = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+            IProviderApiBudgetGuard budgetGuard = scope.ServiceProvider.GetRequiredService<IProviderApiBudgetGuard>();
+
             // Check for existing active session (idempotent)
-            var existingSession = await _sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
+            var existingSession = await sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
             if (existingSession != null)
             {
                 _logger.LogInformation("Returning existing active live view session {SessionId} for device {DeviceId}", existingSession.Id, deviceId);
@@ -96,7 +84,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Resolve the device to get its provider device ID
-            var device = await _deviceRepository.GetAsync(deviceId, ct)
+            var device = await deviceRepository.GetAsync(deviceId, ct)
                 ?? throw new KeyNotFoundException($"Device {deviceId} not found.");
 
             // Determine provider name - for now, we infer from device metadata or use a convention.
@@ -105,13 +93,13 @@ namespace VideoForensics.Client.Core.Tools
             string providerName = "Ring"; // Default to Ring; in production this comes from Device.ProviderName
 
             // Budget guard: check if provider API calls are within budget
-            if (!await _budgetGuard.TryConsumeAsync(providerName, ct))
+            if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
                 throw new InvalidOperationException($"Provider API budget exceeded for {providerName}.");
             }
 
-            // Resolve provider via keyed service resolution
-            ILiveViewCapableProvider? provider = _serviceProvider.GetService(typeof(ILiveViewCapableProvider)) as ILiveViewCapableProvider;
+            // Resolve provider from the same scope that resolved the repositories
+            ILiveViewCapableProvider? provider = scope.ServiceProvider.GetService(typeof(ILiveViewCapableProvider)) as ILiveViewCapableProvider;
             if (provider == null)
             {
                 throw new NotSupportedException($"Live view not supported for provider {providerName}. No capable provider found.");
@@ -134,23 +122,27 @@ namespace VideoForensics.Client.Core.Tools
                 IsSustained = false
             };
 
-            session = await _sessionRepository.UpsertSessionAsync(session, ct);
+            session = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Persisted live view session {SessionId} in Starting state for device {DeviceId}", session.Id, deviceId);
 
             // Store the connection handle in memory
             _activeSessions[session.Id] = new ActiveLiveViewHandle(connection, null);
 
-            // Subscribe to connection state changes: Starting → Active on successful connect
+            // Subscribe to connection state changes: Starting → Active on successful connect.
+            // The callback fires long after this scope is disposed, so it opens its own scope per event.
             if (connection != null)
             {
                 connection.OnConnectionStateChange += async (state) =>
                 {
                     try
                     {
+                        using IServiceScope callbackScope = _scopeFactory.CreateScope();
+                        ILiveViewSessionRepository callbackRepository = callbackScope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
                         if (state == LiveViewConnectionStateDto.Connected)
                         {
                             session.State = LiveViewSessionState.Active;
-                            await _sessionRepository.UpsertSessionAsync(session, ct);
+                            await callbackRepository.UpsertSessionAsync(session, ct);
                             _logger.LogInformation("Live view session {SessionId} transitioned to Active state", session.Id);
                         }
                         else if (state == LiveViewConnectionStateDto.Failed)
@@ -158,7 +150,7 @@ namespace VideoForensics.Client.Core.Tools
                             session.State = LiveViewSessionState.Failed;
                             session.EndedAtUtc = DateTime.UtcNow;
                             session.StopReason = "ConnectionFailed";
-                            await _sessionRepository.UpsertSessionAsync(session, ct);
+                            await callbackRepository.UpsertSessionAsync(session, ct);
                             _logger.LogError("Live view session {SessionId} failed to connect", session.Id);
                             _activeSessions.TryRemove(session.Id, out _);
                         }
@@ -175,17 +167,23 @@ namespace VideoForensics.Client.Core.Tools
 
         public async Task ExtendAsync(Guid sessionId, CancellationToken ct)
         {
-            var session = await _sessionRepository.GetByIdAsync(sessionId, ct)
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
+            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             session.LastExtendedAtUtc = DateTime.UtcNow;
-            await _sessionRepository.UpsertSessionAsync(session, ct);
+            await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Extended live view session {SessionId} timeout", sessionId);
         }
 
         public async Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct)
         {
-            var session = await _sessionRepository.GetByIdAsync(sessionId, ct)
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
+            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             // Idempotent: if already sustained, return as-is
@@ -200,15 +198,17 @@ namespace VideoForensics.Client.Core.Tools
             session.PromotionReason = reason;
             session.State = LiveViewSessionState.Sustained;
 
-            await _sessionRepository.UpsertSessionAsync(session, ct);
+            await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Promoted live view session {SessionId} to sustained mode: {Reason}", sessionId, reason);
 
-            // Dispatch notification (isolation pattern: catch and log, don't fail the operation)
-            if (_notificationDispatcher != null)
+            // Dispatch notification (isolation pattern: catch and log, don't fail the operation).
+            // Resolved here rather than injected: INotificationDispatcher is scoped.
+            try
             {
-                try
+                var notificationDispatcher = scope.ServiceProvider.GetService<INotificationDispatcher>();
+                if (notificationDispatcher != null)
                 {
-                    await _notificationDispatcher.DispatchAsync(
+                    await notificationDispatcher.DispatchAsync(
                         new NotificationEvent(
                             EventType: "LiveViewSustainedModeEntered",
                             TimestampUtc: DateTime.UtcNow,
@@ -220,10 +220,10 @@ namespace VideoForensics.Client.Core.Tools
                             Severity: NoticeSeverity.Alert),
                         ct);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to dispatch sustained mode notification for session {SessionId} (non-critical)", sessionId);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch sustained mode notification for session {SessionId} (non-critical)", sessionId);
             }
 
             return session;
@@ -231,14 +231,17 @@ namespace VideoForensics.Client.Core.Tools
 
         public async Task<LiveViewSession> DemoteFromSustainedAsync(Guid sessionId, CancellationToken ct)
         {
-            var session = await _sessionRepository.GetByIdAsync(sessionId, ct)
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
+            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             session.IsSustained = false;
             session.SustainedSinceUtc = null;
             session.State = LiveViewSessionState.Active;
 
-            await _sessionRepository.UpsertSessionAsync(session, ct);
+            await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Demoted live view session {SessionId} from sustained mode", sessionId);
 
             return session;
@@ -246,7 +249,10 @@ namespace VideoForensics.Client.Core.Tools
 
         public async Task StopAsync(Guid sessionId, string stopReason, CancellationToken ct)
         {
-            var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
+            var session = await sessionRepository.GetByIdAsync(sessionId, ct);
             if (session == null)
             {
                 throw new KeyNotFoundException($"Session {sessionId} not found.");
@@ -291,13 +297,16 @@ namespace VideoForensics.Client.Core.Tools
             session.EndedAtUtc = DateTime.UtcNow;
             session.StopReason = stopReason;
 
-            await _sessionRepository.UpsertSessionAsync(session, ct);
+            await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Stopped live view session {SessionId}: {StopReason}", sessionId, stopReason);
         }
 
         public async Task<LiveViewSession?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct)
         {
-            return await _sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
+
+            return await sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
         }
 
         /// <summary>
