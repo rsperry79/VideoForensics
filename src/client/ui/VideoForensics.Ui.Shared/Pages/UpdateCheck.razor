@@ -2,8 +2,10 @@
 @inject NavigationManager NavigationManager
 @using VideoForensics.Client.Common.Contracts
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
 @inject IUpdateCheckService UpdateCheckService
+@inject IReleaseChannelService ReleaseChannelService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<UpdateCheck> L
 
@@ -94,14 +96,84 @@ else if (_state is not null)
     }
 }
 
+@if (IsAdminOrAbove)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ReleaseChannelTitle"]</h5>
+
+            @if (_channelLoadError is not null)
+            {
+                <div class="alert alert-danger mb-3">@_channelLoadError</div>
+            }
+
+            @if (_currentChannel is not null)
+            {
+                @if (IsSuperAdminViewer)
+                {
+                    <div class="d-flex flex-column gap-2">
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                            <SfDropDownList TValue="UpdateReleaseChannel" TItem="KeyValuePair<UpdateReleaseChannel, string>" @bind-Value="_selectedChannel" DataSource="@_channelOptions" Enabled="@(!_isSavingChannel)" Style="max-width: 320px;">
+                                <DropDownListFieldSettings Text="Value" Value="Key" />
+                            </SfDropDownList>
+                            <SfButton Content="@(_isSavingChannel ? L["SavingChannelButton"] : L["SaveChannelButton"])" OnClick="SaveReleaseChannelAsync" Disabled="@_isSavingChannel" CssClass="e-primary" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <p class="mb-1">@ChannelDisplayName(_currentChannel.Value)</p>
+                        <small class="text-muted">@L["ReadOnlyChannelNote"]</small>
+                    </div>
+                }
+            }
+
+            @if (_channelSaveError is not null)
+            {
+                <div class="alert alert-danger mt-3 mb-0">@_channelSaveError</div>
+            }
+            else if (_channelSavedMessage is not null)
+            {
+                <div class="alert alert-success mt-3 mb-0">@_channelSavedMessage</div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     private bool _isChecking;
     private string? _loadError;
     private UpdateCheckState? _state;
 
+    private UpdateReleaseChannel? _currentChannel;
+    private UpdateReleaseChannel _selectedChannel = UpdateReleaseChannel.Stable;
+    private List<KeyValuePair<UpdateReleaseChannel, string>> _channelOptions = new();
+    private bool _isSavingChannel;
+    private string? _channelLoadError;
+    private string? _channelSaveError;
+    private string? _channelSavedMessage;
+
+    // Same role check as OperatorDetails: the server enforces SuperAdmin for changes, this only decides whether to show the control.
+    private bool IsSuperAdminViewer => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.SuperAdmin;
+
+    // Channel card is visible to Admin and above only. Viewers below Admin get no card and no channel request.
+    private bool IsAdminOrAbove => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.Admin;
+
     protected override async Task OnInitializedAsync()
     {
         LoadState();
+        _channelOptions =
+        [
+            new KeyValuePair<UpdateReleaseChannel, string>(UpdateReleaseChannel.Stable, ChannelDisplayName(UpdateReleaseChannel.Stable)),
+            new KeyValuePair<UpdateReleaseChannel, string>(UpdateReleaseChannel.Testing, ChannelDisplayName(UpdateReleaseChannel.Testing)),
+        ];
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -110,9 +182,62 @@ else if (_state is not null)
         {
             await SessionState.EnsureLoadedAsync();
             LoadState();
+            await LoadReleaseChannelAsync();
             StateHasChanged();
         }
     }
+
+    private async Task LoadReleaseChannelAsync()
+    {
+        if (!IsAdminOrAbove)
+        {
+            return;
+        }
+
+        _channelLoadError = null;
+        try
+        {
+            _currentChannel = await ReleaseChannelService.GetReleaseChannelAsync(CancellationToken.None);
+            _selectedChannel = _currentChannel.Value;
+        }
+        catch (Exception ex)
+        {
+            _channelLoadError = L["ChannelLoadFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveReleaseChannelAsync()
+    {
+        if (_isSavingChannel)
+        {
+            return;
+        }
+
+        _isSavingChannel = true;
+        _channelSaveError = null;
+        _channelSavedMessage = null;
+        try
+        {
+            _currentChannel = await ReleaseChannelService.SetReleaseChannelAsync(_selectedChannel, CancellationToken.None);
+            _selectedChannel = _currentChannel.Value;
+            _channelSavedMessage = L["ChannelSavedMessage"];
+        }
+        catch (Exception ex)
+        {
+            _channelSaveError = L["ChannelSaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSavingChannel = false;
+        }
+    }
+
+    private string ChannelDisplayName(UpdateReleaseChannel channel) => channel switch
+    {
+        UpdateReleaseChannel.Stable => L["ChannelStable"].Value,
+        UpdateReleaseChannel.Testing => L["ChannelTesting"].Value,
+        _ => channel.ToString(),
+    };
 
     private void LoadState()
     {
@@ -151,7 +276,7 @@ else if (_state is not null)
         }
     }
 
-    private static string FormatTime(DateTime utcTime)
+    private string FormatTime(DateTime utcTime)
     {
         var localTime = utcTime.ToLocalTime();
         var now = DateTime.Now;
@@ -159,22 +284,22 @@ else if (_state is not null)
 
         if (elapsed.TotalSeconds < 60)
         {
-            return "Just now";
+            return L["JustNow"].Value;
         }
         else if (elapsed.TotalMinutes < 60)
         {
             int minutes = (int)elapsed.TotalMinutes;
-            return $"{minutes} minute{(minutes == 1 ? "" : "s")} ago";
+            return minutes == 1 ? L["MinuteAgo"].Value : L["MinutesAgo", minutes].Value;
         }
         else if (elapsed.TotalHours < 24)
         {
             int hours = (int)elapsed.TotalHours;
-            return $"{hours} hour{(hours == 1 ? "" : "s")} ago";
+            return hours == 1 ? L["HourAgo"].Value : L["HoursAgo", hours].Value;
         }
         else if (elapsed.TotalDays < 7)
         {
             int days = (int)elapsed.TotalDays;
-            return $"{days} day{(days == 1 ? "" : "s")} ago";
+            return days == 1 ? L["DayAgo"].Value : L["DaysAgo", days].Value;
         }
         else
         {
