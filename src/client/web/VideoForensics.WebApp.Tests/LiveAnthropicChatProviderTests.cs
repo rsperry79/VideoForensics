@@ -42,6 +42,9 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal("ANTHROPIC_API_KEY", requested);
         }
 
+        // Mirrors the app default model documented on AnthropicChatOptions.Model (not exposed as a constant).
+        private const string DefaultModel = "claude-3-5-sonnet-20241022";
+
         [Fact]
         public async Task StreamCompleteAsync_LiveAnthropic_StreamsDeltasAndCompletes()
         {
@@ -49,7 +52,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.SkipWhen(key is null, "ANTHROPIC_API_KEY is not set");
 
             string? modelOverride = Environment.GetEnvironmentVariable("ANTHROPIC_CHAT_MODEL");
-            string model = string.IsNullOrWhiteSpace(modelOverride) ? "claude-haiku-5-5" : modelOverride;
+            string model = string.IsNullOrWhiteSpace(modelOverride) ? DefaultModel : modelOverride;
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
             var provider = new AnthropicChatProvider(new AnthropicChatOptions { ApiKey = key!, Model = model }, http);
 
