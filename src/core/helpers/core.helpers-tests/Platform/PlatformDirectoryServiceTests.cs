@@ -47,7 +47,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
         }
 
         // Windows Tests
-        [Fact(Skip = "Windows-only test")]
+        [Fact]
         public void GetApplicationDataDirectory_Windows_UsesFileSystemAbstraction()
         {
             var mockFileSystem = CreateWindowsMockFileSystem();
@@ -71,7 +71,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             Assert.True(System.IO.Path.IsPathRooted(result));
         }
 
-        [Fact(Skip = "Windows-only test")]
+        [Fact]
         public void GetLogsDirectory_Windows_UsesFileSystemAbstraction()
         {
             var mockFileSystem = CreateWindowsMockFileSystem();
@@ -96,7 +96,7 @@ namespace VideoForensics.Providers.Common.Helpers.Tests.Platform
             Assert.True(System.IO.Path.IsPathRooted(result));
         }
 
-        [Fact(Skip = "Windows-only test")]
+        [Fact]
         public void GetConfigDirectory_Windows_UsesFileSystemAbstraction()
         {
             var mockFileSystem = CreateWindowsMockFileSystem();

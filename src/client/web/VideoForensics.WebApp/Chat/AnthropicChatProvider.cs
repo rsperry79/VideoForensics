@@ -59,7 +59,16 @@ namespace VideoForensics.WebApp.Chat
             httpRequest.Headers.Add("anthropic-version", "2023-06-01");
 
             using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                // Why: the response body carries the error reason (e.g. unknown model, invalid request) that
+                // EnsureSuccessStatusCode discards. The API key is only sent in the request header, so it is never echoed here.
+                string errorBody = await response.Content.ReadAsStringAsync(ct);
+                if (errorBody.Length > 500)
+                    errorBody = errorBody[..500];
+                throw new HttpRequestException(
+                    $"Anthropic API returned {(int)response.StatusCode} ({response.StatusCode}): {errorBody}", null, response.StatusCode);
+            }
 
             await using Stream body = await response.Content.ReadAsStreamAsync(ct);
 
