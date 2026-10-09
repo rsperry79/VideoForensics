@@ -14,7 +14,7 @@ Projects live nested under `src/`, grouped by layer, not as flat top-level folde
 
 ```
 src/
-  clients/VideoForensics/                    # Console app
+  client/VideoForensics/                     # Console app (legacy; see plans/deferred-items.md)
   core/providers/providers-common/           # Platform-agnostic interfaces (Contracts/)
   core/providers/providers-common-tests/     # Contract tests
   core/providers/providers-core/             # Base classes (e.g. BaseVideoProvider)
@@ -141,7 +141,7 @@ Every user-visible string in `VideoForensics.Ui.Shared` (pages, components, dial
 - Web app (full browser)
 - MAUI desktop (WinUI on Windows)
 
-**Mobile optimization is pending.** MAUI mobile (iOS/Android) needs a separate, touch-friendly layout with collapsible panels and vertical stacking instead of side-by-side panes. Do not add mobile-specific layout logic to MainLayout—create a new mobile layout component or detect platform and swap layouts at the Routes level.
+**Mobile layout is implemented.** `Routes.razor` uses `ResponsiveLayout` as the default layout, which swaps in `MobileLayout` below 600px (JS viewport detection). Keep mobile-specific layout logic out of MainLayout: add it to `MobileLayout` or `ResponsiveLayout`, not to MainLayout.
 
 ## Visual Studio MCP (`local-sdk`)
 

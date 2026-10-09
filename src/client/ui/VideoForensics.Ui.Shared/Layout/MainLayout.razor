@@ -55,6 +55,8 @@
 
     @if (_noticesDropdownOpen)
     {
+        @* Transparent full-page backdrop: any click outside the dropdown lands here and closes it. *@
+        <div class="notices-backdrop" @onclick="ToggleNoticesAsync"></div>
         <div class="notices-dropdown">
             @if (_noticesList.Count > 0)
             {

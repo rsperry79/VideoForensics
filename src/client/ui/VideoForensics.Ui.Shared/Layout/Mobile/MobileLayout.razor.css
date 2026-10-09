@@ -68,6 +68,14 @@
 }
 
 /* Notices Panel - Full-Width Below App Bar */
+/* Sits under the notices panel (z-index 99) but over the page, so an outside click closes it. */
+.notices-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 98;
+    background-color: transparent;
+}
+
 .mobile-notices-panel {
     background-color: var(--rz-card-background, #fff);
     border-bottom: 1px solid var(--rz-border-color, #e0e0e0);

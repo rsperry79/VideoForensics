@@ -131,6 +131,14 @@
     line-height: 1;
 }
 
+/* Sits under the dropdown (z-index 1000) but over the page, so an outside click closes it. */
+.notices-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background-color: transparent;
+}
+
 .notices-dropdown {
     position: absolute;
     top: 56px;
