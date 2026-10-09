@@ -1,9 +1,11 @@
 using Moq;
 
 using System.Net;
+using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Api.Contracts;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 
@@ -51,7 +53,7 @@ namespace VideoForensics.Hosting.Tests
                 return Task.FromResult(response);
             });
 
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             _ = await service.DownloadVideosAsync("C:\\output", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
@@ -74,7 +76,7 @@ namespace VideoForensics.Hosting.Tests
                 return Task.FromResult(response);
             });
 
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             _ = await service.DownloadSnapshotsAsync("C:\\output", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
@@ -92,7 +94,7 @@ namespace VideoForensics.Hosting.Tests
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Accepted));
             });
 
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             await service.PreScanAsync("C:\\output", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
@@ -104,7 +106,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetPreScanCounts_ReturnsEmptyByDefault()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             IReadOnlyDictionary<string, int> result = service.GetPreScanCounts();
@@ -116,7 +118,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetDownloadStatus_ReturnsIdleByDefault()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             string result = service.GetDownloadStatus();
@@ -128,7 +130,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetRemainingCount_ReturnsZeroByDefault()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             int result = service.GetRemainingCount();
@@ -140,7 +142,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetCurrentDevice_ReturnsDefaultValues()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             (int index, int total, string? name) = service.GetCurrentDevice();
@@ -154,7 +156,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetProgress_ReturnsDefaultStatus()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             DownloadStatus result = service.GetProgress();
@@ -167,7 +169,7 @@ namespace VideoForensics.Hosting.Tests
         public void DrainActivityLog_ReturnsEmptyByDefault()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             IReadOnlyList<string> result = service.DrainActivityLog();
@@ -179,7 +181,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetLastError_ReturnsNull()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             string? result = service.GetLastError();
@@ -191,10 +193,11 @@ namespace VideoForensics.Hosting.Tests
         public void GetLastError_ReturnsCachedValueFromProgressPush()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var progress = new Subject<DownloadProgressDto>();
+            var hubConnection = CreateHubMock(progress);
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
-            hubConnection.Raise(h => h.DownloadProgressReceived += null, CreateProgressDto(lastError: "Disk full"));
+            progress.OnNext(CreateProgressDto(lastError: "Disk full"));
 
             Assert.Equal("Disk full", service.GetLastError());
         }
@@ -203,10 +206,11 @@ namespace VideoForensics.Hosting.Tests
         public void GetRemainingReason_ReturnsCachedValueFromProgressPush()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var progress = new Subject<DownloadProgressDto>();
+            var hubConnection = CreateHubMock(progress);
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
-            hubConnection.Raise(h => h.DownloadProgressReceived += null, CreateProgressDto(remainingReason: "Rate limited by provider"));
+            progress.OnNext(CreateProgressDto(remainingReason: "Rate limited by provider"));
 
             Assert.Equal("Rate limited by provider", service.GetRemainingReason());
         }
@@ -215,10 +219,18 @@ namespace VideoForensics.Hosting.Tests
         public void GetRemainingReason_ReturnsNullByDefault()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             Assert.Null(service.GetRemainingReason());
+        }
+
+        /// <summary>Hub double whose DownloadProgress stream is the given subject (a fresh, silent one by default).</summary>
+        private static Mock<IRealtimeHub> CreateHubMock(Subject<DownloadProgressDto>? progress = null)
+        {
+            var hub = new Mock<IRealtimeHub>();
+            hub.SetupGet(h => h.DownloadProgress).Returns(progress ?? new Subject<DownloadProgressDto>());
+            return hub;
         }
 
         private static DownloadProgressDto CreateProgressDto(string? lastError = null, string? remainingReason = null)
@@ -238,7 +250,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AuthenticateAsync_ThrowsNotSupportedException()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             _ = await Assert.ThrowsAsync<NotSupportedException>(() => service.AuthenticateAsync("user", "pass"));
@@ -248,7 +260,7 @@ namespace VideoForensics.Hosting.Tests
         public void GetRateLimitBanUntilUtc_ThrowsNotSupportedException()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             _ = Assert.Throws<NotSupportedException>(() => service.GetRateLimitBanUntilUtc());
@@ -258,7 +270,7 @@ namespace VideoForensics.Hosting.Tests
         public void OverrideRateLimitBan_ThrowsNotSupportedException()
         {
             HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-            var hubConnection = new Mock<ILiveHubConnection>();
+            var hubConnection = CreateHubMock();
             var service = new RemoteVideoDownloadService(httpClient, hubConnection.Object);
 
             _ = Assert.Throws<NotSupportedException>(service.OverrideRateLimitBan);

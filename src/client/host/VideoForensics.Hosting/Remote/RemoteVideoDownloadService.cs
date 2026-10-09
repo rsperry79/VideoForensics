@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
@@ -14,25 +15,25 @@ namespace VideoForensics.Hosting.Remote
     /// Trigger methods (DownloadVideosAsync, DownloadSnapshotsAsync, PreScanAsync) POST to the server
     /// and return immediately after the 202 Accepted response; the server runs the actual work as a
     /// background task. Status getter methods are synchronous and cached: they subscribe to
-    /// ILiveHubConnection.DownloadProgressReceived in the constructor and return the latest received
+    /// IRealtimeHub.DownloadProgress in the constructor and return the latest received
     /// payload data (thread-safe via a simple lock), so polling GetProgress()/GetDownloadStatus()/etc.
     /// provides live updates without blocking HTTP calls.
     /// </summary>
     public class RemoteVideoDownloadService : IVideoDownloadService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILiveHubConnection _hubConnection;
+        private readonly IRealtimeHub _hubConnection;
         private DownloadProgressDto? _lastPayload;
         private readonly object _lockObj = new();
         private List<string> _activityLog = [];
 
-        public RemoteVideoDownloadService(HttpClient httpClient, ILiveHubConnection hubConnection)
+        public RemoteVideoDownloadService(HttpClient httpClient, IRealtimeHub hubConnection)
         {
             _httpClient = httpClient;
             _hubConnection = hubConnection;
 
             // Subscribe to hub progress updates and cache the latest payload for synchronous access.
-            _hubConnection.DownloadProgressReceived += payload =>
+            _ = _hubConnection.DownloadProgress.Subscribe(payload =>
             {
                 lock (_lockObj)
                 {
@@ -43,7 +44,7 @@ namespace VideoForensics.Hosting.Remote
                         _activityLog.AddRange(payload.Activity);
                     }
                 }
-            };
+            });
         }
 
         /// <inheritdoc />

@@ -12,6 +12,7 @@ using Syncfusion.Blazor;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
@@ -220,11 +221,12 @@ namespace VideoForensics.MauiApp
             {
                 try
                 {
-                    ILiveHubConnection hubConnection = app.Services.GetRequiredService<ILiveHubConnection>();
+                    IRealtimeHub hubConnection = app.Services.GetRequiredService<IRealtimeHub>();
 
                     // Subscribe to urgent security events and show them as toasts before starting the hub,
-                    // so no events are missed. The event handler fires async work (Toast.Show) via fire-and-forget.
-                    hubConnection.UrgentEventReceived += urgentEvent =>
+                    // so no events are missed. Subscribing to the hub (not the store) avoids replaying a stale
+                    // urgent event as a new toast. The handler fires async work (Toast.Show) via fire-and-forget.
+                    _ = hubConnection.UrgentEvents.Subscribe(urgentEvent =>
                     {
                         string message = urgentEvent.Details ?? urgentEvent.EventType ?? "Security event";
                         _ = Task.Run(async () =>
@@ -238,7 +240,7 @@ namespace VideoForensics.MauiApp
                                 // Toast failure should not crash the app
                             }
                         });
-                    };
+                    });
 
                     await hubConnection.StartAsync(CancellationToken.None);
                 }

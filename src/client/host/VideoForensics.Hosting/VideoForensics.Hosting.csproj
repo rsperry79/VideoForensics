@@ -72,6 +72,7 @@
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <!-- EF Core Design pulls Workspaces.MSBuild 5.0.0 transitively, which requires Workspaces.Common == 5.0.0 and conflicts with the 5.9.0 Microsoft.CodeAnalysis pin (NU1608); pin it to match. -->
         <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.9.0" />
+        <PackageReference Include="System.Reactive" Version="7.0.0" />
     </ItemGroup>
 
     <ItemGroup>
