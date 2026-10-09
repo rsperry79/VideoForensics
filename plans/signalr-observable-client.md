@@ -156,7 +156,7 @@ Coverage: interfaces 100%, business logic >80%, integrations >70% (CLAUDE.md).
 6. **Lite gate** after each phase: build touched `.csproj`s, run only new and touched tests (`dotnet test --filter`).
 7. **Full gate** before the PR. Ask user for confirmation first (CLAUDE.md).
 
-Each file change is delegated to a Sonnet subagent (`model: "sonnet"`), test-first. The main session verifies by building, running the scoped tests, and reading the diff.
+Each file change is delegated to a Haiku 5.5 subagent (`model: "haiku"`), test-first. The main session verifies by building, running the scoped tests, and reading the diff.
 
 ## 6. Resolved open questions (from Sonnet review)
 
