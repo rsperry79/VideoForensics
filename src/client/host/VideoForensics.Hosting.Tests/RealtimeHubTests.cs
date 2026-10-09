@@ -1,10 +1,13 @@
+using System.Collections.Concurrent;
 using System.Net;
 
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Ui.Shared.Services;
 
@@ -254,5 +257,168 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(ConnectionState.AuthFailed, states[^1]);
         }
+
+        [Fact]
+        public async Task LiveViewSessionChanged_PushReceived_EmitsOnObservable()
+        {
+            // The On<> binding routes the push through EmitLiveViewSessionChanged; the seam stands in for the wire.
+            await using var hub = new RealtimeHub(ServerAddress, CreateServices(), _ => Task.CompletedTask);
+            var received = new List<LiveViewSessionDto>();
+            using IDisposable subscription = hub.LiveViewSessionChanged.Subscribe(received.Add);
+            LiveViewSessionDto dto = SampleSession();
+
+            hub.EmitLiveViewSessionChanged(dto);
+
+            LiveViewSessionDto single = Assert.Single(received);
+            Assert.Equal(dto.Id, single.Id);
+            Assert.Equal(dto.State, single.State);
+        }
+
+        [Fact]
+        public async Task SubscribeLiveViewAsync_Connected_InvokesSubscribeLiveView()
+        {
+            Guid sessionId = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls);
+            await hub.StartAsync(CancellationToken.None);
+
+            await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
+
+            (string method, Guid invokedId) = Assert.Single(calls);
+            Assert.Equal("SubscribeLiveView", method);
+            Assert.Equal(sessionId, invokedId);
+        }
+
+        [Fact]
+        public async Task UnsubscribeLiveViewAsync_Connected_InvokesUnsubscribeLiveView()
+        {
+            Guid sessionId = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls);
+            await hub.StartAsync(CancellationToken.None);
+            await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
+
+            await hub.UnsubscribeLiveViewAsync(sessionId, CancellationToken.None);
+
+            var recorded = calls.ToArray();
+            Assert.Equal(2, recorded.Length);
+            Assert.Equal(("UnsubscribeLiveView", sessionId), recorded[1]);
+        }
+
+        [Fact]
+        public async Task Reconnect_ReplaysTrackedSubscriptions()
+        {
+            // The reconnect loop runs through the connect seam. After the server drops the connection, group membership
+            // is gone, so the tracked session must be re-subscribed once the connection is back.
+            Guid sessionId = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls);
+            await hub.StartAsync(CancellationToken.None);
+            await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
+            (Task reconnected, IDisposable watch) = WatchForReconnect(hub);
+
+            await hub.OnConnectionClosedAsync(new HttpRequestException("connection reset"));
+            await reconnected.WaitAsync(TimeSpan.FromSeconds(10));
+            watch.Dispose();
+
+            Assert.Equal(2, calls.Count);
+            Assert.All(calls, call => Assert.Equal(("SubscribeLiveView", sessionId), call));
+        }
+
+        [Fact]
+        public async Task Reconnected_TrackedSubscriptions_ReplaysThem()
+        {
+            // Drives the built-in HubConnection.Reconnected handler through HandleReconnectedAsync. That handler is the
+            // only path that restores group membership after SignalR's own automatic reconnect.
+            Guid first = Guid.NewGuid();
+            Guid second = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls);
+            await hub.StartAsync(CancellationToken.None);
+            await hub.SubscribeLiveViewAsync(first, CancellationToken.None);
+            await hub.SubscribeLiveViewAsync(second, CancellationToken.None);
+
+            await hub.HandleReconnectedAsync();
+
+            var replayed = calls.Skip(2).ToArray();
+            Assert.Equal(2, replayed.Length);
+            Assert.All(replayed, call => Assert.Equal("SubscribeLiveView", call.Method));
+            Assert.Equal(new[] { first, second }.OrderBy(id => id), replayed.Select(call => call.SessionId).OrderBy(id => id));
+        }
+
+        [Fact]
+        public async Task SubscribeLiveViewAsync_HubException_IsSwallowedAndNotReplayed()
+        {
+            Guid sessionId = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls, method => method == "SubscribeLiveView"
+                ? Task.FromException(new HubException("Unknown live-view session"))
+                : Task.CompletedTask);
+            await hub.StartAsync(CancellationToken.None);
+
+            // An unknown session makes the server throw a HubException. It must not escape the subscribe call.
+            await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
+
+            (Task reconnected, IDisposable watch) = WatchForReconnect(hub);
+            await hub.OnConnectionClosedAsync(new HttpRequestException("connection reset"));
+            await reconnected.WaitAsync(TimeSpan.FromSeconds(10));
+            watch.Dispose();
+
+            // Only the rejected attempt was sent; the bad id was dropped and not replayed on reconnect.
+            Assert.Single(calls);
+        }
+
+        [Fact]
+        public async Task SubscribeLiveViewAsync_NotConnected_TracksAndSendsOnConnect()
+        {
+            Guid sessionId = Guid.NewGuid();
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHubWithInvoke(calls);
+
+            await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
+            Assert.Empty(calls);
+
+            await hub.StartAsync(CancellationToken.None);
+
+            (string method, Guid invokedId) = Assert.Single(calls);
+            Assert.Equal("SubscribeLiveView", method);
+            Assert.Equal(sessionId, invokedId);
+        }
+
+        private static RealtimeHub CreateHubWithInvoke(
+            ConcurrentQueue<(string Method, Guid SessionId)> calls,
+            Func<string, Task>? outcome = null)
+        {
+            return new RealtimeHub(ServerAddress, CreateServices(), _ => Task.CompletedTask,
+                (method, sessionId, _) =>
+                {
+                    calls.Enqueue((method, sessionId));
+                    return outcome?.Invoke(method) ?? Task.CompletedTask;
+                });
+        }
+
+        // Completes once the hub has reported Reconnecting and then Connected again.
+        private static (Task Reconnected, IDisposable Subscription) WatchForReconnect(RealtimeHub hub)
+        {
+            var reconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            bool reconnecting = false;
+            IDisposable subscription = hub.Connection.Subscribe(state =>
+            {
+                if (state == ConnectionState.Reconnecting)
+                {
+                    reconnecting = true;
+                }
+                else if (state == ConnectionState.Connected && reconnecting)
+                {
+                    reconnected.TrySetResult();
+                }
+            });
+            return (reconnected.Task, subscription);
+        }
+
+        private static LiveViewSessionDto SampleSession() => new(
+            Guid.NewGuid(), Guid.NewGuid(), "Manual", "Active",
+            new DateTime(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc), null,
+            new DateTime(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc), false, null, null, null, null, null);
     }
 }
