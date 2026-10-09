@@ -50,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        [Fact(Skip = "Timing-sensitive concurrency test")]
+        [Fact]
         public async Task RingHistoryEventCache_PreservesWideningMetadata_Under100ConcurrentRequests()
         {
             // Arrange

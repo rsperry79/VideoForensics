@@ -1,0 +1,48 @@
+name: Build Windows
+
+# Reusable: restores NuGet packages and builds the test solution. Uploads the compiled output for test-windows.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj (MAUI needs Windows workloads and a win-x64
+      # RuntimeIdentifier, which this gate does not set) and keeps to the cross-platform library and test projects.
+      - name: Restore NuGet cache
+        uses: actions/cache@v6
+        with:
+          key: nuget-cache-windows-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          path: ~/.nuget/packages
+
+      - name: Restore NuGet packages
+        run: dotnet restore VideoForensics.CI.slnf
+
+      - name: Build solution
+        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
+
+      # Hand the compiled output to test-windows as one tar, so every file keeps its exact repo-relative path.
+      # upload-artifact would store paths relative to their common ancestor and could place files wrongly.
+      - name: Archive build output
+        shell: bash
+        run: find . -type d \( -name bin -o -name obj \) -prune -print | tar -cf build-output.tar -T -
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: build-output.tar

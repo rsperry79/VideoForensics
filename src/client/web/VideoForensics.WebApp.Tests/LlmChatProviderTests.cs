@@ -204,6 +204,25 @@ public class AnthropicChatProvider_Tests
     }
 
     [Fact]
+    public async Task StreamCompleteAsync_NonSuccessStatus_ThrowsHttpRequestExceptionWithResponseBody()
+    {
+        // Arrange
+        const string errorBody = """{"type":"error","error":{"type":"invalid_request_error","message":"model: test-bad-model not found"}}""";
+        var handler = new TestSseHttpMessageHandler(errorBody, statusCode: HttpStatusCode.BadRequest);
+        var provider = new AnthropicChatProvider(TestOptions, new HttpClient(handler));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            LlmChatProviderTestHelpers.CollectAsync(
+                provider.StreamCompleteAsync(new[] { LlmChatProviderTestHelpers.UserMessage("Test") }, Array.Empty<LlmToolDefinition>(), CancellationToken.None)));
+
+        // Assert
+        Assert.Contains("400", ex.Message);
+        Assert.Contains("test-bad-model not found", ex.Message);
+        Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
+    }
+
+    [Fact]
     public async Task StreamCompleteAsync_ErrorEvent_Throws()
     {
         // Arrange
@@ -340,8 +359,11 @@ internal class TestSseHttpMessageHandler : HttpMessageHandler
     private readonly string _sseBody;
     private readonly Action<HttpRequestMessage>? _requestValidator;
 
-    public TestSseHttpMessageHandler(string sseBody, Action<HttpRequestMessage>? requestValidator = null)
+    private readonly HttpStatusCode _statusCode;
+
+    public TestSseHttpMessageHandler(string sseBody, Action<HttpRequestMessage>? requestValidator = null, HttpStatusCode statusCode = HttpStatusCode.OK)
     {
+        _statusCode = statusCode;
         _sseBody = sseBody;
         _requestValidator = requestValidator;
     }
@@ -351,6 +373,6 @@ internal class TestSseHttpMessageHandler : HttpMessageHandler
         _requestValidator?.Invoke(request);
 
         var content = new StringContent(_sseBody, Encoding.UTF8, "text/event-stream");
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        return Task.FromResult(new HttpResponseMessage(_statusCode) { Content = content });
     }
 }

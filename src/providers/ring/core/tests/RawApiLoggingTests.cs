@@ -61,7 +61,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             lock (_captured)
             {
-                RawApiCall? call = _captured.Find(c => c.Url.EndsWith("doorbots/123456") && c.Method == "PUT");
+                // ApiRawLogger is a static event shared with parallel tests, so match on this test's own body, not just the URL.
+                RawApiCall? call = _captured.Find(c => c.Url.EndsWith("doorbots/123456") && c.Method == "PUT" && c.Body.Contains("doorbell_volume"));
                 Assert.NotNull(call);
                 Assert.True(call.Body.Contains("doorbell_volume"), "Expected the request body to be captured in the log entry");
             }

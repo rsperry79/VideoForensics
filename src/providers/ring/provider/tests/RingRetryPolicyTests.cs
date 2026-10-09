@@ -275,28 +275,26 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(result);
         }
 
-        [Fact(Skip = "Timing-sensitive test")]
+        [Fact]
         public async Task RetryWithBackoffAsync_CancellationToken_IsRespected()
         {
             // Arrange
             var cts = new CancellationTokenSource();
             int attempts = 0;
 
-            Func<Task> operation = async () =>
+            Func<Task> operation = () =>
             {
                 attempts++;
-                if (attempts == 1)
-                {
-                    throw new Exceptions.ThrottledException { IsHardBan = false };
-                }
-                // Cancel during the backoff delay
-                cts.CancelAfter(100);
-                await Task.CompletedTask;
+                // Cancel from inside the first attempt, then fail with a retryable error so the
+                // policy proceeds to the (cancelled) backoff delay instead of a second attempt.
+                cts.Cancel();
+                throw new Exceptions.ThrottledException { IsHardBan = false };
             };
 
-            // Act & Assert
-            await Assert.ThrowsAsync<OperationCanceledException>(
+            // Act & Assert - TaskCanceledException derives from OperationCanceledException
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", cts.Token));
+            Assert.Equal(1, attempts);
         }
     }
 }
