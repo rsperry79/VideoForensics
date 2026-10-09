@@ -72,7 +72,8 @@ namespace VideoForensics.Hosting
         {
             lock (_lockObj)
             {
-                if (_connection?.State != HubConnectionState.Disconnected)
+                // A null connection means first start, so fall through and connect.
+                if (_connection is not null && _connection.State != HubConnectionState.Disconnected)
                 {
                     return; // Already connected or connecting
                 }
