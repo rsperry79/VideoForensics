@@ -4,13 +4,18 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Ui.Shared.Contracts
+@using VideoForensics.Ui.Shared.Services
 @implements IAsyncDisposable
 
 @inject ILiveViewSessionService LiveViewSessionService
+@inject ILiveViewSessionSource LiveViewSessionSource
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
 @inject IStringLocalizer<LiveView> L
+@inject ILogger<LiveView> Logger
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -74,6 +79,7 @@ else
 
     private object? _hubConnection;
     private IJSObjectReference? _jsModule;
+    private readonly LiveViewActivationWaiter _activationWaiter = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,7 +107,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"Error initializing: {ex.Message}";
+            _error = L["ErrorInitializing", ex.Message];
         }
         finally
         {
@@ -126,6 +132,7 @@ else
                         "ManualStop",
                         System.Threading.CancellationToken.None);
 
+                    await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
                     _selectedSessionId = null;
                     _isConnected = false;
                 }
@@ -147,20 +154,21 @@ else
 
                 _selectedSessionId = session.Id;
 
-                // Wait for Active state with timeout
-                int attempts = 0;
-                while (session.State != LiveViewSessionState.Active && attempts < 30)
-                {
-                    await Task.Delay(500);
-                    session = await LiveViewSessionService.GetActiveSessionAsync(
-                        deviceId,
+                // Push when the source is connected, with a poll fallback. The waiter does the subscribe,
+                // the race-guard read and the timeout, so the page only decides whether to wait at all.
+                LiveViewSession? active = session.State == LiveViewSessionState.Active
+                    ? session
+                    : await _activationWaiter.WaitForActiveAsync(
+                        session.Id,
+                        LiveViewSessionSource,
+                        ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),
+                        LiveViewActivationWaiter.DefaultTimeout,
                         System.Threading.CancellationToken.None);
-                    attempts++;
-                }
 
-                if (session?.State != LiveViewSessionState.Active)
+                if (active is null)
                 {
                     _error = L["SessionFailedToConnect"];
+                    await UnsubscribeFromSessionAsync(session.Id);
                     _selectedSessionId = null;
                     return;
                 }
@@ -171,7 +179,7 @@ else
                     await _jsModule.InvokeVoidAsync(
                         "startLiveView",
                         _hubConnection,
-                        session.Id,
+                        active.Id,
                         "liveViewPlayer");
                     _isConnected = true;
                 }
@@ -181,6 +189,8 @@ else
         {
             _error = ex.Message;
             _isConnected = false;
+            if (_selectedSessionId.HasValue)
+                await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
             _selectedSessionId = null;
         }
         finally
@@ -203,8 +213,25 @@ else
             catch { }
         }
 
+        if (_selectedSessionId.HasValue)
+            await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
+
         if (_jsModule is not null)
             await _jsModule.DisposeAsync();
+    }
+
+    // Leaving the push group is best effort: the page is already leaving this session. A failure is logged and does not
+    // block the stop or dispose, since the hub drops group membership on disconnect anyway.
+    private async Task UnsubscribeFromSessionAsync(Guid sessionId)
+    {
+        try
+        {
+            await LiveViewSessionSource.UnsubscribeAsync(sessionId, System.Threading.CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not leave the live-view push group for a session");
+        }
     }
 
     public async ValueTask DisposeAsync()

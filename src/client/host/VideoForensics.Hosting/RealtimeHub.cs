@@ -94,6 +94,9 @@ namespace VideoForensics.Hosting
         /// </summary>
         public IObservable<LiveViewSessionDto> LiveViewSessionChanged => _liveViewSessionChanged.AsObservable();
 
+        /// <summary>True while the live hub is connected. Lets <see cref="RealtimeLiveViewSessionSource"/> report availability.</summary>
+        internal bool IsLiveHubConnected => IsConnected();
+
         /// <summary>
         /// Joins the server's live-view group for <paramref name="sessionId"/> so its state pushes are delivered.
         /// The session is remembered and re-subscribed after every reconnect. If the connection is not up, the

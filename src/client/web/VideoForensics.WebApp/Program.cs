@@ -178,6 +178,8 @@ builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, VideoForensics.WebApp.Services.LocalDownloadProgressSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, VideoForensics.WebApp.Services.LocalSelfTestStatusSource>();
+// The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, VideoForensics.WebApp.Services.LocalLiveViewSessionSource>();
 builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
 builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
