@@ -16,5 +16,15 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="session">The session in its newly persisted state.</param>
         /// <param name="ct">Cancellation token.</param>
         Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct);
+
+        /// <summary>
+        /// Publishes one persisted live-view telemetry sample (RTCP receiver report plus merged bitrate and
+        /// interference score). Called by the orchestrator's per-session sampler after the row is written.
+        /// The default implementation is a no-op so that existing publishers that only handle session state
+        /// (such as the SignalR broadcaster) keep compiling until they opt in to sample delivery.
+        /// </summary>
+        /// <param name="sample">The telemetry sample in its persisted state.</param>
+        /// <param name="ct">Cancellation token.</param>
+        Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct) => Task.CompletedTask;
     }
 }

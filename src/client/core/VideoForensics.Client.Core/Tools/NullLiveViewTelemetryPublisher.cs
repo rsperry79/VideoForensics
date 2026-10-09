@@ -11,5 +11,8 @@ namespace VideoForensics.Client.Core.Tools
     {
         /// <inheritdoc />
         public Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct) => Task.CompletedTask;
+
+        /// <inheritdoc />
+        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct) => Task.CompletedTask;
     }
 }
