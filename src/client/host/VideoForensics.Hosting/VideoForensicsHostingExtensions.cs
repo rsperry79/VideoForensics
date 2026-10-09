@@ -643,6 +643,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IReleaseChannelService, RemoteReleaseChannelService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);

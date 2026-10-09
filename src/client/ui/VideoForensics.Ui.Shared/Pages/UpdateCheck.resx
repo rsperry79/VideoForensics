@@ -80,4 +80,34 @@
   <data name="CheckFailed" xml:space="preserve">
     <value>Check failed: {0}</value>
   </data>
+  <data name="ReleaseChannelTitle" xml:space="preserve">
+    <value>Release Channel</value>
+  </data>
+  <data name="ReleaseChannelLabel" xml:space="preserve">
+    <value>Channel</value>
+  </data>
+  <data name="ChannelStable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="ChannelTesting" xml:space="preserve">
+    <value>Testing</value>
+  </data>
+  <data name="SaveChannelButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingChannelButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="ChannelSavedMessage" xml:space="preserve">
+    <value>Release channel saved.</value>
+  </data>
+  <data name="ReadOnlyChannelNote" xml:space="preserve">
+    <value>Only a SuperAdmin on the local network can change the release channel.</value>
+  </data>
+  <data name="ChannelLoadFailed" xml:space="preserve">
+    <value>Failed to load release channel: {0}</value>
+  </data>
+  <data name="ChannelSaveFailed" xml:space="preserve">
+    <value>Failed to save release channel: {0}</value>
+  </data>
 </root>
