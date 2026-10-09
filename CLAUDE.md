@@ -135,6 +135,7 @@ Every user-visible string in `VideoForensics.Ui.Shared` (pages, components, dial
 - Tests that assert on text should go through the localizer or the resource key, not a duplicated English literal where practical.
 - Not user-visible, so exempt: log messages, exception messages not shown to users, route paths, CSS classes, test data.
 - Existing pages that are not yet localized (see `plans/maui-layout-theme-localization.md`) must be localized when they are next touched.
+- When dispatching a subagent to change a `VideoForensics.Ui.Shared` page, the brief must name the localization rule and list the page's existing literals to convert, so the subagent doesn't leave them in place.
 ## UI Layout (Desktop-First)
 
 `VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
