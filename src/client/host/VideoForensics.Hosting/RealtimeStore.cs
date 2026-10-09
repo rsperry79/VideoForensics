@@ -15,12 +15,17 @@ namespace VideoForensics.Hosting
     /// </summary>
     internal sealed class RealtimeStore : IRealtimeStore, IDisposable
     {
+        private const int MaxActivityLogLines = 500;
+
         private readonly object _gate = new();
         private readonly CompositeDisposable _hubSubscriptions = new();
         private readonly BehaviorSubject<DownloadProgressDto?> _downloadProgress = new(null);
         private readonly BehaviorSubject<NotificationEvent?> _urgentEvents = new(null);
         private readonly BehaviorSubject<SelfTestStatusDto?> _selfTestStatus = new(null);
         private readonly BehaviorSubject<ConnectionState?> _connection = new(null);
+        // Activity lines are not state: every line must reach a drainer, so they are queued rather than latest-value.
+        // The cap stops a caller that never drains from growing memory without limit; the oldest lines go first.
+        private readonly Queue<string> _activityLog = new();
         private bool _disposed;
 
         /// <summary>Subscribes to every hub stream. Registration makes this the only subscriber to the hub.</summary>
@@ -28,7 +33,7 @@ namespace VideoForensics.Hosting
         {
             ArgumentNullException.ThrowIfNull(hub);
 
-            _hubSubscriptions.Add(hub.DownloadProgress.Subscribe(value => Publish(_downloadProgress, value)));
+            _hubSubscriptions.Add(hub.DownloadProgress.Subscribe(OnDownloadProgress));
             _hubSubscriptions.Add(hub.UrgentEvents.Subscribe(value => Publish(_urgentEvents, value)));
             _hubSubscriptions.Add(hub.SelfTestStatus.Subscribe(value => Publish(_selfTestStatus, value)));
             _hubSubscriptions.Add(hub.Connection.Subscribe(value => Publish(_connection, value)));
@@ -58,6 +63,17 @@ namespace VideoForensics.Hosting
         /// <inheritdoc />
         public ConnectionState? LatestConnectionState => _connection.Value;
 
+        /// <inheritdoc />
+        public IReadOnlyList<string> DrainActivityLog()
+        {
+            lock (_gate)
+            {
+                string[] lines = _activityLog.ToArray();
+                _activityLog.Clear();
+                return lines;
+            }
+        }
+
         /// <summary>Releases the hub subscriptions and completes the store's streams.</summary>
         public void Dispose()
         {
@@ -76,6 +92,34 @@ namespace VideoForensics.Hosting
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
             _connection.OnCompleted();
+        }
+
+        // Buffers the activity lines and publishes the payload under one lock, so a drain never sees a payload's lines
+        // half-queued. A null Activity (not expected from the wire, but tolerated) contributes no lines.
+        private void OnDownloadProgress(DownloadProgressDto value)
+        {
+            lock (_gate)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (value.Activity is not null)
+                {
+                    foreach (string line in value.Activity)
+                    {
+                        _activityLog.Enqueue(line);
+                    }
+
+                    while (_activityLog.Count > MaxActivityLogLines)
+                    {
+                        _ = _activityLog.Dequeue();
+                    }
+                }
+
+                _downloadProgress.OnNext(value);
+            }
         }
 
         // Subject OnNext is not safe to call from multiple threads at once, and hub callbacks arrive on SignalR threads.

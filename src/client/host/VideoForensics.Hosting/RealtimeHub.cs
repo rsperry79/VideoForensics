@@ -115,20 +115,39 @@ namespace VideoForensics.Hosting
             {
                 // Transient failure (server not up yet, network down). Keep retrying in the background instead of
                 // throwing, so an app launched before the server is reachable recovers without a restart.
-                _logger.LogWarning(ex, "Live hub initial connection failed; retrying with backoff");
+                // If StopAsync already ran, the failure is the stop's doing; starting a retry now would resurrect the hub.
                 CancellationToken lifetimeToken;
                 lock (_gate)
                 {
+                    if (_stopping)
+                    {
+                        _logger.LogInformation("Live hub initial connection failed after stop was requested; not retrying");
+                        Publish(ConnectionState.Disconnected);
+                        return;
+                    }
+
                     lifetimeToken = _lifetime.Token;
+                    Publish(ConnectionState.Reconnecting);
                 }
 
-                Publish(ConnectionState.Reconnecting);
+                _logger.LogWarning(ex, "Live hub initial connection failed; retrying with backoff");
                 _ = ReconnectLoopAsync(lifetimeToken);
                 return;
             }
 
-            _logger.LogInformation("Live hub connected");
-            Publish(ConnectionState.Connected);
+            // Check and publish under one lock. StopAsync takes the same lock, so a stop cannot slip between them.
+            lock (_gate)
+            {
+                if (_stopping)
+                {
+                    _logger.LogInformation("Live hub connect completed after stop was requested; not reporting Connected");
+                    Publish(ConnectionState.Disconnected);
+                    return;
+                }
+
+                _logger.LogInformation("Live hub connected");
+                Publish(ConnectionState.Connected);
+            }
         }
 
         /// <inheritdoc />

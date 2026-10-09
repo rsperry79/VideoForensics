@@ -189,6 +189,60 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RealtimeHub_StopDuringInitialConnect_DoesNotPublishConnectedOrStartReconnect()
+        {
+            // StopAsync arrives while the first connect is still in flight. When that connect later succeeds, the hub
+            // must not report Connected, and must not start a reconnect loop either.
+            var connectGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            int connectCalls = 0;
+            await using var hub = new RealtimeHub(ServerAddress, CreateServices(), async _ =>
+            {
+                connectCalls++;
+                await connectGate.Task;
+            });
+            var states = new List<ConnectionState>();
+            using IDisposable subscription = hub.Connection.Subscribe(states.Add);
+
+            Task startTask = hub.StartAsync(CancellationToken.None);
+            await hub.StopAsync();
+            connectGate.SetResult();
+            await startTask;
+            await Task.Delay(TimeSpan.FromMilliseconds(1500)); // the first reconnect backoff is 1s; a loop would retry here
+
+            Assert.DoesNotContain(ConnectionState.Connected, states);
+            Assert.DoesNotContain(ConnectionState.Reconnecting, states);
+            Assert.Equal(ConnectionState.Disconnected, states[^1]);
+            Assert.Equal(1, connectCalls);
+        }
+
+        [Fact]
+        public async Task RealtimeHub_StopDuringInitialConnectThatFails_DoesNotStartReconnectLoop()
+        {
+            // The first connect fails transiently after StopAsync was requested. The failure branch must not start the
+            // background retry loop, so no second connect attempt happens.
+            var connectGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            int connectCalls = 0;
+            await using var hub = new RealtimeHub(ServerAddress, CreateServices(), async _ =>
+            {
+                connectCalls++;
+                await connectGate.Task;
+                throw new InvalidOperationException("Server not reachable yet");
+            });
+            var states = new List<ConnectionState>();
+            using IDisposable subscription = hub.Connection.Subscribe(states.Add);
+
+            Task startTask = hub.StartAsync(CancellationToken.None);
+            await hub.StopAsync();
+            connectGate.SetResult();
+            await startTask;
+            await Task.Delay(TimeSpan.FromMilliseconds(1500));
+
+            Assert.DoesNotContain(ConnectionState.Reconnecting, states);
+            Assert.Equal(ConnectionState.Disconnected, states[^1]);
+            Assert.Equal(1, connectCalls);
+        }
+
+        [Fact]
         public async Task RealtimeHub_StartRejectedWith401_EmitsAuthFailedAndRethrows()
         {
             await using var hub = new RealtimeHub(ServerAddress, CreateServices(), _ =>

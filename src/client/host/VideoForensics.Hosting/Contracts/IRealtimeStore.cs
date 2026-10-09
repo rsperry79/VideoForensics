@@ -34,5 +34,12 @@ namespace VideoForensics.Hosting.Contracts
 
         /// <summary>Most recent connection state, or null before the first emission.</summary>
         ConnectionState? LatestConnectionState { get; }
+
+        /// <summary>
+        /// Returns the download activity lines received since the previous drain, oldest first, and clears the buffer.
+        /// The buffer is bounded: beyond 500 lines the oldest are dropped, so a caller that never drains cannot grow memory.
+        /// Draining is destructive and shared, so each line is returned to exactly one caller.
+        /// </summary>
+        IReadOnlyList<string> DrainActivityLog();
     }
 }

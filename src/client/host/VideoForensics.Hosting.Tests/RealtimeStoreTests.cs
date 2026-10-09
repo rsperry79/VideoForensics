@@ -101,6 +101,84 @@ namespace VideoForensics.Hosting.Tests
             Assert.Null(store.LatestDownloadProgress);
         }
 
+        [Fact]
+        public void RealtimeStore_TwoEmissionsWithActivity_DrainReturnsLinesFromBoth()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+
+            hub.Progress.OnNext(CreateProgressWithActivity("first-a", "first-b"));
+            hub.Progress.OnNext(CreateProgressWithActivity("second-a"));
+
+            IReadOnlyList<string> drained = store.DrainActivityLog();
+
+            Assert.Equal(new[] { "first-a", "first-b", "second-a" }, drained);
+        }
+
+        [Fact]
+        public void RealtimeStore_DrainActivityLog_ClearsBuffer()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            hub.Progress.OnNext(CreateProgressWithActivity("line"));
+
+            _ = store.DrainActivityLog();
+            IReadOnlyList<string> second = store.DrainActivityLog();
+
+            Assert.Empty(second);
+        }
+
+        [Fact]
+        public void RealtimeStore_ActivityBufferOverCap_DropsOldestBeyondCap()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            string[] lines = Enumerable.Range(0, 600).Select(i => $"line-{i}").ToArray();
+
+            hub.Progress.OnNext(CreateProgressWithActivity(lines));
+            IReadOnlyList<string> drained = store.DrainActivityLog();
+
+            Assert.Equal(500, drained.Count);
+            Assert.Equal("line-100", drained[0]);
+            Assert.Equal("line-599", drained[^1]);
+        }
+
+        [Fact]
+        public void RealtimeStore_DrainActivityLog_BeforeAnyEmission_ReturnsEmpty()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+
+            Assert.Empty(store.DrainActivityLog());
+        }
+
+        [Fact]
+        public void RealtimeStore_EmissionWithNullActivity_IsForwardedWithoutBufferingLines()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            DownloadProgressDto payload = new(new DownloadStatusDto(false, 0, 0, 0), 0, 0, null, null!,
+                new Dictionary<string, int>(), null, null);
+
+            hub.Progress.OnNext(payload);
+
+            Assert.Same(payload, store.LatestDownloadProgress);
+            Assert.Empty(store.DrainActivityLog());
+        }
+
+        private static DownloadProgressDto CreateProgressWithActivity(params string[] activity)
+        {
+            return new DownloadProgressDto(
+                new DownloadStatusDto(false, 0, 0, 0),
+                0,
+                0,
+                null,
+                activity,
+                new Dictionary<string, int>(),
+                null,
+                null);
+        }
+
         private static DownloadProgressDto CreateProgress(string? lastError = null)
         {
             return new DownloadProgressDto(
