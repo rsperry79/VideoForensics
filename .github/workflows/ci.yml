@@ -6,6 +6,7 @@ name: CI - Build and Test
 #   test-windows                   run the tests against the build output
 #   determine-version   (dev/main) read the NBGV version after tests pass
 #   publish-packages    (dev/main) pack and push NuGet packages to GitHub Packages
+#   publish-releases    (dev/main) build installers and create the GitHub release (dev prerelease, main release)
 
 on:
   push:
@@ -132,4 +133,13 @@ jobs:
     uses: ./.github/workflows/pack-nuget-packages.yml
     with:
       version: ${{ needs.determine-version.outputs.version }}
+    secrets: inherit
+
+  # Installers and the GitHub release reuse release-installers.yml. It creates a prerelease for dev and a release for main.
+  publish-releases:
+    needs: [test-windows]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-installers.yml
     secrets: inherit
