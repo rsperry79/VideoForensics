@@ -661,6 +661,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILogViewerService, Remote.RemoteLogViewerService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ILiveViewSessionService, Remote.RemoteLiveViewSessionService>(c => c.BaseAddress = serverAddress);
 
             // Ui.Shared's JammingPanel (Analyze page) injects this orchestrator directly. In client mode it runs over
             // the Remote* repositories: recording an incident and reading stats/incidents work end to end; the
