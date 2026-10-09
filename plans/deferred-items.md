@@ -42,6 +42,17 @@ Check each item against the **dev** repo before doing any work. Archived status 
 - [ ] **Cleanup: stale Radzen comments.** Verified: no Radzen references remain in `VideoForensics.Ui.Shared`. Comments in `WebApp/Program.cs`, `MauiApp/MauiProgram.cs`, `IBlazorRenderModeProvider.cs`, `ThemePreferenceService.cs`, and `NavGroups.cs` may still mention Radzen. Source: [ui-framework-migration-syncfusion.md](archive/ui-framework-migration-syncfusion.md) (lines 8-9).
 - [ ] **Console app archive.** `src/client/VideoForensics` is slated to move to `archive/` once MAUI reaches parity. Held off by user choice. Source: [maui-blazor-hybrid-conversion.md](archive/maui-blazor-hybrid-conversion.md) (line 8, 381).
 
+## Carried from feature/signalr-observable-client (not yet on dev)
+
+These items came from the feature branch's placeholder list and are not in the consolidated list above. Check each against `dev` before starting it.
+
+- [ ] **SignalR client side.** `IDownloadStatusSource` abstraction and a MAUI SignalR consumer for `LiveHub`. The hub exists. The feature branch (#201) is working on the client observable. Source: [maui-blazor-hybrid-conversion.md](archive/maui-blazor-hybrid-conversion.md) (line 22).
+- [ ] **Update-check feature.** Plan says it ships in the same pass, not deferred. Confirm it landed (check-now panel, `NotifyOnly` / `AutoDownloadAndInstall` setting). Source: [ci-cd-versioning-update-check.md](archive/ci-cd-versioning-update-check.md).
+- [ ] **Installer event-log source registration.** Called an unfinished WiX TODO; the Inno Setup replacement should cover it. Confirm in `deploy/windows/`. Source: [installer-overhaul-inno-setup.md](archive/installer-overhaul-inno-setup.md) (line 58).
+- [ ] **Live view browser video (WebRTC).** Session state and telemetry exist; browser-side SDP/ICE relay is a larger follow-up. Confirm scope before Phase 8. Source: [on-demand-live-view.md](archive/on-demand-live-view.md) (line 259).
+- [ ] **LDAP live domain controller integration test.** Out of scope for the phase, not built. Source: [external-auth-smb-integration.md](archive/external-auth-smb-integration.md) (line 189).
+- [ ] **Cleanup: stale Radzen comments.** Verified: no Radzen references remain in `VideoForensics.Ui.Shared`. Comments in `WebApp/Program.cs`, `MauiApp/MauiProgram.cs`, `IBlazorRenderModeProvider.cs`, `ThemePreferenceService.cs`, and `NavGroups.cs` may still mention Radzen. Source: [ui-framework-migration-syncfusion.md](archive/ui-framework-migration-syncfusion.md) (lines 8-9).
+
 ## Decided out of scope (reference only, no action)
 
 - Finding #3, bearer token over plaintext HTTP on the LAN. Skipped on user confirmation. Source: [security-perf-fixes.md](archive/security-perf-fixes.md) (lines 9-15).
