@@ -14,30 +14,41 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     /// </summary>
     public class HttpUtilityTests : IDisposable
     {
+        private readonly string _testDirectory;
         private readonly string _hardBanStateFilePath;
-        private readonly PlatformDirectoryService _platformDirService;
 
         public HttpUtilityTests()
         {
-            _platformDirService = new PlatformDirectoryService();
-            string appDataDir = _platformDirService.GetApplicationDataDirectory();
-            Directory.CreateDirectory(appDataDir);
-            _hardBanStateFilePath = Path.Combine(appDataDir, "ring_hard_ban.txt");
-
-            // Clean up any pre-existing hard ban state file before each test
-            if (File.Exists(_hardBanStateFilePath))
-            {
-                File.Delete(_hardBanStateFilePath);
-            }
+            // Isolated per-test directory so tests never touch the machine-wide ProgramData state.
+            _testDirectory = Path.Combine(Path.GetTempPath(), "vf-httputility-tests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_testDirectory);
+            HttpUtility.SetHardBanStateDirectoryForTesting(_testDirectory);
+            _hardBanStateFilePath = HttpUtility.GetHardBanStateFilePath();
         }
 
         public void Dispose()
         {
-            // Clean up hard ban state file after each test
-            if (File.Exists(_hardBanStateFilePath))
+            HttpUtility.SetHardBanStateDirectoryForTesting(null);
+            if (Directory.Exists(_testDirectory))
             {
-                File.Delete(_hardBanStateFilePath);
+                Directory.Delete(_testDirectory, true);
             }
+        }
+
+        [Fact]
+        public void HardBanStateFilePath_WithoutOverride_IsProgramDataApplicationDirectory()
+        {
+            HttpUtility.SetHardBanStateDirectoryForTesting(null);
+
+            string expected = Path.Combine(new PlatformDirectoryService().GetApplicationDataDirectory(), "ring_hard_ban.txt");
+
+            Assert.Equal(expected, HttpUtility.GetHardBanStateFilePath());
+        }
+
+        [Fact]
+        public void HardBanStateFilePath_WithOverride_IsInsideOverrideDirectory()
+        {
+            Assert.Equal(Path.Combine(_testDirectory, "ring_hard_ban.txt"), HttpUtility.GetHardBanStateFilePath());
         }
 
         [Fact]
@@ -64,7 +75,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Null(result);
         }
 
-        [Fact(Skip = "Windows-specific path behavior")]
+        [Fact]
         public void GetHardBanUntilUtc_WithValidPersistedState_ReturnsExpiry()
         {
             // Arrange - persist a hard ban state (30 minutes in future)
@@ -80,7 +91,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(Math.Abs((result.Value - futureTime).TotalSeconds) < 2); // Allow 2s tolerance
         }
 
-        [Fact(Skip = "Windows-specific path behavior")]
+        [Fact]
         public void GetHardBanUntilUtc_PersistsAcrossInstances()
         {
             // Arrange - simulate first instance setting hard ban
@@ -96,7 +107,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.True(Math.Abs((firstResult.Value - banExpiry).TotalSeconds) < 2);
         }
 
-        [Fact(Skip = "Windows-specific path behavior")]
+        [Fact]
         public void OverrideHardBan_ClearsPersistentState()
         {
             // Arrange - set up an active hard ban
@@ -112,23 +123,19 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.False(File.Exists(_hardBanStateFilePath));
         }
 
-        [Fact(Skip = "Windows-specific path behavior")]
+        [Fact]
         public void HardBanStateFile_CreatesApplicationDataDirectory_IfMissing()
         {
-            // Arrange - ensure the directory structure doesn't exist
-            var appDataDir = _platformDirService.GetApplicationDataDirectory();
-            if (Directory.Exists(appDataDir))
-            {
-                Directory.Delete(appDataDir, true);
-            }
+            // Arrange - state directory does not exist
+            Directory.Delete(_testDirectory, true);
+            Assert.False(Directory.Exists(_testDirectory));
 
-            // Act
-            var banExpiry = DateTime.UtcNow.AddHours(1);
-            File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
+            // Act - reading with no directory must not throw; persisting must create it
+            Assert.Null(HttpUtility.GetHardBanUntilUtc());
+            HttpUtility.OverrideHardBan();
 
-            // Assert - directory should be created and file written
-            Assert.True(File.Exists(_hardBanStateFilePath));
-            Assert.True(Directory.Exists(appDataDir));
+            // Assert
+            Assert.True(Directory.Exists(_testDirectory));
         }
 
         [Fact]
@@ -160,19 +167,19 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Null(result);
         }
 
-        [Fact(Skip = "File I/O contention in concurrent writes")]
+        [Fact]
         public async Task HardBanState_IsThreadSafe()
         {
             // Arrange
             var banExpiry = DateTime.UtcNow.AddHours(1);
             var tasks = new Task[10];
+            File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
 
             // Act - multiple threads calling GetHardBanUntilUtc simultaneously
             for (int i = 0; i < 10; i++)
             {
                 tasks[i] = Task.Run(() =>
                 {
-                    File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
                     var result = HttpUtility.GetHardBanUntilUtc();
                     Assert.NotNull(result);
                 });

@@ -41,7 +41,7 @@ namespace VideoForensics.Forensics.Tests.KeyManagement
             Assert.Equal("Windows DPAPI", _provider.ProviderName);
         }
 
-        [Fact(Skip = "Platform-specific: Windows only")]
+        [Fact]
         public void IsAvailable_Windows_ReturnsTrue()
         {
             // This test only runs on Windows; skip on other platforms

@@ -65,7 +65,40 @@ namespace VideoForensics.Providers.Ring
         // again on every relaunch - almost certainly what kept the account locked out for 30+ minutes
         // straight instead of the ban ever getting a real, uninterrupted chance to expire.
         private static bool _hardBanStateLoaded;
-        private static string HardBanStateFilePath => Path.Combine(new PlatformDirectoryService().GetApplicationDataDirectory(), "ring_hard_ban.txt");
+        private const string HardBanStateFileName = "ring_hard_ban.txt";
+
+        // Test seam: when set, the hard-ban state file lives in this directory instead of the
+        // machine-wide application data directory, so tests can isolate themselves from each other.
+        private static string? _hardBanStateDirectoryOverride;
+
+        private static string HardBanStateFilePath => Path.Combine(
+            _hardBanStateDirectoryOverride ?? new PlatformDirectoryService().GetApplicationDataDirectory(),
+            HardBanStateFileName);
+
+        /// <summary>
+        /// Full path of the file the hard-ban state is persisted to. Defaults to
+        /// <c>ring_hard_ban.txt</c> in the application data directory.
+        /// </summary>
+        public static string GetHardBanStateFilePath()
+        {
+            return HardBanStateFilePath;
+        }
+
+        /// <summary>
+        /// Redirects hard-ban persistence to <paramref name="directory"/> (or back to the default
+        /// application data directory when null) and resets the in-memory state. Intended for testing only.
+        /// </summary>
+        public static void SetHardBanStateDirectoryForTesting(string? directory)
+        {
+            lock (_throttleLock)
+            {
+                _hardBanStateDirectoryOverride = directory;
+                _hardBanStateLoaded = false;
+                _hardBanUntilUtc = null;
+                _consecutiveThrottles = 0;
+                _throttledUntilUtc = null;
+            }
+        }
 
         private static void EnsureHardBanStateLoaded()
         {

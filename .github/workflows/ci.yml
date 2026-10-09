@@ -10,75 +10,9 @@ permissions:
   contents: read
 
 jobs:
+  # Windows is the only test host: Windows-only tests (named pipes, DPAPI, platform directories, Windows path
+  # handling) run here on every PR rather than being skipped on a Linux runner.
   build-and-test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      # VideoForensics.CI.slnf excludes VideoForensics.MauiApp.csproj (targets
-      # net10.0-windows10.0.19041.0, needs Windows-only MAUI workloads and an
-      # explicit win-x64 RuntimeIdentifier to restore/build - out of scope for
-      # this build+test gate, which only needs the cross-platform library and
-      # test projects) and VideoForensics.Providers.Ring.Core.Tests (its whole
-      # fixture requires live Ring account credentials stored in a local dev
-      # database - not something a CI runner has; see its own failure message:
-      # "Run 'dotnet run -- --auth' from src/selftest to authenticate").
-      - name: Restore NuGet cache
-        uses: actions/cache@v6
-        with:
-          key: nuget-cache-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
-          path: ~/.nuget/packages
-
-      - name: Restore
-        run: dotnet restore VideoForensics.CI.slnf
-
-      - name: Build
-        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
-
-      # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props),
-      # so `dotnet test` routes through MTP's own CLI, not legacy VSTest - the
-      # VSTest-style `--logger trx` flag silently breaks test discovery there
-      # (every project reports "Zero tests ran"). Use MTP's native xUnit trx
-      # reporter flag instead.
-      #
-      # ANTHROPIC_API_KEY feeds the live Anthropic test in VideoForensics.WebApp.Tests, which skips when the
-      # variable is empty, so forks and PRs without the secret stay green. The key is never printed.
-      - name: Test
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: >
-          dotnet test VideoForensics.CI.slnf --configuration Release --no-build
-          --report-xunit-trx --results-directory TestResults
-
-      - name: Create build cache
-        if: success()
-        run: tar -czf build-cache-release.tar.gz $(find . -type d -name bin -o -type d -name obj)
-
-      - name: Upload build cache
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: build-cache-ci-release
-          path: build-cache-release.tar.gz
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: TestResults/
-
-  # Windows-only tests (named pipes, DPAPI, platform directories, Windows path handling) are skipped on the
-  # Linux job, so this job runs the same solution build and tests on a Windows runner for every PR.
-  build-and-test-windows:
     runs-on: windows-latest
 
     steps:
