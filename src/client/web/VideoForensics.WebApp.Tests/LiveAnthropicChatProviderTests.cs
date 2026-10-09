@@ -42,8 +42,8 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal("ANTHROPIC_API_KEY", requested);
         }
 
-        // Mirrors the app default model documented on AnthropicChatOptions.Model (not exposed as a constant).
-        private const string DefaultModel = "claude-3-5-sonnet-20241022";
+        // Latest Haiku, so the live check exercises the current cheap model. Override with ANTHROPIC_CHAT_MODEL.
+        private const string DefaultModel = "claude-haiku-5-5";
 
         [Fact]
         public async Task StreamCompleteAsync_LiveAnthropic_StreamsDeltasAndCompletes()
