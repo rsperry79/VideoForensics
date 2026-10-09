@@ -15,6 +15,10 @@ Check each item against the **dev** repo before doing any work. Archived status 
 3. If it is already done, mark it done here with the commit or PR and skip it.
 4. If it is still open, promote it to its own plan and branch off `dev` per CLAUDE.md.
 
+## When an item is completed
+
+Update this doc in the same PR that completes the item. Remove the item from its open section, or move it to a short completed list with the PR or commit that finished it. Also update the date in the status line. Do not leave completed items in the open sections.
+
 ## Not started
 
 - [ ] **Evidence store backup and disaster recovery.** Priority: **High**, effort L. A manual metadata-only JSON export/import exists (commit 02fc4f6, `BackupEndpoints`, `ImportExport.razor`). It has no media bytes, scheduling, retention, off-box copy or restore verification, and the server is now the sole evidence copy. Plan: [evidence-store-backup-dr.md](evidence-store-backup-dr.md). Source: [maui-blazor-hybrid-conversion.md](archive/maui-blazor-hybrid-conversion.md) (line 458).
