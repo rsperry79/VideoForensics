@@ -35,6 +35,28 @@ namespace VideoForensics.Api.Contracts
     );
 
     /// <summary>
+    /// Wire representation of a single persisted live-view telemetry sample.
+    /// </summary>
+    /// <param name="Id">Unique identifier for the sample.</param>
+    /// <param name="SessionId">The live-view session the sample belongs to.</param>
+    /// <param name="CapturedAtUtc">Timestamp when the sample was captured, in UTC.</param>
+    /// <param name="FractionLost">RTCP fraction-lost value (0-255). Null if not reported.</param>
+    /// <param name="CumulativePacketsLost">RTCP cumulative packets lost. Null if not reported.</param>
+    /// <param name="JitterTicks">RTP interarrival jitter, in timestamp ticks. Null if not reported.</param>
+    /// <param name="BitrateBps">Measured stream bitrate, in bits per second. Null if not measured.</param>
+    /// <param name="InterferenceScore">Interference score computed for this sample. Null if not scored.</param>
+    public record LiveViewTelemetrySampleDto(
+        Guid Id,
+        Guid SessionId,
+        DateTime CapturedAtUtc,
+        byte? FractionLost,
+        int? CumulativePacketsLost,
+        uint? JitterTicks,
+        long? BitrateBps,
+        double? InterferenceScore
+    );
+
+    /// <summary>
     /// Request body for starting a live-view session. The operator is taken from the server's auth context,
     /// never from the client, so no operator identifier is sent.
     /// </summary>
@@ -73,6 +95,21 @@ namespace VideoForensics.Api.Contracts
                 OperatorId: session.OperatorId,
                 StopReason: session.StopReason,
                 ProviderSessionRef: session.ProviderSessionRef
+            );
+        }
+
+        /// <summary>Converts a LiveViewTelemetrySample entity to a LiveViewTelemetrySampleDto.</summary>
+        public static LiveViewTelemetrySampleDto ToDto(this LiveViewTelemetrySample sample)
+        {
+            return new LiveViewTelemetrySampleDto(
+                Id: sample.Id,
+                SessionId: sample.SessionId,
+                CapturedAtUtc: sample.CapturedAtUtc,
+                FractionLost: sample.FractionLost,
+                CumulativePacketsLost: sample.CumulativePacketsLost,
+                JitterTicks: sample.JitterTicks,
+                BitrateBps: sample.BitrateBps,
+                InterferenceScore: sample.InterferenceScore
             );
         }
     }

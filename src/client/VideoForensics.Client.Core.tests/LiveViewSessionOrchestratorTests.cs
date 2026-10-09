@@ -64,7 +64,8 @@ namespace VideoForensics.Client.Core.Tests
                 _loggerMock.Object,
                 scopeFactoryMock.Object,
                 _scorerMock.Object,
-                _configMock.Object);
+                _configMock.Object,
+                new NullLiveViewTelemetryPublisher());
         }
 
         [Fact]
