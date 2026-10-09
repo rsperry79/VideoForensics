@@ -15,9 +15,10 @@ using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 
 /// <summary>
-/// Tests for the release channel card on the update page. Only a SuperAdmin viewer gets the dropdown and Save
-/// button; every other signed-in viewer sees the current channel as read-only text. The server enforces the
-/// rule; these tests cover presentation only.
+/// Tests for the release channel card on the update page. The card is shown only to Admin and above; only a
+/// SuperAdmin viewer gets the dropdown and Save button, and Admin sees the current channel as read-only text.
+/// Viewers below Admin get no card and no channel request. The server enforces the rules; these tests cover
+/// presentation only. Also covers the localized relative timestamp for the last-checked time.
 /// </summary>
 public class UpdateCheckReleaseChannelTests : BunitContext
 {
@@ -140,6 +141,70 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelLoadFailed", "boom"], cut.Markup));
+    }
+
+    [Fact]
+    public async Task UpdateCheck_ReadOnlyViewer_HidesChannelCardAndSendsNoChannelRequest()
+    {
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.ReadOnly);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["CurrentVersionLabel"], cut.Markup));
+        Assert.DoesNotContain(Localizer["ReleaseChannelTitle"], cut.Markup);
+        _releaseChannel.Verify(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCheck_ReviewViewer_HidesChannelCardAndSendsNoChannelRequest()
+    {
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.Review);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["CurrentVersionLabel"], cut.Markup));
+        Assert.DoesNotContain(Localizer["ReleaseChannelTitle"], cut.Markup);
+        _releaseChannel.Verify(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCheck_AdminViewer_ShowsChannelCardAndLoadsChannel()
+    {
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.Admin);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
+        _releaseChannel.Verify(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCheck_JustNowTimestamp_RendersLocalizedJustNow()
+    {
+        _updateCheck.Setup(s => s.GetState())
+            .Returns(new UpdateCheckState(false, null, "1.0.0", null, DateTime.UtcNow.AddSeconds(-10), null));
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.SuperAdmin);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["JustNow"], cut.Markup));
+    }
+
+    [Fact]
+    public async Task UpdateCheck_MinutesAgoTimestamp_RendersLocalizedPlural()
+    {
+        _updateCheck.Setup(s => s.GetState())
+            .Returns(new UpdateCheckState(false, null, "1.0.0", null, DateTime.UtcNow.AddMinutes(-5).AddSeconds(-5), null));
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.SuperAdmin);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["MinutesAgo", 5], cut.Markup));
     }
 
     [Fact]

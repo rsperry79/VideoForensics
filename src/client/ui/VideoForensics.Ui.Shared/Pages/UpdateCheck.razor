@@ -96,7 +96,7 @@ else if (_state is not null)
     }
 }
 
-@if (SessionState.IsSignedIn)
+@if (IsAdminOrAbove)
 {
     <div class="card mb-4">
         <div class="card-body">
@@ -161,6 +161,11 @@ else if (_state is not null)
         && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
         && viewerRole >= OperatorRole.SuperAdmin;
 
+    // Channel card is visible to Admin and above only. Viewers below Admin get no card and no channel request.
+    private bool IsAdminOrAbove => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.Admin;
+
     protected override async Task OnInitializedAsync()
     {
         LoadState();
@@ -184,7 +189,7 @@ else if (_state is not null)
 
     private async Task LoadReleaseChannelAsync()
     {
-        if (!SessionState.IsSignedIn)
+        if (!IsAdminOrAbove)
         {
             return;
         }
@@ -271,7 +276,7 @@ else if (_state is not null)
         }
     }
 
-    private static string FormatTime(DateTime utcTime)
+    private string FormatTime(DateTime utcTime)
     {
         var localTime = utcTime.ToLocalTime();
         var now = DateTime.Now;
@@ -279,22 +284,22 @@ else if (_state is not null)
 
         if (elapsed.TotalSeconds < 60)
         {
-            return "Just now";
+            return L["JustNow"].Value;
         }
         else if (elapsed.TotalMinutes < 60)
         {
             int minutes = (int)elapsed.TotalMinutes;
-            return $"{minutes} minute{(minutes == 1 ? "" : "s")} ago";
+            return minutes == 1 ? L["MinuteAgo"].Value : L["MinutesAgo", minutes].Value;
         }
         else if (elapsed.TotalHours < 24)
         {
             int hours = (int)elapsed.TotalHours;
-            return $"{hours} hour{(hours == 1 ? "" : "s")} ago";
+            return hours == 1 ? L["HourAgo"].Value : L["HoursAgo", hours].Value;
         }
         else if (elapsed.TotalDays < 7)
         {
             int days = (int)elapsed.TotalDays;
-            return $"{days} day{(days == 1 ? "" : "s")} ago";
+            return days == 1 ? L["DayAgo"].Value : L["DaysAgo", days].Value;
         }
         else
         {
