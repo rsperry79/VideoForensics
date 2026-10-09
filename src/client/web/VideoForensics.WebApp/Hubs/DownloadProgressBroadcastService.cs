@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
 
+using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 
 namespace VideoForensics.WebApp.Hubs
 {
@@ -12,6 +14,11 @@ namespace VideoForensics.WebApp.Hubs
     /// A tick with nothing to report is cheap (one scoped <see cref="IVideoDownloadService"/>
     /// resolution + four already-in-memory getters), so a fixed short interval is used rather than
     /// only ticking while a download happens to be running.
+    /// <para>
+    /// Send-on-change: the timer only samples. A payload is pushed when its state differs from the
+    /// last one sent, or when it carries activity lines (which are drained here, the single consumer,
+    /// and must reach every client).
+    /// </para>
     /// </summary>
     public class DownloadProgressBroadcastService : BackgroundService
     {
@@ -19,21 +26,25 @@ namespace VideoForensics.WebApp.Hubs
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IHubContext<LiveHub> _hubContext;
+        private readonly IDownloadProgressChangeDetector _changeDetector;
         private readonly ILogger<DownloadProgressBroadcastService> _logger;
 
         public DownloadProgressBroadcastService(
             IServiceScopeFactory scopeFactory,
             IHubContext<LiveHub> hubContext,
+            IDownloadProgressChangeDetector changeDetector,
             ILogger<DownloadProgressBroadcastService> logger)
         {
             _scopeFactory = scopeFactory;
             _hubContext = hubContext;
+            _changeDetector = changeDetector;
             _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var timer = new PeriodicTimer(TickInterval);
+            DownloadProgressDto? lastSent = null;
             do
             {
                 try
@@ -41,20 +52,15 @@ namespace VideoForensics.WebApp.Hubs
                     using IServiceScope scope = _scopeFactory.CreateScope();
                     IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
 
-                    DownloadStatus progress = downloadService.GetProgress();
-                    (int index, int total, string? name) = downloadService.GetCurrentDevice();
-                    IReadOnlyList<string> activity = downloadService.DrainActivityLog();
-                    IReadOnlyDictionary<string, int> preScanCounts = downloadService.GetPreScanCounts();
+                    DownloadProgressDto payload = downloadService.ToDownloadProgressDto();
 
-                    await _hubContext.Clients.All.SendAsync("DownloadProgress", new
+                    if (!_changeDetector.ShouldSend(lastSent, payload))
                     {
-                        progress,
-                        currentDeviceIndex = index,
-                        currentDeviceTotal = total,
-                        currentDeviceName = name,
-                        activity,
-                        preScanCounts
-                    }, stoppingToken);
+                        continue;
+                    }
+
+                    await _hubContext.Clients.All.SendAsync(LiveHubMethods.DownloadProgress, payload, stoppingToken);
+                    lastSent = payload;
                 }
                 catch (Exception ex)
                 {

@@ -1,6 +1,8 @@
-@implements IAsyncDisposable
+@implements IDisposable
+@using VideoForensics.Ui.Shared.Contracts
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
+@inject IDownloadProgressSource ProgressSource
 @inject IStringLocalizer<SharedResources> L
 
 @if (IsActive || _hasEverStarted)
@@ -9,8 +11,7 @@
         <h3>@L["DownloadProgressTitle", CollectionType]</h3>
 
         @{
-            var progress = _progress;
-            var currentDevice = _currentDevice;
+            var progress = _latest;
         }
 
         @if (progress is not null)
@@ -20,14 +21,14 @@
             </p>
         }
 
-        @if (currentDevice.Total > 0)
+        @if (progress is not null && progress.CurrentDeviceTotal > 0)
         {
-            <p>@L["DownloadProgressDevice", currentDevice.Name, currentDevice.Index, currentDevice.Total]</p>
+            <p>@L["DownloadProgressDevice", progress.CurrentDeviceName, progress.CurrentDeviceIndex, progress.CurrentDeviceTotal]</p>
         }
 
-        @if (!string.IsNullOrEmpty(_lastError))
+        @if (progress is not null && !string.IsNullOrEmpty(progress.LastError))
         {
-            <p style="color: red;">@L["DownloadProgressError", _lastError]</p>
+            <p style="color: red;">@L["DownloadProgressError", progress.LastError]</p>
         }
 
         <div class="activity-log" style="height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 4px; font-family: monospace; font-size: 0.85em;">
@@ -41,101 +42,58 @@
 
 @code {
     private const int MaxActivityLogLines = 200;
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
 
     [Parameter] public bool IsActive { get; set; }
-    [Parameter] public IVideoDownloadService? DownloadService { get; set; }
     [Parameter] public string CollectionType { get; set; } = "Videos";
 
-    private PeriodicTimer? _timer;
-    private Task? _pollLoopTask;
+    private IDisposable? _subscription;
     private bool _hasEverStarted;
-
-    private DownloadStatus? _progress;
-    private (int Index, int Total, string Name) _currentDevice;
-    private string? _lastError;
+    private volatile bool _disposed;
+    private DownloadProgressSnapshot? _latest;
     private readonly List<string> _activityLog = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (IsActive && _timer is null && DownloadService is not null)
+        // The source pushes snapshots, so the panel needs no timer. Its subscription is released in Dispose.
+        _subscription = ProgressSource.Progress.Subscribe(OnSnapshot);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsActive)
         {
             _hasEverStarted = true;
-            StartPolling();
-        }
-        else if (!IsActive && _timer is not null)
-        {
-            await StopPollingAsync();
-        }
-
-        await base.OnAfterRenderAsync(firstRender);
-    }
-
-    private void StartPolling()
-    {
-        _timer = new PeriodicTimer(PollInterval);
-        _pollLoopTask = RunPollLoopAsync(_timer);
-    }
-
-    private async Task RunPollLoopAsync(PeriodicTimer timer)
-    {
-        try
-        {
-            while (await timer.WaitForNextTickAsync())
-            {
-                PollOnce();
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (ObjectDisposedException)
-        {
-            // Timer disposed while awaiting a tick - normal shutdown path.
         }
     }
 
-    private void PollOnce()
+    private void OnSnapshot(DownloadProgressSnapshot snapshot)
     {
-        if (DownloadService is null)
+        // Emissions arrive on the source's thread (a sampling timer or a SignalR callback), so the
+        // state change is applied on the renderer's thread.
+        if (_disposed)
         {
             return;
         }
 
-        _progress = DownloadService.GetProgress();
-        _currentDevice = DownloadService.GetCurrentDevice();
-        _lastError = DownloadService.GetLastError();
-
-        var drained = DownloadService.DrainActivityLog();
-        if (drained.Count > 0)
+        _ = InvokeAsync(() =>
         {
-            _activityLog.AddRange(drained);
-            if (_activityLog.Count > MaxActivityLogLines)
+            if (_disposed)
             {
-                _activityLog.RemoveRange(0, _activityLog.Count - MaxActivityLogLines);
+                return;
             }
-        }
-    }
 
-    private async Task StopPollingAsync()
-    {
-        var timer = _timer;
-        _timer = null;
-        timer?.Dispose();
-
-        if (_pollLoopTask is not null)
-        {
-            try
+            _latest = snapshot;
+            if (snapshot.Activity.Count > 0)
             {
-                await _pollLoopTask;
+                _activityLog.AddRange(snapshot.Activity);
+                if (_activityLog.Count > MaxActivityLogLines)
+                {
+                    _activityLog.RemoveRange(0, _activityLog.Count - MaxActivityLogLines);
+                }
             }
-            catch
-            {
-                // Swallow - polling loop already logged/handled its own exceptions via disposal.
-            }
-            _pollLoopTask = null;
-        }
 
-        // One last poll to pick up any final status/activity after the download finished.
-        PollOnce();
+            StateHasChanged();
+        });
     }
 
     private static string FormatBytes(long bytes)
@@ -151,8 +109,10 @@
         return $"{value:0.##} {units[unitIndex]}";
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
-        await StopPollingAsync();
+        _disposed = true;
+        _subscription?.Dispose();
+        _subscription = null;
     }
 }

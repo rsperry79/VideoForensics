@@ -34,6 +34,7 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
     <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
     <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
+    <PackageReference Include="System.Reactive" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

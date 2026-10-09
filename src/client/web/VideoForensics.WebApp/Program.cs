@@ -13,6 +13,7 @@ using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Providers.Common.Helpers.Platform;
@@ -166,8 +167,15 @@ if (OperatingSystem.IsWindows())
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
+builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
+// Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, VideoForensics.WebApp.Services.LocalDownloadProgressSource>();
+// Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, VideoForensics.WebApp.Services.LocalSelfTestStatusSource>();
+builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
+builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
 builder.Services.AddScoped<VapidKeyProvider>();
 builder.Services.AddScoped<INotificationProvider, WebPushNotificationProvider>();
