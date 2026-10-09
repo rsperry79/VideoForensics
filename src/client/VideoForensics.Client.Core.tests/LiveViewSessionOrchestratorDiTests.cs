@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -37,6 +38,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = services.AddScoped(_ => Mock.Of<INotificationDispatcher>());
 
             _ = services.AddSingleton<ILiveViewSessionService, LiveViewSessionOrchestrator>();
+            _ = services.AddSingleton<ILiveViewTelemetryPublisher, NullLiveViewTelemetryPublisher>();
 
             using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions
             {
@@ -45,6 +47,22 @@ namespace VideoForensics.Client.Core.Tests
             });
 
             Assert.IsType<LiveViewSessionOrchestrator>(provider.GetRequiredService<ILiveViewSessionService>());
+        }
+
+        [Fact]
+        public void NullPublisher_Registered_ByDefault()
+        {
+            // Mirrors the server registration: TryAddSingleton so batch 3b can override the publisher.
+            var services = new ServiceCollection();
+            services.TryAddSingleton<ILiveViewTelemetryPublisher, NullLiveViewTelemetryPublisher>();
+
+            using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateScopes = true,
+                ValidateOnBuild = true,
+            });
+
+            Assert.IsType<NullLiveViewTelemetryPublisher>(provider.GetRequiredService<ILiveViewTelemetryPublisher>());
         }
     }
 }

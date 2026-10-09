@@ -30,6 +30,7 @@ namespace VideoForensics.Client.Core.Tools
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILiveViewInterferenceScorer _interferenceScorer;
         private readonly IForensicsConfiguration _config;
+        private readonly ILiveViewTelemetryPublisher _telemetryPublisher;
 
         /// <summary>
         /// In-memory map of active sessions to their live provider connections and state.
@@ -50,12 +51,30 @@ namespace VideoForensics.Client.Core.Tools
             ILogger<LiveViewSessionOrchestrator> logger,
             IServiceScopeFactory scopeFactory,
             ILiveViewInterferenceScorer interferenceScorer,
-            IForensicsConfiguration config)
+            IForensicsConfiguration config,
+            ILiveViewTelemetryPublisher telemetryPublisher)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _interferenceScorer = interferenceScorer ?? throw new ArgumentNullException(nameof(interferenceScorer));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _telemetryPublisher = telemetryPublisher ?? throw new ArgumentNullException(nameof(telemetryPublisher));
+        }
+
+        /// <summary>
+        /// Publishes a session state change. Failures are logged and swallowed: a broken real-time transport
+        /// must never fail or roll back a lifecycle operation that has already been persisted.
+        /// </summary>
+        private async Task PublishSessionChangedSafelyAsync(LiveViewSession session, CancellationToken ct)
+        {
+            try
+            {
+                await _telemetryPublisher.PublishSessionChangedAsync(session, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish state change for live view session {SessionId} (non-critical)", session.Id);
+            }
         }
 
         public async Task<LiveViewSession> StartAsync(
@@ -124,6 +143,7 @@ namespace VideoForensics.Client.Core.Tools
 
             session = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Persisted live view session {SessionId} in Starting state for device {DeviceId}", session.Id, deviceId);
+            await PublishSessionChangedSafelyAsync(session, ct);
 
             // Store the connection handle in memory
             _activeSessions[session.Id] = new ActiveLiveViewHandle(connection, null);
@@ -200,6 +220,7 @@ namespace VideoForensics.Client.Core.Tools
 
             await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Promoted live view session {SessionId} to sustained mode: {Reason}", sessionId, reason);
+            await PublishSessionChangedSafelyAsync(session, ct);
 
             // Dispatch notification (isolation pattern: catch and log, don't fail the operation).
             // Resolved here rather than injected: INotificationDispatcher is scoped.
@@ -243,6 +264,7 @@ namespace VideoForensics.Client.Core.Tools
 
             await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Demoted live view session {SessionId} from sustained mode", sessionId);
+            await PublishSessionChangedSafelyAsync(session, ct);
 
             return session;
         }
@@ -299,6 +321,7 @@ namespace VideoForensics.Client.Core.Tools
 
             await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Stopped live view session {SessionId}: {StopReason}", sessionId, stopReason);
+            await PublishSessionChangedSafelyAsync(session, ct);
         }
 
         public async Task<LiveViewSession?> GetActiveSessionAsync(Guid deviceId, CancellationToken ct)

@@ -456,6 +456,8 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<ILiveViewCapableProvider, WyzeLiveViewProvider>();
             _ = services.AddScoped<ILiveViewCapableProvider, UniviewLiveViewProvider>();
             _ = services.AddSingleton<ILiveViewSessionService, LiveViewSessionOrchestrator>();
+            // No-op publisher by default; batch 3b registers the SignalR-backed publisher ahead of this (TryAdd keeps it overridable).
+            services.TryAddSingleton<ILiveViewTelemetryPublisher, NullLiveViewTelemetryPublisher>();
             _ = services.AddSingleton<ElevatedPollingWindowTracker>();
             _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.ILiveViewInterferenceScorer, LiveViewInterferenceScorer>();
             _ = services.AddHostedService<LiveViewIdleTimeoutService>();
