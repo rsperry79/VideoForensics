@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -13,8 +15,12 @@ namespace VideoForensics.WebApp.Api
     /// </summary>
     public static class AccountEndpoints
     {
-        public static void MapAccountEndpoints(this WebApplication app, IEventPullService eventPullService)
+        public static void MapAccountEndpoints(this WebApplication app)
         {
+            // IEventPullService is scoped, so the background pulls below open their own scope per run.
+            // Resolving it here from the root provider would throw under scope validation.
+            IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+
             RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
             // User endpoints
@@ -164,7 +170,9 @@ namespace VideoForensics.WebApp.Api
                     try
                     {
                         // Pull from null timestamp (first-time = pull all available data)
-                        await eventPullService.PullAccountEventsAsync(account.Id, null, ct);
+                        using IServiceScope scope = scopeFactory.CreateScope();
+                        IEventPullService eventPullService = scope.ServiceProvider.GetRequiredService<IEventPullService>();
+                        await eventPullService.PullAccountEventsAsync(account.Id, null, CancellationToken.None);
                     }
                     catch
                     {
@@ -247,10 +255,12 @@ namespace VideoForensics.WebApp.Api
                 {
                     try
                     {
+                        using IServiceScope scope = scopeFactory.CreateScope();
+                        IEventPullService eventPullService = scope.ServiceProvider.GetRequiredService<IEventPullService>();
                         await eventPullService.PullAccountEventsAsync(
                             id,
                             account.LastSuccessfulAuthUtc, // Pull since last auth
-                            ct
+                            CancellationToken.None
                         );
                     }
                     catch
