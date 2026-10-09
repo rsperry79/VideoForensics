@@ -23,6 +23,17 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # MTP's build props are imported from the NuGet package folder, so the packages must be present here, not only
+      # in the build output. Without them dotnet test falls back to VSTest. Restore with the same cache key as build-windows.
+      - name: Restore NuGet cache
+        uses: actions/cache@v6
+        with:
+          key: nuget-cache-windows-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          path: ~/.nuget/packages
+
+      - name: Restore NuGet packages
+        run: dotnet restore VideoForensics.CI.slnf
+
       - name: Download build output
         uses: actions/download-artifact@v4
         with:
