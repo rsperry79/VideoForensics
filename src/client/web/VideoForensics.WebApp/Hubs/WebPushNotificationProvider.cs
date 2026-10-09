@@ -49,12 +49,8 @@ namespace VideoForensics.WebApp.Hubs
             try
             {
                 // Get target subscriptions based on audience
-                IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription> targetSubscriptions = notificationEvent.Audience switch
-                {
-                    NotificationAudience.AdminsOnly => await _pushSubscriptionRepository.ListForAdminsAsync(ct),
-                    NotificationAudience.All => LogAndReturn(notificationEvent),
-                    _ => LogAndReturn(notificationEvent),
-                };
+                IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription> targetSubscriptions =
+                    await ResolveTargetSubscriptionsAsync(notificationEvent.Audience, ct);
 
                 if (targetSubscriptions.Count == 0)
                 {
@@ -157,10 +153,23 @@ namespace VideoForensics.WebApp.Hubs
             }
         }
 
-        private IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription> LogAndReturn(NotificationEvent notificationEvent)
+        /// <summary>
+        /// Selects the candidate push subscriptions for an audience. AdminsOnly targets admin-and-above operators;
+        /// All targets every subscription, mirroring the SignalR provider's fan-out to all clients.
+        /// Per-operator preference filtering (PushEnabled, MinimumSeverity) is applied later in SendAsync.
+        /// </summary>
+        internal async Task<IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription>> ResolveTargetSubscriptionsAsync(
+            NotificationAudience audience,
+            CancellationToken ct)
         {
-            _logger.LogDebug("All-audience web push not implemented yet - EventType={EventType}", notificationEvent.EventType);
-            return [];
+            // Throwing on an unknown value (rather than silently sending nothing) makes a new enum member
+            // without routing fail loudly; SendAsync logs the error with the event type.
+            return audience switch
+            {
+                NotificationAudience.AdminsOnly => await _pushSubscriptionRepository.ListForAdminsAsync(ct),
+                NotificationAudience.All => await _pushSubscriptionRepository.ListAllAsync(ct),
+                _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "Unsupported notification audience."),
+            };
         }
 
         private static string TruncateEndpoint(string endpoint)
