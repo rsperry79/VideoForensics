@@ -1,12 +1,16 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
+using System.Reactive.Subjects;
+
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Moq;
 using Xunit;
 using VideoForensics.Api.Contracts;
 using VideoForensics.Ui.Shared.Components.Inspector;
+using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services.Inspector;
 
@@ -38,6 +42,8 @@ public abstract class RingSelfTestPageTestBase : BunitContext
     }
 
     protected readonly Mock<IRingSelfTestService> SelfTestServiceMock = new();
+    protected readonly Subject<SelfTestStatusDto> StatusStream = new();
+    protected readonly Mock<ISelfTestStatusSource> StatusSourceMock = new();
     protected readonly InspectorState InspectorState = new();
 
     protected static readonly SelfTestHttpCallDto TestPhaseCall = new(
@@ -104,6 +110,9 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         Services.AddScoped(_ => SelfTestServiceMock.Object);
+        StatusSourceMock.SetupGet(m => m.Status).Returns(StatusStream);
+        Services.AddScoped(_ => StatusSourceMock.Object);
+        Services.AddLogging();
         Services.AddScoped(_ => InspectorState);
         Services.AddLocalization();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
@@ -269,5 +278,105 @@ public class RingSelfTestPage_FailedRun_Tests : RingSelfTestPageTestBase
         Assert.Empty(component.FindAll("[data-testid='raw-calls']"));
 
         SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+/// <summary>
+/// The page is driven by <see cref="ISelfTestStatusSource"/>, not a timer. A run's result is fetched exactly once,
+/// on the transition to Completed, and a replayed or repeated Completed for the same run must not fetch it again.
+/// </summary>
+public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
+{
+    private static readonly DateTime RunStarted = new(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc);
+
+    private static SelfTestStatusDto CompletedRun(DateTime started) =>
+        new(SelfTestRunStatus.Completed, started, started.AddSeconds(5));
+
+    private void ArrangeOnLoad(SelfTestStatusDto onLoad)
+    {
+        SelfTestServiceMock
+            .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(onLoad);
+
+        SelfTestServiceMock
+            .Setup(m => m.GetResultAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MakeResult(CallA));
+    }
+
+    [Fact]
+    public void RingSelfTestPage_CompletedFromStream_FetchesResultOnce()
+    {
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        var component = RenderPage();
+
+        StatusStream.OnNext(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
+        StatusStream.OnNext(CompletedRun(RunStarted));
+
+        component.WaitForAssertion(() =>
+            SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public async Task RingSelfTestPage_RepeatedCompletedForSameRun_DoesNotRefetchResult()
+    {
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        var component = RenderPage();
+
+        StatusStream.OnNext(CompletedRun(RunStarted));
+        StatusStream.OnNext(CompletedRun(RunStarted));
+        StatusStream.OnNext(CompletedRun(RunStarted));
+        await component.InvokeAsync(() => { });
+
+        SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RingSelfTestPage_CompletedOnLoadThenSameRunReplayed_FetchesResultOnce()
+    {
+        // Initial one-shot status already reports the run as Completed, then the stream replays that same run.
+        ArrangeOnLoad(CompletedRun(RunStarted));
+        var component = RenderPage();
+
+        StatusStream.OnNext(CompletedRun(RunStarted));
+        await component.InvokeAsync(() => { });
+
+        SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RingSelfTestPage_NewRunCompletes_FetchesResultAgain()
+    {
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        var component = RenderPage();
+
+        StatusStream.OnNext(CompletedRun(RunStarted));
+        StatusStream.OnNext(CompletedRun(RunStarted.AddMinutes(1)));
+        await component.InvokeAsync(() => { });
+
+        SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task RingSelfTestPage_RunningFromStream_DoesNotFetchResult()
+    {
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        var component = RenderPage();
+
+        StatusStream.OnNext(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
+        await component.InvokeAsync(() => { });
+
+        SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RingSelfTestPage_RunningOnLoad_DoesNotPollStatus()
+    {
+        // Before the change the page re-read status every 500 ms while a run was in progress.
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
+        RenderPage();
+
+        await Task.Delay(1500);
+
+        SelfTestServiceMock.Verify(m => m.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

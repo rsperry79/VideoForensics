@@ -669,7 +669,10 @@ namespace VideoForensics.Hosting
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
             // token is available and they wish to begin receiving updates.
-            _ = services.AddSingleton<ILiveHubConnection>(sp => new LiveHubConnection(serverAddress, sp));
+            _ = services.AddSingleton<IRealtimeHub>(sp => new RealtimeHub(serverAddress, sp));
+            _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
 
             return services;
         }

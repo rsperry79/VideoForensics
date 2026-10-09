@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
@@ -13,37 +14,20 @@ namespace VideoForensics.Hosting.Remote
     ///
     /// Trigger methods (DownloadVideosAsync, DownloadSnapshotsAsync, PreScanAsync) POST to the server
     /// and return immediately after the 202 Accepted response; the server runs the actual work as a
-    /// background task. Status getter methods are synchronous and cached: they subscribe to
-    /// ILiveHubConnection.DownloadProgressReceived in the constructor and return the latest received
-    /// payload data (thread-safe via a simple lock), so polling GetProgress()/GetDownloadStatus()/etc.
-    /// provides live updates without blocking HTTP calls.
+    /// background task. Status getter methods are synchronous and read the singleton <see cref="IRealtimeStore"/>,
+    /// which holds the latest DownloadProgress payload. This service holds no hub subscription of its own. It is
+    /// a transient typed client, so a per-instance subscription would leak onto the singleton hub.
     /// </summary>
     public class RemoteVideoDownloadService : IVideoDownloadService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILiveHubConnection _hubConnection;
-        private DownloadProgressPayload? _lastPayload;
-        private readonly object _lockObj = new();
-        private List<string> _activityLog = [];
+        private readonly IRealtimeStore _store;
 
-        public RemoteVideoDownloadService(HttpClient httpClient, ILiveHubConnection hubConnection)
+        /// <summary>Creates the service over the shared store. The store is the only hub subscriber.</summary>
+        public RemoteVideoDownloadService(HttpClient httpClient, IRealtimeStore store)
         {
             _httpClient = httpClient;
-            _hubConnection = hubConnection;
-
-            // Subscribe to hub progress updates and cache the latest payload for synchronous access.
-            _hubConnection.DownloadProgressReceived += payload =>
-            {
-                lock (_lockObj)
-                {
-                    _lastPayload = payload;
-                    // Accumulate activity messages so DrainActivityLog can return them all since last drain.
-                    if (payload.Activity != null)
-                    {
-                        _activityLog.AddRange(payload.Activity);
-                    }
-                }
-            };
+            _store = store;
         }
 
         /// <inheritdoc />
@@ -77,74 +61,55 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public IReadOnlyDictionary<string, int> GetPreScanCounts()
         {
-            lock (_lockObj)
-            {
-                return _lastPayload?.PreScanCounts ?? new Dictionary<string, int>();
-            }
+            return _store.LatestDownloadProgress?.PreScanCounts ?? new Dictionary<string, int>();
         }
 
         /// <inheritdoc />
         public string GetDownloadStatus()
         {
-            lock (_lockObj)
-            {
-                return _lastPayload?.Progress.IsDownloading == true && _lastPayload.CurrentDeviceTotal > 0
-                    ? $"Downloading media for device {_lastPayload.CurrentDeviceIndex} of {_lastPayload.CurrentDeviceTotal}"
-                    : _lastPayload?.Progress.IsDownloading == true ? "Downloading media..." : "Idle";
-            }
+            DownloadProgressDto? last = _store.LatestDownloadProgress;
+            return last?.Progress.IsDownloading == true && last.CurrentDeviceTotal > 0
+                ? $"Downloading media for device {last.CurrentDeviceIndex} of {last.CurrentDeviceTotal}"
+                : last?.Progress.IsDownloading == true ? "Downloading media..." : "Idle";
         }
 
         /// <inheritdoc />
         public int GetRemainingCount()
         {
-            lock (_lockObj)
-            {
-                return _lastPayload?.Progress == null
-                    ? 0
-                    : Math.Max(0, _lastPayload.Progress.TotalFilesMatched - _lastPayload.Progress.TotalFilesCompleted);
-            }
+            DownloadProgressDto? last = _store.LatestDownloadProgress;
+            return last?.Progress == null
+                ? 0
+                : Math.Max(0, last.Progress.TotalFilesMatched - last.Progress.TotalFilesCompleted);
         }
 
         /// <inheritdoc />
         public string? GetRemainingReason()
         {
-            // The cached payload doesn't currently carry a "remaining reason" field
-            // (that's tracked server-side in the provider). Return null for now.
-            return null;
+            return _store.LatestDownloadProgress?.RemainingReason;
         }
 
         /// <inheritdoc />
         public (int Index, int Total, string Name) GetCurrentDevice()
         {
-            lock (_lockObj)
+            DownloadProgressDto? last = _store.LatestDownloadProgress;
+            if (last == null)
             {
-                if (_lastPayload == null)
-                {
-                    return (0, 0, "");
-                }
-
-                return (_lastPayload.CurrentDeviceIndex, _lastPayload.CurrentDeviceTotal, _lastPayload.CurrentDeviceName ?? "");
+                return (0, 0, "");
             }
+
+            return (last.CurrentDeviceIndex, last.CurrentDeviceTotal, last.CurrentDeviceName ?? "");
         }
 
         /// <inheritdoc />
         public DownloadStatus GetProgress()
         {
-            lock (_lockObj)
-            {
-                return _lastPayload?.Progress ?? new DownloadStatus(false, 0, 0, 0);
-            }
+            return _store.LatestDownloadProgress?.Progress.ToDomain() ?? new DownloadStatus(false, 0, 0, 0);
         }
 
         /// <inheritdoc />
         public IReadOnlyList<string> DrainActivityLog()
         {
-            lock (_lockObj)
-            {
-                List<string> result = _activityLog;
-                _activityLog = [];
-                return result;
-            }
+            return _store.DrainActivityLog();
         }
 
         /// <inheritdoc />
@@ -156,9 +121,9 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public string? GetLastError()
         {
-            // Unlike other unsupported methods, return null instead of throwing - a UI calling this
-            // defensively for display purposes shouldn't crash if nothing failed.
-            return null;
+            // Returns null (not a throw) when no progress has been received or nothing failed, so a UI
+            // calling this defensively for display purposes doesn't crash.
+            return _store.LatestDownloadProgress?.LastError;
         }
 
         /// <inheritdoc />

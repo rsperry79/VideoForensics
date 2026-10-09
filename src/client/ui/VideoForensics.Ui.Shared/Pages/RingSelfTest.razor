@@ -7,8 +7,12 @@
 @using VideoForensics.Ui.Shared.Components.Dump
 @using VideoForensics.Ui.Shared.Services.SelfTest
 @using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Contracts
+@using Microsoft.Extensions.Logging
 @implements IAsyncDisposable
 @inject IRingSelfTestService SelfTestService
+@inject ISelfTestStatusSource StatusSource
+@inject ILogger<RingSelfTest> Logger
 @inject IStringLocalizer<RingSelfTest> L
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -343,8 +347,11 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
     private bool _confirmDestructive;
     private string? _runError;
 
-    private PeriodicTimer? _pollTimer;
-    private Task? _pollLoopTask;
+    private IDisposable? _statusSubscription;
+
+    // Identity of the last Completed run whose result was requested. A repeated Completed for the same run
+    // (replay on subscribe, or a sampler re-emit) must not fetch the result again.
+    private (DateTime? StartedAtUtc, DateTime? CompletedAtUtc)? _resultRequestedFor;
 
     // Input fields for settings
     private string _locationIdInput = "";
@@ -367,6 +374,15 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe before the one-shot read so a change between the two is not missed. Sources may emit on a
+        // background thread, so each emission is applied on the render thread.
+        _statusSubscription = StatusSource.Status.Subscribe(status =>
+            _ = InvokeAsync(async () =>
+            {
+                await ApplyStatusAsync(status);
+                StateHasChanged();
+            }));
+
         try
         {
             var endpoints = await SelfTestService.ListEndpointsAsync();
@@ -383,23 +399,12 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
                 .Where(k => _destructiveEndpoints.Any(e => e.Key == k))
                 .ToArray();
 
-            // Check if a run is already in progress or completed
+            // One-shot read of the current state. The stream reports only changes, so a run that is already
+            // Running or Completed when the page opens would otherwise stay hidden until its next change.
             try
             {
                 var status = await SelfTestService.GetStatusAsync();
-                _runStatus = status;
-
-                if (status.Status == SelfTestRunStatus.Running)
-                {
-                    // Resume polling
-                    _isRunning = true;
-                    StartPolling();
-                }
-                else if (status.Status == SelfTestRunStatus.Completed)
-                {
-                    // Fetch and display results
-                    _result = await SelfTestService.GetResultAsync();
-                }
+                await ApplyStatusAsync(status);
             }
             catch
             {
@@ -492,8 +497,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
                 return;
             }
 
-            // Start polling
-            StartPolling();
+            // Progress arrives through StatusSource; _isRunning clears when the stream reports a terminal status.
         }
         catch (Exception ex)
         {
@@ -502,54 +506,52 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         }
     }
 
-    private void StartPolling()
+    /// <summary>
+    /// Applies one status from the one-shot read or the stream. Running keeps the run marked in progress; a
+    /// terminal status clears it. The result is requested once per Completed run, never on a repeat.
+    /// </summary>
+    private async Task ApplyStatusAsync(SelfTestStatusDto status)
     {
-        _pollTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
-        _pollLoopTask = RunPollLoopAsync(_pollTimer);
-    }
+        _runStatus = status;
 
-    private async Task RunPollLoopAsync(PeriodicTimer timer)
-    {
-        try
+        if (status.Status == SelfTestRunStatus.Running)
         {
-            while (await timer.WaitForNextTickAsync())
-            {
-                await PollOnceAsync();
-                await InvokeAsync(StateHasChanged);
-
-                if (_runStatus?.Status == SelfTestRunStatus.Completed ||
-                    _runStatus?.Status == SelfTestRunStatus.Failed)
-                {
-                    // Fetch final result if completed
-                    if (_runStatus.Status == SelfTestRunStatus.Completed)
-                    {
-                        _result = await SelfTestService.GetResultAsync();
-                        await InvokeAsync(StateHasChanged);
-                    }
-                    break;
-                }
-            }
+            _isRunning = true;
         }
-        catch (ObjectDisposedException)
-        {
-            // Timer disposed - normal shutdown
-        }
-        finally
+        else if (status.Status is SelfTestRunStatus.Completed or SelfTestRunStatus.Failed)
         {
             _isRunning = false;
-            await InvokeAsync(StateHasChanged);
+        }
+
+        if (status.Status == SelfTestRunStatus.Completed && MarkResultRequested(status))
+        {
+            await FetchResultAsync();
         }
     }
 
-    private async Task PollOnceAsync()
+    /// <summary>Returns true the first time a Completed run is seen, and false for any repeat of that run.</summary>
+    private bool MarkResultRequested(SelfTestStatusDto status)
+    {
+        var runKey = (status.StartedAtUtc, status.CompletedAtUtc);
+        if (_resultRequestedFor == runKey)
+        {
+            return false;
+        }
+
+        _resultRequestedFor = runKey;
+        return true;
+    }
+
+    private async Task FetchResultAsync()
     {
         try
         {
-            _runStatus = await SelfTestService.GetStatusAsync();
+            _result = await SelfTestService.GetResultAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Continue polling even if status check fails
+            // Logged rather than rethrown: the page keeps showing the status it already has.
+            Logger.LogError(ex, "Fetching the Ring self-test result failed after a completed run");
         }
     }
 
@@ -559,22 +561,11 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         return Task.CompletedTask;
     }
 
-    async ValueTask IAsyncDisposable.DisposeAsync()
+    ValueTask IAsyncDisposable.DisposeAsync()
     {
-        if (_pollTimer is not null)
-        {
-            _pollTimer.Dispose();
-        }
-        if (_pollLoopTask is not null)
-        {
-            try
-            {
-                await _pollLoopTask;
-            }
-            catch
-            {
-                // Swallow exceptions from poll loop cleanup
-            }
-        }
+        // Stop applying stream emissions once the page is gone.
+        _statusSubscription?.Dispose();
+        _statusSubscription = null;
+        return ValueTask.CompletedTask;
     }
 }
