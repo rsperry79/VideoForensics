@@ -170,6 +170,8 @@ builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
+// Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, VideoForensics.WebApp.Services.LocalDownloadProgressSource>();
 builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
 builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();

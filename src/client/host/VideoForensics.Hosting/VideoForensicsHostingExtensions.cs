@@ -667,6 +667,7 @@ namespace VideoForensics.Hosting
             // token is available and they wish to begin receiving updates.
             _ = services.AddSingleton<IRealtimeHub>(sp => new RealtimeHub(serverAddress, sp));
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
 
             return services;
         }
