@@ -20,7 +20,10 @@
     </div>
 }
 
-@if (_isLoading)
+@if (!IsSuperAdminViewer)
+{
+}
+else if (_isLoading)
 {
     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
 }
@@ -223,6 +226,12 @@ else
         && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
         && viewerRole >= OperatorRole.Admin;
 
+    // The operator GET (api/devices-management/operators/{Id}) is SuperAdmin-only, so the details chain
+    // is skipped for Admin viewers rather than rendering a 403 alert.
+    private bool IsSuperAdminViewer => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.SuperAdmin;
+
     // Unlock state
     private bool _isUnlocking;
 
@@ -292,6 +301,11 @@ else
 
     private async Task LoadAsync()
     {
+        if (!IsSuperAdminViewer)
+        {
+            return;
+        }
+
         _isLoading = true;
         _authError = null;
         _loadError = null;
