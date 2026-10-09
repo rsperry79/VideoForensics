@@ -35,12 +35,14 @@ jobs:
       - name: Build solution
         run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
 
-      # Hand the compiled output to test-windows so tests run without rebuilding.
+      # Hand the compiled output to test-windows as one tar, so every file keeps its exact repo-relative path.
+      # upload-artifact would store paths relative to their common ancestor and could place files wrongly.
+      - name: Archive build output
+        shell: bash
+        run: find . -type d \( -name bin -o -name obj \) -prune -print | tar -cf build-output.tar -T -
+
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          include-hidden-files: true
-          path: |
-            **/bin/Release/
-            **/obj/
+          path: build-output.tar

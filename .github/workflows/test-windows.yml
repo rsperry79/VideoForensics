@@ -29,6 +29,10 @@ jobs:
           name: build-output
           path: .
 
+      - name: Extract build output
+        shell: bash
+        run: tar -xf build-output.tar
+
       # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props), so `dotnet test` uses MTP's CLI.
       # The VSTest-style `--logger trx` flag breaks discovery there, so use MTP's native xUnit trx reporter.
       # The live Anthropic test skips when ANTHROPIC_API_KEY is empty, so forks without the secret stay green.
