@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using VideoForensics.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Hubs
@@ -23,10 +26,12 @@ namespace VideoForensics.WebApp.Hubs
     public class LiveHub : Hub
     {
         private readonly ILiveConnectionTracker _connectionTracker;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public LiveHub(ILiveConnectionTracker connectionTracker)
+        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory)
         {
             _connectionTracker = connectionTracker;
+            _scopeFactory = scopeFactory;
         }
 
         public override async Task OnConnectedAsync()
@@ -43,6 +48,18 @@ namespace VideoForensics.WebApp.Hubs
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, "admins", CancellationToken.None);
             }
+
+            // Snapshot-on-connect: a new client (including every reconnect) gets the current state
+            // immediately instead of waiting for the next change. Uses the non-draining builder so
+            // this connection never consumes activity lines that other clients still need.
+            DownloadProgressDto snapshot;
+            using (IServiceScope scope = _scopeFactory.CreateScope())
+            {
+                IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
+                snapshot = downloadService.ToDownloadProgressSnapshot();
+            }
+
+            await Clients.Caller.SendAsync("DownloadProgress", snapshot, Context.ConnectionAborted);
 
             await base.OnConnectedAsync();
         }
