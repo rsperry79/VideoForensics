@@ -71,20 +71,41 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        /// <summary>Lists all push subscriptions for operators with Admin+ role (for system-wide notifications).</summary>
+        /// <summary>
+        /// Lists push subscriptions for operators whose role is Admin or above and who are both active and approved
+        /// (for system-wide notifications). Filters on the owning operator, not on the subscription, because the
+        /// role, active, and approval flags are stored on Operator.
+        /// </summary>
         public async Task<IReadOnlyList<PushSubscription>> ListForAdminsAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
-                // For now, we return all subscriptions. In a full implementation, this would filter
-                // by operator role via a join to OperatorRole or similar. See INoticeRepository.ListForOperatorAsync
-                // for the same pattern/note.
-                return await db.PushSubscriptions.ToListAsync(ct);
+                // Same "at least Admin" rule as LiveHub (role >= OperatorRole.Admin). Deactivated or unapproved
+                // operators are excluded so they do not receive admin-only security pushes. Using a subquery keeps
+                // the result limited to PushSubscription rows, with no duplicates from a join.
+                return await db.PushSubscriptions
+                    .Where(ps => db.Operators.Any(o => o.Id == ps.OperatorId && o.Role >= OperatorRole.Admin && o.Active && o.IsApproved))
+                    .ToListAsync(ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error listing push subscriptions for admins");
+                throw;
+            }
+        }
+
+        /// <summary>Lists all push subscriptions across operators (for All-audience notifications).</summary>
+        public async Task<IReadOnlyList<PushSubscription>> ListAllAsync(CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            try
+            {
+                return await db.PushSubscriptions.ToListAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing push subscriptions for all operators");
                 throw;
             }
         }

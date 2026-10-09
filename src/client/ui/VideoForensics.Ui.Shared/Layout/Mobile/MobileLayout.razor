@@ -51,6 +51,8 @@
 
     @if (_noticesDropdownOpen)
     {
+        @* Transparent full-page backdrop: any click outside the panel lands here and closes it. *@
+        <div class="notices-backdrop" @onclick="ToggleNoticesAsync"></div>
         <div class="mobile-notices-panel">
             @if (_noticesList.Count > 0)
             {

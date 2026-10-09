@@ -14,6 +14,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists all push subscriptions for operators with Admin+ role (for system-wide notifications).</summary>
         Task<IReadOnlyList<PushSubscription>> ListForAdminsAsync(CancellationToken ct);
 
+        /// <summary>Lists all push subscriptions across operators (for All-audience notifications).</summary>
+        Task<IReadOnlyList<PushSubscription>> ListAllAsync(CancellationToken ct);
+
         /// <summary>Removes a push subscription by endpoint URL (e.g., when the browser unsubscribes or the subscription is invalid).</summary>
         Task RemoveAsync(string endpoint, CancellationToken ct);
     }

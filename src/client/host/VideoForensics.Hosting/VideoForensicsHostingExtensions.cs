@@ -492,6 +492,10 @@ namespace VideoForensics.Hosting
                     serviceProvider.GetRequiredService<IActionLogRepository>(),
                     serviceProvider.GetRequiredService<ICaseRepository>()));
 
+            // IMemoryCache backs the short-lived auth caches registered below (WebAuthn ceremonies, 2FA pending
+            // logins, login attempts). Registered here so every server-tier host gets it, not only WebApp.
+            _ = services.AddMemoryCache();
+
             // Pairing/RBAC/security-audit backbone (plan §5, M6). IPairingTokenService is
             // per-process in-memory state (short-lived tokens), so it must be Singleton.
             // ISessionTokenService only needs the already-registered IDataProtectionProvider.

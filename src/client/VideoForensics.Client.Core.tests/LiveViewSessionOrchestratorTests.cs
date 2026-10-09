@@ -1,5 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -21,12 +21,9 @@ namespace VideoForensics.Client.Core.Tests
     {
         private readonly Mock<ILogger<LiveViewSessionOrchestrator>> _loggerMock;
         private readonly Mock<ILiveViewSessionRepository> _sessionRepositoryMock;
-        private readonly Mock<ILiveViewTelemetryRepository> _telemetryRepositoryMock;
-        private readonly Mock<ICameraBitrateBaselineRepository> _baselineRepositoryMock;
         private readonly Mock<ILiveViewInterferenceScorer> _scorerMock;
         private readonly Mock<IDeviceRepository> _deviceRepositoryMock;
         private readonly Mock<IForensicsConfiguration> _configMock;
-        private readonly Mock<IOptions<ForensicsOptions>> _optionsMock;
         private readonly Mock<IProviderApiBudgetGuard> _budgetGuardMock;
         private readonly Mock<INotificationDispatcher> _notificationDispatcherMock;
 
@@ -34,12 +31,9 @@ namespace VideoForensics.Client.Core.Tests
         {
             _loggerMock = new Mock<ILogger<LiveViewSessionOrchestrator>>();
             _sessionRepositoryMock = new Mock<ILiveViewSessionRepository>();
-            _telemetryRepositoryMock = new Mock<ILiveViewTelemetryRepository>();
-            _baselineRepositoryMock = new Mock<ICameraBitrateBaselineRepository>();
             _scorerMock = new Mock<ILiveViewInterferenceScorer>();
             _deviceRepositoryMock = new Mock<IDeviceRepository>();
             _configMock = new Mock<IForensicsConfiguration>();
-            _optionsMock = new Mock<IOptions<ForensicsOptions>>();
             _budgetGuardMock = new Mock<IProviderApiBudgetGuard>();
             _notificationDispatcherMock = new Mock<INotificationDispatcher>();
 
@@ -48,30 +42,29 @@ namespace VideoForensics.Client.Core.Tests
             _configMock.Setup(c => c.LiveViewIdleTimeoutMinutes).Returns(5);
             _configMock.Setup(c => c.LiveViewTelemetrySampleIntervalSeconds).Returns(2);
             _configMock.Setup(c => c.SustainedModeMaxDurationMinutes).Returns(240);
-
-            // Default options
-            _optionsMock.Setup(o => o.Value).Returns(new ForensicsOptions
-            {
-                LiveViewAutoPromoteInterferenceScoreThreshold = 0.6,
-                LiveViewAutoPromoteConsecutiveSamples = 3
-            });
         }
 
         private LiveViewSessionOrchestrator CreateOrchestrator(Mock<IServiceProvider>? serviceProviderMock = null)
         {
-            var sp = serviceProviderMock?.Object ?? new Mock<IServiceProvider>().Object;
+            // The orchestrator opens a DI scope per operation. Wire the scope factory to a scope whose
+            // provider resolves the repository and service mocks, mirroring the production registration.
+            var sp = serviceProviderMock ?? new Mock<IServiceProvider>();
+            sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
+            sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
+            sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
+            sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(_notificationDispatcherMock.Object);
+
+            var scopeMock = new Mock<IServiceScope>();
+            scopeMock.Setup(s => s.ServiceProvider).Returns(sp.Object);
+
+            var scopeFactoryMock = new Mock<IServiceScopeFactory>();
+            scopeFactoryMock.Setup(f => f.CreateScope()).Returns(scopeMock.Object);
+
             return new LiveViewSessionOrchestrator(
                 _loggerMock.Object,
-                _sessionRepositoryMock.Object,
-                _telemetryRepositoryMock.Object,
-                _baselineRepositoryMock.Object,
+                scopeFactoryMock.Object,
                 _scorerMock.Object,
-                sp,
-                _deviceRepositoryMock.Object,
-                _configMock.Object,
-                _optionsMock.Object,
-                _budgetGuardMock.Object,
-                _notificationDispatcherMock.Object);
+                _configMock.Object);
         }
 
         [Fact]
