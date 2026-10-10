@@ -590,7 +590,9 @@ public class ServerLogsPagePauseTests : ServerLogsPageTestBase
 
         page.Find("[data-testid='logs-pause']").Click();
 
-        Assert.Equal(new long[] { 10, 11, 12 }, RowSequences(page));
+        // Resume appends the buffered rows on the render throttle timer, so wait for that render the same way
+        // the paused-state assertions above do.
+        await WaitUntilRendered(page, () => Assert.Equal(new long[] { 10, 11, 12 }, RowSequences(page)));
         Assert.Empty(page.FindAll("[data-testid='logs-new-badge']"));
         Assert.Equal("live", Status(page));
     }
