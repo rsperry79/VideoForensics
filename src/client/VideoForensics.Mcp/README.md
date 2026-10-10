@@ -46,7 +46,7 @@ Or, without publishing a standalone exe, launch via `dotnet`:
 ```
 
 Restart Claude Desktop after editing the config. The server shares the same SQLite database,
-downloaded evidence, and saved credentials as the console client (`src/clients/VideoForensics`) —
+downloaded evidence, and saved credentials as the console client (`archive/VideoForensics`, historical reference to the archived console client) —
 both read the same `%AppData%\VideoForensics` files.
 
 ## Notes

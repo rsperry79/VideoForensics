@@ -9,7 +9,6 @@
                                       "src/client/ui/VideoForensics.Ui.Shared/VideoForensics.Ui.Shared.csproj",
                                       "src/client/VideoForensics.Client.Core.tests/VideoForensics.Client.Core.tests.csproj",
                                       "src/client/VideoForensics.Mcp/VideoForensics.Mcp.csproj",
-                                      "src/client/VideoForensics/VideoForensics.csproj",
                                       "src/client/web/VideoForensics.WebApp.Tests/VideoForensics.WebApp.Tests.csproj",
                                       "src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj",
                                       "src/core/api/VideoForensics.Api.Contracts/VideoForensics.Api.Contracts.csproj",

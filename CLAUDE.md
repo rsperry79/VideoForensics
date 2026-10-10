@@ -14,7 +14,6 @@ Projects live nested under `src/`, grouped by layer, not as flat top-level folde
 
 ```
 src/
-  client/VideoForensics/                     # Console app (legacy; see plans/deferred-items.md)
   core/providers/providers-common/           # Platform-agnostic interfaces (Contracts/)
   core/providers/providers-common-tests/     # Contract tests
   core/providers/providers-core/             # Base classes (e.g. BaseVideoProvider)
@@ -28,7 +27,7 @@ src/
   data/common/, data/core/, data/database/, data/database/sqlite/    # Data access layer
 ```
 
-There is no `archive/` directory in this repo — don't assume one exists.
+`archive/VideoForensics/` is the archived legacy console app (see plans/deferred-items.md). It is excluded from `VideoForensics.sln`, `VideoForensics.CI.slnf`, and CI.
 
 ## Adding a New Provider
 
@@ -111,7 +110,7 @@ Respond to the user with **terse, direct output**:
 
 ## Archive and docs directories
 
-Do not read or explore files in the `docs/` directory unless explicitly asked by the user. (There is currently no `archive/` directory in this repo — if one is added later, the same rule applies to it.)
+Do not read or explore files in the `docs/` directory unless explicitly asked by the user. The same rule applies to `archive/`.
 
 ## Client Requirements (client/server split)
 

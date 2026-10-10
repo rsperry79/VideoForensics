@@ -53,7 +53,7 @@ namespace VideoForensics.MauiApp
 
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
             // lands under %ProgramData%/VideoForensics/logs, matching the console app's pattern
-            // (src/client/VideoForensics/Program.cs).
+            // (archive/VideoForensics/Program.cs).
             string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
             Directory.CreateDirectory(configDir);
             string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");

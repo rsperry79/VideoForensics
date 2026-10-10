@@ -11,9 +11,9 @@ dotnet publish -c Release src/client/VideoForensics.Mcp/VideoForensics.Mcp.cspro
 Verify the build completes without errors.
 
 ### 2. Initialize Database with Test Data
-Run the console VideoForensics client once to initialize the database with sample data:
+Run the VideoForensics WebApp once to initialize the database with sample data:
 ```bash
-dotnet run --project src/clients/VideoForensics/VideoForensics.csproj
+dotnet run --project src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj
 ```
 This ensures the SQLite database is populated with test data for all subsequent tests.
 
@@ -825,9 +825,9 @@ Claude Desktop logs appear in:
 - Check for MCP server stderr output
 
 ### Reuse Test Data
-If no data exists, run the console client:
+If no data exists, run the WebApp:
 ```bash
-dotnet run --project src/clients/VideoForensics/VideoForensics.csproj
+dotnet run --project src/client/web/VideoForensics.WebApp/VideoForensics.WebApp.csproj
 ```
 This initializes the database with sample Ring events.
 

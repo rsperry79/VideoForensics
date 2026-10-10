@@ -64,7 +64,7 @@ public static class EvidenceActions
 
     /// <summary>
     /// Determines the display text/color for a media item's integrity status. Mirrors
-    /// ForensicReportRenderer.DetermineMediaStatus (src/client/VideoForensics/ForensicReportRenderer.cs)
+    /// ForensicReportRenderer.DetermineMediaStatus (archive/VideoForensics/ForensicReportRenderer.cs)
     /// and the copy that used to live in Events.razor.
     /// </summary>
     public static (string Text, string Color) DetermineIntegrityStatus(
