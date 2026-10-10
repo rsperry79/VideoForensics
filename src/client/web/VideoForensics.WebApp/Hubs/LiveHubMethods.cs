@@ -15,6 +15,9 @@ namespace VideoForensics.WebApp.Hubs
         /// <summary>Live-view session state push. Sent only to connections subscribed to that session's group.</summary>
         public const string LiveViewSessionChanged = "LiveViewSessionChanged";
 
+        /// <summary>Live-view telemetry sample push. Sent only to connections subscribed to that session's group.</summary>
+        public const string LiveViewTelemetry = "LiveViewTelemetry";
+
         /// <summary>
         /// SignalR group name for live-view subscribers of one session. Only connections that called
         /// <c>SubscribeLiveView</c> for this session are members, so session pushes never go to All.

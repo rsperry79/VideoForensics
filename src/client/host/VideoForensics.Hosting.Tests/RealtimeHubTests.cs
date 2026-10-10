@@ -275,6 +275,24 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task LiveViewTelemetry_PushReceived_EmitsOnObservable()
+        {
+            // The On<> binding routes the push through EmitLiveViewTelemetry; the seam stands in for the wire.
+            await using var hub = new RealtimeHub(ServerAddress, CreateServices(), _ => Task.CompletedTask);
+            var received = new List<LiveViewTelemetrySampleDto>();
+            using IDisposable subscription = hub.LiveViewTelemetry.Subscribe(received.Add);
+            var dto = new LiveViewTelemetrySampleDto(
+                Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc),
+                FractionLost: 3, CumulativePacketsLost: 7, JitterTicks: 90u, BitrateBps: 2_500_000, InterferenceScore: 0.42);
+
+            hub.EmitLiveViewTelemetry(dto);
+
+            LiveViewTelemetrySampleDto single = Assert.Single(received);
+            Assert.Equal(dto.Id, single.Id);
+            Assert.Equal(dto.InterferenceScore, single.InterferenceScore);
+        }
+
+        [Fact]
         public async Task SubscribeLiveViewAsync_Connected_InvokesSubscribeLiveView()
         {
             Guid sessionId = Guid.NewGuid();

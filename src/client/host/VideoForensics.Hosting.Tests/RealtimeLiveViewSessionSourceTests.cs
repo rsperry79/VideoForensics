@@ -62,6 +62,69 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task Telemetry_MapsDtoToEntity()
+        {
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHub(calls);
+            var source = new RealtimeLiveViewSessionSource(hub);
+            var received = new List<LiveViewTelemetrySample>();
+            using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
+            var dto = new LiveViewTelemetrySampleDto(
+                Guid.NewGuid(), Guid.NewGuid(), Start,
+                FractionLost: 255, CumulativePacketsLost: 42, JitterTicks: 1200u, BitrateBps: 4_000_000L, InterferenceScore: 0.87);
+
+            hub.EmitLiveViewTelemetry(dto);
+
+            LiveViewTelemetrySample mapped = Assert.Single(received);
+            Assert.Equal(dto.Id, mapped.Id);
+            Assert.Equal(dto.SessionId, mapped.SessionId);
+            Assert.Equal(Start, mapped.CapturedAtUtc);
+            Assert.Equal((byte?)255, mapped.FractionLost);
+            Assert.Equal(42, mapped.CumulativePacketsLost);
+            Assert.Equal(1200u, mapped.JitterTicks);
+            Assert.Equal(4_000_000L, mapped.BitrateBps);
+            Assert.Equal(0.87, mapped.InterferenceScore);
+        }
+
+        [Fact]
+        public async Task Telemetry_MapsNullFieldsToNull()
+        {
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHub(calls);
+            var source = new RealtimeLiveViewSessionSource(hub);
+            var received = new List<LiveViewTelemetrySample>();
+            using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
+            var dto = new LiveViewTelemetrySampleDto(
+                Guid.NewGuid(), Guid.NewGuid(), Start,
+                FractionLost: null, CumulativePacketsLost: null, JitterTicks: null, BitrateBps: null, InterferenceScore: null);
+
+            hub.EmitLiveViewTelemetry(dto);
+
+            LiveViewTelemetrySample mapped = Assert.Single(received);
+            Assert.Null(mapped.FractionLost);
+            Assert.Null(mapped.CumulativePacketsLost);
+            Assert.Null(mapped.JitterTicks);
+            Assert.Null(mapped.BitrateBps);
+            Assert.Null(mapped.InterferenceScore);
+        }
+
+        [Fact]
+        public async Task Telemetry_ForwardsRealtimeHubEmissions()
+        {
+            var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
+            await using var hub = CreateHub(calls);
+            var source = new RealtimeLiveViewSessionSource(hub);
+            var received = new List<LiveViewTelemetrySample>();
+            using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
+
+            hub.EmitLiveViewTelemetry(new LiveViewTelemetrySampleDto(Guid.NewGuid(), Guid.NewGuid(), Start, null, null, null, null, null));
+            hub.EmitLiveViewTelemetry(new LiveViewTelemetrySampleDto(Guid.NewGuid(), Guid.NewGuid(), Start, null, null, null, null, 0.1));
+
+            Assert.Equal(2, received.Count);
+            Assert.Equal(0.1, received[1].InterferenceScore);
+        }
+
+        [Fact]
         public async Task RealtimeLiveViewSessionSource_SubscribeAsync_ForwardsToHub()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
