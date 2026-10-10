@@ -684,9 +684,8 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<ILiveViewSessionService, Remote.RemoteLiveViewSessionService>(c => c.BaseAddress = serverAddress);
 
             // Ui.Shared's JammingPanel (Analyze page) injects this orchestrator directly. In client mode it runs over
-            // the Remote* repositories: recording an incident and reading stats/incidents work end to end; the
-            // RSSI-history auto-detection path needs IDeviceHealthRepository.GetHistoryAsync(deviceId, ct), which
-            // RemoteDeviceHealthRepository does not support yet, so AnalyzeJammingAsync reports a failure there.
+            // the Remote* repositories. RSSI-history auto-detection uses the ranged IDeviceHealthRepository.GetHistoryAsync
+            // overload, which RemoteDeviceHealthRepository supports; the unranged overload stays unsupported on remote clients.
             _ = services.AddScoped<VideoForensics.Client.Core.Tools.JammingToolsOrchestrator>();
 
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
