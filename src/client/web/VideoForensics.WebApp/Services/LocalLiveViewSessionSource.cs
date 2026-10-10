@@ -16,6 +16,10 @@ namespace VideoForensics.WebApp.Services
         public IObservable<LiveViewSession> SessionChanged { get; } = Observable.Never<LiveViewSession>();
 
         /// <inheritdoc />
+        /// <remarks>The WebApp receives no telemetry pushes through this source, so the page shows "no data yet".</remarks>
+        public IObservable<LiveViewTelemetrySample> Telemetry { get; } = Observable.Never<LiveViewTelemetrySample>();
+
+        /// <inheritdoc />
         public bool IsConnected => false;
 
         /// <inheritdoc />

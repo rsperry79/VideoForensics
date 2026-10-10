@@ -24,6 +24,9 @@ namespace VideoForensics.Ui.Shared.Tests.Services
 
             public int SubscribeCalls { get; private set; }
 
+            /// <summary>The session id from the most recent SubscribeAsync call.</summary>
+            public Guid? LastSubscribedId { get; private set; }
+
             public Exception? SubscribeFailure { get; set; }
 
             /// <summary>Runs after a successful subscribe, so a test can emit the push the server would send.</summary>
@@ -31,9 +34,12 @@ namespace VideoForensics.Ui.Shared.Tests.Services
 
             public IObservable<LiveViewSession> SessionChanged => Changes;
 
+            public IObservable<LiveViewTelemetrySample> Telemetry { get; } = new Subject<LiveViewTelemetrySample>();
+
             public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
             {
                 SubscribeCalls++;
+                LastSubscribedId = sessionId;
                 if (SubscribeFailure is not null)
                 {
                     return Task.FromException(SubscribeFailure);
@@ -110,6 +116,24 @@ namespace VideoForensics.Ui.Shared.Tests.Services
             Assert.Equal(1, source.SubscribeCalls);
             Assert.Equal(1, poll.Calls);
             Assert.True(stopwatch.Elapsed < LongTimeout, "The wait should return on the race-guard read, not run to the timeout.");
+        }
+
+        [Fact]
+        public async Task LiveViewActivationWaiter_AlreadyActive_StillSubscribesBeforeReturning()
+        {
+            // An already-Active session must still join the push group, or telemetry never arrives for it.
+            var sessionId = Guid.NewGuid();
+            var source = new FakeSessionSource();
+            var poll = new CountingPoll(_ => Session(sessionId, LiveViewSessionState.Active));
+            var waiter = new LiveViewActivationWaiter();
+
+            LiveViewSession? result = await waiter.WaitForActiveAsync(sessionId, source, poll.InvokeAsync, LongTimeout, CancellationToken.None);
+
+            Assert.Equal(1, source.SubscribeCalls);
+            Assert.Equal(sessionId, source.LastSubscribedId);
+            Assert.NotNull(result);
+            Assert.Equal(sessionId, result.Id);
+            Assert.Equal(LiveViewSessionState.Active, result.State);
         }
 
         [Fact]

@@ -39,6 +39,7 @@ namespace VideoForensics.Hosting
         private readonly Subject<NotificationEvent> _urgentEvents = new();
         private readonly Subject<SelfTestStatusDto> _selfTestStatus = new();
         private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
+        private readonly Subject<LiveViewTelemetrySampleDto> _liveViewTelemetry = new();
         private readonly BehaviorSubject<ConnectionState> _connection = new(ConnectionState.Disconnected);
         // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
         // from inside an emission cannot deadlock on the hub's state lock.
@@ -93,6 +94,12 @@ namespace VideoForensics.Hosting
         /// <see cref="SubscribeLiveViewAsync"/>. Pushes are raw (no replay).
         /// </summary>
         public IObservable<LiveViewSessionDto> LiveViewSessionChanged => _liveViewSessionChanged.AsObservable();
+
+        /// <summary>
+        /// Live-view telemetry sample pushes ("LiveViewTelemetry") for sessions this client subscribed to via
+        /// <see cref="SubscribeLiveViewAsync"/>. Pushes are raw (no replay). Wire DTOs only; the adapter maps to the entity.
+        /// </summary>
+        public IObservable<LiveViewTelemetrySampleDto> LiveViewTelemetry => _liveViewTelemetry.AsObservable();
 
         /// <summary>True while the live hub is connected. Lets <see cref="RealtimeLiveViewSessionSource"/> report availability.</summary>
         internal bool IsLiveHubConnected => IsConnected();
@@ -315,6 +322,7 @@ namespace VideoForensics.Hosting
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
             _liveViewSessionChanged.OnCompleted();
+            _liveViewTelemetry.OnCompleted();
             _connection.OnCompleted();
             lifetime.Dispose();
             _logger.LogInformation("Live hub disposed");
@@ -406,6 +414,7 @@ namespace VideoForensics.Hosting
             _ = connection.On<NotificationEvent>("UrgentEvent", notificationEvent => Emit(_urgentEvents, notificationEvent));
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
             _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", dto => EmitLiveViewSessionChanged(dto));
+            _ = connection.On<LiveViewTelemetrySampleDto>("LiveViewTelemetry", dto => EmitLiveViewTelemetry(dto));
 
             connection.Reconnecting += error =>
             {
@@ -452,6 +461,12 @@ namespace VideoForensics.Hosting
         /// can drive it without a network.
         /// </summary>
         internal void EmitLiveViewSessionChanged(LiveViewSessionDto dto) => Emit(_liveViewSessionChanged, dto);
+
+        /// <summary>
+        /// Routes a "LiveViewTelemetry" push to subscribers. The hub binding calls this; it is internal so tests
+        /// can drive it without a network.
+        /// </summary>
+        internal void EmitLiveViewTelemetry(LiveViewTelemetrySampleDto dto) => Emit(_liveViewTelemetry, dto);
 
         private void Emit<T>(Subject<T> subject, T value)
         {

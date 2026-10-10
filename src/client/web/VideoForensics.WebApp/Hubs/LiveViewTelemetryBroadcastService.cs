@@ -30,5 +30,17 @@ namespace VideoForensics.WebApp.Hubs
                 .Group(LiveHubMethods.LiveViewGroup(session.Id))
                 .SendAsync(LiveHubMethods.LiveViewSessionChanged, session.ToDto(), ct);
         }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Sends the wire DTO, never the entity, to the session's group only. The orchestrator calls this once per
+        /// persisted sample, so each sample reaches the same subscribers as the session state pushes.
+        /// </remarks>
+        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
+        {
+            return _hubContext.Clients
+                .Group(LiveHubMethods.LiveViewGroup(sample.SessionId))
+                .SendAsync(LiveHubMethods.LiveViewTelemetry, sample.ToDto(), ct);
+        }
     }
 }

@@ -52,5 +52,41 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(session.ToDto(), sent);
             Assert.Equal(session.Id, sent!.Id);
         }
+
+        [Fact]
+        public async Task PublishSample_SendsToSessionGroupOnly()
+        {
+            (LiveViewTelemetryBroadcastService service, Mock<IHubClients> clients, _) = Build();
+            var sample = new LiveViewTelemetrySample { Id = Guid.NewGuid(), SessionId = Guid.NewGuid(), CapturedAtUtc = DateTime.UtcNow };
+
+            await service.PublishSampleAsync(sample, CancellationToken.None);
+
+            clients.Verify(c => c.Group(LiveHubMethods.LiveViewGroup(sample.SessionId)), Times.Once);
+            clients.Verify(c => c.All, Times.Never);
+        }
+
+        [Fact]
+        public async Task PublishSample_PayloadIsDtoNotEntity()
+        {
+            (LiveViewTelemetryBroadcastService service, _, Mock<IClientProxy> group) = Build();
+            var sample = new LiveViewTelemetrySample { Id = Guid.NewGuid(), SessionId = Guid.NewGuid(), CapturedAtUtc = DateTime.UtcNow, FractionLost = 12 };
+            object? sentPayload = null;
+            string? sentMethod = null;
+            group.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .Callback<string, object?[], CancellationToken>((method, args, _) =>
+                {
+                    sentMethod = method;
+                    sentPayload = args[0];
+                })
+                .Returns(Task.CompletedTask);
+
+            await service.PublishSampleAsync(sample, CancellationToken.None);
+
+            Assert.Equal(LiveHubMethods.LiveViewTelemetry, sentMethod);
+            LiveViewTelemetrySampleDto dto = Assert.IsType<LiveViewTelemetrySampleDto>(sentPayload);
+            Assert.Equal(sample.Id, dto.Id);
+            Assert.Equal(sample.SessionId, dto.SessionId);
+            Assert.Equal((byte?)12, dto.FractionLost);
+        }
     }
 }

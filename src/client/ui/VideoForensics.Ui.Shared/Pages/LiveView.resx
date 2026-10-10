@@ -62,4 +62,28 @@
   <data name="ErrorInitializing" xml:space="preserve">
     <value>Error initializing: {0}</value>
   </data>
+  <data name="TelemetryHeading" xml:space="preserve">
+    <value>Telemetry</value>
+  </data>
+  <data name="NoDataYet" xml:space="preserve">
+    <value>No data yet</value>
+  </data>
+  <data name="LossLabel" xml:space="preserve">
+    <value>Loss (%)</value>
+  </data>
+  <data name="PacketsLostLabel" xml:space="preserve">
+    <value>Packets lost</value>
+  </data>
+  <data name="JitterLabel" xml:space="preserve">
+    <value>Jitter (ticks)</value>
+  </data>
+  <data name="BitrateLabel" xml:space="preserve">
+    <value>Bitrate (kbps)</value>
+  </data>
+  <data name="ScoreLabel" xml:space="preserve">
+    <value>Interference score</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>Not available</value>
+  </data>
 </root>

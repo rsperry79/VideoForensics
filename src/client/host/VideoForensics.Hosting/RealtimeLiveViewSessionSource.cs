@@ -30,6 +30,10 @@ namespace VideoForensics.Hosting
             _hub.LiveViewSessionChanged.Select(dto => dto.ToDomain());
 
         /// <inheritdoc />
+        public IObservable<LiveViewTelemetrySample> Telemetry =>
+            _hub.LiveViewTelemetry.Select(dto => dto.ToDomain());
+
+        /// <inheritdoc />
         public bool IsConnected => _hub.IsLiveHubConnected;
 
         /// <inheritdoc />
@@ -39,5 +43,28 @@ namespace VideoForensics.Hosting
         /// <inheritdoc />
         public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) =>
             _hub.UnsubscribeLiveViewAsync(sessionId, cancellationToken);
+    }
+
+    /// <summary>Maps live-view telemetry sample DTOs from the realtime hub back to domain entities.</summary>
+    internal static class LiveViewTelemetrySampleDtoToDomainMapping
+    {
+        /// <summary>
+        /// Converts a <see cref="LiveViewTelemetrySampleDto"/> to a <see cref="LiveViewTelemetrySample"/>. Every field
+        /// is copied as-is, so nullable RTCP and score values stay null when the server did not report them.
+        /// </summary>
+        internal static LiveViewTelemetrySample ToDomain(this LiveViewTelemetrySampleDto dto)
+        {
+            return new LiveViewTelemetrySample
+            {
+                Id = dto.Id,
+                SessionId = dto.SessionId,
+                CapturedAtUtc = dto.CapturedAtUtc,
+                FractionLost = dto.FractionLost,
+                CumulativePacketsLost = dto.CumulativePacketsLost,
+                JitterTicks = dto.JitterTicks,
+                BitrateBps = dto.BitrateBps,
+                InterferenceScore = dto.InterferenceScore,
+            };
+        }
     }
 }

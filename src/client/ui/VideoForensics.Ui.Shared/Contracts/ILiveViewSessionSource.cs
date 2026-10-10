@@ -22,6 +22,13 @@ namespace VideoForensics.Ui.Shared.Contracts
         IObservable<LiveViewSession> SessionChanged { get; }
 
         /// <summary>
+        /// Telemetry sample pushes for sessions this client has subscribed to. Each sample carries its
+        /// <see cref="LiveViewTelemetrySample.SessionId"/>, so subscribers filter to the session they show.
+        /// Hosts with no live push channel emit nothing.
+        /// </summary>
+        IObservable<LiveViewTelemetrySample> Telemetry { get; }
+
+        /// <summary>
         /// True when the push channel is up. When false, <see cref="SubscribeAsync"/> cannot deliver pushes
         /// and callers should poll.
         /// </summary>

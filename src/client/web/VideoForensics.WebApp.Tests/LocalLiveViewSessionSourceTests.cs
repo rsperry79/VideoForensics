@@ -27,5 +27,15 @@ namespace VideoForensics.WebApp.Tests
 
             Assert.Empty(received);
         }
+
+        [Fact]
+        public void Telemetry_Empty_EmitsNothing()
+        {
+            var source = new LocalLiveViewSessionSource();
+            var received = new List<LiveViewTelemetrySample>();
+            using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
+
+            Assert.Empty(received);
+        }
     }
 }

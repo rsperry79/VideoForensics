@@ -60,6 +60,36 @@ else
                 }
             </div>
         </div>
+
+        @if (_selectedSessionId.HasValue)
+        {
+            <div class="right-panel-section">
+                <small>@L["TelemetryHeading"]</small>
+                @if (_latestTelemetry is null)
+                {
+                    <div class="text-muted small">@L["NoDataYet"]</div>
+                }
+                else
+                {
+                    <dl class="row small mb-0">
+                        <dt class="col-7">@L["LossLabel"]</dt>
+                        <dd class="col-5">@TelemetryText(LiveViewTelemetryFormatter.FormatLossPercent(_latestTelemetry.FractionLost))</dd>
+
+                        <dt class="col-7">@L["PacketsLostLabel"]</dt>
+                        <dd class="col-5">@TelemetryText(LiveViewTelemetryFormatter.FormatCount(_latestTelemetry.CumulativePacketsLost))</dd>
+
+                        <dt class="col-7">@L["JitterLabel"]</dt>
+                        <dd class="col-5">@TelemetryText(LiveViewTelemetryFormatter.FormatCount(_latestTelemetry.JitterTicks))</dd>
+
+                        <dt class="col-7">@L["BitrateLabel"]</dt>
+                        <dd class="col-5">@TelemetryText(LiveViewTelemetryFormatter.FormatKilobitsPerSecond(_latestTelemetry.BitrateBps))</dd>
+
+                        <dt class="col-7">@L["ScoreLabel"]</dt>
+                        <dd class="col-5">@TelemetryText(LiveViewTelemetryFormatter.FormatScore(_latestTelemetry.InterferenceScore))</dd>
+                    </dl>
+                }
+            </div>
+        }
     </PageRightPanelContent>
 
     <div class="live-view-container">
@@ -80,6 +110,8 @@ else
     private object? _hubConnection;
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
+    private IDisposable? _telemetrySubscription;
+    private LiveViewTelemetrySample? _latestTelemetry;
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,17 +185,16 @@ else
                     System.Threading.CancellationToken.None);
 
                 _selectedSessionId = session.Id;
+                SubscribeToTelemetry(session.Id);
 
-                // Push when the source is connected, with a poll fallback. The waiter does the subscribe,
-                // the race-guard read and the timeout, so the page only decides whether to wait at all.
-                LiveViewSession? active = session.State == LiveViewSessionState.Active
-                    ? session
-                    : await _activationWaiter.WaitForActiveAsync(
-                        session.Id,
-                        LiveViewSessionSource,
-                        ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),
-                        LiveViewActivationWaiter.DefaultTimeout,
-                        System.Threading.CancellationToken.None);
+                // Always wait, even when the start response is already Active. The waiter joins the session's push
+                // group before its race-guard read, so telemetry arrives for a session that was Active at start.
+                LiveViewSession? active = await _activationWaiter.WaitForActiveAsync(
+                    session.Id,
+                    LiveViewSessionSource,
+                    ct => LiveViewSessionService.GetActiveSessionAsync(deviceId, ct),
+                    LiveViewActivationWaiter.DefaultTimeout,
+                    System.Threading.CancellationToken.None);
 
                 if (active is null)
                 {
@@ -216,6 +247,8 @@ else
         if (_selectedSessionId.HasValue)
             await UnsubscribeFromSessionAsync(_selectedSessionId.Value);
 
+        DisposeTelemetrySubscription();
+
         if (_jsModule is not null)
             await _jsModule.DisposeAsync();
     }
@@ -224,6 +257,8 @@ else
     // block the stop or dispose, since the hub drops group membership on disconnect anyway.
     private async Task UnsubscribeFromSessionAsync(Guid sessionId)
     {
+        DisposeTelemetrySubscription();
+
         try
         {
             await LiveViewSessionSource.UnsubscribeAsync(sessionId, System.Threading.CancellationToken.None);
@@ -233,6 +268,37 @@ else
             Logger.LogWarning(ex, "Could not leave the live-view push group for a session");
         }
     }
+
+    // Telemetry arrives on a hub thread, so the update is marshalled onto the component's dispatcher. Samples for
+    // any other session are ignored, so a stale push cannot overwrite the session on screen.
+    private void SubscribeToTelemetry(Guid sessionId)
+    {
+        DisposeTelemetrySubscription();
+        _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample =>
+        {
+            if (sample.SessionId != sessionId)
+            {
+                return;
+            }
+
+            _ = InvokeAsync(() =>
+            {
+                _latestTelemetry = sample;
+                StateHasChanged();
+            });
+        });
+    }
+
+    private void DisposeTelemetrySubscription()
+    {
+        _telemetrySubscription?.Dispose();
+        _telemetrySubscription = null;
+        _latestTelemetry = null;
+    }
+
+    // A value the formatter could not produce is a resource key; everything else is already invariant-formatted text.
+    private string TelemetryText(string text) =>
+        text == LiveViewTelemetryFormatter.NotAvailableKey ? L[text].Value : text;
 
     public async ValueTask DisposeAsync()
     {
