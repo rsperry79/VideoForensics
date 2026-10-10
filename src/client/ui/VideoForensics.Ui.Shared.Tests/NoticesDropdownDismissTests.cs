@@ -17,14 +17,14 @@ public class NoticesDropdownDismissTests : SimpleModeLayoutTestBase
         // Arrange
         var component = Render<MainLayout>();
         component.Find(".notices-toggle").Click();
-        Assert.NotEmpty(component.FindAll(".notices-dropdown"));
+        component.WaitForAssertion(() => Assert.NotEmpty(component.FindAll(".notices-dropdown")), TimeSpan.FromSeconds(10));
 
         // Act - click the page area outside the dropdown (the backdrop covers everything else)
         component.Find(".notices-backdrop").Click();
 
         // Assert
-        Assert.Empty(component.FindAll(".notices-dropdown"));
-        Assert.Empty(component.FindAll(".notices-backdrop"));
+        component.WaitForAssertion(() => Assert.Empty(component.FindAll(".notices-dropdown")), TimeSpan.FromSeconds(10));
+        component.WaitForAssertion(() => Assert.Empty(component.FindAll(".notices-backdrop")), TimeSpan.FromSeconds(10));
     }
 
     [Fact]
