@@ -231,6 +231,30 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_MovingReleaseTagWithVersionMetadata_UsesVersionNotTagName()
+        {
+            var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Stable };
+            (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, _) = CreateService(config, () => "1.0.0");
+
+            var release = new GitHubReleaseInfo(
+                "Release",
+                "https://github.com/rsperry79/VideoForensics/releases/tag/Release",
+                false,
+                false,
+                new[] { new GitHubReleaseAsset("VideoForensicsSetup.exe", "https://example.com/download", 1000) },
+                "1.0.9.44078"
+            );
+            _ = gitHubClient.Setup(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(release);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            UpdateCheckState state = service.GetState();
+            Assert.Null(state.ErrorMessage);
+            Assert.True(state.UpdateAvailable);
+            Assert.Equal("1.0.9.44078", state.LatestVersion);
+        }
+
+        [Fact]
         public async Task TriggerCheckNowAsync_InvokesSameTickLogic()
         {
             var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Stable };

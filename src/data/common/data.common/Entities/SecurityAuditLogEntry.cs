@@ -43,6 +43,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string StepUpFailed = nameof(StepUpFailed);
         public const string RateLimitLockout = nameof(RateLimitLockout);
         public const string NetworkTierChanged = nameof(NetworkTierChanged);
+        public const string ReleaseChannelChanged = nameof(ReleaseChannelChanged);
         public const string SuperAdminActionDeniedRemote = nameof(SuperAdminActionDeniedRemote);
         public const string CertificateFingerprintMismatch = nameof(CertificateFingerprintMismatch);
         public const string TunnelStarted = nameof(TunnelStarted);
@@ -90,6 +91,7 @@ namespace VideoForensics.Data.Common.Entities
             [StepUpFailed] = true,
             [RateLimitLockout] = true,
             [NetworkTierChanged] = true,
+            [ReleaseChannelChanged] = true,
             [SuperAdminActionDeniedRemote] = true,
             [CertificateFingerprintMismatch] = true,
             [TunnelStarted] = true,

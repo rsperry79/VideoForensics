@@ -135,6 +135,7 @@ Every user-visible string in `VideoForensics.Ui.Shared` (pages, components, dial
 - Tests that assert on text should go through the localizer or the resource key, not a duplicated English literal where practical.
 - Not user-visible, so exempt: log messages, exception messages not shown to users, route paths, CSS classes, test data.
 - Existing pages that are not yet localized (see `plans/maui-layout-theme-localization.md`) must be localized when they are next touched.
+- When dispatching a subagent to change a `VideoForensics.Ui.Shared` page, the brief must name the localization rule and list the page's existing literals to convert, so the subagent doesn't leave them in place.
 ## UI Layout (Desktop-First)
 
 `VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
@@ -170,7 +171,7 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 ## Syncfusion License (CI-baked-in)
 
-Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
+Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. Developers running from Visual Studio can set a user-level `SYNCFUSION_LICENSE_KEY` environment variable instead; it is checked after the ProgramData file and before the baked-in key (restart VS after setting it, since VS only sees env vars present at launch). See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
 
 ## Branching and pull requests
 

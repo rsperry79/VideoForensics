@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,7 +38,13 @@ namespace VideoForensics.Hosting
         private readonly Subject<DownloadProgressDto> _downloadProgress = new();
         private readonly Subject<NotificationEvent> _urgentEvents = new();
         private readonly Subject<SelfTestStatusDto> _selfTestStatus = new();
+        private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
         private readonly BehaviorSubject<ConnectionState> _connection = new(ConnectionState.Disconnected);
+        // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
+        // from inside an emission cannot deadlock on the hub's state lock.
+        private readonly object _subscriptionGate = new();
+        private readonly HashSet<Guid> _liveViewSubscriptions = new();
+        private readonly Func<string, Guid, CancellationToken, Task>? _invokeOverride;
         private HubConnection? _hubConnection;
         private CancellationTokenSource _lifetime = new();
         private bool _stopping;
@@ -49,8 +56,15 @@ namespace VideoForensics.Hosting
         {
         }
 
-        /// <summary>Test seam: <paramref name="connectOverride"/> replaces the real HubConnection connect step.</summary>
-        internal RealtimeHub(Uri serverAddress, IServiceProvider serviceProvider, Func<CancellationToken, Task>? connectOverride)
+        /// <summary>
+        /// Test seam: <paramref name="connectOverride"/> replaces the real HubConnection connect step, and
+        /// <paramref name="invokeOverride"/> replaces the hub invoke used for live-view subscriptions.
+        /// </summary>
+        internal RealtimeHub(
+            Uri serverAddress,
+            IServiceProvider serviceProvider,
+            Func<CancellationToken, Task>? connectOverride,
+            Func<string, Guid, CancellationToken, Task>? invokeOverride = null)
         {
             ArgumentNullException.ThrowIfNull(serverAddress);
             ArgumentNullException.ThrowIfNull(serviceProvider);
@@ -59,6 +73,7 @@ namespace VideoForensics.Hosting
             _sessionState = serviceProvider.GetRequiredService<PairedSessionState>();
             _logger = (ILogger?)serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<RealtimeHub>() ?? NullLogger.Instance;
             _connectAsync = connectOverride ?? ConnectHubAsync;
+            _invokeOverride = invokeOverride;
         }
 
         /// <inheritdoc />
@@ -72,6 +87,58 @@ namespace VideoForensics.Hosting
 
         /// <inheritdoc />
         public IObservable<ConnectionState> Connection => _connection.AsObservable();
+
+        /// <summary>
+        /// Live-view session state pushes ("LiveViewSessionChanged") for sessions this client subscribed to via
+        /// <see cref="SubscribeLiveViewAsync"/>. Pushes are raw (no replay).
+        /// </summary>
+        public IObservable<LiveViewSessionDto> LiveViewSessionChanged => _liveViewSessionChanged.AsObservable();
+
+        /// <summary>True while the live hub is connected. Lets <see cref="RealtimeLiveViewSessionSource"/> report availability.</summary>
+        internal bool IsLiveHubConnected => IsConnected();
+
+        /// <summary>
+        /// Joins the server's live-view group for <paramref name="sessionId"/> so its state pushes are delivered.
+        /// The session is remembered and re-subscribed after every reconnect. If the connection is not up, the
+        /// subscription is recorded and sent on the next connect. A session the server rejects is dropped, not retried.
+        /// </summary>
+        /// <param name="sessionId">The live-view session to follow.</param>
+        /// <param name="cancellationToken">Cancels the outgoing invoke.</param>
+        public async Task SubscribeLiveViewAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            lock (_subscriptionGate)
+            {
+                _ = _liveViewSubscriptions.Add(sessionId);
+            }
+
+            if (!IsConnected())
+            {
+                _logger.LogDebug("Live-view subscription recorded; it will be sent when the live hub connects");
+                return;
+            }
+
+            await SendSubscribeAsync(sessionId, cancellationToken);
+        }
+
+        /// <summary>
+        /// Leaves the server's live-view group for <paramref name="sessionId"/> and stops replaying it on reconnect.
+        /// </summary>
+        /// <param name="sessionId">The live-view session to stop following.</param>
+        /// <param name="cancellationToken">Cancels the outgoing invoke.</param>
+        public async Task UnsubscribeLiveViewAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            lock (_subscriptionGate)
+            {
+                _ = _liveViewSubscriptions.Remove(sessionId);
+            }
+
+            if (!IsConnected())
+            {
+                return;
+            }
+
+            await InvokeHubAsync("UnsubscribeLiveView", sessionId, cancellationToken);
+        }
 
         /// <inheritdoc />
         /// <remarks>
@@ -148,6 +215,10 @@ namespace VideoForensics.Hosting
                 _logger.LogInformation("Live hub connected");
                 Publish(ConnectionState.Connected);
             }
+
+            // After Connected is published: a subscribe that saw Connected sends its own invoke, and one that saw
+            // anything else was recorded before this snapshot, so it is included here.
+            await ReplaySubscriptionsAsync(cancellationToken);
         }
 
         /// <inheritdoc />
@@ -243,6 +314,7 @@ namespace VideoForensics.Hosting
             _downloadProgress.OnCompleted();
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
+            _liveViewSessionChanged.OnCompleted();
             _connection.OnCompleted();
             lifetime.Dispose();
             _logger.LogInformation("Live hub disposed");
@@ -281,6 +353,7 @@ namespace VideoForensics.Hosting
                     await _connectAsync(cancellationToken);
                     _logger.LogInformation("Live hub reconnected after {Attempts} attempt(s)", attempt + 1);
                     Publish(ConnectionState.Connected);
+                    await ReplaySubscriptionsAsync(cancellationToken);
                     return;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -332,6 +405,7 @@ namespace VideoForensics.Hosting
             _ = connection.On<DownloadProgressDto>("DownloadProgress", payload => Emit(_downloadProgress, payload));
             _ = connection.On<NotificationEvent>("UrgentEvent", notificationEvent => Emit(_urgentEvents, notificationEvent));
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
+            _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", dto => EmitLiveViewSessionChanged(dto));
 
             connection.Reconnecting += error =>
             {
@@ -339,12 +413,7 @@ namespace VideoForensics.Hosting
                 Publish(ConnectionState.Reconnecting);
                 return Task.CompletedTask;
             };
-            connection.Reconnected += _ =>
-            {
-                _logger.LogInformation("Live hub reconnected");
-                Publish(ConnectionState.Connected);
-                return Task.CompletedTask;
-            };
+            connection.Reconnected += _ => HandleReconnectedAsync();
             connection.Closed += OnConnectionClosedAsync;
 
             return connection;
@@ -378,6 +447,12 @@ namespace VideoForensics.Hosting
             }
         }
 
+        /// <summary>
+        /// Routes a "LiveViewSessionChanged" push to subscribers. The hub binding calls this; it is internal so tests
+        /// can drive it without a network.
+        /// </summary>
+        internal void EmitLiveViewSessionChanged(LiveViewSessionDto dto) => Emit(_liveViewSessionChanged, dto);
+
         private void Emit<T>(Subject<T> subject, T value)
         {
             lock (_gate)
@@ -387,6 +462,91 @@ namespace VideoForensics.Hosting
                     subject.OnNext(value);
                 }
             }
+        }
+
+        private bool IsConnected()
+        {
+            lock (_gate)
+            {
+                return _connection.Value == ConnectionState.Connected;
+            }
+        }
+
+        private CancellationToken CurrentLifetimeToken()
+        {
+            lock (_gate)
+            {
+                return _lifetime.Token;
+            }
+        }
+
+        /// <summary>
+        /// Handles the HubConnection Reconnected event. Internal so tests can drive it without a network.
+        /// </summary>
+        /// <remarks>
+        /// The server drops group membership on disconnect, so the live-view subscriptions are re-sent here.
+        /// </remarks>
+        internal async Task HandleReconnectedAsync()
+        {
+            _logger.LogInformation("Live hub reconnected");
+            Publish(ConnectionState.Connected);
+            await ReplaySubscriptionsAsync(CurrentLifetimeToken());
+        }
+
+        // Re-sends every tracked subscription. Called after Connected is published on each successful connect.
+        private async Task ReplaySubscriptionsAsync(CancellationToken cancellationToken)
+        {
+            Guid[] snapshot;
+            lock (_subscriptionGate)
+            {
+                snapshot = _liveViewSubscriptions.ToArray();
+            }
+
+            foreach (Guid sessionId in snapshot)
+            {
+                await SendSubscribeAsync(sessionId, cancellationToken);
+            }
+        }
+
+        // A HubException means the server rejected the session (for example, it does not exist). The id is dropped
+        // so a bad id is not replayed on every reconnect. Other failures propagate to the caller.
+        private async Task SendSubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await InvokeHubAsync("SubscribeLiveView", sessionId, cancellationToken);
+            }
+            catch (HubException ex)
+            {
+                lock (_subscriptionGate)
+                {
+                    _ = _liveViewSubscriptions.Remove(sessionId);
+                }
+
+                // The session id is not logged: it is a GUID, and only the failure matters here.
+                _logger.LogWarning(ex, "Live hub rejected a live-view subscription; it will not be replayed");
+            }
+        }
+
+        private Task InvokeHubAsync(string method, Guid sessionId, CancellationToken cancellationToken)
+        {
+            if (_invokeOverride is not null)
+            {
+                return _invokeOverride(method, sessionId, cancellationToken);
+            }
+
+            HubConnection? connection;
+            lock (_gate)
+            {
+                connection = _hubConnection;
+            }
+
+            if (connection is null)
+            {
+                throw new InvalidOperationException("Live hub connection has not been built");
+            }
+
+            return connection.InvokeAsync(method, sessionId, cancellationToken);
         }
     }
 }

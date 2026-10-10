@@ -167,6 +167,10 @@ if (OperatingSystem.IsWindows())
 // forcibly disconnect an already-open connection (plan §5.4), not just invalidate its token.
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
+// Live-view session pushes to subscribed clients (batch 3b). Replace, not Add: the Hosting registration
+// later in this file (AddVideoForensicsServerCore) uses TryAddSingleton for the no-op publisher, so this
+// registration must come first to win; Replace also guarantees a single descriptor for this interface.
+builder.Services.Replace(ServiceDescriptor.Singleton<ILiveViewTelemetryPublisher, LiveViewTelemetryBroadcastService>());
 builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
@@ -174,6 +178,8 @@ builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, VideoForensics.WebApp.Services.LocalDownloadProgressSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, VideoForensics.WebApp.Services.LocalSelfTestStatusSource>();
+// The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, VideoForensics.WebApp.Services.LocalLiveViewSessionSource>();
 builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
 builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
@@ -452,6 +458,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
 app.MapTwoFactorPolicyEndpoints();

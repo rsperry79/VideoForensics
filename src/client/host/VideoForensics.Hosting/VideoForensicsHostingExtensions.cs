@@ -55,8 +55,9 @@ namespace VideoForensics.Hosting
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
         /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
-        /// 2. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
-        /// Falls back to unlicensed/dev-mode behavior if neither source provides a key.
+        /// 2. SYNCFUSION_LICENSE_KEY environment variable (lets Visual Studio debug sessions pick up the key without a ProgramData file)
+        /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
+        /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
         /// </summary>
         public static void RegisterSyncfusionLicenseIfPresent()
         {
@@ -67,6 +68,13 @@ namespace VideoForensics.Hosting
                 return;
             }
 
+            string? environmentKey = GetSyncfusionLicenseKeyFromEnvironment();
+            if (environmentKey != null)
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(environmentKey);
+                return;
+            }
+
             string? bakedInKey = Assembly.GetExecutingAssembly()
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
                 .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value;
@@ -74,6 +82,17 @@ namespace VideoForensics.Hosting
             {
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(bakedInKey.Trim());
             }
+        }
+
+        /// <summary>
+        /// Reads the SYNCFUSION_LICENSE_KEY environment variable, trimmed. Returns null when unset or blank
+        /// so the caller falls through to the baked-in key. Internal so tests can exercise it without
+        /// touching the process-wide Syncfusion license provider.
+        /// </summary>
+        internal static string? GetSyncfusionLicenseKeyFromEnvironment()
+        {
+            string? value = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")?.Trim();
+            return string.IsNullOrEmpty(value) ? null : value;
         }
 
         /// <summary>
@@ -645,6 +664,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IReleaseChannelService, RemoteReleaseChannelService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Client.Common.Contracts.IUpdateCheckService, Remote.RemoteUpdateCheckService>(c => c.BaseAddress = serverAddress);
@@ -661,6 +681,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<ISecurityEventsService, Remote.RemoteSecurityEventsService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILogViewerService, Remote.RemoteLogViewerService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IChatService, RemoteChatService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<ILiveViewSessionService, Remote.RemoteLiveViewSessionService>(c => c.BaseAddress = serverAddress);
 
             // Ui.Shared's JammingPanel (Analyze page) injects this orchestrator directly. In client mode it runs over
             // the Remote* repositories: recording an incident and reading stats/incidents work end to end; the
@@ -671,10 +692,14 @@ namespace VideoForensics.Hosting
             // Real-time push channel for download progress and urgent events (plan §6) - the caller
             // (MAUI or other client) is responsible for calling StartAsync() when a valid session
             // token is available and they wish to begin receiving updates.
-            _ = services.AddSingleton<IRealtimeHub>(sp => new RealtimeHub(serverAddress, sp));
+            // The concrete hub is registered so RealtimeLiveViewSessionSource can reach its live-view members, which
+            // IRealtimeHub does not expose. IRealtimeHub forwards to the same singleton, so there is still one connection.
+            _ = services.AddSingleton<RealtimeHub>(sp => new RealtimeHub(serverAddress, sp));
+            _ = services.AddSingleton<IRealtimeHub>(sp => sp.GetRequiredService<RealtimeHub>());
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 
             return services;
         }

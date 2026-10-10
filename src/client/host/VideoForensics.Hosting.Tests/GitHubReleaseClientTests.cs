@@ -168,5 +168,120 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Null(result);
         }
+
+        private const string VersionJsonUrl = "https://github.com/rsperry79/VideoForensics/releases/download/Release/version.json";
+
+        private static string GetReleaseJsonWithVersionJsonAsset(string tagName)
+        {
+            var release = new
+            {
+                tag_name = tagName,
+                html_url = $"https://github.com/rsperry79/VideoForensics/releases/tag/{tagName}",
+                draft = false,
+                prerelease = false,
+                assets = new[]
+                {
+                    new
+                    {
+                        name = "VideoForensicsSetup.exe",
+                        browser_download_url = $"https://github.com/rsperry79/VideoForensics/releases/download/{tagName}/VideoForensicsSetup.exe",
+                        size = 5242880L
+                    },
+                    new
+                    {
+                        name = "version.json",
+                        browser_download_url = VersionJsonUrl,
+                        size = 64L
+                    }
+                }
+            };
+            return JsonSerializer.Serialize(release);
+        }
+
+        private static HttpResponseMessage JsonResponse(string json)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) };
+            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            return response;
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_VersionJsonAssetPresent_SetsVersionFromAsset()
+        {
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                if (request.RequestUri?.ToString() == VersionJsonUrl)
+                {
+                    return Task.FromResult(JsonResponse("{\"version\":\"1.0.9.44078\",\"channel\":\"Release\"}"));
+                }
+                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var result = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("Release", result!.TagName);
+            Assert.Equal("1.0.9.44078", result.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_VersionJsonAssetAbsent_ReturnsReleaseWithNullVersion()
+        {
+            var requestedUrls = new List<string>();
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                requestedUrls.Add(request.RequestUri?.ToString() ?? "");
+                return Task.FromResult(JsonResponse(GetRealisticReleaseJson("Release")));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var result = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("Release", result!.TagName);
+            Assert.Null(result.Version);
+            Assert.DoesNotContain(requestedUrls, u => u.EndsWith("version.json", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_VersionJsonDownloadFails_ReturnsReleaseWithNullVersion()
+        {
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                if (request.RequestUri?.ToString() == VersionJsonUrl)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+                }
+                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var result = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("Release", result!.TagName);
+            Assert.Null(result.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_VersionJsonMalformed_ReturnsReleaseWithNullVersion()
+        {
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                if (request.RequestUri?.ToString() == VersionJsonUrl)
+                {
+                    return Task.FromResult(JsonResponse("{not valid json"));
+                }
+                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var result = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("Release", result!.TagName);
+            Assert.Null(result.Version);
+        }
     }
 }

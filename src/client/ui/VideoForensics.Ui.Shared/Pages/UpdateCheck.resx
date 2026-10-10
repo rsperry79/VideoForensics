@@ -80,4 +80,55 @@
   <data name="CheckFailed" xml:space="preserve">
     <value>Check failed: {0}</value>
   </data>
+  <data name="ReleaseChannelTitle" xml:space="preserve">
+    <value>Release Channel</value>
+  </data>
+  <data name="ReleaseChannelLabel" xml:space="preserve">
+    <value>Channel</value>
+  </data>
+  <data name="ChannelStable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="ChannelTesting" xml:space="preserve">
+    <value>Testing</value>
+  </data>
+  <data name="SaveChannelButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingChannelButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="ChannelSavedMessage" xml:space="preserve">
+    <value>Release channel saved.</value>
+  </data>
+  <data name="ReadOnlyChannelNote" xml:space="preserve">
+    <value>Only a SuperAdmin on the local network can change the release channel.</value>
+  </data>
+  <data name="ChannelLoadFailed" xml:space="preserve">
+    <value>Failed to load release channel: {0}</value>
+  </data>
+  <data name="ChannelSaveFailed" xml:space="preserve">
+    <value>Failed to save release channel: {0}</value>
+  </data>
+  <data name="JustNow" xml:space="preserve">
+    <value>Just now</value>
+  </data>
+  <data name="MinuteAgo" xml:space="preserve">
+    <value>1 minute ago</value>
+  </data>
+  <data name="MinutesAgo" xml:space="preserve">
+    <value>{0} minutes ago</value>
+  </data>
+  <data name="HourAgo" xml:space="preserve">
+    <value>1 hour ago</value>
+  </data>
+  <data name="HoursAgo" xml:space="preserve">
+    <value>{0} hours ago</value>
+  </data>
+  <data name="DayAgo" xml:space="preserve">
+    <value>1 day ago</value>
+  </data>
+  <data name="DaysAgo" xml:space="preserve">
+    <value>{0} days ago</value>
+  </data>
 </root>
