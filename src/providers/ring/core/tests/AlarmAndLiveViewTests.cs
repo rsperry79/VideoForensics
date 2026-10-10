@@ -281,7 +281,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             // Simulate some RTP packets
             liveView.SimulateRtpPacket(1000);
-            await Task.Delay(150);
+
+            // Poll rather than sleep a fixed window: the bitrate timer can miss a short fixed delay under parallel load.
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (bitrateSamples.Count == 0 && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(20);
+            }
 
             int countBeforeDispose = bitrateSamples.Count;
             Assert.True(countBeforeDispose > 0, "Should have received at least one bitrate sample");
