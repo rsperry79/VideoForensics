@@ -1,3 +1,5 @@
+using VideoForensics.Data.Common.Entities;
+
 namespace VideoForensics.Api.Contracts
 {
     /// <summary>
@@ -12,6 +14,31 @@ namespace VideoForensics.Api.Contracts
         Guid Id,
         string DisplayName,
         bool Active
+    );
+
+    /// <summary>
+    /// Full operator record for the SuperAdmin operator-details page. Carries every non-secret field of the
+    /// Operator entity with the same JSON names; PasswordHash, SecurityStamp, and the credential navigation
+    /// are deliberately omitted.
+    /// </summary>
+    public record OperatorDetailsDto(
+        Guid Id,
+        string DisplayName,
+        string Username,
+        string FirstName,
+        string LastName,
+        string Email,
+        string? Phone,
+        OperatorRole Role,
+        bool Active,
+        bool IsApproved,
+        DateTime CreatedAtUtc,
+        bool MustChangePassword,
+        DateTime? PasswordUpdatedAtUtc,
+        int FailedLoginAttemptCount,
+        DateTime? LockedOutUntilUtc,
+        TwoFactorRequirementOverride TwoFactorRequirementOverride,
+        bool IsPrimarySuperAdmin
     );
 
     /// <summary>

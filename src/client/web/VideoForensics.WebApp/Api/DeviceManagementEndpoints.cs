@@ -34,6 +34,8 @@ namespace VideoForensics.WebApp.Api
             _ = group.MapGet("/operators", async (IOperatorRepository operators, CancellationToken ct) =>
                 Results.Ok(await operators.ListAsync(ct)));
 
+            _ = group.MapGet("/operators/{id:guid}", GetOperatorAsync);
+
             _ = group.MapPost("/paired-devices/{id:guid}/revoke", async (
                 Guid id,
                 RevokeDeviceRequest request,
@@ -246,6 +248,18 @@ namespace VideoForensics.WebApp.Api
         }
 
         /// <summary>
+        /// Gets one operator's details for the operator-details page. Returns the secret-free
+        /// <see cref="OperatorDetailsDto"/> projection, never the raw entity (which carries PasswordHash).
+        /// </summary>
+        internal static async Task<IResult> GetOperatorAsync(Guid id, IOperatorRepository operators, CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            return op is null
+                ? Results.NotFound(new { error = "Operator not found" })
+                : Results.Ok(op.ToDto());
+        }
+
+        /// <summary>
         /// Clears an operator's lockout state. Unlike approve/deactivate this restores existing
         /// access rather than granting new access, so it deliberately carries no step-up requirement.
         /// </summary>
@@ -328,4 +342,27 @@ namespace VideoForensics.WebApp.Api
     }
 
     public record RevokeDeviceRequest(string Reason);
+
+    internal static class OperatorDetailsMappingExtensions
+    {
+        /// <summary>Projects an Operator entity to the secret-free wire DTO.</summary>
+        internal static OperatorDetailsDto ToDto(this Operator op) => new(
+            op.Id,
+            op.DisplayName,
+            op.Username,
+            op.FirstName,
+            op.LastName,
+            op.Email,
+            op.Phone,
+            op.Role,
+            op.Active,
+            op.IsApproved,
+            op.CreatedAtUtc,
+            op.MustChangePassword,
+            op.PasswordUpdatedAtUtc,
+            op.FailedLoginAttemptCount,
+            op.LockedOutUntilUtc,
+            op.TwoFactorRequirementOverride,
+            op.IsPrimarySuperAdmin);
+    }
 }
