@@ -311,6 +311,8 @@ builder.Services.AddScoped<IThreatIntelBlocklistService, NullThreatIntelBlocklis
 
 // Banned IP range matching service
 builder.Services.AddScoped<IBannedIpMatchService, BannedIpMatchService>();
+// Singleton: the per-IP lockout counters must outlive a single request. Resolves its scoped repository per ban write.
+builder.Services.AddSingleton<IFailedLoginIpTracker, FailedLoginIpTracker>();
 
 builder.Services.AddHealthChecks();
 

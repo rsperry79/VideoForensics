@@ -62,6 +62,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string LogViewed = nameof(LogViewed);
         public const string OperatorUiModeChanged = nameof(OperatorUiModeChanged);
         public const string JammingIncidentRecorded = nameof(JammingIncidentRecorded);
+        public const string AutoBanCreated = nameof(AutoBanCreated);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -109,7 +110,8 @@ namespace VideoForensics.Data.Common.Entities
             [SuperAdminPasswordReset] = true,
             [LogViewed] = false,
             [OperatorUiModeChanged] = false,
-            [JammingIncidentRecorded] = false
+            [JammingIncidentRecorded] = false,
+            [AutoBanCreated] = true
         };
     }
 }

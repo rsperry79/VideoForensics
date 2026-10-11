@@ -283,7 +283,7 @@ namespace VideoForensics.WebApp.Tests.Api
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(ISessionTierHeaderProtector), typeof(ILockoutPolicySettingsRepository),
                      typeof(ITwoFactorRoleRequirementRepository), typeof(ITwoFactorPendingAuthCache),
                      typeof(INotificationDispatcher), typeof(IBannedIpMatchService), typeof(IThreatIntelBlocklistService),
-                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(IAuthMethodSettingsService), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
+                     typeof(IGeoIpLookupService), typeof(ISecurityAuditService), typeof(IAuthMethodSettingsService), typeof(IFailedLoginIpTracker), typeof(HttpContext), typeof(ILogger<Program>), typeof(CancellationToken)],
                     null);
 
             if (method == null)
@@ -292,7 +292,8 @@ namespace VideoForensics.WebApp.Tests.Api
             var authMethodSettings = new Mock<IAuthMethodSettingsService>();
             authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, context, logger, ct]);
+            var failedLoginIpTracker = new Mock<IFailedLoginIpTracker>().Object;
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, failedLoginIpTracker, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

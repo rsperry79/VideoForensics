@@ -96,7 +96,8 @@ namespace VideoForensics.Hosting
             return IPAddress.IsLoopback(mapped) ? NetworkTier.Local : NetworkTier.Network;
         }
 
-        private static bool IsCloudflareEdgeIp(IPAddress address)
+        /// <summary>True when the address is inside the hardcoded Cloudflare IPv4 edge ranges. IPv6 is never reported (no IPv6 ranges are listed).</summary>
+        public static bool IsCloudflareEdgeIp(IPAddress address)
         {
             IPAddress mapped = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
             if (mapped.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)

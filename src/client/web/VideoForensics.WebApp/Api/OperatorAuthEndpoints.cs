@@ -532,6 +532,7 @@ namespace VideoForensics.WebApp.Api
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
             VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,
             CancellationToken ct)
@@ -661,6 +662,8 @@ namespace VideoForensics.WebApp.Api
                     if (op.LockedOutUntilUtc.HasValue && op.LockedOutUntilUtc.Value > DateTime.UtcNow)
                     {
                         await auditService.RecordAccountLockoutAsync(op.Id, sourceIpString, ct);
+                        // Result deliberately ignored: a ban (or not) must not change the generic 401 this request returns.
+                        _ = await failedLoginIpTracker.RecordLockoutAsync(sourceIpString, op.Id, policy, ct);
                     }
                 }
 
