@@ -35,6 +35,29 @@ namespace VideoForensics.Data.Common.Entities
         public bool FailClosedOnLookupError { get; set; }
 
         /// <summary>
+        /// When true, an IP that triggers lockouts across enough distinct accounts within the window is automatically
+        /// banned (fail2ban-style). Default false: the feature is opt-in until its false-positive rate is understood.
+        /// </summary>
+        public bool AutoBanEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Number of distinct accounts that must be locked out from one client IP within <see cref="AutoBanWindowMinutes"/>
+        /// before that IP is auto-banned. Must be at least 1.
+        /// </summary>
+        public int AutoBanDistinctAccountThreshold { get; set; } = 3;
+
+        /// <summary>
+        /// Sliding window in minutes over which distinct-account lockouts from one client IP are counted. Must be at least 1.
+        /// </summary>
+        public int AutoBanWindowMinutes { get; set; } = 60;
+
+        /// <summary>
+        /// Duration in minutes that an auto-created IP ban remains in effect. Must be at least 1.
+        /// Default 1440 (24 hours).
+        /// </summary>
+        public int AutoBanDurationMinutes { get; set; } = 1440;
+
+        /// <summary>
         /// Timestamp of the last update to these settings, in UTC.
         /// </summary>
         public DateTime UpdatedAtUtc { get; set; }

@@ -39,6 +39,10 @@ namespace VideoForensics.Hosting.Remote
                 LockoutDurationMinutes = result.LockoutDurationMinutes,
                 BlockedCountryCodes = result.BlockedCountryCodes,
                 FailClosedOnLookupError = result.FailClosedOnLookupError,
+                AutoBanEnabled = result.AutoBanEnabled,
+                AutoBanDistinctAccountThreshold = result.AutoBanDistinctAccountThreshold,
+                AutoBanWindowMinutes = result.AutoBanWindowMinutes,
+                AutoBanDurationMinutes = result.AutoBanDurationMinutes,
                 UpdatedAtUtc = result.UpdatedAtUtc,
                 UpdatedByOperatorId = null
             };
@@ -51,7 +55,11 @@ namespace VideoForensics.Hosting.Remote
                 MaxFailedAttempts: settings.MaxFailedAttempts,
                 LockoutDurationMinutes: settings.LockoutDurationMinutes,
                 BlockedCountryCodes: settings.BlockedCountryCodes,
-                FailClosedOnLookupError: settings.FailClosedOnLookupError
+                FailClosedOnLookupError: settings.FailClosedOnLookupError,
+                AutoBanEnabled: settings.AutoBanEnabled,
+                AutoBanDistinctAccountThreshold: settings.AutoBanDistinctAccountThreshold,
+                AutoBanWindowMinutes: settings.AutoBanWindowMinutes,
+                AutoBanDurationMinutes: settings.AutoBanDurationMinutes
             );
 
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync("/api/v1/lockout-policy", requestDto, cancellationToken: ct);

@@ -140,6 +140,89 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(operatorId, capturedSettings.UpdatedByOperatorId);
             Assert.Equal(10, capturedSettings.MaxFailedAttempts);
         }
+
+        [Theory]
+        [InlineData(0, 60, 1440)]
+        [InlineData(-1, 60, 1440)]
+        [InlineData(3, 0, 1440)]
+        [InlineData(3, -5, 1440)]
+        [InlineData(3, 60, 0)]
+        [InlineData(3, 60, -1)]
+        public async Task UpdateLockoutPolicy_NonPositiveAutoBanValue_ReturnsBadRequest(
+            int distinctAccountThreshold, int windowMinutes, int durationMinutes)
+        {
+            // Arrange
+            var request = new UpdateLockoutPolicySettingsRequest(
+                MaxFailedAttempts: 5,
+                LockoutDurationMinutes: 15,
+                BlockedCountryCodes: null,
+                FailClosedOnLookupError: false,
+                AutoBanEnabled: true,
+                AutoBanDistinctAccountThreshold: distinctAccountThreshold,
+                AutoBanWindowMinutes: windowMinutes,
+                AutoBanDurationMinutes: durationMinutes);
+
+            var repository = new Mock<ILockoutPolicySettingsRepository>();
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateDefaultSettings());
+
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(Guid.NewGuid());
+
+            // Act
+            object result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
+                request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
+            repository.Verify(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateLockoutPolicy_ValidAutoBanValues_PersistsAllAutoBanFields()
+        {
+            // Arrange
+            var request = new UpdateLockoutPolicySettingsRequest(
+                MaxFailedAttempts: 5,
+                LockoutDurationMinutes: 15,
+                BlockedCountryCodes: null,
+                FailClosedOnLookupError: false,
+                AutoBanEnabled: true,
+                AutoBanDistinctAccountThreshold: 4,
+                AutoBanWindowMinutes: 90,
+                AutoBanDurationMinutes: 2880);
+
+            var repository = new Mock<ILockoutPolicySettingsRepository>();
+            LockoutPolicySettings? capturedSettings = null;
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateDefaultSettings());
+            repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
+                .Callback<LockoutPolicySettings, CancellationToken>((s, ct) => capturedSettings = s)
+                .Returns(Task.CompletedTask);
+
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+                It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(Guid.NewGuid());
+
+            // Act
+            object result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
+                request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(capturedSettings);
+            Assert.True(capturedSettings.AutoBanEnabled);
+            Assert.Equal(4, capturedSettings.AutoBanDistinctAccountThreshold);
+            Assert.Equal(90, capturedSettings.AutoBanWindowMinutes);
+            Assert.Equal(2880, capturedSettings.AutoBanDurationMinutes);
+            var okResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
+        }
     }
 
     /// <summary>

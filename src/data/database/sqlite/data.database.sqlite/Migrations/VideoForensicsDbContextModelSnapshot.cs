@@ -1656,6 +1656,26 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("AutoBanDistinctAccountThreshold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(3);
+
+                    b.Property<int>("AutoBanDurationMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1440);
+
+                    b.Property<bool>("AutoBanEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("AutoBanWindowMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(60);
+
                     b.Property<string>("BlockedCountryCodes")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
