@@ -24,9 +24,9 @@ namespace VideoForensics.WebApp.Tests
         /// </summary>
         private sealed class FakeLiveViewConnection : ILiveViewConnection
         {
-            public event Action<RTCPReceiverReportSampleDto>? OnReceiverReport;
-            public event Action<long>? OnBitrateSampleBps;
-            public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange;
+            public event Action<RTCPReceiverReportSampleDto>? OnReceiverReport { add { } remove { } }
+            public event Action<long>? OnBitrateSampleBps { add { } remove { } }
+            public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange { add { } remove { } }
             public event Action<byte[], uint, int>? OnVideoRtpPayload;
 
             public int VideoRtpSubscriberCount => OnVideoRtpPayload?.GetInvocationList().Length ?? 0;
