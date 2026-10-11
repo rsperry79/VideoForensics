@@ -185,7 +185,7 @@ namespace VideoForensics.WebApp.Api
                     OriginalOptions = options,
                     StoredPublicKey = credential.WebAuthnPublicKey,
                     StoredSignatureCounter = credential.WebAuthnSignCount,
-                    IsUserHandleOwnerOfCredentialIdCallback = (_, _) => Task.FromResult(true)
+                    IsUserHandleOwnerOfCredentialIdCallback = PasskeyUserHandleVerifier.ForOperator(credential.OperatorId)
                 }, ct);
             }
             catch (Fido2VerificationException ex)
