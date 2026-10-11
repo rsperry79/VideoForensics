@@ -1,10 +1,15 @@
 using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using VideoForensics.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
@@ -147,6 +152,93 @@ namespace VideoForensics.WebApp.Tests
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
             Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
             Assert.Contains("DELETE", endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods);
+        }
+
+        // Endpoint filters are not visible in route metadata, so the step-up requirement is proven through
+        // a real TestServer pipeline: real routing, the SuperAdminLocal policy and StepUpEndpointFilter.
+        private const string PipelineScheme = "BannedIpsPipelineTest";
+
+        private sealed class PipelineAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+        {
+            public PipelineAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+                : base(options, logger, encoder) { }
+
+            protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+            {
+                var identity = new ClaimsIdentity(
+                [
+                    new Claim(VideoForensicsClaimTypes.Role, "SuperAdmin"),
+                    new Claim(VideoForensicsClaimTypes.NetworkTier, "Local"),
+                    new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
+                ], PipelineScheme);
+                return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), PipelineScheme)));
+            }
+        }
+
+        private static async Task<WebApplication> StartPipelineAsync(
+            Mock<IBannedIpRangeRepository> repository,
+            bool stepUpValid)
+        {
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            _ = builder.WebHost.UseTestServer();
+
+            var stepUp = new Mock<IStepUpAuthService>();
+            _ = stepUp.Setup(s => s.Validate(It.IsAny<string>(), It.IsAny<Guid>())).Returns(stepUpValid);
+
+            _ = builder.Services.AddSingleton(repository.Object);
+            _ = builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
+            _ = builder.Services.AddSingleton(new Mock<IFailedLoginIpTracker>().Object);
+            _ = builder.Services.AddSingleton(TierResolver().Object);
+            _ = builder.Services.AddSingleton(stepUp.Object);
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
+            _ = builder.Services.AddAuthentication(PipelineScheme)
+                .AddScheme<AuthenticationSchemeOptions, PipelineAuthHandler>(PipelineScheme, _ => { });
+
+            WebApplication app = builder.Build();
+            _ = app.UseAuthentication();
+            _ = app.UseAuthorization();
+            app.MapBannedIpsEndpoints();
+            await app.StartAsync();
+            return app;
+        }
+
+        [Fact]
+        public async Task UnbanBannedIp_MissingStepUpToken_Returns403AndLeavesBanInPlace()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var repository = new Mock<IBannedIpRangeRepository>();
+            await using WebApplication app = await StartPipelineAsync(repository, stepUpValid: true);
+            using HttpClient client = app.GetTestClient();
+
+            // Act: no X-StepUp-Token header
+            HttpResponseMessage response = await client.DeleteAsync($"/api/v1/banned-ips/{id}");
+
+            // Assert
+            Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+            repository.Verify(r => r.GetActiveAsync(It.IsAny<CancellationToken>()), Times.Never);
+            repository.Verify(r => r.RemoveAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UnbanBannedIp_ValidStepUpToken_Returns204AndRemovesBan()
+        {
+            // Arrange
+            var ban = CreateBan("203.0.113.7/32", Guid.NewGuid());
+            var repository = RepositoryWith(ban);
+            await using WebApplication app = await StartPipelineAsync(repository, stepUpValid: true);
+            using HttpClient client = app.GetTestClient();
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/banned-ips/{ban.Id}");
+            request.Headers.Add("X-StepUp-Token", "valid-step-up-token");
+
+            // Act
+            HttpResponseMessage response = await client.SendAsync(request);
+
+            // Assert
+            Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+            repository.Verify(r => r.RemoveAsync(ban.Id, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         private static DefaultHttpContext OperatorContext(Guid operatorId) => new()

@@ -22,7 +22,7 @@ namespace VideoForensics.WebApp.Api
             RouteGroupBuilder group = app.MapGroup("/api/v1/banned-ips").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
             _ = group.MapGet("/", ListAsync).WithName("ListBannedIps");
-            _ = group.MapDelete("/{id:guid}", UnbanAsync).WithName("UnbanBannedIp");
+            _ = group.MapDelete("/{id:guid}", UnbanAsync).WithName("UnbanBannedIp").AddEndpointFilter<StepUpEndpointFilter>();
         }
 
         /// <summary>
