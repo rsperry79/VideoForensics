@@ -9,6 +9,11 @@
 
 <h4 class="mb-4">@L["Title"]</h4>
 
+@if (Setup)
+{
+    <div class="alert alert-info mb-4" data-testid="passkey-setup-prompt">@L["SetupPasskeyPrompt"]</div>
+}
+
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
@@ -115,6 +120,10 @@ else
 }
 
 @code {
+    /// <summary>True when sign-in sent the operator here because they have no passkey yet (?setup=true).</summary>
+    [SupplyParameterFromQuery(Name = "setup")]
+    public bool Setup { get; set; }
+
     private bool _isLoading = true;
     private List<OperatorCredential>? _credentials = new();
     private string? _authError;

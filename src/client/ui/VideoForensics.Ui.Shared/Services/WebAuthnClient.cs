@@ -38,7 +38,7 @@ namespace VideoForensics.Ui.Shared.Services
 
         public bool IsBrowserSupportRequired => true;
 
-        public async Task<bool> IsAvailableAsync()
+        public virtual async Task<bool> IsAvailableAsync()
         {
             try
             {
@@ -148,7 +148,11 @@ namespace VideoForensics.Ui.Shared.Services
             return result.GetProperty("stepUpToken").GetString()!;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword)> SignInWithPasswordAsync(string username, string password)
+        /// <summary>
+        /// Password sign-in. <c>HasPasskey</c> is true when the operator already has a non-revoked passkey;
+        /// when false, the caller should send them to passkey setup after sign-in.
+        /// </summary>
+        public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey)> SignInWithPasswordAsync(string username, string password)
         {
             using HttpClient client = CreateClient(null);
 
@@ -158,7 +162,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(response), null, default, "", false);
+                return (false, await ExtractErrorAsync(response), null, default, "", false, false);
             }
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -168,7 +172,8 @@ namespace VideoForensics.Ui.Shared.Services
                 result.GetProperty("sessionToken").GetString()!,
                 result.GetProperty("operatorId").GetGuid(),
                 result.GetProperty("role").GetString()!,
-                result.GetProperty("mustChangePassword").GetBoolean());
+                result.GetProperty("mustChangePassword").GetBoolean(),
+                result.GetProperty("hasPasskey").GetBoolean());
         }
 
         public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username)
@@ -333,7 +338,7 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <summary>Fetches the currently-enabled authentication methods. Fails open (all methods assumed enabled) on error to prevent lockout during connection issues.</summary>
-        public async Task<AuthMethodsInfo> GetAuthMethodsAsync()
+        public virtual async Task<AuthMethodsInfo> GetAuthMethodsAsync()
         {
             try
             {

@@ -37,6 +37,8 @@ namespace VideoForensics.WebApp.Tests.Api
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -79,6 +81,8 @@ namespace VideoForensics.WebApp.Tests.Api
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
             var sessionTokens = MockSessionTokenService();
@@ -125,6 +129,8 @@ namespace VideoForensics.WebApp.Tests.Api
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
             var sessionTokens = MockSessionTokenService();
