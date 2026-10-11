@@ -299,6 +299,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 RingCredentials? credentials = null;
                 Guid? resolvedAccountId = providerAccountId;
+                // The account this restore is about, whether or not it has usable credentials.
+                // Null means no Ring account is linked at all, which is a normal state, not an error.
+                Guid? linkedAccountId = providerAccountId;
 
                 // Try database first if providerAccountId provided
                 if (providerAccountId.HasValue)
@@ -367,6 +370,12 @@ namespace VideoForensics.Providers.Ring.Services
 
                         if (ringAccountsForProvider.Count > 0)
                         {
+                            // Most recently authenticated account is the one reported if none has credentials.
+                            linkedAccountId ??= ringAccountsForProvider
+                                .OrderByDescending(a => a.LastSuccessfulAuthUtc)
+                                .First()
+                                .Id;
+
                             // Try each account until we find one with saved credentials
                             foreach (ProviderAccount? account in ringAccountsForProvider.OrderByDescending(a => a.LastSuccessfulAuthUtc))
                             {
@@ -437,7 +446,14 @@ namespace VideoForensics.Providers.Ring.Services
                 // Credentials must be in database only - no filesystem fallback
                 if (credentials?.RefreshToken == null)
                 {
-                    _logger.LogError("Ring credentials not found in database for account {AccountId}. Use --auth to save credentials to database.", providerAccountId);
+                    if (linkedAccountId == null)
+                    {
+                        _logger.LogInformation("No Ring account linked");
+                    }
+                    else
+                    {
+                        _logger.LogError("Ring account has no stored refresh token. Use --auth to save credentials to database.");
+                    }
                 }
 
                 if (credentials?.RefreshToken == null)
