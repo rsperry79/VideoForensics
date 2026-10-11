@@ -68,6 +68,34 @@ else
                 <small class="d-block mt-2 text-muted">@L["FailClosedOnLookupErrorHelp"]</small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanEnabled"]</label>
+                <div>
+                    <SfCheckBox TChecked="bool" @bind-Checked="_autoBanEnabled" Label="@L["AutoBanEnabledLabel"].Value" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanDistinctAccountThresholdLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanDistinctAccountThreshold" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanWindowMinutesLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanWindowMinutes" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanDurationMinutesLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanDurationMinutes" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
             <div class="mt-4">
                 <SfButton Content="@(_isSavingLockoutPolicy ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveLockoutPolicyAsync" Disabled="@_isSavingLockoutPolicy" CssClass="e-primary" />
             </div>
@@ -144,6 +172,10 @@ else
     private int _lockoutDurationMinutes = 30;
     private string? _blockedCountryCodes;
     private bool _failClosedOnLookupError;
+    private bool _autoBanEnabled;
+    private int _autoBanDistinctAccountThreshold = 3;
+    private int _autoBanWindowMinutes = 60;
+    private int _autoBanDurationMinutes = 1440;
     private bool _lockoutPolicySaveSuccess;
     private string? _lockoutPolicySaveMessage;
 
@@ -207,6 +239,10 @@ else
                 _lockoutDurationMinutes = dto.GetProperty("lockoutDurationMinutes").GetInt32();
                 _blockedCountryCodes = dto.GetProperty("blockedCountryCodes").ValueKind == System.Text.Json.JsonValueKind.Null ? null : dto.GetProperty("blockedCountryCodes").GetString();
                 _failClosedOnLookupError = dto.GetProperty("failClosedOnLookupError").GetBoolean();
+                _autoBanEnabled = dto.GetProperty("autoBanEnabled").GetBoolean();
+                _autoBanDistinctAccountThreshold = dto.GetProperty("autoBanDistinctAccountThreshold").GetInt32();
+                _autoBanWindowMinutes = dto.GetProperty("autoBanWindowMinutes").GetInt32();
+                _autoBanDurationMinutes = dto.GetProperty("autoBanDurationMinutes").GetInt32();
             }
             catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
@@ -293,7 +329,11 @@ else
                 maxFailedAttempts = _maxFailedAttempts,
                 lockoutDurationMinutes = _lockoutDurationMinutes,
                 blockedCountryCodes = _blockedCountryCodes,
-                failClosedOnLookupError = _failClosedOnLookupError
+                failClosedOnLookupError = _failClosedOnLookupError,
+                autoBanEnabled = _autoBanEnabled,
+                autoBanDistinctAccountThreshold = _autoBanDistinctAccountThreshold,
+                autoBanWindowMinutes = _autoBanWindowMinutes,
+                autoBanDurationMinutes = _autoBanDurationMinutes
             };
 
             var response = await client.PutAsJsonAsync("/api/v1/lockout-policy", payload);

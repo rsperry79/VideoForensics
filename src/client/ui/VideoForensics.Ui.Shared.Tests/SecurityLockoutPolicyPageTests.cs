@@ -6,6 +6,9 @@ using System.Net.Http.Json;
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using Syncfusion.Blazor.Buttons;
+using Syncfusion.Blazor.Inputs;
 using Microsoft.JSInterop;
 
 using Moq;
@@ -31,6 +34,19 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     {
         public List<HttpRequestMessage> Requests { get; } = new();
 
+        /// <summary>Body returned by GET /api/v1/lockout-policy; tests override it to simulate stored auto-ban values.</summary>
+        public object PolicyBody { get; set; } = new
+        {
+            maxFailedAttempts = 5,
+            lockoutDurationMinutes = 30,
+            blockedCountryCodes = (string?)null,
+            failClosedOnLookupError = false,
+            autoBanEnabled = false,
+            autoBanDistinctAccountThreshold = 3,
+            autoBanWindowMinutes = 60,
+            autoBanDurationMinutes = 1440
+        };
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
@@ -45,13 +61,7 @@ public class SecurityLockoutPolicyPageTests : BunitContext
 
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new
-                {
-                    maxFailedAttempts = 5,
-                    lockoutDurationMinutes = 30,
-                    blockedCountryCodes = (string?)null,
-                    failClosedOnLookupError = false
-                })
+                Content = JsonContent.Create(PolicyBody)
             });
         }
     }
@@ -132,5 +142,89 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             Assert.NotNull(r.Headers.Authorization);
             Assert.Equal("test-token", r.Headers.Authorization!.Parameter);
         });
+    }
+
+    private static IStringLocalizer<SecurityLockoutPolicy> GetLocalizer(BunitContext ctx) =>
+        ctx.Services.GetRequiredService<IStringLocalizer<SecurityLockoutPolicy>>();
+
+    [Fact]
+    public async Task SecurityLockoutPolicy_RendersAutoBanInputs_WithLocalizedLabels()
+    {
+        await RegisterSignedInSessionAsync();
+        var localizer = GetLocalizer(this);
+
+        var cut = Render<SecurityLockoutPolicy>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var markup = cut.Markup;
+            Assert.Contains(localizer["AutoBanEnabledLabel"].Value, markup, StringComparison.Ordinal);
+            Assert.Contains(localizer["AutoBanDistinctAccountThresholdLabel"].Value, markup, StringComparison.Ordinal);
+            Assert.Contains(localizer["AutoBanWindowMinutesLabel"].Value, markup, StringComparison.Ordinal);
+            Assert.Contains(localizer["AutoBanDurationMinutesLabel"].Value, markup, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task SecurityLockoutPolicy_LoadedPolicy_PopulatesAutoBanInputs()
+    {
+        await RegisterSignedInSessionAsync();
+        _handler.PolicyBody = new
+        {
+            maxFailedAttempts = 5,
+            lockoutDurationMinutes = 30,
+            blockedCountryCodes = (string?)null,
+            failClosedOnLookupError = false,
+            autoBanEnabled = true,
+            autoBanDistinctAccountThreshold = 7,
+            autoBanWindowMinutes = 15,
+            autoBanDurationMinutes = 240
+        };
+
+        var cut = Render<SecurityLockoutPolicy>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var numbers = cut.FindComponents<SfNumericTextBox<int>>().Select(c => c.Instance.Value).ToList();
+            Assert.Contains(7, numbers);
+            Assert.Contains(15, numbers);
+            Assert.Contains(240, numbers);
+
+            var checkboxes = cut.FindComponents<SfCheckBox<bool>>().Select(c => c.Instance.Checked).ToList();
+            Assert.Contains(true, checkboxes);
+        });
+    }
+
+    [Fact]
+    public async Task SecurityLockoutPolicy_Save_IncludesAutoBanFieldsInBody()
+    {
+        await RegisterSignedInSessionAsync();
+        _handler.PolicyBody = new
+        {
+            maxFailedAttempts = 5,
+            lockoutDurationMinutes = 30,
+            blockedCountryCodes = (string?)null,
+            failClosedOnLookupError = false,
+            autoBanEnabled = true,
+            autoBanDistinctAccountThreshold = 7,
+            autoBanWindowMinutes = 15,
+            autoBanDurationMinutes = 240
+        };
+        var localizer = GetLocalizer(this);
+
+        var cut = Render<SecurityLockoutPolicy>();
+        cut.WaitForAssertion(() => Assert.Contains(localizer["AutoBanEnabledLabel"].Value, cut.Markup, StringComparison.Ordinal));
+
+        var saveButton = cut.FindAll("button").First(b => b.TextContent.Trim() == localizer["SaveButton"].Value);
+        saveButton.Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(_handler.Requests, r => r.Method == HttpMethod.Put));
+        var put = _handler.Requests.First(r => r.Method == HttpMethod.Put);
+        var body = System.Text.Json.JsonDocument.Parse(await put.Content!.ReadAsStringAsync()).RootElement;
+
+        Assert.True(body.GetProperty("autoBanEnabled").GetBoolean());
+        Assert.Equal(7, body.GetProperty("autoBanDistinctAccountThreshold").GetInt32());
+        Assert.Equal(15, body.GetProperty("autoBanWindowMinutes").GetInt32());
+        Assert.Equal(240, body.GetProperty("autoBanDurationMinutes").GetInt32());
     }
 }

@@ -74,6 +74,21 @@
   <data name="FailClosedOnLookupErrorHelp" xml:space="preserve">
     <value>When enabled, login is blocked if a GeoIP or threat-intelligence lookup fails. When disabled, login is allowed (fail open).</value>
   </data>
+  <data name="AutoBanEnabled" xml:space="preserve">
+    <value>Auto-Ban Repeat Offenders</value>
+  </data>
+  <data name="AutoBanEnabledLabel" xml:space="preserve">
+    <value>Automatically ban IPs that trigger lockouts across multiple accounts</value>
+  </data>
+  <data name="AutoBanDistinctAccountThresholdLabel" xml:space="preserve">
+    <value>Distinct Accounts to Trigger Auto-Ban</value>
+  </data>
+  <data name="AutoBanWindowMinutesLabel" xml:space="preserve">
+    <value>Auto-Ban Window (minutes)</value>
+  </data>
+  <data name="AutoBanDurationMinutesLabel" xml:space="preserve">
+    <value>Auto-Ban Duration (minutes)</value>
+  </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
   </data>
