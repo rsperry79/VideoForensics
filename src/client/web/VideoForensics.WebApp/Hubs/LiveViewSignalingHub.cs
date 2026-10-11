@@ -23,6 +23,13 @@ namespace VideoForensics.WebApp.Hubs
         private readonly BrowserLiveViewBridge _browserBridge;
         private readonly ILogger<LiveViewSignalingHub> _logger;
 
+        /// <summary>
+        /// Per-(connection, session) gates that serialize <see cref="RequestOffer"/>. Static because each
+        /// hub invocation runs on a new hub instance. An entry exists only while a call holds or awaits
+        /// its gate, so the table does not grow with every connection.
+        /// </summary>
+        private static readonly Dictionary<(string ConnectionId, Guid SessionId), OfferGate> OfferGates = new();
+
         public LiveViewSignalingHub(
             ILiveViewSessionService liveViewSessionService,
             BrowserLiveViewBridge browserBridge,
@@ -36,6 +43,7 @@ namespace VideoForensics.WebApp.Hubs
         /// <summary>
         /// Called by the browser to request the server's offer. Creates the browser-leg peer connection
         /// if it doesn't exist, creates an SDP offer, and returns it for the browser to set as remote.
+        /// Concurrent calls for the same connection and session share one leg and one offer.
         /// </summary>
         public async Task<string> RequestOffer(Guid liveViewSessionId)
         {
@@ -45,13 +53,19 @@ namespace VideoForensics.WebApp.Hubs
                     "RequestOffer from SignalR {ConnectionId} for session {SessionId}",
                     Context.ConnectionId, liveViewSessionId);
 
+                CancellationToken ct = Context.ConnectionAborted;
+
                 // Get the underlying Ring connection from the orchestrator
-                var ringConnection = await _liveViewSessionService.GetConnectionForSessionAsync(liveViewSessionId, CancellationToken.None);
+                var ringConnection = await _liveViewSessionService.GetConnectionForSessionAsync(liveViewSessionId, ct);
                 if (ringConnection == null)
                 {
                     throw new InvalidOperationException(
                         $"No live connection found for session {liveViewSessionId}. Session may have terminated.");
                 }
+
+                // Hold the gate across the leg lookup, creation, and offer. Without it, two calls can both miss
+                // the leg, both subscribe an ICE push handler to the same peer, and both generate an offer.
+                using IDisposable gate = await AcquireOfferGateAsync((Context.ConnectionId, liveViewSessionId), ct);
 
                 // Create the browser-leg peer connection if it doesn't exist
                 var browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
@@ -60,7 +74,9 @@ namespace VideoForensics.WebApp.Hubs
                     browserPc = await _browserBridge.CreateBrowserLegAsync(
                         Context.ConnectionId, liveViewSessionId, ringConnection);
 
-                    // Set up ICE candidate handler - push candidates to browser as they're generated
+                    // Set up ICE candidate handler - push candidates to browser as they're generated.
+                    // The handler is synchronous, so the push can't be awaited here. Observe the outcome
+                    // instead: an unobserved faulted task would drop the error silently.
                     browserPc.onicecandidate += candidate =>
                     {
                         if (candidate != null)
@@ -69,9 +85,22 @@ namespace VideoForensics.WebApp.Hubs
                                 "ReceiveIceCandidate",
                                 candidate.candidate,
                                 candidate.sdpMLineIndex,
-                                CancellationToken.None);
+                                ct)
+                                .ContinueWith(
+                                    t => _logger.LogError(
+                                        t.Exception,
+                                        "Failed to push ICE candidate for session {SessionId}",
+                                        liveViewSessionId),
+                                    TaskContinuationOptions.OnlyOnFaulted);
                         }
                     };
+                }
+
+                // Reuse the offer already set on this leg. A second createOffer on the same peer would
+                // replace the local description the browser is negotiating against.
+                if (browserPc.localDescription?.type == RTCSdpType.offer)
+                {
+                    return browserPc.localDescription.sdp.ToString();
                 }
 
                 // Create offer
@@ -82,7 +111,8 @@ namespace VideoForensics.WebApp.Hubs
                     "Sending offer for session {SessionId} to SignalR {ConnectionId}",
                     liveViewSessionId, Context.ConnectionId);
 
-                return offer.sdp;
+                // Return the local description, not the pre-set offer, so every call returns the same SDP.
+                return browserPc.localDescription?.sdp.ToString() ?? offer.sdp;
             }
             catch (Exception ex)
             {
@@ -95,6 +125,9 @@ namespace VideoForensics.WebApp.Hubs
         /// Called by the browser to submit its answer to the server's offer.
         /// Sets the remote description on the browser-leg peer connection.
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// If there is no browser leg for the session, or SIPSorcery rejects the answer.
+        /// </exception>
         public async Task SubmitAnswer(Guid liveViewSessionId, string sdpAnswer)
         {
             try
@@ -110,12 +143,19 @@ namespace VideoForensics.WebApp.Hubs
                         $"Browser peer connection not found for session {liveViewSessionId}.");
                 }
 
-                browserPc.setRemoteDescription(
+                // SIPSorcery reports a rejected answer through its result, not an exception. Ignoring it
+                // would leave the leg stuck with no media and no error for the browser.
+                SetDescriptionResultEnum result = browserPc.setRemoteDescription(
                     new RTCSessionDescriptionInit
                     {
                         type = RTCSdpType.answer,
                         sdp = sdpAnswer
                     });
+                if (result != SetDescriptionResultEnum.OK)
+                {
+                    throw new InvalidOperationException(
+                        $"Browser answer rejected for session {liveViewSessionId}: {result}.");
+                }
 
                 _logger.LogInformation(
                     "Answer set for session {SessionId}, SignalR {ConnectionId}",
@@ -132,6 +172,9 @@ namespace VideoForensics.WebApp.Hubs
         /// Called by the browser to submit an ICE candidate discovered on the browser side.
         /// Adds the candidate to the browser-leg peer connection.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// If <paramref name="sdpMLineIndex"/> is outside 0..<see cref="ushort.MaxValue"/>.
+        /// </exception>
         public async Task SubmitIceCandidate(Guid liveViewSessionId, string candidate, int sdpMLineIndex)
         {
             try
@@ -139,6 +182,14 @@ namespace VideoForensics.WebApp.Hubs
                 _logger.LogDebug(
                     "SubmitIceCandidate from SignalR {ConnectionId} for session {SessionId}",
                     Context.ConnectionId, liveViewSessionId);
+
+                // Validate before narrowing. An unchecked (ushort) cast turns -1 into 65535 without error.
+                if (sdpMLineIndex < 0 || sdpMLineIndex > ushort.MaxValue)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(sdpMLineIndex), sdpMLineIndex,
+                        $"sdpMLineIndex must be between 0 and {ushort.MaxValue}.");
+                }
 
                 var browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
                 if (browserPc == null)
@@ -185,6 +236,88 @@ namespace VideoForensics.WebApp.Hubs
             }
 
             await base.OnDisconnectedAsync(exception);
+        }
+
+        /// <summary>
+        /// Waits for the gate for one (connection, session) key. Other keys never wait on it.
+        /// </summary>
+        private static async Task<IDisposable> AcquireOfferGateAsync((string ConnectionId, Guid SessionId) key, CancellationToken ct)
+        {
+            OfferGate gate;
+            lock (OfferGates)
+            {
+                if (!OfferGates.TryGetValue(key, out gate!))
+                {
+                    gate = new OfferGate();
+                    OfferGates[key] = gate;
+                }
+                gate.Holders++;
+            }
+
+            try
+            {
+                await gate.Semaphore.WaitAsync(ct);
+            }
+            catch
+            {
+                ReleaseHold(key, gate);
+                throw;
+            }
+
+            return new OfferGateLease(key, gate);
+        }
+
+        /// <summary>
+        /// Drops one hold on a gate and removes the table entry when no call holds or awaits it.
+        /// </summary>
+        private static void ReleaseHold((string ConnectionId, Guid SessionId) key, OfferGate gate)
+        {
+            lock (OfferGates)
+            {
+                if (--gate.Holders == 0)
+                {
+                    OfferGates.Remove(key);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Semaphore and waiter count for one offer key. <see cref="Holders"/> is guarded by the
+        /// <see cref="OfferGates"/> lock.
+        /// </summary>
+        private sealed class OfferGate
+        {
+            public SemaphoreSlim Semaphore { get; } = new(1, 1);
+
+            public int Holders { get; set; }
+        }
+
+        /// <summary>
+        /// Releases the gate and drops this call's hold when disposed.
+        /// </summary>
+        private sealed class OfferGateLease : IDisposable
+        {
+            private readonly (string ConnectionId, Guid SessionId) _key;
+            private readonly OfferGate _gate;
+            private bool _disposed;
+
+            public OfferGateLease((string ConnectionId, Guid SessionId) key, OfferGate gate)
+            {
+                _key = key;
+                _gate = gate;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _gate.Semaphore.Release();
+                ReleaseHold(_key, _gate);
+            }
         }
     }
 }
