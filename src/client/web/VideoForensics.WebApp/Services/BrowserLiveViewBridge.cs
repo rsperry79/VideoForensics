@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using SIPSorcery.Net;
 
@@ -21,6 +22,7 @@ namespace VideoForensics.WebApp.Services
     public class BrowserLiveViewBridge
     {
         private readonly ILogger<BrowserLiveViewBridge> _logger;
+        private readonly BrowserLiveViewOptions _options;
         private readonly ConcurrentDictionary<(string connectionId, Guid sessionId), BrowserLiveViewPeerConnection> _activePeers = new();
 
         /// <summary>
@@ -30,9 +32,10 @@ namespace VideoForensics.WebApp.Services
             RTCPeerConnection PeerConnection,
             IDisposable? RtpSubscription);
 
-        public BrowserLiveViewBridge(ILogger<BrowserLiveViewBridge> logger)
+        public BrowserLiveViewBridge(ILogger<BrowserLiveViewBridge> logger, IOptions<BrowserLiveViewOptions> options)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
         /// <summary>
@@ -65,13 +68,12 @@ namespace VideoForensics.WebApp.Services
                 "Creating browser peer connection for session {SessionId}, connection {ConnectionId}",
                 sessionId, connectionId);
 
-            // Configure RTCPeerConnection with STUN server
+            // ICE servers come from configuration so tests can point at an unreachable STUN server.
             var config = new RTCConfiguration
             {
-                iceServers =
-                [
-                    new RTCIceServer { urls = "stun:stun.l.google.com:19302" }
-                ]
+                iceServers = _options.IceServerUrls
+                    .Select(url => new RTCIceServer { urls = url })
+                    .ToList()
             };
             var pc = new RTCPeerConnection(config);
 

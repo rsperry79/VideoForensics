@@ -37,7 +37,9 @@ namespace VideoForensics.WebApp.Tests
         }
 
         private static BrowserLiveViewBridge BuildBridge() =>
-            new(Microsoft.Extensions.Logging.Abstractions.NullLogger<BrowserLiveViewBridge>.Instance);
+            new(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<BrowserLiveViewBridge>.Instance,
+                Microsoft.Extensions.Options.Options.Create(new BrowserLiveViewOptions()));
 
         [Fact]
         public async Task CreateBrowserLegAsync_NullConnection_ThrowsArgumentNullException()
