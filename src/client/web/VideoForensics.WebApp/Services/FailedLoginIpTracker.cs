@@ -59,6 +59,13 @@ namespace VideoForensics.WebApp.Services
                 return false;
             }
 
+            // v1 is IPv4-only: an IPv6 edge peer could otherwise be banned, and no IPv6 edge ranges are known yet.
+            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+            {
+                _logger.LogInformation("Auto-ban skipped for IPv6 address");
+                return false;
+            }
+
             string key = address.ToString();
             DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
             TimeSpan window = TimeSpan.FromMinutes(policy.AutoBanWindowMinutes);
@@ -209,8 +216,7 @@ namespace VideoForensics.WebApp.Services
         /// (an unresolved tunnel peer, whose ban would hit every Internet-tier user). Uses the resolver's own range list.
         /// </summary>
         /// <remarks>
-        /// Not covered: an IPv6 Cloudflare edge peer. NetworkTierResolver lists no IPv6 ranges, so such an
-        /// address reaches here and is banned as /128. Open item in plans/fail2ban-style-auto-ban.md.
+        /// IPv6 is rejected by the caller after normalization, since v1 auto-ban is IPv4-only (no IPv6 edge ranges exist).
         /// </remarks>
         private static bool TryNormalizeBannableAddress(string? clientIp, [NotNullWhen(true)] out IPAddress? address, out string reason)
         {

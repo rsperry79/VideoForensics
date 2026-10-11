@@ -175,8 +175,9 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public async Task FailedLoginIpTracker_Ipv6Client_BansSlash128()
+        public async Task FailedLoginIpTracker_IPv6Address_NeverBans()
         {
+            // v1 is IPv4-only: no IPv6 Cloudflare edge ranges exist in the resolver, so an IPv6 edge peer must never be banned.
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
             var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
@@ -184,11 +185,27 @@ namespace VideoForensics.WebApp.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                await tracker.RecordLockoutAsync("2001:db8::25", Guid.NewGuid(), policy, CancellationToken.None);
+                Assert.False(await tracker.RecordLockoutAsync("2001:db8::25", Guid.NewGuid(), policy, CancellationToken.None));
             }
 
-            BannedIpRange ban = Assert.Single(store);
-            Assert.Equal("2001:db8::25/128", ban.CidrRange);
+            Assert.Empty(store);
+        }
+
+        [Fact]
+        public async Task FailedLoginIpTracker_IPv6AddressAfterThreshold_ReturnsFalseAndWritesNoBan()
+        {
+            var store = new List<BannedIpRange>();
+            var repository = CreateBannedRangeRepository(store);
+            var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
+            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            var policy = CreatePolicy(threshold: 3);
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.False(await tracker.RecordLockoutAsync("2001:db8::25", Guid.NewGuid(), policy, CancellationToken.None));
+            }
+
+            repository.Verify(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
