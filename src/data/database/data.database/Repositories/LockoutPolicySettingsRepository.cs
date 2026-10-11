@@ -34,6 +34,10 @@ namespace VideoForensics.Data.Database.Repositories
                     LockoutDurationMinutes = 15,
                     BlockedCountryCodes = null,
                     FailClosedOnLookupError = false,
+                    AutoBanEnabled = false,
+                    AutoBanDistinctAccountThreshold = 3,
+                    AutoBanWindowMinutes = 60,
+                    AutoBanDurationMinutes = 1440,
                     UpdatedAtUtc = DateTime.UtcNow,
                     UpdatedByOperatorId = null
                 };
@@ -67,6 +71,10 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.LockoutDurationMinutes = settings.LockoutDurationMinutes;
                 existing.BlockedCountryCodes = settings.BlockedCountryCodes;
                 existing.FailClosedOnLookupError = settings.FailClosedOnLookupError;
+                existing.AutoBanEnabled = settings.AutoBanEnabled;
+                existing.AutoBanDistinctAccountThreshold = settings.AutoBanDistinctAccountThreshold;
+                existing.AutoBanWindowMinutes = settings.AutoBanWindowMinutes;
+                existing.AutoBanDurationMinutes = settings.AutoBanDurationMinutes;
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 existing.UpdatedByOperatorId = settings.UpdatedByOperatorId;
 

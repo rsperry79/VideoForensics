@@ -119,5 +119,92 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.NotNull(retrieved);
             Assert.NotEqual(Guid.Empty, retrieved.Id);
         }
+
+        [Fact]
+        public async Task GetAsync_WhenEmpty_ReturnsAutoBanDefaults()
+        {
+            LockoutPolicySettings settings = await _repository.GetAsync(CancellationToken.None);
+
+            Assert.False(settings.AutoBanEnabled);
+            Assert.Equal(3, settings.AutoBanDistinctAccountThreshold);
+            Assert.Equal(60, settings.AutoBanWindowMinutes);
+            Assert.Equal(1440, settings.AutoBanDurationMinutes);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_WhenEmptyWithDefaultAutoBanFields_PersistsAutoBanDefaults()
+        {
+            var settings = new LockoutPolicySettings
+            {
+                Id = Guid.NewGuid(),
+                MaxFailedAttempts = 5,
+                LockoutDurationMinutes = 15,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(settings, CancellationToken.None);
+
+            LockoutPolicySettings retrieved = await _repository.GetAsync(CancellationToken.None);
+            Assert.False(retrieved.AutoBanEnabled);
+            Assert.Equal(3, retrieved.AutoBanDistinctAccountThreshold);
+            Assert.Equal(60, retrieved.AutoBanWindowMinutes);
+            Assert.Equal(1440, retrieved.AutoBanDurationMinutes);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_WhenEmpty_AutoBanFieldsRoundTrip()
+        {
+            var settings = new LockoutPolicySettings
+            {
+                Id = Guid.NewGuid(),
+                MaxFailedAttempts = 5,
+                LockoutDurationMinutes = 15,
+                AutoBanEnabled = true,
+                AutoBanDistinctAccountThreshold = 7,
+                AutoBanWindowMinutes = 30,
+                AutoBanDurationMinutes = 720,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+
+            await _repository.UpsertAsync(settings, CancellationToken.None);
+
+            LockoutPolicySettings retrieved = await _repository.GetAsync(CancellationToken.None);
+            Assert.True(retrieved.AutoBanEnabled);
+            Assert.Equal(7, retrieved.AutoBanDistinctAccountThreshold);
+            Assert.Equal(30, retrieved.AutoBanWindowMinutes);
+            Assert.Equal(720, retrieved.AutoBanDurationMinutes);
+        }
+
+        [Fact]
+        public async Task UpsertAsync_WhenExists_CopiesAllAutoBanFields()
+        {
+            var initialSettings = new LockoutPolicySettings
+            {
+                Id = Guid.NewGuid(),
+                MaxFailedAttempts = 5,
+                LockoutDurationMinutes = 15,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+            await _repository.UpsertAsync(initialSettings, CancellationToken.None);
+
+            var updatedSettings = new LockoutPolicySettings
+            {
+                Id = initialSettings.Id,
+                MaxFailedAttempts = 5,
+                LockoutDurationMinutes = 15,
+                AutoBanEnabled = true,
+                AutoBanDistinctAccountThreshold = 4,
+                AutoBanWindowMinutes = 90,
+                AutoBanDurationMinutes = 2880,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+            await _repository.UpsertAsync(updatedSettings, CancellationToken.None);
+
+            LockoutPolicySettings retrieved = await _repository.GetAsync(CancellationToken.None);
+            Assert.True(retrieved.AutoBanEnabled);
+            Assert.Equal(4, retrieved.AutoBanDistinctAccountThreshold);
+            Assert.Equal(90, retrieved.AutoBanWindowMinutes);
+            Assert.Equal(2880, retrieved.AutoBanDurationMinutes);
+        }
     }
 }
