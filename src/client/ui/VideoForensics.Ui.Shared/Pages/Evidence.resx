@@ -83,4 +83,70 @@
   <data name="FilesVerifiedForDevice" xml:space="preserve">
     <value>{0} of {1} file(s) verified for this device.</value>
   </data>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Evidence</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>Not signed in.</value>
+  </data>
+  <data name="SignInLink" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToBrowseEvidence" xml:space="preserve">
+    <value>to browse evidence.</value>
+  </data>
+  <data name="LoadingEvidence" xml:space="preserve">
+    <value>Loading evidence...</value>
+  </data>
+  <data name="ThumbnailsUnavailable" xml:space="preserve">
+    <value>Thumbnails unavailable.</value>
+  </data>
+  <data name="RefreshButton" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="TimelineView" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="GridView" xml:space="preserve">
+    <value>Grid</value>
+  </data>
+  <data name="GalleryView" xml:space="preserve">
+    <value>Gallery</value>
+  </data>
+  <data name="ErrorsLoadingFromDevices" xml:space="preserve">
+    <value>Errors loading from devices:</value>
+  </data>
+  <data name="UnableToLoadMedia" xml:space="preserve">
+    <value>Unable to load media:</value>
+  </data>
+  <data name="NoContentUrlForItem" xml:space="preserve">
+    <value>No content URL was returned for this item.</value>
+  </data>
+  <data name="UnknownError" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="ItemCountOne" xml:space="preserve">
+    <value>{0} item</value>
+  </data>
+  <data name="ItemCountOther" xml:space="preserve">
+    <value>{0} items</value>
+  </data>
+  <data name="ColumnTime" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="ColumnKind" xml:space="preserve">
+    <value>Kind</value>
+  </data>
+  <data name="ColumnLabel" xml:space="preserve">
+    <value>Label</value>
+  </data>
+  <data name="ColumnDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="ColumnFile" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="ColumnHash" xml:space="preserve">
+    <value>Hash</value>
+  </data>
 </root>

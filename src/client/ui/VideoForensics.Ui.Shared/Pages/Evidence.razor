@@ -16,7 +16,6 @@
 @using VideoForensics.Ui.Shared.Components.Inspector
 @using VideoForensics.Ui.Shared.Components.Evidence
 @implements IDisposable
-@inject IProviderAuthService AuthService
 @inject IMediaContentUrlProvider MediaUrlProvider
 @inject IDeviceRepository DeviceRepository
 @inject IEventRepository EventRepository
@@ -32,7 +31,7 @@
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
 
-<h4 class="mb-4">Evidence</h4>
+<h4 class="mb-4">@L["PageTitle"]</h4>
 
 <SfToast @ref="_toastRef" />
 
@@ -42,17 +41,17 @@
 }
 else if (!_isAuthenticated)
 {
-    <p>Not signed in. <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> to browse evidence.</p>
+    <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInLink"]</a> @L["SignInToBrowseEvidence"]</p>
 }
 else if (_vm is null)
 {
-    <p>Loading evidence...</p>
+    <p>@L["LoadingEvidence"]</p>
 }
 else
 {
     <PageRightPanelContent>
         <div class="right-panel-section">
-            <h6>Evidence</h6>
+            <h6>@L["PageTitle"]</h6>
         </div>
     </PageRightPanelContent>
 
@@ -64,15 +63,15 @@ else
             }
             @if (_thumbnailsUnavailable)
             {
-                <small class="text-muted" data-testid="thumbnails-unavailable">Thumbnails unavailable.</small>
+                <small class="text-muted" data-testid="thumbnails-unavailable">@L["ThumbnailsUnavailable"]</small>
             }
-            <SfButton Content="Refresh" OnClick="LoadEvidenceAsync" Disabled="@_loadingEvidence" CssClass="e-primary" />
+            <SfButton Content="@L["RefreshButton"]" OnClick="LoadEvidenceAsync" Disabled="@_loadingEvidence" CssClass="e-primary" />
         </div>
 
         @if (_vm.LoadResult.Errors.Count > 0)
         {
             <div style="color: #d32f2f; padding: 12px; background-color: #ffebee; border-radius: 4px;">
-                Errors loading from devices:
+                @L["ErrorsLoadingFromDevices"]
                 @foreach (var kvp in _vm.LoadResult.Errors)
                 {
                     var device = _devices?.FirstOrDefault(d => d.Id == kvp.Key);
@@ -83,9 +82,9 @@ else
         }
 
         <div style="display: flex; flex-direction: row; gap: 0.5rem;">
-            <SfButton Content="Timeline" OnClick="@(() => SetView(EvidenceView.Timeline))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Timeline ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-timeline" />
-            <SfButton Content="Grid" OnClick="@(() => SetView(EvidenceView.Grid))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Grid ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-grid" />
-            <SfButton Content="Gallery" OnClick="@(() => SetView(EvidenceView.Gallery))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Gallery ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-gallery" />
+            <SfButton Content="@L["TimelineView"]" OnClick="@(() => SetView(EvidenceView.Timeline))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Timeline ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-timeline" />
+            <SfButton Content="@L["GridView"]" OnClick="@(() => SetView(EvidenceView.Grid))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Grid ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-grid" />
+            <SfButton Content="@L["GalleryView"]" OnClick="@(() => SetView(EvidenceView.Gallery))" CssClass="@(_vm.Items.Any() ? (_currentView == EvidenceView.Gallery ? "e-primary" : "e-outline") : "e-outline e-disabled")" data-testid="view-gallery" />
             <SfButton Content="@L["DeviceTimeViewLabel"]" OnClick="@(() => SetView(EvidenceView.DeviceTime))" CssClass="@(_currentView == EvidenceView.DeviceTime ? "e-primary" : "e-outline")" data-testid="view-devicetime" />
         </div>
 
@@ -106,7 +105,7 @@ else
     {
         @if (_mediaLoadError is not null)
         {
-            <div class="text-muted" data-testid="media-load-error">Unable to load media: @_mediaLoadError</div>
+            <div class="text-muted" data-testid="media-load-error">@L["UnableToLoadMedia"] @_mediaLoadError</div>
         }
         <MediaViewer
             Item="@_vm.Selected"
@@ -127,7 +126,7 @@ else
             {
                 <div class="timeline-day-group">
                     <div class="timeline-day-header">
-                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @dayGroup.TotalCount item@(dayGroup.TotalCount == 1 ? "" : "s")
+                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @dayGroup.TotalCount @(dayGroup.TotalCount == 1 ? L["ItemCountOne", dayGroup.TotalCount].Value : L["ItemCountOther", dayGroup.TotalCount].Value)
                     </div>
                     @foreach (var deviceGroup in dayGroup.Devices)
                     {
@@ -255,7 +254,9 @@ else
             await SessionState.EnsureLoadedAsync();
             _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out var role) ? role : null;
 
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            // Evidence browsing reads the server database and needs only the paired operator
+            // session (the same signal the header uses), not a linked provider account.
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
@@ -428,7 +429,7 @@ else
             else
             {
                 _currentMediaUrl = null;
-                _mediaLoadError = "No content URL was returned for this item.";
+                _mediaLoadError = L["NoContentUrlForItem"].Value;
             }
         }
         catch (Exception ex)
@@ -637,7 +638,7 @@ else
 
             if (!result.Success || result.Still is null)
             {
-                _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = result.ErrorMessage ?? "Unknown error" };
+                _stillCaptureStatus = new MediaStillCaptureStatus { ErrorMessage = result.ErrorMessage ?? L["UnknownError"].Value };
                 return;
             }
 
@@ -862,11 +863,11 @@ else
                 }
             </Template>
         </GridColumn>
-        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="Time" Width="170px" />
-        <GridColumn Field="@nameof(EvidenceItem.Kind)" HeaderText="Kind" Width="120px" />
-        <GridColumn Field="@nameof(EvidenceItem.Label)" HeaderText="Label" Width="140px" />
-        <GridColumn Field="@nameof(EvidenceItem.DeviceName)" HeaderText="Device" Width="140px" />
-        <GridColumn HeaderText="File" Width="140px">
+        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="@L["ColumnTime"]" Width="170px" />
+        <GridColumn Field="@nameof(EvidenceItem.Kind)" HeaderText="@L["ColumnKind"]" Width="120px" />
+        <GridColumn Field="@nameof(EvidenceItem.Label)" HeaderText="@L["ColumnLabel"]" Width="140px" />
+        <GridColumn Field="@nameof(EvidenceItem.DeviceName)" HeaderText="@L["ColumnDevice"]" Width="140px" />
+        <GridColumn HeaderText="@L["ColumnFile"]" Width="140px">
             <Template>
                 @{
                     var item = (EvidenceItem)context;
@@ -874,7 +875,7 @@ else
                 }
             </Template>
         </GridColumn>
-        <GridColumn HeaderText="Hash" Width="140px">
+        <GridColumn HeaderText="@L["ColumnHash"]" Width="140px">
             <Template>
                 @{
                     var item = (EvidenceItem)context;
