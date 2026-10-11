@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
 @inject IProviderAuthService AuthService
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceConfigRepository DeviceConfigRepository
@@ -18,6 +19,10 @@
 else if (!_isAuthenticated)
 {
     <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToViewConfig"]</p>
+}
+else if (!_hasProviderAccount)
+{
+    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"] <a href="/accounts/add">@L["AddProviderAccount"]</a></div>
 }
 else
 {
@@ -123,6 +128,7 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated;
+    private bool _hasProviderAccount;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
     private string _selectedDeviceIdStr = string.Empty;
 
@@ -140,8 +146,14 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            // Device config needs the paired operator session AND a linked provider (Ring) account.
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
+            {
+                _hasProviderAccount = await AuthService.IsAuthenticatedAsync();
+            }
+            if (_hasProviderAccount)
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();

@@ -83,4 +83,10 @@
   <data name="ApplyFilter" xml:space="preserve">
     <value>Apply Filter</value>
   </data>
+  <data name="NoProviderAccount" xml:space="preserve">
+    <value>No provider account is linked.</value>
+  </data>
+  <data name="AddProviderAccount" xml:space="preserve">
+    <value>Link a provider account</value>
+  </data>
 </root>

@@ -6,7 +6,7 @@
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using Syncfusion.Blazor.Calendars
-@inject IProviderAuthService AuthService
+@inject PairedSessionState SessionState
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
@@ -98,7 +98,10 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            // Chain of custody reads the server database only, so the paired operator session is the
+            // gate, not whether a provider (Ring) account is linked.
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
