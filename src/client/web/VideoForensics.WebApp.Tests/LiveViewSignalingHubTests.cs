@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -139,8 +141,11 @@ namespace VideoForensics.WebApp.Tests
         private static HubFixture BuildHub(
             ILiveViewConnection? connectionForSession,
             ILogger<LiveViewSignalingHub>? logger = null,
-            CancellationToken connectionAborted = default)
+            CancellationToken connectionAborted = default,
+            BrowserLiveViewOptions? options = null)
         {
+            IOptions<BrowserLiveViewOptions> resolvedOptions = Options.Create(options ?? new BrowserLiveViewOptions());
+
             var sessionService = new Mock<ILiveViewSessionService>();
             sessionService
                 .Setup(s => s.GetConnectionForSessionAsync(SessionId, It.IsAny<CancellationToken>()))
@@ -149,7 +154,9 @@ namespace VideoForensics.WebApp.Tests
                 .Setup(s => s.GetConnectionForSessionAsync(It.Is<Guid>(id => id != SessionId), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ILiveViewConnection?)null);
 
-            var bridge = new BrowserLiveViewBridge(Microsoft.Extensions.Logging.Abstractions.NullLogger<BrowserLiveViewBridge>.Instance);
+            var bridge = new BrowserLiveViewBridge(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<BrowserLiveViewBridge>.Instance,
+                resolvedOptions);
 
             var caller = new Mock<ISingleClientProxy>();
             var clients = new Mock<IHubCallerClients>();
@@ -162,7 +169,8 @@ namespace VideoForensics.WebApp.Tests
             var hub = new LiveViewSignalingHub(
                 sessionService.Object,
                 bridge,
-                logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<LiveViewSignalingHub>.Instance)
+                resolvedOptions,
+                logger ??Microsoft.Extensions.Logging.Abstractions.NullLogger<LiveViewSignalingHub>.Instance)
             {
                 Clients = clients.Object,
                 Context = context.Object,
@@ -291,6 +299,52 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task RequestOffer_ValidSession_OfferContainsServerCandidates()
+        {
+            HubFixture fixture = BuildHub(new FakeLiveViewConnection());
+
+            try
+            {
+                string offer = await fixture.Hub.RequestOffer(SessionId);
+
+                // Non-trickle: the offer must carry its candidates, since the browser gets no later candidate push.
+                Assert.Contains(
+                    offer.Split('\n'),
+                    line => line.TrimEnd('\r').StartsWith("a=candidate:", StringComparison.Ordinal));
+            }
+            finally
+            {
+                await fixture.Bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
+
+        [Fact]
+        public async Task RequestOffer_ValidSession_DoesNotPushIceCandidates()
+        {
+            HubFixture fixture = BuildHub(new FakeLiveViewConnection());
+            var pushedMethods = new ConcurrentQueue<string>();
+            fixture.Caller
+                .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .Callback<string, object?[], CancellationToken>((method, _, _) => pushedMethods.Enqueue(method))
+                .Returns(Task.CompletedTask);
+
+            try
+            {
+                await fixture.Hub.RequestOffer(SessionId);
+
+                // A trickle push would run on SIPSorcery's gathering thread after RequestOffer returns.
+                // Wait a bounded window so such a push has time to appear before the assertion.
+                await Task.Delay(TimeSpan.FromSeconds(2));
+
+                Assert.DoesNotContain("ReceiveIceCandidate", pushedMethods);
+            }
+            finally
+            {
+                await fixture.Bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
+
+        [Fact]
         public async Task RequestOffer_ConcurrentCallsSameSession_CreatesOneBrowserLeg()
         {
             var connection = new GatedLiveViewConnection();
@@ -308,13 +362,14 @@ namespace VideoForensics.WebApp.Tests
 
                 string[] offers = await Task.WhenAll(first, second).WaitAsync(AwaitTimeout);
 
-                // One leg means one offer, one RTP subscription, and one ICE push handler on the peer.
+                // One leg means one offer and one RTP subscription. The offer is non-trickle, so the peer
+                // must have no ICE push handler; a second leg would have created one.
                 Assert.Equal(offers[0], offers[1]);
                 Assert.Equal(1, connection.ActiveVideoSubscriptions);
 
                 RTCPeerConnection? pc = await fixture.Bridge.GetBrowserLegAsync(ConnectionId, SessionId);
                 Assert.NotNull(pc);
-                Assert.Equal(1, CountIceCandidateHandlers(pc!));
+                Assert.Equal(0, CountIceCandidateHandlers(pc!));
             }
             finally
             {
@@ -323,25 +378,38 @@ namespace VideoForensics.WebApp.Tests
             }
         }
 
-        [Fact]
-        public async Task RequestOffer_ConnectionAborted_PassesAbortTokenToCandidatePush()
+        /// <summary>
+        /// Options pointing at a STUN server that never answers (TEST-NET-1, RFC 5737), with a short
+        /// gathering timeout so the timeout path runs quickly.
+        /// </summary>
+        private static BrowserLiveViewOptions UnreachableStunOptions() => new()
         {
-            using var abort = new CancellationTokenSource();
-            HubFixture fixture = BuildHub(new FakeLiveViewConnection(), connectionAborted: abort.Token);
-            var pushToken = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
-            fixture.Caller
-                .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .Callback<string, object?[], CancellationToken>((_, _, token) => pushToken.TrySetResult(token))
-                .Returns(Task.CompletedTask);
+            IceServerUrls = ["stun:192.0.2.1:3478"],
+            OfferGatheringTimeout = TimeSpan.FromSeconds(1),
+        };
+
+        /// <summary>
+        /// Awaits a RequestOffer that must fail. The test deadline makes a hang fail the test rather than block the run.
+        /// </summary>
+        private static async Task<InvalidOperationException> RequestOfferExpectingFailureAsync(LiveViewSignalingHub hub)
+        {
+            Task<string> offer = hub.RequestOffer(SessionId);
+            Task finished = await Task.WhenAny(offer, Task.Delay(AwaitTimeout));
+            Assert.Same(offer, finished);
+
+            return await Assert.ThrowsAsync<InvalidOperationException>(() => offer);
+        }
+
+        [Fact]
+        public async Task RequestOffer_StunUnreachable_ThrowsWithinTimeout()
+        {
+            HubFixture fixture = BuildHub(new FakeLiveViewConnection(), options: UnreachableStunOptions());
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                InvalidOperationException error = await RequestOfferExpectingFailureAsync(fixture.Hub);
 
-                // Host candidates are gathered asynchronously after setLocalDescription.
-                CancellationToken observed = await pushToken.Task.WaitAsync(AwaitTimeout);
-
-                Assert.Equal(abort.Token, observed);
+                Assert.Contains("timed out", error.Message);
             }
             finally
             {
@@ -350,24 +418,35 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public async Task RequestOffer_CandidatePushFails_LogsErrorWithException()
+        public async Task RequestOffer_GatheringTimedOut_RemovesBrowserLeg()
         {
-            var logger = new CapturingLogger<LiveViewSignalingHub>();
-            HubFixture fixture = BuildHub(new FakeLiveViewConnection(), logger);
-            var pushFailure = new InvalidOperationException("push failed");
-            fixture.Caller
-                .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromException(pushFailure));
+            HubFixture fixture = BuildHub(new FakeLiveViewConnection(), options: UnreachableStunOptions());
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                await RequestOfferExpectingFailureAsync(fixture.Hub);
 
-                // A push failure happens after RequestOffer has returned, so it must surface in the log.
-                Exception? logged = await logger.ErrorLogged.Task.WaitAsync(AwaitTimeout);
+                Assert.Null(await fixture.Bridge.GetBrowserLegAsync(ConnectionId, SessionId));
+            }
+            finally
+            {
+                await fixture.Bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
 
-                Assert.NotNull(logged);
-                Assert.Equal("push failed", logged!.GetBaseException().Message);
+        [Fact]
+        public async Task RequestOffer_GatheringTimedOut_RetryAllowedAfterFailure()
+        {
+            HubFixture fixture = BuildHub(new FakeLiveViewConnection(), options: UnreachableStunOptions());
+
+            try
+            {
+                await RequestOfferExpectingFailureAsync(fixture.Hub);
+
+                // A leaked gate would block this call forever; it must fail the same way as the first.
+                InvalidOperationException second = await RequestOfferExpectingFailureAsync(fixture.Hub);
+
+                Assert.Contains("timed out", second.Message);
             }
             finally
             {

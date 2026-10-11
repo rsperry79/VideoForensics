@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using SIPSorcery.Net;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.WebApp.Services;
@@ -13,7 +14,8 @@ namespace VideoForensics.WebApp.Hubs
     /// from the Ring camera's connection to the browser's WebRTC peer without re-encoding.
     ///
     /// Unlike LiveHub (send-only for paired MAUI devices), this hub has bidirectional RPC:
-    /// the browser calls RequestOffer, SubmitAnswer, SubmitIceCandidate; the hub pushes back ICE candidates.
+    /// the browser calls RequestOffer, SubmitAnswer, SubmitIceCandidate. The server's ICE candidates
+    /// are embedded in the offer returned by RequestOffer (non-trickle), so the hub never pushes them.
     /// This is the WebApp's own Blazor Server UI connecting directly, not a paired remote device.
     /// </summary>
     [Authorize]
@@ -22,6 +24,7 @@ namespace VideoForensics.WebApp.Hubs
         private readonly ILiveViewSessionService _liveViewSessionService;
         private readonly BrowserLiveViewBridge _browserBridge;
         private readonly ILogger<LiveViewSignalingHub> _logger;
+        private readonly BrowserLiveViewOptions _options;
 
         /// <summary>
         /// Per-(connection, session) gates that serialize <see cref="RequestOffer"/>. Static because each
@@ -33,10 +36,12 @@ namespace VideoForensics.WebApp.Hubs
         public LiveViewSignalingHub(
             ILiveViewSessionService liveViewSessionService,
             BrowserLiveViewBridge browserBridge,
+            IOptions<BrowserLiveViewOptions> options,
             ILogger<LiveViewSignalingHub> logger)
         {
             _liveViewSessionService = liveViewSessionService ?? throw new ArgumentNullException(nameof(liveViewSessionService));
             _browserBridge = browserBridge ?? throw new ArgumentNullException(nameof(browserBridge));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -73,27 +78,6 @@ namespace VideoForensics.WebApp.Hubs
                 {
                     browserPc = await _browserBridge.CreateBrowserLegAsync(
                         Context.ConnectionId, liveViewSessionId, ringConnection);
-
-                    // Set up ICE candidate handler - push candidates to browser as they're generated.
-                    // The handler is synchronous, so the push can't be awaited here. Observe the outcome
-                    // instead: an unobserved faulted task would drop the error silently.
-                    browserPc.onicecandidate += candidate =>
-                    {
-                        if (candidate != null)
-                        {
-                            _ = Clients.Caller.SendAsync(
-                                "ReceiveIceCandidate",
-                                candidate.candidate,
-                                candidate.sdpMLineIndex,
-                                ct)
-                                .ContinueWith(
-                                    t => _logger.LogError(
-                                        t.Exception,
-                                        "Failed to push ICE candidate for session {SessionId}",
-                                        liveViewSessionId),
-                                    TaskContinuationOptions.OnlyOnFaulted);
-                        }
-                    };
                 }
 
                 // Reuse the offer already set on this leg. A second createOffer on the same peer would
@@ -103,8 +87,34 @@ namespace VideoForensics.WebApp.Hubs
                     return browserPc.localDescription.sdp.ToString();
                 }
 
-                // Create offer
-                var offer = browserPc.createOffer(null);
+                // Non-trickle: wait for ICE gathering so the offer SDP carries the server candidates.
+                // createOffer blocks while gathering, so it runs on a worker thread and is bounded by a timeout.
+                // An unreachable ICE server would otherwise hold the gate and the caller indefinitely.
+                Task<RTCSessionDescriptionInit> offerTask = Task.Run(() => browserPc.createOffer(new RTCOfferOptions
+                {
+                    X_WaitForIceGatheringToComplete = true
+                }));
+                Task timeoutTask = Task.Delay(_options.OfferGatheringTimeout, ct);
+                Task winner = await Task.WhenAny(offerTask, timeoutTask);
+
+                if (winner != offerTask)
+                {
+                    // Surfaces cancellation from ct as its own exception, not as a gathering timeout.
+                    await timeoutTask;
+
+                    await _browserBridge.DisposeBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
+
+                    // The abandoned createOffer keeps running until SIPSorcery gives up. Observe a fault so it is not unobserved.
+                    _ = offerTask.ContinueWith(
+                        t => _logger.LogError(t.Exception, "Abandoned offer creation failed for session {SessionId}", liveViewSessionId),
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskScheduler.Default);
+
+                    throw new InvalidOperationException($"ICE gathering timed out for session {liveViewSessionId}.");
+                }
+
+                RTCSessionDescriptionInit offer = await offerTask;
                 await browserPc.setLocalDescription(offer);
 
                 _logger.LogInformation(

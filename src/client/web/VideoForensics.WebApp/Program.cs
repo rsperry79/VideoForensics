@@ -172,6 +172,8 @@ builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 // registration must come first to win; Replace also guarantees a single descriptor for this interface.
 builder.Services.Replace(ServiceDescriptor.Singleton<ILiveViewTelemetryPublisher, LiveViewTelemetryBroadcastService>());
 builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
+builder.Services.Configure<VideoForensics.WebApp.Services.BrowserLiveViewOptions>(
+    builder.Configuration.GetSection(VideoForensics.WebApp.Services.BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 // Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
