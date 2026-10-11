@@ -71,4 +71,10 @@
   <data name="DownloadFailedWithException" xml:space="preserve">
     <value>Download failed: {0}</value>
   </data>
+  <data name="NoProviderAccount" xml:space="preserve">
+    <value>No provider account is linked.</value>
+  </data>
+  <data name="AddProviderAccount" xml:space="preserve">
+    <value>Link a provider account</value>
+  </data>
 </root>

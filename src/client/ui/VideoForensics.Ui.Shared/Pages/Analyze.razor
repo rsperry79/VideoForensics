@@ -5,7 +5,7 @@
 @using VideoForensics.Ui.Shared.Components.Analysis
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Scope
-@inject IProviderAuthService AuthService
+@inject PairedSessionState SessionState
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
 @inject ScopeState ScopeState
@@ -80,7 +80,10 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            // Analysis reads the server database only, so the paired operator session is the gate,
+            // not whether a provider (Ring) account is linked.
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);

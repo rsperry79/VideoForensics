@@ -4,6 +4,8 @@
 @using VideoForensics.Data.Common.Entities
 @using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
 @inject IProviderAuthService AuthService
 @inject IVideoDownloadService DownloadService
 @inject IProviderAccountRepository ProviderAccountRepository
@@ -20,6 +22,10 @@
 else if (!_isAuthenticated)
 {
     <p>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToCollect"]</p>
+}
+else if (!_hasProviderAccount)
+{
+    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"] <a href="/accounts/add">@L["AddProviderAccount"]</a></div>
 }
 else
 {
@@ -112,6 +118,7 @@ else
 @code {
     private bool _isLoading = true;
     private bool _isAuthenticated;
+    private bool _hasProviderAccount;
     private bool _isDownloading;
     private bool _downloadCompleted;
     private bool _downloadSucceeded;
@@ -133,10 +140,16 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            // Downloading needs the paired operator session AND a linked provider (Ring) account.
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
-                await LoadAccountsAsync();
+                _hasProviderAccount = await AuthService.IsAuthenticatedAsync();
+                if (_hasProviderAccount)
+                {
+                    await LoadAccountsAsync();
+                }
             }
         }
         finally

@@ -15,6 +15,7 @@ using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Scope;
 
 /// <summary>
@@ -89,7 +90,17 @@ public abstract class AnalyzePageTestBase : BunitContext
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),
             JammingRepositoryMock.Object,
             DeviceHealthRepositoryMock.Object));
+
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        SignInOperatorAsync().GetAwaiter().GetResult();
     }
+
+    /// <summary>Signs in a paired operator so the page's operator gate passes (the default for these tests).</summary>
+    protected Task SignInOperatorAsync() =>
+        Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+
+    /// <summary>Clears the operator session, so the page shows its signed-out sign-in prompt.</summary>
+    protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
 
     protected static Device CreateTestDevice(string name = "Test Device") => new()
     {
@@ -106,6 +117,44 @@ public abstract class AnalyzePageTestBase : BunitContext
     protected void NavigateToAnalysis(string key) => Nav.NavigateTo($"/analyze?analysis={key}", replace: true);
 
     protected IRenderedComponent<Analyze> RenderPage() => Render<Analyze>();
+}
+
+/// <summary>
+/// Analyze reads only the server database, so its gate is the paired operator session
+/// (PairedSessionState), not whether a provider (Ring) account is linked.
+/// </summary>
+public class Analyze_OperatorGate_Tests : AnalyzePageTestBase
+{
+    [Fact]
+    public async Task Analyze_OperatorSignedOut_ShowsSignInPrompt()
+    {
+        // Provider account linked, but no operator session: the sign-in prompt must render.
+        await SignOutOperatorAsync();
+        AuthServiceMock
+            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var component = RenderPage();
+
+        Assert.Contains("You are not signed in.", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='analysis-reports']"));
+    }
+
+    [Fact]
+    public async Task Analyze_OperatorSignedInNoRingAccount_ShowsContent()
+    {
+        // Operator signed in, no provider account linked: reports read the server DB only, so the
+        // analysis tabs must render and the sign-in prompt must not.
+        await SignInOperatorAsync();
+        AuthServiceMock
+            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var component = RenderPage();
+
+        Assert.DoesNotContain("You are not signed in.", component.Markup);
+        Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
+    }
 }
 
 public class Analyze_DefaultTab_Tests : AnalyzePageTestBase
@@ -127,11 +176,9 @@ public class Analyze_DefaultTab_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void NotAuthenticated_ShowsSignInPrompt_NoServiceCalls()
+    public async Task OperatorNotSignedIn_ShowsSignInPrompt_NoServiceCalls()
     {
-        AuthServiceMock
-            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        await SignOutOperatorAsync();
 
         var component = RenderPage();
 
