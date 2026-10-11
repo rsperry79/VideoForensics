@@ -368,7 +368,7 @@ namespace VideoForensics.WebApp.Api
                         OriginalOptions = options,
                         StoredPublicKey = device.WebAuthnPublicKey,
                         StoredSignatureCounter = device.WebAuthnSignCount,
-                        IsUserHandleOwnerOfCredentialIdCallback = (_, _) => Task.FromResult(true)
+                        IsUserHandleOwnerOfCredentialIdCallback = PasskeyUserHandleVerifier.ForOperator(device.OperatorId)
                     }, ct);
                 }
                 catch (Fido2VerificationException ex)
@@ -464,7 +464,7 @@ namespace VideoForensics.WebApp.Api
                         OriginalOptions = options,
                         StoredPublicKey = device.WebAuthnPublicKey,
                         StoredSignatureCounter = device.WebAuthnSignCount,
-                        IsUserHandleOwnerOfCredentialIdCallback = (_, _) => Task.FromResult(true)
+                        IsUserHandleOwnerOfCredentialIdCallback = PasskeyUserHandleVerifier.ForOperator(device.OperatorId)
                     }, ct);
 
                     await pairedDevices.RecordSuccessfulAuthAsync(device.Id, result.SignCount,
