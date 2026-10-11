@@ -88,7 +88,7 @@ else
         _error = null;
         try
         {
-            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword) =
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
 
             if (!success)
@@ -102,6 +102,12 @@ else
             if (mustChangePassword)
             {
                 NavigationManager.NavigateTo("/change-password");
+            }
+            else if (!hasPasskey)
+            {
+                // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
+                // to show the setup prompt.
+                NavigationManager.NavigateTo("/settings/passkeys?setup=true");
             }
             else
             {

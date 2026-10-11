@@ -751,7 +751,8 @@ namespace VideoForensics.WebApp.Api
                         operatorId = op.Id,
                         role = op.Role.ToString(),
                         mustChangePassword = op.MustChangePassword,
-                        requiresPasskeyRegistration = true
+                        requiresPasskeyRegistration = true,
+                        hasPasskey = operatorCredentials.Any(c => !c.RevokedAtUtc.HasValue)
                     });
                 }
                 else
@@ -769,7 +770,11 @@ namespace VideoForensics.WebApp.Api
                 }
             }
 
-            // 2FA not required - proceed with normal login
+            // 2FA not required - proceed with normal login.
+            // hasPasskey tells the UI whether to send the operator to passkey setup. Only OperatorCredential
+            // rows count; PairedDevice records are device-level and must not satisfy the check.
+            IReadOnlyList<OperatorCredential> accountCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
+            bool hasPasskey = accountCredentials.Any(c => !c.RevokedAtUtc.HasValue);
             string sessionToken = sessionTokens.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp);
 
             await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
@@ -805,7 +810,8 @@ namespace VideoForensics.WebApp.Api
                 sessionToken = sessionToken,
                 operatorId = op.Id,
                 role = op.Role.ToString(),
-                mustChangePassword = op.MustChangePassword
+                mustChangePassword = op.MustChangePassword,
+                hasPasskey
             });
         }
 

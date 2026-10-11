@@ -171,6 +171,8 @@ namespace VideoForensics.WebApp.Tests
             ISessionTokenService sessionTokens)
         {
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -224,6 +226,8 @@ namespace VideoForensics.WebApp.Tests
             var request = CreateLoginRequest(op.Username, TestPassword);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -272,6 +276,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
 
@@ -314,6 +320,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
@@ -357,6 +365,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
@@ -400,6 +410,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
 
@@ -442,6 +454,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
 
@@ -491,6 +505,8 @@ namespace VideoForensics.WebApp.Tests
             var auditService = new Mock<ISecurityAuditService>();
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -635,6 +651,8 @@ namespace VideoForensics.WebApp.Tests
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -665,6 +683,89 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task PasswordLogin_OperatorWithoutPasskey_ReturnsHasPasskeyFalse()
+        {
+            // Arrange - 2FA not required; operator has no OperatorCredential at all
+            IResult result = await RunPasswordLoginWithCredentialsAsync(new List<OperatorCredential>());
+
+            // Assert
+            Assert.False(GetOkPayloadBool(result, "hasPasskey"));
+        }
+
+        [Fact]
+        public async Task PasswordLogin_OperatorWithPasskey_ReturnsHasPasskeyTrue()
+        {
+            // Arrange - 2FA not required; operator has one active OperatorCredential
+            var credential = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = Guid.NewGuid(),
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true,
+            };
+
+            IResult result = await RunPasswordLoginWithCredentialsAsync(new List<OperatorCredential> { credential });
+
+            // Assert
+            Assert.True(GetOkPayloadBool(result, "hasPasskey"));
+        }
+
+        /// <summary>Runs a successful password login for an operator whose OperatorCredential list is <paramref name="credentials"/>; 2FA is not required.</summary>
+        private static async Task<IResult> RunPasswordLoginWithCredentialsAsync(List<OperatorCredential> credentialList)
+        {
+            var op = CreateOperator();
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(op);
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(op.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(credentialList);
+
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var lockoutPolicy = MockLockoutPolicyRepository();
+            var auditLog = new Mock<ISecurityAuditLogger>();
+            var notificationDispatcher = new Mock<INotificationDispatcher>();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var auditService = new Mock<ISecurityAuditService>();
+
+            var context = CreateHttpContext(NetworkTier.Network);
+            var request = CreateLoginRequest(op.Username, TestPassword);
+
+            return await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
+                tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                auditService.Object, context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+        }
+
+        /// <summary>Reads a bool property from the anonymous payload of an <c>Ok</c> result. Fails with a clear message if the property is missing.</summary>
+        private static bool GetOkPayloadBool(IResult result, string propertyName)
+        {
+            Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            object? payload = result.GetType().GetProperty("Value")?.GetValue(result);
+            Assert.NotNull(payload);
+
+            var property = payload!.GetType().GetProperty(propertyName);
+            Assert.True(property is not null, $"Login response has no '{propertyName}' property.");
+            return Assert.IsType<bool>(property!.GetValue(payload));
+        }
+
+        [Fact]
         public async Task LoginPassword_PasswordDisabledNonSetupPhase_Returns403Forbidden()
         {
             // Arrange
@@ -685,6 +786,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
 
@@ -735,6 +838,8 @@ namespace VideoForensics.WebApp.Tests
             var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
             var auditService = new Mock<ISecurityAuditService>();
             var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(It.IsAny<OperatorRole>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);

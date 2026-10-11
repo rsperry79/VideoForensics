@@ -75,14 +75,15 @@ public class WebAuthnClientTests
                     sessionToken = "issued-token",
                     operatorId = Guid.NewGuid(),
                     role = "SuperAdmin",
-                    mustChangePassword = false
+                    mustChangePassword = false,
+                    hasPasskey = false
                 })
             }
         };
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        (bool success, string? errorMessage, string? sessionToken, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool success, string? errorMessage, string? sessionToken, _, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
 
         Assert.True(success, errorMessage);
         Assert.Equal("issued-token", sessionToken);
