@@ -1,4 +1,10 @@
-@page "/pair"
+@*
+    This page registers a device-level passkey through the pairing endpoints (api/v1/pairing).
+    It is not routed because device-level passkeys are being retired in favor of operator-bound
+    passkeys (OperatorCredential, MyPasskeys page). Kept for future device-level registration.
+    Re-enable by restoring @page "/pair", the "/pair" allow-list entry in Layout/AuthGate.razor,
+    and a navigation link to this page.
+*@
 @layout MinimalLayout
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Data.Common.Contracts

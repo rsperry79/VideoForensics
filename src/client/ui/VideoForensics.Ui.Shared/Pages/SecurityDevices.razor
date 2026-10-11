@@ -18,23 +18,7 @@
     </div>
 }
 
-<h6 class="mt-4 mb-2">@L["AddClientHeading"]</h6>
-<div class="d-flex flex-row gap-2 mb-4">
-    <SfButton Content="@(_isInitiatingPairing ? L["GeneratingButton"] : L["GenerateQrButton"])" OnClick="InitiatePairingAsync" Disabled="@_isInitiatingPairing" CssClass="e-primary" />
-</div>
-@if (_pairingError is not null)
-{
-    <div class="alert alert-danger mb-4">@_pairingError</div>
-}
-@if (_pairingToken is not null)
-{
-    <div class="border rounded p-4 mb-4 d-flex flex-column align-items-start gap-2" style="max-width: 480px;">
-        <img src="@QrCodeUrl" alt="Pairing QR code" width="240" height="240" />
-        <span>@L["QrInstructions"]</span>
-        <a href="@PairingUrl" target="_blank" rel="noopener" class="text-break">@PairingUrl</a>
-        <span class="text-muted">@L["ExpiresMessage", _pairingExpiresAtUtc]</span>
-    </div>
-}
+@* Device-level pairing UI removed; see Pair.razor for the retained code and why it is kept. *@
 
 <h6 class="mt-4 mb-2">@L["CurrentlyPairedHeading"]</h6>
 <div class="d-flex flex-row gap-2 mb-2">
@@ -143,13 +127,6 @@ else
     private string? _actionError;
     private Guid? _pendingRevokeDeviceId;
     private string _reasonInput = string.Empty;
-    private bool _isInitiatingPairing;
-    private string? _pairingError;
-    private string? _pairingToken;
-    private DateTime? _pairingExpiresAtUtc;
-
-    private string PairingUrl => $"{NavigationManager.BaseUri.TrimEnd('/')}/pair?token={_pairingToken}";
-    private string QrCodeUrl => $"api/v1/pairing/{_pairingToken}/qrcode.png";
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,35 +144,6 @@ else
             await SessionState.EnsureLoadedAsync();
             await LoadAsync();
             StateHasChanged();
-        }
-    }
-
-    private async Task InitiatePairingAsync()
-    {
-        _isInitiatingPairing = true;
-        _pairingError = null;
-        _pairingToken = null;
-        try
-        {
-            var client = CreateClient();
-            var response = await client.PostAsync("api/v1/pairing/initiate", null);
-            if (!response.IsSuccessStatusCode)
-            {
-                _pairingError = await SafeReadErrorAsync(response) ?? L["PairingError1", response.StatusCode];
-                return;
-            }
-
-            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            _pairingToken = body.GetProperty("token").GetString();
-            _pairingExpiresAtUtc = body.GetProperty("expiresAtUtc").GetDateTime();
-        }
-        catch (Exception ex)
-        {
-            _pairingError = L["PairingError2", ex.Message];
-        }
-        finally
-        {
-            _isInitiatingPairing = false;
         }
     }
 
