@@ -53,6 +53,14 @@ namespace VideoForensics.WebApp.Services
             if (ringConnection == null)
                 throw new ArgumentNullException(nameof(ringConnection));
 
+            // Reuse the existing leg for this key. A second peer plus a second RTP subscription
+            // would leak: only one entry is stored, so the extra peer and handler can never be disposed.
+            var key = (connectionId, sessionId);
+            if (_activePeers.TryGetValue(key, out var existing))
+            {
+                return existing.PeerConnection;
+            }
+
             _logger.LogInformation(
                 "Creating browser peer connection for session {SessionId}, connection {ConnectionId}",
                 sessionId, connectionId);
@@ -99,8 +107,24 @@ namespace VideoForensics.WebApp.Services
 
             // Store the peer and its subscription so we can clean up later
             var subscription = new RtpBridgeSubscription(ringConnection, rtpBridgeHandler);
-            var key = (connectionId, sessionId);
-            _activePeers.TryAdd(key, new BrowserLiveViewPeerConnection(pc, subscription));
+            var created = new BrowserLiveViewPeerConnection(pc, subscription);
+            if (!_activePeers.TryAdd(key, created))
+            {
+                // Lost a race with a concurrent call for the same key. Tear down the peer we just built
+                // and return the one already stored, so nothing stays subscribed or open.
+                ringConnection.OnVideoRtpPayload -= rtpBridgeHandler;
+                pc.close();
+                pc.Dispose();
+
+                if (_activePeers.TryGetValue(key, out var winner))
+                {
+                    return winner.PeerConnection;
+                }
+
+                // The racing entry was removed before we could read it. Retry from the top so the
+                // caller still gets a live peer. The disposed one above is never returned.
+                return await CreateBrowserLegAsync(connectionId, sessionId, ringConnection);
+            }
 
             return await Task.FromResult(pc);
         }
