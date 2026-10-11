@@ -174,13 +174,51 @@ namespace VideoForensics.WebApp.Tests
         /// <summary>
         /// Returns how many handlers are subscribed to the peer's <c>onicecandidate</c> event.
         /// SIPSorcery exposes no subscriber count, so this reads the event's backing delegate.
+        /// Throws if the field is missing or not a delegate, so a SIPSorcery rename fails loudly
+        /// instead of returning 0.
         /// </summary>
         private static int CountIceCandidateHandlers(RTCPeerConnection pc)
         {
+            const string FieldName = "_onIceCandidate";
             FieldInfo field = typeof(RTCPeerConnection).GetField(
-                "_onIceCandidate", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?? throw new InvalidOperationException("RTCPeerConnection._onIceCandidate backing field not found.");
-            return (field.GetValue(pc) as Delegate)?.GetInvocationList().Length ?? 0;
+                FieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException(
+                    $"SIPSorcery RTCPeerConnection field '{FieldName}' not found. The test helper relies on it; SIPSorcery 10.0.17 may have renamed it.");
+
+            if (!typeof(Delegate).IsAssignableFrom(field.FieldType))
+            {
+                throw new InvalidOperationException(
+                    $"SIPSorcery RTCPeerConnection field '{FieldName}' is {field.FieldType.FullName}, not a delegate. The helper expects SIPSorcery 10.0.17 layout.");
+            }
+
+            // A null delegate means no subscribers, which is a valid zero count.
+            object? value = field.GetValue(pc);
+            if (value is null)
+            {
+                return 0;
+            }
+
+            if (value is not Delegate handlers)
+            {
+                throw new InvalidOperationException(
+                    $"SIPSorcery RTCPeerConnection field '{FieldName}' holds {value.GetType().FullName}, not a delegate. The helper expects SIPSorcery 10.0.17 layout.");
+            }
+
+            return handlers.GetInvocationList().Length;
+        }
+
+        /// <summary>
+        /// Early warning for a SIPSorcery rename: if the private backing field disappears or changes type,
+        /// the helper throws here instead of silently returning a wrong handler count.
+        /// </summary>
+        [Fact]
+        public void CountIceCandidateHandlers_SipSorceryField_IsPresent()
+        {
+            using var pc = new RTCPeerConnection(new RTCConfiguration());
+
+            int count = CountIceCandidateHandlers(pc);
+
+            Assert.Equal(0, count);
         }
 
         /// <summary>
