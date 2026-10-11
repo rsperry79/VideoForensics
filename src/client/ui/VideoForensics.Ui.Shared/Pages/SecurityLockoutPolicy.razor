@@ -1,6 +1,7 @@
 @page "/settings/lockout-policy"
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
+@using System.Globalization
 @using Microsoft.Extensions.Localization
 @using Syncfusion.Blazor.DropDowns
 @inject NavigationManager NavigationManager
@@ -68,6 +69,34 @@ else
                 <small class="d-block mt-2 text-muted">@L["FailClosedOnLookupErrorHelp"]</small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanEnabled"]</label>
+                <div>
+                    <SfCheckBox TChecked="bool" @bind-Checked="_autoBanEnabled" Label="@L["AutoBanEnabledLabel"].Value" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanDistinctAccountThresholdLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanDistinctAccountThreshold" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanWindowMinutesLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanWindowMinutes" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">@L["AutoBanDurationMinutesLabel"]</label>
+                <div class="d-flex gap-2">
+                    <SfNumericTextBox TValue="int" @bind-Value="_autoBanDurationMinutes" Min="1" Style="max-width: 200px;" />
+                </div>
+            </div>
+
             <div class="mt-4">
                 <SfButton Content="@(_isSavingLockoutPolicy ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveLockoutPolicyAsync" Disabled="@_isSavingLockoutPolicy" CssClass="e-primary" />
             </div>
@@ -75,6 +104,75 @@ else
             @if (_lockoutPolicySaveMessage is not null)
             {
                 <span style="color: @(_lockoutPolicySaveSuccess ? "#4caf50" : "#f44336")" class="mt-3 d-block">@_lockoutPolicySaveMessage</span>
+            }
+        </div>
+    </div>
+
+    <!-- Banned IPs Section (list, Auto badge, and unban with a confirm step; create is not offered here) -->
+    <h5 class="mt-4 mb-2">@L["BannedIpsSection"]</h5>
+    <div class="card mb-4">
+        <div class="card-body">
+            @if (_bannedIpsLoadError is not null)
+            {
+                <div class="alert alert-danger">@_bannedIpsLoadError</div>
+            }
+            else if (_bannedIps is null || _bannedIps.Count == 0)
+            {
+                <span>@L["BannedIpsEmpty"]</span>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>@L["BannedIpsRangeColumn"]</th>
+                            <th>@L["BannedIpsReasonColumn"]</th>
+                            <th>@L["BannedIpsCreatedColumn"]</th>
+                            <th>@L["BannedIpsExpiresColumn"]</th>
+                            <th>@L["BannedIpsActionColumn"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ban in _bannedIps)
+                        {
+                            <tr>
+                                <td>
+                                    @ban.CidrRange
+                                    @if (ban.IsAutoBan)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2" title="@L["BannedIpsAutoBadgeTooltip"].Value">@L["BannedIpsAutoBadge"]</span>
+                                    }
+                                </td>
+                                <td>@ban.Reason</td>
+                                <td>@ban.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                                <td>@(ban.ExpiresAtUtc is { } expires ? expires.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : L["BannedIpsNeverExpires"].Value)</td>
+                                <td>
+                                    @if (_pendingUnbanId == ban.Id)
+                                    {
+                                        <span class="me-2">@L["UnbanConfirmMessage", ban.CidrRange]</span>
+                                        <SfButton Content="@L["UnbanConfirmButton"]"
+                                                  OnClick="@(async () => await ConfirmUnbanAsync(ban))"
+                                                  Disabled="@(_unbanningId == ban.Id)"
+                                                  CssClass="e-danger e-small" />
+                                        <SfButton Content="@L["UnbanCancelButton"]"
+                                                  OnClick="CancelUnban"
+                                                  Disabled="@(_unbanningId == ban.Id)"
+                                                  CssClass="e-outline e-small" />
+                                    }
+                                    else
+                                    {
+                                        <SfButton Content="@L["UnbanButton"]" OnClick="@(() => BeginUnban(ban.Id))" CssClass="e-small" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            @if (_unbanMessage is not null)
+            {
+                <span style="color: @(_unbanSuccess ? "#4caf50" : "#f44336")" class="mt-3 d-block">@_unbanMessage</span>
             }
         </div>
     </div>
@@ -144,8 +242,20 @@ else
     private int _lockoutDurationMinutes = 30;
     private string? _blockedCountryCodes;
     private bool _failClosedOnLookupError;
+    private bool _autoBanEnabled;
+    private int _autoBanDistinctAccountThreshold = 3;
+    private int _autoBanWindowMinutes = 60;
+    private int _autoBanDurationMinutes = 1440;
     private bool _lockoutPolicySaveSuccess;
     private string? _lockoutPolicySaveMessage;
+
+    // Banned IPs state: list, plus the one-row-at-a-time unban confirm step
+    private List<BannedIpRow>? _bannedIps;
+    private string? _bannedIpsLoadError;
+    private Guid? _pendingUnbanId;
+    private Guid? _unbanningId;
+    private bool _unbanSuccess;
+    private string? _unbanMessage;
 
     // Two-factor policy state
     private bool _isLoadingTwoFactor = true;
@@ -178,6 +288,8 @@ else
         _loadError = null;
         _isLoadingTwoFactor = true;
         _twoFactorLoadError = null;
+        _bannedIps = null;
+        _bannedIpsLoadError = null;
 
         try
         {
@@ -207,6 +319,10 @@ else
                 _lockoutDurationMinutes = dto.GetProperty("lockoutDurationMinutes").GetInt32();
                 _blockedCountryCodes = dto.GetProperty("blockedCountryCodes").ValueKind == System.Text.Json.JsonValueKind.Null ? null : dto.GetProperty("blockedCountryCodes").GetString();
                 _failClosedOnLookupError = dto.GetProperty("failClosedOnLookupError").GetBoolean();
+                _autoBanEnabled = dto.GetProperty("autoBanEnabled").GetBoolean();
+                _autoBanDistinctAccountThreshold = dto.GetProperty("autoBanDistinctAccountThreshold").GetInt32();
+                _autoBanWindowMinutes = dto.GetProperty("autoBanWindowMinutes").GetInt32();
+                _autoBanDurationMinutes = dto.GetProperty("autoBanDurationMinutes").GetInt32();
             }
             catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
@@ -218,6 +334,19 @@ else
             catch (Exception ex)
             {
                 _loadError = L["LockoutPolicyLoadFailed", ex.Message];
+            }
+
+            // Load active banned IP ranges
+            try
+            {
+                var client = CreateClient();
+                var response = await client.GetAsync("/api/v1/banned-ips");
+                response.EnsureSuccessStatusCode();
+                _bannedIps = await response.Content.ReadFromJsonAsync<List<BannedIpRow>>(JsonOptions) ?? new List<BannedIpRow>();
+            }
+            catch (Exception ex)
+            {
+                _bannedIpsLoadError = L["BannedIpsLoadFailed", ex.Message];
             }
 
             // Load two-factor requirements
@@ -293,7 +422,11 @@ else
                 maxFailedAttempts = _maxFailedAttempts,
                 lockoutDurationMinutes = _lockoutDurationMinutes,
                 blockedCountryCodes = _blockedCountryCodes,
-                failClosedOnLookupError = _failClosedOnLookupError
+                failClosedOnLookupError = _failClosedOnLookupError,
+                autoBanEnabled = _autoBanEnabled,
+                autoBanDistinctAccountThreshold = _autoBanDistinctAccountThreshold,
+                autoBanWindowMinutes = _autoBanWindowMinutes,
+                autoBanDurationMinutes = _autoBanDurationMinutes
             };
 
             var response = await client.PutAsJsonAsync("/api/v1/lockout-policy", payload);
@@ -389,6 +522,50 @@ else
         }
     }
 
+    private void BeginUnban(Guid banId)
+    {
+        _pendingUnbanId = banId;
+        _unbanMessage = null;
+    }
+
+    private void CancelUnban()
+    {
+        _pendingUnbanId = null;
+    }
+
+    private async Task ConfirmUnbanAsync(BannedIpRow ban)
+    {
+        _unbanningId = ban.Id;
+        _unbanMessage = null;
+
+        try
+        {
+            var client = CreateClient();
+            var response = await client.DeleteAsync($"/api/v1/banned-ips/{ban.Id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _unbanSuccess = false;
+                _unbanMessage = body ?? L["UnbanFailed", response.StatusCode.ToString()].Value;
+                return;
+            }
+
+            _bannedIps?.RemoveAll(r => r.Id == ban.Id);
+            _unbanSuccess = true;
+            _unbanMessage = L["UnbanSucceeded"];
+        }
+        catch (Exception ex)
+        {
+            _unbanSuccess = false;
+            _unbanMessage = L["UnbanFailed", ex.Message];
+        }
+        finally
+        {
+            _unbanningId = null;
+            _pendingUnbanId = null;
+        }
+    }
+
     private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
     {
         try
@@ -409,6 +586,17 @@ else
     private HttpClient CreateClient() => ClientFactory.CreateClient();
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private class BannedIpRow
+    {
+        public Guid Id { get; set; }
+        public string CidrRange { get; set; } = string.Empty;
+        public string? Reason { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+        public DateTime? ExpiresAtUtc { get; set; }
+        public Guid CreatedByOperatorId { get; set; }
+        public bool IsAutoBan { get; set; }
+    }
 
     private class TwoFactorRoleRequirement
     {

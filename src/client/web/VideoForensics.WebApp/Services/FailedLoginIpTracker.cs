@@ -28,7 +28,7 @@ namespace VideoForensics.WebApp.Services
         /// CreatedByOperatorId written on auto-created bans. There is no Operators row for it and the
         /// column has no foreign key, so this fixed value marks "written by the system", not a person.
         /// </summary>
-        public static readonly Guid SystemOperatorId = new("00000000-0000-0000-0000-00000000f2b1");
+        public static readonly Guid SystemOperatorId = VideoForensics.Api.Contracts.BannedIpRangeDtoMapping.SystemAutoBanOperatorId;
 
         // Idle windows are only swept once the map grows past this, so the common path stays O(1).
         private const int SweepThreshold = 1024;
@@ -107,6 +107,30 @@ namespace VideoForensics.WebApp.Services
             }
 
             return await WriteBanAsync(key, address, now, duration, window, distinctAccounts, ct);
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Retires the window under its lock, the same way <see cref="Sweep"/> does, so a caller that already
+        /// holds a reference to it retries on a fresh entry instead of counting into a dropped one.
+        /// </remarks>
+        public Task ClearAsync(string clientIp, CancellationToken ct)
+        {
+            if (!IPAddress.TryParse(clientIp, out IPAddress? parsed))
+            {
+                return Task.CompletedTask;
+            }
+
+            string key = (parsed.IsIPv4MappedToIPv6 ? parsed.MapToIPv4() : parsed).ToString();
+            if (_windows.TryRemove(key, out IpWindow? window))
+            {
+                lock (window.Gate)
+                {
+                    window.Retired = true;
+                }
+            }
+
+            return Task.CompletedTask;
         }
 
         private async Task<bool> WriteBanAsync(string key, IPAddress address, DateTime now, TimeSpan duration, TimeSpan window, int distinctAccounts, CancellationToken ct)
