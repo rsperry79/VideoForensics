@@ -50,9 +50,17 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         /// <summary>Body returned by GET /api/v1/banned-ips; defaults to an empty list (no active bans).</summary>
         public object BannedIpsBody { get; set; } = new List<object>();
 
+        /// <summary>Status returned for DELETE /api/v1/banned-ips/{id}; tests set a failure to exercise the error path.</summary>
+        public HttpStatusCode DeleteStatus { get; set; } = HttpStatusCode.NoContent;
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
+
+            if (request.Method == HttpMethod.Delete)
+            {
+                return Task.FromResult(new HttpResponseMessage(DeleteStatus));
+            }
 
             if (request.RequestUri!.AbsolutePath.EndsWith("/api/v1/banned-ips", StringComparison.Ordinal))
             {
@@ -239,9 +247,9 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         Assert.Equal(240, body.GetProperty("autoBanDurationMinutes").GetInt32());
     }
 
-    private static object BannedRow(string cidr, string reason, Guid createdBy, bool isAutoBan, DateTime? expiresAtUtc) => new
+    private static object BannedRow(string cidr, string reason, Guid createdBy, bool isAutoBan, DateTime? expiresAtUtc, Guid? id = null) => new
     {
-        id = Guid.NewGuid(),
+        id = id ?? Guid.NewGuid(),
         cidrRange = cidr,
         reason,
         createdAtUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc),
@@ -304,5 +312,90 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         {
             Assert.Contains(localizer["BannedIpsEmpty"].Value, cut.Markup, StringComparison.Ordinal);
         });
+    }
+
+    private const string UnbanCidr = "203.0.113.9/32";
+
+    private static IEnumerable<AngleSharp.Dom.IElement> ButtonsWithText(IRenderedComponent<SecurityLockoutPolicy> cut, string text) =>
+        cut.FindAll("button").Where(b => b.TextContent.Trim() == text);
+
+    private static IEnumerable<AngleSharp.Dom.IElement> RowsContaining(IRenderedComponent<SecurityLockoutPolicy> cut, string text) =>
+        cut.FindAll("tbody tr").Where(r => r.TextContent.Contains(text, StringComparison.Ordinal));
+
+    private async Task<(Guid BanId, IRenderedComponent<SecurityLockoutPolicy> Cut)> RenderWithManualBanAsync()
+    {
+        await RegisterSignedInSessionAsync();
+        var banId = Guid.NewGuid();
+        _handler.BannedIpsBody = new List<object>
+        {
+            BannedRow(UnbanCidr, "Manual", Guid.NewGuid(), false, null, banId)
+        };
+
+        var cut = Render<SecurityLockoutPolicy>();
+        cut.WaitForAssertion(() => Assert.Contains(UnbanCidr, cut.Markup, StringComparison.Ordinal));
+        return (banId, cut);
+    }
+
+    [Fact]
+    public async Task BannedIps_UnbanClick_ShowsLocalizedConfirmStepWithoutSendingDelete()
+    {
+        var (_, cut) = await RenderWithManualBanAsync();
+        var localizer = GetLocalizer(this);
+
+        ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(localizer["UnbanConfirmMessage", UnbanCidr].Value, cut.Markup, StringComparison.Ordinal);
+            Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value));
+            Assert.Single(ButtonsWithText(cut, localizer["UnbanCancelButton"].Value));
+        });
+        Assert.DoesNotContain(_handler.Requests, r => r.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task BannedIps_UnbanConfirm_SendsDeleteAndRemovesRow()
+    {
+        var (banId, cut) = await RenderWithManualBanAsync();
+        var localizer = GetLocalizer(this);
+
+        ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
+        cut.WaitForAssertion(() => Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value)));
+        ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value).Single().Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(RowsContaining(cut, UnbanCidr)));
+        var delete = Assert.Single(_handler.Requests, r => r.Method == HttpMethod.Delete);
+        Assert.EndsWith($"/api/v1/banned-ips/{banId}", delete.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        Assert.Contains(localizer["UnbanSucceeded"].Value, cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task BannedIps_UnbanCancel_LeavesRowAndSendsNothing()
+    {
+        var (_, cut) = await RenderWithManualBanAsync();
+        var localizer = GetLocalizer(this);
+
+        ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
+        cut.WaitForAssertion(() => Assert.Single(ButtonsWithText(cut, localizer["UnbanCancelButton"].Value)));
+        ButtonsWithText(cut, localizer["UnbanCancelButton"].Value).Single().Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value)));
+        Assert.Single(RowsContaining(cut, UnbanCidr));
+        Assert.DoesNotContain(_handler.Requests, r => r.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task BannedIps_UnbanServerFailure_ShowsLocalizedErrorAndKeepsRow()
+    {
+        var (_, cut) = await RenderWithManualBanAsync();
+        var localizer = GetLocalizer(this);
+        _handler.DeleteStatus = HttpStatusCode.InternalServerError;
+
+        ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
+        cut.WaitForAssertion(() => Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value)));
+        ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value).Single().Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(localizer["UnbanFailed", HttpStatusCode.InternalServerError.ToString()].Value, cut.Markup, StringComparison.Ordinal));
+        Assert.Single(RowsContaining(cut, UnbanCidr));
     }
 }

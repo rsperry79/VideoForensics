@@ -158,4 +158,25 @@
   <data name="BannedIpsLoadFailed" xml:space="preserve">
     <value>Failed to load banned IPs: {0}</value>
   </data>
+  <data name="BannedIpsActionColumn" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="UnbanButton" xml:space="preserve">
+    <value>Unban</value>
+  </data>
+  <data name="UnbanConfirmMessage" xml:space="preserve">
+    <value>Remove the ban on {0}?</value>
+  </data>
+  <data name="UnbanConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="UnbanCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="UnbanSucceeded" xml:space="preserve">
+    <value>Ban removed.</value>
+  </data>
+  <data name="UnbanFailed" xml:space="preserve">
+    <value>Failed to remove the ban: {0}</value>
+  </data>
 </root>

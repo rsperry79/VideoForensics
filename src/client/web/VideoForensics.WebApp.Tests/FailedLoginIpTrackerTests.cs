@@ -273,6 +273,71 @@ namespace VideoForensics.WebApp.Tests
             repository.Verify(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task FailedLoginIpTracker_ClearAsync_RemovesPartialCounter()
+        {
+            var store = new List<BannedIpRange>();
+            var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
+            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            var policy = CreatePolicy(threshold: 3);
+
+            Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+            Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+
+            await tracker.ClearAsync(AttackerIp, CancellationToken.None);
+
+            // Without the clear, this third distinct account would reach the threshold of 3 and ban again.
+            Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+            Assert.Empty(store);
+        }
+
+        [Fact]
+        public async Task FailedLoginIpTracker_ClearAsync_DropsAutoBanSuppression()
+        {
+            // After an unban, the tracker must not stay silent for the old ban's duration: a fresh
+            // threshold crossing should be able to write a new ban immediately.
+            var store = new List<BannedIpRange>();
+            var repository = CreateBannedRangeRepository(store);
+            var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
+            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            var policy = CreatePolicy(threshold: 3, durationMinutes: 1440);
+
+            for (int i = 0; i < 3; i++)
+            {
+                _ = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
+            }
+
+            Assert.Single(store);
+            store.Clear();
+            await tracker.ClearAsync(AttackerIp, CancellationToken.None);
+
+            bool rebanned = false;
+            for (int i = 0; i < 3; i++)
+            {
+                rebanned = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
+            }
+
+            Assert.True(rebanned);
+            Assert.Single(store);
+        }
+
+        [Fact]
+        public async Task FailedLoginIpTracker_ClearAsyncUnknownIp_IsNoOp()
+        {
+            var store = new List<BannedIpRange>();
+            var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
+            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            var policy = CreatePolicy(threshold: 3);
+
+            // Never seen this address: clearing must complete without throwing or touching other counters.
+            await tracker.ClearAsync("198.51.100.99", CancellationToken.None);
+
+            Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+            Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+            Assert.True(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
+            Assert.Single(store);
+        }
+
         private static LockoutPolicySettings CreatePolicy(
             bool autoBan = true,
             int threshold = 3,

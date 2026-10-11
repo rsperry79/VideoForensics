@@ -63,6 +63,7 @@ namespace VideoForensics.Data.Common.Entities
         public const string OperatorUiModeChanged = nameof(OperatorUiModeChanged);
         public const string JammingIncidentRecorded = nameof(JammingIncidentRecorded);
         public const string AutoBanCreated = nameof(AutoBanCreated);
+        public const string BannedIpRangeRemoved = nameof(BannedIpRangeRemoved);
 
         /// <summary>
         /// The urgency each event type is logged with today at its actual call site, absent any
@@ -111,7 +112,8 @@ namespace VideoForensics.Data.Common.Entities
             [LogViewed] = false,
             [OperatorUiModeChanged] = false,
             [JammingIncidentRecorded] = false,
-            [AutoBanCreated] = true
+            [AutoBanCreated] = true,
+            [BannedIpRangeRemoved] = true
         };
     }
 }

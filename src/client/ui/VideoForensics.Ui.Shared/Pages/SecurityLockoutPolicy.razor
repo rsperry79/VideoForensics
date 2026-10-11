@@ -108,7 +108,7 @@ else
         </div>
     </div>
 
-    <!-- Banned IPs Section (read-only: list and Auto badge only; unban and create are not offered here) -->
+    <!-- Banned IPs Section (list, Auto badge, and unban with a confirm step; create is not offered here) -->
     <h5 class="mt-4 mb-2">@L["BannedIpsSection"]</h5>
     <div class="card mb-4">
         <div class="card-body">
@@ -129,6 +129,7 @@ else
                             <th>@L["BannedIpsReasonColumn"]</th>
                             <th>@L["BannedIpsCreatedColumn"]</th>
                             <th>@L["BannedIpsExpiresColumn"]</th>
+                            <th>@L["BannedIpsActionColumn"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,10 +146,33 @@ else
                                 <td>@ban.Reason</td>
                                 <td>@ban.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
                                 <td>@(ban.ExpiresAtUtc is { } expires ? expires.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : L["BannedIpsNeverExpires"].Value)</td>
+                                <td>
+                                    @if (_pendingUnbanId == ban.Id)
+                                    {
+                                        <span class="me-2">@L["UnbanConfirmMessage", ban.CidrRange]</span>
+                                        <SfButton Content="@L["UnbanConfirmButton"]"
+                                                  OnClick="@(async () => await ConfirmUnbanAsync(ban))"
+                                                  Disabled="@(_unbanningId == ban.Id)"
+                                                  CssClass="e-danger e-small" />
+                                        <SfButton Content="@L["UnbanCancelButton"]"
+                                                  OnClick="CancelUnban"
+                                                  Disabled="@(_unbanningId == ban.Id)"
+                                                  CssClass="e-outline e-small" />
+                                    }
+                                    else
+                                    {
+                                        <SfButton Content="@L["UnbanButton"]" OnClick="@(() => BeginUnban(ban.Id))" CssClass="e-small" />
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            }
+
+            @if (_unbanMessage is not null)
+            {
+                <span style="color: @(_unbanSuccess ? "#4caf50" : "#f44336")" class="mt-3 d-block">@_unbanMessage</span>
             }
         </div>
     </div>
@@ -225,9 +249,13 @@ else
     private bool _lockoutPolicySaveSuccess;
     private string? _lockoutPolicySaveMessage;
 
-    // Banned IPs state (read-only list)
+    // Banned IPs state: list, plus the one-row-at-a-time unban confirm step
     private List<BannedIpRow>? _bannedIps;
     private string? _bannedIpsLoadError;
+    private Guid? _pendingUnbanId;
+    private Guid? _unbanningId;
+    private bool _unbanSuccess;
+    private string? _unbanMessage;
 
     // Two-factor policy state
     private bool _isLoadingTwoFactor = true;
@@ -491,6 +519,50 @@ else
         finally
         {
             _savingTwoFactorRoles.Remove(role);
+        }
+    }
+
+    private void BeginUnban(Guid banId)
+    {
+        _pendingUnbanId = banId;
+        _unbanMessage = null;
+    }
+
+    private void CancelUnban()
+    {
+        _pendingUnbanId = null;
+    }
+
+    private async Task ConfirmUnbanAsync(BannedIpRow ban)
+    {
+        _unbanningId = ban.Id;
+        _unbanMessage = null;
+
+        try
+        {
+            var client = CreateClient();
+            var response = await client.DeleteAsync($"/api/v1/banned-ips/{ban.Id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await SafeReadErrorAsync(response);
+                _unbanSuccess = false;
+                _unbanMessage = body ?? L["UnbanFailed", response.StatusCode.ToString()].Value;
+                return;
+            }
+
+            _bannedIps?.RemoveAll(r => r.Id == ban.Id);
+            _unbanSuccess = true;
+            _unbanMessage = L["UnbanSucceeded"];
+        }
+        catch (Exception ex)
+        {
+            _unbanSuccess = false;
+            _unbanMessage = L["UnbanFailed", ex.Message];
+        }
+        finally
+        {
+            _unbanningId = null;
+            _pendingUnbanId = null;
         }
     }
 
