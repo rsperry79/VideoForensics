@@ -13,6 +13,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
+using VideoForensics.Hosting.Local;
 using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
@@ -134,6 +135,10 @@ namespace VideoForensics.MauiApp
             }
 
             builder.Services.AddVideoForensicsClientApi(serverUri);
+
+            // In-process log viewer: MAUI reads its own InMemoryLogBuffer instead of calling /api/v1/logs.
+            // Registered after the client API so this ILogViewerService wins over the HTTP RemoteLogViewerService.
+            builder.Services.AddLocalLogViewerService();
 
             // Override the default server location services with MAUI-specific implementations.
             // AddVideoForensicsClientApi registered the defaults above via AddServerLocationServices,
