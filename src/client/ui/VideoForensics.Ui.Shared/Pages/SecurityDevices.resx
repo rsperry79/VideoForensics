@@ -38,20 +38,11 @@
   <data name="SignInToManage" xml:space="preserve">
     <value>to manage paired devices.</value>
   </data>
-  <data name="AddClientHeading" xml:space="preserve">
-    <value>Add Client</value>
-  </data>
   <data name="GeneratingButton" xml:space="preserve">
     <value>Generating...</value>
   </data>
   <data name="GenerateQrButton" xml:space="preserve">
     <value>Generate Pairing QR Code</value>
-  </data>
-  <data name="QrInstructions" xml:space="preserve">
-    <value>Scan with the new device's camera, or open this link on it directly:</value>
-  </data>
-  <data name="ExpiresMessage" xml:space="preserve">
-    <value>Expires at {0} UTC (single use, ~2 minutes).</value>
   </data>
   <data name="CurrentlyPairedHeading" xml:space="preserve">
     <value>Currently Paired</value>
@@ -109,12 +100,6 @@
   </data>
   <data name="FailedToLoad" xml:space="preserve">
     <value>Failed to load paired devices: {0}</value>
-  </data>
-  <data name="PairingError1" xml:space="preserve">
-    <value>Could not start pairing: {0}</value>
-  </data>
-  <data name="PairingError2" xml:space="preserve">
-    <value>Could not start pairing: {0}</value>
   </data>
   <data name="SignInFirstError" xml:space="preserve">
     <value>Sign in with your passkey first.</value>
