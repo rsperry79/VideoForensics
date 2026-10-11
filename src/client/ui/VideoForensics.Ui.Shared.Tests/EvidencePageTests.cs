@@ -155,10 +155,6 @@ public abstract class EvidencePageTestBase : BunitContext
             Sha256Hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         };
 
-        AuthServiceMock
-            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
         DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Device> { Device });
@@ -212,10 +208,13 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
 
-        // No operator signed in by default (PairedSessionState.OperatorId stays null); tests that
-        // need one call SignInOperatorAsync(), which re-registers with a signed-in session
-        // (later registration wins, same pattern InspectorPanelTests uses).
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+
+        // Default: an operator is signed in (token, OperatorId, Review role) so the page renders its
+        // content. Tests exercising the signed-out gate call SignOutOperatorAsync(). SetAsync only
+        // awaits a loose-mode JSInterop call that completes immediately, so blocking on it is safe.
+        Services.GetRequiredService<PairedSessionState>()
+            .SetAsync("test-token", Guid.NewGuid(), "Review").GetAwaiter().GetResult();
 
         // SfToast (added for the evidence-actions toasts) checks RendererInfo during render; must
         // be set after all service registrations above, since setting it locks the provider.
@@ -240,6 +239,9 @@ public abstract class EvidencePageTestBase : BunitContext
         await session.SetAsync("test-token", operatorId, role);
         return operatorId;
     }
+
+    /// <summary>Clears the operator session, so the page shows its signed-out sign-in prompt.</summary>
+    protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
 
     protected IRenderedComponent<Evidence> RenderEvidencePage() => Render<Evidence>();
 }
@@ -708,20 +710,39 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     }
 
     [Fact]
-    public async Task PlaceHold_NoSignedInOperator_DoesNotCallPlaceAsync_ShowsError()
+    public async Task PlaceHold_OperatorSignedOut_ShowsSignInPrompt_NoGridOrPlaceCall()
     {
-        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
+        await SignOutOperatorAsync();
+        var component = RenderGrid();
+
+        Assert.Contains("Not signed in.", component.Markup);
+        Assert.Empty(component.FindComponents<ForensicGrid<EvidenceItem>>());
+        LegalHoldRepositoryMock.Verify(
+            r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task PlaceHold_SignedOutAfterReasonPrompt_ConfirmRefused_DoesNotCallPlaceAsync_ShowsSignInToast()
+    {
+        // The fixture starts signed in, so the grid and reason prompt render. The page reads the
+        // session only at load and never re-checks it on change, so clearing the session while the
+        // prompt is open leaves Confirm reachable: the click runs ConfirmPendingHoldActionAsync's own
+        // guard with no operator identity. The grid staying rendered shows the page's gate did not stop it.
         var component = RenderGrid();
         var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "hold", item);
 
+        await SignOutOperatorAsync();
         component.Find("[data-testid='grid-action-reason']").Change("Active investigation");
         await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
 
         LegalHoldRepositoryMock.Verify(
             r => r.PlaceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("You must be signed in to perform this action.", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='grid-action-reason']"));
+        Assert.NotEmpty(component.FindComponents<ForensicGrid<EvidenceItem>>());
     }
 
     [Fact]
@@ -750,25 +771,42 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     }
 
     [Fact]
-    public async Task ReleaseHold_NoSignedInOperator_DoesNotCallReleaseAsync_ShowsError()
+    public async Task ReleaseHold_OperatorSignedOut_ShowsSignInPrompt_NoGridOrReleaseCall()
     {
+        await SignOutOperatorAsync();
+        var component = RenderGrid();
+
+        Assert.Contains("Not signed in.", component.Markup);
+        Assert.Empty(component.FindComponents<ForensicGrid<EvidenceItem>>());
+        LegalHoldRepositoryMock.Verify(
+            r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ReleaseHold_SignedOutAfterReasonPrompt_ConfirmRefused_DoesNotCallReleaseAsync_ShowsSignInToast()
+    {
+        // Same path as PlaceHold_SignedOutAfterReasonPrompt: an active hold makes "release" available,
+        // the reason prompt opens while signed in, then the session is cleared before Confirm.
         var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "r", CreatedBy = "op" };
         LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LegalHold> { activeHold });
 
-        // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
         var component = RenderGrid();
         var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "release", item);
 
+        await SignOutOperatorAsync();
         component.Find("[data-testid='grid-action-reason']").Change("No longer needed");
         await component.InvokeAsync(() => component.Find("[data-testid='grid-confirm-action']").Click());
 
         LegalHoldRepositoryMock.Verify(
             r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("You must be signed in to perform this action.", component.Markup);
+        Assert.Empty(component.FindAll("[data-testid='grid-action-reason']"));
+        Assert.NotEmpty(component.FindComponents<ForensicGrid<EvidenceItem>>());
     }
 
     [Fact]
@@ -881,13 +919,26 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     }
 
     [Fact]
-    public async Task NoOperatorSignedIn_GrabStillInvoked_DoesNotCallService_ShowsSignInMessage()
+    public async Task OperatorSignedOut_ViewerNotOpened_ShowsSignInPrompt_NoStillCaptured()
     {
-        // No SignInOperatorAsync() call: PairedSessionState.OperatorId/Role stay null, so the
-        // role gate also hides the button - invoke the viewer's bound callback directly (the
-        // same thing a click would do) to exercise OnGrabStillAsync's own sign-in guard.
+        await SignOutOperatorAsync();
+        var component = RenderEvidencePage();
+
+        Assert.Contains("Not signed in.", component.Markup);
+        Assert.Empty(component.FindComponents<MediaViewer>());
+        MediaStillCaptureServiceMock.Verify(
+            s => s.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task OperatorSignedOutAfterViewerOpened_GrabStillInvoked_DoesNotCallService_ShowsSignInToast()
+    {
+        // The viewer opens while signed in (the page only gates on session at load), then the session
+        // is cleared. Invoke the viewer's bound callback directly, as a click would, so OnGrabStillAsync's
+        // own guard runs rather than the page-level sign-in gate.
         var component = OpenVideoViewer();
-        Assert.Empty(component.FindAll("[data-testid='grab-still']"));
+        await SignOutOperatorAsync();
 
         var mediaViewer = component.FindComponent<MediaViewer>();
         await component.InvokeAsync(() => mediaViewer.Instance.OnGrabStill.InvokeAsync(2500));
@@ -895,7 +946,7 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
         MediaStillCaptureServiceMock.Verify(
             s => s.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        Assert.Contains("signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("You must be signed in to perform this action.", component.Markup);
     }
 
     [Fact]
@@ -912,5 +963,40 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
         MediaStillCaptureServiceMock.Verify(
             s => s.CaptureStillAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+}
+
+public class Evidence_SignIn_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public async Task Evidence_OperatorSignedInWithNoProviderAccount_ShowsEvidenceNotSignInPrompt()
+    {
+        // No provider (Ring) account linked, but an operator is signed in: browsing evidence needs
+        // only the operator session, so the sign-in prompt must not render.
+        await SignInOperatorAsync();
+        AuthServiceMock
+            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var component = RenderEvidencePage();
+
+        Assert.DoesNotContain("Not signed in.", component.Markup);
+        Assert.NotEmpty(component.FindAll(".timeline-row"));
+    }
+
+    [Fact]
+    public async Task Evidence_OperatorNotSignedIn_ShowsSignInPrompt()
+    {
+        // Provider account linked, but no operator session: the page must show the sign-in prompt.
+        await SignOutOperatorAsync();
+        AuthServiceMock
+            .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var component = RenderEvidencePage();
+
+        Assert.Contains("Not signed in.", component.Markup);
+        Assert.Contains("to browse evidence.", component.Markup);
+        Assert.Empty(component.FindAll(".timeline-row"));
     }
 }
