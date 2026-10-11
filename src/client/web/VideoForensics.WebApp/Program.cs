@@ -461,6 +461,7 @@ app.MapNetworkSettingsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
+app.MapBannedIpsEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
 app.MapExportDownloadEndpoints();

@@ -47,9 +47,20 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             autoBanDurationMinutes = 1440
         };
 
+        /// <summary>Body returned by GET /api/v1/banned-ips; defaults to an empty list (no active bans).</summary>
+        public object BannedIpsBody { get; set; } = new List<object>();
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/api/v1/banned-ips", StringComparison.Ordinal))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(BannedIpsBody)
+                });
+            }
 
             if (request.RequestUri!.AbsolutePath.EndsWith("/two-factor-policy/roles", StringComparison.Ordinal))
             {
@@ -226,5 +237,72 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         Assert.Equal(7, body.GetProperty("autoBanDistinctAccountThreshold").GetInt32());
         Assert.Equal(15, body.GetProperty("autoBanWindowMinutes").GetInt32());
         Assert.Equal(240, body.GetProperty("autoBanDurationMinutes").GetInt32());
+    }
+
+    private static object BannedRow(string cidr, string reason, Guid createdBy, bool isAutoBan, DateTime? expiresAtUtc) => new
+    {
+        id = Guid.NewGuid(),
+        cidrRange = cidr,
+        reason,
+        createdAtUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc),
+        expiresAtUtc,
+        createdByOperatorId = createdBy,
+        isAutoBan
+    };
+
+    [Fact]
+    public async Task BannedIps_RendersRows_WithRangeAndReason()
+    {
+        await RegisterSignedInSessionAsync();
+        _handler.BannedIpsBody = new List<object>
+        {
+            BannedRow("203.0.113.0/24", "Known botnet C2 network", Guid.NewGuid(), false, null)
+        };
+
+        var cut = Render<SecurityLockoutPolicy>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("203.0.113.0/24", cut.Markup, StringComparison.Ordinal);
+            Assert.Contains("Known botnet C2 network", cut.Markup, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task BannedIps_AutoBadge_ShowsOnlyOnSystemRow()
+    {
+        await RegisterSignedInSessionAsync();
+        var localizer = GetLocalizer(this);
+        _handler.BannedIpsBody = new List<object>
+        {
+            BannedRow("198.51.100.7/32", "Auto-ban: 3 accounts locked in 60 min", new Guid("00000000-0000-0000-0000-00000000f2b1"), true, DateTime.UtcNow.AddHours(24)),
+            BannedRow("203.0.113.9/32", "Manual", Guid.NewGuid(), false, null)
+        };
+
+        var cut = Render<SecurityLockoutPolicy>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var badge = localizer["BannedIpsAutoBadge"].Value;
+            var rows = cut.FindAll("tbody tr");
+            var autoRows = rows.Where(r => r.TextContent.Contains(badge, StringComparison.Ordinal)).ToList();
+            Assert.Single(autoRows);
+            Assert.Contains("198.51.100.7/32", autoRows[0].TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task BannedIps_NoActiveBans_ShowsLocalizedEmptyState()
+    {
+        await RegisterSignedInSessionAsync();
+        var localizer = GetLocalizer(this);
+        _handler.BannedIpsBody = new List<object>();
+
+        var cut = Render<SecurityLockoutPolicy>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(localizer["BannedIpsEmpty"].Value, cut.Markup, StringComparison.Ordinal);
+        });
     }
 }

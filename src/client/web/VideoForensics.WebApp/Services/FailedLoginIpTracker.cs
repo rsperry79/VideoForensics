@@ -28,7 +28,7 @@ namespace VideoForensics.WebApp.Services
         /// CreatedByOperatorId written on auto-created bans. There is no Operators row for it and the
         /// column has no foreign key, so this fixed value marks "written by the system", not a person.
         /// </summary>
-        public static readonly Guid SystemOperatorId = new("00000000-0000-0000-0000-00000000f2b1");
+        public static readonly Guid SystemOperatorId = VideoForensics.Api.Contracts.BannedIpRangeDtoMapping.SystemAutoBanOperatorId;
 
         // Idle windows are only swept once the map grows past this, so the common path stays O(1).
         private const int SweepThreshold = 1024;
