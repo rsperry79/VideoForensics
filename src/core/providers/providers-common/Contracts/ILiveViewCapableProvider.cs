@@ -56,6 +56,13 @@ namespace VideoForensics.Providers.Common.Contracts
         event Action<byte[], uint, int>? OnVideoRtpPayload;
 
         /// <summary>
+        /// Raised for every raw audio RTP packet received. Arguments are: encoded payload, RTP timestamp,
+        /// marker bit, and RTP payload type. The payload type is included (unlike the video event) because
+        /// the audio codec's payload type is negotiated per-peer and consumers must reject mismatched types.
+        /// </summary>
+        event Action<byte[], uint, int, int>? OnAudioRtpPayload;
+
+        /// <summary>
         /// Closes the live view connection cleanly, stopping media flow and releasing underlying resources.
         /// Safe to call multiple times; subsequent calls are no-ops.
         /// </summary>

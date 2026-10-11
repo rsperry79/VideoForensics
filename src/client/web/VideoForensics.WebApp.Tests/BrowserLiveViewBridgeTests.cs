@@ -28,8 +28,10 @@ namespace VideoForensics.WebApp.Tests
             public event Action<long>? OnBitrateSampleBps { add { } remove { } }
             public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange { add { } remove { } }
             public event Action<byte[], uint, int>? OnVideoRtpPayload;
+            public event Action<byte[], uint, int, int>? OnAudioRtpPayload;
 
             public int VideoRtpSubscriberCount => OnVideoRtpPayload?.GetInvocationList().Length ?? 0;
+            public int AudioRtpSubscriberCount => OnAudioRtpPayload?.GetInvocationList().Length ?? 0;
 
             public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
 
@@ -109,6 +111,57 @@ namespace VideoForensics.WebApp.Tests
             {
                 await bridge.DisposeAllForConnectionAsync(ConnectionId);
             }
+        }
+
+        [Fact]
+        public async Task CreateBrowserLegAsync_NewKey_SubscribesOneAudioRtpHandler()
+        {
+            BrowserLiveViewBridge bridge = BuildBridge();
+            var ringConnection = new FakeLiveViewConnection();
+
+            try
+            {
+                await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+
+                Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
+            }
+            finally
+            {
+                await bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
+
+        [Fact]
+        public async Task CreateBrowserLegAsync_CalledTwiceForSameKey_DoesNotLeakSecondAudioSubscription()
+        {
+            BrowserLiveViewBridge bridge = BuildBridge();
+            var ringConnection = new FakeLiveViewConnection();
+
+            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+
+            try
+            {
+                await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+
+                Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
+            }
+            finally
+            {
+                await bridge.DisposeAllForConnectionAsync(ConnectionId);
+            }
+        }
+
+        [Fact]
+        public async Task DisposeBrowserLegAsync_ExistingPeer_RemovesAudioRtpSubscription()
+        {
+            BrowserLiveViewBridge bridge = BuildBridge();
+            var ringConnection = new FakeLiveViewConnection();
+            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
+
+            await bridge.DisposeBrowserLegAsync(ConnectionId, SessionId);
+
+            Assert.Equal(0, ringConnection.AudioRtpSubscriberCount);
         }
 
         [Fact]

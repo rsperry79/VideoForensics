@@ -20,6 +20,7 @@ namespace VideoForensics.Providers.Ring.Services
         public event Action<long>? OnBitrateSampleBps;
         public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange;
         public event Action<byte[], uint, int>? OnVideoRtpPayload;
+        public event Action<byte[], uint, int, int>? OnAudioRtpPayload;
 
         public RingLiveViewConnection(RingLiveViewSession session)
         {
@@ -67,10 +68,14 @@ namespace VideoForensics.Providers.Ring.Services
 
         private void HandleRtpPacket(System.Net.IPEndPoint ep, SDPMediaTypesEnum mediaType, RTPPacket packet)
         {
-            // Filter to video-only packets and re-raise via the provider-agnostic event
+            // Filter to video or audio packets and re-raise via the provider-agnostic events
             if (mediaType == SDPMediaTypesEnum.video && packet?.Payload != null)
             {
                 OnVideoRtpPayload?.Invoke(packet.Payload, packet.Header.Timestamp, packet.Header.MarkerBit);
+            }
+            else if (mediaType == SDPMediaTypesEnum.audio && packet?.Payload != null)
+            {
+                OnAudioRtpPayload?.Invoke(packet.Payload, packet.Header.Timestamp, packet.Header.MarkerBit, packet.Header.PayloadType);
             }
         }
 

@@ -40,6 +40,7 @@ namespace VideoForensics.WebApp.Tests
             public event Action<long>? OnBitrateSampleBps { add { } remove { } }
             public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange { add { } remove { } }
             public event Action<byte[], uint, int>? OnVideoRtpPayload { add { } remove { } }
+            public event Action<byte[], uint, int, int>? OnAudioRtpPayload { add { } remove { } }
 
             public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
 
@@ -76,6 +77,8 @@ namespace VideoForensics.WebApp.Tests
             public event Action<RTCPReceiverReportSampleDto>? OnReceiverReport { add { } remove { } }
             public event Action<long>? OnBitrateSampleBps { add { } remove { } }
             public event Action<LiveViewConnectionStateDto>? OnConnectionStateChange { add { } remove { } }
+
+            public event Action<byte[], uint, int, int>? OnAudioRtpPayload { add { } remove { } }
 
             public event Action<byte[], uint, int>? OnVideoRtpPayload
             {

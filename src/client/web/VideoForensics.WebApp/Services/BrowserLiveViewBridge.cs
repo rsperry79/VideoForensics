@@ -21,6 +21,9 @@ namespace VideoForensics.WebApp.Services
     /// </summary>
     public class BrowserLiveViewBridge
     {
+        /// <summary>RTP payload type of the OPUS audio track negotiated on the browser leg.</summary>
+        private const int OpusPayloadType = 111;
+
         private readonly ILogger<BrowserLiveViewBridge> _logger;
         private readonly BrowserLiveViewOptions _options;
         private readonly ConcurrentDictionary<(string connectionId, Guid sessionId), BrowserLiveViewPeerConnection> _activePeers = new();
@@ -105,16 +108,40 @@ namespace VideoForensics.WebApp.Services
                 }
             };
 
-            ringConnection.OnVideoRtpPayload += rtpBridgeHandler;
+            // Subscribe to audio RTP packets and forward only the negotiated OPUS payload type (111).
+            // Packets with any other payload type are dropped rather than sent under the wrong codec.
+            Action<byte[], uint, int, int> audioRtpBridgeHandler = (payload, timestamp, markerBit, payloadType) =>
+            {
+                if (payloadType != OpusPayloadType)
+                {
+                    _logger.LogDebug(
+                        "Dropping audio RTP packet with unexpected payload type {PayloadType} for session {SessionId}",
+                        payloadType, sessionId);
+                    return;
+                }
 
-            // Store the peer and its subscription so we can clean up later
-            var subscription = new RtpBridgeSubscription(ringConnection, rtpBridgeHandler);
+                try
+                {
+                    pc.SendRtpRaw(SDPMediaTypesEnum.audio, payload, timestamp, markerBit, OpusPayloadType);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error forwarding audio RTP packet to browser peer for session {SessionId}", sessionId);
+                }
+            };
+
+            ringConnection.OnVideoRtpPayload += rtpBridgeHandler;
+            ringConnection.OnAudioRtpPayload += audioRtpBridgeHandler;
+
+            // Store the peer and its subscriptions so we can clean up later
+            var subscription = new RtpBridgeSubscription(ringConnection, rtpBridgeHandler, audioRtpBridgeHandler);
             var created = new BrowserLiveViewPeerConnection(pc, subscription);
             if (!_activePeers.TryAdd(key, created))
             {
                 // Lost a race with a concurrent call for the same key. Tear down the peer we just built
                 // and return the one already stored, so nothing stays subscribed or open.
                 ringConnection.OnVideoRtpPayload -= rtpBridgeHandler;
+                ringConnection.OnAudioRtpPayload -= audioRtpBridgeHandler;
                 pc.close();
                 pc.Dispose();
 
@@ -194,17 +221,23 @@ namespace VideoForensics.WebApp.Services
         private class RtpBridgeSubscription : IDisposable
         {
             private readonly ILiveViewConnection _connection;
-            private readonly Action<byte[], uint, int> _handler;
+            private readonly Action<byte[], uint, int> _videoHandler;
+            private readonly Action<byte[], uint, int, int> _audioHandler;
 
-            public RtpBridgeSubscription(ILiveViewConnection connection, Action<byte[], uint, int> handler)
+            public RtpBridgeSubscription(
+                ILiveViewConnection connection,
+                Action<byte[], uint, int> videoHandler,
+                Action<byte[], uint, int, int> audioHandler)
             {
                 _connection = connection;
-                _handler = handler;
+                _videoHandler = videoHandler;
+                _audioHandler = audioHandler;
             }
 
             public void Dispose()
             {
-                _connection.OnVideoRtpPayload -= _handler;
+                _connection.OnVideoRtpPayload -= _videoHandler;
+                _connection.OnAudioRtpPayload -= _audioHandler;
             }
         }
     }
