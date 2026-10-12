@@ -4,6 +4,7 @@ using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 using Moq;
 using VideoForensics.Ui.Shared.Pages;
@@ -111,7 +112,7 @@ public class SignInPageTests : BunitContext
         // Arrange
         SetupTwoFactorRequired("corr-123");
         WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
-            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null));
+            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null, Array.Empty<string>()));
         var nav = Services.GetRequiredService<NavigationManager>();
         var component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
@@ -130,7 +131,7 @@ public class SignInPageTests : BunitContext
         // Arrange
         SetupTwoFactorRequired("corr-123");
         WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
-            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null));
+            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null, Array.Empty<string>()));
         var nav = Services.GetRequiredService<NavigationManager>();
         var session = Services.GetRequiredService<PairedSessionState>();
         var component = await RenderAndWaitForFormAsync();
@@ -172,7 +173,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - a failed attempt first, so a stale error exists when the two-factor response arrives
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
-            .ReturnsAsync((false, "Wrong password", null, default(Guid), "", false, false, false, null));
+            .ReturnsAsync((false, "Wrong password", null, default(Guid), "", false, false, false, null, Array.Empty<string>()));
         var component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.NotEmpty(component.FindAll(".alert-danger")));
@@ -227,16 +228,119 @@ public class SignInPageTests : BunitContext
         Assert.Empty(component.FindAll("[class*='diag']"));
     }
 
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_ShowsTitleAndNoIntroOrSignInPasskey()
+    {
+        // Arrange - passkey sign-in is offered before password entry, so it must go once a second factor is required
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        SetupTwoFactorRequired("corr-123");
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act - submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
+        component.Find("input[type='text']").Change(Username);
+        component.Find("input[type='password']").Change(Password);
+        await ClickButtonAsync(component, localizer["SignInButton"]);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            Assert.Contains(localizer["TwoFactorRequiredTitle"], component.Markup);
+            Assert.Contains(localizer["TwoFactorRequiredDescription"], component.Markup);
+            Assert.DoesNotContain(localizer["SignInDescription"], component.Markup);
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain(localizer["SignInWithPasskeyButton"], labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_CreatePasskeyEnabled()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert - neither the busy flag from the password call nor any other state may disable these controls
+        component.WaitForAssertion(() =>
+        {
+            Assert.False(FindButton(component, "Use passkey").HasAttribute("disabled"));
+            Assert.False(FindButton(component, "Create a new passkey").HasAttribute("disabled"));
+            Assert.False(FindButton(component, "Back").HasAttribute("disabled"));
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_UsePasskeyHiddenWhenMethodMissing()
+    {
+        // Arrange - the server accepts no second factor this client knows, so there is nothing to offer as "Use passkey"
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, "corr-123", Array.Empty<string>()));
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain("Use passkey", labels);
+            Assert.Contains("Create a new passkey", labels);
+            Assert.Contains("Back", labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_NoErrorText()
+    {
+        // Arrange - a fresh two-factor response with no earlier failure
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert - the user is still signed in at limited access; a second-factor step is not an error
+        component.WaitForAssertion(() => Assert.Contains("Use passkey", component.FindAll("button").Select(b => b.TextContent.Trim())));
+        Assert.Empty(component.FindAll(".alert-danger"));
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_HidesRegisterLink()
+    {
+        // Arrange - the operator is already signed in at limited access, so the register prompt must not show
+        SetupTwoFactorRequired("corr-123");
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+        Assert.Contains(localizer["NoAccountText"], component.Markup);
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            Assert.DoesNotContain(localizer["NoAccountText"], component.Markup);
+            Assert.Empty(component.FindAll("a[href='/register']"));
+        });
+    }
+
+    private static IElement FindButton(IRenderedComponent<SignIn> component, string label) =>
+        component.FindAll("button").First(b => b.TextContent.Trim() == label);
+
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
-            .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey, false, null));
+            .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey, false, null, Array.Empty<string>()));
     }
 
     private void SetupTwoFactorRequired(string correlationId)
     {
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
-            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, correlationId));
+            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, correlationId, new[] { "passkey" }));
     }
 
     private async Task<IRenderedComponent<SignIn>> RenderAndWaitForFormAsync()

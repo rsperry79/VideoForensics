@@ -155,17 +155,17 @@ namespace VideoForensics.Ui.Shared.Services
         /// second factor with <see cref="CompleteTwoFactorWithPasskeyAsync"/> (using <c>TwoFactorCorrelationId</c>)
         /// or create a passkey with <see cref="CreatePasskeyLoginAsync"/>. Every other field is then default.
         /// </summary>
-        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> SignInWithPasswordAsync(string username, string password)
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password)
             => PostPasswordLoginAsync("api/v1/auth/login/password", username, password);
 
         /// <summary>
         /// Password sign-in that issues a LIMITED passkey-setup session (only passkey registration is accepted).
         /// Used when the operator has to create a passkey before a second factor can be completed.
         /// </summary>
-        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> CreatePasskeyLoginAsync(string username, string password)
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> CreatePasskeyLoginAsync(string username, string password)
             => PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
 
-        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> PostPasswordLoginAsync(string path, string username, string password)
+        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> PostPasswordLoginAsync(string path, string username, string password)
         {
             using HttpClient client = CreateClient(null);
 
@@ -175,13 +175,13 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(response), null, default, "", false, false, false, null);
+                return (false, await ExtractErrorAsync(response), null, default, "", false, false, false, null, Array.Empty<string>());
             }
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
             if (IsTwoFactorRequired(result))
             {
-                return (true, null, null, default, "", false, false, true, ReadTwoFactorCorrelationId(result));
+                return (true, null, null, default, "", false, false, true, ReadTwoFactorCorrelationId(result), ReadTwoFactorMethods(result));
             }
 
             EnsureSignInFieldsPresent(result);
@@ -194,13 +194,32 @@ namespace VideoForensics.Ui.Shared.Services
                 result.GetProperty("mustChangePassword").GetBoolean(),
                 result.GetProperty("hasPasskey").GetBoolean(),
                 false,
-                null);
+                null,
+                Array.Empty<string>());
         }
 
         private static bool IsTwoFactorRequired(JsonElement body) =>
             body.ValueKind == JsonValueKind.Object
             && body.TryGetProperty("requiresTwoFactor", out JsonElement flag)
             && flag.ValueKind == JsonValueKind.True;
+
+        /// <summary>
+        /// Second-factor methods the server accepts (e.g. "passkey"). A missing field defaults to passkey so
+        /// responses from servers that predate the field still work; unknown names are passed through and the
+        /// page ignores the ones it does not render.
+        /// </summary>
+        private static IReadOnlyList<string> ReadTwoFactorMethods(JsonElement body)
+        {
+            if (!body.TryGetProperty("twoFactorMethods", out JsonElement methods) || methods.ValueKind != JsonValueKind.Array)
+            {
+                return new[] { "passkey" };
+            }
+
+            return methods.EnumerateArray()
+                .Where(m => m.ValueKind == JsonValueKind.String)
+                .Select(m => m.GetString()!)
+                .ToList();
+        }
 
         private static string ReadTwoFactorCorrelationId(JsonElement body)
         {

@@ -68,8 +68,11 @@
   <data name="RegisterLink" xml:space="preserve">
     <value>Register</value>
   </data>
+  <data name="TwoFactorRequiredTitle" xml:space="preserve">
+    <value>Two-Factor Required</value>
+  </data>
   <data name="TwoFactorRequiredDescription" xml:space="preserve">
-    <value>A passkey is required to finish signing in.</value>
+    <value>Enhanced security is required to finish signing in.</value>
   </data>
   <data name="UsePasskeyButton" xml:space="preserve">
     <value>Use passkey</value>

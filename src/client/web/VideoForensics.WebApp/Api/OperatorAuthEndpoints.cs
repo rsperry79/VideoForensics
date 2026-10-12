@@ -824,7 +824,9 @@ namespace VideoForensics.WebApp.Api
                     return Results.Ok(new
                     {
                         requiresTwoFactor = true,
-                        twoFactorCorrelationId = correlationToken
+                        twoFactorCorrelationId = correlationToken,
+                        // Second-factor methods this server accepts; clients render only the ones they know.
+                        twoFactorMethods = new[] { "passkey" }
                     });
                 }
             }

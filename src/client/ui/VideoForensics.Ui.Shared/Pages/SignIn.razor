@@ -15,11 +15,14 @@
 }
 else
 {
-    <p>@L["SignInDescription"]</p>
+    @if (!_requiresTwoFactor)
+    {
+        <p>@L["SignInDescription"]</p>
+    }
 
     <div class="d-flex flex-column gap-3">
-        <!-- Passkey Sign-in -->
-        @if (_webAuthnAvailable)
+        <!-- Passkey Sign-in: hidden once a password sign-in requires a second factor -->
+        @if (_webAuthnAvailable && !_requiresTwoFactor)
         {
             <div>
                 <SfButton Content="@(_isSigningInWithPasskey ? L["SignInWaiting"] : L["SignInWithPasskeyButton"])" OnClick="SignInWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPasskey" />
@@ -32,9 +35,17 @@ else
             @if (_requiresTwoFactor)
             {
                 <div class="d-flex flex-column gap-2">
+                    <h5>@L["TwoFactorRequiredTitle"]</h5>
                     <p>@L["TwoFactorRequiredDescription"]</p>
                     <div class="d-flex flex-wrap gap-2">
-                        <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
+                        @* One button per second-factor method the server accepts; methods this client does not know are skipped. *@
+                        @foreach (string method in _twoFactorMethods)
+                        {
+                            @if (method == TwoFactorMethodPasskey)
+                            {
+                                <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
+                            }
+                        }
                         <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
                         <SfButton Content="@L["BackButton"]" OnClick="BackFromTwoFactorChoice" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
                     </div>
@@ -63,10 +74,13 @@ else
             <div class="alert alert-danger">@_error</div>
         }
 
-        <!-- Register link -->
-        <div class="text-center">
-            <p>@L["NoAccountText"] <a href="/register">@L["RegisterLink"]</a></p>
-        </div>
+        <!-- Register link: hidden in the two-factor state, where the operator is already signed in at limited access -->
+        @if (!_requiresTwoFactor)
+        {
+            <div class="text-center">
+                <p>@L["NoAccountText"] <a href="/register">@L["RegisterLink"]</a></p>
+            </div>
+        }
     </div>
 }
 
@@ -80,6 +94,8 @@ else
     private bool _isSigningInWithPasskey;
     private bool _requiresTwoFactor;
     private string? _twoFactorCorrelationId;
+    private IReadOnlyList<string> _twoFactorMethods = Array.Empty<string>();
+    private const string TwoFactorMethodPasskey = "passkey";
     private bool _webAuthnAvailable;
     private bool _isLoading = true;
     private string? _error;
@@ -105,7 +121,7 @@ else
         HideTwoFactorChoice();
         try
         {
-            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId) =
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId, twoFactorMethods) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
 
             if (!success)
@@ -117,10 +133,13 @@ else
             if (requiresTwoFactor)
             {
                 // The server issued no session yet: offer the second-factor choice instead of signing in.
-                // A second-factor step is not a failure, so no error text is shown for it.
+                // A second-factor step is not a failure, so no error text is shown for it. The busy flag is
+                // cleared here so no second-factor button inherits a Disabled state from the password call.
                 _error = null;
+                _isSigningInWithPassword = false;
                 _requiresTwoFactor = true;
                 _twoFactorCorrelationId = twoFactorCorrelationId;
+                _twoFactorMethods = twoFactorMethods;
                 return;
             }
 
@@ -173,7 +192,7 @@ else
         _error = null;
         try
         {
-            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _, _, _) =
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _, _, _, _) =
                 await WebAuthn.CreatePasskeyLoginAsync(_username.Trim(), _password);
 
             if (!success)
@@ -249,6 +268,7 @@ else
     {
         _requiresTwoFactor = false;
         _twoFactorCorrelationId = null;
+        _twoFactorMethods = Array.Empty<string>();
     }
 
     /// <summary>Leaves the passkey-required state and restores the username, password and Sign in controls.</summary>
