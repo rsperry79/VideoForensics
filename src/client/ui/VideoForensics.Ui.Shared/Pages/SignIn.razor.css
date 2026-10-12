@@ -8,6 +8,10 @@
     text-transform: uppercase;
 }
 
+/* Syncfusion theme label rules outrank this selector, so the overrides use !important. */
 .signin-card ::deep .e-float-text {
-    color: #495057;
+    color: #212529 !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    opacity: 1 !important;
 }
