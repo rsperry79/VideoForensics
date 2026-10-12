@@ -22,7 +22,7 @@ using Xunit;
 ///
 /// - If isEmpty &amp;&amp; isLocal: redirect to /setup (local admin creates first SuperAdmin)
 /// - Else if isEmpty &amp;&amp; !isLocal: redirect to /awaiting-setup (remote caller waits for local admin)
-/// - Else (!isEmpty): redirect to /welcome (normal login flow, operators exist)
+/// - Else (!isEmpty): redirect to /signin (normal sign-in flow, operators exist)
 /// </summary>
 public class AuthGateTests : BunitContext
 {
@@ -83,16 +83,16 @@ public class AuthGateTests : BunitContext
     }
 
     [Fact]
-    public void ResolveBootstrapRedirectTarget_OperatorsExist_ReturnsWelcome()
+    public void ResolveBootstrapRedirectTarget_OperatorsExist_ReturnsSignIn()
     {
         string target = AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: true);
-        Assert.Equal("/welcome", target);
+        Assert.Equal("/signin", target);
     }
 
     [Fact]
-    public void ResolveBootstrapRedirectTarget_OperatorsExistRemote_ReturnsWelcome()
+    public void ResolveBootstrapRedirectTarget_OperatorsExistRemote_ReturnsSignIn()
     {
         string target = AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: false);
-        Assert.Equal("/welcome", target);
+        Assert.Equal("/signin", target);
     }
 }

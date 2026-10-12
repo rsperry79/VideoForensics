@@ -376,7 +376,7 @@ namespace VideoForensics.Ui.Shared.Services
             if (!response.IsSuccessStatusCode)
             {
                 // Fail safe: if the check itself fails, behave as if setup is unavailable and the caller
-                // is not local, so AuthGate falls back to /welcome rather than risk exposing /setup.
+                // is not local, so AuthGate falls back to /signin rather than risk exposing /setup.
                 return (false, false);
             }
 
