@@ -15,7 +15,7 @@
     <header class="simple-layout-header">
         <span class="simple-layout-title">VideoForensics</span>
         <div class="simple-layout-buttons">
-            @if (!UiModeService.IsLocked)
+            @if (!UiModeService.IsLocked && !_passkeySetupOnly)
             {
                 <SfButton Content="@L["SimpleStandardView"]" OnClick="@SwitchToStandardAsync" CssClass="simple-layout-standard-button e-flat" />
             }
