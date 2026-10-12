@@ -43,6 +43,21 @@ public class SimpleLayoutPasskeySetupTests : SimpleModeLayoutTestBase
     }
 
     [Fact]
+    public async Task SimpleLayout_PasskeySetupOnly_HidesStandardViewButton()
+    {
+        // Arrange
+        await StartSetupOnlySessionAsync();
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/settings/passkeys");
+
+        // Act
+        var component = Render<SimpleLayout>(p => p.Add(l => l.Body, PasskeyPageBody));
+
+        // Assert
+        Assert.Empty(component.FindAll(".simple-layout-standard-button"));
+        Assert.Single(component.FindAll("#passkey-page"));
+    }
+
+    [Fact]
     public async Task SimpleLayout_PasskeySetupOnly_HidesSimpleHomeAtHomeRoute()
     {
         // Arrange
