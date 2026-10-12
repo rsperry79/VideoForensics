@@ -16,12 +16,25 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
         private bool _noticesDropdownOpen = false;
         private List<Notice> _noticesList = [];
 
+        // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings sheet.
+        private bool _passkeySetupOnly;
         private bool _navDrawerOpen = false;
         private bool _settingsSheetOpen = false;
 
         private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
 
-        private IReadOnlyList<NavGroup> VisibleGroups => NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
+        private IReadOnlyList<NavGroup> VisibleGroups
+        {
+            get
+            {
+                if (_passkeySetupOnly)
+                {
+                    return [];
+                }
+
+                return NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
+            }
+        }
 
         private NavGroup ActiveGroup
         {
@@ -46,6 +59,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
         protected override void OnInitialized()
         {
             SetCurrentLocation(Nav.Uri);
+            _passkeySetupOnly = SessionState.PasskeySetupOnly;
             Nav.LocationChanged += OnLocationChanged;
             ThemeService.OnChange += StateHasChanged;
             SessionState.AuthenticationExpired += OnAuthenticationExpired;
@@ -59,6 +73,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
                 // state can only be resolved once the circuit is connected.
                 await SessionState.EnsureLoadedAsync();
                 _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+                _passkeySetupOnly = SessionState.PasskeySetupOnly;
 
                 await ThemeService.InitializeAsync();
 
@@ -75,6 +90,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             SetCurrentLocation(e.Location);
+            _passkeySetupOnly = SessionState.PasskeySetupOnly;
             _ = InvokeAsync(StateHasChanged);
         }
 
@@ -127,6 +143,12 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
             _settingsSheetOpen = false;
             await Task.CompletedTask;
             StateHasChanged();
+        }
+
+        private async Task SignOutAsync()
+        {
+            await SessionState.ClearAsync();
+            Nav.NavigateTo("/signin");
         }
 
         private async Task ToggleNoticesAsync()

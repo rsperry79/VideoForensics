@@ -124,6 +124,27 @@ public class SignInPageTests : BunitContext
         component.WaitForAssertion(() => Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery));
     }
 
+    [Fact]
+    public async Task SignIn_CreatePasskeyChoice_SetsPasskeySetupOnly()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
+            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null));
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var session = Services.GetRequiredService<PairedSessionState>();
+        var component = await RenderAndWaitForFormAsync();
+        await SubmitPasswordLoginAsync(component);
+        component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Create a new passkey"));
+
+        // Act
+        await ClickButtonAsync(component, "Create a new passkey");
+
+        // Assert
+        component.WaitForAssertion(() => Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery));
+        Assert.True(session.PasskeySetupOnly);
+    }
+
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))

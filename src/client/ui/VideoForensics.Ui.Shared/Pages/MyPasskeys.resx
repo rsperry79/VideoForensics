@@ -38,6 +38,9 @@
   <data name="SetupPasskeyPrompt" xml:space="preserve">
     <value>Add a passkey to finish setting up your account.</value>
   </data>
+  <data name="SignInLink" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
   <data name="SignInToManage" xml:space="preserve">
     <value>to manage your passkeys.</value>
   </data>

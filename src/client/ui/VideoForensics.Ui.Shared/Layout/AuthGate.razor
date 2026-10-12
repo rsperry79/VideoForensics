@@ -87,8 +87,16 @@ else
                 path = path[..^1];
             }
 
+            // A limited create-passkey session can reach only the passkey page (and sign-in). Checked before
+            // the allow-list because /change-password is allow-listed but is not reachable under the limit.
+            if (SessionState.IsSignedIn && SessionState.PasskeySetupOnly && !IsPasskeySetupReachablePath(path))
+            {
+                _loading = false;
+                _redirecting = true;
+                NavigationManager.NavigateTo(PasskeySetupPath, replace: true);
+            }
             // Check if current route is allow-listed
-            if (AllowListedRoutes.Contains(path))
+            else if (AllowListedRoutes.Contains(path))
             {
                 // Route is allow-listed, render content normally
                 _loading = false;
@@ -131,6 +139,14 @@ else
             _redirecting = false;
             StateHasChanged();
         }
+    }
+
+    private const string PasskeySetupPath = "/settings/passkeys?setup=true";
+
+    private static bool IsPasskeySetupReachablePath(string path)
+    {
+        return string.Equals(path, "/settings/passkeys", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(path, "/signin", StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()

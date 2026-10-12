@@ -24,9 +24,34 @@ public class MyPasskeysSetupTests : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
+        Services.AddScoped(_ => WebAuthn.Object);
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
+    }
+
+    private Mock<WebAuthnClient> WebAuthn { get; }
+
+    [Fact]
+    public async Task MyPasskeys_SetupOnlyAfterAdd_ClearsSessionAndSignsIn()
+    {
+        // Arrange - a limited create-passkey session adds its passkey
+        var session = Services.GetRequiredService<PairedSessionState>();
+        await session.SetAsync("setup-token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
+        WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
+            .ReturnsAsync((true, null, true));
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
+        var component = Render<MyPasskeys>();
+        component.Find("input[type='text']").Change("Phone");
+
+        // Act
+        await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        // Assert - the server has ended the limited session, so the client drops it and signs in again
+        component.WaitForAssertion(() => Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath));
+        Assert.False(session.IsSignedIn);
+        Assert.False(session.PasskeySetupOnly);
     }
 
     [Fact]

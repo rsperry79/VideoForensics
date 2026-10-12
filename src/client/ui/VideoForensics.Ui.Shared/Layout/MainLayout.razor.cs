@@ -17,6 +17,8 @@ namespace VideoForensics.Ui.Shared.Layout
         private double _leftNavWidth = 220;
         private double _rightPanelWidth = 280;
         private bool _rightPanelHandleAttached;
+        // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings panel.
+        private bool _passkeySetupOnly;
         private DotNetObjectReference<MainLayout>? _selfRef;
 
         private int _undismissedCount = 0;
@@ -36,7 +38,18 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private string RightPanelStyle => $"flex: 0 0 {_rightPanelWidth}px; width: {_rightPanelWidth}px;";
 
-        private IReadOnlyList<NavGroup> VisibleGroups => NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
+        private IReadOnlyList<NavGroup> VisibleGroups
+        {
+            get
+            {
+                if (_passkeySetupOnly)
+                {
+                    return [];
+                }
+
+                return NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
+            }
+        }
 
         private NavGroup ActiveGroup
         {
@@ -53,6 +66,11 @@ namespace VideoForensics.Ui.Shared.Layout
         {
             get
             {
+                if (_passkeySetupOnly)
+                {
+                    return [];
+                }
+
                 NavContext ctx = BuildContext();
                 return ActiveGroup.Items.Where(i => i.IsVisible(ctx)).ToList();
             }
@@ -61,6 +79,7 @@ namespace VideoForensics.Ui.Shared.Layout
         protected override void OnInitialized()
         {
             SetCurrentLocation(Nav.Uri);
+            _passkeySetupOnly = SessionState.PasskeySetupOnly;
             Nav.LocationChanged += OnLocationChanged;
             ThemeService.OnChange += StateHasChanged;
             SessionState.AuthenticationExpired += OnAuthenticationExpired;
@@ -74,6 +93,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 // state can only be resolved once the circuit is connected.
                 await SessionState.EnsureLoadedAsync();
                 _role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) ? role : null;
+                _passkeySetupOnly = SessionState.PasskeySetupOnly;
 
                 await LayoutPrefs.EnsureLoadedAsync();
                 await ThemeService.InitializeAsync();
@@ -111,7 +131,7 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private async Task AttachRightPanelHandleIfNeededAsync()
         {
-            if (_rightPanelHandleAttached || LayoutPrefs.RightPanelCollapsed)
+            if (_rightPanelHandleAttached || _passkeySetupOnly || LayoutPrefs.RightPanelCollapsed)
             {
                 return;
             }
@@ -140,6 +160,7 @@ namespace VideoForensics.Ui.Shared.Layout
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             SetCurrentLocation(e.Location);
+            _passkeySetupOnly = SessionState.PasskeySetupOnly;
             InspectorState.Clear();
             _ = InvokeAsync(StateHasChanged);
         }
@@ -207,6 +228,12 @@ namespace VideoForensics.Ui.Shared.Layout
 
                 _rightPanelHandleAttached = false;
             }
+        }
+
+        private async Task SignOutAsync()
+        {
+            await SessionState.ClearAsync();
+            Nav.NavigateTo("/signin");
         }
 
         private async Task ToggleNoticesAsync()

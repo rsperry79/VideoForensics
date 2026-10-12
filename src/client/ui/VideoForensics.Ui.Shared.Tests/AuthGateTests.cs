@@ -1,7 +1,14 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
+using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
+using Moq;
 using VideoForensics.Ui.Shared.Layout;
-
+using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Ui.Shared.Services;
 using Xunit;
 
 /// <summary>
@@ -17,8 +24,50 @@ using Xunit;
 /// - Else if isEmpty &amp;&amp; !isLocal: redirect to /awaiting-setup (remote caller waits for local admin)
 /// - Else (!isEmpty): redirect to /welcome (normal login flow, operators exist)
 /// </summary>
-public class AuthGateTests
+public class AuthGateTests : BunitContext
 {
+    public AuthGateTests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
+        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        SetRendererInfo(new RendererInfo("Server", true));
+    }
+
+    [Fact]
+    public async Task AuthGate_PasskeySetupOnly_RedirectsOtherPagesToPasskeySetup()
+    {
+        // Arrange - a limited create-passkey session on a page other than the passkey page
+        var session = Services.GetRequiredService<PairedSessionState>();
+        await session.SetAsync("token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/cases");
+
+        // Act
+        var component = Render<AuthGate>();
+
+        // Assert
+        component.WaitForAssertion(() => Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery));
+    }
+
+    [Fact]
+    public async Task AuthGate_PasskeySetupOnly_LeavesPasskeyPageAlone()
+    {
+        // Arrange
+        var session = Services.GetRequiredService<PairedSessionState>();
+        await session.SetAsync("token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
+
+        // Act
+        Render<AuthGate>();
+        await Task.Delay(100); // negative assertion: give the first-render redirect a chance to fire
+
+        // Assert
+        Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery);
+    }
+
     [Fact]
     public void ResolveBootstrapRedirectTarget_NoOperatorsAndLocal_ReturnsSetup()
     {
