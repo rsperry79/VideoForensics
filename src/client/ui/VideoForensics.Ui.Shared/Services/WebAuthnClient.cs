@@ -166,6 +166,7 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            EnsureSignInFieldsPresent(result);
             return (
                 true,
                 null,
@@ -174,6 +175,39 @@ namespace VideoForensics.Ui.Shared.Services
                 result.GetProperty("role").GetString()!,
                 result.GetProperty("mustChangePassword").GetBoolean(),
                 result.GetProperty("hasPasskey").GetBoolean());
+        }
+
+        /// <summary>
+        /// Diagnostic guard for the password sign-in body: names the first missing field and includes the
+        /// response with <c>sessionToken</c> redacted, so a server/client contract drift is visible on screen
+        /// without leaking the session token. Truncated to 500 characters.
+        /// </summary>
+        private static void EnsureSignInFieldsPresent(JsonElement body)
+        {
+            if (body.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidOperationException("Sign-in response is not a JSON object.");
+            }
+
+            foreach (string field in new[] { "sessionToken", "operatorId", "role", "mustChangePassword", "hasPasskey" })
+            {
+                if (!body.TryGetProperty(field, out _))
+                {
+                    throw new InvalidOperationException($"Sign-in response is missing '{field}'. Response: {RedactedSnippet(body)}");
+                }
+            }
+        }
+
+        private static string RedactedSnippet(JsonElement body)
+        {
+            System.Text.Json.Nodes.JsonNode? node = System.Text.Json.Nodes.JsonNode.Parse(body.GetRawText());
+            if (node is System.Text.Json.Nodes.JsonObject obj && obj.ContainsKey("sessionToken"))
+            {
+                obj["sessionToken"] = "<redacted>";
+            }
+
+            string text = node?.ToJsonString() ?? string.Empty;
+            return text.Length > 500 ? text[..500] : text;
         }
 
         public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username)
