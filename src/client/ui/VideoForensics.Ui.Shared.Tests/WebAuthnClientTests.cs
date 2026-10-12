@@ -96,6 +96,33 @@ public class WebAuthnClientTests
     }
 
     [Fact]
+    public async Task SignInWithPasswordAsync_MissingField_ThrowsNamingFieldWithoutToken()
+    {
+        const string token = "secret-token-value-123";
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    sessionToken = token,
+                    operatorId = Guid.NewGuid(),
+                    role = "SuperAdmin",
+                    mustChangePassword = false
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.SignInWithPasswordAsync("alice", "password123"));
+
+        Assert.Contains("hasPasskey", ex.Message);
+        Assert.DoesNotContain(token, ex.Message);
+    }
+
+    [Fact]
     public async Task ChangePasswordAsync_UsesFactoryWithTheExplicitlyPassedBearerToken()
     {
         // ChangePasswordAsync needs no WebAuthn/JS-interop ceremony, so it's the simplest explicit-
