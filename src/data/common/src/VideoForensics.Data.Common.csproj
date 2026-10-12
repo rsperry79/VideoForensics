@@ -19,7 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="../../core/Providers/Common/VideoForensics.Core.Providers.Common.csproj" />
+      <ProjectReference Include="../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
     </ItemGroup>
 
 </Project>

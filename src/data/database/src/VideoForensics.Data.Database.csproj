@@ -23,11 +23,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Common/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../common/src/VideoForensics.Data.Common.csproj" />
     </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Sqlite/**/*.cs" />
-    <Compile Remove="Sqlite.Tests/**/*.cs" />
   </ItemGroup>
 </Project>

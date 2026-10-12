@@ -21,11 +21,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Common/VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="../../core/Logging/VideoForensics.Core.Logging.csproj" />
-        <ProjectReference Include="../../core/Providers/Common/VideoForensics.Core.Providers.Common.csproj" />
-        <ProjectReference Include="../../core/Helpers/VideoForensics.Core.Helpers.csproj" />
-        <ProjectReference Include="../../client/common/VideoForensics.Client.Common/VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="../../common/src/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
+        <ProjectReference Include="../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
+        <ProjectReference Include="../../../core/helpers/src/VideoForensics.Core.Helpers.csproj" />
+        <ProjectReference Include="../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
     </ItemGroup>
 
 </Project>

@@ -26,7 +26,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Core/VideoForensics.Data.Core.csproj" />
+    <ProjectReference Include="../src/VideoForensics.Data.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
