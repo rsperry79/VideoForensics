@@ -11,6 +11,7 @@
     <Description>ASP.NET Core Blazor Server host for VideoForensics</Description>
     <Copyright>2026</Copyright>
     <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+    <UserSecretsId>d58e1784-083c-4d40-b384-c9428cdeb033</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
