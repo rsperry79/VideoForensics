@@ -2,6 +2,7 @@ using System.Linq;
 using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -61,27 +62,52 @@ namespace VideoForensics.Hosting
         /// </summary>
         public static void RegisterSyncfusionLicenseIfPresent()
         {
-            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
-            if (File.Exists(syncfusionLicenseKeyPath))
-            {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(File.ReadAllText(syncfusionLicenseKeyPath).Trim());
-                return;
-            }
+            RegisterSyncfusionLicense(GetSyncfusionLicenseKeyFromEnvironment());
+        }
 
-            string? environmentKey = GetSyncfusionLicenseKeyFromEnvironment();
-            if (environmentKey != null)
-            {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(environmentKey);
-                return;
-            }
+        /// <summary>
+        /// Registers the Syncfusion Blazor license key using the same priority order as the parameterless
+        /// overload, but reads the env-var source from <paramref name="configuration"/> instead. Use this
+        /// once the host's configuration is built (e.g. WebApplicationBuilder.Configuration), so user
+        /// secrets (dev) and Azure App Settings / Key Vault references (prod) are honored. Configuration
+        /// already includes environment variables, so SYNCFUSION_LICENSE_KEY set in the environment still works.
+        /// </summary>
+        /// <param name="configuration">Configuration to read SYNCFUSION_LICENSE_KEY from.</param>
+        public static void RegisterSyncfusionLicenseIfPresent(IConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+            RegisterSyncfusionLicense(GetSyncfusionLicenseKeyFromConfiguration(configuration));
+        }
 
-            string? bakedInKey = Assembly.GetExecutingAssembly()
-                .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value;
-            if (!string.IsNullOrWhiteSpace(bakedInKey))
+        /// <summary>
+        /// Resolves the key from the three sources in priority order and registers it. Logs nothing about the key value.
+        /// </summary>
+        private static void RegisterSyncfusionLicense(string? configuredKey)
+        {
+            string? key = ResolveSyncfusionLicenseKey(
+                ReadSyncfusionLicenseKeyFile(),
+                configuredKey,
+                GetBakedInSyncfusionLicenseKey());
+            if (key != null)
             {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(bakedInKey.Trim());
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(key);
             }
+        }
+
+        /// <summary>
+        /// Picks the Syncfusion license key from the candidate sources, in priority order: the external key file
+        /// (admin/IT override, always wins), then the configured key (SYNCFUSION_LICENSE_KEY from config/env), then the
+        /// key baked into the assembly at CI build time. Blank or whitespace candidates count as absent so the next
+        /// source is tried. Every returned key is trimmed. Returns null when no source has a key (unlicensed dev mode).
+        /// Pure function so the priority rules can be unit tested without touching the process-wide license provider.
+        /// </summary>
+        /// <remarks>
+        /// The file is first so an IT admin can override a baked-in key without rebuilding; the configured key sits
+        /// above the baked-in key so a deployment can supply its own key without a rebuild.
+        /// </remarks>
+        internal static string? ResolveSyncfusionLicenseKey(string? fileKey, string? configuredKey, string? bakedInKey)
+        {
+            return NormalizeLicenseKey(fileKey) ?? NormalizeLicenseKey(configuredKey) ?? NormalizeLicenseKey(bakedInKey);
         }
 
         /// <summary>
@@ -91,8 +117,43 @@ namespace VideoForensics.Hosting
         /// </summary>
         internal static string? GetSyncfusionLicenseKeyFromEnvironment()
         {
-            string? value = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")?.Trim();
-            return string.IsNullOrEmpty(value) ? null : value;
+            return NormalizeLicenseKey(Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY"));
+        }
+
+        /// <summary>
+        /// Reads SYNCFUSION_LICENSE_KEY from configuration, trimmed. Returns null when missing or blank.
+        /// Internal so tests can exercise it with in-memory configuration.
+        /// </summary>
+        internal static string? GetSyncfusionLicenseKeyFromConfiguration(IConfiguration configuration)
+        {
+            return NormalizeLicenseKey(configuration["SYNCFUSION_LICENSE_KEY"]);
+        }
+
+        /// <summary>
+        /// Reads %ProgramData%\VideoForensics\syncfusion-license.key, trimmed. Returns null when the file is missing or blank.
+        /// </summary>
+        private static string? ReadSyncfusionLicenseKeyFile()
+        {
+            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
+            return File.Exists(syncfusionLicenseKeyPath) ? NormalizeLicenseKey(File.ReadAllText(syncfusionLicenseKeyPath)) : null;
+        }
+
+        /// <summary>
+        /// Reads the license key baked into this assembly's metadata at CI build time, trimmed. Returns null when absent.
+        /// </summary>
+        private static string? GetBakedInSyncfusionLicenseKey()
+        {
+            return NormalizeLicenseKey(Assembly.GetExecutingAssembly()
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value);
+        }
+
+        /// <summary>
+        /// Trims a candidate key and maps blank to null, so "absent" is one concept everywhere.
+        /// </summary>
+        private static string? NormalizeLicenseKey(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
         /// <summary>
