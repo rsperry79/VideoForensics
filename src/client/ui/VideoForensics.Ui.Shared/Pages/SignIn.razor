@@ -44,6 +44,12 @@ else
             </div>
         }
 
+        @* TEMP-SIGNIN-DIAG *@
+        @if (!string.IsNullOrEmpty(_diag))
+        {
+            <pre class="small border p-2">@_diag</pre> <!-- TEMP-SIGNIN-DIAG -->
+        }
+
         @if (_requiresTwoFactor)
         {
             <div class="d-flex flex-column gap-2">
@@ -80,6 +86,7 @@ else
     private bool _webAuthnAvailable;
     private bool _isLoading = true;
     private string? _error;
+    private string _diag = string.Empty; // TEMP-SIGNIN-DIAG
     private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
         PasswordEnabled: true, PasskeyEnabled: true);
 
@@ -99,15 +106,19 @@ else
     {
         _isSigningInWithPassword = true;
         _error = null;
+        _diag = string.Empty; // TEMP-SIGNIN-DIAG
+        AddDiag("password sign-in started"); // TEMP-SIGNIN-DIAG
         HideTwoFactorChoice();
         try
         {
             var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
+            AddDiag($"password result: success={success}; requiresTwoFactor={requiresTwoFactor}; sessionTokenPresent={sessionToken is not null}"); // TEMP-SIGNIN-DIAG
 
             if (!success)
             {
                 _error = errorMessage ?? L["SignInFailed"];
+                AddDiag($"branch: !success -> error shown; errorMessage={errorMessage ?? "(null)"}"); // TEMP-SIGNIN-DIAG
                 return;
             }
 
@@ -116,15 +127,18 @@ else
                 // The server issued no session yet: offer the second-factor choice instead of signing in.
                 _requiresTwoFactor = true;
                 _twoFactorCorrelationId = twoFactorCorrelationId;
+                AddDiag("branch: requiresTwoFactor -> 2FA choice shown; no session set"); // TEMP-SIGNIN-DIAG
                 return;
             }
 
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
+            AddDiag($"session set; hasPasskey={hasPasskey}; mustChangePassword={mustChangePassword}; passkeySetupOnly=false"); // TEMP-SIGNIN-DIAG
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
         {
             _error = L["SignInFailed", ex.Message];
+            AddDiag($"error: {ex.GetType().Name}: {ex.Message}"); // TEMP-SIGNIN-DIAG
         }
         finally
         {
@@ -180,6 +194,7 @@ else
 
             // Limited passkey-setup session: the only place it can go is passkey registration.
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: true);
+            AddDiag($"passkey-setup session set; mustChangePassword={mustChangePassword}; passkeySetupOnly=true"); // TEMP-SIGNIN-DIAG
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey: false);
         }
         catch (Exception ex)
@@ -226,19 +241,29 @@ else
     {
         if (mustChangePassword)
         {
+            AddDiag("navigating to /change-password"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo("/change-password");
         }
         else if (!hasPasskey)
         {
             // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
             // to show the setup prompt.
+            AddDiag("navigating to /settings/passkeys?setup=true"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo("/settings/passkeys?setup=true");
         }
         else
         {
+            AddDiag($"navigating to {GetReturnUrl()}"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo(GetReturnUrl());
         }
     }
+
+    // TEMP-SIGNIN-DIAG: appends a line to the on-page diagnostic and forces a render.
+    private void AddDiag(string line) // TEMP-SIGNIN-DIAG
+    { // TEMP-SIGNIN-DIAG
+        _diag = _diag.Length == 0 ? line : _diag + "\n" + line; // TEMP-SIGNIN-DIAG
+        StateHasChanged(); // TEMP-SIGNIN-DIAG
+    } // TEMP-SIGNIN-DIAG
 
     private void HideTwoFactorChoice()
     {
